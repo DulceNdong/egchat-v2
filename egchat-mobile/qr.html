@@ -1,0 +1,46 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>EGCHAT - Probar App</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, sans-serif; background: linear-gradient(135deg, #00c8a0, #00b4e6); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
+  .card { background: #fff; border-radius: 28px; padding: 40px 32px; text-align: center; box-shadow: 0 24px 80px rgba(0,0,0,0.25); max-width: 400px; width: 100%; }
+  .logo { width: 64px; height: 64px; border-radius: 20px; background: linear-gradient(135deg, #00c8a0, #00b4e6); display: flex; align-items: center; justify-content: center; margin: 0 auto 12px; }
+  .logo span { font-size: 22px; font-weight: 900; color: #fff; }
+  h1 { font-size: 24px; font-weight: 900; color: #111; margin-bottom: 4px; }
+  .sub { color: #6B7280; font-size: 13px; margin-bottom: 24px; }
+  .qr-wrap { background: #F9FAFB; border-radius: 16px; padding: 16px; display: inline-block; margin-bottom: 16px; }
+  img { display: block; width: 240px; height: 240px; border-radius: 8px; }
+  .url { background: #F3F4F6; border-radius: 10px; padding: 10px 14px; font-size: 11px; color: #374151; font-family: monospace; word-break: break-all; margin-bottom: 20px; }
+  .badge { display: inline-flex; align-items: center; gap: 6px; background: #F0FDF9; color: #00c8a0; border-radius: 20px; padding: 5px 12px; font-size: 11px; font-weight: 700; margin-bottom: 20px; }
+  .dot { width: 7px; height: 7px; border-radius: 50%; background: #00c8a0; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .steps { text-align: left; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid #F0F2F5; padding-top: 20px; }
+  .step { display: flex; gap: 12px; align-items: flex-start; }
+  .num { background: linear-gradient(135deg, #00c8a0, #00b4e6); color: #fff; border-radius: 50%; width: 24px; height: 24px; min-width: 24px; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; }
+  .step span { font-size: 13px; color: #374151; line-height: 1.5; padding-top: 2px; }
+  .note { margin-top: 16px; font-size: 11px; color: #9CA3AF; }
+</style>
+</head>
+<body>
+<div class="card">
+  <div class="logo"><span>EG</span></div>
+  <h1>EGCHAT</h1>
+  <p class="sub">Guinea Ecuatorial · App de mensajeria y servicios</p>
+  <div class="badge"><div class="dot"></div> Servidor activo</div>
+  <div class="qr-wrap">
+    <img src="data:image/png;base64,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" alt="QR Expo Go" />
+  </div>
+  <div class="url">exp://egchat-expo.loca.lt</div>
+  <div class="steps">
+    <div class="step"><div class="num">1</div><span>Instala <strong>Expo Go</strong> en tu movil (Play Store / App Store)</span></div>
+    <div class="step"><div class="num">2</div><span>Abre Expo Go y toca <strong>"Scan QR code"</strong></span></div>
+    <div class="step"><div class="num">3</div><span>Escanea este QR — funciona desde <strong>cualquier red</strong></span></div>
+  </div>
+  <p class="note">Si pide contrasena en loca.lt, introduce tu IP publica</p>
+</div>
+</body>
+</html>

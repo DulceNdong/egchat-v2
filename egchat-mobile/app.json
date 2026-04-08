@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "EGCHAT",
+    "slug": "egchat",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "bundleIdentifier": "com.egchat.app",
+      "supportsTablet": false
+    },
+    "android": {
+      "package": "com.egchat.app",
+      "permissions": ["CAMERA", "RECORD_AUDIO", "ACCESS_FINE_LOCATION"]
+    },
+    "plugins": [
+      "expo-router",
+      ["expo-camera", { "cameraPermission": "EGCHAT necesita la camara para fotos de perfil." }],
+      ["expo-location", { "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicacion para servicios de taxi." }]
+    ],
+    "scheme": "egchat",
+    "extra": {
+      "apiUrl": "https://egchat-api-1.onrender.com",
+      "router": { "origin": false }
+    }
+  }
+}
