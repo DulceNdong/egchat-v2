@@ -1,13 +1,11 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './index.css';
 import { chatAPI, authAPI } from './api';
-import { AuthProvider, useAuth } from './AuthContext';
-import { initializeApiInterceptor } from './apiInterceptor';
+import AuthScreen from './AuthScreen';
 import { EstadosView } from './EstadosView';
 import { ApuestasView } from './ApuestasView';
 import CemacView from './CemacView2';
 import { MiTaxiView } from './MiTaxiView';
-import { ChatView } from './ChatView';
 import { InternetModal, RecargaModal, CanalesModal, BancosModal, SegurosModal, FacturasModal, ActividadModal, SaludModal } from './ServiciosModules';
 import { SupermercadosModal } from './SupermercadosModule';
 import { RecargaMonederoModal, RetiroMonederoModal } from './WalletSystem';
@@ -17,9 +15,6 @@ import { CameraModal } from './CameraModal';
 import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
 import { Lia25View } from './Lia25View';
-
-// Inicializar interceptor ANTES de cualquier componente
-initializeApiInterceptor();
 
 interface Bank {
   id: string;
@@ -44,17 +39,38 @@ interface Transaction {
   date: string;
 }
 
-const AppWithAuth: React.FC = () => {
-  return (
-    <AuthProvider>
-      <App />
-    </AuthProvider>
-  );
-};
-
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<string>('home');
   const [previousView, setPreviousView] = useState<string>('home');
+  // -- Auth persistente -----------------------------------------
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('token'));
+  // -- Mensajeria real -------------------------------------------
+  const [realChats, setRealChats] = useState<any[]>([]);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState('');
+  const [newChatSearching, setNewChatSearching] = useState(false);
+  const currentUserId = useRef<string>('');
+  const pollingRef = useRef<ReturnType<typeof setInterval>|null>(null);
+
+  const loadChats = useCallback(async () => {
+    if (!localStorage.getItem('token')) return;
+    try { const d = await chatAPI.getChats(); if (Array.isArray(d)) setRealChats(d); } catch {}
+  }, []);
+
+  const loadMessages = useCallback(async (chatId: string) => {
+    if (!chatId || chatId.length < 10) return;
+    try {
+      const msgs = await chatAPI.getMessages(chatId);
+      if (Array.isArray(msgs)) {
+        const fmt = msgs.map((m: any) => ({
+          id: m.id, from: m.sender_id === currentUserId.current ? 'me' as const : 'them' as const,
+          text: m.text || '', time: new Date(m.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
+          status: (m.status||'delivered') as 'pending'|'delivered'|'read',
+        }));
+        setChatMessages((prev: any) => ({ ...prev, [chatId]: fmt }));
+      }
+    } catch {}
+  }, []);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
@@ -104,64 +120,6 @@ const App: React.FC = () => {
   const [selectedChat, setSelectedChat] = useState<any>(null);
   const [chatMessages, setChatMessages] = useState<Record<string, Array<{id: string; from: 'me'|'them'; text: string; time: string; type?: 'text'|'audio'|'image'; status?: 'pending'|'delivered'|'read'}>>>({});
   const [currentChatInput, setCurrentChatInput] = useState<string>('');
-  // ── Mensajería real con backend ──────────────────────────────────
-  const [realChats, setRealChats] = useState<any[]>([]);
-  const [chatsLoading, setChatsLoading] = useState(false);
-  const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const currentUserId = useRef<string>('');
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [newChatPhone, setNewChatPhone] = useState('');
-  const [newChatSearching, setNewChatSearching] = useState(false);
-
-  // Cargar ID del usuario actual
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    authAPI.me().then((u: any) => { currentUserId.current = u.id; }).catch(() => {});
-  }, []);
-
-  // Cargar chats del backend
-  const loadChats = useCallback(async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return;
-    try {
-      setChatsLoading(true);
-      const data = await chatAPI.getChats();
-      if (Array.isArray(data)) setRealChats(data);
-    } catch { /* sin conexión, usa mock */ } finally { setChatsLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    if (currentView === 'mensajeria') loadChats();
-  }, [currentView, loadChats]);
-
-  // Cargar mensajes reales al abrir chat
-  const loadMessages = useCallback(async (chatId: string) => {
-    const token = localStorage.getItem('token');
-    if (!token || !chatId || chatId.length < 10) return; // IDs mock son cortos
-    try {
-      const msgs = await chatAPI.getMessages(chatId);
-      if (Array.isArray(msgs)) {
-        const formatted = msgs.map((m: any) => ({
-          id: m.id,
-          from: m.sender_id === currentUserId.current ? 'me' as const : 'them' as const,
-          text: m.text || m.file_url || '',
-          time: new Date(m.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }),
-          status: (m.status || 'delivered') as 'pending'|'delivered'|'read',
-        }));
-        setChatMessages(prev => ({ ...prev, [chatId]: formatted }));
-      }
-    } catch { /* usa mensajes locales */ }
-  }, []);
-
-  useEffect(() => {
-    if (!selectedChat) { if (pollingRef.current) clearInterval(pollingRef.current); return; }
-    const chatId = selectedChat.id?.toString() || '';
-    loadMessages(chatId);
-    // Polling cada 3s para mensajes nuevos
-    pollingRef.current = setInterval(() => loadMessages(chatId), 3000);
-    return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
-  }, [selectedChat, loadMessages]);
   const [showChatEmojis, setShowChatEmojis] = useState<boolean>(false);
   const [showChatAttach, setShowChatAttach] = useState<boolean>(false);
   const [chatEmojiTab, setChatEmojiTab] = useState<'system'|'custom'>('system');
@@ -169,12 +127,12 @@ const App: React.FC = () => {
   const [emojiSearch, setEmojiSearch] = useState<string>('');
   const [isRecordingAudio, setIsRecordingAudio] = useState<boolean>(false);
   const [customEmojis, setCustomEmojis] = useState<Array<{id:string; label:string; title:string; source:'created'|'copied'; from?:string}>>([
-    { id:'1', label:'🤑', title:'Rico',    source:'created' },
-    { id:'2', label:'🦁', title:'Leon GQ', source:'created' },
-    { id:'3', label:'🌍', title:'Africa',  source:'created' },
-    { id:'4', label:'🟢', title:'Verde GQ',source:'created' },
-    { id:'5', label:'🏅', title:'Medalla', source:'copied', from:'Juan' },
-    { id:'6', label:'💪', title:'Fuerza',  source:'copied', from:'Maria Garcia' },
+    { id:'1', label:'??', title:'Rico',    source:'created' },
+    { id:'2', label:'??', title:'Leon GQ', source:'created' },
+    { id:'3', label:'??', title:'Africa',  source:'created' },
+    { id:'4', label:'??', title:'Verde GQ',source:'created' },
+    { id:'5', label:'??', title:'Medalla', source:'copied', from:'Juan' },
+    { id:'6', label:'??', title:'Fuerza',  source:'copied', from:'Maria Garcia' },
   ]);
   const [showEmojiEditor, setShowEmojiEditor] = useState<boolean>(false);
   const [editingEmoji, setEditingEmoji] = useState<{id?:string; label:string; title:string} | null>(null);
@@ -297,7 +255,7 @@ const App: React.FC = () => {
   const [transactionHistory, setTransactionHistory] = useState<Array<{ id: string; type: 'sent' | 'received' | 'payment' | 'deposit' | 'withdrawal' | 'salary' | 'card_withdrawal'; amount: number; description: string; date: string; status: 'completed' | 'pending' | 'failed'; fromAccount?: string; toAccount?: string; commission?: number }>>([
     { id: '1', type: 'received', amount: 50000, description: 'Transferencia recibida de Juan', date: '12/03/2026', status: 'completed' },
     { id: '2', type: 'sent', amount: 25000, description: 'Pago de servicios', date: '11/03/2026', status: 'completed' },
-    { id: '3', type: 'received', amount: 75000, description: 'Dep?sito salario', date: '10/03/2026', status: 'completed' },
+    { id: '3', type: 'received', amount: 75000, description: 'Depósito salario', date: '10/03/2026', status: 'completed' },
     { id: '4', type: 'payment', amount: 15000, description: 'Pago de electricidad', date: '09/03/2026', status: 'completed' },
     { id: '5', type: 'sent', amount: 30000, description: 'Transferencia a María', date: '08/03/2026', status: 'completed' }
   ]);
@@ -311,10 +269,10 @@ const App: React.FC = () => {
   const [showCardWithdrawalModal, setShowCardWithdrawalModal] = useState<boolean>(false);
   const [cardWithdrawalData, setCardWithdrawalData] = useState<{ amount: string; accountId: string; cardNumber: string }>({ amount: '', accountId: '', cardNumber: '' });
 
-  // Seguridad: PIN y Autenticaci?n
+  // Seguridad: PIN y Autenticación
   const [showPINModal, setShowPINModal] = useState<boolean>(false);
   const [pinInput, setPinInput] = useState<string>('');
-  const [userPIN, setUserPIN] = useState<string>('1234'); // PIN por defecto (en producci?n será encriptado)
+  const [userPIN, setUserPIN] = useState<string>('1234'); // PIN por defecto (en producción será encriptado)
   const [pinAttempts, setPinAttempts] = useState<number>(0);
   const [isAccountLocked, setIsAccountLocked] = useState<boolean>(false);
   const [lockoutTime, setLockoutTime] = useState<number>(0);
@@ -327,7 +285,7 @@ const App: React.FC = () => {
   const [sessionStartTime, setSessionStartTime] = useState<Date>(new Date());
   const [lastActivityTime, setLastActivityTime] = useState<Date>(new Date());
 
-  // Perfil de Usuario
+  // Perfil de Usuario - Datos reales del usuario logueado
   const [userProfile, setUserProfile] = useState<{
     id: string;
     name: string;
@@ -337,23 +295,25 @@ const App: React.FC = () => {
     city: string;
     address: string;
     avatar: string;
+    avatarUrl: string;
     joinDate: string;
     verificationStatus: 'verified' | 'pending' | 'unverified';
     twoFactorEnabled: boolean;
     notificationsEnabled: boolean;
   }>({
-    id: 'USR-2026-001',
-    name: 'Juan Pérez',
-    email: 'juan.perez@example.com',
-    phone: '+240 222 123456',
+    id: '',
+    name: 'Usuario',
+    email: '',
+    phone: '',
     country: 'Guinea Ecuatorial',
-    city: 'Malabo',
-    address: 'Calle Principal 123',
-    avatar: 'JP',
-    joinDate: '15/03/2024',
-    verificationStatus: 'verified',
-    twoFactorEnabled: true,
-    notificationsEnabled: true
+    city: '',
+    address: '',
+    avatar: 'U',
+    avatarUrl: '',
+    joinDate: new Date().toLocaleDateString('es-ES'),
+    verificationStatus: 'pending',
+    twoFactorEnabled: false,
+    notificationsEnabled: true,
   });
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
   const [editedProfile, setEditedProfile] = useState<any>(null);
@@ -364,7 +324,7 @@ const App: React.FC = () => {
   // Ajustes
   const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'ayuda' | 'actividad'>('perfil');
   const [activityLog, setActivityLog] = useState<Array<{ id: string; action: string; description: string; timestamp: Date; type: 'login' | 'transaction' | 'security' | 'profile' }>>([
-    { id: '1', action: 'Login', description: 'Inicio de sesi?n exitoso', timestamp: new Date(Date.now() - 3600000), type: 'login' },
+    { id: '1', action: 'Login', description: 'Inicio de sesión exitoso', timestamp: new Date(Date.now() - 3600000), type: 'login' },
     { id: '2', action: 'Transferencia', description: 'Transferencia de 25,000 XAF a María', timestamp: new Date(Date.now() - 7200000), type: 'transaction' },
     { id: '3', action: 'PIN Verificado', description: 'PIN verificado para retiro a tarjeta', timestamp: new Date(Date.now() - 10800000), type: 'security' },
     { id: '4', action: 'Perfil Actualizado', description: 'Teléfono actualizado', timestamp: new Date(Date.now() - 86400000), type: 'profile' }
@@ -374,7 +334,7 @@ const App: React.FC = () => {
   const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; avatar: string; status: 'online' | 'offline' | 'away'; addedDate: string }>>([
     { id: '1', name: 'Juan Pérez', phone: '+240 222 111111', avatar: 'JP', status: 'online', addedDate: '15/03/2026' },
     { id: '2', name: 'Maria Garcia', phone: '+240 222 222222', avatar: 'MG', status: 'online', addedDate: '14/03/2026' },
-    { id: '3', name: 'Carlos L?pez', phone: '+240 222 333333', avatar: 'CL', status: 'away', addedDate: '13/03/2026' },
+    { id: '3', name: 'Carlos López', phone: '+240 222 333333', avatar: 'CL', status: 'away', addedDate: '13/03/2026' },
     { id: '4', name: 'Ana Martínez', phone: '+240 222 444444', avatar: 'AM', status: 'offline', addedDate: '12/03/2026' },
     { id: '5', name: 'Pedro Sanchez', phone: '+240 222 555555', avatar: 'PS', status: 'online', addedDate: '11/03/2026' },
     { id: '6', name: 'Sofía Rodríguez', phone: '+240 222 666666', avatar: 'SR', status: 'offline', addedDate: '10/03/2026' }
@@ -559,12 +519,12 @@ const App: React.FC = () => {
     {
       id: 'bange',
       name: 'BANGE',
-      services: ['Transferencias', 'Pagos de Servicios', 'Consulta de Saldo', 'Historial', 'Cambio de Divisa', 'Prastamos']
+      services: ['Transferencias', 'Pagos de Servicios', 'Consulta de Saldo', 'Historial', 'Cambio de Divisa', 'Préstamos']
     },
     {
       id: 'ccei',
       name: 'CCEI Bank',
-      services: ['Transferencias Internacionales', 'Pagos M?viles', 'Consulta de Cuenta', 'Inversiones', 'Tarjetas', 'Seguros']
+      services: ['Transferencias Internacionales', 'Pagos Móviles', 'Consulta de Cuenta', 'Inversiones', 'Tarjetas', 'Seguros']
     },
     {
       id: 'bgfi',
@@ -574,12 +534,12 @@ const App: React.FC = () => {
     {
       id: 'afrexim',
       name: 'Afrexim Bank',
-      services: ['Financiamiento', 'Comercio', 'Consultoría', 'Inversi?n', 'Desarrollo', 'Cooperaci?n']
+      services: ['Financiamiento', 'Comercio', 'Consultoría', 'Inversión', 'Desarrollo', 'Cooperación']
     },
     {
       id: 'ecobank',
       name: 'Ecobank',
-      services: ['Banca M?vil', 'Transferencias', 'Pagos', 'Prastamos', 'Tarjetas', 'Seguros']
+      services: ['Banca Móvil', 'Transferencias', 'Pagos', 'Préstamos', 'Tarjetas', 'Seguros']
     },
     {
       id: 'societe',
@@ -669,7 +629,7 @@ const App: React.FC = () => {
       id: '3',
       type: 'received',
       amount: 75000,
-      description: 'Dep?sito salario',
+      description: 'Depósito salario',
       date: '10/03/2026'
     },
     {
@@ -715,7 +675,7 @@ const App: React.FC = () => {
     setTimeout(() => ripple.remove(), 600);
   };
 
-  // Funcion para procesar mensajes de Lia-25 — conectada al backend
+  // Funcion para procesar mensajes de Lia-25 ? conectada al backend
   const processAiMessage = async (userMessage: string) => {
     const now = new Date();
     const timestamp = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
@@ -732,7 +692,7 @@ const App: React.FC = () => {
       const assistantMsg = { id: (Date.now()+1).toString(), type: 'assistant' as const, content: result.reply, timestamp };
       setAiMessages(prev => [...prev, assistantMsg]);
     } catch {
-      // Backend no disponible — usar respuesta local
+      // Backend no disponible ? usar respuesta local
       processAiMessageAdvanced(userMessage);
     }
   };
@@ -774,7 +734,7 @@ const App: React.FC = () => {
 
   // Funcion para procesar mensaje de audio
   const handleAudioMessage = (audioBlob: Blob) => {
-    // Simular transcripci?n de audio (en producci?n usarás una API de speech-to-text)
+    // Simular transcripción de audio (en producción usarás una API de speech-to-text)
     const transcriptions = [
       '¿Cuál es mi saldo?',
       'Enviar 5000 XAF a Juan',
@@ -826,8 +786,8 @@ const App: React.FC = () => {
     const charCount = content.length;
     const paragraphs = content.split('\n\n').length;
 
-    let analysis = `📄 ANÁLISIS DE DOCUMENTO\n\n`;
-    analysis += `📊 Estadísticas Básicas:\n`;
+    let analysis = `?? ANÁLISIS DE DOCUMENTO\n\n`;
+    analysis += `?? Estadísticas Básicas:\n`;
     analysis += `- Palabras: ${wordCount}\n`;
     analysis += `- Caracteres: ${charCount}\n`;
     analysis += `- Parrafos: ${paragraphs}\n`;
@@ -840,7 +800,7 @@ const App: React.FC = () => {
       const positiveCount = positiveWords.filter(word => content.toLowerCase().includes(word)).length;
       const negativeCount = negativeWords.filter(word => content.toLowerCase().includes(word)).length;
       
-      analysis += `💬 ANÁLISIS de Sentimiento:\n`;
+      analysis += `?? ANÁLISIS de Sentimiento:\n`;
       analysis += `- Palabras positivas: ${positiveCount}\n`;
       analysis += `- Palabras negativas: ${negativeCount}\n`;
       analysis += `- Sentimiento general: ${positiveCount > negativeCount ? 'Positivo' : negativeCount > positiveCount ? 'Negativo' : 'Neutral'}\n\n`;
@@ -859,7 +819,7 @@ const App: React.FC = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
       
-      analysis += `🔑 Palabras Clave:\n`;
+      analysis += `?? Palabras Clave:\n`;
       topWords.forEach(([word, count]) => {
         analysis += `- "${word}" (${count} veces)\n`;
       });
@@ -871,7 +831,7 @@ const App: React.FC = () => {
       const summaryLength = Math.ceil(sentences.length / 3);
       const summary = sentences.slice(0, summaryLength).join('. ');
       
-      analysis += `📝 Resumen:\n${summary}...\n\n`;
+      analysis += `?? Resumen:\n${summary}...\n\n`;
     }
 
     return analysis;
@@ -898,7 +858,7 @@ const App: React.FC = () => {
         },
         {
           title: 'Plan de accin',
-          content: 'Estrategia de implementaci?n',
+          content: 'Estrategia de implementación',
           bullets: ['Fases del proyecto', 'Timeline', 'Recursos necesarios']
         },
         {
@@ -925,8 +885,8 @@ const App: React.FC = () => {
         },
         {
           title: 'Roadmap de Desarrollo',
-          content: 'Plan de implementaci?n',
-          bullets: ['Fase 1: MVP', 'Fase 2: Expansi?n', 'Fase 3: Optimizaci?n']
+          content: 'Plan de implementación',
+          bullets: ['Fase 1: MVP', 'Fase 2: Expansión', 'Fase 3: Optimización']
         },
         {
           title: 'Conclusiones',
@@ -985,7 +945,7 @@ const App: React.FC = () => {
       const fileMessage = {
         id: Date.now().toString(),
         type: 'user' as const,
-        content: `📎 Archivo cargado: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`,
+        content: `?? Archivo cargado: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
       };
       setAiMessages(prev => [...prev, fileMessage]);
@@ -995,7 +955,7 @@ const App: React.FC = () => {
         const response = {
           id: (Date.now() + 1).toString(),
           type: 'assistant' as const,
-          content: `✅ Archivo "${file.name}" cargado exitosamente. Puedo:\n- Analizar su contenido\n- Extraer informaci?n clave\n- Generar resumen\n- Detectar sentimiento\n\n¿Qué deseas que haga con este archivo?`,
+          content: `? Archivo "${file.name}" cargado exitosamente. Puedo:\n- Analizar su contenido\n- Extraer información clave\n- Generar resumen\n- Detectar sentimiento\n\n?Qué deseas que haga con este archivo?`,
           timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
         };
         setAiMessages(prev => [...prev, response]);
@@ -1050,11 +1010,11 @@ const App: React.FC = () => {
       }
       // Saldo
       else if (lowerMessage.includes('saldo') || lowerMessage.includes('balance')) {
-        assistantResponse = `💰 TU SALDO ACTUAL\n\nSaldo: ${userBalance.toLocaleString()} XAF\n\nPuedo ayudarte con:\n- Transferencias\n- Consultas\n- Historial`;
+        assistantResponse = `?? TU SALDO ACTUAL\n\nSaldo: ${userBalance.toLocaleString()} XAF\n\nPuedo ayudarte con:\n- Transferencias\n- Consultas\n- Historial`;
       }
       // Enviar dinero
       else if (lowerMessage.includes('enviar') && lowerMessage.includes('dinero')) {
-        assistantResponse = `💸 TRANSFERENCIA DE DINERO\n\nTu saldo: ${userBalance.toLocaleString()} XAF\n\nPara enviar dinero:\n- Escribe: "Enviar 5000 XAF a Juan"\n- O: "Transferir 10000 XAF a Maria"\n\nContactos disponibles:\n- Juan Pérez\n- María González\n- Carlos Mendoza`;
+        assistantResponse = `?? TRANSFERENCIA DE DINERO\n\nTu saldo: ${userBalance.toLocaleString()} XAF\n\nPara enviar dinero:\n- Escribe: "Enviar 5000 XAF a Juan"\n- O: "Transferir 10000 XAF a Maria"\n\nContactos disponibles:\n- Juan Pérez\n- María González\n- Carlos Mendoza`;
       }
       // Procesar transferencia
       else if (lowerMessage.match(/enviar\s+(\d+)\s*xaf\s+a\s+(\w+)/i)) {
@@ -1064,23 +1024,23 @@ const App: React.FC = () => {
           const recipient = match[2];
           if (amount <= userBalance) {
             setUserBalance(userBalance - amount);
-            assistantResponse = `ó TRANSFERENCIA COMPLETADA\n\nMonto: ${amount.toLocaleString()} XAF\nDestinatario: ${recipient}\nNuevo saldo: ${(userBalance - amount).toLocaleString()} XAF`;
+            assistantResponse = `? TRANSFERENCIA COMPLETADA\n\nMonto: ${amount.toLocaleString()} XAF\nDestinatario: ${recipient}\nNuevo saldo: ${(userBalance - amount).toLocaleString()} XAF`;
           } else {
-            assistantResponse = `ó SALDO INSUFICIENTE\n\nNecesitas: ${amount.toLocaleString()} XAF\nTienes: ${userBalance.toLocaleString()} XAF\nFalta: ${(amount - userBalance).toLocaleString()} XAF`;
+            assistantResponse = `? SALDO INSUFICIENTE\n\nNecesitas: ${amount.toLocaleString()} XAF\nTienes: ${userBalance.toLocaleString()} XAF\nFalta: ${(amount - userBalance).toLocaleString()} XAF`;
           }
         }
       }
       // Noticias
       else if (lowerMessage.includes('noticias') || lowerMessage.includes('noticia')) {
-        assistantResponse = `📰 NOTICIAS RECIENTES\n\n1. Presidente anuncia nuevas medidas economicas\n2. CEMAC aprueba nuevo marco financiero\n3. Ministerio de Salud reporta avances en vacunacion\n4. Nueva tecnologia 5G llega a Malabo\n5. Seleccion nacional se prepara para eliminatorias\n\nEscribe el numero para mas detalles`;
+        assistantResponse = `?? NOTICIAS RECIENTES\n\n1. Presidente anuncia nuevas medidas economicas\n2. CEMAC aprueba nuevo marco financiero\n3. Ministerio de Salud reporta avances en vacunacion\n4. Nueva tecnologia 5G llega a Malabo\n5. Seleccion nacional se prepara para eliminatorias\n\nEscribe el numero para mas detalles`;
       }
       // Servicios
       else if (lowerMessage.includes('servicios') || lowerMessage.includes('banco')) {
-        assistantResponse = `🏦 SERVICIOS BANCARIOS\n\nBancos disponibles:\n- BANGE\n- CCEI Bank\n- BGFI Bank\n- Afrexim Bank\n- Ecobank\n- Societe Generale\n\nCuál necesitas?`;
+        assistantResponse = `?? SERVICIOS BANCARIOS\n\nBancos disponibles:\n- BANGE\n- CCEI Bank\n- BGFI Bank\n- Afrexim Bank\n- Ecobank\n- Societe Generale\n\n¿Cuál necesitas?`;
       }
       // Contactos
       else if (lowerMessage.includes('contactos') || lowerMessage.includes('amigos')) {
-        assistantResponse = `👥 TUS CONTACTOS\n\n- Juan Pérez (Dinero)\n- María González (Personal)\n- Carlos Mendoza (Negocios)\n\n?Deseas contactar a alguien?`;
+        assistantResponse = `?? TUS CONTACTOS\n\n- Juan Pérez (Dinero)\n- María González (Personal)\n- Carlos Mendoza (Negocios)\n\n¿Deseas contactar a alguien?`;
       }
       // Hora
       else if (lowerMessage.includes('hora') || lowerMessage.includes('que hora')) {
@@ -1088,40 +1048,40 @@ const App: React.FC = () => {
       }
       // Clima
       else if (lowerMessage.includes('clima') || lowerMessage.includes('tiempo')) {
-        assistantResponse = `🌤️ CLIMA EN MALABO\n\nTemperatura: 28°C\nCondicion: Soleado\nHumedad: 75%\n\nPerfecto para el dia`;
+        assistantResponse = `??? CLIMA EN MALABO\n\nTemperatura: 28?C\nCondicion: Soleado\nHumedad: 75%\n\nPerfecto para el dia`;
       }
       // Navegar
       else if (lowerMessage.includes('ir a') || lowerMessage.includes('abrir')) {
         if (lowerMessage.includes('mensajeria') || lowerMessage.includes('mensajes')) {
           setCurrentView('mensajeria');
-          assistantResponse = `💬 Abriendo Mensajería...`;
+          assistantResponse = `?? Abriendo Mensajería...`;
         } else if (lowerMessage.includes('monedero') || lowerMessage.includes('cartera')) {
           setCurrentView('monedero');
-          assistantResponse = `💳 Abriendo monedero...`;
+          assistantResponse = `?? Abriendo monedero...`;
         } else if (lowerMessage.includes('servicios')) {
           setCurrentView('servicios');
-          assistantResponse = `🏦 Abriendo servicios...`;
+          assistantResponse = `?? Abriendo servicios...`;
         } else if (lowerMessage.includes('noticias')) {
           setCurrentView('news');
-          assistantResponse = `📰 Abriendo noticias...`;
+          assistantResponse = `?? Abriendo noticias...`;
         } else if (lowerMessage.includes('inicio') || lowerMessage.includes('home')) {
           setCurrentView('home');
-          assistantResponse = `🏠 Volviendo al inicio...`;
+          assistantResponse = `?? Volviendo al inicio...`;
         } else {
           assistantResponse = `Puedo abrir:\n- Mensajería\n- Monedero\n- Servicios\n- Noticias\n- Inicio\n\n¿Cuál prefieres?`;
         }
       }
       // capacidades
       else if (lowerMessage.includes('capacidades') || lowerMessage.includes('que puedes hacer')) {
-        assistantResponse = `🤖 MIS CAPACIDADES\n\n💰 DINERO:\n- Consultar saldo\n- Transferencias\n- Historial\n\n🔍 ANÁLISIS:\n- Documentos\n- Sentimiento\n- Palabras clave\n\n✨ GENERACI?N:\n- Presentaciones\n- Contenido\n- Reportes\n\n🎤 AUDIO:\n- Grabar comandos\n- Reproducir respuestas\n\n🧭 NAVEGACI?N:\n- Abrir vistas\n- Gestionar app\n\nQue necesitas?`;
+        assistantResponse = `?? MIS CAPACIDADES\n\n?? DINERO:\n- Consultar saldo\n- Transferencias\n- Historial\n\n?? ANÁLISIS:\n- Documentos\n- Sentimiento\n- Palabras clave\n\n? GENERACIÓN:\n- Presentaciones\n- Contenido\n- Reportes\n\n?? AUDIO:\n- Grabar comandos\n- Reproducir respuestas\n\n?? NAVEGACIÓN:\n- Abrir vistas\n- Gestionar app\n\n¿Qué necesitas?`;
       }
       // Ayuda
       else if (lowerMessage.includes('ayuda') || lowerMessage.includes('help')) {
-        assistantResponse = `ó AYUDA\n\nPuedo ayudarte con:\n\nEscribe:\n- "Saldo" - Ver tu saldo\n- "Enviar 5000 XAF a Juan" - Transferir\n- "presentacion de negocios" - Crear slides\n- "Noticias" - Ver noticias\n- "capacidades" - Ver todo lo que puedo hacer\n\nO habla:\n- Manten presionado el microfono\n- Habla tu comando\n- Suelta para enviar\n\nQu necesitas?`;
+        assistantResponse = `? AYUDA\n\nPuedo ayudarte con:\n\nEscribe:\n- "Saldo" - Ver tu saldo\n- "Enviar 5000 XAF a Juan" - Transferir\n- "presentacion de negocios" - Crear slides\n- "Noticias" - Ver noticias\n- "capacidades" - Ver todo lo que puedo hacer\n\nO habla:\n- Manten presionado el microfono\n- Habla tu comando\n- Suelta para enviar\n\nQu necesitas?`;
       }
       // Fallback
       else {
-        assistantResponse = `ó Entendido: "${userMessage}"\n\nPuedo ayudarte con:\n- Consultar saldo\n- Transferencias\n- Generar presentaciones\n- Analizar documentos\n- Ver noticias\n- Navegar la app\n\nQu deseas hacer?`;
+        assistantResponse = `? Entendido: "${userMessage}"\n\nPuedo ayudarte con:\n- Consultar saldo\n- Transferencias\n- Generar presentaciones\n- Analizar documentos\n- Ver noticias\n- Navegar la app\n\nQu deseas hacer?`;
       }
 
       const newAssistantMessage = {
@@ -1175,7 +1135,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Validar monto de transacci?n
+  // Validar monto de transacción
   const validateTransactionAmount = (amount: number, maxLimit: number = 500000): { valid: boolean; error?: string } => {
     if (amount <= 0) {
       return { valid: false, error: 'El monto debe ser mayor a 0' };
@@ -1253,7 +1213,7 @@ const App: React.FC = () => {
     return false;
   };
 
-  // Registrar transacci?n en log de auditoraa
+  // Registrar transacción en log de auditoraa
   const logTransaction = (type: string, amount: number, status: string) => {
     const newLog = {
       id: Date.now().toString(),
@@ -1261,7 +1221,7 @@ const App: React.FC = () => {
       amount: amount,
       timestamp: new Date(),
       status: status,
-      ipAddress: 'local' // En producci?n ser? la IP real
+      ipAddress: 'local' // En producción será la IP real
     };
     setTransactionLog([...transactionLog, newLog]);
     setDailyTransactionTotal(dailyTransactionTotal + amount);
@@ -1847,7 +1807,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Renderizar header - OPTIMIZADO PARA M?vil CON COLORES DEL LOGO
+  // Renderizar header - OPTIMIZADO PARA Móvil CON COLORES DEL LOGO
   const renderHeader = () => (
     <div style={{
       position: 'fixed',
@@ -2031,34 +1991,34 @@ const App: React.FC = () => {
           status: 'Completado',
           statusColor: '#00c8a0',
           action: () => {
-            // Abrir cartera y mostrar el detalle de la transacci?n
+            // Abrir cartera y mostrar el detalle de la transacción
             setCurrentView('monedero');
           },
-          actionLabel: 'Ver transacci?n en Cartera'
+          actionLabel: 'Ver transacción en Cartera'
         }
       },
       {
-        id: 2, icon: 'message-square', label: 'Mensaje nuevo', desc: 'María: ¿C?mo estás?', time: '12m', color: '#00b4e6',
+        id: 2, icon: 'message-square', label: 'Mensaje nuevo', desc: 'María: ¿Cómo estás?', time: '12m', color: '#00b4e6',
         detail: {
           title: 'Mensaje nuevo',
           from: 'Maria Garcia',
           fromPhone: '+240 222 222222',
           fromAvatar: 'MG',
-          message: '¿C?mo estás? Hace tiempo que no hablamos, espero que todo vaya bien ',
+          message: '¿Cómo estás? Hace tiempo que no hablamos, espero que todo vaya bien ',
           date: '19/03/2026 a 10:17',
           status: 'No leído',
           statusColor: '#00b4e6',
-          action: () => { setSelectedChat({ id: 2, type: 'individual', title: 'Maria Garcia', subtitle: '¿C?mo estás? Hace tiempo que no hablamos...', time: '10:17', status: 'online', icon: 'contactos', color: '#00c8a0', initials: 'MG' }); setCurrentView('mensajeria'); },
-          actionLabel: 'Abrir conversaci?n'
+          action: () => { setSelectedChat({ id: 2, type: 'individual', title: 'Maria Garcia', subtitle: '¿Cómo estás? Hace tiempo que no hablamos...', time: '10:17', status: 'online', icon: 'contactos', color: '#00c8a0', initials: 'MG' }); setCurrentView('mensajeria'); },
+          actionLabel: 'Abrir conversación'
         }
       },
       {
-        id: 3, icon: 'zap', label: 'Actualizaci?n', desc: 'Versi?n 2.1 disponible', time: '1h', color: '#a855f7',
+        id: 3, icon: 'zap', label: 'Actualización', desc: 'Versión 2.1 disponible', time: '1h', color: '#a855f7',
         detail: {
-          title: 'Nueva versi?n disponible',
+          title: 'Nueva versión disponible',
           from: 'EGCHAT Sistema',
           fromAvatar: 'EG',
-          message: 'La versi?n 2.1 incluye mejoras de rendimiento, nuevos iconos y correcci?n de errores.',
+          message: 'La versión 2.1 incluye mejoras de rendimiento, nuevos iconos y corrección de errores.',
           date: '19/03/2026 a 09:30',
           version: 'v2.1.0',
           status: 'Disponible',
@@ -2088,12 +2048,12 @@ const App: React.FC = () => {
         }
       },
       {
-        id: 5, icon: 'shield', label: 'Seguridad', desc: 'Nuevo inicio de sesi?n', time: '3h', color: '#ef4444',
+        id: 5, icon: 'shield', label: 'Seguridad', desc: 'Nuevo inicio de sesión', time: '3h', color: '#ef4444',
         detail: {
-          title: 'Inicio de sesi?n detectado',
+          title: 'Inicio de sesión detectado',
           from: 'Dispositivo nuevo',
           fromAvatar: '',
-          message: 'Se detect un inicio de sesi?n desde un dispositivo no reconocido.',
+          message: 'Se detect un inicio de sesión desde un dispositivo no reconocido.',
           device: 'Windows a Chrome a Malabo',
           date: '19/03/2026 a 08:15',
           status: 'Revisar',
@@ -2155,7 +2115,7 @@ const App: React.FC = () => {
               )}
               {d.version && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '10px', color: '#6b7280' }}>Versi?n</span>
+                  <span style={{ fontSize: '10px', color: '#6b7280' }}>Versión</span>
                   <span style={{ fontSize: '11px', fontWeight: '600', color: selectedNotif.color }}>{d.version}</span>
                 </div>
               )}
@@ -2179,7 +2139,7 @@ const App: React.FC = () => {
             <div style={{ padding: '0 14px 14px' }}>
               <button onClick={() => { d.action(); setSelectedNotif(null); setShowNotifications(false); }}
                 style={{ width: '100%', background: `linear-gradient(135deg, ${selectedNotif.color}30, ${selectedNotif.color}18)`, border: `1px solid ${selectedNotif.color}40`, borderRadius: '9px', padding: '9px', color: selectedNotif.color, fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
-                {d.actionLabel} ó
+                {d.actionLabel} ?
               </button>
             </div>
           </div>
@@ -2537,10 +2497,10 @@ const App: React.FC = () => {
   const renderProfileView = () => {
     if (!showProfileView) return null;
 
-    // QR SVG generado con los datos del perfil (patr?n visual representativo)
+    // QR SVG generado con los datos del perfil (patrón visual representativo)
     const qrData = `egchat://user/${userProfile.id}/${userProfile.phone}`;
     const QRCode = () => {
-      // Patr?n QR visual simplificado (representativo)
+      // Patrón QR visual simplificado (representativo)
       const cells = Array.from({ length: 21 }, (_, row) =>
         Array.from({ length: 21 }, (_, col) => {
           // Esquinas fijas del QR
@@ -2571,7 +2531,7 @@ const App: React.FC = () => {
       { key: 'phone', label: 'Teléfono', icon: 'phone' },
       { key: 'country', label: 'País', icon: 'world' },
       { key: 'city', label: 'Ciudad', icon: 'building' },
-      { key: 'address', label: 'Direcci?n', icon: 'briefcase' },
+      { key: 'address', label: 'Dirección', icon: 'briefcase' },
     ];
 
     return (
@@ -2624,8 +2584,9 @@ const App: React.FC = () => {
           <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px' }}>
             {/* Avatar + info basica */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', padding: '14px', background: 'rgba(250,250,250,0.88)', borderRadius: '14px', border: '1px solid rgba(0,0,0,0.07)' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(0,200,160,0.3), rgba(0,180,230,0.3))', border: '2px solid rgba(0,200,160,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: '700', color: '#00c8a0', flexShrink: 0 }}>
-                {userProfile.avatar}
+              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(0,200,160,0.3), rgba(0,180,230,0.3))', border: '2px solid rgba(0,200,160,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: '700', color: '#00c8a0', flexShrink: 0, overflow: 'hidden', cursor: 'pointer' }}
+                onClick={() => { const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files?.[0];if(f){const r=new FileReader();r.onload=e=>{const url=e.target?.result as string;localStorage.setItem('user_avatar',url);setUserProfile((p:any)=>({...p,avatarUrl:url}));};r.readAsDataURL(f);}};i.click(); }}>
+                {(userProfile as any).avatarUrl ? <img src={(userProfile as any).avatarUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : userProfile.avatar}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '3px' }}>{userProfile.name}</div>
@@ -2701,7 +2662,7 @@ const App: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
               <div style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Seguridad</div>
               {[
-                { label: 'Autenticaci?n 2FA', value: userProfile.twoFactorEnabled, key: 'twoFactorEnabled', color: '#00c8a0' },
+                { label: 'Autenticación 2FA', value: userProfile.twoFactorEnabled, key: 'twoFactorEnabled', color: '#00c8a0' },
                 { label: 'Notificaciones', value: userProfile.notificationsEnabled, key: 'notificationsEnabled', color: '#00b4e6' },
               ].map(item => (
                 <div key={item.key} style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.07)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -2714,10 +2675,10 @@ const App: React.FC = () => {
               ))}
             </div>
 
-            {/* Cerrar sesi?n */}
+            {/* Cerrar sesión */}
             <button style={{ width: '100%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '11px', color: '#ef4444', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-              Cerrar Sesi?n
+              Cerrar Sesión
             </button>
           </div>
         </div>
@@ -2725,7 +2686,7 @@ const App: React.FC = () => {
     );
   };
 
-  // Panel de menú lateral
+  // Panel de men? lateral
   const renderMenuPanel = () => {
     if (!showMenu) return null;
     const menuItems = [
@@ -2742,13 +2703,13 @@ const App: React.FC = () => {
     ];
     return (
       <div style={{ position:'fixed', top:'56px', right:'8px', width:'230px', background:'rgba(255,255,255,0.35)', backdropFilter:'blur(28px) saturate(200%)', WebkitBackdropFilter:'blur(28px) saturate(200%)', borderRadius:'16px', border:'1.5px solid rgba(255,255,255,0.6)', boxShadow:'0 8px 32px rgba(0,0,0,0.15)', zIndex:1001, overflow:'hidden' }}>
-        {/* Header del menú — solo avatar, sin nombre */}
+        {/* Header del men? ? solo avatar, sin nombre */}
         <div style={{ padding:'12px 14px 10px', borderBottom:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:'10px' }}>
           <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:'800', color:'#fff', flexShrink:0 }}>
             {userProfile.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase()}
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:'10px', color:'#00c8a0', fontWeight:'600' }}>● En línea</div>
+            <div style={{ fontSize:'10px', color:'#00c8a0', fontWeight:'600' }}>? En línea</div>
           </div>
         </div>
         {/* Items */}
@@ -3088,17 +3049,17 @@ const App: React.FC = () => {
     );
   };
 
-  // Panel de selecci?n de layouts para la página home
+  // Panel de selección de layouts para la página home
   const renderLayoutPanel = () => {
     if (!showLayoutPanel) return null;
 
     const layouts = [
-      { id: 'default',   label: 'Estándar',    desc: 'Balance + tarjetas',       icon: '🏠' },
-      { id: 'compact',   label: 'Compacto',    desc: 'Solo accesos rápidos',      icon: '⚡' },
-      { id: 'cards',     label: 'Tarjetas',    desc: 'Grid de servicios grande',  icon: '🃏' },
-      { id: 'minimal',   label: 'Minimal',     desc: 'Solo saldo y botones',      icon: '◻' },
-      { id: 'news',      label: 'Noticias',    desc: 'Noticias en portada',       icon: '📰' },
-      { id: 'finance',   label: 'Finanzas',    desc: 'Enfocado en cartera',       icon: '💳' },
+      { id: 'default',   label: 'Estándar',    desc: 'Balance + tarjetas',       icon: '??' },
+      { id: 'compact',   label: 'Compacto',    desc: 'Solo accesos rápidos',      icon: '?' },
+      { id: 'cards',     label: 'Tarjetas',    desc: 'Grid de servicios grande',  icon: '??' },
+      { id: 'minimal',   label: 'Minimal',     desc: 'Solo saldo y botones',      icon: '?' },
+      { id: 'news',      label: 'Noticias',    desc: 'Noticias en portada',       icon: '??' },
+      { id: 'finance',   label: 'Finanzas',    desc: 'Enfocado en cartera',       icon: '??' },
     ];
 
     return (
@@ -3151,7 +3112,7 @@ const App: React.FC = () => {
     );
   };
 
-  // Devuelve el estilo de fondo para el área de mensajes del chat
+  // Devuelve el estilo de fondo para el ?rea de mensajes del chat
   const getChatAreaBg = (): React.CSSProperties => {
     const custom = customWallpapers.find(w => w.id === selectedWallpaper);
     if (custom) {
@@ -3162,7 +3123,7 @@ const App: React.FC = () => {
     return { background: (wp as any).bg || '#f0f2f5', position: 'relative', overflow: 'hidden' };
   };
 
-  // Renderiza elementos animados del wallpaper dentro del área de mensajes
+  // Renderiza elementos animados del wallpaper dentro del ?rea de mensajes
   const renderChatWallpaperContent = () => {
     const custom = customWallpapers.find(w => w.id === selectedWallpaper);
     if (custom) {
@@ -3226,7 +3187,7 @@ const App: React.FC = () => {
         )}
         {wp.floating && Array.from({ length: 12 }).map((_, i) => (
           <div key={i} style={{ position: 'absolute', left: `${(i * 8.5) % 90}%`, top: `${20 + (i * 6.3) % 60}%`, fontSize: `${10 + (i % 3) * 4}px`, animation: `pulse ${2 + (i % 3)}s ease-in-out ${(i * 0.3) % 2}s infinite`, opacity: 0.6 }}>
-            {['✦', '', '✧', '◇', '★'][i % 5]}
+            {['?', '', '?', '?', '?'][i % 5]}
           </div>
         ))}
         {wp.logo && (
@@ -3473,7 +3434,7 @@ const App: React.FC = () => {
       </button>
     );
   };
-  // Renderizar NAVEGACION inferior - OPTIMIZADA PARA M?vil
+  // Renderizar NAVEGACION inferior - OPTIMIZADA PARA Móvil
   const renderBottomNavigation = () => {
     const allViews = ['home', 'mensajeria', 'monedero', 'servicios', 'ajustes', 'Lia-25', 'estados', 'apuestas', 'cemac', 'mitaxi'];
     if (!allViews.includes(currentView)) return null;
@@ -3492,16 +3453,16 @@ const App: React.FC = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        height: '56px',
+        height: '72px',
         background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
         borderTop: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
-        padding: '0 8px',
+        padding: '0 8px 8px',
         zIndex: 1000,
-        boxShadow: '0 -2px 8px rgba(0,180,230,0.3)',
-        paddingBottom: 'env(safe-area-inset-bottom, 0px)',
+        boxShadow: '0 -2px 12px rgba(0,180,230,0.35)',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
         overflow: 'hidden'
       }}>
         
@@ -3524,46 +3485,44 @@ const App: React.FC = () => {
               }
             }}
             style={{
-              background: currentView === item.id ? 'rgba(255,255,255,0.2)' : 'none',
-              border: currentView === item.id ? '1.5px solid rgba(255,255,255,0.6)' : '1.5px solid transparent',
-              color: '#ffffff',
+              background: 'none',
+              border: 'none',
+              color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.75)',
               cursor: 'pointer',
               display: 'flex',
               flexDirection: 'column',
               alignItems: 'center',
-              gap: '3px',
-              padding: '5px 10px',
-              borderRadius: '14px',
+              gap: '2px',
+              padding: '4px 8px',
+              borderRadius: '0',
               position: 'relative',
               outline: 'none',
               flex: 1,
-              transition: 'all 0.18s ease',
+              transition: 'all 0.15s ease',
             }}
           >
-            {/* Indicador activo — línea blanca arriba */}
+            {/* Indicador activo — punto blanco abajo */}
             {currentView === item.id && (
-              <div style={{ position:'absolute', top:0, left:'50%', transform:'translateX(-50%)', width:20, height:3, borderRadius:'0 0 3px 3px', background:'#fff', boxShadow:'0 0 8px rgba(255,255,255,0.9)' }} />
+              <div style={{ position:'absolute', bottom:2, left:'50%', transform:'translateX(-50%)', width:5, height:5, borderRadius:'50%', background:'#fff' }} />
             )}
             <div style={{
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '28px',
-              height: '28px',
-              color: '#ffffff',
-              filter: currentView === item.id ? 'drop-shadow(0 0 4px rgba(255,255,255,0.8))' : 'none',
-              transition: 'all 0.2s ease',
-              transform: currentView === item.id ? 'translateY(-2px) scale(1.08)' : 'none',
+              width: '26px',
+              height: '26px',
+              color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.8)',
+              transition: 'all 0.15s ease',
+              transform: currentView === item.id ? 'scale(1.1)' : 'scale(1)',
             }}>
-              {renderIcon(item.icon, 22)}
+              {renderIcon(item.icon, 24)}
             </div>
             <span style={{
               fontSize: '10px',
               fontWeight: currentView === item.id ? '700' : '500',
               textAlign: 'center',
-              color: currentView === item.id ? '#ffffff' : 'rgba(255,255,255,0.8)',
+              color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.75)',
               letterSpacing: '0.1px',
-              textShadow: currentView === item.id ? '0 0 8px rgba(255,255,255,0.6)' : 'none',
             }}>
               {item.label}
             </span>
@@ -3582,7 +3541,7 @@ const App: React.FC = () => {
       background: 'transparent'
     };
 
-    // Layout: Minimal — solo saldo y botones
+    // Layout: Minimal ? solo saldo y botones
     if (homeLayout === 'minimal') return (
       <div style={containerStyle}>
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '20px', padding: '20px 18px 18px', border: 'none', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
@@ -3635,8 +3594,8 @@ const App: React.FC = () => {
           <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>SALDO</div>
           <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#0d0d0d' }}>45.200 XAF</div>
         </div>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '10px' }}>óLTIMAS NOTICIAS</div>
-        {['Nuevas inversiones en Malabo', 'Actualizaci?n del sistema bancario', 'Festival cultural de Bata'].map((n, i) => (
+        <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '10px' }}>ÚLTIMAS NOTICIAS</div>
+        {['Nuevas inversiones en Malabo', 'Actualización del sistema bancario', 'Festival cultural de Bata'].map((n, i) => (
           <button key={i} onClick={() => setCurrentView('news')}
             style={{ width: '100%', background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px', padding: '12px', marginBottom: '8px', cursor: 'pointer', outline: 'none', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px' }}>
             <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
@@ -3824,7 +3783,7 @@ const App: React.FC = () => {
   );
   };
 
-  // Renderizar vista de servicios — estilo WeChat
+  // Renderizar vista de servicios ? estilo WeChat
   const renderServicesView = () => {
     const Btn = ({ label, icon, color, onClick }: { label: string; icon: string; color: string; onClick: () => void }) => (
       <button
@@ -3873,7 +3832,7 @@ const App: React.FC = () => {
             <Btn label="Bancos" icon="banking" color="#1485EE" onClick={() => setShowBancosModal(true)} />
             <Btn label="Seguros" icon="seguros" color="#2E9E6B" onClick={() => setShowSegurosModal(true)} />
             <Btn label="Facturas" icon="factura" color="#C47D2A" onClick={() => setShowFacturasModal(true)} />
-            <Btn label="Inversi?n" icon="invest" color="#6B5BD6" onClick={() => { setShowFinModal('invest'); setFinStep('main'); setFinData({}); }} />
+            <Btn label="Inversión" icon="invest" color="#6B5BD6" onClick={() => { setShowFinModal('invest'); setFinStep('main'); setFinData({}); }} />
             <Btn label="Tarjetas" icon="tarjeta" color="#C0392B" onClick={() => { setBancosInitScreen('cards'); setShowBancosModal(true); }} />
             <Btn label="Historial" icon="historial" color="#5A7090" onClick={() => setCurrentView('historial-completo')} />
           </Section>
@@ -3883,7 +3842,7 @@ const App: React.FC = () => {
             <Btn label="Electricidad" icon="electricidad" color="#C47D2A" onClick={() => { setShowSvcModal('elec'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Agua" icon="rain" color="#1485EE" onClick={() => { setShowSvcModal('agua'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Salud" icon="salud" color="#C0392B" onClick={() => setShowSaludModal(true)} />
-            <Btn label="Educaci?n" icon="edu" color="#6B5BD6" onClick={() => { setShowSvcModal('edu'); setSvcStep('main'); setSvcData({}); }} />
+            <Btn label="Educación" icon="edu" color="#6B5BD6" onClick={() => { setShowSvcModal('edu'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Transporte" icon="transp" color="#2E9E6B" onClick={() => { setShowSvcModal('transp'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Correos" icon="mensajes" color="#C47D2A" onClick={() => { setShowSvcModal('correos'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Impuestos" icon="gobierno" color="#C0392B" onClick={() => { setShowSvcModal('impuestos'); setSvcStep('main'); setSvcData({}); }} />
@@ -3923,28 +3882,140 @@ const App: React.FC = () => {
     switch (currentView) {
       case 'home':
         return renderHomeView();
-      case 'mensajeria':
-        return <ChatView />;
       case 'servicios':
         return renderServicesView();
-      case 'estados':
-        return <EstadosView />;
-      case 'apuestas':
-        return <ApuestasView />;
-      case 'cemac':
-        return <CemacView />;
-      case 'taxi':
-        return <MiTaxiView />;
-      case 'lia25':
-        return <Lia25View />;
-      case 'ajustes':
-        return renderAjustesView();
-      default:
-        return renderHomeView();
-    }
-  };
+      case 'mensajeria':
+        // Si hay un chat seleccionado, mostrar la conversación directamente
+        if (selectedChat) {
+          const sc = selectedChat;
+          const initials = sc.initials || sc.title.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase();
+          const color = sc.color || '#00b4e6';
+          const chatId = sc.id?.toString() || sc.title;
+          const msgs = chatMessages[chatId] || [
+            { id: '1', from: 'them' as const, text: sc.subtitle || '¿Cómo estás?', time: sc.time || '10:17', status: 'read' as const },
+            { id: '2', from: 'me' as const, text: 'Hola! Todo bien por aqué', time: '10:18', status: 'read' as const },
+            { id: '3', from: 'them' as const, text: 'Muy bien gracias ?Quedamos esta semana?', time: '10:19', status: 'read' as const },
+          ];
 
-// ...
+          const sendChatMessage = () => {
+            if (!currentChatInput.trim()) return;
+            const now = new Date();
+            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            const newMsg = { id: Date.now().toString(), from: 'me' as const, text: currentChatInput.trim(), time, status: 'pending' as const };
+            setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), newMsg] }));
+            setCurrentChatInput('');
+            setShowChatEmojis(false);
+            // pending → delivered después de 1s, ? read después de 3s
+            const msgId = newMsg.id;
+            setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'delivered'} : m) })), 1000);
+            setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'read'} : m) })), 3000);
+          };
+
+          return (
+            <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', paddingTop: '56px', overflow: 'hidden' }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
+              {/* Header conversación */}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: '#ffffff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+                <button
+                  onClick={() => { setSelectedChat(null); setShowChatEmojis(false); setCurrentChatInput(''); setShowChatMenu(false); }}
+                  style={{ background: 'transparent', border: 'none', color: '#0d0d0d', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}
+                >
+                  <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <Avatar name={sc.title} size={34} status={sc.status as any} showStatus={true} />
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{sc.title}</div>
+                  <div style={{ fontSize: '10px', color: sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>{sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}</div>
+                </div>
+                <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                  {/* Llamada */}
+                  <button onClick={() => startCall('audio', sc)}
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
+                    {renderIcon('phone', 15)}
+                  </button>
+                  {/* Videollamada */}
+                  <button onClick={() => startCall('video', sc)}
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
+                    {renderIcon('video', 15)}
+                  </button>
+                  {/* Cámara ? abre cámara en vivo */}
+                  <button onClick={() => { setLiveCameraChatId(sc.id?.toString()||''); setShowLiveCamera(true); }}
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
+                    </svg>
+                  </button>
+                  {/* Tres puntos ? men? completo */}
+                  <button onClick={e => { e.stopPropagation(); setShowChatMenu(p => !p); }}
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                  </button>
+                </div>
+              </div>
+
+              {/* Dropdown men? del chat ? cae desde arriba */}
+              {showChatMenu && (
+                <div style={{position:'fixed',inset:0,zIndex:200}} onClick={()=>setShowChatMenu(false)}>
+                  <div style={{position:'absolute',top:'100px',right:'8px',background:'rgba(255,255,255,0.35)',backdropFilter:'blur(28px) saturate(200%)',WebkitBackdropFilter:'blur(28px) saturate(200%)',borderRadius:'16px',boxShadow:'0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)',width:'240px',border:'1.5px solid rgba(255,255,255,0.6)'}}
+                    onClick={e=>e.stopPropagation()}>
+                    {/* Sección principal */}
+                    {[
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,label:'Ver perfil',color:'#374151',action:()=>{setShowChatMenu(false);setShowContactProfile(sc);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,label:'Buscar en el chat',color:'#374151',action:()=>{setShowChatMenu(false);setShowChatSearch(true);setChatSearchQuery('');}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,label:'Mensajes destacados',color:'#374151',action:()=>{setShowChatMenu(false);setStarredChatId(sc.id?.toString()||'');setShowStarredModal(true);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/><circle cx="12" cy="12" r="10"/></svg>,label:pinnedChats.includes(sc.id?.toString()||'')?'Desfijar chat':'Fijar chat',color:'#374151',action:()=>{const id=sc.id?.toString()||'';setPinnedChats(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);setShowChatMenu(false);}},
+                    ].map((item,i)=>(
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.06)',textAlign:'left'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,0,0,0.05)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
+                        <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
+                      </button>
+                    ))}
+                    {/* Sección configuración */}
+                    {[
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,label:mutedChats.includes(sc.id?.toString()||'')?'Activar notificaciones':'Silenciar',color:'#374151',action:()=>{const id=sc.id?.toString()||'';setMutedChats(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);setShowChatMenu(false);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,label:'Fondo de pantalla',color:'#374151',action:()=>{setShowChatMenu(false);setShowWallpaperCatalog(true);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,label:'Cifrado E2E',color:'#00c8a0',action:()=>{setShowChatMenu(false);alert('? Chat cifrado de extremo a extremo.');}},
+                    ].map((item,i)=>(
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.06)',textAlign:'left'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,0,0,0.05)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
+                        <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
+                      </button>
+                    ))}
+                    {/* Sección acciones */}
+                    {[
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,label:'Enviar dinero',color:'#374151',action:()=>{setShowChatMenu(false);setQuickTransferData({contactId:sc.id?.toString()||'',contactName:sc.title,amount:'',accountId:bankAccounts[0]?.id||''});setShowQuickTransferModal(true);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,label:'Compartir contacto',color:'#374151',action:()=>{setShowChatMenu(false);const now=new Date();const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;const chatId=sc.id?.toString()||'';setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? Contacto: ${sc.title}`,time,status:'pending'}]}));}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,label:'Crear grupo con este contacto',color:'#374151',action:()=>{setShowChatMenu(false);setShowCreateGroupModal(true);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,label:'Exportar chat',color:'#374151',action:()=>{setShowChatMenu(false);const chatId=sc.id?.toString()||'';const msgs=chatMessages[chatId]||[];const text=msgs.map(m=>`[${m.time}] ${m.from==='me'?'Yo':sc.title}: ${m.text}`).join('\n');const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`chat_${sc.title}.txt`;a.click();}},
+                    ].map((item,i)=>(
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.06)',textAlign:'left'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,0,0,0.05)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
+                        <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
+                      </button>
+                    ))}
+                    {/* Sección peligrosa */}
+                    {[
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>,label:'Vaciar chat',color:'#F59E0B',action:()=>{if(window.confirm('?Vaciar todos los mensajes?')){setChatMessages(prev=>({...prev,[sc.id?.toString()||'']:[]}));}setShowChatMenu(false);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,label:'Reportar',color:'#EF4444',action:()=>{setShowChatMenu(false);alert(`"${sc.title}" reportado.`);}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,label:blockedChats.includes(sc.id?.toString()||'')?'Desbloquear':'Bloquear',color:'#EF4444',action:()=>{const id=sc.id?.toString()||'';setBlockedChats(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);setShowChatMenu(false);}},
+                    ].map((item,i,arr)=>(
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:i<arr.length-1?'1px solid rgba(0,0,0,0.06)':'none',textAlign:'left'}}
+                        onMouseEnter={e=>{e.currentTarget.style.background='rgba(239,68,68,0.06)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
+                        <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Barra búsqueda en el chat */}
+              {showChatSearch && (
+                <div style={{background:'#fff',borderBottom:'1px solid #F0F2F5',padding:'8px 12px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+                  <div style={{flex:1,background:'#F3F4F6',borderRadius:'10px',padding:'0 12px',height:'36px',display:'flex',alignItems:'center',gap:'8px'}}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>
+                    <input autoFocus value={chatSearchQuery} onChange={e=>setChatSearchQuery(e.target.value)} placeholder="Buscar en el chat..." style={{flex:1,background:'none',border:'none',outline:'none',fontSize:'13px',color:'#111827',fontFamily:'inherit'}}/>
+                    {chatSearchQuery&&<button onClick={()=>setChatSearchQuery('')} style={{background:'none',border:'none',color:'#9CA3AF',cursor:'pointer',fontSize:'14px',padding:0}}>?</button>}
+                  </div>
+                  <button onClick={()=>{setShowChatSearch(false);setChatSearchQuery('');}} style={{background:'none',border:'none',color:'#6B7280',cursor:'pointer',fontSize:'13px',fontWeight:'600',padding:'4px 8px'}}>Cancelar</button>
                 </div>
               )}
 
@@ -3999,7 +4070,7 @@ const App: React.FC = () => {
                             if(inp.files?.[0]){
                               const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                               const chatId=sc.id?.toString()||'';
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`🎥 ${inp.files![0].name}`,time,status:'pending'}]}));
+                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? ${inp.files![0].name}`,time,status:'pending'}]}));
                             }
                           };
                           inp.click();
@@ -4017,7 +4088,7 @@ const App: React.FC = () => {
                               const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                               const chatId=sc.id?.toString()||'';
                               const size=(inp.files![0].size/1024).toFixed(1);
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📄 ${inp.files![0].name} (${size} KB)`,time,status:'pending'}]}));
+                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? ${inp.files![0].name} (${size} KB)`,time,status:'pending'}]}));
                             }
                           };
                           inp.click();
@@ -4035,7 +4106,7 @@ const App: React.FC = () => {
                               const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                               const chatId=sc.id?.toString()||'';
                               const size=(inp.files![0].size/1024).toFixed(1);
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📎 ${inp.files![0].name} (${size} KB)`,time,status:'pending'}]}));
+                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? ${inp.files![0].name} (${size} KB)`,time,status:'pending'}]}));
                             }
                           };
                           inp.click();
@@ -4048,7 +4119,7 @@ const App: React.FC = () => {
                           setShowChatAttach(false);
                           const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                           const chatId=sc.id?.toString()||'';
-                          setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`👤 Contacto: ${sc.title} · ${sc.phone||'+240 222 *** ***'}`,time,status:'pending'}]}));
+                          setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? Contacto: ${sc.title} ? ${sc.phone||'+240 222 *** ***'}`,time,status:'pending'}]}));
                         }
                       },
                       {
@@ -4061,11 +4132,11 @@ const App: React.FC = () => {
                               const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                               const chatId=sc.id?.toString()||'';
                               const lat=pos.coords.latitude.toFixed(6); const lng=pos.coords.longitude.toFixed(6);
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📍 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`,time,status:'pending'}]}));
+                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`,time,status:'pending'}]}));
                             }, ()=>{
                               const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                               const chatId=sc.id?.toString()||'';
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:'📍 Malabo, Guinea Ecuatorial (3.7520, 8.7735)',time,status:'pending'}]}));
+                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:'?? Malabo, Guinea Ecuatorial (3.7520, 8.7735)',time,status:'pending'}]}));
                             });
                           }
                         }
@@ -4098,16 +4169,16 @@ const App: React.FC = () => {
               {/* Panel emojis a estilo WhatsApp */}
               {showChatEmojis && (() => {
                 const emojiCats: Record<string, {icon:string; emojis:string[]}> = {
-                  recientes: { icon:'🕐', emojis:['😀','😂','❤️','👍','🙏','😍','🎉','🔥','😭','😊','🥰','😎','🤔','😅','👏','🙌','💪','🤣','😢','😡','🤩','😴','🥳','😏','🤗','😤','🤯','🥺','😬','🤭'] },
-                  caras:     { icon:'😀', emojis:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'] },
-                  gestos:    { icon:'👋', emojis:['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','🫦','💋','🩸'] },
-                  personas:  { icon:'👤', emojis:['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','👮','🕵️','💂','🥷','👷','🫅','🤴','👸','👳','👲','🧕','🤵','👰','🤰','🫃','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧝','🧛','🧟','🧞','🧜','🧚','🧑‍🤝‍🧑','👫','👬','👭','💏','💑','👨‍👩‍👦','👨‍👩‍👧','👨‍👩‍👧‍👦','👪'] },
-                  animales:  { icon:'🐶', emojis:['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐈','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'] },
-                  comida:    { icon:'🍕', emojis:['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🌽','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','☕','🍵','🫖','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🧉','🍾','🧊'] },
-                  viajes:    { icon:'✈️', emojis:['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🛺','🚲','🛴','🛹','🛼','🚏','🛣️','🛤️','⛽','🚨','🚥','🚦','🛑','🚧','⚓','🛟','⛵','🚤','🛥️','🛳️','⛴️','🚢','✈️','🛩️','🛫','🛬','🪂','💺','🚁','🚟','🚠','🚡','🛰️','🚀','🛸','🪐','🌍','🌎','🌏','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🧱','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋'] },
-                  objetos:   { icon:'💡', emojis:['⌚','📱','💻','⌨️','🖥️','🖨️','🖱️','🖲️','💽','💾','💿','📀','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🧭','⏱️','⏲️','⏰','🕰️','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛢️','💰','💴','💵','💶','💷','💸','💳','🪙','💹','📈','📉','📊','📋','📌','📍','📎','🖇️','📏','📐','✂️','🗃️','🗄️','🗑️','🔒','🔓','🔏','🔐','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🛡️','🪚','🔧','🪛','🔩','⚙️','🗜️','⚖️','🦯','🔗','⛓️','🪝','🧲','🪜','🧰','🧲','🪤','🧪','🧫','🧬','🔭','🔬','🩺','💊','🩹','🩼','🩻','🩸','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🫧','🪥','🧽','🪒','🧻','🪞','🪟','🛋️','🪑','🚽','🪠','🚿','🛁','🪤','🧸','🪆','🖼️','🪞','🎁','🎀','🎊','🎉','🎈','🎏','🎐','🎑','🧧','🎎','🎍','🎋','🎄','🎆','🎇','🧨','✨','🎃','🎑','🎊','🎉'] },
-                  simbolos:  { icon:'❤️', emojis:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','#️⃣','*️⃣','⏏️','▶️','⏸️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↪️','↩️','⤴️','⤵️','🔀','🔁','🔂','🔄','🔃','🎵','🎶','➕','➖','➗','✖️','♾️','💲','💱','™️','©️','®️','〰️','➰','➿','🔚','🔙','🔛','🔝','🔜','✔️','☑️','🔘','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔷','🔶','🔹','🔸','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫','🔈','🔇','🔉','🔊','🔔','🔕','📣','📢','💬','💭','🗯️','♠️','♣️','♥️','♦️','🃏','🎴','🀄'] },
-                  custom:    { icon:'⭐', emojis:[] },
+                  recientes: { icon:'??', emojis:['??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??'] },
+                  caras:     { icon:'??', emojis:['??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??'] },
+                  gestos:    { icon:'??', emojis:['??','??','???','?','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??'] },
+                  personas:  { icon:'??', emojis:['??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','????????','??','??','??','??','??','????????','????????','???????????','??'] },
+                  animales:  { icon:'??', emojis:['??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','???','??'] },
+                  comida:    { icon:'??', emojis:['??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','??','??','??','??','??','??','??','??','??','??','??','??'] },
+                  viajes:    { icon:'??', emojis:['??','??','??','??','??','???','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','???','???','?','??','??','??','??','??','?','??','?','??','???','???','??','??','??','???','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','???','??','???','??','??','??','???','???','???','???','???','???','???','???','??','???','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','??','??','??','??','??'] },
+                  objetos:   { icon:'??', emojis:['?','??','??','??','???','???','???','???','??','??','??','??','??','??','??','??','???','???','??','??','??','??','??','??','??','??','??','?','???','?','?','??','??','??','??','??','???','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','???','???','???','??','??','??','??','??','???','??','??','??','??','???','???','??','???','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','??','??','??','??'] },
+                  simbolos:  { icon:'??', emojis:['??','??','??','??','??','??','??','??','??','??','?????','?????','??','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','?','?','?','?','?','?','?','?','?','?','?','?','?','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??','??','??','??','???','???','??','??','???','??','?','?','??','?','??','??','??','??','??','??','??','??','??','??','??','??','?','?','?','?','??','??','??','??','??','??','??','??','??','??','??','?','??','??','?','??','??','??','??','??','??','??','?','???','??','??','???','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','0??','1??','2??','3??','4??','5??','6??','7??','8??','9??','??','??','#??','*??','??','??','??','??','??','??','??','?','?','?','?','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','?','?','??','??','??','??','??','??','??','??','?','?','??','??','??','??','??','??','??','??','??','??','??','??','??','??','?','?','??','??','??','??','??','??','??','??','??','??','??','?','?','??','??','??','??','??','??','??','??','?','?','??','??','??','??','??','??','??','??','??','??','??','???','??','??','??','??','??','??','??'] },
+                  custom:    { icon:'?', emojis:[] },
                 };
                 return (
                 <div style={{ background: '#f7f8fa', borderTop: '1px solid rgba(0,0,0,0.07)', flexShrink: 0 }}>
@@ -4284,11 +4355,10 @@ const App: React.FC = () => {
           }}>
             {/* Header - Ultra minimalista */}
             <div style={{ marginBottom: '8px', flexShrink: 0 }}>
-              {/* Barra de búsqueda + botón nuevo chat */}
-              <div style={{ display:'flex', gap:'8px', alignItems:'center', marginBottom:'6px' }}>
+              {/* Barra de basqueda */}
               <div style={{
                 position: 'relative',
-                flex: 1
+                marginBottom: '6px'
               }}>
                 <input
                   type="text"
@@ -4315,12 +4385,6 @@ const App: React.FC = () => {
                 }}>
                   {renderIcon('search', 14)}
                 </div>
-              </div>
-              {/* Botón nuevo chat */}
-              <button onClick={() => { setShowNewChatModal(true); setNewChatPhone(''); }}
-                style={{ background:'linear-gradient(135deg,#00c8a0,#00b4e6)', border:'none', borderRadius:'8px', width:'32px', height:'32px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', flexShrink:0 }}>
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-              </button>
               </div>
 
               {/* Seccian: Contactos Favoritos - COLAPSABLE */}
@@ -4462,7 +4526,7 @@ const App: React.FC = () => {
                         fontSize: '24px',
                         fontWeight: '700'
                       }}>
-                        ó
+                        ?
                       </div>
                       <span style={{ 
                         fontSize: '10px', 
@@ -4678,31 +4742,6 @@ const App: React.FC = () => {
                     }} />
                   </div>
 
-                {/* Chats reales del backend */}
-                {realChats.map((chat: any) => {
-                  const other = chat.participants?.find((p: any) => p.user_id !== currentUserId.current);
-                  const name = chat.name || other?.full_name || 'Chat';
-                  const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase();
-                  const lastMsg = chat.last_message;
-                  return (
-                    <div key={chat.id}
-                      onClick={() => setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: lastMsg?.text || 'Sin mensajes', time: lastMsg ? new Date(lastMsg.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}) : '', status: 'online', icon: 'contactos', color: '#00c8a0', initials })}
-                      style={{ background:'#FFFFFF', borderRadius:'8px', padding:'10px', marginBottom:'6px', border:'1px solid #F0F2F5', cursor:'pointer', display:'flex', alignItems:'center', gap:'10px' }}
-                    >
-                      <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', color:'#fff', fontWeight:'700', fontSize:'14px', flexShrink:0 }}>{initials}</div>
-                      <div style={{ flex:1, minWidth:0 }}>
-                        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
-                          <span style={{ fontWeight:'700', fontSize:'14px', color:'#111827' }}>{name}</span>
-                          {lastMsg && <span style={{ fontSize:'11px', color:'#9CA3AF' }}>{new Date(lastMsg.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})}</span>}
-                        </div>
-                        <p style={{ fontSize:'12px', color:'#6B7280', margin:0, overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{lastMsg?.text || 'Sin mensajes'}</p>
-                      </div>
-                      {(chat.unread_count > 0) && <div style={{ background:'#00c8a0', color:'#fff', borderRadius:'50%', width:'18px', height:'18px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'700' }}>{chat.unread_count}</div>}
-                    </div>
-                  );
-                })}
-
-                {/* Chats demo */}
                 {[
                   {
                     id: 1,
@@ -5132,7 +5171,7 @@ const App: React.FC = () => {
               </h2>
             </div>
 
-            {/* Tarjeta de Balance Principal — ESTÁTICA */}
+            {/* Tarjeta de Balance Principal - ESTÁTICA */}
             <div style={{ padding: '0 14px', flexShrink: 0 }}>
               <div style={{
                 background: 'linear-gradient(135deg, #1A3A6B 0%, #0E5F8A 50%, #0A7A8A 100%)',
@@ -5211,7 +5250,7 @@ const App: React.FC = () => {
               </div>
             </div>{/* fin tarjeta estática */}
 
-            {/* Contenedor con scroll — desde Mis Cuentas */}
+            {/* Contenedor con scroll - desde Mis Cuentas */}
             <div
               className="scroll-container"
               style={{
@@ -5472,7 +5511,7 @@ const App: React.FC = () => {
                       fontWeight: '600'
                     }}
                   >
-                    Ver todo ó
+                    Ver todo ?
                   </button>
                 </div>
                 {transactionHistory.map((trans) => (
@@ -5680,7 +5719,7 @@ const App: React.FC = () => {
                         {trans.description}
                       </div>
                       <div style={{ fontSize: '9px', color: '#6b7280' }}>
-                        {trans.date} a {trans.status === 'completed' ? 'ó Completada' : trans.status === 'pending' ? '⏳ Pendiente' : 'ó Fallida'}
+                        {trans.date} a {trans.status === 'completed' ? '? Completada' : trans.status === 'pending' ? '? Pendiente' : '? Fallida'}
                       </div>
                     </div>
                     <div style={{
@@ -6213,7 +6252,7 @@ const App: React.FC = () => {
                         <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.city}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Direcci?n</div>
+                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Dirección</div>
                         <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.address}</div>
                       </div>
                     </div>
@@ -6227,7 +6266,7 @@ const App: React.FC = () => {
                     padding: '12px'
                   }}>
                     <div style={{ fontSize: '11px', fontWeight: '600', color: userProfile.verificationStatus === 'verified' ? '#00c8a0' : '#f59e0b', marginBottom: '4px' }}>
-                      {userProfile.verificationStatus === 'verified' ? '✓ Verificado' : userProfile.verificationStatus === 'pending' ? '⏳ Pendiente' : 'ó No Verificado'}
+                      {userProfile.verificationStatus === 'verified' ? '? Verificado' : userProfile.verificationStatus === 'pending' ? '? Pendiente' : '? No Verificado'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#374151' }}>
                       Miembro desde {userProfile.joinDate}
@@ -6273,7 +6312,7 @@ const App: React.FC = () => {
                           e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
                         }}
                       >
-                        <span style={{display:'flex',alignItems:'center',gap:'6px'}}><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Autenticaci?n de Dos Factores</span>
+                        <span style={{display:'flex',alignItems:'center',gap:'6px'}}><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Autenticación de Dos Factores</span>
                         <span style={{ color: userProfile.twoFactorEnabled ? '#00c8a0' : '#ef4444' }}>
                           {userProfile.twoFactorEnabled ? 'ON' : 'OFF'}
                         </span>
@@ -6371,10 +6410,10 @@ const App: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {[
-                        { q: '¿C?mo cambio mi PIN?', a: 'Ve a Perfil > Seguridad > Cambiar PIN' },
-                        { q: 'Cuál es el límite de transferencia?', a: 'El límite diario es 2,000,000 XAF' },
-                        { q: '¿C?mo activo 2FA?', a: 'Ve a Perfil > Seguridad > Autenticaci?n de Dos Factores' },
-                        { q: '¿C?mo reporto una transacci?n?', a: 'Abre la transacci?n y selecciona "Reportar"' }
+                        { q: '¿Cómo cambio mi PIN?', a: 'Ve a Perfil > Seguridad > Cambiar PIN' },
+                        { q: '¿Cuál es el límite de transferencia?', a: 'El límite diario es 2,000,000 XAF' },
+                        { q: '¿Cómo activo 2FA?', a: 'Ve a Perfil > Seguridad > Autenticación de Dos Factores' },
+                        { q: '¿Cómo reporto una transacción?', a: 'Abre la transacción y selecciona "Reportar"' }
                       ].map((item, idx) => (
                         <div key={idx} style={{
                           background: 'rgba(255, 255, 255, 0.02)',
@@ -6476,7 +6515,7 @@ const App: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280' }}>Versi?n</div>
+                        <div style={{ fontSize: '10px', color: '#6b7280' }}>Versión</div>
                         <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>1.0.0</div>
                       </div>
                       <div>
@@ -6574,6 +6613,40 @@ const App: React.FC = () => {
     }
   };
 
+  // -- useEffects mensajeria -------------------------------------
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    authAPI.me().then((u: any) => {
+      if (u?.id) {
+        currentUserId.current = u.id;
+        const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
+        setUserProfile((prev: any) => ({
+          ...prev, id: u.id, name: u.full_name||prev.name, phone: u.phone||prev.phone,
+          avatar: (u.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
+          avatarUrl: savedAvatar,
+        }));
+      }
+    }).catch(() => {});
+    loadChats();
+  }, [isAuthenticated, loadChats]);
+
+  useEffect(() => {
+    if (currentView === 'mensajeria') loadChats();
+  }, [currentView, loadChats]);
+
+  // -- Auth check  todos los hooks declarados -------------------
+  if (!isAuthenticated) return <AuthScreen onAuth={(user) => {
+    if (user) {
+      const savedAvatar = localStorage.getItem('user_avatar') || user.avatar_url || '';
+      setUserProfile((prev: any) => ({
+        ...prev, id: user.id||prev.id, name: user.full_name||prev.name, phone: user.phone||prev.phone,
+        avatar: (user.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
+        avatarUrl: savedAvatar,
+      }));
+    }
+    setIsAuthenticated(true);
+  }} />;
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -6626,8 +6699,8 @@ const App: React.FC = () => {
         />
       )}
       
-      {/* Header */}
-      {renderHeader()}
+      {/* Header — solo en home y vistas principales */}
+      {['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderHeader()}
       
       {/* Paneles desplegables */}
       {renderNotificationsPanel()}
@@ -6638,39 +6711,6 @@ const App: React.FC = () => {
       {renderProfileView()}
       {renderAddContactModal()}
       {renderCreateGroupModal()}
-
-      {/* Modal nuevo chat real */}
-      {showNewChatModal && (
-        <div style={{ position:'fixed', inset:0, zIndex:1300, background:'rgba(0,0,0,0.5)', display:'flex', alignItems:'flex-end' }} onClick={() => setShowNewChatModal(false)}>
-          <div onClick={e => e.stopPropagation()} style={{ width:'100%', background:'#fff', borderRadius:'18px 18px 0 0', padding:'20px 16px 32px' }}>
-            <div style={{ width:'36px', height:'3px', background:'#e5e7eb', borderRadius:'2px', margin:'0 auto 16px' }}/>
-            <h3 style={{ fontSize:'16px', fontWeight:'800', color:'#111827', margin:'0 0 16px' }}>Nuevo chat</h3>
-            <p style={{ fontSize:'13px', color:'#6B7280', margin:'0 0 12px' }}>Introduce el número de teléfono del contacto</p>
-            <input
-              value={newChatPhone} onChange={e => setNewChatPhone(e.target.value)}
-              placeholder="+240 222 XXX XXX"
-              style={{ width:'100%', background:'#F3F4F6', border:'1px solid #E5E7EB', borderRadius:'12px', padding:'12px 14px', fontSize:'14px', color:'#111827', outline:'none', boxSizing:'border-box' }}
-            />
-            <button
-              disabled={newChatSearching || !newChatPhone.trim()}
-              onClick={async () => {
-                setNewChatSearching(true);
-                try {
-                  const res = await chatAPI.createGroup('', [newChatPhone.trim()]);
-                  if (res?.id) {
-                    await loadChats();
-                    setShowNewChatModal(false);
-                    setNewChatPhone('');
-                  }
-                } catch (e: any) {
-                  alert(e.message || 'Usuario no encontrado');
-                } finally { setNewChatSearching(false); }
-              }}
-              style={{ width:'100%', background: newChatPhone.trim() ? '#00c8a0' : '#E5E7EB', color: newChatPhone.trim() ? '#fff' : '#9CA3AF', border:'none', borderRadius:'12px', padding:'14px', fontSize:'15px', fontWeight:'700', cursor: newChatPhone.trim() ? 'pointer' : 'default', marginTop:'12px' }}
-            >{newChatSearching ? 'Buscando...' : 'Iniciar chat'}</button>
-          </div>
-        </div>
-      )}
       
       {/* Vistas secundarias - fuera del stacking context del wallpaper */}
       {(currentView === 'estados' || currentView === 'apuestas' || currentView === 'cemac' || currentView === 'mitaxi') && (
@@ -6689,8 +6729,8 @@ const App: React.FC = () => {
         </div>
       )}
       
-      {/* NAVEGACION inferior - OCULTA cuando el mena esta abierto */}
-      {!isMenuOpen && renderBottomNavigation()}
+      {/* NAVEGACION inferior - solo en vistas principales */}
+      {!isMenuOpen && ['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
       
       {/* Botan catalogo wallpaper a dentro del mena radial, no aqua */}
 
@@ -7126,7 +7166,7 @@ const App: React.FC = () => {
                   <option value="Corriente" style={{ background: '#FFFFFF', color: '#0d0d0d' }}>Corriente</option>
                   <option value="Ahorros" style={{ background: '#FFFFFF', color: '#0d0d0d' }}>Ahorros</option>
                   <option value="Namina" style={{ background: '#FFFFFF', color: '#0d0d0d' }}>Namina</option>
-                  <option value="Inversi?n" style={{ background: '#FFFFFF', color: '#0d0d0d' }}>Inversi?n</option>
+                  <option value="Inversión" style={{ background: '#FFFFFF', color: '#0d0d0d' }}>Inversión</option>
                 </select>
               </div>
 
@@ -7224,10 +7264,10 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* M?dulo Recarga Tel. */}
+      {/* Módulo Recarga Tel. */}
       {showRechargeModal && <RecargaModal onClose={() => setShowRechargeModal(false)} userBalance={userBalance} onDebit={(n) => setUserBalance((p: number) => p - n)} />}
 
-      {/* M?dulo Internet */}
+      {/* Módulo Internet */}
       {showInternetModal && <InternetModal onClose={() => setShowInternetModal(false)} userBalance={userBalance} onDebit={(n) => setUserBalance((p: number) => p - n)} />}
 
 
@@ -7274,7 +7314,7 @@ const App: React.FC = () => {
                   </div>
                   {/* Pasos del proceso */}
                   <div style={{ display:'flex', alignItems:'center', gap:'0' }}>
-                    {['Contrato','Factura','Pago','Confirmaci?n'].map((s,i)=>(
+                    {['Contrato','Factura','Pago','Confirmación'].map((s,i)=>(
                       <React.Fragment key={s}>
                         <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
                           <div style={{ width:'22px', height:'22px', borderRadius:'50%', background: i===0?'#FFD700':'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'800', color: i===0?'#1A3A6B':'rgba(255,255,255,0.6)' }}>{i+1}</div>
@@ -7303,13 +7343,13 @@ const App: React.FC = () => {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
                     <input type="text" placeholder="Ej: 0012345678" value={svcData.contrato||''} onChange={(e)=>setSvcData((p:Record<string,string>)=>({...p,contrato:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'15px', color:'#111827', fontFamily:'inherit', fontWeight:'600' }}/>
                   </div>
-                  <div style={{ fontSize:'10px', color:'#9CA3AF', marginBottom:'14px' }}>📍 Encuéntralo en tu factura o en el medidor</div>
+                  <div style={{ fontSize:'10px', color:'#9CA3AF', marginBottom:'14px' }}>?? Encuéntralo en tu factura o en el medidor</div>
 
                   {/* Consultar factura */}
                   {svcData.contrato && !svcData.facturaConsultada && (
                     <button onClick={()=>setSvcData((p:Record<string,string>)=>({...p,facturaConsultada:'1',facturaImporte:'18500',facturaPeriodo:'Marzo 2026',facturaVencimiento:'30/04/2026',facturaEstado:'Pendiente'}))}
                       style={{ width:'100%', background:'linear-gradient(135deg,#1A3A6B,#2A5298)', border:'none', borderRadius:'10px', padding:'13px', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer', marginBottom:'12px' }}>
-                      🔍 Consultar factura
+                      ?? Consultar factura
                     </button>
                   )}
 
@@ -7336,7 +7376,7 @@ const App: React.FC = () => {
                       {/* Método de pago */}
                       <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', marginBottom:'8px' }}>Método de pago</div>
                       <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                        {[{id:'wallet',label:'EGCHAT Wallet',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                        {[{id:'wallet',label:'EGCHAT Wallet',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                           <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EFF5FD':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#1A3A6B':'#E5E7EB'}`, borderRadius:'8px', padding:'8px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#1A3A6B':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
                             <span style={{ fontSize:'16px' }}>{m.icon}</span>{m.label}
                           </button>
@@ -7362,7 +7402,7 @@ const App: React.FC = () => {
                     </div>
                     <div>
                       <div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>SNGE</div>
-                      <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Sociedad Nacional de Gesti?n del Agua</div>
+                      <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Sociedad Nacional de Gestión del Agua</div>
                       <div style={{ display:'flex', alignItems:'center', gap:'4px', marginTop:'4px' }}>
                         <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#4FC3F7' }}/>
                         <span style={{ fontSize:'10px', color:'#4FC3F7', fontWeight:'600' }}>Servicio disponible</span>
@@ -7376,11 +7416,11 @@ const App: React.FC = () => {
                     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="1.8" strokeLinecap="round"><path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></svg>
                     <input type="text" placeholder="Ej: SNGE-00456" value={svcData.contrato||''} onChange={(e)=>setSvcData((p:Record<string,string>)=>({...p,contrato:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'15px', color:'#111827', fontFamily:'inherit', fontWeight:'600' }}/>
                   </div>
-                  <div style={{ fontSize:'10px', color:'#9CA3AF', marginBottom:'14px' }}>📍 Encuéntralo en tu factura de agua</div>
+                  <div style={{ fontSize:'10px', color:'#9CA3AF', marginBottom:'14px' }}>?? Encuéntralo en tu factura de agua</div>
                   {svcData.contrato && !svcData.facturaConsultada && (
                     <button onClick={()=>setSvcData((p:Record<string,string>)=>({...p,facturaConsultada:'1',facturaImporte:'8200',facturaPeriodo:'Marzo 2026',facturaVencimiento:'15/04/2026',facturaEstado:'Pendiente'}))}
                       style={{ width:'100%', background:'linear-gradient(135deg,#0A4A8A,#1565C0)', border:'none', borderRadius:'10px', padding:'13px', color:'#fff', fontSize:'14px', fontWeight:'700', cursor:'pointer', marginBottom:'12px' }}>
-                      🔍 Consultar factura
+                      ?? Consultar factura
                     </button>
                   )}
                   {svcData.facturaConsultada && (
@@ -7402,7 +7442,7 @@ const App: React.FC = () => {
                         </div>
                       </div>
                       <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                        {[{id:'wallet',label:'EGCHAT Wallet',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                        {[{id:'wallet',label:'EGCHAT Wallet',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                           <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EFF5FD':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#0A4A8A':'#E5E7EB'}`, borderRadius:'8px', padding:'8px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#0A4A8A':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'3px' }}>
                             <span style={{ fontSize:'16px' }}>{m.icon}</span>{m.label}
                           </button>
@@ -7459,14 +7499,14 @@ const App: React.FC = () => {
                     <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
                     </div>
-                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Educaci?n</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Pagos educativos · Guinea Ecuatorial</div></div>
+                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Educación</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Pagos educativos ? Guinea Ecuatorial</div></div>
                   </div>
                 </div>
                 <div style={{ padding:'14px 16px 0' }}>
                   {[
                     {id:'matricula',label:'Matrícula Escolar',sub:'Colegios públicos y privados',price:'25,000',color:'#6B5BD6',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>},
                     {id:'universidad',label:'Universidad',sub:'UNGE, UNIGE y otras',price:'150,000',color:'#1485EE',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
-                    {id:'cursos',label:'Cursos y Formaci?n',sub:'Formaci?n profesional online',price:'50,000',color:'#00c8a0',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
+                    {id:'cursos',label:'Cursos y Formación',sub:'Formación profesional online',price:'50,000',color:'#00c8a0',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
                     {id:'libros',label:'Material Escolar',sub:'Libros y útiles escolares',price:'15,000',color:'#F59E0B',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>},
                   ].map((e) => (
                     <button key={e.id} onClick={() => { setSvcStep('form-edu'); setSvcData({type:e.id,typeLabel:e.label,price:e.price}); }}
@@ -7485,7 +7525,7 @@ const App: React.FC = () => {
                 <div style={{ background:'linear-gradient(135deg,#4C1D95,#6B5BD6)', borderRadius:'12px', padding:'14px', marginBottom:'14px', display:'flex', alignItems:'center', gap:'12px' }}>
                   <div style={{ flex:1 }}><div style={{ fontSize:'14px', fontWeight:'700', color:'#fff' }}>{svcData.typeLabel}</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)', marginTop:'2px' }}>Precio referencia: {svcData.price} XAF</div></div>
                 </div>
-                {[{key:'student',placeholder:'Nombre del estudiante',type:'text',icon:'👤'},{key:'institution',placeholder:'Centro educativo',type:'text',icon:'🏫'},{key:'ref',placeholder:'Número de referencia / matrícula',type:'text',icon:'🔢'},{key:'amount',placeholder:'Importe a pagar (XAF)',type:'number',icon:'💰'}].map((f) => (
+                {[{key:'student',placeholder:'Nombre del estudiante',type:'text',icon:'??'},{key:'institution',placeholder:'Centro educativo',type:'text',icon:'??'},{key:'ref',placeholder:'Número de referencia / matrícula',type:'text',icon:'??'},{key:'amount',placeholder:'Importe a pagar (XAF)',type:'number',icon:'??'}].map((f) => (
                   <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                     <span style={{ fontSize:'16px' }}>{f.icon}</span>
                     <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7493,7 +7533,7 @@ const App: React.FC = () => {
                 ))}
                 <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Método de pago</div>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                  {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                     <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EDE9FE':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#6B5BD6':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#6B5BD6':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                       <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                     </button>
@@ -7514,14 +7554,14 @@ const App: React.FC = () => {
                     <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>
                     </div>
-                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Transporte</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Billetes y abonos · Guinea Ecuatorial</div></div>
+                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Transporte</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Billetes y abonos ? Guinea Ecuatorial</div></div>
                   </div>
                 </div>
                 <div style={{ padding:'14px 16px 0' }}>
                   {[
-                    {id:'bus',label:'Bus Urbano',sub:'Malabo / Bata · Rutas urbanas',price:'200',color:'#00c8a0',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>},
+                    {id:'bus',label:'Bus Urbano',sub:'Malabo / Bata - Rutas urbanas',price:'200',color:'#00c8a0',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>},
                     {id:'taxi',label:'Taxi Compartido',sub:'Rutas fijas interurbanas',price:'500',color:'#F59E0B',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5a2 2 0 0 1-2 2h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>},
-                    {id:'ferry',label:'Ferry Malabo–Bata',sub:'Travesía marítima · 8h',price:'15000',color:'#1485EE',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v6"/><path d="M12 10v4"/><path d="M12 3v4"/></svg>},
+                    {id:'ferry',label:'Ferry Malabo-Bata',sub:'Travesía marítima - 8h',price:'15000',color:'#1485EE',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1 .6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.9.94 5.34 2.81 7.76"/><path d="M19 13V7a1 1 0 0 0-1-1H6a1 1 0 0 0-1 1v6"/><path d="M12 10v4"/><path d="M12 3v4"/></svg>},
                     {id:'abono',label:'Abono Mensual',sub:'Transporte ilimitado 30 días',price:'8000',color:'#6B5BD6',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>},
                   ].map((t) => (
                     <button key={t.id} onClick={() => { setSvcStep('form-transp'); setSvcData({type:t.id,typeLabel:t.label,price:t.price}); }}
@@ -7541,7 +7581,7 @@ const App: React.FC = () => {
                   <div style={{ fontSize:'14px', fontWeight:'700', color:'#fff' }}>{svcData.typeLabel}</div>
                   <div style={{ fontSize:'18px', fontWeight:'900', color:'#fff' }}>{parseInt(svcData.price||'0').toLocaleString()} XAF</div>
                 </div>
-                {[{key:'name',placeholder:'Nombre completo',type:'text',icon:'👤'},{key:'qty',placeholder:'Cantidad de billetes',type:'number',icon:'🎫'}].map((f) => (
+                {[{key:'name',placeholder:'Nombre completo',type:'text',icon:'??'},{key:'qty',placeholder:'Cantidad de billetes',type:'number',icon:'??'}].map((f) => (
                   <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                     <span style={{ fontSize:'16px' }}>{f.icon}</span>
                     <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7555,13 +7595,13 @@ const App: React.FC = () => {
                 )}
                 <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'4px 0 8px' }}>Método de pago</div>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                  {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                     <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#F0FDF9':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#00c8a0':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#065F46':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                       <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { if(svcData.name && svcData.qty && svcData.payMethod){ const total=parseInt(svcData.price||'0')*parseInt(svcData.qty||'1'); setUserBalance(b=>b-total); setSvcStep('success'); setSvcData(p=>({...p,action:`${svcData.qty} billete(s) de ${svcData.typeLabel} · ${total.toLocaleString()} XAF`})); } }}
+                <button onClick={() => { if(svcData.name && svcData.qty && svcData.payMethod){ const total=parseInt(svcData.price||'0')*parseInt(svcData.qty||'1'); setUserBalance(b=>b-total); setSvcStep('success'); setSvcData(p=>({...p,action:`${svcData.qty} billete(s) de ${svcData.typeLabel} ? ${total.toLocaleString()} XAF`})); } }}
                   style={{ width:'100%', background:svcData.name&&svcData.qty&&svcData.payMethod?'linear-gradient(135deg,#065F46,#00c8a0)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.name&&svcData.qty&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.name&&svcData.qty&&svcData.payMethod?'pointer':'default', outline:'none' }}>
                   Comprar billete{svcData.qty&&parseInt(svcData.qty)>1?'s':''}
                 </button>
@@ -7601,7 +7641,7 @@ const App: React.FC = () => {
                   <div style={{ fontSize:'14px', fontWeight:'700', color:'#fff' }}>{svcData.typeLabel}</div>
                   <div style={{ fontSize:'16px', fontWeight:'900', color:'#fff' }}>{svcData.price}</div>
                 </div>
-                {[{key:'sender',placeholder:'Remitente (nombre)',type:'text',icon:'👤'},{key:'dest',placeholder:'Destinatario (nombre)',type:'text',icon:'📬'},{key:'address',placeholder:'Direcci?n de entrega completa',type:'text',icon:'📍'},{key:'phone',placeholder:'Teléfono de contacto',type:'tel',icon:'📞'}].map((f) => (
+                {[{key:'sender',placeholder:'Remitente (nombre)',type:'text',icon:'??'},{key:'dest',placeholder:'Destinatario (nombre)',type:'text',icon:'??'},{key:'address',placeholder:'Dirección de entrega completa',type:'text',icon:'??'},{key:'phone',placeholder:'Teléfono de contacto',type:'tel',icon:'??'}].map((f) => (
                   <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                     <span style={{ fontSize:'16px' }}>{f.icon}</span>
                     <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7609,7 +7649,7 @@ const App: React.FC = () => {
                 ))}
                 <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Método de pago</div>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                  {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                     <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#FEF2F2':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#C62828':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#C62828':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                       <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                     </button>
@@ -7617,7 +7657,7 @@ const App: React.FC = () => {
                 </div>
                 <button onClick={() => { if(svcData.sender && svcData.dest && svcData.payMethod){ const priceNum=parseInt((svcData.price||'0').replace(/[^0-9]/g,'')); setUserBalance(b=>b-priceNum); setSvcStep('success'); setSvcData(p=>({...p,action:`Envío ${svcData.typeLabel} de ${svcData.sender} a ${svcData.dest}`})); } }}
                   style={{ width:'100%', background:svcData.sender&&svcData.dest&&svcData.payMethod?'linear-gradient(135deg,#C62828,#E53935)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.sender&&svcData.dest&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.sender&&svcData.dest&&svcData.payMethod?'pointer':'default', outline:'none' }}>
-                  Confirmar envío · {svcData.price}
+                  Confirmar envío ? {svcData.price}
                 </button>
               </div>
             )}
@@ -7628,9 +7668,9 @@ const App: React.FC = () => {
                   <div style={{ width:'52px', height:'52px', borderRadius:'12px', overflow:'hidden', background:'#fff', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                     <img src="/assets/services/dgi.svg" alt="DGI" style={{ width:'48px', height:'48px', objectFit:'contain' }} onError={(e)=>{ (e.target as HTMLImageElement).style.display='none'; }}/>
                   </div>
-                  <div><div style={{ fontSize:'16px', fontWeight:'800', color:'#fff' }}>DGI</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Direcci?n General de Impuestos</div></div>
+                  <div><div style={{ fontSize:'16px', fontWeight:'800', color:'#fff' }}>DGI</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Dirección General de Impuestos</div></div>
                 </div>
-                <div style={{ padding:'12px 16px 0', fontSize:'11px', color:'#888', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'8px' }}>Tipo de declaraci?n / pago</div>
+                <div style={{ padding:'12px 16px 0', fontSize:'11px', color:'#888', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'8px' }}>Tipo de declaración / pago</div>
                 {[
                   {id:'irpf',label:'IRPF / Renta',sub:'Declaracion anual',color:'#FA5151'},
                   {id:'iva',label:'IVA',sub:'Impuesto sobre el valor',color:'#576B95'},
@@ -7653,26 +7693,26 @@ const App: React.FC = () => {
               <div style={{ padding:'14px 16px 24px' }}>
                 <div style={{ background:'linear-gradient(135deg,#1B3A6B,#2A5298)', borderRadius:'12px', padding:'14px', marginBottom:'14px' }}>
                   <div style={{ fontSize:'14px', fontWeight:'700', color:'#fff' }}>{svcData.typeLabel}</div>
-                  <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.7)', marginTop:'3px' }}>Direcci?n General de Impuestos · GQ</div>
+                  <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.7)', marginTop:'3px' }}>Dirección General de Impuestos ? GQ</div>
                 </div>
-                {[{key:'nif',placeholder:'NIF / DNI del contribuyente',type:'text',icon:'🪪'},{key:'ref',placeholder:'Referencia de pago / expediente',type:'text',icon:'🔢'},{key:'period',placeholder:'Período fiscal (ej: 2025)',type:'text',icon:'📅'},{key:'amount',placeholder:'Importe a pagar (XAF)',type:'number',icon:'💰'}].map((f) => (
+                {[{key:'nif',placeholder:'NIF / DNI del contribuyente',type:'text',icon:'??'},{key:'ref',placeholder:'Referencia de pago / expediente',type:'text',icon:'??'},{key:'period',placeholder:'Período fiscal (ej: 2025)',type:'text',icon:'??'},{key:'amount',placeholder:'Importe a pagar (XAF)',type:'number',icon:'??'}].map((f) => (
                   <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                     <span style={{ fontSize:'16px' }}>{f.icon}</span>
                     <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
                   </div>
                 ))}
                 <div style={{ background:'#FEF3C7', borderRadius:'10px', padding:'10px 14px', marginBottom:'12px', fontSize:'12px', color:'#92400E', display:'flex', gap:'8px', alignItems:'flex-start' }}>
-                  <span>⚠️</span><span>El pago de impuestos genera un justificante oficial. Guarda el número de referencia.</span>
+                  <span>??</span><span>El pago de impuestos genera un justificante oficial. Guarda el número de referencia.</span>
                 </div>
                 <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'4px 0 8px' }}>Método de pago</div>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                  {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                     <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EFF5FD':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#1B3A6B':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#1B3A6B':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                       <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { if(svcData.nif && svcData.amount && svcData.payMethod){ setUserBalance(b=>b-parseInt(svcData.amount||'0')); setSvcStep('success'); setSvcData(p=>({...p,action:`Pago ${svcData.typeLabel} · NIF: ${svcData.nif} · ${parseInt(svcData.amount||'0').toLocaleString()} XAF`})); } }}
+                <button onClick={() => { if(svcData.nif && svcData.amount && svcData.payMethod){ setUserBalance(b=>b-parseInt(svcData.amount||'0')); setSvcStep('success'); setSvcData(p=>({...p,action:`Pago ${svcData.typeLabel} ? NIF: ${svcData.nif} ? ${parseInt(svcData.amount||'0').toLocaleString()} XAF`})); } }}
                   style={{ width:'100%', background:svcData.nif&&svcData.amount&&svcData.payMethod?'linear-gradient(135deg,#1B3A6B,#2A5298)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.nif&&svcData.amount&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.nif&&svcData.amount&&svcData.payMethod?'pointer':'default', outline:'none' }}>
                   Pagar {svcData.amount?`${parseInt(svcData.amount).toLocaleString()} XAF`:''}
                 </button>
@@ -7685,18 +7725,18 @@ const App: React.FC = () => {
                 {/* Header dinámico por servicio */}
                 {(() => {
                   const cfg: Record<string,{title:string;sub:string;grad:string;items:{id:string;label:string;sub:string;price:string;color:string}[]}> = {
-                    super: { title:'Supermercados', sub:'Compra online · Entrega a domicilio', grad:'linear-gradient(135deg,#065F46,#00c8a0)',
-                      items:[{id:'a',label:'Supermercado Central',sub:'Malabo Centro · Entrega 1h',price:'Gratis >5,000',color:'#00c8a0'},{id:'b',label:'Hiper Bata',sub:'Bata · Entrega 2h',price:'Gratis >8,000',color:'#00c8a0'},{id:'c',label:'Tienda Familiar',sub:'Barrio · Entrega 30min',price:'500 XAF',color:'#F59E0B'},{id:'d',label:'Mercado Central',sub:'Malabo · Productos frescos',price:'Gratis >3,000',color:'#00c8a0'}]},
-                    comida: { title:'Comida a Domicilio', sub:'Restaurantes y cocinas · Entrega rápida', grad:'linear-gradient(135deg,#C0392B,#E74C3C)',
-                      items:[{id:'a',label:'Comida Rápida',sub:'Hamburguesas, pollo · 30 min',price:'500 XAF',color:'#E74C3C'},{id:'b',label:'Cocina Africana',sub:'Platos típicos GQ · 45 min',price:'300 XAF',color:'#F59E0B'},{id:'c',label:'Comida Internacional',sub:'Italiana, china, árabe · 60 min',price:'800 XAF',color:'#1485EE'},{id:'d',label:'Comida Casera',sub:'Menú del día · 40 min',price:'200 XAF',color:'#00c8a0'}]},
+                    super: { title:'Supermercados', sub:'Compra online - Entrega a domicilio', grad:'linear-gradient(135deg,#065F46,#00c8a0)',
+                      items:[{id:'a',label:'Supermercado Central',sub:'Malabo Centro - Entrega 1h',price:'Gratis >5,000',color:'#00c8a0'},{id:'b',label:'Hiper Bata',sub:'Bata - Entrega 2h',price:'Gratis >8,000',color:'#00c8a0'},{id:'c',label:'Tienda Familiar',sub:'Barrio - Entrega 30min',price:'500 XAF',color:'#F59E0B'},{id:'d',label:'Mercado Central',sub:'Malabo - Productos frescos',price:'Gratis >3,000',color:'#00c8a0'}]},
+                    comida: { title:'Comida a Domicilio', sub:'Restaurantes y cocinas - Entrega rápida', grad:'linear-gradient(135deg,#C0392B,#E74C3C)',
+                      items:[{id:'a',label:'Comida Rápida',sub:'Hamburguesas, pollo - 30 min',price:'500 XAF',color:'#E74C3C'},{id:'b',label:'Cocina Africana',sub:'Platos típicos GQ - 45 min',price:'300 XAF',color:'#F59E0B'},{id:'c',label:'Comida Internacional',sub:'Italiana, china, árabe - 60 min',price:'800 XAF',color:'#1485EE'},{id:'d',label:'Comida Casera',sub:'Menú del día - 40 min',price:'200 XAF',color:'#00c8a0'}]},
                     restaurante: { title:'Restaurantes', sub:'Reservas y pedidos para llevar', grad:'linear-gradient(135deg,#92400E,#F59E0B)',
                       items:[{id:'a',label:'Reserva de Mesa',sub:'Para hoy o mañana',price:'Gratis',color:'#F59E0B'},{id:'b',label:'Pedido para Llevar',sub:'Listo en 20 min',price:'Sin cargo',color:'#00c8a0'},{id:'c',label:'Menú Empresarial',sub:'Grupos +10 personas',price:'Consultar',color:'#1485EE'}]},
-                    tienda: { title:'Tiendas Online', sub:'Ropa, electr?nica, hogar · Envío a domicilio', grad:'linear-gradient(135deg,#1B3A6B,#1485EE)',
-                      items:[{id:'a',label:'Ropa y Moda',sub:'Envío a domicilio · 48h',price:'1,000 XAF',color:'#6B5BD6'},{id:'b',label:'Electr?nica',sub:'Garantía incluida · 72h',price:'1,500 XAF',color:'#1485EE'},{id:'c',label:'Hogar y Decoraci?n',sub:'Entrega en 48h',price:'1,000 XAF',color:'#F59E0B'},{id:'d',label:'Deportes',sub:'Equipamiento deportivo',price:'800 XAF',color:'#00c8a0'}]},
+                    tienda: { title:'Tiendas Online', sub:'Ropa, electrónica, hogar ? Envío a domicilio', grad:'linear-gradient(135deg,#1B3A6B,#1485EE)',
+                      items:[{id:'a',label:'Ropa y Moda',sub:'Envío a domicilio - 48h',price:'1,000 XAF',color:'#6B5BD6'},{id:'b',label:'Electrónica',sub:'Garantía incluida - 72h',price:'1,500 XAF',color:'#1485EE'},{id:'c',label:'Hogar y Decoración',sub:'Entrega en 48h',price:'1,000 XAF',color:'#F59E0B'},{id:'d',label:'Deportes',sub:'Equipamiento deportivo',price:'800 XAF',color:'#00c8a0'}]},
                     lavanderia: { title:'Lavandería', sub:'Recogida y entrega a domicilio', grad:'linear-gradient(135deg,#0A4A8A,#00b4e6)',
-                      items:[{id:'a',label:'Lavado Normal',sub:'Listo en 24h · Recogida gratis',price:'3,000 XAF/kg',color:'#00b4e6'},{id:'b',label:'Lavado Express',sub:'Listo en 4h · Urgente',price:'5,000 XAF/kg',color:'#E74C3C'},{id:'c',label:'Tintorería',sub:'Prendas delicadas · 48h',price:'6,000 XAF/kg',color:'#6B5BD6'},{id:'d',label:'Planchado',sub:'Servicio de planchado',price:'1,500 XAF/prenda',color:'#F59E0B'}]},
+                      items:[{id:'a',label:'Lavado Normal',sub:'Listo en 24h ? Recogida gratis',price:'3,000 XAF/kg',color:'#00b4e6'},{id:'b',label:'Lavado Express',sub:'Listo en 4h - Urgente',price:'5,000 XAF/kg',color:'#E74C3C'},{id:'c',label:'Tintorería',sub:'Prendas delicadas - 48h',price:'6,000 XAF/kg',color:'#6B5BD6'},{id:'d',label:'Planchado',sub:'Servicio de planchado',price:'1,500 XAF/prenda',color:'#F59E0B'}]},
                     belleza: { title:'Belleza y Bienestar', sub:'Peluquerías, estética y spa', grad:'linear-gradient(135deg,#831843,#EC4899)',
-                      items:[{id:'a',label:'Peluquería',sub:'Corte, peinado, color',price:'5,000 XAF',color:'#EC4899'},{id:'b',label:'Estética',sub:'Manicura, pedicura, depilaci?n',price:'8,000 XAF',color:'#F59E0B'},{id:'c',label:'Spa & Masajes',sub:'Relajaci?n y bienestar',price:'15,000 XAF',color:'#6B5BD6'},{id:'d',label:'Barbería',sub:'Corte y arreglo de barba',price:'3,000 XAF',color:'#00b4e6'}]},
+                      items:[{id:'a',label:'Peluquería',sub:'Corte, peinado, color',price:'5,000 XAF',color:'#EC4899'},{id:'b',label:'Estética',sub:'Manicura, pedicura, depilación',price:'8,000 XAF',color:'#F59E0B'},{id:'c',label:'Spa & Masajes',sub:'Relajación y bienestar',price:'15,000 XAF',color:'#6B5BD6'},{id:'d',label:'Barbería',sub:'Corte y arreglo de barba',price:'3,000 XAF',color:'#00b4e6'}]},
                   };
                   const c = cfg[showSvcModal!] || cfg.super;
                   return (
@@ -7732,7 +7772,7 @@ const App: React.FC = () => {
                   <div style={{ fontSize:'14px', fontWeight:'700', color:'#111827' }}>{svcData.typeLabel}</div>
                   <div style={{ fontSize:'12px', fontWeight:'700', color:svcData.color||'#00c8a0' }}>{svcData.price}</div>
                 </div>
-                {[{key:'name',placeholder:'Tu nombre completo',type:'text',icon:'👤'},{key:'address',placeholder:'Direcci?n de entrega',type:'text',icon:'📍'},{key:'phone',placeholder:'Teléfono de contacto',type:'tel',icon:'📞'},{key:'notes',placeholder:'Notas del pedido (opcional)',type:'text',icon:'📝'}].map((f) => (
+                {[{key:'name',placeholder:'Tu nombre completo',type:'text',icon:'??'},{key:'address',placeholder:'Dirección de entrega',type:'text',icon:'??'},{key:'phone',placeholder:'Teléfono de contacto',type:'tel',icon:'??'},{key:'notes',placeholder:'Notas del pedido (opcional)',type:'text',icon:'??'}].map((f) => (
                   <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                     <span style={{ fontSize:'16px' }}>{f.icon}</span>
                     <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7740,13 +7780,13 @@ const App: React.FC = () => {
                 ))}
                 <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Método de pago</div>
                 <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                  {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                     <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#F0FDF9':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#00c8a0':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#065F46':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                       <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                     </button>
                   ))}
                 </div>
-                <button onClick={() => { if(svcData.name && svcData.address && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Pedido de ${svcData.typeLabel} · Entrega a ${svcData.address}`})); } }}
+                <button onClick={() => { if(svcData.name && svcData.address && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Pedido de ${svcData.typeLabel} ? Entrega a ${svcData.address}`})); } }}
                   style={{ width:'100%', background:svcData.name&&svcData.address&&svcData.payMethod?'linear-gradient(135deg,#065F46,#00c8a0)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.name&&svcData.address&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.name&&svcData.address&&svcData.payMethod?'pointer':'default', outline:'none' }}>
                   Confirmar pedido
                 </button>
@@ -7761,11 +7801,11 @@ const App: React.FC = () => {
                     <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5a2 2 0 0 1-2 2h-2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></svg>
                     </div>
-                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Pedir Taxi</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Malabo · Bata · Disponible 24h</div></div>
+                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Pedir Taxi</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Malabo ? Bata ? Disponible 24h</div></div>
                   </div>
                 </div>
                 <div style={{ padding:'14px 16px 0' }}>
-                  {[{key:'origin',placeholder:'Punto de recogida',type:'text',icon:'📍'},{key:'dest',placeholder:'Destino',type:'text',icon:'🏁'},{key:'phone',placeholder:'Tu teléfono',type:'tel',icon:'📞'}].map((f) => (
+                  {[{key:'origin',placeholder:'Punto de recogida',type:'text',icon:'??'},{key:'dest',placeholder:'Destino',type:'text',icon:'??'},{key:'phone',placeholder:'Tu teléfono',type:'tel',icon:'??'}].map((f) => (
                     <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                       <span style={{ fontSize:'16px' }}>{f.icon}</span>
                       <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7775,7 +7815,7 @@ const App: React.FC = () => {
                     <div style={{ background:'#FFFBEB', borderRadius:'12px', padding:'14px', marginBottom:'12px', border:'1px solid #FDE68A' }}>
                       <div style={{ fontSize:'11px', color:'#92400E', marginBottom:'6px', fontWeight:'600' }}>Precio estimado</div>
                       <div style={{ display:'flex', gap:'8px' }}>
-                        {[{label:'Econ?mico',price:'1,500 XAF'},{label:'Estándar',price:'2,500 XAF'},{label:'Premium',price:'4,000 XAF'}].map(t=>(
+                        {[{label:'Económico',price:'1,500 XAF'},{label:'Estándar',price:'2,500 XAF'},{label:'Premium',price:'4,000 XAF'}].map(t=>(
                           <button key={t.label} onClick={()=>setSvcData(p=>({...p,taxiType:t.label,taxiPrice:t.price}))} style={{ flex:1, background:svcData.taxiType===t.label?'#F59E0B':'#fff', border:`1.5px solid ${svcData.taxiType===t.label?'#F59E0B':'#E5E7EB'}`, borderRadius:'8px', padding:'8px 4px', fontSize:'10px', fontWeight:'700', color:svcData.taxiType===t.label?'#fff':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
                             <span style={{ fontSize:'13px', fontWeight:'800' }}>{t.price}</span>{t.label}
                           </button>
@@ -7783,9 +7823,9 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   )}
-                  <button onClick={() => { if(svcData.origin && svcData.dest && svcData.phone && svcData.taxiType){ setSvcStep('success'); setSvcData(p=>({...p,action:`Taxi ${svcData.taxiType} · ${svcData.origin} → ${svcData.dest} · ${svcData.taxiPrice}`})); } }}
+                  <button onClick={() => { if(svcData.origin && svcData.dest && svcData.phone && svcData.taxiType){ setSvcStep('success'); setSvcData(p=>({...p,action:`Taxi ${svcData.taxiType} ? ${svcData.origin} ? ${svcData.dest} ? ${svcData.taxiPrice}`})); } }}
                     style={{ width:'100%', background:svcData.origin&&svcData.dest&&svcData.phone&&svcData.taxiType?'linear-gradient(135deg,#92400E,#F59E0B)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.origin&&svcData.dest&&svcData.phone&&svcData.taxiType?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.origin&&svcData.dest&&svcData.phone&&svcData.taxiType?'pointer':'default', outline:'none' }}>
-                    Pedir Taxi {svcData.taxiPrice?`· ${svcData.taxiPrice}`:''}
+                    Pedir Taxi {svcData.taxiPrice?`? ${svcData.taxiPrice}`:''}
                   </button>
                 </div>
               </div>
@@ -7819,10 +7859,10 @@ const App: React.FC = () => {
                 <div style={{ padding:'14px 16px 0' }}>
                   <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'14px' }}>
                     {[
-                      {id:'h1',label:'Hotel Bahía',sub:'Malabo · 4★',price:'45,000 XAF/noche',color:'#00b4e6'},
-                      {id:'h2',label:'Hotel Impala',sub:'Malabo · 3★',price:'28,000 XAF/noche',color:'#1485EE'},
-                      {id:'h3',label:'Hotel Bata',sub:'Bata · 3★',price:'25,000 XAF/noche',color:'#00c8a0'},
-                      {id:'h4',label:'Aparthotel GQ',sub:'Malabo · Apartamentos',price:'35,000 XAF/noche',color:'#6B5BD6'},
+                      {id:'h1',label:'Hotel Bahía',sub:'Malabo - 4*',price:'45,000 XAF/noche',color:'#00b4e6'},
+                      {id:'h2',label:'Hotel Impala',sub:'Malabo - 3*',price:'28,000 XAF/noche',color:'#1485EE'},
+                      {id:'h3',label:'Hotel Bata',sub:'Bata - 3*',price:'25,000 XAF/noche',color:'#00c8a0'},
+                      {id:'h4',label:'Aparthotel GQ',sub:'Malabo - Apartamentos',price:'35,000 XAF/noche',color:'#6B5BD6'},
                     ].map(h=>(
                       <button key={h.id} onClick={()=>setSvcData(p=>({...p,hotelId:h.id,hotelLabel:h.label,hotelPrice:h.price}))} style={{ background:svcData.hotelId===h.id?h.color+'15':'#fff', border:`1.5px solid ${svcData.hotelId===h.id?h.color:'#F0F2F5'}`, borderRadius:'12px', padding:'12px', cursor:'pointer', outline:'none', textAlign:'left', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
                         <div style={{ fontSize:'12px', fontWeight:'700', color:'#111827', marginBottom:'3px' }}>{h.label}</div>
@@ -7831,7 +7871,7 @@ const App: React.FC = () => {
                       </button>
                     ))}
                   </div>
-                  {[{key:'checkin',placeholder:'Fecha entrada (DD/MM/AAAA)',type:'text',icon:'📅'},{key:'checkout',placeholder:'Fecha salida (DD/MM/AAAA)',type:'text',icon:'📅'},{key:'guests',placeholder:'Número de huéspedes',type:'number',icon:'👥'},{key:'name',placeholder:'Nombre del titular',type:'text',icon:'👤'}].map((f) => (
+                  {[{key:'checkin',placeholder:'Fecha entrada (DD/MM/AAAA)',type:'text',icon:'??'},{key:'checkout',placeholder:'Fecha salida (DD/MM/AAAA)',type:'text',icon:'??'},{key:'guests',placeholder:'Número de huéspedes',type:'number',icon:'??'},{key:'name',placeholder:'Nombre del titular',type:'text',icon:'??'}].map((f) => (
                     <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                       <span style={{ fontSize:'16px' }}>{f.icon}</span>
                       <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7839,13 +7879,13 @@ const App: React.FC = () => {
                   ))}
                   <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Método de pago</div>
                   <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                    {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
+                    {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'cash',label:'Efectivo',icon:'??'}].map(m=>(
                       <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EFF5FD':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#00b4e6':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#0A4A8A':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                         <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => { if(svcData.hotelId && svcData.checkin && svcData.checkout && svcData.name && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Reserva ${svcData.hotelLabel} · ${svcData.checkin} → ${svcData.checkout} · ${svcData.guests||1} huésped(es)`})); } }}
+                  <button onClick={() => { if(svcData.hotelId && svcData.checkin && svcData.checkout && svcData.name && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Reserva ${svcData.hotelLabel} ? ${svcData.checkin} ? ${svcData.checkout} ? ${svcData.guests||1} huésped(es)`})); } }}
                     style={{ width:'100%', background:svcData.hotelId&&svcData.checkin&&svcData.checkout&&svcData.name&&svcData.payMethod?'linear-gradient(135deg,#0A4A8A,#00b4e6)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.hotelId&&svcData.checkin&&svcData.checkout&&svcData.name&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.hotelId&&svcData.checkin&&svcData.checkout&&svcData.name&&svcData.payMethod?'pointer':'default', outline:'none' }}>
                     Reservar {svcData.hotelLabel||'hotel'}
                   </button>
@@ -7860,7 +7900,7 @@ const App: React.FC = () => {
                     <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
                       <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5S18 2 16.5 3.5L13 7 4.8 5.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z"/></svg>
                     </div>
-                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Vuelos</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Malabo (SSG) · Bata (BSG) · Internacional</div></div>
+                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Vuelos</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Malabo (SSG) ? Bata (BSG) ? Internacional</div></div>
                   </div>
                 </div>
                 <div style={{ padding:'14px 16px 0' }}>
@@ -7869,7 +7909,7 @@ const App: React.FC = () => {
                       <button key={t} onClick={()=>setSvcData(p=>({...p,tripType:t}))} style={{ flex:1, background:svcData.tripType===t?'#00b4e6':'#fff', border:`1.5px solid ${svcData.tripType===t?'#00b4e6':'#E5E7EB'}`, borderRadius:'10px', padding:'10px', fontSize:'12px', fontWeight:'700', color:svcData.tripType===t?'#fff':'#6B7280', cursor:'pointer' }}>{t}</button>
                     ))}
                   </div>
-                  {[{key:'from',placeholder:'Origen (SSG, BSG, LBV...)',type:'text',icon:'🛫'},{key:'to',placeholder:'Destino',type:'text',icon:'🛬'},{key:'date',placeholder:'Fecha de salida (DD/MM/AAAA)',type:'text',icon:'📅'},{key:'pax',placeholder:'Número de pasajeros',type:'number',icon:'👥'},{key:'name',placeholder:'Nombre del pasajero principal',type:'text',icon:'👤'}].map((f) => (
+                  {[{key:'from',placeholder:'Origen (SSG, BSG, LBV...)',type:'text',icon:'??'},{key:'to',placeholder:'Destino',type:'text',icon:'??'},{key:'date',placeholder:'Fecha de salida (DD/MM/AAAA)',type:'text',icon:'??'},{key:'pax',placeholder:'Número de pasajeros',type:'number',icon:'??'},{key:'name',placeholder:'Nombre del pasajero principal',type:'text',icon:'??'}].map((f) => (
                     <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
                       <span style={{ fontSize:'16px' }}>{f.icon}</span>
                       <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
@@ -7889,15 +7929,15 @@ const App: React.FC = () => {
                   )}
                   <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'4px 0 8px' }}>Método de pago</div>
                   <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                    {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'card',label:'Tarjeta',icon:'💳'}].map(m=>(
+                    {[{id:'wallet',label:'EGCHAT',icon:'??'},{id:'bank',label:'Banco',icon:'??'},{id:'card',label:'Tarjeta',icon:'??'}].map(m=>(
                       <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EFF5FD':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#00b4e6':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#1B3A6B':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
                         <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
                       </button>
                     ))}
                   </div>
-                  <button onClick={() => { if(svcData.from && svcData.to && svcData.date && svcData.name && svcData.airline && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Vuelo ${svcData.airline} · ${svcData.from}→${svcData.to} · ${svcData.date} · ${svcData.flightPrice}`})); } }}
+                  <button onClick={() => { if(svcData.from && svcData.to && svcData.date && svcData.name && svcData.airline && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Vuelo ${svcData.airline} ? ${svcData.from}?${svcData.to} ? ${svcData.date} ? ${svcData.flightPrice}`})); } }}
                     style={{ width:'100%', background:svcData.from&&svcData.to&&svcData.date&&svcData.name&&svcData.airline&&svcData.payMethod?'linear-gradient(135deg,#1B3A6B,#00b4e6)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.from&&svcData.to&&svcData.date&&svcData.name&&svcData.airline&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.from&&svcData.to&&svcData.date&&svcData.name&&svcData.airline&&svcData.payMethod?'pointer':'default', outline:'none' }}>
-                    Reservar vuelo {svcData.flightPrice?`· ${svcData.flightPrice}`:''}
+                    Reservar vuelo {svcData.flightPrice?`? ${svcData.flightPrice}`:''}
                   </button>
                 </div>
               </div>
@@ -7940,7 +7980,7 @@ const App: React.FC = () => {
                     <div style={{ fontSize:'20px', fontWeight:'800', color:'#07C160' }}>{(parseInt(svcData.liters||'0') * 650).toLocaleString()} XAF</div>
                   </div>
                 )}
-                <button onClick={() => { if(svcData.plate && svcData.liters){ const total=parseInt(svcData.liters||'0')*650; setUserBalance(b=>b-total); setSvcStep('success'); setSvcData(p=>({...p,action:`${svcData.typeLabel} · ${svcData.liters}L · Matrícula ${svcData.plate} · ${total.toLocaleString()} XAF`})); } }} style={{ width:'100%', background:svcData.plate&&svcData.liters?'linear-gradient(135deg,#92400E,#F59E0B)':'#E5E7EB', border:'none', borderRadius:'10px', padding:'13px', color:svcData.plate&&svcData.liters?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.plate&&svcData.liters?'pointer':'default', outline:'none' }}>Pagar Combustible</button>
+                <button onClick={() => { if(svcData.plate && svcData.liters){ const total=parseInt(svcData.liters||'0')*650; setUserBalance(b=>b-total); setSvcStep('success'); setSvcData(p=>({...p,action:`${svcData.typeLabel} ? ${svcData.liters}L ? Matrícula ${svcData.plate} ? ${total.toLocaleString()} XAF`})); } }} style={{ width:'100%', background:svcData.plate&&svcData.liters?'linear-gradient(135deg,#92400E,#F59E0B)':'#E5E7EB', border:'none', borderRadius:'10px', padding:'13px', color:svcData.plate&&svcData.liters?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.plate&&svcData.liters?'pointer':'default', outline:'none' }}>Pagar Combustible</button>
               </div>
             )}
             {/* NOTICIAS */}
@@ -7973,7 +8013,7 @@ const App: React.FC = () => {
                 <div style={{ background:'linear-gradient(135deg,#576B95,#1485EE)', borderRadius:'16px', padding:'20px', marginBottom:'16px', color:'#fff' }}>
                   <div style={{ fontSize:'10px', opacity:0.8, marginBottom:'12px', letterSpacing:'1px' }}>REPUBLICA DE GUINEA ECUATORIAL</div>
                   <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'14px' }}>
-                    <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px' }}>👤</div>
+                    <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px' }}>??</div>
                     <div>
                       <div style={{ fontSize:'16px', fontWeight:'800' }}>USUARIO EGCHAT</div>
                       <div style={{ fontSize:'11px', opacity:0.8 }}>DNI: GQ-2024-XXXXX</div>
@@ -8052,9 +8092,9 @@ const App: React.FC = () => {
                 <div style={{ width:'80px', height:'80px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 20px', boxShadow:'0 8px 24px rgba(0,200,160,0.3)' }}>
                   <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
                 </div>
-                <div style={{ fontSize:'20px', fontWeight:'800', color:'#111827', marginBottom:'8px' }}>¡Solicitud enviada!</div>
+                <div style={{ fontSize:'20px', fontWeight:'800', color:'#111827', marginBottom:'8px' }}>?Solicitud enviada!</div>
                 <div style={{ fontSize:'13px', color:'#9CA3AF', marginBottom:'20px', lineHeight:'1.5', padding:'0 16px' }}>
-                  {svcData.action || 'La operaci?n se ha procesado correctamente'}
+                  {svcData.action || 'La operación se ha procesado correctamente'}
                 </div>
                 <div style={{ background:'#F0FDF9', borderRadius:'14px', padding:'16px', marginBottom:'24px', textAlign:'left', border:'1px solid #A7F3D0' }}>
                   <div style={{ fontSize:'11px', fontWeight:'700', color:'#065F46', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'10px' }}>Referencia</div>
@@ -8171,7 +8211,7 @@ const App: React.FC = () => {
                     </div>
                     <div style={{ flex:1, textAlign:'left' }}>
                       <div style={{ fontSize:'14px', fontWeight:'600', color:'#0d0d0d' }}>{l.label}</div>
-                      <div style={{ fontSize:'11px', color:'#9ca3af' }}>{l.sub} · {l.rate}</div>
+                      <div style={{ fontSize:'11px', color:'#9ca3af' }}>{l.sub} ? {l.rate}</div>
                     </div>
                     <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                   </button>
@@ -8568,29 +8608,29 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* ── MODAL CANALES ─────────────────────────────────────────────────── */}
+      {/* -- MODAL CANALES --------------------------------------------------- */}
       {showCanalesModal && <CanalesModal onClose={() => setShowCanalesModal(false)} userBalance={userBalance} onDebit={(n) => setUserBalance((p: number) => p - n)} />}
 
-      {/* ── MODAL BANCOS ──────────────────────────────────────────────────── */}
+      {/* -- MODAL BANCOS ---------------------------------------------------- */}
       {showBancosModal && <BancosModal onClose={() => { setShowBancosModal(false); setBancosInitScreen('home'); }} userBalance={userBalance} onDebit={(n: number) => setUserBalance((p: number) => p - n)} initScreen={bancosInitScreen} />}
 
-      {/* ── MODAL SEGUROS ─────────────────────────────────────────────────── */}
+      {/* -- MODAL SEGUROS --------------------------------------------------- */}
       {showSegurosModal && <SegurosModal onClose={() => setShowSegurosModal(false)} userBalance={userBalance} onDebit={(n: number) => setUserBalance((p: number) => p - n)} />}
 
-      {/* ── MODAL FACTURAS ────────────────────────────────────────────────── */}
+      {/* -- MODAL FACTURAS -------------------------------------------------- */}
       {showFacturasModal && <FacturasModal onClose={() => setShowFacturasModal(false)} userBalance={userBalance} onDebit={(n: number) => setUserBalance((p: number) => p - n)} />}
 
-      {/* ── CENTRO DE ACTIVIDAD ───────────────────────────────────────────── */}
+      {/* -- CENTRO DE ACTIVIDAD --------------------------------------------- */}
       {showActividadModal && <ActividadModal onClose={() => setShowActividadModal(false)} userBalance={userBalance} transactionHistory={transactionHistory} />}
 
-      {/* ── M?DULO SALUD ──────────────────────────────────────────────────── */}
+      {/* -- MÓDULO SALUD ---------------------------------------------------- */}
       {showSaludModal && <SaludModal onClose={() => { setShowSaludModal(false); setSaludInitTab('hospitales'); }} userBalance={userBalance} onDebit={(n: number) => setUserBalance((p: number) => p - n)} initTab={saludInitTab} />}
 
-      {/* ── MÓDULO SUPERMERCADO ───────────────────────────────────────────── */}
+      {/* -- MÓDULO SUPERMERCADO --------------------------------------------- */}
       {showSuperModal && <SupermercadosModal onClose={() => setShowSuperModal(false)} userBalance={userBalance} onDebit={(n: number) => setUserBalance((p: number) => p - n)} />}
 
 
-      {/* ── PERFIL DE CONTACTO ────────────────────────────────────────────── */}
+      {/* -- PERFIL DE CONTACTO ---------------------------------------------- */}
       {showContactProfile && (
         <ContactProfileModal
           contact={showContactProfile}
@@ -8612,14 +8652,14 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* ── MODAL RECARGA MONEDERO ────────────────────────────────────────── */}
+      {/* -- MODAL RECARGA MONEDERO ------------------------------------------ */}
       {showSalaryReloadModal && <RecargaMonederoModal onClose={() => setShowSalaryReloadModal(false)} />}
 
-      {/* ── MODAL RETIRO MONEDERO ─────────────────────────────────────────── */}
+      {/* -- MODAL RETIRO MONEDERO ------------------------------------------- */}
       {showCardWithdrawalModal && <RetiroMonederoModal onClose={() => setShowCardWithdrawalModal(false)} />}
 
 
-      {/* ── CÁMARA EN VIVO ────────────────────────────────────────────────── */}
+      {/* -- CÁMARA EN VIVO -------------------------------------------------- */}
       {showLiveCamera && (
         <CameraModal
           chatId={liveCameraChatId}
@@ -8633,7 +8673,7 @@ const App: React.FC = () => {
         />
       )}
 
-      {/* ── MENSAJES DESTACADOS ───────────────────────────────────────────── */}
+      {/* -- MENSAJES DESTACADOS --------------------------------------------- */}
       {showStarredModal && (() => {
         const starred = starredMessages[starredChatId] || [];
         const msgs = chatMessages[starredChatId] || [];
@@ -8644,26 +8684,26 @@ const App: React.FC = () => {
             <div style={{background:'#F7F8FA',borderRadius:'20px 20px 0 0',width:'100%',maxWidth:'420px',maxHeight:'88vh',display:'flex',flexDirection:'column',overflow:'hidden'}}>
               <div style={{display:'flex',justifyContent:'center',paddingTop:'10px',paddingBottom:'4px',flexShrink:0}}><div style={{width:'36px',height:'4px',borderRadius:'2px',background:'#D1D5DB'}}/></div>
               <div style={{padding:'4px 16px 10px',display:'flex',alignItems:'center',gap:'10px',flexShrink:0,background:'#fff',borderBottom:'1px solid #F0F2F5'}}>
-                <button onClick={()=>setShowStarredModal(false)} style={{background:'#EAECEF',border:'none',borderRadius:'50%',width:'30px',height:'30px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#6B7280',fontSize:'14px'}}>←</button>
+                <button onClick={()=>setShowStarredModal(false)} style={{background:'#EAECEF',border:'none',borderRadius:'50%',width:'30px',height:'30px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#6B7280',fontSize:'14px'}}>?</button>
                 <div style={{flex:1}}>
                   <div style={{fontSize:'15px',fontWeight:'700',color:'#111827'}}>Mensajes destacados</div>
-                  <div style={{fontSize:'11px',color:'#9CA3AF'}}>{(chatContact as any)?.title||(chatContact as any)?.name||'Chat'} · {starredMsgs.length} mensaje{starredMsgs.length!==1?'s':''}</div>
+                  <div style={{fontSize:'11px',color:'#9CA3AF'}}>{(chatContact as any)?.title||(chatContact as any)?.name||'Chat'} ? {starredMsgs.length} mensaje{starredMsgs.length!==1?'s':''}</div>
                 </div>
-                <button onClick={()=>setShowStarredModal(false)} style={{background:'#EAECEF',border:'none',borderRadius:'50%',width:'28px',height:'28px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#6B7280',fontSize:'12px'}}>✕</button>
+                <button onClick={()=>setShowStarredModal(false)} style={{background:'#EAECEF',border:'none',borderRadius:'50%',width:'28px',height:'28px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#6B7280',fontSize:'12px'}}>?</button>
               </div>
               <div style={{flex:1,overflowY:'auto',padding:'12px 16px 24px'}}>
                 {starredMsgs.length===0 ? (
                   <div style={{textAlign:'center',padding:'50px 0',color:'#9CA3AF'}}>
-                    <div style={{fontSize:'40px',marginBottom:'12px'}}>⭐</div>
+                    <div style={{fontSize:'40px',marginBottom:'12px'}}>?</div>
                     <div style={{fontSize:'14px',fontWeight:'600',color:'#374151',marginBottom:'6px'}}>Sin mensajes destacados</div>
-                    <div style={{fontSize:'12px'}}>Toca ★ en cualquier mensaje para destacarlo</div>
+                    <div style={{fontSize:'12px'}}>Toca ? en cualquier mensaje para destacarlo</div>
                   </div>
                 ) : starredMsgs.map(msg => (
                   <div key={msg.id} style={{background:'#fff',borderRadius:'12px',padding:'12px 14px',marginBottom:'8px',border:'1px solid #FEF3C7',boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
                     <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'6px'}}>
-                      <span style={{fontSize:'14px'}}>⭐</span>
-                      <span style={{fontSize:'11px',color:'#9CA3AF',fontWeight:'600'}}>{msg.from==='me'?'Tú':(chatContact as any)?.title||'Contacto'} · {msg.time}</span>
-                      <button onClick={()=>setStarredMessages(prev=>{const cur=prev[starredChatId]||[];return{...prev,[starredChatId]:cur.filter(x=>x!==msg.id)};})} style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',color:'#F59E0B',fontSize:'14px',padding:0}}>★</button>
+                      <span style={{fontSize:'14px'}}>?</span>
+                      <span style={{fontSize:'11px',color:'#9CA3AF',fontWeight:'600'}}>{msg.from==='me'?'T?':(chatContact as any)?.title||'Contacto'} ? {msg.time}</span>
+                      <button onClick={()=>setStarredMessages(prev=>{const cur=prev[starredChatId]||[];return{...prev,[starredChatId]:cur.filter(x=>x!==msg.id)};})} style={{marginLeft:'auto',background:'none',border:'none',cursor:'pointer',color:'#F59E0B',fontSize:'14px',padding:0}}>?</button>
                     </div>
                     <div style={{fontSize:'13px',color:'#111827',lineHeight:'1.4'}}>{msg.text}</div>
                   </div>
@@ -8674,7 +8714,7 @@ const App: React.FC = () => {
         );
       })()}
 
-      {/* ── EDITOR DE FOTO ────────────────────────────────────────────────── */}
+      {/* -- EDITOR DE FOTO -------------------------------------------------- */}
       {cameraPhoto && (
         <PhotoEditorModal
           photoUrl={cameraPhoto.url}
@@ -8683,7 +8723,7 @@ const App: React.FC = () => {
           onSend={(chatId, caption, editedUrl) => {
             const now = new Date();
             const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-            const text = caption ? `📷 ${caption}` : '📷 Foto';
+            const text = caption ? `?? ${caption}` : '?? Foto';
             const msgId = Date.now().toString();
             setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId]||[]), { id: msgId, from: 'me', text, time, status: 'pending' }] }));
             setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'delivered'} : m) })), 1000);
@@ -8699,4 +8739,8 @@ const App: React.FC = () => {
   );
 };
 
-export default AppWithAuth;
+
+
+export default App;
+
+
