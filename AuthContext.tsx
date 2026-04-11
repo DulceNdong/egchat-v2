@@ -68,15 +68,17 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const savedToken = localStorage.getItem('token') || sessionStorage.getItem('token');
       const savedUser = localStorage.getItem('user') || sessionStorage.getItem('user');
 
-      if (savedToken && savedUser) {
+      if (savedToken) {
         // Verificar que el token no esté expirado
         try {
           const payload = JSON.parse(atob(savedToken.split('.')[1]));
           const currentTime = Date.now() / 1000;
           
           if (payload.exp && payload.exp > currentTime) {
-            const userData = JSON.parse(savedUser);
-            setUser(userData);
+            if (savedUser) {
+              const userData = JSON.parse(savedUser);
+              setUser(userData);
+            }
             setToken(savedToken);
             return true;
           }
@@ -88,7 +90,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       console.warn('Error restaurando sesión:', error);
     }
     
-    clearSession();
+    // Solo limpiar cuando hay datos corruptos/expirados, no por ausencia de "user".
+    if (localStorage.getItem('token') || sessionStorage.getItem('token')) {
+      clearSession();
+    }
     return false;
   }, [clearSession]);
 

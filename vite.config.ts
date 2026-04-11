@@ -4,8 +4,9 @@ import tailwindcss from '@tailwindcss/vite';
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  base: './',  // rutas relativas para que funcione con file:// en Electron
   server: {
-    host: '0.0.0.0',   // accesible en toda la red local
+    host: '0.0.0.0',
     port: 3001,
     middlewareMode: false,
     hmr: { host: 'localhost' },

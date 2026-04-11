@@ -22,6 +22,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       enableRemoteModule: false,
+      partition: 'persist:egchat',
       webSecurity: false,
       webviewTag: true,
       preload: path.join(__dirname, 'preload.cjs'),
@@ -46,6 +47,15 @@ function createWindow() {
     return ['media','camera','microphone','audioCapture','videoCapture'].includes(permission);
   });
 
+  // Inyectar cabeceras CORS en todas las peticiones al backend
+  mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
+    const headers = { ...details.requestHeaders };
+    if (details.url.includes('egchat-api.onrender.com')) {
+      headers['Origin'] = 'https://egchat-app.vercel.app';
+    }
+    callback({ requestHeaders: headers });
+  });
+
   // Bloquear apertura de ventanas externas
   mainWindow.webContents.setWindowOpenHandler(({ url }) => {
     console.log('Blocked external window:', url);
@@ -59,9 +69,8 @@ function createWindow() {
     });
   });
 
-  const devUrl = `http://localhost:3001?t=${Date.now()}`;
+  const devUrl = `http://localhost:3001`;
   const prodUrl = `file://${path.join(__dirname, 'dist/index.html')}`;
-  const startUrl = isDev ? devUrl : prodUrl;
 
   const loadWithRetry = async (url, retries = 8) => {
     for (let i = 0; i < retries; i++) {
@@ -76,15 +85,33 @@ function createWindow() {
     }
   };
 
-  mainWindow.webContents.session.clearCache().then(() => {
-    loadWithRetry(startUrl);
-  });
+  // Detectar Vite en 3001 o 3002, si no usar dist
+  const loadApp = async () => {
+    const http = await import('http');
+    for (const port of [3001, 3002]) {
+      try {
+        await new Promise((resolve, reject) => {
+          const req = http.default.get(`http://localhost:${port}`, (res) => { res.destroy(); resolve(true); });
+          req.on('error', reject);
+          req.setTimeout(1500, () => { req.destroy(); reject(new Error('timeout')); });
+        });
+        console.log(`Dev server on port ${port}`);
+        await loadWithRetry(`http://localhost:${port}`);
+        return;
+      } catch {}
+    }
+    console.log('No dev server, loading dist');
+    await loadWithRetry(prodUrl);
+  };
+
+  loadApp();
 
   mainWindow.once('ready-to-show', () => {
     mainWindow.show();
     mainWindow.focus();
     mainWindow.center();
-    if (isDev) setTimeout(() => mainWindow.webContents.openDevTools(), 1000);
+    // Abrir DevTools para ver errores
+    mainWindow.webContents.openDevTools();
   });
 
   // Fallback: mostrar ventana aunque no dispare ready-to-show

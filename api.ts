@@ -1,13 +1,40 @@
-﻿// ══════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════
 // API CLIENT — Conecta todo el proyecto a VITE_API_URL
 // ══════════════════════════════════════════════════════════════════
 
-const BASE = (import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com';
+const BASE = (() => {
+  const url = ((import.meta as any).env?.VITE_API_URL || '').trim();
+  // Sin URL o relativa → usar backend de producción completo
+  if (!url || url.startsWith('/')) return 'https://egchat-api.onrender.com/api';
+  // Si ya termina en /api, usarla tal cual
+  if (url.endsWith('/api')) return url;
+  // Si termina en /, quitar la barra y añadir /api
+  return url.replace(/\/$/, '') + '/api';
+})();
 
 // ── Token JWT — usa la misma clave que el backend espera ──────────
-const getToken = () => localStorage.getItem('token') || '';
-const setToken = (t: string) => localStorage.setItem('token', t);
-const clearToken = () => localStorage.removeItem('token');
+const TOKEN_KEY = 'token';
+const TOKEN_BACKUP_KEY = 'egchat_token_backup';
+
+const getToken = () => {
+  const primary = localStorage.getItem(TOKEN_KEY) || '';
+  if (primary) return primary;
+  const backup = localStorage.getItem(TOKEN_BACKUP_KEY) || '';
+  if (backup) {
+    // Restaurar automáticamente sesión si el token principal desaparece tras actualización.
+    localStorage.setItem(TOKEN_KEY, backup);
+    return backup;
+  }
+  return '';
+};
+const setToken = (t: string) => {
+  localStorage.setItem(TOKEN_KEY, t);
+  localStorage.setItem(TOKEN_BACKUP_KEY, t);
+};
+const clearToken = () => {
+  localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(TOKEN_BACKUP_KEY);
+};
 
 // ── Headers con token ─────────────────────────────────────────────
 const getHeaders = (): Record<string, string> => {
@@ -24,7 +51,13 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     headers: { ...getHeaders(), ...(options.headers as Record<string,string> || {}) },
     ...options,
   });
-  if (res.status === 401) { clearToken(); throw new Error('Sesión expirada'); }
+  if (res.status === 401) {
+    const err = await res.json().catch(() => ({ message: 'No autorizado' }));
+    const message = err.message || 'No autorizado';
+    // No borrar sesión aquí para evitar rebotes por 401 transitorios.
+    // La invalidación real de sesión se decide en el flujo de auth/me.
+    throw new Error(message);
+  }
   if (!res.ok) {
     const err = await res.json().catch(() => ({ message: res.statusText }));
     throw new Error(err.message || `Error ${res.status}`);
@@ -42,17 +75,28 @@ const del  = <T>(path: string) => request<T>(path, { method:'DELETE' });
 // ══════════════════════════════════════════════════════════════════
 export const authAPI = {
   login: async (phone: string, password: string) => {
-    const res = await post<{token:string; user:any}>('/api/auth/login', { phone, password });
+    const res = await post<{token:string; user:any}>('/auth/login', { phone, password });
     if (res.token) setToken(res.token);
     return res;
   },
-  register: async (data: {full_name:string; phone:string; password:string}) => {
-    const res = await post<{token:string; user:any}>('/api/auth/register', data);
+  register: async (data: {full_name:string; phone:string; password:string; avatar_url?: string}) => {
+    const res = await post<{token:string; user:any}>('/auth/register', data);
     if (res.token) setToken(res.token);
     return res;
   },
-  logout: async () => { clearToken(); return post<void>('/api/auth/logout', {}); },
-  me: () => get<any>('/api/auth/me'),
+  logout: async () => {
+    try {
+      await post<void>('/auth/logout', {});
+    } catch {}
+    clearToken();
+  },
+  me: () => get<any>('/auth/me'),
+  updateProfile: (data: {full_name?: string; avatar_url?: string}) => put<any>('/auth/profile', data),
+  sendVerification: (phone: string, method: string = 'sms', platform?: string) => post<{sent:boolean; message?:string; code?:string}>('/auth/send-verification', { phone, method, platform }),
+  verifyCode: (phone: string, code: string, platform?: string) => post<{verified:boolean; message?:string}>('/auth/verify-code', { phone, code, platform }),
+  registerWindow: (data: {phone:string; full_name:string; verification_code:string; window_registration?: boolean}) => post<{token:string; user:any}>('/auth/register-window', data),
+  registerWeChat: (data: {phone:string; full_name:string; email:string; password:string; birthday:string; gender:string; region:string; security_question:string; security_answer:string; verification_code:string; platform:string}) => post<{token:string; user:any}>('/auth/register-wechat', data),
+  sendWhatsApp: (phone: string, message: string) => post<{success:boolean; message?:string}>('/auth/send-whatsapp', { phone, message }),
   getToken,
   setToken,
   clearToken,
@@ -63,12 +107,12 @@ export const authAPI = {
 // WALLET / MONEDERO
 // ══════════════════════════════════════════════════════════════════
 export const walletAPI = {
-  getBalance:      () => get<{balance:number}>('/api/wallet/balance'),
-  getTransactions: (page=1, limit=20) => get<{transactions:any[]; total:number}>(`/api/wallet/transactions?page=${page}&limit=${limit}`),
-  deposit:         (amount:number, method:string, reference:string) => post<{balance:number; transaction:any}>('/api/wallet/deposit', { amount, method, reference }),
-  withdraw:        (amount:number, method:string, destination:string) => post<{balance:number; transaction:any}>('/api/wallet/withdraw', { amount, method, destination }),
-  transfer:        (to:string, amount:number, concept?:string) => post<{balance:number; transaction:any}>('/api/wallet/transfer', { to, amount, concept }),
-  redeemCode:      (code:string) => post<{balance:number; amount:number; message:string}>('/api/wallet/recharge-code', { code }),
+  getBalance:      () => get<{balance:number}>('/wallet/balance'),
+  getTransactions: (page=1, limit=20) => get<{transactions:any[]; total:number}>(`/wallet/transactions?page=${page}&limit=${limit}`),
+  deposit:         (amount:number, method:string, reference:string) => post<{balance:number; transaction:any}>('/wallet/deposit', { amount, method, reference }),
+  withdraw:        (amount:number, method:string, destination:string) => post<{balance:number; transaction:any}>('/wallet/withdraw', { amount, method, destination }),
+  transfer:        (to:string, amount:number, concept?:string) => post<{balance:number; transaction:any}>('/wallet/transfer', { to, amount, concept }),
+  redeemCode:      (code:string) => post<{balance:number; amount:number; message:string}>('/wallet/recharge-code', { code }),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -76,11 +120,11 @@ export const walletAPI = {
 // ══════════════════════════════════════════════════════════════════
 export const chatAPI = {
   // Obtener todos los chats del usuario
-  getChats: () => get<any[]>('/api/chats'),
+  getChats: () => get<any[]>('/chats'),
   
   // Obtener mensajes de un chat específico
   getMessages: (chatId:string, page=1, limit=50) => 
-    get<any[]>(`/api/chats/${chatId}/messages?page=${page}&limit=${limit}`),
+    get<any[]>(`/chats/${chatId}/messages?page=${page}&limit=${limit}`),
   
   // Enviar mensaje
   sendMessage: (chatId:string, data: {
@@ -91,25 +135,25 @@ export const chatAPI = {
     file_type?: string;
     file_size?: number;
     thumbnail_url?: string;
-  }) => post<any>(`/api/chats/${chatId}/messages`, data),
+  }) => post<any>(`/chats/${chatId}/messages`, data),
   
   // Crear chat privado
-  createPrivate: (participant_id: string) => 
-    post<any>('/api/chats/private', { participant_id }),
+  createPrivate: (participant_id?: string, phone?: string) => 
+    post<any>('/chats/private', { participant_id, phone }),
   
   // Crear chat grupal
   createGroup: (name:string, participant_ids: string[], avatar_url?: string) => 
-    post<any>('/api/chats/group', { name, participant_ids, avatar_url }),
+    post<any>('/chats/group', { name, participant_ids, avatar_url }),
   
   // Marcar mensajes como leídos
   markAsRead: (chatId:string, message_id: string) => 
-    post<any>(`/api/chats/${chatId}/read`, { message_id }),
+    post<any>(`/chats/${chatId}/read`, { message_id }),
   
   // Subir archivo
   uploadFile: async (chatId:string, file:File) => {
     const fd = new FormData(); 
     fd.append('file', file);
-    const res = await fetch(`${BASE}/api/chats/${chatId}/upload`, { 
+    const res = await fetch(`${BASE}/chats/${chatId}/upload`, { 
       method:'POST', 
       body: fd,
       headers: { Authorization: `Bearer ${getToken()}` }
@@ -118,10 +162,10 @@ export const chatAPI = {
   },
   
   // Eliminar mensaje
-  deleteMessage: (messageId:string) => del<void>(`/api/messages/${messageId}`),
+  deleteMessage: (messageId:string) => del<void>(`/messages/${messageId}`),
   
   // Buscar usuarios para chat
-  searchUsers: (query:string) => get<any[]>(`/api/contacts/search?q=${encodeURIComponent(query)}`),
+  searchUsers: (query:string) => get<any[]>(`/contacts/search?q=${encodeURIComponent(query)}`),
   
   // Archivar chat
   archiveChat: (chatId:string) => put<void>(`/chats/${chatId}/archive`, {}),
@@ -134,11 +178,10 @@ export const chatAPI = {
 // CONTACTOS
 // ══════════════════════════════════════════════════════════════════
 export const contactsAPI = {
-  getAll:   () => get<any[]>('/api/contacts'),
-  add:      (phone:string, name?:string) => post<any>('/api/contacts', { phone, name }),
+  getAll:   () => get<any[]>('/contacts'),
+  add:      (contact_user_id?: string, phone?: string, name?: string) => post<any>('/contacts', { contact_user_id, phone, name }),
   remove:   (id:string) => del<void>(`/contacts/${id}`),
-  block:    (id:string) => put<void>(`/contacts/${id}/block`, {}),
-  unblock:  (id:string) => put<void>(`/contacts/${id}/unblock`, {}),
+  block:    (id:string) => post<any>(`/contacts/${id}/block`, {}),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -146,7 +189,7 @@ export const contactsAPI = {
 // ══════════════════════════════════════════════════════════════════
 export const liaAPI = {
   chat: (message:string, history?:{role:string;content:string}[]) =>
-    post<{reply:string; action?:string; data?:any}>('/api/lia/chat', { message, history }),
+    post<{reply:string; action?:string; data?:any}>('/lia/chat', { message, history }),
   analyzeFile: async (file:File) => {
     const fd = new FormData(); fd.append('file', file);
     const res = await fetch(`${BASE}/lia/analyze`, { method:'POST', body:fd });
@@ -164,16 +207,16 @@ export const liaAPI = {
 // ══════════════════════════════════════════════════════════════════
 export const serviciosAPI = {
   // Electricidad SEGESA
-  consultarFacturaElec: (contrato:string) => post<any>('/api/servicios/segesa/consultar', { contrato }),
-  pagarElectricidad:    (contrato:string, importe:number, metodo:string) => post<any>('/api/servicios/segesa/pagar', { contrato, importe, metodo }),
+  consultarFacturaElec: (contrato:string) => post<any>('/servicios/segesa/consultar', { contrato }),
+  pagarElectricidad:    (contrato:string, importe:number, metodo:string) => post<any>('/servicios/segesa/pagar', { contrato, importe, metodo }),
   // Agua SNGE
-  consultarFacturaAgua: (contrato:string) => post<any>('/api/servicios/snge/consultar', { contrato }),
-  pagarAgua:            (contrato:string, importe:number, metodo:string) => post<any>('/api/servicios/snge/pagar', { contrato, importe, metodo }),
+  consultarFacturaAgua: (contrato:string) => post<any>('/servicios/snge/consultar', { contrato }),
+  pagarAgua:            (contrato:string, importe:number, metodo:string) => post<any>('/servicios/snge/pagar', { contrato, importe, metodo }),
   // Impuestos DGI
-  consultarImpuesto:    (nif:string, tipo:string) => post<any>('/api/servicios/dgi/consultar', { nif, tipo }),
-  pagarImpuesto:        (nif:string, importe:number, referencia:string) => post<any>('/api/servicios/dgi/pagar', { nif, importe, referencia }),
+  consultarImpuesto:    (nif:string, tipo:string) => post<any>('/servicios/dgi/consultar', { nif, tipo }),
+  pagarImpuesto:        (nif:string, importe:number, referencia:string) => post<any>('/servicios/dgi/pagar', { nif, importe, referencia }),
   // Correos
-  enviarPaquete:        (data:any) => post<any>('/api/servicios/correos/enviar', data),
+  enviarPaquete:        (data:any) => post<any>('/servicios/correos/enviar', data),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -182,8 +225,8 @@ export const serviciosAPI = {
 export const superAPI = {
   getSupermarkets: (city?:string) => get<any[]>(`/supermarkets${city?`?city=${city}`:''}`),
   getProducts:     (smId:string, catId?:string) => get<any[]>(`/supermarkets/${smId}/products${catId?`?cat=${catId}`:''}`),
-  createOrder:     (order:any) => post<{orderId:string; status:string}>('/api/supermarkets/orders', order),
-  getOrders:       () => get<any[]>('/api/supermarkets/orders'),
+  createOrder:     (order:any) => post<{orderId:string; status:string}>('/supermarkets/orders', order),
+  getOrders:       () => get<any[]>('/supermarkets/orders'),
   getOrderById:    (id:string) => get<any>(`/supermarkets/orders/${id}`),
 };
 
@@ -193,28 +236,35 @@ export const superAPI = {
 export const saludAPI = {
   getHospitals:   (city?:string) => get<any[]>(`/salud/hospitales${city?`?city=${city}`:''}`),
   getPharmacies:  (city?:string) => get<any[]>(`/salud/farmacias${city?`?city=${city}`:''}`),
-  requestCita:    (data:any) => post<{citaId:string}>('/api/salud/citas', data),
+  requestCita:    (data:any) => post<{citaId:string}>('/salud/citas', data),
   getMedicamentos:(query:string) => get<any[]>(`/salud/medicamentos?q=${encodeURIComponent(query)}`),
-  orderMeds:      (order:any) => post<{orderId:string}>('/api/salud/medicamentos/pedido', order),
+  orderMeds:      (order:any) => post<{orderId:string}>('/salud/medicamentos/pedido', order),
 };
 
 // ══════════════════════════════════════════════════════════════════
 // TAXI
 // ══════════════════════════════════════════════════════════════════
 export const taxiAPI = {
-  requestRide:    (origin:any, dest:any, type:string) => post<{rideId:string; driver:any; eta:number}>('/api/taxi/request', { origin, dest, type }),
+  requestRide:    (origin:any, dest:any, type:string) => post<{rideId:string; driver:any; eta:number}>('/taxi/request', { origin, dest, type }),
   cancelRide:     (rideId:string) => post<void>(`/taxi/${rideId}/cancel`, {}),
   getRideStatus:  (rideId:string) => get<any>(`/taxi/${rideId}/status`),
   rateDriver:     (rideId:string, rating:number, comment?:string) => post<void>(`/taxi/${rideId}/rate`, { rating, comment }),
+  getRides:       () => get<any[]>('/taxi/rides'),
+};
+
+export const cemacAPI = {
+  getRates:       () => get<any>('/cemac/rates'),
+  getTransfers:   () => get<any[]>('/cemac/transfers'),
+  createTransfer: (data: any) => post<any>('/cemac/transfers', data),
 };
 
 // ══════════════════════════════════════════════════════════════════
 // SEGUROS
 // ══════════════════════════════════════════════════════════════════
 export const segurosAPI = {
-  getCompanies:   () => get<any[]>('/api/seguros/companias'),
+  getCompanies:   () => get<any[]>('/seguros/companias'),
   getProducts:    (companyId:string) => get<any[]>(`/seguros/companias/${companyId}/productos`),
-  applyInsurance: (data:any) => post<{solicitudId:string}>('/api/seguros/solicitar', data),
+  applyInsurance: (data:any) => post<{solicitudId:string}>('/seguros/solicitar', data),
   uploadDoc:      async (solicitudId:string, file:File, tipo:string) => {
     const fd = new FormData(); fd.append('file', file); fd.append('tipo', tipo);
     const res = await fetch(`${BASE}/seguros/solicitudes/${solicitudId}/documentos`, { method:'POST', body:fd });
@@ -234,12 +284,12 @@ export const noticiasAPI = {
 // PERFIL DE USUARIO
 // ══════════════════════════════════════════════════════════════════
 export const userAPI = {
-  getProfile:     () => get<any>('/api/user/profile'),
-  updateProfile:  (data:any) => put<any>('/api/user/profile', data),
-  changePassword: (oldPassword:string, newPassword:string) => post<void>('/api/user/change-password', { oldPassword, newPassword }),
+  getProfile:     () => get<any>('/user/profile'),
+  updateProfile:  (data:any) => put<any>('/user/profile', data),
+  changePassword: (oldPassword:string, newPassword:string) => post<void>('/user/change-password', { oldPassword, newPassword }),
   uploadAvatar:   async (file:File) => {
     const fd = new FormData(); fd.append('avatar', file);
-    const res = await fetch(`${BASE}/api/user/avatar`, {
+    const res = await fetch(`${BASE}/user/avatar`, {
       method:'POST', body:fd,
       headers: getToken() ? { Authorization:`Bearer ${getToken()}` } : {}
     });
@@ -260,6 +310,7 @@ export default {
   super:    superAPI,
   salud:    saludAPI,
   taxi:     taxiAPI,
+  cemac:    cemacAPI,
   seguros:  segurosAPI,
   noticias: noticiasAPI,
   user:     userAPI,

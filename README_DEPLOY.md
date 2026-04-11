@@ -36,6 +36,7 @@ CREATE TABLE users (
   phone VARCHAR(20) UNIQUE NOT NULL,
   full_name VARCHAR(100) NOT NULL,
   password VARCHAR(255) NOT NULL,
+  app_version VARCHAR(20) DEFAULT '2.5.0',
   created_at TIMESTAMP DEFAULT NOW(),
   last_login TIMESTAMP
 );

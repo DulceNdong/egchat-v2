@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>EGCHAT - Configuración de Red</title>
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: linear-gradient(135deg, rgba(16, 185, 129, 0.85) 0%, rgba(59, 130, 246, 0.85) 50%, rgba(139, 92, 246, 0.85) 100%);
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+      }
+      .container {
+        text-align: center;
+        padding: 40px;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(40px);
+        border-radius: 24px;
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        max-width: 500px;
+      }
+      .logo {
+        width: 80px;
+        height: 80px;
+        background: rgba(255, 255, 255, 0.2);
+        border-radius: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 24px;
+        animation: spin 2s linear infinite;
+      }
+      @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+      }
+      h1 {
+        font-size: 24px;
+        font-weight: 700;
+        margin-bottom: 16px;
+        text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+      }
+      .ip-info {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        text-align: left;
+      }
+      .ip-item {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 14px;
+      }
+      .ip-label {
+        opacity: 0.8;
+      }
+      .ip-value {
+        font-weight: 600;
+        color: #10b981;
+      }
+      .buttons {
+        display: flex;
+        gap: 12px;
+        margin-top: 24px;
+      }
+      .btn {
+        flex: 1;
+        padding: 12px 20px;
+        border: none;
+        border-radius: 12px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.3s;
+        text-decoration: none;
+        display: inline-block;
+        text-align: center;
+      }
+      .btn-primary {
+        background: #25d366;
+        color: white;
+      }
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.2);
+        color: white;
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+      }
+      .instructions {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 12px;
+        padding: 20px;
+        margin: 20px 0;
+        font-size: 14px;
+        line-height: 1.6;
+      }
+      .instructions h3 {
+        margin-top: 0;
+        margin-bottom: 12px;
+        color: #10b981;
+      }
+      .instructions ol {
+        margin: 0;
+        padding-left: 20px;
+      }
+      .instructions li {
+        margin-bottom: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="logo">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          <path d="M17 8v2a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5"/>
+          <circle cx="9" cy="13" r="2"/>
+          <circle cx="15" cy="13" r="2"/>
+        </svg>
+      </div>
+      <h1>EGCHAT v2.0.0 - Configuración de Red</h1>
+      
+      <div class="ip-info">
+        <h3 style="margin-top: 0; margin-bottom: 16px;">Direcciones IP del Servidor</h3>
+        <div class="ip-item">
+          <span class="ip-label">Wi-Fi (Principal):</span>
+          <span class="ip-value">192.168.21.36:3002</span>
+        </div>
+        <div class="ip-item">
+          <span class="ip-label">Ethernet Virtual:</span>
+          <span class="ip-value">172.24.80.1:3002</span>
+        </div>
+        <div class="ip-item">
+          <span class="ip-label">WSL Virtual:</span>
+          <span class="ip-value">172.25.80.1:3002</span>
+        </div>
+        <div class="ip-item">
+          <span class="ip-label">Localhost:</span>
+          <span class="ip-value">localhost:3002</span>
+        </div>
+      </div>
+
+      <div class="instructions">
+        <h3>Para acceder desde otros dispositivos:</h3>
+        <ol>
+          <li>Asegúrate que el servidor EGCHAT esté corriendo en el puerto 3002</li>
+          <li>Conecta los dispositivos a la misma red Wi-Fi</li>
+          <li>Usa la dirección IP: <strong>192.168.21.36:3002</strong></li>
+          <li>Si no funciona, prueba con las otras direcciones IP</li>
+          <li>Para acceso externo, configura el firewall del servidor</li>
+        </ol>
+      </div>
+
+      <div class="buttons">
+        <a href="http://192.168.21.36:3002" class="btn btn-primary" onclick="tryConnection(this.href); return false;">
+          Conectar a 192.168.21.36:3002
+        </a>
+        <a href="http://localhost:3002" class="btn btn-secondary" onclick="tryConnection(this.href); return false;">
+          Conectar a Localhost
+        </a>
+      </div>
+
+      <div style="margin-top: 20px; font-size: 12px; opacity: 0.7;">
+        <p>Si ningún enlace funciona, verifica que:</p>
+        <ul style="text-align: left; margin: 8px 0;">
+          <li>El servidor esté corriendo (npm run dev)</li>
+          <li>El firewall permita conexiones al puerto 3002</li>
+          <li>Los dispositivos estén en la misma red</li>
+        </ul>
+      </div>
+    </div>
+
+    <script>
+      function tryConnection(url) {
+        const statusDiv = document.createElement('div');
+        statusDiv.style.cssText = `
+          position: fixed;
+          top: 20px;
+          right: 20px;
+          background: rgba(16, 185, 129, 0.9);
+          color: white;
+          padding: 12px 20px;
+          border-radius: 8px;
+          font-size: 14px;
+          z-index: 1000;
+        `;
+        statusDiv.textContent = `Intentando conectar con ${url}...`;
+        document.body.appendChild(statusDiv);
+
+        // Intentar conexión
+        setTimeout(() => {
+          window.location.href = url;
+        }, 1000);
+
+        // Timeout por si no funciona
+        setTimeout(() => {
+          if (document.body.contains(statusDiv)) {
+            statusDiv.remove();
+            alert('No se pudo conectar. Verifica que el servidor esté corriendo en el puerto 3002');
+          }
+        }, 5000);
+      }
+
+      // Detectar automáticamente la mejor IP
+      window.addEventListener('load', function() {
+        const userIP = '192.168.21.36'; // IP principal detectada
+        
+        // Mostrar instrucción específica
+        const instructionDiv = document.createElement('div');
+        instructionDiv.style.cssText = `
+          background: rgba(37, 211, 102, 0.2);
+          border: 1px solid rgba(37, 211, 102, 0.5);
+          border-radius: 8px;
+          padding: 12px;
+          margin: 16px 0;
+          font-size: 13px;
+        `;
+        instructionDiv.innerHTML = `
+          <strong>IP del servidor detectada:</strong> ${userIP}<br>
+          <strong>URL para otros dispositivos:</strong> http://${userIP}:3002
+        `;
+        
+        const container = document.querySelector('.container');
+        const ipInfo = document.querySelector('.ip-info');
+        container.insertBefore(instructionDiv, ipInfo);
+      });
+    </script>
+  </body>
+</html>

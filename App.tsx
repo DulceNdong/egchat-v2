@@ -46,8 +46,6 @@ const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('token'));
   // -- Mensajeria real -------------------------------------------
   const [realChats, setRealChats] = useState<any[]>([]);
-  const [showNewChatModal, setShowNewChatModal] = useState(false);
-  const [newChatPhone, setNewChatPhone] = useState('');
   const [newChatSearching, setNewChatSearching] = useState(false);
   const currentUserId = useRef<string>('');
   const pollingRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -122,6 +120,9 @@ const App: React.FC = () => {
   const [currentChatInput, setCurrentChatInput] = useState<string>('');
   const [showChatEmojis, setShowChatEmojis] = useState<boolean>(false);
   const [showChatAttach, setShowChatAttach] = useState<boolean>(false);
+  const [showNewChatModal, setShowNewChatModal] = useState<boolean>(false);
+  const [newChatPhone, setNewChatPhone] = useState<string>('');
+  const [newChatLoading, setNewChatLoading] = useState<boolean>(false);
   const [chatEmojiTab, setChatEmojiTab] = useState<'system'|'custom'>('system');
   const [chatEmojiCategory, setChatEmojiCategory] = useState<string>('recientes');
   const [emojiSearch, setEmojiSearch] = useState<string>('');
@@ -331,7 +332,7 @@ const App: React.FC = () => {
   ]);
 
   // Gestion de Contactos
-  const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; avatar: string; status: 'online' | 'offline' | 'away'; addedDate: string }>>([
+  const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; avatar: string; avatarUrl?: string; status: 'online' | 'offline' | 'away'; addedDate: string }>>([
     { id: '1', name: 'Juan Pérez', phone: '+240 222 111111', avatar: 'JP', status: 'online', addedDate: '15/03/2026' },
     { id: '2', name: 'Maria Garcia', phone: '+240 222 222222', avatar: 'MG', status: 'online', addedDate: '14/03/2026' },
     { id: '3', name: 'Carlos López', phone: '+240 222 333333', avatar: 'CL', status: 'away', addedDate: '13/03/2026' },
@@ -345,7 +346,7 @@ const App: React.FC = () => {
   const [qrScanResult, setQrScanResult] = useState<string>('');
 
   // Gestion de Grupos
-  const [allGroups, setAllGroups] = useState<Array<{ id: string; name: string; description: string; members: number; avatar: string; createdDate: string; lastMessage: string; unread: number }>>([
+  const [allGroups, setAllGroups] = useState<Array<{ id: string; name: string; description: string; members: number; avatar: string; avatarUrl?: string; createdDate: string; lastMessage: string; unread: number }>>([
     { id: '1', name: 'Familia',  description: 'Grupo familiar',         members: 5,  avatar: 'family',   createdDate: '15/03/2026', lastMessage: 'Nos vemos el domingo',      unread: 2 },
     { id: '2', name: 'Trabajo',  description: 'Equipo de desarrollo',   members: 8,  avatar: 'work',     createdDate: '10/03/2026', lastMessage: 'Proyecto completado',        unread: 0 },
     { id: '3', name: 'Amigos',   description: 'Grupo de amigos',        members: 12, avatar: 'friends',  createdDate: '05/03/2026', lastMessage: 'Fiesta el viernes',          unread: 5 },
@@ -2676,7 +2677,16 @@ const App: React.FC = () => {
             </div>
 
             {/* Cerrar sesión */}
-            <button style={{ width: '100%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '11px', color: '#ef4444', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+            <button onClick={() => {
+              if(window.confirm('¿Cerrar sesión?')) {
+                authAPI.logout().catch(()=>{});
+                localStorage.removeItem('token');
+                localStorage.removeItem('egchat_token_backup');
+                setShowProfileView(false);
+                setIsAuthenticated(false);
+                setCurrentView('home');
+              }
+            }} style={{ width: '100%', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', padding: '11px', color: '#ef4444', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
               <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
               Cerrar Sesión
             </button>
@@ -2719,12 +2729,20 @@ const App: React.FC = () => {
             else if (item.id==='nuevo-contacto') { setShowAddContact(true); }
             else if (item.id==='crear-grupo') { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
             else if (item.id==='contactos') { setShowContactsModal(true); }
-            else if (item.id==='mensajes-arch') { /* archivados */ }
+            else if (item.id==='mensajes-arch') { setCurrentView('mensajeria'); setMessageFilter('all'); }
             else if (item.id==='notificaciones') { setShowNotifications(true); }
             else if (item.id==='privacidad') { setCurrentView('ajustes'); setCurrentSettingsTab('perfil'); }
             else if (item.id==='ajustes') { setCurrentView('ajustes'); }
             else if (item.id==='ayuda') { setCurrentView('ajustes'); setCurrentSettingsTab('ayuda'); }
-            else if (item.id==='salir') { if(window.confirm('¿Cerrar sesión?')) alert('Sesión cerrada'); }
+            else if (item.id==='salir') {
+              if(window.confirm('¿Cerrar sesión?')) {
+                authAPI.logout().catch(()=>{});
+                localStorage.removeItem('token');
+                localStorage.removeItem('egchat_token_backup');
+                setIsAuthenticated(false);
+                setCurrentView('home');
+              }
+            }
             setShowMenu(false);
           }}
             style={{ width:'100%', padding:'10px 14px', background:'none', border:'none', borderBottom: i<menuItems.length-1?'1px solid rgba(0,0,0,0.05)':'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px', textAlign:'left', outline:'none' }}
@@ -3509,16 +3527,16 @@ const App: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '26px',
-              height: '26px',
+              width: '24px',
+              height: '24px',
               color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.8)',
               transition: 'all 0.15s ease',
-              transform: currentView === item.id ? 'scale(1.1)' : 'scale(1)',
+              transform: currentView === item.id ? 'scale(1.15)' : 'scale(1)',
             }}>
               {renderIcon(item.icon, 24)}
             </div>
             <span style={{
-              fontSize: '10px',
+              fontSize: '12px',
               fontWeight: currentView === item.id ? '700' : '500',
               textAlign: 'center',
               color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.75)',
@@ -3747,34 +3765,32 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      {/* Accesos rpidos  4 nuevas apps */}
+      {/* Accesos rápidos — 4 apps */}
       <div style={{ marginTop: '12px' }}>
         <div style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
           {[
-            { id: 'estados',  label: 'Estados',           color: '#7c3aed', icon: renderIcon('estados',  24) },
-            { id: 'apuestas', label: 'Juegos y Apuestas',  color: '#b45309', icon: renderIcon('apuestas', 24) },
-            { id: 'cemac',    label: 'CEMAC',              color: '#065f46', icon: renderIcon('cemac',    24) },
-            { id: 'mitaxi',   label: 'MiTaxi',             color: '#92400e', icon: renderIcon('mitaxi',   24) },
+            { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  28) },
+            { id: 'apuestas', label: 'Juegos',     color: '#b45309', icon: renderIcon('apuestas', 28) },
+            { id: 'cemac',    label: 'CEMAC',      color: '#065f46', icon: renderIcon('cemac',    28) },
+            { id: 'mitaxi',   label: 'MiTaxi',     color: '#92400e', icon: renderIcon('mitaxi',   28) },
           ].map(item => (
             <button
               key={item.id}
               onClick={() => { setPreviousView(currentView); setCurrentView(item.id); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '4px 0' }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '4px 0', transition: 'transform 0.15s ease' }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.08)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <div style={{
                 width: '56px', height: '56px', borderRadius: '16px',
                 background: 'transparent',
-                border: `1.5px solid ${item.color}40`,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: item.color,
-                backdropFilter: 'blur(8px)',
-                WebkitBackdropFilter: 'blur(8px)',
-                boxShadow: `0 2px 8px ${item.color}20`
               }}>
                 {item.icon}
               </div>
-              <span style={{ fontSize: '10px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '60px' }}>{item.label}</span>
+              <span style={{ fontSize: '12px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '64px' }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -3789,16 +3805,17 @@ const App: React.FC = () => {
       <button
         onClick={onClick}
         className="svc-btn"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 4px 8px' }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.06)'; }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 6px 8px', transition: 'transform 0.15s ease' }}
+        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; }}
         onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}
-        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.94)'; }}
-        onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-3px) scale(1.06)'; }}
+        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.93)'; }}
+        onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; }}
       >
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
-          {renderIcon(icon, 22)}
+        {/* Contenedor icono estilo WhatsApp: sin fondo, icono 28px */}
+        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+          {renderIcon(icon, 28)}
         </div>
-        <span style={{ fontSize: '11px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '58px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+        <span style={{ fontSize: '12px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '62px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
       </button>
     );
 
@@ -3807,7 +3824,8 @@ const App: React.FC = () => {
         <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #F3F4F6' }}>
           <span style={{ fontSize: '12px', fontWeight: '600', color: '#9CA3AF' }}>{title}</span>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: '0', padding: '6px 4px 8px' }}>
+        {/* 4 columnas como WhatsApp */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0', padding: '6px 4px 8px' }}>
           {children}
         </div>
       </div>
@@ -3897,18 +3915,31 @@ const App: React.FC = () => {
             { id: '3', from: 'them' as const, text: 'Muy bien gracias ?Quedamos esta semana?', time: '10:19', status: 'read' as const },
           ];
 
-          const sendChatMessage = () => {
+          const sendChatMessage = async () => {
             if (!currentChatInput.trim()) return;
+            const messageText = currentChatInput.trim();
             const now = new Date();
-            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-            const newMsg = { id: Date.now().toString(), from: 'me' as const, text: currentChatInput.trim(), time, status: 'pending' as const };
+            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`; 
+            const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time, status: 'pending' as const };
+            
             setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), newMsg] }));
             setCurrentChatInput('');
             setShowChatEmojis(false);
-            // pending → delivered después de 1s, ? read después de 3s
-            const msgId = newMsg.id;
-            setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'delivered'} : m) })), 1000);
-            setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'read'} : m) })), 3000);
+            
+            // Si es un chat real (UUID), enviar al backend
+            if (chatId && chatId.includes('-') && chatId.length > 20) {
+              try {
+                await chatAPI.sendMessage(chatId, { text: messageText, type: 'text' });
+                setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'delivered'} : m) }));
+                setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'read'} : m) })), 2000);
+              } catch {
+                setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'pending'} : m) }));
+              }
+            } else {
+              // Chat demo — simular entrega
+              setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'delivered'} : m) })), 1000);
+              setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'read'} : m) })), 3000);
+            }
           };
 
           return (
@@ -4355,36 +4386,57 @@ const App: React.FC = () => {
           }}>
             {/* Header - Ultra minimalista */}
             <div style={{ marginBottom: '8px', flexShrink: 0 }}>
-              {/* Barra de basqueda */}
-              <div style={{
-                position: 'relative',
-                marginBottom: '6px'
-              }}>
-                <input
-                  type="text"
-                  placeholder="Buscar..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
+              {/* Barra de búsqueda + botón nuevo chat */}
+              <div style={{ display: 'flex', gap: '8px', marginBottom: '6px', alignItems: 'center' }}>
+                <div style={{ position: 'relative', flex: 1 }}>
+                  <input
+                    type="text"
+                    placeholder="Buscar..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    style={{
+                      width: '100%',
+                      padding: '6px 12px 6px 32px',
+                      background: 'rgba(255,255,255,0.85)',
+                      border: 'none',
+                      borderRadius: '8px',
+                      color: '#0d0d0d',
+                      fontSize: '12px',
+                      outline: 'none'
+                    }}
+                  />
+                  <div style={{
+                    position: 'absolute',
+                    left: '10px',
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    color: '#9ca3af'
+                  }}>
+                    {renderIcon('search', 14)}
+                  </div>
+                </div>
+                <button
+                  onClick={() => setShowNewChatModal(true)}
                   style={{
-                    width: '100%',
-                    padding: '6px 12px 6px 32px',
-                    background: 'rgba(255,255,255,0.85)',
+                    background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
                     border: 'none',
                     borderRadius: '8px',
-                    color: '#0d0d0d',
-                    fontSize: '12px',
-                    outline: 'none'
+                    width: '36px',
+                    height: '36px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    outline: 'none',
+                    color: '#fff',
+                    flexShrink: 0
                   }}
-                />
-                <div style={{
-                  position: 'absolute',
-                  left: '10px',
-                  top: '50%',
-                  transform: 'translateY(-50%)',
-                  color: '#9ca3af'
-                }}>
-                  {renderIcon('search', 14)}
-                </div>
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="12" y1="5" x2="12" y2="19"/>
+                    <line x1="5" y1="12" x2="19" y2="12"/>
+                  </svg>
+                </button>
               </div>
 
               {/* Seccian: Contactos Favoritos - COLAPSABLE */}
@@ -4706,352 +4758,70 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Lista de conversaciones - Ultra minimalista */}
+            {/* Lista de conversaciones — datos reales del backend */}
             <div
               className="scroll-container"
-              style={{
-                flex: 1,
-                overflowY: 'scroll',
-                overflowX: 'hidden',
-                WebkitOverflowScrolling: 'touch' as any,
-                paddingBottom: '90px'
-              }}
+              style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: '90px' }}
             >
-              {/* Seccian: Conversaciones Individuales */}
-              {(messageFilter === 'all' || messageFilter === 'individual') && (
-                <div style={{ marginBottom: '6px' }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    marginBottom: '5px',
-                    padding: '0 2px'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '11px', 
-                      fontWeight: '600', 
-                      color: '#6b7280',
-                      margin: 0
-                    }}>
-                      INDIVIDUALES
-                    </h3>
-                    <div style={{
-                      flex: 1,
-                      height: '0.5px',
-                      background: 'rgba(0,0,0,0.12)'
-                    }} />
-                  </div>
-
-                {[
-                  {
-                    id: 1,
-                    type: 'individual',
-                    category: 'money',
-                    title: 'Juan Pérez',
-                    subtitle: 'Te solicita 25.000 XAF para el proyecto',
-                    time: '16:45',
-                    priority: 'high',
-                    actions: ['Pagar', 'Llamar', 'Video'],
-                    icon: 'contactos',
-                    unread: 1,
-                    status: 'online'
-                  },
-                  {
-                    id: 2,
-                    type: 'individual',
-                    category: 'personal',
-                    title: 'María González',
-                    subtitle: 'Gracias por la transferencia ',
-                    time: '15:20',
-                    priority: 'low',
-                    actions: ['Responder', 'Llamar', 'Video'],
-                    icon: 'contactos',
-                    status: 'away'
-                  },
-                  {
-                    id: 3,
-                    type: 'individual',
-                    category: 'business',
-                    title: 'Carlos Mendoza',
-                    subtitle: 'aPodemos reunirnos maaana?',
-                    time: '14:30',
-                    priority: 'medium',
-                    actions: ['Responder', 'Llamar', 'Video'],
-                    icon: 'contactos',
-                    unread: 2,
-                    status: 'offline'
-                  }
-                ].filter(chat => {
-                  if (messageFilter === 'all') return true;
-                  if (messageFilter === 'individual') return chat.type === 'individual';
+              {/* Chats reales del backend */}
+              {realChats.length > 0 && realChats
+                .filter(chat => {
                   if (messageFilter === 'group') return chat.type === 'group';
-                  if (messageFilter === 'money') return chat.category === 'money';
-                  return false;
-                }).filter(chat => {
-                  if (searchQuery.trim() === '') return true;
-                  return chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         chat.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
-                }).map((chat) => (
-                  <div key={chat.id} 
-                    onClick={() => {
-                      setSelectedChat({...chat, initials: chat.title.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase(), color: '#00b4e6'});
-                    }}
-                    style={{
-                      background: '#FFFFFF',
-                      borderRadius: '8px',
-                      padding: '10px',
-                      marginBottom: '6px',
-                      border: '1px solid rgba(255,255,255,0.5)',
-                      position: 'relative',
-                      overflow: 'hidden',
-                      cursor: 'pointer',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.96)';
-                      e.currentTarget.style.borderColor = 'rgba(0,180,230,0.3)';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'rgba(255,255,255,0.88)';
-                      e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)';
-                    }}
-                  >
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                        <div style={{
-                          width: '40px',
-                          height: '40px',
-                          borderRadius: '50%',
-                          background: 'rgba(59, 130, 246, 0.2)',
-                          border: '1.5px solid rgba(59, 130, 246, 0.5)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          color: '#00b4e6',
-                          flexShrink: 0
-                        }}>
-                          {renderIcon(chat.icon, 18)}
-                        </div>
-                        <div style={{ minWidth: 0, flex: 1 }}>
-                          <h4 style={{ 
-                            fontSize: '12px', 
-                            fontWeight: '600', 
-                            color: '#0d0d0d', 
-                            marginBottom: '2px',
-                            margin: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {chat.title}
-                          </h4>
-                          <p style={{ 
-                            fontSize: '10px', 
-                            color: '#6b7280', 
-                            lineHeight: '1.2',
-                            margin: 0,
-                            overflow: 'hidden',
-                            textOverflow: 'ellipsis',
-                            whiteSpace: 'nowrap'
-                          }}>
-                            {chat.subtitle}
-                          </p>
-                        </div>
+                  if (messageFilter === 'individual') return chat.type !== 'group';
+                  return true;
+                })
+                .filter(chat => {
+                  if (!searchQuery.trim()) return true;
+                  const name = (chat.name || chat.title || '').toLowerCase();
+                  const last = (chat.last_message?.text || chat.subtitle || '').toLowerCase();
+                  return name.includes(searchQuery.toLowerCase()) || last.includes(searchQuery.toLowerCase());
+                })
+                .map((chat: any) => {
+                  const name = chat.name || chat.title || 'Chat';
+                  const initials = name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
+                  const lastMsg = chat.last_message?.text || chat.subtitle || '';
+                  const time = chat.last_message?.created_at
+                    ? new Date(chat.last_message.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
+                    : '';
+                  const isGroup = chat.type === 'group';
+                  return (
+                    <div key={chat.id}
+                      onClick={() => setSelectedChat({
+                        id: chat.id, type: chat.type||'individual',
+                        title: name, subtitle: lastMsg, time,
+                        status: 'online', initials, color: isGroup ? '#a855f7' : '#00c8a0',
+                        avatarUrl: chat.avatar_url || ''
+                      })}
+                      style={{ background:'#fff', borderRadius:'8px', padding:'12px 10px', marginBottom:'6px', border:'1px solid #F0F2F5', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px' }}
+                      onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
+                      onMouseLeave={e=>{e.currentTarget.style.background='#fff';}}
+                    >
+                      <div style={{ width:'50px', height:'50px', borderRadius:'50%', background: isGroup ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'700', color:'#fff', flexShrink:0, overflow:'hidden' }}>
+                        {chat.avatar_url ? <img src={chat.avatar_url} alt={name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span>{initials}</span>}
                       </div>
-                      <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginLeft: '8px' }}>
-                        <span style={{ fontSize: '9px', color: '#6b7280' }}>
-                          {chat.time}
-                        </span>
-                        {chat.unread && chat.unread > 0 && (
-                          <div style={{
-                            background: '#ef4444',
-                            color: '#0d0d0d',
-                            borderRadius: '50%',
-                            width: '20px',
-                            height: '20px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            fontSize: '9px',
-                            fontWeight: '700'
-                          }}>
-                            {chat.unread}
+                      <div style={{ flex:1, minWidth:0 }}>
+                        <div style={{ fontSize:'15px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
+                        <div style={{ fontSize:'13px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:'2px' }}>{lastMsg || 'Sin mensajes'}</div>
+                      </div>
+                      <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', flexShrink:0 }}>
+                        {time && <span style={{ fontSize:'11px', color:'#9ca3af' }}>{time}</span>}
+                        {(chat.unread_count||0) > 0 && (
+                          <div style={{ background:'#00c8a0', color:'#fff', borderRadius:'50%', width:'20px', height:'20px', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'10px', fontWeight:'700' }}>
+                            {chat.unread_count}
                           </div>
                         )}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
-                      <div style={{ 
-                        fontSize: '8px', 
-                        color: chat.status === 'online' ? '#00c8a0' : chat.status === 'away' ? '#f59e0b' : '#9ca3af',
-                        fontWeight: '600'
-                      }}>
-                        {chat.status === 'online' ? 'En línea' : chat.status === 'away' ? 'Ausente' : 'Desconectado'}
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                </div>
-              )}
+                  );
+                })
+              }
 
-              {/* Seccian: Conversaciones de Grupos */}
-              {(messageFilter === 'all' || messageFilter === 'group') && (
-                <div style={{ marginBottom: '6px' }}>
-                  <div style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    marginBottom: '5px',
-                    padding: '0 2px'
-                  }}>
-                    <h3 style={{ 
-                      fontSize: '11px', 
-                      fontWeight: '600', 
-                      color: '#6b7280',
-                      margin: 0
-                    }}>
-                      GRUPOS
-                    </h3>
-                    <div style={{
-                      flex: 1,
-                      height: '0.5px',
-                      background: 'rgba(0,0,0,0.12)'
-                    }} />
-                  </div>
-
-                  {[
-                    {
-                      id: 101,
-                      type: 'group',
-                      category: 'personal',
-                      title: 'Familia',
-                      subtitle: 'Mama: aA qua hora llegas? ',
-                      time: '17:15',
-                      priority: 'medium',
-                      icon: 'users-group',
-                      unread: 3,
-                      members: 8
-                    },
-                    {
-                      id: 102,
-                      type: 'group',
-                      category: 'business',
-                      title: 'Proyecto Web',
-                      subtitle: 'Carlos: Cadigo listo para revisar ',
-                      time: '16:00',
-                      priority: 'high',
-                      icon: 'users-group',
-                      unread: 5,
-                      members: 12
-                    },
-                    {
-                      id: 103,
-                      type: 'group',
-                      category: 'personal',
-                      title: 'Amigos',
-                      subtitle: 'Diego: aVamos al cine maaana? ',
-                      time: '14:45',
-                      priority: 'low',
-                      icon: 'users-group',
-                      members: 15
-                    }
-                  ].filter(chat => {
-                    if (searchQuery.trim() === '') return true;
-                    return chat.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                           chat.subtitle.toLowerCase().includes(searchQuery.toLowerCase());
-                  }).map((chat) => (
-                    <div key={chat.id} 
-                      onClick={() => {
-                        setSelectedChat({...chat, initials: chat.title.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase(), color: '#a78bfa'});
-                      }}
-                      style={{
-                        background: '#FFFFFF',
-                        borderRadius: '8px',
-                        padding: '10px',
-                        marginBottom: '6px',
-                        border: '1px solid rgba(255,255,255,0.5)',
-                        position: 'relative',
-                        overflow: 'hidden',
-                        cursor: 'pointer',
-                        transition: 'all 0.2s ease'
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.96)';
-                        e.currentTarget.style.borderColor = 'rgba(167,139,250,0.3)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.background = 'rgba(255,255,255,0.88)';
-                        e.currentTarget.style.borderColor = 'rgba(255,255,255,0.5)';
-                      }}
-                    >
-                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '6px' }}>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1 }}>
-                          <div style={{
-                            width: '40px',
-                            height: '40px',
-                            borderRadius: '50%',
-                            background: 'linear-gradient(135deg, rgba(139, 92, 246, 0.3), rgba(59, 130, 246, 0.3))',
-                            border: '2px solid rgba(139, 92, 246, 0.5)',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'center',
-                            color: '#a78bfa',
-                            fontSize: '16px',
-                            fontWeight: '700',
-                            flexShrink: 0
-                          }}>
-                            {renderIcon('users-group', 18)}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <h4 style={{ 
-                              fontSize: '11px', 
-                              fontWeight: '600',
-                              color: '#0d0d0d',
-                              margin: 0,
-                              marginBottom: '2px'
-                            }}>
-                              {chat.title}
-                            </h4>
-                            <p style={{ 
-                              fontSize: '10px', 
-                              color: '#6b7280', 
-                              lineHeight: '1.2',
-                              margin: 0,
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {chat.subtitle}
-                            </p>
-                            <div style={{ fontSize: '8px', color: '#6b7280', marginTop: '2px' }}>
-                              {chat.members} miembros
-                            </div>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginLeft: '8px' }}>
-                          <span style={{ fontSize: '9px', color: '#6b7280' }}>
-                            {chat.time}
-                          </span>
-                          {chat.unread && chat.unread > 0 && (
-                            <div style={{
-                              background: '#ef4444',
-                              color: '#0d0d0d',
-                              borderRadius: '50%',
-                              width: '20px',
-                              height: '20px',
-                              display: 'flex',
-                              alignItems: 'center',
-                              justifyContent: 'center',
-                              fontSize: '9px',
-                              fontWeight: '700'
-                            }}>
-                              {chat.unread}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+              {/* Estado vacío */}
+              {realChats.length === 0 && (
+                <div style={{ textAlign:'center', padding:'60px 20px', color:'#9ca3af' }}>
+                  <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" style={{margin:'0 auto 16px',display:'block'}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  <div style={{ fontSize:'15px', fontWeight:'600', color:'#374151', marginBottom:'6px' }}>Sin conversaciones</div>
+                  <div style={{ fontSize:'13px' }}>Toca <strong>+</strong> para iniciar un chat</div>
                 </div>
               )}
             </div>
@@ -5864,36 +5634,67 @@ const App: React.FC = () => {
                     outline: 'none',
                     transition: 'all 0.2s ease'
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(0,0,0,0.06)';
-                  }}
                 >
-                  {/* Avatar */}
-                  <Avatar name={contact.name} size={40} status={contact.status} showStatus={true} />
+                  {/* Avatar con foto editable */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{
+                      width: '44px', height: '44px', borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
+                      overflow: 'hidden', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff',
+                      border: `2px solid ${contact.status === 'online' ? '#00c8a0' : contact.status === 'away' ? '#f59e0b' : '#9ca3af'}`
+                    }}>
+                      {contact.avatarUrl
+                        ? <img src={contact.avatarUrl} alt={contact.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        : <span>{contact.avatar}</span>
+                      }
+                    </div>
+                    {/* Botón cambiar foto */}
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      const inp = document.createElement('input');
+                      inp.type = 'file'; inp.accept = 'image/*';
+                      inp.onchange = () => {
+                        const f = inp.files?.[0];
+                        if (f) {
+                          const r = new FileReader();
+                          r.onload = (ev) => {
+                            const url = ev.target?.result as string;
+                            setAllContacts(prev => prev.map(c => c.id === contact.id ? { ...c, avatarUrl: url } : c));
+                          };
+                          r.readAsDataURL(f);
+                        }
+                      };
+                      inp.click();
+                    }} style={{
+                      position: 'absolute', bottom: -2, right: -2,
+                      width: '18px', height: '18px', borderRadius: '50%',
+                      background: '#00c8a0', border: '1.5px solid #fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', outline: 'none', padding: 0
+                    }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </button>
+                  </div>
 
-                  {/* informacion */}
+                  {/* Información */}
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '2px', color: '#0d0d0d' }}>
                       {contact.name}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#374151' }}>
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
                       {contact.phone}
                     </div>
                   </div>
 
-                  {/* Estado */}
+                  {/* Estado online */}
                   <div style={{
-                    width: '12px',
-                    height: '12px',
-                    borderRadius: '50%',
-                    background: contact.status === 'online' ? '#00c8a0' : contact.status === 'away' ? '#f59e0b' : '#6b7280',
+                    fontSize: '10px', fontWeight: '600',
+                    color: contact.status === 'online' ? '#00c8a0' : contact.status === 'away' ? '#f59e0b' : '#9ca3af',
                     flexShrink: 0
-                  }} />
+                  }}>
+                    {contact.status === 'online' ? '● En línea' : contact.status === 'away' ? '● Ausente' : '○ Desconectado'}
+                  </div>
                 </button>
               ))}
             </div>
@@ -6002,56 +5803,74 @@ const App: React.FC = () => {
                     transition: 'all 0.2s ease',
                     position: 'relative'
                   }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(255, 255, 255, 0.03)';
-                    e.currentTarget.style.borderColor = 'rgba(0,0,0,0.06)';
-                  }}
                 >
-                  {/* Avatar */}
-                  <div style={{
-                    width: '40px',
-                    height: '40px',
-                    borderRadius: '50%',
-                    background: '#F3F4F6',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    flexShrink: 0
-                  }}>
-                    {(() => {
-                      const iconProps = {width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'#54656f',strokeWidth:1.7,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};
-                      switch(group.avatar) {
-                        case 'family':  return <svg {...iconProps}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
-                        case 'work':    return <svg {...iconProps}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>;
-                        case 'friends': return <svg {...iconProps}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>;
-                        case 'project': return <svg {...iconProps}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
-                        default:        return <svg {...iconProps}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>;
+                  {/* Avatar grupo con foto editable */}
+                  <div style={{ position: 'relative', flexShrink: 0 }}>
+                    <div style={{
+                      width: '44px', height: '44px', borderRadius: '50%',
+                      background: 'linear-gradient(135deg, #a855f7, #6366f1)',
+                      overflow: 'hidden', display: 'flex', alignItems: 'center',
+                      justifyContent: 'center', border: '2px solid rgba(168,85,247,0.4)'
+                    }}>
+                      {group.avatarUrl
+                        ? <img src={group.avatarUrl} alt={group.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                        : (() => {
+                            const p = {width:20,height:20,viewBox:'0 0 24 24',fill:'none',stroke:'#fff',strokeWidth:1.8,strokeLinecap:'round' as const,strokeLinejoin:'round' as const};
+                            switch(group.avatar) {
+                              case 'family':  return <svg {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+                              case 'work':    return <svg {...p}><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>;
+                              case 'project': return <svg {...p}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>;
+                              default:        return <svg {...p}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>;
+                            }
+                          })()
                       }
-                    })()}
+                    </div>
+                    {/* Botón cambiar foto grupo */}
+                    <button onClick={(e) => {
+                      e.stopPropagation();
+                      const inp = document.createElement('input');
+                      inp.type = 'file'; inp.accept = 'image/*';
+                      inp.onchange = () => {
+                        const f = inp.files?.[0];
+                        if (f) {
+                          const r = new FileReader();
+                          r.onload = (ev) => {
+                            const url = ev.target?.result as string;
+                            setAllGroups(prev => prev.map(g => g.id === group.id ? { ...g, avatarUrl: url } : g));
+                          };
+                          r.readAsDataURL(f);
+                        }
+                      };
+                      inp.click();
+                    }} style={{
+                      position: 'absolute', bottom: -2, right: -2,
+                      width: '18px', height: '18px', borderRadius: '50%',
+                      background: '#a855f7', border: '1.5px solid #fff',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      cursor: 'pointer', outline: 'none', padding: 0
+                    }}>
+                      <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                    </button>
                   </div>
 
-                  {/* informacion */}
+                  {/* Información */}
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', marginBottom: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '2px', color: '#0d0d0d' }}>
                       {group.name}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#374151' }}>
-                      {group.members} miembros a {group.lastMessage}
+                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                      {group.members} miembros · {group.lastMessage}
                     </div>
                   </div>
 
-                  {/* Badge de No Leados */}
+                  {/* Badge no leídos */}
                   {group.unread > 0 && (
                     <div style={{
-                      background: '#ef4444',
-                      color: '#0d0d0d',
+                      background: '#00c8a0',
+                      color: '#fff',
                       borderRadius: '50%',
-                      width: '24px',
-                      height: '24px',
+                      width: '20px',
+                      height: '20px',
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
@@ -6192,39 +6011,68 @@ const App: React.FC = () => {
             }}>
               {currentSettingsTab === 'perfil' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Avatar */}
+                  {/* Avatar — foto real + editable */}
                   <div style={{
                     background: 'rgba(249,250,251,0.88)',
                     border: '1px solid rgba(0,0,0,0.08)',
                     borderRadius: '12px',
-                    padding: '16px',
+                    padding: '20px 16px',
                     textAlign: 'center'
                   }}>
-                    <div style={{
-                      width: '80px',
-                      height: '80px',
-                      borderRadius: '50%',
-                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(59, 130, 246, 0.3))',
-                      border: '2px solid rgba(16, 185, 129, 0.4)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: '32px',
-                      fontWeight: 'bold',
-                      color: '#00c8a0',
-                      margin: '0 auto 12px'
-                    }}>
-                      {userProfile.avatar}
+                    {/* Foto de perfil */}
+                    <div style={{ position: 'relative', width: '88px', margin: '0 auto 12px' }}>
+                      <div style={{
+                        width: '88px', height: '88px', borderRadius: '50%',
+                        background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
+                        border: '3px solid #00c8a0',
+                        overflow: 'hidden',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        fontSize: '32px', fontWeight: '800', color: '#fff',
+                      }}>
+                        {userProfile.avatarUrl
+                          ? <img src={userProfile.avatarUrl} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
+                          : <span>{userProfile.avatar || 'U'}</span>
+                        }
+                      </div>
+                      {/* Botón cámara para cambiar foto */}
+                      <button onClick={() => {
+                        const inp = document.createElement('input');
+                        inp.type = 'file'; inp.accept = 'image/*';
+                        inp.onchange = () => {
+                          const f = inp.files?.[0];
+                          if (f) {
+                            const r = new FileReader();
+                            r.onload = (e) => {
+                              const url = e.target?.result as string;
+                              localStorage.setItem('user_avatar', url);
+                              setUserProfile(prev => ({ ...prev, avatarUrl: url }));
+                            };
+                            r.readAsDataURL(f);
+                          }
+                        };
+                        inp.click();
+                      }} style={{
+                        position: 'absolute', bottom: 0, right: 0,
+                        width: '26px', height: '26px', borderRadius: '50%',
+                        background: '#00c8a0', border: '2px solid #fff',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer', outline: 'none'
+                      }}>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                      </button>
                     </div>
-                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d', marginBottom: '4px' }}>
-                      {userProfile.name}
+                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>
+                      {userProfile.name || 'Usuario'}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
-                      ID: {userProfile.id}
+                    <div style={{ fontSize: '12px', color: '#00c8a0', fontWeight: '600', marginBottom: '2px' }}>
+                      {userProfile.phone || ''}
+                    </div>
+                    <div style={{ fontSize: '10px', color: '#9ca3af' }}>
+                      ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}
                     </div>
                   </div>
 
-                  {/* informacion Personal */}
+                  {/* Información Personal */}
                   <div style={{
                     background: 'rgba(250,250,250,0.88)',
                     border: '1px solid rgba(0,0,0,0.07)',
@@ -6232,7 +6080,7 @@ const App: React.FC = () => {
                     padding: '12px'
                   }}>
                     <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
-                      informacion Personal
+                      Información Personal
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
@@ -6266,7 +6114,7 @@ const App: React.FC = () => {
                     padding: '12px'
                   }}>
                     <div style={{ fontSize: '11px', fontWeight: '600', color: userProfile.verificationStatus === 'verified' ? '#00c8a0' : '#f59e0b', marginBottom: '4px' }}>
-                      {userProfile.verificationStatus === 'verified' ? '? Verificado' : userProfile.verificationStatus === 'pending' ? '? Pendiente' : '? No Verificado'}
+                      {userProfile.verificationStatus === 'verified' ? '✅ Verificado' : userProfile.verificationStatus === 'pending' ? '⏳ Pendiente' : '❌ No Verificado'}
                     </div>
                     <div style={{ fontSize: '10px', color: '#374151' }}>
                       Miembro desde {userProfile.joinDate}
@@ -6287,84 +6135,112 @@ const App: React.FC = () => {
                       <button
                         onClick={() => {
                           setUserProfile({ ...userProfile, twoFactorEnabled: !userProfile.twoFactorEnabled });
-                          console.log('2FA toggled');
                         }}
                         style={{
-                          width: '100%',
-                          background: 'rgba(249,250,251,0.88)',
-                          border: '1px solid rgba(0,0,0,0.08)',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          color: '#0d0d0d',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          outline: 'none',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(0,0,0,0.06)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(0,0,0,0.06)',
+                          padding: '12px 0', color: '#0d0d0d', fontSize: '14px', fontWeight: '500',
+                          cursor: 'pointer', outline: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                         }}
                       >
-                        <span style={{display:'flex',alignItems:'center',gap:'6px'}}><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>Autenticación de Dos Factores</span>
-                        <span style={{ color: userProfile.twoFactorEnabled ? '#00c8a0' : '#ef4444' }}>
+                        <span style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" stroke="#6b7280" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          Autenticación de Dos Factores
+                        </span>
+                        <span style={{ color: userProfile.twoFactorEnabled ? '#00c8a0' : '#ef4444', fontSize:'13px', fontWeight:'700' }}>
                           {userProfile.twoFactorEnabled ? 'ON' : 'OFF'}
                         </span>
                       </button>
                       <button
                         onClick={() => {
                           setUserProfile({ ...userProfile, notificationsEnabled: !userProfile.notificationsEnabled });
-                          console.log('Notifications toggled');
                         }}
                         style={{
-                          width: '100%',
-                          background: 'rgba(249,250,251,0.88)',
-                          border: '1px solid rgba(0,0,0,0.08)',
-                          borderRadius: '6px',
-                          padding: '8px 12px',
-                          color: '#0d0d0d',
-                          fontSize: '11px',
-                          fontWeight: '600',
-                          cursor: 'pointer',
-                          outline: 'none',
-                          display: 'flex',
-                          justifyContent: 'space-between',
-                          alignItems: 'center',
-                          transition: 'all 0.2s ease'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.background = 'rgba(0,0,0,0.06)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                          width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(0,0,0,0.06)',
+                          padding: '12px 0', color: '#0d0d0d', fontSize: '14px', fontWeight: '500',
+                          cursor: 'pointer', outline: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
                         }}
                       >
-                        <span style={{display:'flex',alignItems:'center',gap:'6px'}}><svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>Notificaciones</span>
-                        <span style={{ color: userProfile.notificationsEnabled ? '#00c8a0' : '#ef4444' }}>
+                        <span style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" stroke="#6b7280" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                          Notificaciones
+                        </span>
+                        <span style={{ color: userProfile.notificationsEnabled ? '#00c8a0' : '#ef4444', fontSize:'13px', fontWeight:'700' }}>
                           {userProfile.notificationsEnabled ? 'ON' : 'OFF'}
                         </span>
                       </button>
                       <button
                         onClick={() => setShowReadReceipts(p => !p)}
-                        style={{ width:'100%', background:'rgba(250,250,250,0.88)', borderRadius:'10px', border:'1px solid rgba(0,0,0,0.07)', padding:'10px 12px', display:'flex', justifyContent:'space-between', alignItems:'center', cursor:'pointer', outline:'none', marginTop:'6px' }}>
-                        <span style={{display:'flex',alignItems:'center',gap:'6px',fontSize:'12px',color:'#0d0d0d'}}>
-                          <svg width="12" height="12" viewBox="0 0 18 11" fill="none"><path d="M1 5.5l3.5 3.5L11 2" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 5.5l3.5 3.5L16 2" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
+                        style={{
+                          width: '100%', background: 'transparent', border: 'none',
+                          padding: '12px 0', color: '#0d0d0d', fontSize: '14px', fontWeight: '500',
+                          cursor: 'pointer', outline: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}
+                      >
+                        <span style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                          <svg width="18" height="18" viewBox="0 0 18 11" fill="none"><path d="M1 5.5l3.5 3.5L11 2" stroke="#6b7280" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/><path d="M6 5.5l3.5 3.5L16 2" stroke="#6b7280" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"/></svg>
                           Confirmaciones de lectura
                         </span>
-                        <span style={{ color: showReadReceipts ? '#00c8a0' : '#ef4444', fontSize:'12px', fontWeight:'700' }}>
+                        <span style={{ color: showReadReceipts ? '#00c8a0' : '#ef4444', fontSize:'13px', fontWeight:'700' }}>
                           {showReadReceipts ? 'ON' : 'OFF'}
                         </span>
                       </button>
                     </div>
                   </div>
 
-                  {/* Botan Editar */}
+                  {/* Botón Cambiar Foto de Perfil */}
+                  <button
+                    onClick={() => {
+                      const input = document.createElement('input');
+                      input.type = 'file';
+                      input.accept = 'image/*';
+                      input.onchange = async (e) => {
+                        const file = (e.target as HTMLInputElement).files?.[0];
+                        if (file) {
+                          try {
+                            // Crear preview temporal
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              const dataUrl = e.target?.result as string;
+                              setUserProfile(prev => ({ ...prev, avatarUrl: dataUrl }));
+                              localStorage.setItem('user_avatar', dataUrl);
+                            };
+                            reader.readAsDataURL(file);
+                            
+                            // TODO: Subir al backend cuando esté implementado
+                            // await authAPI.updateProfile({ avatar_url: file });
+                          } catch (error) {
+                            alert('Error al cambiar la foto de perfil');
+                          }
+                        }
+                      };
+                      input.click();
+                    }}
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(135deg, rgba(0, 180, 230, 0.3), rgba(0, 180, 230, 0.2))',
+                      border: '1px solid rgba(0, 180, 230, 0.4)',
+                      color: '#00b4e6',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'all 0.2s ease',
+                      marginBottom: '8px'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 180, 230, 0.4), rgba(0, 180, 230, 0.3))';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 180, 230, 0.3), rgba(0, 180, 230, 0.2))';
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                    Cambiar Foto de Perfil
+                  </button>
+
+                  {/* Botón Editar */}
                   <button
                     onClick={() => {
                       setEditedProfile({ ...userProfile });
@@ -6381,7 +6257,8 @@ const App: React.FC = () => {
                       fontWeight: '600',
                       cursor: 'pointer',
                       outline: 'none',
-                      transition: 'all 0.2s ease'
+                      transition: 'all 0.2s ease',
+                      marginBottom: '8px'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(16, 185, 129, 0.3))';
@@ -6392,6 +6269,54 @@ const App: React.FC = () => {
                   >
                     <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar Perfil
+                  </button>
+
+                  {/* Botón Logout */}
+                  <button
+                    onClick={async () => {
+                      if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                        try {
+                          await authAPI.logout();
+                          localStorage.removeItem('user_avatar');
+                          setIsAuthenticated(false);
+                          setUserProfile({
+                            id: '', name: 'Usuario', phone: '', email: '',
+                            address: '', city: '', country: 'Guinea Ecuatorial',
+                            avatar: 'U', avatarUrl: '', joinDate: new Date().toLocaleDateString('es-ES'),
+                            verificationStatus: 'pending', twoFactorEnabled: false, notificationsEnabled: true,
+                          });
+                          setRealChats([]);
+                          setSelectedChat(null);
+                          setCurrentView('home');
+                        } catch (error) {
+                          console.error('Error al cerrar sesión:', error);
+                          localStorage.removeItem('user_avatar');
+                          setIsAuthenticated(false);
+                        }
+                      }
+                    }}
+                    style={{
+                      width: '100%',
+                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.2))',
+                      border: '1px solid rgba(239, 68, 68, 0.4)',
+                      color: '#ef4444',
+                      padding: '10px 12px',
+                      borderRadius: '8px',
+                      fontSize: '12px',
+                      fontWeight: '600',
+                      cursor: 'pointer',
+                      outline: 'none',
+                      transition: 'all 0.2s ease'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.3))';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.2))';
+                    }}
+                  >
+                    <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                    Cerrar Sesión
                   </button>
                 </div>
               )}
@@ -6633,6 +6558,25 @@ const App: React.FC = () => {
   useEffect(() => {
     if (currentView === 'mensajeria') loadChats();
   }, [currentView, loadChats]);
+
+  // -- Polling: actualizar mensajes del chat abierto cada 3s ---
+  useEffect(() => {
+    if (!selectedChat) {
+      if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+      return;
+    }
+    const chatId = selectedChat.id?.toString() || '';
+    if (!chatId || !chatId.includes('-') || chatId.length < 20) return;
+    // Cargar mensajes inmediatamente al abrir
+    loadMessages(chatId);
+    // Polling cada 3 segundos
+    pollingRef.current = setInterval(() => {
+      loadMessages(chatId);
+    }, 3000);
+    return () => {
+      if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
+    };
+  }, [selectedChat, loadMessages]);
 
   // -- Auth check  todos los hooks declarados -------------------
   if (!isAuthenticated) return <AuthScreen onAuth={(user) => {
@@ -8673,6 +8617,91 @@ const App: React.FC = () => {
         />
       )}
 
+      {/* -- MODAL NUEVO CHAT ------------------------------------------------ */}
+      {showNewChatModal && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,0.5)',zIndex:4000,display:'flex',alignItems:'flex-end',justifyContent:'center'}}
+          onClick={e=>{if(e.target===e.currentTarget){setShowNewChatModal(false);setNewChatPhone('');}}}>
+          <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:'420px',background:'#fff',borderRadius:'20px 20px 0 0',padding:'20px 16px 32px'}}>
+            <div style={{width:'36px',height:'4px',borderRadius:'2px',background:'#e5e7eb',margin:'0 auto 16px'}}/>
+            <div style={{fontSize:'16px',fontWeight:'700',color:'#111827',marginBottom:'14px',display:'flex',alignItems:'center',gap:'8px'}}>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              Nuevo Chat
+            </div>
+            <div style={{fontSize:'12px',color:'#6b7280',marginBottom:'8px'}}>Introduce el número de teléfono del usuario</div>
+            <div style={{display:'flex',alignItems:'center',background:'#f9fafb',border:'1.5px solid #e5e7eb',borderRadius:'10px',padding:'0 14px',height:'48px',gap:'10px',marginBottom:'12px'}}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              <input
+                autoFocus
+                type="tel"
+                placeholder="+240 555 000 000"
+                value={newChatPhone}
+                onChange={e=>setNewChatPhone(e.target.value)}
+                onKeyDown={e=>{ if(e.key==='Enter') document.getElementById('btn-start-chat')?.click(); }}
+                style={{flex:1,background:'none',border:'none',outline:'none',fontSize:'15px',color:'#111827',fontFamily:'inherit'}}
+              />
+            </div>
+            {newChatSearching && (
+              <div style={{textAlign:'center',padding:'12px',color:'#9ca3af',fontSize:'13px'}}>Buscando usuario...</div>
+            )}
+            <button
+              id="btn-start-chat"
+              disabled={newChatSearching || !newChatPhone.trim()}
+              onClick={async () => {
+                if (!newChatPhone.trim()) return;
+                setNewChatSearching(true);
+                try {
+                  // Buscar usuario por teléfono
+                  const users = await chatAPI.searchUsers(newChatPhone.trim());
+                  if (!users || users.length === 0) {
+                    alert('Usuario no encontrado. Verifica el número.');
+                    setNewChatSearching(false);
+                    return;
+                  }
+                  const targetUser = users[0];
+                  // Crear chat privado
+                  const chat = await chatAPI.createPrivate(targetUser.id);
+                  if (chat?.id) {
+                    const initials = (targetUser.full_name||targetUser.phone||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
+                    setSelectedChat({
+                      id: chat.id,
+                      type: 'individual',
+                      title: targetUser.full_name || targetUser.phone,
+                      subtitle: 'Nuevo chat',
+                      time: '',
+                      status: 'online',
+                      initials,
+                      color: '#00c8a0',
+                      phone: targetUser.phone
+                    });
+                    setCurrentView('mensajeria');
+                    setShowNewChatModal(false);
+                    setNewChatPhone('');
+                    loadChats();
+                  }
+                } catch(err: any) {
+                  alert(err?.message || 'Error al crear el chat');
+                } finally {
+                  setNewChatSearching(false);
+                }
+              }}
+              style={{
+                width:'100%',
+                background: newChatPhone.trim() && !newChatSearching ? 'linear-gradient(135deg,#00c8a0,#00b4e6)' : '#e5e7eb',
+                border:'none',borderRadius:'12px',padding:'14px',
+                color: newChatPhone.trim() && !newChatSearching ? '#fff' : '#9ca3af',
+                fontSize:'15px',fontWeight:'700',cursor: newChatPhone.trim() && !newChatSearching ? 'pointer' : 'default',outline:'none'
+              }}
+            >
+              {newChatSearching ? 'Buscando...' : 'Iniciar Chat'}
+            </button>
+            <button onClick={()=>{setShowNewChatModal(false);setNewChatPhone('');}}
+              style={{width:'100%',background:'none',border:'none',color:'#9ca3af',fontSize:'13px',cursor:'pointer',outline:'none',marginTop:'10px',padding:'8px'}}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* -- MENSAJES DESTACADOS --------------------------------------------- */}
       {showStarredModal && (() => {
         const starred = starredMessages[starredChatId] || [];
@@ -8715,6 +8744,7 @@ const App: React.FC = () => {
       })()}
 
       {/* -- EDITOR DE FOTO -------------------------------------------------- */}
+
       {cameraPhoto && (
         <PhotoEditorModal
           photoUrl={cameraPhoto.url}
@@ -8722,7 +8752,7 @@ const App: React.FC = () => {
           onClose={() => setCameraPhoto(null)}
           onSend={(chatId, caption, editedUrl) => {
             const now = new Date();
-            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`; 
             const text = caption ? `?? ${caption}` : '?? Foto';
             const msgId = Date.now().toString();
             setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId]||[]), { id: msgId, from: 'me', text, time, status: 'pending' }] }));

@@ -14,6 +14,7 @@ CREATE TABLE IF NOT EXISTS users (
   avatar_url TEXT,
   last_seen TIMESTAMP,
   online_status BOOLEAN DEFAULT FALSE,
+  app_version VARCHAR(20) DEFAULT '2.5.0',
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

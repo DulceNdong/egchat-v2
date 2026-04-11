@@ -1,6 +1,9 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const BASE = 'https://egchat-api.onrender.com';
+const DEFAULT_BASE = 'https://egchat-api.onrender.com';
+const BASE = typeof process !== 'undefined' && process.env?.API_URL
+  ? process.env.API_URL
+  : DEFAULT_BASE;
 
 const getToken = async () => AsyncStorage.getItem('token');
 const setToken = async (t: string) => AsyncStorage.setItem('token', t);

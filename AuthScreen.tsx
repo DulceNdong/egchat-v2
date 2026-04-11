@@ -3,7 +3,8 @@ import { authAPI } from './api';
 import { MessageCircle, CreditCard, Bot, UserPlus, LogIn } from 'lucide-react';
 
 // Usar la misma base URL que el authAPI
-const BASE = (import.meta as any).env?.VITE_API_URL || '/api';
+const _apiUrl = (import.meta as any).env?.VITE_API_URL || '';
+const BASE = (!_apiUrl || _apiUrl.startsWith('/')) ? 'https://egchat-api.onrender.com/api' : _apiUrl;
 
 const COUNTRIES = [
   {code:'GQ',name:'Guinea Ecuatorial',phone:'+240'},
