@@ -84,14 +84,7 @@ const App: React.FC = () => {
   const [newContactName, setNewContactName] = useState<string>('');
   const [groupName, setGroupName] = useState<string>('');
   const [groupMembers, setGroupMembers] = useState<Array<{id:string;name:string;initials:string;color:string}>>([]);
-  const availableContacts = [
-    { id:'1', name:'Juan Garcia', initials:'JG', color:'#00b4e6', phone:'+240 222 111 001' },
-    { id:'2', name:'Maria Lopez', initials:'ML', color:'#00c8a0', phone:'+240 222 111 002' },
-    { id:'3', name:'Carlos Mba', initials:'CM', color:'#f59e0b', phone:'+240 222 111 003' },
-    { id:'4', name:'Ana Nguema', initials:'AN', color:'#8b5cf6', phone:'+240 222 111 004' },
-    { id:'5', name:'Pedro Esono', initials:'PE', color:'#ef4444', phone:'+240 222 111 005' },
-    { id:'6', name:'Sofia Obiang', initials:'SO', color:'#06b6d4', phone:'+240 222 111 006' },
-  ];
+  const availableContacts: Array<{id:string;name:string;initials:string;color:string;phone:string}> = [];
   const [showWeatherModal, setShowWeatherModal] = useState<boolean>(false);
   const [showTimeModal, setShowTimeModal] = useState<boolean>(false);
   const [editTime, setEditTime] = useState<string>('');
@@ -331,27 +324,15 @@ const App: React.FC = () => {
     { id: '4', action: 'Perfil Actualizado', description: 'Teléfono actualizado', timestamp: new Date(Date.now() - 86400000), type: 'profile' }
   ]);
 
-  // Gestion de Contactos
-  const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; avatar: string; avatarUrl?: string; status: 'online' | 'offline' | 'away'; addedDate: string }>>([
-    { id: '1', name: 'Juan Pérez', phone: '+240 222 111111', avatar: 'JP', status: 'online', addedDate: '15/03/2026' },
-    { id: '2', name: 'Maria Garcia', phone: '+240 222 222222', avatar: 'MG', status: 'online', addedDate: '14/03/2026' },
-    { id: '3', name: 'Carlos López', phone: '+240 222 333333', avatar: 'CL', status: 'away', addedDate: '13/03/2026' },
-    { id: '4', name: 'Ana Martínez', phone: '+240 222 444444', avatar: 'AM', status: 'offline', addedDate: '12/03/2026' },
-    { id: '5', name: 'Pedro Sanchez', phone: '+240 222 555555', avatar: 'PS', status: 'online', addedDate: '11/03/2026' },
-    { id: '6', name: 'Sofía Rodríguez', phone: '+240 222 666666', avatar: 'SR', status: 'offline', addedDate: '10/03/2026' }
-  ]);
+  // Gestion de Contactos - Ahora usa datos reales del backend
+  const [allContacts, setAllContacts] = useState<Array<{ id: string; name: string; phone: string; avatar: string; avatarUrl?: string; status: 'online' | 'offline' | 'away'; addedDate: string }>>([]);
   const [showAddContactModal, setShowAddContactModal] = useState<boolean>(false);
   const [newContactData, setNewContactData] = useState<{ name: string; phone: string }>({ name: '', phone: '' });
   const [showQRScannerModal, setShowQRScannerModal] = useState<boolean>(false);
   const [qrScanResult, setQrScanResult] = useState<string>('');
 
-  // Gestion de Grupos
-  const [allGroups, setAllGroups] = useState<Array<{ id: string; name: string; description: string; members: number; avatar: string; avatarUrl?: string; createdDate: string; lastMessage: string; unread: number }>>([
-    { id: '1', name: 'Familia',  description: 'Grupo familiar',         members: 5,  avatar: 'family',   createdDate: '15/03/2026', lastMessage: 'Nos vemos el domingo',      unread: 2 },
-    { id: '2', name: 'Trabajo',  description: 'Equipo de desarrollo',   members: 8,  avatar: 'work',     createdDate: '10/03/2026', lastMessage: 'Proyecto completado',        unread: 0 },
-    { id: '3', name: 'Amigos',   description: 'Grupo de amigos',        members: 12, avatar: 'friends',  createdDate: '05/03/2026', lastMessage: 'Fiesta el viernes',          unread: 5 },
-    { id: '4', name: 'Proyecto', description: 'Proyecto especial',      members: 6,  avatar: 'project',  createdDate: '01/03/2026', lastMessage: 'Deadline próxima semana',    unread: 1 }
-  ]);
+  // Gestion de Grupos - Ahora usa datos reales del backend
+  const [allGroups, setAllGroups] = useState<Array<{ id: string; name: string; description: string; members: number; avatar: string; avatarUrl?: string; createdDate: string; lastMessage: string; unread: number }>>([]);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState<boolean>(false);
   const [newGroupData, setNewGroupData] = useState<{ name: string; description: string; selectedMembers: string[] }>({ name: '', description: '', selectedMembers: [] });
 
