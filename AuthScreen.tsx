@@ -58,6 +58,20 @@ export default function AuthScreen({onAuth}:Props) {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState('');
   const [step, setStep] = useState(1);
+  const [serverReady, setServerReady] = useState(false);
+
+  // Despertar Render al cargar la pantalla
+  React.useEffect(() => {
+    const wake = async () => {
+      try {
+        await fetch(`${BASE.replace('/api','')}/health`);
+        setServerReady(true);
+      } catch {
+        setServerReady(true); // continuar aunque falle
+      }
+    };
+    wake();
+  }, []);
 
   const selCountry = COUNTRIES.find(c=>c.phone===countryCode) || COUNTRIES[0];
   const initials = name.trim().split(' ').filter(Boolean).map((w:string)=>w[0].toUpperCase()).slice(0,2).join('');
@@ -192,11 +206,11 @@ export default function AuthScreen({onAuth}:Props) {
       <div style={{width:'100%',display:'flex',flexDirection:'column',gap:'12px'}}>
         <button onClick={()=>setSc('reg')} style={{...btnG,borderRadius:'14px',padding:'16px',fontSize:'16px',fontWeight:'700',boxShadow:'0 4px 16px rgba(34, 197, 94, 0.3)',border:'none',transition:'all 0.2s ease',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
           <UserPlus size={18}/>
-          Crear Cuenta
+          {serverReady ? 'Crear Cuenta' : 'Conectando...'}
         </button>
         <button onClick={()=>setSc('login')} style={{...btnO,borderRadius:'14px',padding:'15px',fontSize:'16px',fontWeight:'600',border:'2px solid #E5E7EB',transition:'all 0.2s ease',display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
           <LogIn size={18}/>
-          Ya tengo cuenta
+          {serverReady ? 'Ya tengo cuenta' : '⏳ Cargando...'}
         </button>
         <p style={{fontSize:'11px',color:'#9CA3AF',textAlign:'center',margin:'8px 0 0',fontWeight:'500'}}>v2.5.1 | Guinea Ecuatorial</p>
       </div>
