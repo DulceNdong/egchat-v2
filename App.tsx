@@ -6577,13 +6577,9 @@ const App: React.FC = () => {
           avatarUrl: savedAvatar,
         }));
       }
-    }).catch((e: any) => {
-      // Solo cerrar sesión si el error es explícitamente de token inválido
-      const msg = e?.message || '';
-      if (msg.includes('Token') || msg.includes('token') || msg.includes('expirado') || msg.includes('requerido') || msg.includes('inválido')) {
-        setIsAuthenticated(false);
-      }
-      // Si es error de red (Render durmiendo), no cerrar sesión
+    }).catch((_e: any) => {
+      // Ignorar errores de /me — puede ser Render durmiendo
+      // El evento auth:expired en api.ts maneja el caso real de token inválido
     });
     loadChats();
     // Cargar contactos favoritos reales
