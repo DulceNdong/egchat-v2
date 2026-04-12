@@ -517,7 +517,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         marginTop: '20px',
         marginBottom: '20px'
       }}>
-        EGCHAT v2.5.0
+        EGCHAT v2.5.1
       </p>
     </div>
   );

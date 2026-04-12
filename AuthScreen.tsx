@@ -198,7 +198,7 @@ export default function AuthScreen({onAuth}:Props) {
           <LogIn size={18}/>
           Ya tengo cuenta
         </button>
-        <p style={{fontSize:'11px',color:'#9CA3AF',textAlign:'center',margin:'8px 0 0',fontWeight:'500'}}>v2.5 | Guinea Ecuatorial</p>
+        <p style={{fontSize:'11px',color:'#9CA3AF',textAlign:'center',margin:'8px 0 0',fontWeight:'500'}}>v2.5.1 | Guinea Ecuatorial</p>
       </div>
     </div>
   );
