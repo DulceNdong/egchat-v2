@@ -6577,7 +6577,10 @@ const App: React.FC = () => {
           avatarUrl: savedAvatar,
         }));
       }
-    }).catch(() => {});
+    }).catch(() => {
+      // Si falla /me, el token es inválido — cerrar sesión
+      setIsAuthenticated(false);
+    });
     loadChats();
     // Cargar contactos favoritos reales
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
@@ -6586,6 +6589,17 @@ const App: React.FC = () => {
       setFavoriteGroupIds((data || []).map((c: any) => c.id?.toString()));
     }).catch(() => {});
   }, [isAuthenticated, loadChats]);
+
+  // Escuchar evento de token expirado desde api.ts
+  useEffect(() => {
+    const handleExpired = () => {
+      setIsAuthenticated(false);
+      setSelectedChat(null);
+      setCurrentView('home');
+    };
+    window.addEventListener('auth:expired', handleExpired);
+    return () => window.removeEventListener('auth:expired', handleExpired);
+  }, []);
 
   useEffect(() => {
     if (currentView === 'mensajeria') loadChats();

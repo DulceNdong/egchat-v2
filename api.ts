@@ -54,8 +54,12 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   if (res.status === 401) {
     const err = await res.json().catch(() => ({ message: 'No autorizado' }));
     const message = err.message || 'No autorizado';
-    // No borrar sesión aquí para evitar rebotes por 401 transitorios.
-    // La invalidación real de sesión se decide en el flujo de auth/me.
+    // Si el token es inválido/expirado/requerido, limpiar sesión y recargar
+    if (message.includes('Token') || message.includes('token') || message.includes('expirado') || message.includes('requerido')) {
+      clearToken();
+      // Disparar evento para que App.tsx reaccione sin recargar la página
+      window.dispatchEvent(new CustomEvent('auth:expired'));
+    }
     throw new Error(message);
   }
   if (!res.ok) {
