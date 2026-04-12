@@ -52,12 +52,11 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...options,
   });
   if (res.status === 401) {
-    const err = await res.json().catch(() => ({ message: 'No autorizado' }));
+    const err = await res.json().catch(() => ({ message: '' }));
     const message = err.message || 'No autorizado';
-    // Solo limpiar sesión si el token es explícitamente inválido/expirado
-    // NO disparar en errores de red o cuando Render está durmiendo
-    if (message === 'Token requerido' || message === 'Token inválido o expirado') {
-      clearToken();
+    // Disparar logout solo si el token realmente no existe en localStorage
+    // No cerrar sesión por 401 transitorios (Render durmiendo, etc.)
+    if (!getToken()) {
       window.dispatchEvent(new CustomEvent('auth:expired'));
     }
     throw new Error(message);
