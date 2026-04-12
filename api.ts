@@ -172,16 +172,24 @@ export const chatAPI = {
   
   // Eliminar chat
   deleteChat: (chatId:string) => del<void>(`/chats/${chatId}`),
+
+  // Favoritos de grupos/chats
+  getFavoriteChats: () => get<any[]>('/chats/favorites'),
+  favoriteChat:     (chatId:string) => post<any>(`/chats/${chatId}/favorite`, {}),
+  unfavoriteChat:   (chatId:string) => del<any>(`/chats/${chatId}/favorite`),
 };
 
 // ══════════════════════════════════════════════════════════════════
 // CONTACTOS
 // ══════════════════════════════════════════════════════════════════
 export const contactsAPI = {
-  getAll:   () => get<any[]>('/contacts'),
-  add:      (contact_user_id?: string, phone?: string, name?: string) => post<any>('/contacts', { contact_user_id, phone, name }),
-  remove:   (id:string) => del<void>(`/contacts/${id}`),
-  block:    (id:string) => post<any>(`/contacts/${id}/block`, {}),
+  getAll:       () => get<any[]>('/contacts'),
+  add:          (contact_user_id?: string, phone?: string, name?: string) => post<any>('/contacts', { contact_user_id, phone, name }),
+  remove:       (id:string) => del<void>(`/contacts/${id}`),
+  block:        (id:string) => post<any>(`/contacts/${id}/block`, {}),
+  getFavorites: () => get<any[]>('/contacts/favorites'),
+  favorite:     (id:string) => post<any>(`/contacts/${id}/favorite`, {}),
+  unfavorite:   (id:string) => del<any>(`/contacts/${id}/favorite`),
 };
 
 // ══════════════════════════════════════════════════════════════════

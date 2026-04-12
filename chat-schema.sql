@@ -68,6 +68,7 @@ CREATE TABLE IF NOT EXISTS chat_participants (
   left_at TIMESTAMP,
   is_muted BOOLEAN DEFAULT FALSE,
   is_pinned BOOLEAN DEFAULT FALSE,
+  is_favorite BOOLEAN DEFAULT FALSE,
   UNIQUE(chat_id, user_id)
 );
 

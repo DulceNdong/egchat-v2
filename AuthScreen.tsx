@@ -258,17 +258,36 @@ export default function AuthScreen({onAuth}:Props) {
             </div>
             <p style={{fontSize:'12px',color:'#6B7280',marginTop:'8px'}}>Toca para subir foto</p>
           </div>
-          <button onClick={()=>setStep(2)} disabled={!name.trim() || !avatar} style={{...btnG,borderRadius:'14px',padding:'16px',fontSize:'16px',fontWeight:'700',boxShadow:'0 4px 16px rgba(34, 197, 94, 0.3)',border:'none',transition:'all 0.2s ease',opacity:name.trim()&&avatar?1:0.5,display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
+          <button onClick={()=>setStep(2)} disabled={!name.trim()} style={{...btnG,borderRadius:'14px',padding:'16px',fontSize:'16px',fontWeight:'700',boxShadow:'0 4px 16px rgba(34, 197, 94, 0.3)',border:'none',transition:'all 0.2s ease',opacity:name.trim()?1:0.5,display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
             <UserPlus size={18}/>
-            {name.trim() ? (avatar ? 'Continuar' : 'Sube tu foto para continuar') : 'Escribe tu nombre primero'}
+            {name.trim() ? 'Continuar' : 'Escribe tu nombre primero'}
           </button>
         </>}
         {step===2&&<>
           {countrySelector}
           {phoneInput}
-          <button onClick={()=>setStep(3)} disabled={!phone.trim()} style={{...btnG,borderRadius:'14px',padding:'16px',fontSize:'16px',fontWeight:'700',boxShadow:'0 4px 16px rgba(34, 197, 94, 0.3)',border:'none',transition:'all 0.2s ease',opacity:phone.trim()?1:0.5,display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
+          <Err/>
+          <button onClick={async ()=>{
+            // Validar que el teléfono tenga al menos 6 dígitos
+            const digits = phone.replace(/\D/g,'');
+            if(digits.length < 6){setErr('Introduce un número de teléfono válido');return;}
+            setErr('');
+            // Verificar si el teléfono ya está registrado
+            setLoading(true);
+            try {
+              const r = await fetch(`${BASE}/auth/check-phone`, {
+                method:'POST',
+                headers:{'Content-Type':'application/json'},
+                body: JSON.stringify({phone: fullPhone})
+              });
+              const d = await r.json().catch(()=>({}));
+              if(d.exists){setErr('Este número ya está registrado. Inicia sesión.');setLoading(false);return;}
+            } catch {}
+            setLoading(false);
+            setStep(3);
+          }} disabled={!phone.trim()||loading} style={{...btnG,borderRadius:'14px',padding:'16px',fontSize:'16px',fontWeight:'700',boxShadow:'0 4px 16px rgba(34, 197, 94, 0.3)',border:'none',transition:'all 0.2s ease',opacity:phone.trim()&&!loading?1:0.5,display:'flex',alignItems:'center',justifyContent:'center',gap:'8px'}}>
             <LogIn size={18}/>
-            Continuar al paso 3
+            {loading?'Verificando...':'Continuar al paso 3'}
           </button>
         </>}
         {step===3&&<>

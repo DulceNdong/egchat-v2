@@ -1,0 +1,21 @@
+{
+  "enabled": true,
+  "name": "Auto Deploy Vercel",
+  "description": "Automatically builds and deploys to Vercel production when TSX, TS, CSS or config files are saved",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "*.tsx",
+      "*.ts",
+      "*.css",
+      "vercel.json",
+      "index.html"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "npm run build && npx vercel --prod --yes",
+    "timeout": 180
+  }
+}

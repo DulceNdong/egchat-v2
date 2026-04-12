@@ -12,6 +12,7 @@ interface Props {
   chatMessages: Record<string, Msg[]>;
   allGroups: any[];
   userBalance: number;
+  isFavorite?: boolean;
   onMuteToggle: (id:string) => void;
   onBlockToggle: (id:string) => void;
   onPinToggle: (id:string) => void;
@@ -20,6 +21,7 @@ interface Props {
   onOpenWallpaper: () => void;
   onSendMoney: (contact:any) => void;
   onStartCall: (type:'audio'|'video', contact:any) => void;
+  onFavoriteToggle?: (id:string, isFav:boolean) => void;
 }
 
 // Toggle switch component
@@ -65,15 +67,15 @@ const GroupIcon = ({avatar, size=24}:{avatar:string; size?:number}) => {
 
 export const ContactProfileModal: React.FC<Props> = ({
   contact: cp, onClose, mutedChats, blockedChats, pinnedChats,
-  chatMessages, allGroups, userBalance,
+  chatMessages, allGroups, userBalance, isFavorite,
   onMuteToggle, onBlockToggle, onPinToggle, onClearChat,
-  onDeleteContact, onOpenWallpaper, onSendMoney, onStartCall
+  onDeleteContact, onOpenWallpaper, onSendMoney, onStartCall, onFavoriteToggle
 }) => {
   const [tab, setTab] = React.useState<'info'|'media'|'grupos'>('info');
   const [note, setNote] = React.useState('');
   const [editNote, setEditNote] = React.useState('');
   const [showNoteEdit, setShowNoteEdit] = React.useState(false);
-  const [starred, setStarred] = React.useState(false);
+  const [starred, setStarred] = React.useState(!!isFavorite);
 
   const cpId = cp.id?.toString() || cp.title;
   const isMuted = mutedChats.includes(cpId);
@@ -84,6 +86,12 @@ export const ContactProfileModal: React.FC<Props> = ({
   const msgs = chatMessages[cpId] || [];
   const sharedMedia = msgs.filter(m => m.text?.startsWith('📷') || m.text?.startsWith('📎') || m.text?.startsWith('🎥'));
 
+  const handleStarToggle = () => {
+    const newVal = !starred;
+    setStarred(newVal);
+    if (onFavoriteToggle) onFavoriteToggle(cpId, newVal);
+  };
+
   return (
     <div style={{position:'fixed',inset:0,background:'#F0F2F5',zIndex:4000,display:'flex',flexDirection:'column',overflow:'hidden'}}>
 
@@ -93,7 +101,7 @@ export const ContactProfileModal: React.FC<Props> = ({
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
         </button>
         <div style={{flex:1,fontSize:'16px',fontWeight:'600',color:'#111827'}}>Información del contacto</div>
-        <button onClick={()=>setStarred(p=>!p)} style={{background:'none',border:'none',cursor:'pointer',color:starred?'#F59E0B':'#9CA3AF',padding:'4px',display:'flex'}}>
+        <button onClick={handleStarToggle} style={{background:'none',border:'none',cursor:'pointer',color:starred?'#F59E0B':'#9CA3AF',padding:'4px',display:'flex'}}>
           <svg width="20" height="20" viewBox="0 0 24 24" fill={starred?'#F59E0B':'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
         </button>
       </div>
