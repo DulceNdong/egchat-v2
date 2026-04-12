@@ -6577,9 +6577,13 @@ const App: React.FC = () => {
           avatarUrl: savedAvatar,
         }));
       }
-    }).catch(() => {
-      // Si falla /me, el token es inválido — cerrar sesión
-      setIsAuthenticated(false);
+    }).catch((e: any) => {
+      // Solo cerrar sesión si el error es explícitamente de token inválido
+      const msg = e?.message || '';
+      if (msg.includes('Token') || msg.includes('token') || msg.includes('expirado') || msg.includes('requerido') || msg.includes('inválido')) {
+        setIsAuthenticated(false);
+      }
+      // Si es error de red (Render durmiendo), no cerrar sesión
     });
     loadChats();
     // Cargar contactos favoritos reales
