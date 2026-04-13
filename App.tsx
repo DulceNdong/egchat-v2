@@ -3495,16 +3495,16 @@ const App: React.FC = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        height: '82px',
+        height: '88px',
         background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
         borderTop: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
-        padding: '0 8px 8px',
+        padding: '0 8px 12px',
         zIndex: 1000,
         boxShadow: '0 -2px 12px rgba(0,180,230,0.35)',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
         overflow: 'hidden'
       }}>
         
@@ -3861,7 +3861,7 @@ const App: React.FC = () => {
           <span style={{ fontSize: '17px', fontWeight: '700', color: '#111827' }}>Servicios</span>
         </div>
 
-        <div className="scroll-container" style={{ flex: 1, overflowY: 'scroll', paddingBottom: '90px' }}>
+        <div className="scroll-container" style={{ flex: 1, overflowY: 'scroll', paddingBottom: '100px' }}>
           <div style={{ height: '8px', background: '#F7F8FA' }} />
 
           {/* BÁSICOS */}
@@ -4773,7 +4773,7 @@ const App: React.FC = () => {
             {/* Lista de conversaciones — datos reales del backend */}
             <div
               className="scroll-container"
-              style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: '90px' }}
+              style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: '100px' }}
             >
               {/* Chats reales del backend */}
               {realChats.length > 0 && realChats
