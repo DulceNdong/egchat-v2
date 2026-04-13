@@ -70,6 +70,8 @@ const App: React.FC = () => {
     } catch {}
   }, []);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  // Helper: navegar a una vista siempre cierra el menú radial
+  const navigateTo = (view: string) => { setIsMenuOpen(false); setCurrentView(view); };
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -5637,7 +5639,7 @@ const App: React.FC = () => {
                           color: '#00c8a0',
                           avatarUrl: contact.avatarUrl || '',
                         });
-                        setCurrentView('mensajeria');
+                        navigateTo('mensajeria');
                       }
                     } catch {}
                   }}
@@ -6777,8 +6779,8 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Contenido principal - OCULTO cuando el mena esta abierto */}
-      <div style={{ position: 'relative', zIndex: 1, visibility: isMenuOpen ? 'hidden' : 'visible' }}>
+      {/* Contenido principal */}
+      <div style={{ position: 'relative', zIndex: 1 }}>
         {renderCurrentView()}
       </div>
       
