@@ -309,6 +309,15 @@ export const userAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// KEEP-ALIVE — ping cada 4 min para que Render no duerma
+// ══════════════════════════════════════════════════════════════════
+const keepAlive = () => {
+  fetch(`${BASE.replace('/api', '')}/health`).catch(() => {});
+};
+setInterval(keepAlive, 4 * 60 * 1000); // cada 4 minutos
+keepAlive(); // ping inmediato al cargar
+
+// ══════════════════════════════════════════════════════════════════
 // EXPORT DEFAULT — objeto con todos los módulos
 // ══════════════════════════════════════════════════════════════════
 export default {
