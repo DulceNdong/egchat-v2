@@ -4406,7 +4406,9 @@ const App: React.FC = () => {
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            background: selectedWallpaper === 'none' ? '#f0f2f5' : 'transparent'
+            background: '#f0f2f5',
+            position: 'relative',
+            zIndex: 1
           }}>
             {/* Header - Ultra minimalista */}
             <div style={{ marginBottom: '8px', flexShrink: 0 }}>
