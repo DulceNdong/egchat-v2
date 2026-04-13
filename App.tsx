@@ -5621,6 +5621,7 @@ const App: React.FC = () => {
                 <button
                   key={contact.id}
                   onClick={async () => {
+                    setIsMenuOpen(false);
                     try {
                       const chat = await chatAPI.createPrivate(contact.id);
                       if (chat?.id) {
@@ -6777,11 +6778,9 @@ const App: React.FC = () => {
       )}
 
       {/* Contenido principal - OCULTO cuando el mena esta abierto */}
-      {!isMenuOpen && (
-        <div style={{ position: 'relative', zIndex: 1 }}>
-          {renderCurrentView()}
-        </div>
-      )}
+      <div style={{ position: 'relative', zIndex: 1, visibility: isMenuOpen ? 'hidden' : 'visible' }}>
+        {renderCurrentView()}
+      </div>
       
       {/* NAVEGACION inferior - solo en vistas principales */}
       {!isMenuOpen && ['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
