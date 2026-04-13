@@ -1,9 +1,10 @@
 {
   "name": "egchat-frontend",
-  "version": "2.5.1",
+  "version": "2.5.0",
   "description": "EGCHAT Frontend - Complete Enterprise Platform - v2.5 Production Release",
   "type": "module",
   "scripts": {
+    "start": "node server.js",
     "dev": "vite --port=3001",
     "build": "vite build",
     "build:pwa": "vite build --config vite.config.pwa.ts",

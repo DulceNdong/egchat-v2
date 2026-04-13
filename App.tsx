@@ -4,7 +4,7 @@ import { chatAPI, authAPI, contactsAPI } from './api';
 import AuthScreen from './AuthScreen';
 import { EstadosView } from './EstadosView';
 import { ApuestasView } from './ApuestasView';
-import CemacView from './CemacView2';
+import { CemacView } from './CemacView';
 import { MiTaxiView } from './MiTaxiView';
 import { InternetModal, RecargaModal, CanalesModal, BancosModal, SegurosModal, FacturasModal, ActividadModal, SaludModal } from './ServiciosModules';
 import { SupermercadosModal } from './SupermercadosModule';
