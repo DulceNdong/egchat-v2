@@ -5613,7 +5613,18 @@ const App: React.FC = () => {
                     try {
                       const chat = await chatAPI.createPrivate(contact.id);
                       if (chat?.id) {
-                        setSelectedChat(chat);
+                        const name = contact.name || 'Chat';
+                        setSelectedChat({
+                          id: chat.id,
+                          type: 'individual',
+                          title: name,
+                          subtitle: '',
+                          time: '',
+                          status: contact.status || 'offline',
+                          initials: name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+                          color: '#00c8a0',
+                          avatarUrl: contact.avatarUrl || '',
+                        });
                         setCurrentView('mensajeria');
                       }
                     } catch {}
