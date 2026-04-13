@@ -297,20 +297,28 @@ const App: React.FC = () => {
     verificationStatus: 'verified' | 'pending' | 'unverified';
     twoFactorEnabled: boolean;
     notificationsEnabled: boolean;
-  }>({
-    id: '',
-    name: 'Usuario',
-    email: '',
-    phone: '',
-    country: 'Guinea Ecuatorial',
-    city: '',
-    address: '',
-    avatar: 'U',
-    avatarUrl: '',
-    joinDate: new Date().toLocaleDateString('es-ES'),
-    verificationStatus: 'pending',
-    twoFactorEnabled: false,
-    notificationsEnabled: true,
+  }>(() => {
+    // Cargar perfil guardado para no perderlo al reconectar
+    try {
+      const saved = localStorage.getItem('egchat_user_profile');
+      if (saved) {
+        const p = JSON.parse(saved);
+        return {
+          id: p.id || '', name: p.name || 'Usuario', email: p.email || '',
+          phone: p.phone || '', country: p.country || 'Guinea Ecuatorial',
+          city: p.city || '', address: p.address || '',
+          avatar: p.avatar || 'U', avatarUrl: p.avatarUrl || localStorage.getItem('user_avatar') || '',
+          joinDate: p.joinDate || new Date().toLocaleDateString('es-ES'),
+          verificationStatus: 'pending', twoFactorEnabled: false, notificationsEnabled: true,
+        };
+      }
+    } catch {}
+    return {
+      id: '', name: 'Usuario', email: '', phone: '',
+      country: 'Guinea Ecuatorial', city: '', address: '',
+      avatar: 'U', avatarUrl: '', joinDate: new Date().toLocaleDateString('es-ES'),
+      verificationStatus: 'pending', twoFactorEnabled: false, notificationsEnabled: true,
+    };
   });
   const [isEditingProfile, setIsEditingProfile] = useState<boolean>(false);
   const [editedProfile, setEditedProfile] = useState<any>(null);
@@ -3487,7 +3495,7 @@ const App: React.FC = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        height: '72px',
+        height: '82px',
         background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
         borderTop: 'none',
         display: 'flex',
@@ -3543,16 +3551,16 @@ const App: React.FC = () => {
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              width: '24px',
-              height: '24px',
+              width: '30px',
+              height: '30px',
               color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.8)',
               transition: 'all 0.15s ease',
               transform: currentView === item.id ? 'scale(1.15)' : 'scale(1)',
             }}>
-              {renderIcon(item.icon, 24)}
+              {renderIcon(item.icon, 28)}
             </div>
             <span style={{
-              fontSize: '12px',
+              fontSize: '13px',
               fontWeight: currentView === item.id ? '700' : '500',
               textAlign: 'center',
               color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.75)',
@@ -3799,14 +3807,14 @@ const App: React.FC = () => {
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <div style={{
-                width: '56px', height: '56px', borderRadius: '16px',
+                width: '68px', height: '68px', borderRadius: '18px',
                 background: 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: item.color,
               }}>
                 {item.icon}
               </div>
-              <span style={{ fontSize: '12px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '64px' }}>{item.label}</span>
+              <span style={{ fontSize: '13px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '72px' }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -6620,19 +6628,32 @@ const App: React.FC = () => {
   // -- useEffects mensajeria -------------------------------------
   useEffect(() => {
     if (!isAuthenticated) return;
+    // Cargar perfil desde localStorage primero (evita pantalla en blanco)
+    const cachedProfile = localStorage.getItem('egchat_user_profile');
+    if (cachedProfile) {
+      try {
+        const p = JSON.parse(cachedProfile);
+        setUserProfile((prev: any) => ({ ...prev, ...p }));
+        if (p.id) currentUserId.current = p.id;
+      } catch {}
+    }
     authAPI.me().then((u: any) => {
       if (u?.id) {
         currentUserId.current = u.id;
         const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
-        setUserProfile((prev: any) => ({
-          ...prev, id: u.id, name: u.full_name||prev.name, phone: u.phone||prev.phone,
+        const profile = {
+          id: u.id,
+          name: u.full_name || 'Usuario',
+          phone: u.phone || '',
           avatar: (u.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
           avatarUrl: savedAvatar,
-        }));
+        };
+        setUserProfile((prev: any) => ({ ...prev, ...profile }));
+        // Guardar en localStorage para persistencia offline
+        localStorage.setItem('egchat_user_profile', JSON.stringify(profile));
       }
     }).catch((_e: any) => {
       // Ignorar errores de /me — puede ser Render durmiendo
-      // El evento auth:expired en api.ts maneja el caso real de token inválido
     });
     loadChats();
     // Cargar todos los contactos reales
