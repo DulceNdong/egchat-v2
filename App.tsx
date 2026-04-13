@@ -3794,10 +3794,10 @@ const App: React.FC = () => {
         <div style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
           {[
-            { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  28) },
-            { id: 'apuestas', label: 'Juegos',     color: '#b45309', icon: renderIcon('apuestas', 28) },
-            { id: 'cemac',    label: 'CEMAC',      color: '#065f46', icon: renderIcon('cemac',    28) },
-            { id: 'mitaxi',   label: 'MiTaxi',     color: '#92400e', icon: renderIcon('mitaxi',   28) },
+            { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  34) },
+            { id: 'apuestas', label: 'Juegos',     color: '#b45309', icon: renderIcon('apuestas', 34) },
+            { id: 'cemac',    label: 'CEMAC',      color: '#065f46', icon: renderIcon('cemac',    34) },
+            { id: 'mitaxi',   label: 'MiTaxi',     color: '#92400e', icon: renderIcon('mitaxi',   34) },
           ].map(item => (
             <button
               key={item.id}
@@ -3807,14 +3807,14 @@ const App: React.FC = () => {
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <div style={{
-                width: '68px', height: '68px', borderRadius: '18px',
+                width: '72px', height: '72px', borderRadius: '20px',
                 background: 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: item.color,
               }}>
                 {item.icon}
               </div>
-              <span style={{ fontSize: '13px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '72px' }}>{item.label}</span>
+              <span style={{ fontSize: '13px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '76px' }}>{item.label}</span>
             </button>
           ))}
         </div>
