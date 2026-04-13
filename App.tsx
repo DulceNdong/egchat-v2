@@ -1899,11 +1899,11 @@ const App: React.FC = () => {
               onClick={(e) => { const wrap = e.currentTarget.closest('.header-btn-wrap') as HTMLElement | null; if (wrap) { wrap.classList.remove('header-btn-pop'); void wrap.offsetWidth; wrap.classList.add('header-btn-pop'); } setEditWeather({ temp: String(weather.temp), city: weather.city, condition: weather.condition }); setShowWeatherModal(true); }}
               onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,200,160,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
               onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 8px rgba(0,200,160,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ display: 'flex', alignItems: 'center', gap: '3px', background: 'rgba(10,20,40,0.75)', padding: '2px 5px', borderRadius: '50px', border: 'none', cursor: 'pointer', outline: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(10,20,40,0.85)', padding: '5px 10px', borderRadius: '50px', border: 'none', cursor: 'pointer', outline: 'none' }}
             >
-              <div style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.8))' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 13)}</div>
-              <span style={{ fontSize: '11px', fontWeight: '600', color: '#ffffff' }}>{weather.temp}a</span>
-              <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.75)' }}>{weather.city}</span>
+              <div style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.8))' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 15)}</div>
+              <span style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
+              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
             </button>
           </div>
           <div className="hdr-tip" style={{ position: 'absolute', top: '110%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap', fontSize: '10px', fontWeight: '600', color: '#00e5ff', opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease', zIndex: 1100 }}>Clima</div>
@@ -1916,7 +1916,7 @@ const App: React.FC = () => {
               onClick={(e) => { e.currentTarget.classList.remove('header-btn-pop'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('header-btn-pop'); setEditTime(currentTime); setShowTimeModal(true); }}
               onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,200,160,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
               onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 8px rgba(0,200,160,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ fontSize: '10px', fontWeight: '600', color: '#ffffff', letterSpacing: '0.3px', borderRadius: '50px', padding: '2px 5px', background: 'rgba(10,20,40,0.75)', display: 'flex', alignItems: 'center', cursor: 'pointer', outline: 'none', border: 'none' }}
+              style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', letterSpacing: '0.5px', borderRadius: '50px', padding: '5px 10px', background: 'rgba(10,20,40,0.85)', display: 'flex', alignItems: 'center', cursor: 'pointer', outline: 'none', border: 'none' }}
             >
               {isManualTime ? manualTime : currentTime}
             </button>
@@ -1931,9 +1931,9 @@ const App: React.FC = () => {
               onClick={(e) => { e.currentTarget.classList.remove('header-btn-pop'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('header-btn-pop'); setShowNotifications(!showNotifications); }}
               onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,200,160,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
               onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = showNotifications ? '0 0 14px rgba(0,200,160,0.7)' : '0 0 8px rgba(0,200,160,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ background: showNotifications ? 'rgba(0,200,160,0.2)' : 'rgba(10,20,40,0.75)', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', outline: 'none' }}
+              style={{ background: showNotifications ? 'rgba(0,200,160,0.2)' : 'rgba(10,20,40,0.85)', border: 'none', cursor: 'pointer', padding: '6px 8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', outline: 'none' }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </svg>
@@ -1950,9 +1950,9 @@ const App: React.FC = () => {
               onClick={(e) => { e.currentTarget.classList.remove('header-btn-pop'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('header-btn-pop'); setShowMenu(!showMenu); }}
               onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,180,230,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
               onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = showMenu ? '0 0 14px rgba(0,180,230,0.7)' : '0 0 8px rgba(0,180,230,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ background: showMenu ? 'rgba(0,180,230,0.2)' : 'rgba(10,20,40,0.75)', border: 'none', cursor: 'pointer', padding: '2px 4px', borderRadius: '50px', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}
+              style={{ background: showMenu ? 'rgba(0,180,230,0.2)' : 'rgba(10,20,40,0.85)', border: 'none', cursor: 'pointer', padding: '6px 8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}
             >
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                 <line x1="3" y1="6" x2="21" y2="6"/>
                 <line x1="3" y1="12" x2="21" y2="12"/>
                 <line x1="3" y1="18" x2="21" y2="18"/>
@@ -2805,7 +2805,7 @@ const App: React.FC = () => {
                     const msg = err?.message || '';
                     if (msg.includes('no encontrado') || msg.includes('404')) {
                       alert('No se encontró ningún usuario con ese número. Verifica que esté registrado en EGCHAT.');
-                    } else if (msg.includes('Token') || msg.includes('401')) {
+                    } else if (msg.includes('Token inválido') || msg.includes('Token expirado')) {
                       alert('Sesión expirada. Recarga la app e inicia sesión de nuevo.');
                     } else if (msg.includes('ya existe') || msg.includes('409') || msg.includes('duplicate')) {
                       alert('Este contacto ya está en tu lista.');
@@ -3794,10 +3794,10 @@ const App: React.FC = () => {
         <div style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
           {[
-            { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  34) },
-            { id: 'apuestas', label: 'Juegos',     color: '#b45309', icon: renderIcon('apuestas', 34) },
-            { id: 'cemac',    label: 'CEMAC',      color: '#065f46', icon: renderIcon('cemac',    34) },
-            { id: 'mitaxi',   label: 'MiTaxi',     color: '#92400e', icon: renderIcon('mitaxi',   34) },
+            { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  42) },
+            { id: 'apuestas', label: 'Juegos',     color: '#b45309', icon: renderIcon('apuestas', 42) },
+            { id: 'cemac',    label: 'CEMAC',      color: '#065f46', icon: renderIcon('cemac',    42) },
+            { id: 'mitaxi',   label: 'MiTaxi',     color: '#92400e', icon: renderIcon('mitaxi',   42) },
           ].map(item => (
             <button
               key={item.id}
@@ -3807,14 +3807,14 @@ const App: React.FC = () => {
               onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
               <div style={{
-                width: '72px', height: '72px', borderRadius: '20px',
+                width: '80px', height: '80px', borderRadius: '22px',
                 background: 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 color: item.color,
               }}>
                 {item.icon}
               </div>
-              <span style={{ fontSize: '13px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '76px' }}>{item.label}</span>
+              <span style={{ fontSize: '13px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2', maxWidth: '80px' }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -5519,6 +5519,22 @@ const App: React.FC = () => {
           </div>
         );
       case 'contactos':
+        // Recargar contactos cada vez que se abre esta vista
+        if (allContacts.length === 0) {
+          contactsAPI.getAll().then((data: any[]) => {
+            if (Array.isArray(data)) {
+              setAllContacts(data.map((c: any) => ({
+                id: c.contact_user_id?.toString() || c.id?.toString() || '',
+                name: c.name || c.nickname || c.full_name || 'Sin nombre',
+                phone: c.phone || '',
+                avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+                avatarUrl: c.avatar_url || '',
+                status: 'offline' as const,
+                addedDate: c.created_at || new Date().toISOString(),
+              })));
+            }
+          }).catch(() => {});
+        }
         return (
           <div style={{
             padding: '66px 12px 90px',
@@ -6662,12 +6678,12 @@ const App: React.FC = () => {
     contactsAPI.getAll().then((data: any[]) => {
       if (Array.isArray(data)) {
         setAllContacts(data.map((c: any) => ({
-          id: c.id?.toString() || c.contact_user_id?.toString() || '',
-          name: c.name || c.full_name || c.contact_name || 'Sin nombre',
-          phone: c.phone || c.contact_phone || '',
-          avatar: (c.name || c.full_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-          avatarUrl: c.avatar_url || c.contact_avatar || '',
-          status: (c.status || 'offline') as 'online' | 'offline' | 'away',
+          id: c.contact_user_id?.toString() || c.id?.toString() || '',
+          name: c.name || c.nickname || c.full_name || 'Sin nombre',
+          phone: c.phone || '',
+          avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+          avatarUrl: c.avatar_url || '',
+          status: 'offline' as 'online' | 'offline' | 'away',
           addedDate: c.created_at || new Date().toISOString(),
         })));
       }
