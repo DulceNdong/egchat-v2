@@ -2773,7 +2773,27 @@ const App: React.FC = () => {
                   placeholder="numero de telafono" type="tel"
                   style={{ flex: 1, background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#0d0d0d', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}/>
               </div>
-              <button onClick={() => { if (newContactPhone.trim()) { setNewContactPhone(''); setNewContactName(''); setShowAddContact(false); } }}
+              <button onClick={async () => { 
+                if (newContactPhone.trim()) { 
+                  try {
+                    const phone = newContactPhone.startsWith('+') ? newContactPhone : '+240' + newContactPhone.replace(/\D/g, '').slice(-9);
+                    await contactsAPI.add(undefined, phone, newContactName.trim() || undefined);
+                    // Refrescar lista de contactos
+                    const data = await contactsAPI.getAll();
+                    if (Array.isArray(data)) {
+                      setAllContacts(data.map((c: any) => ({
+                        id: c.id?.toString() || c.contact_user_id?.toString() || '',
+                        name: c.name || c.full_name || c.contact_name || 'Sin nombre',
+                        phone: c.phone || c.contact_phone || '',
+                        avatar: (c.name || c.full_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+                        avatarUrl: c.avatar_url || c.contact_avatar || '',
+                        status: (c.status || 'offline') as 'online' | 'offline' | 'away',
+                        addedDate: c.created_at || new Date().toISOString(),
+                      })));
+                    }
+                  } catch {}
+                  setNewContactPhone(''); setNewContactName(''); setShowAddContact(false); 
+                } }}
                 style={{ background: '#00b4e6', border: 'none', borderRadius: '10px', padding: '12px', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', marginTop: '4px' }}>
                 Aaadir contacto
               </button>
@@ -5528,8 +5548,8 @@ const App: React.FC = () => {
             }}>
               <button
                 onClick={() => {
-                  setShowAddContactModal(true);
-                  setNewContactData({ name: '', phone: '' });
+                  setShowAddContact(true);
+                  setNewContactPhone(''); setNewContactName('');
                 }}
                 style={{
                   background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.2))',
@@ -5589,7 +5609,15 @@ const App: React.FC = () => {
               {allContacts.map((contact) => (
                 <button
                   key={contact.id}
-                  onClick={() => console.log('Abrir contacto:', contact.name)}
+                  onClick={async () => {
+                    try {
+                      const chat = await chatAPI.createPrivate(contact.id);
+                      if (chat?.id) {
+                        setSelectedChat(chat);
+                        setCurrentView('mensajeria');
+                      }
+                    } catch {}
+                  }}
                   style={{
                     width: '100%',
                     background: 'rgba(250,250,250,0.88)',
@@ -6582,6 +6610,20 @@ const App: React.FC = () => {
       // El evento auth:expired en api.ts maneja el caso real de token inválido
     });
     loadChats();
+    // Cargar todos los contactos reales
+    contactsAPI.getAll().then((data: any[]) => {
+      if (Array.isArray(data)) {
+        setAllContacts(data.map((c: any) => ({
+          id: c.id?.toString() || c.contact_user_id?.toString() || '',
+          name: c.name || c.full_name || c.contact_name || 'Sin nombre',
+          phone: c.phone || c.contact_phone || '',
+          avatar: (c.name || c.full_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+          avatarUrl: c.avatar_url || c.contact_avatar || '',
+          status: (c.status || 'offline') as 'online' | 'offline' | 'away',
+          addedDate: c.created_at || new Date().toISOString(),
+        })));
+      }
+    }).catch(() => {});
     // Cargar contactos favoritos reales
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
     // Cargar grupos favoritos reales
