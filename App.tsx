@@ -2791,11 +2791,22 @@ const App: React.FC = () => {
                         addedDate: c.created_at || new Date().toISOString(),
                       })));
                     }
-                  } catch {}
-                  setNewContactPhone(''); setNewContactName(''); setShowAddContact(false); 
+                  } catch (err: any) {
+                    const msg = err?.message || '';
+                    if (msg.includes('no encontrado') || msg.includes('404')) {
+                      alert('No se encontró ningún usuario con ese número. Verifica que esté registrado en EGCHAT.');
+                    } else if (msg.includes('Token') || msg.includes('401')) {
+                      alert('Sesión expirada. Recarga la app e inicia sesión de nuevo.');
+                    } else if (msg.includes('ya existe') || msg.includes('409') || msg.includes('duplicate')) {
+                      alert('Este contacto ya está en tu lista.');
+                      setNewContactPhone(''); setNewContactName(''); setShowAddContact(false);
+                    } else {
+                      alert('Error: ' + (msg || 'El servidor puede estar iniciando, intenta en unos segundos.'));
+                    }
+                  }
                 } }}
                 style={{ background: '#00b4e6', border: 'none', borderRadius: '10px', padding: '12px', color: 'white', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', marginTop: '4px' }}>
-                Aaadir contacto
+                Añadir contacto
               </button>
             </div>
           ) : (
