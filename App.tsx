@@ -6803,7 +6803,7 @@ const App: React.FC = () => {
       )}
 
       {/* Contenido principal */}
-      <div style={{ position: 'relative', zIndex: 1 }}>
+      <div style={{ position: 'relative', zIndex: 1, height: '100%' }}>
         {renderCurrentView()}
       </div>
       
