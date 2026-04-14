@@ -4791,27 +4791,39 @@ const App: React.FC = () => {
                   return name.includes(searchQuery.toLowerCase()) || last.includes(searchQuery.toLowerCase());
                 })
                 .map((chat: any) => {
-                  const name = chat.name || chat.title || 'Chat';
+                  // Para chats privados, usar el nombre del otro participante
+                  const isGroup = chat.type === 'group';
+                  let name = chat.name || chat.title || '';
+                  let avatarUrl = chat.avatar_url || '';
+                  if (!isGroup && chat.participants) {
+                    const other = chat.participants.find((p: any) => 
+                      p.user_id?.toString() !== currentUserId.current?.toString()
+                    );
+                    if (other) {
+                      name = other.full_name || other.users?.full_name || name;
+                      avatarUrl = other.avatar_url || other.users?.avatar_url || avatarUrl;
+                    }
+                  }
+                  if (!name) name = 'Chat';
                   const initials = name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
                   const lastMsg = chat.last_message?.text || chat.subtitle || '';
                   const time = chat.last_message?.created_at
                     ? new Date(chat.last_message.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
                     : '';
-                  const isGroup = chat.type === 'group';
                   return (
                     <div key={chat.id}
                       onClick={() => setSelectedChat({
                         id: chat.id, type: chat.type||'individual',
                         title: name, subtitle: lastMsg, time,
                         status: 'online', initials, color: isGroup ? '#a855f7' : '#00c8a0',
-                        avatarUrl: chat.avatar_url || ''
+                        avatarUrl: avatarUrl
                       })}
                       style={{ background:'#fff', borderRadius:'8px', padding:'12px 10px', marginBottom:'6px', border:'1px solid #F0F2F5', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px' }}
                       onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
                       onMouseLeave={e=>{e.currentTarget.style.background='#fff';}}
                     >
                       <div style={{ width:'50px', height:'50px', borderRadius:'50%', background: isGroup ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'700', color:'#fff', flexShrink:0, overflow:'hidden' }}>
-                        {chat.avatar_url ? <img src={chat.avatar_url} alt={name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span>{initials}</span>}
+                        {avatarUrl ? <img src={avatarUrl} alt={name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span>{initials}</span>}
                       </div>
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:'15px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
