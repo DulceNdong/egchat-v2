@@ -2721,7 +2721,7 @@ const App: React.FC = () => {
             if (item.id==='perfil') { setShowProfileView(true); }
             else if (item.id==='nuevo-contacto') { setShowAddContact(true); }
             else if (item.id==='crear-grupo') { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
-            else if (item.id==='contactos') { setShowContactsModal(true); }
+            else if (item.id==='contactos') { setShowMenu(false); setCurrentView('contactos'); }
             else if (item.id==='mensajes-arch') { setCurrentView('mensajeria'); setMessageFilter('all'); }
             else if (item.id==='notificaciones') { setShowNotifications(true); }
             else if (item.id==='privacidad') { setCurrentView('ajustes'); setCurrentSettingsTab('perfil'); }
