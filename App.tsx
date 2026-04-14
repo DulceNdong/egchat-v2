@@ -55,7 +55,7 @@ const App: React.FC = () => {
 
   const loadChats = useCallback(async () => {
     if (!localStorage.getItem('token')) return;
-    try { const d = await chatAPI.getChats(); if (Array.isArray(d)) setRealChats(d); } catch {}
+    try { const d = await chatAPI.getChats(); if (Array.isArray(d)) { setRealChats(d); realChatsRef.current = d; } } catch {}
   }, []);
 
   const loadMessages = useCallback(async (chatId: string) => {
@@ -68,11 +68,41 @@ const App: React.FC = () => {
           text: m.text || '', time: new Date(m.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
           status: (m.status||'delivered') as 'pending'|'delivered'|'read',
         }));
-        setChatMessages((prev: any) => ({ ...prev, [chatId]: fmt }));
+        setChatMessages((prev: any) => {
+          // Detectar mensajes nuevos para notificar
+          const lastId = lastMsgIds.current[chatId];
+          const newFromThem = fmt.filter(m => m.from === 'them');
+          if (newFromThem.length > 0) {
+            const newest = newFromThem[newFromThem.length - 1];
+            if (lastId && newest.id !== lastId) {
+              notifyNewMessage(chatId, newest.text);
+            }
+            lastMsgIds.current[chatId] = newest.id;
+          }
+          return { ...prev, [chatId]: fmt };
+        });
       }
     } catch {}
   }, []);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  // -- Notificaciones de mensajes --
+  const [msgNotif, setMsgNotif] = useState<{id:string; sender:string; text:string; chatId:string; avatar?:string} | null>(null);
+  const msgNotifTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastMsgIds = React.useRef<Record<string, string>>({});
+  const realChatsRef = React.useRef<any[]>([]);
+
+  const notifyNewMessage = React.useCallback((chatId: string, text: string) => {
+    const chat = realChatsRef.current.find((c: any) => c.id === chatId);
+    const other = chat?.participants?.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString());
+    const senderName = other?.users?.full_name || other?.full_name || 'Nuevo mensaje';
+    const avatar = other?.users?.avatar_url || '';
+    if (msgNotifTimer.current) clearTimeout(msgNotifTimer.current);
+    setMsgNotif({ id: Date.now().toString(), sender: senderName, text, chatId, avatar });
+    msgNotifTimer.current = setTimeout(() => setMsgNotif(null), 5000);
+    if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
+      new Notification(`💬 ${senderName}`, { body: text, icon: '/logo-transparent.png', tag: chatId });
+    }
+  }, []);
   // Helper: navegar a una vista siempre cierra el menú radial
   const navigateTo = (view: string) => { setIsMenuOpen(false); setCurrentView(view); };
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
@@ -6770,6 +6800,10 @@ const App: React.FC = () => {
       }));
     }
     setIsAuthenticated(true);
+    // Pedir permiso de notificaciones del sistema
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
   }} />;
 
   return (
@@ -6856,6 +6890,38 @@ const App: React.FC = () => {
       {!isMenuOpen && ['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
       
       {/* Botan catalogo wallpaper a dentro del mena radial, no aqua */}
+
+      {/* Toast de notificación de mensaje nuevo */}
+      {msgNotif && (
+        <div
+          onClick={() => { setMsgNotif(null); setSelectedChat(null); setCurrentView('mensajeria'); }}
+          style={{
+            position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)',
+            zIndex: 9999, background: '#1a1a2e', borderRadius: '16px',
+            padding: '12px 16px', display: 'flex', alignItems: 'center', gap: '12px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.4)', cursor: 'pointer',
+            minWidth: '280px', maxWidth: '340px',
+            animation: 'slideDownNotif 0.3s cubic-bezier(0.34,1.56,0.64,1)',
+            border: '1px solid rgba(0,200,160,0.3)',
+          }}
+        >
+          <style>{`@keyframes slideDownNotif { from{opacity:0;transform:translateX(-50%) translateY(-20px)} to{opacity:1;transform:translateX(-50%) translateY(0)} }`}</style>
+          {/* Avatar */}
+          <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+            {msgNotif.avatar
+              ? <img src={msgNotif.avatar} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }}/>
+              : msgNotif.sender.split(' ').map(w => w[0]).join('').slice(0,2).toUpperCase()
+            }
+          </div>
+          {/* Texto */}
+          <div style={{ flex: 1, minWidth: 0 }}>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#fff', marginBottom: '2px' }}>{msgNotif.sender}</div>
+            <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.7)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{msgNotif.text}</div>
+          </div>
+          {/* Cerrar */}
+          <button onClick={e => { e.stopPropagation(); setMsgNotif(null); }} style={{ background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', cursor: 'pointer', padding: '4px', fontSize: '16px' }}>✕</button>
+        </div>
+      )}
 
       {/* Avatar Crop Modal */}
       {avatarCropUrl && (
