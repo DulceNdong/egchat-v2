@@ -1,5 +1,5 @@
-// Service Worker v20260411 — auto-limpia cache antigua
-const CACHE = 'egchat-v20260411';
+// Service Worker v20260415 — no intercepta peticiones a la API
+const CACHE = 'egchat-v20260415';
 
 self.addEventListener('install', () => {
   self.skipWaiting();
@@ -13,8 +13,8 @@ self.addEventListener('activate', e => {
   );
 });
 
-// Network-first: siempre intenta red, nunca sirve cache vieja
+// No interceptar NADA — dejar que el navegador maneje todo directamente
 self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-  e.respondWith(fetch(e.request));
+  // No hacer nada — pasar todas las peticiones directamente a la red
+  return;
 });

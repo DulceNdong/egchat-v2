@@ -5519,22 +5519,7 @@ const App: React.FC = () => {
           </div>
         );
       case 'contactos':
-        // Recargar contactos cada vez que se abre esta vista
-        if (allContacts.length === 0) {
-          contactsAPI.getAll().then((data: any[]) => {
-            if (Array.isArray(data)) {
-              setAllContacts(data.map((c: any) => ({
-                id: c.contact_user_id?.toString() || c.id?.toString() || '',
-                name: c.name || c.nickname || c.full_name || 'Sin nombre',
-                phone: c.phone || '',
-                avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-                avatarUrl: c.avatar_url || '',
-                status: 'offline' as const,
-                addedDate: c.created_at || new Date().toISOString(),
-              })));
-            }
-          }).catch(() => {});
-        }
+        // La carga se hace via useEffect cuando currentView === 'contactos'
         return (
           <div style={{
             padding: '66px 12px 100px',
@@ -6698,9 +6683,13 @@ const App: React.FC = () => {
   // Escuchar evento de token expirado desde api.ts
   useEffect(() => {
     const handleExpired = () => {
-      setIsAuthenticated(false);
-      setSelectedChat(null);
-      setCurrentView('home');
+      // Solo cerrar sesión si realmente no hay token
+      const token = localStorage.getItem('token') || localStorage.getItem('egchat_token_backup');
+      if (!token) {
+        setIsAuthenticated(false);
+        setSelectedChat(null);
+        setCurrentView('home');
+      }
     };
     window.addEventListener('auth:expired', handleExpired);
     return () => window.removeEventListener('auth:expired', handleExpired);
@@ -6728,6 +6717,25 @@ const App: React.FC = () => {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     };
   }, [selectedChat, loadMessages]);
+
+  // -- Cargar contactos cuando se navega a la vista de contactos --
+  useEffect(() => {
+    if (currentView !== 'contactos') return;
+    contactsAPI.getAll().then((data: any[]) => {
+      console.log('Contactos cargados:', data?.length, data);
+      if (Array.isArray(data)) {
+        setAllContacts(data.map((c: any) => ({
+          id: c.contact_user_id?.toString() || c.id?.toString() || '',
+          name: c.name || c.nickname || c.full_name || 'Sin nombre',
+          phone: c.phone || '',
+          avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+          avatarUrl: c.avatar_url || '',
+          status: 'offline' as const,
+          addedDate: c.created_at || new Date().toISOString(),
+        })));
+      }
+    }).catch((err) => { console.error('Error cargando contactos:', err); });
+  }, [currentView]);
 
   // -- Auth check  todos los hooks declarados -------------------
   if (!isAuthenticated) return <AuthScreen onAuth={(user) => {
