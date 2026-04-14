@@ -5537,12 +5537,12 @@ const App: React.FC = () => {
         }
         return (
           <div style={{
-            padding: '66px 12px 90px',
+            padding: '66px 12px 100px',
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
-            background: 'transparent'
+            background: '#f0f2f5'
           }}>
             {/* Header */}
             <div style={{
@@ -5554,9 +5554,8 @@ const App: React.FC = () => {
               <h2 style={{
                 fontSize: '16px',
                 fontWeight: '700',
-                color: '#ffffff',
+                color: '#111827',
                 margin: 0,
-                textShadow: '0 1px 4px rgba(0,0,0,0.4)'
               }}>
                  Mis Contactos
               </h2>
