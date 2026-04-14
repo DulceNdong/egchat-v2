@@ -2585,8 +2585,7 @@ const App: React.FC = () => {
                 {(userProfile as any).avatarUrl ? <img src={(userProfile as any).avatarUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : userProfile.avatar}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>{userProfile.name}</div>
-                <div style={{ fontSize: '12px', color: '#00c8a0', fontWeight: '500', marginBottom: '2px' }}>{userProfile.phone}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '4px' }}>{userProfile.name}</div>
                 <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px', fontFamily: 'monospace' }}>ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '10px', fontWeight: '600', color: '#00c8a0', background: 'rgba(0,200,160,0.15)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '2px 8px' }}>
@@ -6119,30 +6118,32 @@ const App: React.FC = () => {
             }}>
               {currentSettingsTab === 'perfil' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                  {/* Avatar — foto real + editable */}
+                  {/* Tarjeta de perfil — diseño profesional centrado */}
                   <div style={{
-                    background: 'rgba(249,250,251,0.88)',
-                    border: '1px solid rgba(0,0,0,0.08)',
-                    borderRadius: '12px',
-                    padding: '20px 16px',
-                    textAlign: 'center'
+                    background: 'linear-gradient(135deg, #f0fdf9 0%, #e0f7fa 100%)',
+                    border: '1px solid rgba(0,200,160,0.15)',
+                    borderRadius: '16px',
+                    padding: '28px 16px 20px',
+                    textAlign: 'center',
+                    position: 'relative'
                   }}>
-                    {/* Foto de perfil */}
-                    <div style={{ position: 'relative', width: '88px', margin: '0 auto 12px' }}>
+                    {/* Foto de perfil centrada */}
+                    <div style={{ position: 'relative', width: '96px', margin: '0 auto 14px' }}>
                       <div style={{
-                        width: '88px', height: '88px', borderRadius: '50%',
+                        width: '96px', height: '96px', borderRadius: '50%',
                         background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
-                        border: '3px solid #00c8a0',
+                        border: '3px solid #fff',
+                        boxShadow: '0 4px 16px rgba(0,200,160,0.35)',
                         overflow: 'hidden',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                        fontSize: '32px', fontWeight: '800', color: '#fff',
+                        fontSize: '34px', fontWeight: '800', color: '#fff',
                       }}>
                         {userProfile.avatarUrl
                           ? <img src={userProfile.avatarUrl} alt="avatar" style={{ width:'100%', height:'100%', objectFit:'cover' }} />
                           : <span>{userProfile.avatar || 'U'}</span>
                         }
                       </div>
-                      {/* Botón cámara para cambiar foto */}
+                      {/* Botón cámara */}
                       <button onClick={() => {
                         const inp = document.createElement('input');
                         inp.type = 'file'; inp.accept = 'image/*';
@@ -6150,33 +6151,31 @@ const App: React.FC = () => {
                           const f = inp.files?.[0];
                           if (f) {
                             const r = new FileReader();
-                            r.onload = (e) => {
-                              const url = e.target?.result as string;
-                              localStorage.setItem('user_avatar', url);
-                              setUserProfile(prev => ({ ...prev, avatarUrl: url }));
-                            };
+                            r.onload = (e) => { setAvatarCropUrl(e.target?.result as string); };
                             r.readAsDataURL(f);
                           }
                         };
                         inp.click();
                       }} style={{
-                        position: 'absolute', bottom: 0, right: 0,
-                        width: '26px', height: '26px', borderRadius: '50%',
-                        background: '#00c8a0', border: '2px solid #fff',
+                        position: 'absolute', bottom: 2, right: 2,
+                        width: '28px', height: '28px', borderRadius: '50%',
+                        background: '#00c8a0', border: '2.5px solid #fff',
+                        boxShadow: '0 2px 6px rgba(0,0,0,0.15)',
                         display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer', outline: 'none'
                       }}>
                         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
                       </button>
                     </div>
-                    <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>
+                    {/* Nombre */}
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: '#0d0d0d', marginBottom: '4px', letterSpacing: '-0.3px' }}>
                       {userProfile.name || 'Usuario'}
                     </div>
-                    <div style={{ fontSize: '12px', color: '#00c8a0', fontWeight: '600', marginBottom: '2px' }}>
-                      {userProfile.phone || ''}
-                    </div>
-                    <div style={{ fontSize: '10px', color: '#9ca3af' }}>
-                      ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}
+                    {/* ID */}
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.06)', borderRadius: '20px', padding: '3px 10px' }}>
+                      <span style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                        ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}
+                      </span>
                     </div>
                   </div>
 
