@@ -2583,11 +2583,12 @@ const App: React.FC = () => {
                 {(userProfile as any).avatarUrl ? <img src={(userProfile as any).avatarUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : userProfile.avatar}
               </div>
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '3px' }}>{userProfile.name}</div>
-                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '6px' }}>{userProfile.id}</div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>{userProfile.name}</div>
+                <div style={{ fontSize: '12px', color: '#00c8a0', fontWeight: '500', marginBottom: '2px' }}>{userProfile.phone}</div>
+                <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px', fontFamily: 'monospace' }}>ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
                   <span style={{ fontSize: '10px', fontWeight: '600', color: '#00c8a0', background: 'rgba(0,200,160,0.15)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '2px 8px' }}>
-                    ? Verificado
+                    ✓ Verificado
                   </span>
                   <span style={{ fontSize: '10px', color: '#6b7280', background: 'rgba(249,250,251,0.88)', borderRadius: '10px', padding: '2px 8px' }}>
                     Desde {userProfile.joinDate}
