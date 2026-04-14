@@ -15,6 +15,7 @@ import { CameraModal } from './CameraModal';
 import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
 import { Lia25View } from './Lia25View';
+import { AvatarCropModal } from './AvatarCropModal';
 
 interface Bank {
   id: string;
@@ -325,6 +326,7 @@ const App: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showProfileView, setShowProfileView] = useState<boolean>(false);
   const [showProfileQR, setShowProfileQR] = useState<boolean>(false);
+  const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
 
   // Ajustes
   const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'ayuda' | 'actividad'>('perfil');
@@ -2578,8 +2580,8 @@ const App: React.FC = () => {
           <div style={{ flex: 1, overflowY: 'auto', padding: '0 16px 24px' }}>
             {/* Avatar + info basica */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', padding: '14px', background: 'rgba(250,250,250,0.88)', borderRadius: '14px', border: '1px solid rgba(0,0,0,0.07)' }}>
-              <div style={{ width: '64px', height: '64px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(0,200,160,0.3), rgba(0,180,230,0.3))', border: '2px solid rgba(0,200,160,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', fontWeight: '700', color: '#00c8a0', flexShrink: 0, overflow: 'hidden', cursor: 'pointer' }}
-                onClick={() => { const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files?.[0];if(f){const r=new FileReader();r.onload=e=>{const url=e.target?.result as string;localStorage.setItem('user_avatar',url);setUserProfile((p:any)=>({...p,avatarUrl:url}));};r.readAsDataURL(f);}};i.click(); }}>
+              <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(0,200,160,0.3), rgba(0,180,230,0.3))', border: '3px solid rgba(0,200,160,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color: '#00c8a0', flexShrink: 0, overflow: 'hidden', cursor: 'pointer' }}
+                onClick={() => { const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files?.[0];if(f){const r=new FileReader();r.onload=e=>{setAvatarCropUrl(e.target?.result as string);};r.readAsDataURL(f);}};i.click(); }}>
                 {(userProfile as any).avatarUrl ? <img src={(userProfile as any).avatarUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : userProfile.avatar}
               </div>
               <div style={{ flex: 1 }}>
@@ -6851,6 +6853,19 @@ const App: React.FC = () => {
       {!isMenuOpen && ['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
       
       {/* Botan catalogo wallpaper a dentro del mena radial, no aqua */}
+
+      {/* Avatar Crop Modal */}
+      {avatarCropUrl && (
+        <AvatarCropModal
+          imageUrl={avatarCropUrl}
+          onClose={() => setAvatarCropUrl(null)}
+          onSave={(croppedUrl) => {
+            localStorage.setItem('user_avatar', croppedUrl);
+            setUserProfile((p: any) => ({ ...p, avatarUrl: croppedUrl }));
+            setAvatarCropUrl(null);
+          }}
+        />
+      )}
 
       {/* Mena radial */}
       {renderRadialMenu()}
