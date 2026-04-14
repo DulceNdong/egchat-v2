@@ -4,11 +4,8 @@
 
 const BASE = (() => {
   const url = ((import.meta as any).env?.VITE_API_URL || '').trim();
-  // Sin URL o relativa → usar backend de producción completo
   if (!url || url.startsWith('/')) return 'https://egchat-api.onrender.com/api';
-  // Si ya termina en /api, usarla tal cual
   if (url.endsWith('/api')) return url;
-  // Si termina en /, quitar la barra y añadir /api
   return url.replace(/\/$/, '') + '/api';
 })();
 
@@ -41,14 +38,27 @@ const getHeaders = (): Record<string, string> => {
   const token = getToken();
   return {
     'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
   };
 };
 
 // ── Helper base ───────────────────────────────────────────────────
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
-  const res = await fetch(`${BASE}${path}`, {
-    headers: { ...getHeaders(), ...(options.headers as Record<string,string> || {}) },
+  const token = getToken();
+  const method = (options.method || 'GET').toUpperCase();
+  
+  // Para GET: añadir token como query param (evita que Cloudflare elimine Authorization)
+  // Para POST/PUT/DELETE: también añadir token como query param por seguridad
+  let url = `${BASE}${path}`;
+  if (token) {
+    const sep = path.includes('?') ? '&' : '?';
+    url = `${BASE}${path}${sep}_t=${encodeURIComponent(token)}`;
+  }
+  
+  const headers = { ...getHeaders(), ...(options.headers as Record<string,string> || {}) };
+  console.log(`[API] ${method} ${path} | token: ${token ? token.substring(0,20)+'...' : 'EMPTY'}`);
+  const res = await fetch(url, {
+    headers,
     ...options,
   });
   if (res.status === 401) {
