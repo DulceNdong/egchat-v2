@@ -6658,7 +6658,7 @@ const App: React.FC = () => {
     authAPI.me().then((u: any) => {
       if (u?.id) {
         currentUserId.current = u.id;
-        const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
+        const savedAvatar = u.avatar_url || localStorage.getItem('user_avatar') || '';
         const profile = {
           id: u.id,
           name: u.full_name || 'Usuario',
