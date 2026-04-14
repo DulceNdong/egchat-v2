@@ -3800,10 +3800,94 @@ const App: React.FC = () => {
         <div style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
           {[
-            { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  42) },
-            { id: 'apuestas', label: 'Juegos',     color: '#b45309', icon: renderIcon('apuestas', 42) },
-            { id: 'cemac',    label: 'CEMAC',      color: '#065f46', icon: renderIcon('cemac',    42) },
-            { id: 'mitaxi',   label: 'MiTaxi',     color: '#92400e', icon: renderIcon('mitaxi',   42) },
+            { id: 'estados',  label: 'Estados',   icon: (
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <rect width="80" height="80" rx="18" fill="white"/>
+                <path d="M40 12 C40 12 58 22 58 40 C58 52 50 62 40 66 C30 62 22 52 22 40 C22 22 40 12 40 12Z" fill="url(#spiralGrad)" opacity="0.15"/>
+                <path d="M40 20 C48 20 54 26 54 34 C54 42 48 48 40 48 C34 48 29 44 28 38" stroke="url(#spiralGrad)" strokeWidth="5" strokeLinecap="round" fill="none"/>
+                <path d="M28 38 C27 32 30 26 36 23" stroke="url(#spiralGrad2)" strokeWidth="4" strokeLinecap="round" fill="none"/>
+                <path d="M36 23 C42 20 49 22 52 28" stroke="url(#spiralGrad3)" strokeWidth="3" strokeLinecap="round" fill="none"/>
+                <defs>
+                  <linearGradient id="spiralGrad" x1="22" y1="20" x2="58" y2="60" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#2DD4BF"/>
+                    <stop offset="100%" stopColor="#3B82F6"/>
+                  </linearGradient>
+                  <linearGradient id="spiralGrad2" x1="22" y1="38" x2="40" y2="20" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#3B82F6"/>
+                    <stop offset="100%" stopColor="#6366F1"/>
+                  </linearGradient>
+                  <linearGradient id="spiralGrad3" x1="36" y1="23" x2="52" y2="28" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#6366F1"/>
+                    <stop offset="100%" stopColor="#2DD4BF"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            )},
+            { id: 'apuestas', label: 'Juegos',     icon: (
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <rect width="80" height="80" rx="18" fill="white"/>
+                {/* Ficha grande roja */}
+                <circle cx="32" cy="34" r="14" fill="#C0392B"/>
+                <circle cx="32" cy="34" r="10" fill="#E74C3C"/>
+                <circle cx="32" cy="34" r="6" fill="#C0392B" opacity="0.6"/>
+                {/* Ficha pequeña marrón (peón) */}
+                <circle cx="52" cy="42" r="8" fill="#8B5E3C"/>
+                <circle cx="52" cy="42" r="5" fill="#A0714F"/>
+                <rect x="48" y="50" width="8" height="4" rx="2" fill="#8B5E3C"/>
+                <rect x="46" y="54" width="12" height="3" rx="1.5" fill="#7A5230"/>
+              </svg>
+            )},
+            { id: 'cemac',    label: 'CEMAC',      icon: (
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <rect width="80" height="80" rx="18" fill="white"/>
+                {/* Casa */}
+                <path d="M40 16 L62 34 L58 34 L58 60 L22 60 L22 34 L18 34 Z" fill="url(#houseGrad)"/>
+                <rect x="32" y="44" width="16" height="16" rx="2" fill="rgba(255,255,255,0.3)"/>
+                {/* Hoja */}
+                <path d="M44 52 C44 52 56 44 60 32 C60 32 48 30 40 40 C36 44 36 52 44 52Z" fill="url(#leafGrad)"/>
+                <path d="M44 52 C44 52 50 44 52 36" stroke="rgba(255,255,255,0.6)" strokeWidth="1.5" strokeLinecap="round"/>
+                <defs>
+                  <linearGradient id="houseGrad" x1="18" y1="16" x2="62" y2="60" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#2D6A4F"/>
+                    <stop offset="100%" stopColor="#1B4332"/>
+                  </linearGradient>
+                  <linearGradient id="leafGrad" x1="40" y1="30" x2="60" y2="52" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#52B788"/>
+                    <stop offset="100%" stopColor="#2D6A4F"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            )},
+            { id: 'mitaxi',   label: 'MiTaxi',     icon: (
+              <svg width="80" height="80" viewBox="0 0 80 80" fill="none">
+                <rect width="80" height="80" rx="18" fill="white"/>
+                {/* Coche dorado de perfil */}
+                <path d="M14 46 L14 38 L22 28 L54 28 L66 38 L66 46 Z" fill="url(#carGrad)"/>
+                <path d="M22 28 L26 20 L52 20 L56 28Z" fill="url(#carTopGrad)"/>
+                {/* Ventanas */}
+                <path d="M28 28 L30 22 L44 22 L46 28Z" fill="rgba(255,255,255,0.5)"/>
+                <line x1="38" y1="22" x2="38" y2="28" stroke="rgba(255,255,255,0.4)" strokeWidth="1"/>
+                {/* Ruedas */}
+                <circle cx="24" cy="46" r="8" fill="#5C4A1E"/>
+                <circle cx="24" cy="46" r="5" fill="#8B7536"/>
+                <circle cx="24" cy="46" r="2.5" fill="#D4AF37"/>
+                <circle cx="56" cy="46" r="8" fill="#5C4A1E"/>
+                <circle cx="56" cy="46" r="5" fill="#8B7536"/>
+                <circle cx="56" cy="46" r="2.5" fill="#D4AF37"/>
+                {/* Faros */}
+                <ellipse cx="66" cy="40" rx="3" ry="4" fill="#FFF9C4" opacity="0.8"/>
+                <defs>
+                  <linearGradient id="carGrad" x1="14" y1="28" x2="66" y2="46" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#D4AF37"/>
+                    <stop offset="100%" stopColor="#B8860B"/>
+                  </linearGradient>
+                  <linearGradient id="carTopGrad" x1="22" y1="20" x2="56" y2="28" gradientUnits="userSpaceOnUse">
+                    <stop offset="0%" stopColor="#F0C040"/>
+                    <stop offset="100%" stopColor="#D4AF37"/>
+                  </linearGradient>
+                </defs>
+              </svg>
+            )},
           ].map(item => (
             <button
               key={item.id}
@@ -3816,7 +3900,7 @@ const App: React.FC = () => {
                 width: '80px', height: '80px', borderRadius: '22px',
                 background: 'transparent',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                color: item.color,
+                filter: 'drop-shadow(0 4px 8px rgba(0,0,0,0.15))',
               }}>
                 {item.icon}
               </div>
