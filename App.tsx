@@ -16,6 +16,8 @@ import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
 import { Lia25View } from './Lia25View';
 import { AvatarCropModal } from './AvatarCropModal';
+import { QRScanner } from './QRScanner';
+import { QRCodeSVG } from 'qrcode.react';
 
 interface Bank {
   id: string;
@@ -327,6 +329,7 @@ const App: React.FC = () => {
   const [showProfileView, setShowProfileView] = useState<boolean>(false);
   const [showProfileQR, setShowProfileQR] = useState<boolean>(false);
   const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
+  const [showQRScannerCamera, setShowQRScannerCamera] = useState<boolean>(false);
 
   // Ajustes
   const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'ayuda' | 'actividad'>('perfil');
@@ -2493,33 +2496,8 @@ const App: React.FC = () => {
   const renderProfileView = () => {
     if (!showProfileView) return null;
 
-    // QR SVG generado con los datos del perfil (patrón visual representativo)
-    const qrData = `egchat://user/${userProfile.id}/${userProfile.phone}`;
-    const QRCode = () => {
-      // Patrón QR visual simplificado (representativo)
-      const cells = Array.from({ length: 21 }, (_, row) =>
-        Array.from({ length: 21 }, (_, col) => {
-          // Esquinas fijas del QR
-          const inCorner = (r: number, c: number, or: number, oc: number) =>
-            r >= or && r <= or + 6 && c >= oc && c <= oc + 6 &&
-            !(r > or && r < or + 6 && c > oc && c < oc + 6) ||
-            (r >= or + 2 && r <= or + 4 && c >= oc + 2 && c <= oc + 4);
-          if (inCorner(row, col, 0, 0) || inCorner(row, col, 0, 14) || inCorner(row, col, 14, 0) || inCorner(row, col, 14, 14)) return true;
-          // Timing patterns a fila 6 y columna 6, puntos alternos entre esquinas
-          if (row === 6 && col >= 7 && col <= 13 && col % 2 === 1) return true;
-          if (col === 6 && row >= 7 && row <= 13 && row % 2 === 1) return true;
-          // Datos simulados basados en hash del ID
-          const hash = (userProfile.id + qrData).split('').reduce((a, c) => a + c.charCodeAt(0), 0);
-          return ((row * 21 + col + hash) % 3 === 0) && !(row < 9 && col < 9) && !(row < 9 && col > 12) && !(row > 12 && col < 9) && !(row > 12 && col > 12) && !(row === 6) && !(col === 6);
-        })
-      );
-      return (
-        <svg width="140" height="140" viewBox="0 0 84 84" style={{ display: 'block' }}>
-          <rect width="84" height="84" fill="white"/>
-          {cells.map((row, r) => row.map((filled, c) => filled ? <rect key={`${r}-${c}`} x={c*4} y={r*4} width="4" height="4" fill="#0a0a0a"/> : null))}
-        </svg>
-      );
-    };
+    // QR real con link para añadir contacto directamente
+    const qrLink = `https://egchat-app.vercel.app/add?phone=${encodeURIComponent(userProfile.phone)}&name=${encodeURIComponent(userProfile.name)}&id=${userProfile.id}`;
 
     const fields = [
       { key: 'name', label: 'Nombre completo', icon: 'contactos' },
@@ -2602,10 +2580,20 @@ const App: React.FC = () => {
             {showProfileQR && (
               <div style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '14px', border: '1px solid rgba(0,180,230,0.2)', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
-                  Escanea para aaadirme
+                  Escanea para añadirme
                 </div>
                 <div style={{ display: 'inline-block', padding: '10px', background: 'white', borderRadius: '12px', marginBottom: '10px', position: 'relative' }}>
-                  <QRCode />
+                  <QRCodeSVG
+                    value={qrLink}
+                    size={160}
+                    level="M"
+                    imageSettings={{
+                      src: (userProfile as any).avatarUrl || '',
+                      height: 32,
+                      width: 32,
+                      excavate: true,
+                    }}
+                  />
                   {/* Avatar del usuario en el centro del QR */}
                   <div style={{
                     position: 'absolute',
@@ -2827,15 +2815,16 @@ const App: React.FC = () => {
             </div>
           ) : (
             <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '12px', padding: '8px 0' }}>
-              {/* Simulacian visor QR */}
               <div style={{ width: '200px', height: '200px', background: 'rgba(250,250,250,0.88)', border: '2px dashed rgba(0,180,230,0.4)', borderRadius: '16px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '10px' }}>
                 <svg width="48" height="48" viewBox="0 0 24 24" stroke="rgba(0,180,230,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                 </svg>
-                <span style={{ fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>Apunta la camara al QR del contacto</span>
+                <span style={{ fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>Apunta la cámara al QR del contacto</span>
               </div>
-              <button style={{ background: 'rgba(0,180,230,0.15)', border: '1px solid rgba(0,180,230,0.3)', borderRadius: '10px', padding: '10px 24px', color: '#00b4e6', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
-                Activar camara
+              <button onClick={() => { setShowAddContact(false); setShowQRScannerCamera(true); }}
+                style={{ background: '#00b4e6', border: 'none', borderRadius: '10px', padding: '12px 24px', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                Activar cámara
               </button>
             </div>
           )}
@@ -6657,6 +6646,21 @@ const App: React.FC = () => {
         if (p.id) currentUserId.current = p.id;
       } catch {}
     }
+    // Manejar link de añadir contacto desde QR: /add?phone=...&name=...
+    const urlParams = new URLSearchParams(window.location.search);
+    const addPhone = urlParams.get('phone');
+    const addName = urlParams.get('name');
+    if (addPhone) {
+      // Limpiar URL sin recargar
+      window.history.replaceState({}, '', window.location.pathname);
+      // Añadir contacto automáticamente después de login
+      setTimeout(async () => {
+        try {
+          await contactsAPI.add(undefined, addPhone, addName || undefined);
+          alert(`✅ Contacto ${addName || addPhone} añadido desde QR`);
+        } catch {}
+      }, 2000);
+    }
     authAPI.me().then((u: any) => {
       if (u?.id) {
         currentUserId.current = u.id;
@@ -6862,6 +6866,43 @@ const App: React.FC = () => {
             localStorage.setItem('user_avatar', croppedUrl);
             setUserProfile((p: any) => ({ ...p, avatarUrl: croppedUrl }));
             setAvatarCropUrl(null);
+          }}
+        />
+      )}
+
+      {/* QR Scanner con cámara real */}
+      {showQRScannerCamera && (
+        <QRScanner
+          onClose={() => setShowQRScannerCamera(false)}
+          onScan={async (data) => {
+            setShowQRScannerCamera(false);
+            try {
+              // Parsear el link escaneado: https://egchat-app.vercel.app/add?phone=...&name=...
+              const url = new URL(data);
+              const phone = url.searchParams.get('phone');
+              const name = url.searchParams.get('name');
+              if (phone) {
+                const result = await contactsAPI.add(undefined, phone, name || undefined);
+                alert(`✅ Contacto ${name || phone} añadido correctamente`);
+                // Recargar contactos
+                const contacts = await contactsAPI.getAll();
+                if (Array.isArray(contacts)) {
+                  setAllContacts(contacts.map((c: any) => ({
+                    id: c.contact_user_id?.toString() || c.id?.toString() || '',
+                    name: c.name || c.nickname || 'Sin nombre',
+                    phone: c.phone || '',
+                    avatar: (c.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+                    avatarUrl: c.avatar_url || '',
+                    status: 'offline' as const,
+                    addedDate: c.created_at || new Date().toISOString(),
+                  })));
+                }
+              } else {
+                alert('QR no reconocido como contacto EGCHAT');
+              }
+            } catch {
+              alert('QR no válido o no es un contacto EGCHAT');
+            }
           }}
         />
       )}
