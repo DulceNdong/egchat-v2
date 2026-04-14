@@ -1,4 +1,4 @@
-// Service Worker v20260415 — no intercepta peticiones a la API
+// Service Worker v20260415b — no intercepta peticiones a la API
 const CACHE = 'egchat-v20260415';
 
 self.addEventListener('install', () => {
