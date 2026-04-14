@@ -2708,11 +2708,15 @@ const App: React.FC = () => {
       <div style={{ position:'fixed', top:'56px', right:'8px', width:'230px', background:'rgba(255,255,255,0.35)', backdropFilter:'blur(28px) saturate(200%)', WebkitBackdropFilter:'blur(28px) saturate(200%)', borderRadius:'16px', border:'1.5px solid rgba(255,255,255,0.6)', boxShadow:'0 8px 32px rgba(0,0,0,0.15)', zIndex:1001, overflow:'hidden' }}>
         {/* Header del men? ? solo avatar, sin nombre */}
         <div style={{ padding:'12px 14px 10px', borderBottom:'1px solid rgba(0,0,0,0.06)', display:'flex', alignItems:'center', gap:'10px' }}>
-          <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:'800', color:'#fff', flexShrink:0 }}>
-            {userProfile.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase()}
+          <div style={{ width:'36px', height:'36px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'13px', fontWeight:'800', color:'#fff', flexShrink:0, overflow:'hidden' }}>
+            {userProfile.avatarUrl
+              ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              : userProfile.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase()
+            }
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:'10px', color:'#00c8a0', fontWeight:'600' }}>? En línea</div>
+            <div style={{ fontSize:'12px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userProfile.name}</div>
+            <div style={{ fontSize:'10px', color:'#00c8a0', fontWeight:'600' }}>● En línea</div>
           </div>
         </div>
         {/* Items */}
@@ -3976,7 +3980,7 @@ const App: React.FC = () => {
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <Avatar name={sc.title} size={34} status={sc.status as any} showStatus={true} />
+                <Avatar name={sc.title} size={34} status={sc.status as any} showStatus={true} photo={sc.avatarUrl} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{sc.title}</div>
                   <div style={{ fontSize: '10px', color: sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>{sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}</div>
