@@ -6852,137 +6852,93 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Botón Cambiar Foto de Perfil */}
-                  <button
-                    onClick={() => {
-                      const input = document.createElement('input');
-                      input.type = 'file';
-                      input.accept = 'image/*';
-                      input.onchange = async (e) => {
-                        const file = (e.target as HTMLInputElement).files?.[0];
-                        if (file) {
-                          try {
-                            // Crear preview temporal
+                  {/* Acciones de perfil — estilo app móvil profesional */}
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
+
+                    {/* Cambiar foto */}
+                    <button
+                      onClick={() => {
+                        const input = document.createElement('input');
+                        input.type = 'file'; input.accept = 'image/*';
+                        input.style.display = 'none';
+                        document.body.appendChild(input);
+                        input.onchange = async () => {
+                          const file = input.files?.[0];
+                          document.body.removeChild(input);
+                          if (file) {
                             const reader = new FileReader();
                             reader.onload = (e) => {
                               const dataUrl = e.target?.result as string;
-                              setUserProfile(prev => ({ ...prev, avatarUrl: dataUrl }));
-                              localStorage.setItem('user_avatar', dataUrl);
+                              setAvatarCropUrl(dataUrl);
                             };
                             reader.readAsDataURL(file);
-                            
-                            // TODO: Subir al backend cuando esté implementado
-                            // await authAPI.updateProfile({ avatar_url: file });
-                          } catch (error) {
-                            alert('Error al cambiar la foto de perfil');
+                          }
+                        };
+                        input.click();
+                      }}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', outline: 'none', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                    >
+                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#3b82f6" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>Cambiar foto de perfil</div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '1px' }}>Actualiza tu imagen</div>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+
+                    {/* Editar perfil */}
+                    <button
+                      onClick={() => { setEditedProfile({ ...userProfile }); setIsEditingProfile(true); }}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', outline: 'none', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                    >
+                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#f0fdf4', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>Editar perfil</div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '1px' }}>Nombre, email, ciudad...</div>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+
+                    {/* Cerrar sesión */}
+                    <button
+                      onClick={async () => {
+                        if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
+                          try {
+                            await authAPI.logout();
+                            localStorage.removeItem('user_avatar');
+                            setIsAuthenticated(false);
+                            setUserProfile({ id:'', name:'Usuario', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
+                            setRealChats([]); setSelectedChat(null); setCurrentView('home');
+                          } catch {
+                            localStorage.removeItem('user_avatar');
+                            setIsAuthenticated(false);
                           }
                         }
-                      };
-                      input.click();
-                    }}
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, rgba(0, 180, 230, 0.3), rgba(0, 180, 230, 0.2))',
-                      border: '1px solid rgba(0, 180, 230, 0.4)',
-                      color: '#00b4e6',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      transition: 'all 0.2s ease',
-                      marginBottom: '8px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 180, 230, 0.4), rgba(0, 180, 230, 0.3))';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(0, 180, 230, 0.3), rgba(0, 180, 230, 0.2))';
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                    Cambiar Foto de Perfil
-                  </button>
+                      }}
+                      style={{ width: '100%', background: '#fff', border: '1px solid #fee2e2', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', outline: 'none', transition: 'background 0.15s' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#fff5f5'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                    >
+                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#fff1f2', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#ef4444' }}>Cerrar sesión</div>
+                        <div style={{ fontSize: '12px', color: '#fca5a5', marginTop: '1px' }}>Salir de tu cuenta</div>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fca5a5" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
 
-                  {/* Botón Editar */}
-                  <button
-                    onClick={() => {
-                      setEditedProfile({ ...userProfile });
-                      setIsEditingProfile(true);
-                    }}
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.2))',
-                      border: '1px solid rgba(16, 185, 129, 0.4)',
-                      color: '#00c8a0',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      transition: 'all 0.2s ease',
-                      marginBottom: '8px'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.4), rgba(16, 185, 129, 0.3))';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(16, 185, 129, 0.3), rgba(16, 185, 129, 0.2))';
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Editar Perfil
-                  </button>
+                  </div>
 
-                  {/* Botón Logout */}
-                  <button
-                    onClick={async () => {
-                      if (confirm('¿Estás seguro de que deseas cerrar sesión?')) {
-                        try {
-                          await authAPI.logout();
-                          localStorage.removeItem('user_avatar');
-                          setIsAuthenticated(false);
-                          setUserProfile({
-                            id: '', name: 'Usuario', phone: '', email: '',
-                            address: '', city: '', country: 'Guinea Ecuatorial',
-                            avatar: 'U', avatarUrl: '', joinDate: new Date().toLocaleDateString('es-ES'),
-                            verificationStatus: 'pending', twoFactorEnabled: false, notificationsEnabled: true,
-                          });
-                          setRealChats([]);
-                          setSelectedChat(null);
-                          setCurrentView('home');
-                        } catch (error) {
-                          console.error('Error al cerrar sesión:', error);
-                          localStorage.removeItem('user_avatar');
-                          setIsAuthenticated(false);
-                        }
-                      }
-                    }}
-                    style={{
-                      width: '100%',
-                      background: 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.2))',
-                      border: '1px solid rgba(239, 68, 68, 0.4)',
-                      color: '#ef4444',
-                      padding: '10px 12px',
-                      borderRadius: '8px',
-                      fontSize: '12px',
-                      fontWeight: '600',
-                      cursor: 'pointer',
-                      outline: 'none',
-                      transition: 'all 0.2s ease'
-                    }}
-                    onMouseEnter={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.4), rgba(239, 68, 68, 0.3))';
-                    }}
-                    onMouseLeave={(e) => {
-                      e.currentTarget.style.background = 'linear-gradient(135deg, rgba(239, 68, 68, 0.3), rgba(239, 68, 68, 0.2))';
-                    }}
-                  >
-                    <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-                    Cerrar Sesión
-                  </button>
                 </div>
               )}
 
