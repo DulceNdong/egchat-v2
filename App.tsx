@@ -159,7 +159,9 @@ const App: React.FC = () => {
   const [messageFilter, setMessageFilter] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedChat, setSelectedChat] = useState<any>(null);
-  const [chatMessages, setChatMessages] = useState<Record<string, Array<{id: string; from: 'me'|'them'; text: string; time: string; type?: 'text'|'audio'|'image'; status?: 'pending'|'delivered'|'read'}>>>({});
+  const [chatMessages, setChatMessages] = useState<Record<string, Array<{id: string; from: 'me'|'them'; text: string; time: string; type?: 'text'|'audio'|'image'; status?: 'pending'|'delivered'|'read'; audioUrl?: string; imageUrl?: string; fileUrl?: string; fileName?: string; fileSize?: string; fileExt?: string}>>>(() => {
+    try { const s = localStorage.getItem('egchat_messages'); return s ? JSON.parse(s) : {}; } catch { return {}; }
+  });
   const [currentChatInput, setCurrentChatInput] = useState<string>('');
   const [showChatEmojis, setShowChatEmojis] = useState<boolean>(false);
   const [showChatAttach, setShowChatAttach] = useState<boolean>(false);
@@ -401,6 +403,25 @@ const App: React.FC = () => {
   const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
   const [showCreateGroupModal, setShowCreateGroupModal] = useState<boolean>(false);
   const [newGroupData, setNewGroupData] = useState<{ name: string; description: string; selectedMembers: string[] }>({ name: '', description: '', selectedMembers: [] });
+
+  // Persistir mensajes en localStorage (solo texto/metadata, no blobs grandes)
+  useEffect(() => {
+    try {
+      // Guardar solo mensajes de texto y metadata (no imageUrl base64 grandes)
+      const toSave: Record<string, any[]> = {};
+      for (const [k, msgs] of Object.entries(chatMessages)) {
+        toSave[k] = msgs.map(m => {
+          const { imageUrl, audioUrl, ...rest } = m as any;
+          // Guardar imageUrl solo si es una URL real (no base64)
+          const saved: any = { ...rest };
+          if (imageUrl && !imageUrl.startsWith('data:')) saved.imageUrl = imageUrl;
+          if (audioUrl && !audioUrl.startsWith('blob:')) saved.audioUrl = audioUrl;
+          return saved;
+        });
+      }
+      localStorage.setItem('egchat_messages', JSON.stringify(toSave));
+    } catch {}
+  }, [chatMessages]);
 
   // Actualizar hora cada segundo
   useEffect(() => {
@@ -4192,11 +4213,13 @@ const App: React.FC = () => {
                           const match = raw.match(/^(.+?) \((.+?)\)$/);
                           const fileName = match ? match[1] : raw;
                           const fileSize = match ? match[2] : '';
-                          const ext = fileName.split('.').pop()?.toLowerCase() || '';
+                          const ext = ((msg as any).fileExt || fileName.split('.').pop()?.toLowerCase() || '');
                           const extColors: Record<string,string> = { pdf:'#ef4444', doc:'#2563eb', docx:'#2563eb', xls:'#16a34a', xlsx:'#16a34a', ppt:'#ea580c', pptx:'#ea580c', txt:'#6b7280', csv:'#16a34a', zip:'#7c3aed', rar:'#7c3aed' };
                           const extColor = extColors[ext] || '#6b7280';
+                          const fileUrl = (msg as any).fileUrl;
                           return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', padding: '4px 0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', padding: '4px 0', cursor: fileUrl ? 'pointer' : 'default' }}
+                              onClick={() => { if (fileUrl) { const a = document.createElement('a'); a.href = fileUrl; a.download = fileName; a.click(); } }}>
                               <div style={{ width: '44px', height: '52px', borderRadius: '8px', background: extColor + '18', border: `1.5px solid ${extColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={extColor} strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 <span style={{ fontSize: '7px', fontWeight: '800', color: extColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{ext}</span>
@@ -4204,7 +4227,7 @@ const App: React.FC = () => {
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{fileName}</div>
                                 <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{fileSize}{fileSize ? ' · ' : ''}{ext.toUpperCase()}</div>
-                                <div style={{ fontSize: '11px', color: extColor, marginTop: '3px', fontWeight: '600' }}>Abrir documento</div>
+                                <div style={{ fontSize: '11px', color: extColor, marginTop: '3px', fontWeight: '600' }}>{fileUrl ? '⬇ Descargar' : 'Archivo'}</div>
                               </div>
                             </div>
                           );
@@ -4251,15 +4274,29 @@ const App: React.FC = () => {
                           const lines = (msg.text || '').split('\n');
                           const name = lines[0].replace('👤 ', '');
                           const phone = lines[1]?.replace('📞 ', '') || '';
+                          const avatar = (msg as any).contactAvatar || '';
                           return (
                             <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', padding: '4px 0' }}>
-                              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                              <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
+                                {avatar
+                                  ? <img src={avatar} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                  : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                }
                               </div>
-                              <div>
+                              <div style={{ flex: 1 }}>
                                 <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>{name}</div>
                                 <div style={{ fontSize: '12px', color: '#6b7280' }}>{phone}</div>
-                                <div style={{ fontSize: '11px', color: '#00c8a0', marginTop: '3px', fontWeight: '600' }}>Añadir contacto</div>
+                                <button
+                                  onClick={() => {
+                                    if (phone) {
+                                      contactsAPI.add(undefined, phone, name).then(() => {
+                                        alert(`✅ ${name} añadido a contactos`);
+                                      }).catch(() => alert('No se pudo añadir'));
+                                    }
+                                  }}
+                                  style={{ fontSize: '11px', color: '#00c8a0', marginTop: '4px', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', padding: 0, outline: 'none' }}>
+                                  + Añadir contacto
+                                </button>
                               </div>
                             </div>
                           );
@@ -4349,28 +4386,6 @@ const App: React.FC = () => {
                         }
                       },
                       {
-                        label: 'Documento', color: '#00c8a0', bg: '#D1FAE5',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          const key = sc.id?.toString() || sc.title;
-                          const inp = document.createElement('input');
-                          inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'; inp.style.display='none';
-                          document.body.appendChild(inp);
-                          inp.onchange = () => {
-                            const file = inp.files?.[0];
-                            document.body.removeChild(inp);
-                            if (file) {
-                              const t = new Date();
-                              const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                              const size = (file.size/1024).toFixed(1);
-                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📄 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const }] }));
-                            }
-                          };
-                          inp.click();
-                        }
-                      },
-                      {
                         label: 'Archivo', color: '#06b6d4', bg: '#CFFAFE',
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
                         action: () => {
@@ -4386,7 +4401,9 @@ const App: React.FC = () => {
                               const t = new Date();
                               const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                               const size = (file.size/1024).toFixed(1);
-                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const }] }));
+                              const fileUrl = URL.createObjectURL(file);
+                              const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const, fileUrl, fileName: file.name, fileSize: size + ' KB', fileExt: ext } as any] }));
                             }
                           };
                           inp.click();
@@ -4399,7 +4416,11 @@ const App: React.FC = () => {
                           setShowChatAttach(false);
                           const myName = userProfile.name || 'Mi contacto';
                           const myPhone = userProfile.phone || '+240 222 *** ***';
-                          addMsg({ id: Date.now().toString(), from: 'me' as const, text: `👤 ${myName}\n📞 ${myPhone}`, time: makeTime(), status: 'pending' as const });
+                          const myAvatar = userProfile.avatarUrl || '';
+                          const key = sc.id?.toString() || sc.title;
+                          const t = new Date();
+                          const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                          setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `👤 ${myName}\n📞 ${myPhone}`, time: tm, status: 'pending' as const, type: 'contact' as any, contactAvatar: myAvatar } as any] }));
                         }
                       },
                       {
@@ -4407,20 +4428,24 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          if (navigator.geolocation) {
-                            navigator.geolocation.getCurrentPosition(
-                              pos => {
-                                const lat = pos.coords.latitude.toFixed(6);
-                                const lng = pos.coords.longitude.toFixed(6);
-                                addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📍 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`, time: makeTime(), status: 'pending' as const });
-                              },
-                              () => {
-                                addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial`, time: makeTime(), status: 'pending' as const });
-                              }
-                            );
-                          } else {
-                            addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial`, time: makeTime(), status: 'pending' as const });
+                          const key = sc.id?.toString() || sc.title;
+                          const t = new Date();
+                          const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                          if (!navigator.geolocation) {
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial\nhttps://maps.google.com/?q=3.7520,8.7735`, time: tm, status: 'pending' as const }] }));
+                            return;
                           }
+                          navigator.geolocation.getCurrentPosition(
+                            pos => {
+                              const lat = pos.coords.latitude.toFixed(6);
+                              const lng = pos.coords.longitude.toFixed(6);
+                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`, time: tm, status: 'pending' as const }] }));
+                            },
+                            () => {
+                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial\nhttps://maps.google.com/?q=3.7520,8.7735`, time: tm, status: 'pending' as const }] }));
+                            },
+                            { timeout: 8000, enableHighAccuracy: true }
+                          );
                         }
                       },
                       {
@@ -4428,8 +4453,10 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="2"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          setQuickTransferData({ contactId: sc.id?.toString()||'', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id||'' });
-                          setShowQuickTransferModal(true);
+                          setTimeout(() => {
+                            setQuickTransferData({ contactId: sc.id?.toString()||'', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id||'' });
+                            setShowQuickTransferModal(true);
+                          }, 100);
                         }
                       },
                     ].map((item, i) => (
