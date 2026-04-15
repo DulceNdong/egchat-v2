@@ -81,7 +81,7 @@ const App: React.FC = () => {
         setChatMessages((prev: any) => {
           // Detectar mensajes nuevos para notificar
           const lastId = lastMsgIds.current[chatId];
-          const newFromThem = fmt.filter(m => m.from === 'them');
+          const newFromThem = fmt.filter((m: any) => m.from === 'them');
           if (newFromThem.length > 0) {
             const newest = newFromThem[newFromThem.length - 1];
             if (lastId && newest.id !== lastId) {
@@ -89,7 +89,12 @@ const App: React.FC = () => {
             }
             lastMsgIds.current[chatId] = newest.id;
           }
-          return { ...prev, [chatId]: fmt };
+          // Fusionar: conservar mensajes locales (fotos, audio, archivos) que no están en el backend
+          const backendIds = new Set(fmt.map((m: any) => m.id));
+          const localOnly = (prev[chatId] || []).filter((m: any) =>
+            !backendIds.has(m.id) && (m.type === 'image' || m.type === 'audio' || m.imageUrl || m.audioUrl || m.status === 'pending')
+          );
+          return { ...prev, [chatId]: [...fmt, ...localOnly] };
         });
       }
     } catch {}
