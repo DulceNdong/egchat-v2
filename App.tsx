@@ -4162,8 +4162,14 @@ const App: React.FC = () => {
                           </div>
                           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={msg.from === 'me' ? '#00c8a0' : '#00b4e6'} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                         </div>
+                      ) : (msg as any).type === 'image' && (msg as any).imageUrl ? (
+                        <div>
+                          <img src={(msg as any).imageUrl} alt="foto" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '10px', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
+                            onClick={() => window.open((msg as any).imageUrl, '_blank')} />
+                          {msg.text && msg.text !== '📷 Foto' && <div style={{ fontSize: '14px', color: '#111827', marginTop: '4px' }}>{msg.text}</div>}
+                        </div>
                       ) : (
-                        <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word' }}>{msg.text}</div>
+                        <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</div>
                       )}
                       <div style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                         <span>{msg.time}</span>
@@ -4190,71 +4196,106 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00b4e6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
+                          // Abrir selector de imagen de galería
+                          const inp = document.createElement('input');
+                          inp.type='file'; inp.accept='image/*';
+                          inp.onchange = () => {
+                            const file = inp.files?.[0];
+                            if (file) {
+                              const reader = new FileReader();
+                              reader.onload = (e) => {
+                                const url = e.target?.result as string;
+                                const now = new Date();
+                                const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                                const cid = sc.id?.toString()||'';
+                                setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📷 Foto`, time, status: 'pending' as const, type: 'image' as const, imageUrl: url }] }));
+                              };
+                              reader.readAsDataURL(file);
+                            }
+                          };
+                          inp.click();
+                        }
+                      },
+                      {
+                        label: 'Cámara', color: '#8b5cf6', bg: '#EDE9FE',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
                           setLiveCameraChatId(sc.id?.toString()||'');
                           setShowLiveCamera(true);
                         }
                       },
                       {
-                        label: 'Video', color: '#8b5cf6', bg: '#EDE9FE',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+                        label: 'Video', color: '#f59e0b', bg: '#FEF3C7',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
                           const inp = document.createElement('input');
                           inp.type='file'; inp.accept='video/*';
                           inp.onchange = () => {
-                            if(inp.files?.[0]){
-                              const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const chatId=sc.id?.toString()||'';
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📊 ${inp.files![0].name}`,time,status:'pending'}]}));
+                            const file = inp.files?.[0];
+                            if (file) {
+                              const now = new Date();
+                              const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                              const cid = sc.id?.toString()||'';
+                              const size = (file.size/1024/1024).toFixed(1);
+                              setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time, status: 'pending' as const }] }));
                             }
                           };
                           inp.click();
                         }
                       },
                       {
-                        label: 'Documento', color: '#f59e0b', bg: '#FEF3C7',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
+                        label: 'Documento', color: '#00c8a0', bg: '#D1FAE5',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
                           const inp = document.createElement('input');
                           inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv';
                           inp.onchange = () => {
-                            if(inp.files?.[0]){
-                              const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const chatId=sc.id?.toString()||'';
-                              const size=(inp.files![0].size/1024).toFixed(1);
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📊 ${inp.files![0].name} (${size} KB)`,time,status:'pending'}]}));
+                            const file = inp.files?.[0];
+                            if (file) {
+                              const now = new Date();
+                              const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                              const cid = sc.id?.toString()||'';
+                              const size = (file.size/1024).toFixed(1);
+                              setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📄 ${file.name} (${size} KB)`, time, status: 'pending' as const }] }));
                             }
                           };
                           inp.click();
                         }
                       },
                       {
-                        label: 'Archivo', color: '#00c8a0', bg: '#D1FAE5',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
+                        label: 'Archivo', color: '#06b6d4', bg: '#CFFAFE',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
                           const inp = document.createElement('input');
                           inp.type='file';
                           inp.onchange = () => {
-                            if(inp.files?.[0]){
-                              const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const chatId=sc.id?.toString()||'';
-                              const size=(inp.files![0].size/1024).toFixed(1);
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📊 ${inp.files![0].name} (${size} KB)`,time,status:'pending'}]}));
+                            const file = inp.files?.[0];
+                            if (file) {
+                              const now = new Date();
+                              const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                              const cid = sc.id?.toString()||'';
+                              const size = (file.size/1024).toFixed(1);
+                              setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time, status: 'pending' as const }] }));
                             }
                           };
                           inp.click();
                         }
                       },
                       {
-                        label: 'Contacto', color: '#06b6d4', bg: '#CFFAFE',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+                        label: 'Contacto', color: '#ec4899', bg: '#FCE7F3',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                          const chatId=sc.id?.toString()||'';
-                          setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📊 Contacto: ${sc.title} ? ${sc.phone||'+240 222 *** ***'}`,time,status:'pending'}]}));
+                          const now = new Date();
+                          const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                          const cid = sc.id?.toString()||'';
+                          const myName = userProfile.name || 'Mi contacto';
+                          const myPhone = userProfile.phone || '+240 222 *** ***';
+                          setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `👤 ${myName}\n📞 ${myPhone}`, time, status: 'pending' as const }] }));
                         }
                       },
                       {
@@ -4262,32 +4303,34 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          if(navigator.geolocation){
-                            navigator.geolocation.getCurrentPosition(pos=>{
-                              const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const chatId=sc.id?.toString()||'';
-                              const lat=pos.coords.latitude.toFixed(6); const lng=pos.coords.longitude.toFixed(6);
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`📊 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`,time,status:'pending'}]}));
-                            }, ()=>{
-                              const now=new Date(); const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const chatId=sc.id?.toString()||'';
-                              setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:'📊 Malabo, Guinea Ecuatorial (3.7520, 8.7735)',time,status:'pending'}]}));
-                            });
+                          const cid = sc.id?.toString()||'';
+                          const now = new Date();
+                          const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                          if (navigator.geolocation) {
+                            navigator.geolocation.getCurrentPosition(
+                              pos => {
+                                const lat = pos.coords.latitude.toFixed(6);
+                                const lng = pos.coords.longitude.toFixed(6);
+                                setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`, time, status: 'pending' as const }] }));
+                              },
+                              () => {
+                                setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial`, time, status: 'pending' as const }] }));
+                              }
+                            );
                           }
                         }
                       },
                       {
                         label: 'Enviar dinero', color: '#00c8a0', bg: '#D1FAE5',
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="2"/></svg>,
-                        action: () => { setShowChatAttach(false); setQuickTransferData({ contactId: sc.id?.toString()||'', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id||'' }); setShowQuickTransferModal(true); }
-                      },
-                      {
-                        label: 'Más', color: '#6b7280', bg: '#F3F4F6',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></svg>,
-                        action: () => setShowChatAttach(false)
+                        action: () => {
+                          setShowChatAttach(false);
+                          setQuickTransferData({ contactId: sc.id?.toString()||'', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id||'' });
+                          setShowQuickTransferModal(true);
+                        }
                       },
                     ].map((item, i) => (
-                      <button key={i} onClick={() => { if (item.action) item.action(); }}
+                      <button key={i} onClick={() => item.action()}
                         style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '4px' }}>
                         <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s' }}
                           onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.transform='scale(1.08)';}}
