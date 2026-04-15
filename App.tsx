@@ -4373,7 +4373,7 @@ const App: React.FC = () => {
                 background: '#FFFFFF',
                 borderTop: '1px solid rgba(0,0,0,0.07)',
                 padding: '8px 10px',
-                paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px'
