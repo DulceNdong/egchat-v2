@@ -4428,15 +4428,6 @@ const App: React.FC = () => {
                         }
                       },
                       {
-                        label: 'Cámara', color: '#8b5cf6', bg: '#EDE9FE',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          setLiveCameraChatId(sc.id?.toString()||'');
-                          setShowLiveCamera(true);
-                        }
-                      },
-                      {
                         label: 'Video', color: '#f59e0b', bg: '#FEF3C7',
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
                         action: () => {
@@ -9607,10 +9598,16 @@ const App: React.FC = () => {
           onClose={() => setCameraPhoto(null)}
           onSend={(chatId, caption, editedUrl) => {
             const now = new Date();
-            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`; 
-            const text = caption ? `📊 ${caption}` : '📊 Foto';
+            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+            const imageUrl = editedUrl || cameraPhoto?.url || '';
             const msgId = Date.now().toString();
-            setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId]||[]), { id: msgId, from: 'me', text, time, status: 'pending' }] }));
+            setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId]||[]), {
+              id: msgId, from: 'me' as const,
+              text: caption ? `📷 ${caption}` : '📷 Foto',
+              time, status: 'pending' as const,
+              type: 'image' as any,
+              imageUrl
+            }] }));
             setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'delivered'} : m) })), 1000);
             setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===msgId ? {...m, status:'read'} : m) })), 3000);
             setCameraPhoto(null);
