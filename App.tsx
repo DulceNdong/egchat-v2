@@ -3996,12 +3996,10 @@ const App: React.FC = () => {
           const chatId = sc.id?.toString() || sc.title;
           const msgs = chatMessages[chatId] || [];
 
-          // Helper para añadir mensaje al chat
+          // Helper estable — captura chatId en closure fijo
           const addMsg = (msg: any) => {
-            setChatMessages(prev => ({
-              ...prev,
-              [chatId]: [...(prev[chatId] || []), msg]
-            }));
+            const key = sc.id?.toString() || sc.title;
+            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key] || []), msg] }));
           };
           const makeTime = () => { const n = new Date(); return `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')}`; };
 
@@ -4198,16 +4196,20 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00b4e6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          // Abrir selector de imagen de galería
+                          const key = sc.id?.toString() || sc.title;
                           const inp = document.createElement('input');
-                          inp.type='file'; inp.accept='image/*';
+                          inp.type='file'; inp.accept='image/*'; inp.style.display='none';
+                          document.body.appendChild(inp);
                           inp.onchange = () => {
                             const file = inp.files?.[0];
+                            document.body.removeChild(inp);
                             if (file) {
                               const reader = new FileReader();
-                              reader.onload = (e) => {
-                                const url = e.target?.result as string;
-                                addMsg({ id: Date.now().toString(), from: 'me' as const, text: '📷 Foto', time: makeTime(), status: 'pending' as const, type: 'image', imageUrl: url });
+                              reader.onload = (ev) => {
+                                const url = ev.target?.result as string;
+                                const t = new Date();
+                                const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                                setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: '📷 Foto', time: tm, status: 'pending' as const, type: 'image', imageUrl: url }] }));
                               };
                               reader.readAsDataURL(file);
                             }
@@ -4229,13 +4231,18 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
                           const inp = document.createElement('input');
-                          inp.type='file'; inp.accept='video/*';
+                          inp.type='file'; inp.accept='video/*'; inp.style.display='none';
+                          document.body.appendChild(inp);
                           inp.onchange = () => {
                             const file = inp.files?.[0];
+                            document.body.removeChild(inp);
                             if (file) {
+                              const t = new Date();
+                              const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                               const size = (file.size/1024/1024).toFixed(1);
-                              addMsg({ id: Date.now().toString(), from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: makeTime(), status: 'pending' as const });
+                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, status: 'pending' as const }] }));
                             }
                           };
                           inp.click();
@@ -4246,13 +4253,18 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="9" y1="13" x2="15" y2="13"/><line x1="9" y1="17" x2="13" y2="17"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
                           const inp = document.createElement('input');
-                          inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv';
+                          inp.type='file'; inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv'; inp.style.display='none';
+                          document.body.appendChild(inp);
                           inp.onchange = () => {
                             const file = inp.files?.[0];
+                            document.body.removeChild(inp);
                             if (file) {
+                              const t = new Date();
+                              const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                               const size = (file.size/1024).toFixed(1);
-                              addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📄 ${file.name} (${size} KB)`, time: makeTime(), status: 'pending' as const });
+                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📄 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const }] }));
                             }
                           };
                           inp.click();
@@ -4263,13 +4275,18 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
                           const inp = document.createElement('input');
-                          inp.type='file';
+                          inp.type='file'; inp.style.display='none';
+                          document.body.appendChild(inp);
                           inp.onchange = () => {
                             const file = inp.files?.[0];
+                            document.body.removeChild(inp);
                             if (file) {
+                              const t = new Date();
+                              const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                               const size = (file.size/1024).toFixed(1);
-                              addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: makeTime(), status: 'pending' as const });
+                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const }] }));
                             }
                           };
                           inp.click();
