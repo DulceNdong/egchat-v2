@@ -6,7 +6,7 @@
   "env": {
     "VITE_API_URL": "https://egchat-api.onrender.com/api",
     "VITE_APP_URL": "https://egchat-app.vercel.app",
-    "VITE_BUILD_VERSION": "20260411-0200"
+    "VITE_BUILD_VERSION": "20260415-1200"
   },
   "headers": [
     {
