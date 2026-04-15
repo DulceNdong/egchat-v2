@@ -156,12 +156,12 @@ const App: React.FC = () => {
   const [emojiSearch, setEmojiSearch] = useState<string>('');
   const [isRecordingAudio, setIsRecordingAudio] = useState<boolean>(false);
   const [customEmojis, setCustomEmojis] = useState<Array<{id:string; label:string; title:string; source:'created'|'copied'; from?:string}>>([
-    { id:'1', label:'📊', title:'Rico',    source:'created' },
-    { id:'2', label:'📊', title:'Leon GQ', source:'created' },
-    { id:'3', label:'📊', title:'Africa',  source:'created' },
-    { id:'4', label:'📊', title:'Verde GQ',source:'created' },
-    { id:'5', label:'📊', title:'Medalla', source:'copied', from:'Juan' },
-    { id:'6', label:'📊', title:'Fuerza',  source:'copied', from:'Maria Garcia' },
+    { id:'1', label:'🦁', title:'Rico',    source:'created' },
+    { id:'2', label:'🌍', title:'Leon GQ', source:'created' },
+    { id:'3', label:'✊', title:'Africa',  source:'created' },
+    { id:'4', label:'💚', title:'Verde GQ',source:'created' },
+    { id:'5', label:'🏅', title:'Medalla', source:'copied', from:'Juan' },
+    { id:'6', label:'💪', title:'Fuerza',  source:'copied', from:'Maria Garcia' },
   ]);
   const [showEmojiEditor, setShowEmojiEditor] = useState<boolean>(false);
   const [editingEmoji, setEditingEmoji] = useState<{id?:string; label:string; title:string} | null>(null);
@@ -4356,8 +4356,8 @@ const App: React.FC = () => {
                         ))}
                         <button onClick={() => {
                           const toCopy = [
-                            { id: Date.now().toString(), label: '', title: 'De Juan', source: 'copied' as const, from: 'Juan' },
-                            { id: (Date.now()+1).toString(), label: '', title: 'De María', source: 'copied' as const, from: 'María' },
+                            { id: Date.now().toString(), label: '🤝', title: 'De Juan', source: 'copied' as const, from: 'Juan' },
+                            { id: (Date.now()+1).toString(), label: '🌸', title: 'De María', source: 'copied' as const, from: 'María' },
                           ];
                           setCustomEmojis(prev => [...prev, ...toCopy.filter(c => !prev.find(p => p.label === c.label))]);
                         }}
