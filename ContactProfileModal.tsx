@@ -84,7 +84,23 @@ export const ContactProfileModal: React.FC<Props> = ({
   const cpColor = cp.color || '#00b4e6';
   const cpInitials = cp.initials || cp.avatar || cp.title?.slice(0,2).toUpperCase() || 'CN';
   const msgs = chatMessages[cpId] || [];
-  const sharedMedia = msgs.filter(m => m.text?.startsWith('📷') || m.text?.startsWith('📎') || m.text?.startsWith('🎥'));
+
+  // Multimedia: fotos, videos, audios, archivos
+  const mediaImgs  = msgs.filter((m:any) => m.imageUrl || m.text?.startsWith('📷'));
+  const mediaFiles = msgs.filter((m:any) => m.fileUrl || m.text?.startsWith('📎') || m.text?.startsWith('📄'));
+  const mediaVids  = msgs.filter((m:any) => m.text?.startsWith('🎥'));
+  const mediaAudio = msgs.filter((m:any) => m.audioUrl || m.type === 'audio');
+  const allMedia   = [...mediaImgs, ...mediaVids, ...mediaFiles, ...mediaAudio];
+
+  // Grupos en común: grupos donde el contacto es miembro
+  const sharedGroups = allGroups.filter((g:any) => {
+    const members = g.members_list || g.participants || [];
+    return members.some((m:any) =>
+      m.user_id?.toString() === cpId ||
+      m.id?.toString() === cpId ||
+      m.phone === cp.phone
+    );
+  });
 
   const handleStarToggle = () => {
     const newVal = !starred;
@@ -222,22 +238,92 @@ export const ContactProfileModal: React.FC<Props> = ({
         {/* TAB MULTIMEDIA */}
         {tab==='media'&&(
           <div style={{padding:'0 0 24px'}}>
-            {sharedMedia.length===0?(
+            {allMedia.length===0?(
               <div style={{textAlign:'center',padding:'60px 0',color:'#9CA3AF',background:'#fff'}}>
                 <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.4" strokeLinecap="round" style={{margin:'0 auto 14px',display:'block'}}><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
                 <div style={{fontSize:'14px',fontWeight:'600',color:'#374151',marginBottom:'4px'}}>Sin multimedia compartida</div>
-                <div style={{fontSize:'12px'}}>Las fotos y archivos aparecerán aquí</div>
+                <div style={{fontSize:'12px'}}>Las fotos, videos y archivos aparecerán aquí</div>
               </div>
             ):(
               <div>
-                <div style={{padding:'12px 16px 8px',fontSize:'12px',color:'#9CA3AF',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',background:'#fff'}}>{sharedMedia.length} archivos</div>
-                <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'2px'}}>
-                  {sharedMedia.map(m=>(
-                    <div key={m.id} style={{aspectRatio:'1',background:'#F3F4F6',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'32px'}}>
-                      {m.text?.startsWith('📷')?'📷':m.text?.startsWith('🎥')?'🎥':'📎'}
+                {/* Fotos y videos */}
+                {(mediaImgs.length > 0 || mediaVids.length > 0) && (
+                  <div>
+                    <div style={{padding:'12px 16px 8px',fontSize:'12px',color:'#9CA3AF',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',background:'#fff'}}>
+                      Fotos y videos · {mediaImgs.length + mediaVids.length}
                     </div>
-                  ))}
-                </div>
+                    <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'2px',marginBottom:'8px'}}>
+                      {[...mediaImgs, ...mediaVids].map((m:any,i) => (
+                        <div key={m.id||i} style={{aspectRatio:'1',background:'#F3F4F6',overflow:'hidden',position:'relative',cursor:'pointer'}}
+                          onClick={() => { if(m.imageUrl) { const w=window.open('','_blank'); w?.document.write(`<img src="${m.imageUrl}" style="max-width:100%;max-height:100vh;margin:auto;display:block;">`); } }}>
+                          {m.imageUrl
+                            ? <img src={m.imageUrl} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                            : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}}>
+                                {m.text?.startsWith('🎥') ? '🎥' : '📷'}
+                              </div>
+                          }
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Archivos */}
+                {mediaFiles.length > 0 && (
+                  <div>
+                    <div style={{padding:'12px 16px 8px',fontSize:'12px',color:'#9CA3AF',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',background:'#fff'}}>
+                      Archivos · {mediaFiles.length}
+                    </div>
+                    {mediaFiles.map((m:any,i) => {
+                      const raw = (m.text||'').replace(/^📎 |^📄 /,'');
+                      const match = raw.match(/^(.+?) \((.+?)\)$/);
+                      const fileName = match?.[1] || raw;
+                      const fileSize = match?.[2] || '';
+                      const ext = ((m as any).fileExt || fileName.split('.').pop()?.toLowerCase() || '');
+                      const extColors: Record<string,string> = {pdf:'#ef4444',doc:'#2563eb',docx:'#2563eb',xls:'#16a34a',xlsx:'#16a34a',txt:'#6b7280',csv:'#16a34a',zip:'#7c3aed'};
+                      const extColor = extColors[ext] || '#6b7280';
+                      return (
+                        <div key={m.id||i} style={{background:'#fff',borderBottom:'1px solid #F3F4F6',padding:'12px 16px',display:'flex',alignItems:'center',gap:'12px',cursor:(m as any).fileUrl?'pointer':'default'}}
+                          onClick={() => { if((m as any).fileUrl){ const a=document.createElement('a');a.href=(m as any).fileUrl;a.download=fileName;a.click(); } }}>
+                          <div style={{width:'40px',height:'48px',borderRadius:'6px',background:extColor+'18',border:`1px solid ${extColor}30`,display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={extColor} strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                            <span style={{fontSize:'6px',fontWeight:'800',color:extColor,textTransform:'uppercase'}}>{ext}</span>
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:'13px',fontWeight:'600',color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{fileName}</div>
+                            <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>{fileSize}{fileSize?' · ':''}{ext.toUpperCase()} · {m.time}</div>
+                          </div>
+                          {(m as any).fileUrl && <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Audios */}
+                {mediaAudio.length > 0 && (
+                  <div>
+                    <div style={{padding:'12px 16px 8px',fontSize:'12px',color:'#9CA3AF',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',background:'#fff'}}>
+                      Mensajes de voz · {mediaAudio.length}
+                    </div>
+                    {mediaAudio.map((m:any,i) => (
+                      <div key={m.id||i} style={{background:'#fff',borderBottom:'1px solid #F3F4F6',padding:'12px 16px',display:'flex',alignItems:'center',gap:'12px'}}>
+                        <button onClick={() => { if(m.audioUrl){ const a=new Audio(m.audioUrl);a.play(); } }}
+                          style={{width:'38px',height:'38px',borderRadius:'50%',background:'#00c8a0',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',flexShrink:0}}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                        </button>
+                        <div style={{flex:1}}>
+                          <div style={{display:'flex',alignItems:'center',gap:'2px',height:'20px'}}>
+                            {[3,5,8,6,10,7,4,9,6,8,5,7,4,6,8].map((h,j)=>(
+                              <div key={j} style={{width:'3px',height:`${h*2}px`,background:'rgba(0,200,160,0.5)',borderRadius:'2px'}}/>
+                            ))}
+                          </div>
+                          <div style={{fontSize:'11px',color:'#9ca3af',marginTop:'2px'}}>Mensaje de voz · {m.time}</div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -246,18 +332,26 @@ export const ContactProfileModal: React.FC<Props> = ({
         {/* TAB GRUPOS */}
         {tab==='grupos'&&(
           <div style={{padding:'0 0 24px'}}>
-            {allGroups.length>0?(
+            {sharedGroups.length>0?(
               <div>
-                <div style={{padding:'12px 16px 8px',fontSize:'12px',color:'#9CA3AF',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',background:'#fff'}}>{allGroups.length} grupos en común</div>
-                {allGroups.map((g,i)=>(
+                <div style={{padding:'12px 16px 8px',fontSize:'12px',color:'#9CA3AF',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',background:'#fff'}}>
+                  {sharedGroups.length} grupo{sharedGroups.length!==1?'s':''} en común
+                </div>
+                {sharedGroups.map((g:any)=>(
                   <div key={g.id} style={{background:'#fff',borderBottom:'1px solid #F3F4F6'}}>
                     <div style={{padding:'12px 16px',display:'flex',alignItems:'center',gap:'12px'}}>
-                      <div style={{width:'46px',height:'46px',borderRadius:'50%',background:'#F3F4F6',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                        <GroupIcon avatar={g.avatar} size={22}/>
+                      <div style={{width:'46px',height:'46px',borderRadius:'50%',background:'linear-gradient(135deg,#a855f7,#6366f1)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,overflow:'hidden'}}>
+                        {g.avatarUrl
+                          ? <img src={g.avatarUrl} alt={g.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+                          : <GroupIcon avatar={g.avatar||'friends'} size={22}/>
+                        }
                       </div>
                       <div style={{flex:1,minWidth:0}}>
                         <div style={{fontSize:'14px',fontWeight:'600',color:'#111827',marginBottom:'2px'}}>{g.name}</div>
-                        <div style={{fontSize:'12px',color:'#9CA3AF',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{g.members} miembros · {g.lastMessage}</div>
+                        <div style={{fontSize:'12px',color:'#9CA3AF',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>
+                          {typeof g.members === 'number' ? `${g.members} miembros` : g.description || 'Grupo'}
+                          {g.lastMessage ? ` · ${g.lastMessage}` : ''}
+                        </div>
                       </div>
                       {g.unread>0&&<span style={{background:'#00c8a0',color:'#fff',borderRadius:'50%',minWidth:'20px',height:'20px',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'11px',fontWeight:'700',padding:'0 4px'}}>{g.unread}</span>}
                     </div>
@@ -268,7 +362,7 @@ export const ContactProfileModal: React.FC<Props> = ({
               <div style={{textAlign:'center',padding:'60px 0',color:'#9CA3AF',background:'#fff'}}>
                 <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#D1D5DB" strokeWidth="1.4" strokeLinecap="round" style={{margin:'0 auto 14px',display:'block'}}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <div style={{fontSize:'14px',fontWeight:'600',color:'#374151',marginBottom:'4px'}}>Sin grupos en común</div>
-                <div style={{fontSize:'12px'}}>Los grupos compartidos aparecerán aquí</div>
+                <div style={{fontSize:'12px'}}>Los grupos compartidos con {cp.title||cp.name} aparecerán aquí</div>
               </div>
             )}
           </div>
