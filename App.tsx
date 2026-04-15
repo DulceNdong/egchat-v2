@@ -402,6 +402,79 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
+  // Geolocalización automática + clima real (Open-Meteo, sin API key)
+  // watchPosition detecta cambios de ubicación → actualiza ciudad y temperatura
+  // Además refresca temperatura cada 15 min aunque no te muevas
+  useEffect(() => {
+    if (!navigator.geolocation) return;
+
+    let lastLat: number | null = null;
+    let lastLon: number | null = null;
+    let tempInterval: ReturnType<typeof setInterval> | null = null;
+
+    const CITY_THRESHOLD_KM = 5; // cambiar ciudad solo si te mueves >5 km
+
+    const distKm = (la1: number, lo1: number, la2: number, lo2: number) => {
+      const R = 6371;
+      const dLat = (la2 - la1) * Math.PI / 180;
+      const dLon = (lo2 - lo1) * Math.PI / 180;
+      const a = Math.sin(dLat/2)**2 + Math.cos(la1*Math.PI/180)*Math.cos(la2*Math.PI/180)*Math.sin(dLon/2)**2;
+      return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    };
+
+    const fetchAll = async (lat: number, lon: number, forceCity = false) => {
+      try {
+        // Temperatura + condición siempre
+        const meteo = await fetch(
+          `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`
+        ).then(r => r.json());
+        const tempC = Math.round(meteo?.current_weather?.temperature ?? 28);
+        const wcode = meteo?.current_weather?.weathercode ?? 0;
+        const condition = wcode === 0 ? 'sunny' : wcode <= 3 ? 'cloudy' : 'rain';
+
+        if (forceCity) {
+          // Ciudad — solo cuando cambia de zona
+          const geo = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`
+          ).then(r => r.json());
+          const city = geo?.address?.city || geo?.address?.town || geo?.address?.village || geo?.address?.county || 'Mi ciudad';
+          setWeather({ temp: tempC, city, condition });
+          setEditWeather({ temp: String(tempC), city, condition });
+        } else {
+          setWeather(prev => ({ ...prev, temp: tempC, condition }));
+          setEditWeather(prev => ({ ...prev, temp: String(tempC), condition }));
+        }
+      } catch {}
+    };
+
+    const watchId = navigator.geolocation.watchPosition(
+      async (pos) => {
+        const { latitude: lat, longitude: lon } = pos.coords;
+        const isFirstFix = lastLat === null;
+        const movedFar = !isFirstFix && distKm(lastLat!, lastLon!, lat, lon) > CITY_THRESHOLD_KM;
+
+        if (isFirstFix || movedFar) {
+          lastLat = lat; lastLon = lon;
+          await fetchAll(lat, lon, true); // actualiza ciudad + temp
+        }
+
+        // Refrescar temperatura cada 15 min aunque no te muevas
+        if (isFirstFix) {
+          tempInterval = setInterval(() => {
+            if (lastLat !== null && lastLon !== null) fetchAll(lastLat, lastLon, false);
+          }, 15 * 60 * 1000);
+        }
+      },
+      () => {/* permiso denegado */},
+      { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10000 }
+    );
+
+    return () => {
+      navigator.geolocation.clearWatch(watchId);
+      if (tempInterval) clearInterval(tempInterval);
+    };
+  }, []);
+
   // Neon glow via rAF (bypasses --disable-gpu CSS animation issue)
   useEffect(() => {
     let raf: number;
@@ -1928,76 +2001,56 @@ const App: React.FC = () => {
       </div>
 
       {/* Hora, clima y controles */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '5px' }}>
 
         {/* Clima */}
         <div style={{ position: 'relative' }}>
-          <div style={{ padding: '1.5px', borderRadius: '50px', background: 'linear-gradient(135deg, #00c8a0, #00b4e6)', boxShadow: '0 0 8px rgba(0,200,160,0.35)' }}>
-            <button
-              onClick={(e) => { const wrap = e.currentTarget.closest('.header-btn-wrap') as HTMLElement | null; if (wrap) { wrap.classList.remove('header-btn-pop'); void wrap.offsetWidth; wrap.classList.add('header-btn-pop'); } setEditWeather({ temp: String(weather.temp), city: weather.city, condition: weather.condition }); setShowWeatherModal(true); }}
-              onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,200,160,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
-              onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 8px rgba(0,200,160,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ display: 'flex', alignItems: 'center', gap: '5px', background: 'rgba(10,20,40,0.85)', padding: '5px 10px', borderRadius: '50px', border: 'none', cursor: 'pointer', outline: 'none' }}
-            >
-              <div style={{ color: '#fbbf24', filter: 'drop-shadow(0 0 4px rgba(251,191,36,0.8))' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 15)}</div>
-              <span style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
-              <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
-            </button>
-          </div>
-          <div className="hdr-tip" style={{ position: 'absolute', top: '110%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap', fontSize: '10px', fontWeight: '600', color: '#00e5ff', opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease', zIndex: 1100 }}>Clima</div>
+          <button
+            onClick={(e) => { setEditWeather({ temp: String(weather.temp), city: weather.city, condition: weather.condition }); setShowWeatherModal(true); }}
+            style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(10,20,40,0.75)', padding: '4px 8px', borderRadius: '50px', border: 'none', cursor: 'pointer', outline: 'none' }}
+          >
+            <div style={{ color: '#fbbf24' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 13)}</div>
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
+            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
+          </button>
         </div>
 
         {/* Hora */}
         <div style={{ position: 'relative' }}>
-          <div style={{ padding: '1.5px', borderRadius: '50px', background: 'linear-gradient(135deg, #00c8a0, #00b4e6)', boxShadow: '0 0 8px rgba(0,200,160,0.35)' }}>
-            <button
-              onClick={(e) => { e.currentTarget.classList.remove('header-btn-pop'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('header-btn-pop'); setEditTime(currentTime); setShowTimeModal(true); }}
-              onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,200,160,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
-              onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 8px rgba(0,200,160,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff', letterSpacing: '0.5px', borderRadius: '50px', padding: '5px 10px', background: 'rgba(10,20,40,0.85)', display: 'flex', alignItems: 'center', cursor: 'pointer', outline: 'none', border: 'none' }}
-            >
-              {isManualTime ? manualTime : currentTime}
-            </button>
-          </div>
-          <div className="hdr-tip" style={{ position: 'absolute', top: '110%', left: '50%', transform: 'translateX(-50%)', background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap', fontSize: '10px', fontWeight: '600', color: '#00e5ff', opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease', zIndex: 1100 }}>Hora</div>
+          <button
+            onClick={() => { setEditTime(currentTime); setShowTimeModal(true); }}
+            style={{ fontSize: '11px', fontWeight: '700', color: '#ffffff', letterSpacing: '0.5px', borderRadius: '50px', padding: '4px 9px', background: 'rgba(10,20,40,0.75)', display: 'flex', alignItems: 'center', cursor: 'pointer', outline: 'none', border: 'none' }}
+          >
+            {isManualTime ? manualTime : currentTime}
+          </button>
         </div>
 
         {/* Notificaciones */}
         <div style={{ position: 'relative' }}>
-          <div style={{ padding: '1.5px', borderRadius: '50px', background: 'linear-gradient(135deg, #00c8a0, #00b4e6)', boxShadow: showNotifications ? '0 0 14px rgba(0,200,160,0.7)' : '0 0 8px rgba(0,200,160,0.35)' }}>
-            <button
-              onClick={(e) => { e.currentTarget.classList.remove('header-btn-pop'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('header-btn-pop'); setShowNotifications(!showNotifications); }}
-              onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,200,160,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
-              onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = showNotifications ? '0 0 14px rgba(0,200,160,0.7)' : '0 0 8px rgba(0,200,160,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ background: showNotifications ? 'rgba(0,200,160,0.2)' : 'rgba(10,20,40,0.85)', border: 'none', cursor: 'pointer', padding: '6px 8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', outline: 'none' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-                <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-              </svg>
-              <div style={{ position: 'absolute', top: '2px', right: '2px', width: '6px', height: '6px', background: '#fbbf24', borderRadius: '50%', border: '1.5px solid rgba(10,20,40,0.9)' }} />
-            </button>
-          </div>
-          <div className="hdr-tip" style={{ position: 'absolute', top: '110%', right: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap', fontSize: '10px', fontWeight: '600', color: '#00e5ff', opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease', zIndex: 1100 }}>Notificaciones</div>
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            style={{ background: showNotifications ? 'rgba(0,200,160,0.25)' : 'rgba(10,20,40,0.75)', border: 'none', cursor: 'pointer', padding: '5px 6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', outline: 'none' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+              <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+            </svg>
+            <div style={{ position: 'absolute', top: '2px', right: '2px', width: '5px', height: '5px', background: '#fbbf24', borderRadius: '50%', border: '1px solid rgba(10,20,40,0.9)' }} />
+          </button>
         </div>
 
-        {/* Mena */}
+        {/* Menú */}
         <div style={{ position: 'relative' }}>
-          <div style={{ padding: '1.5px', borderRadius: '50px', background: 'linear-gradient(135deg, #00c8a0, #00b4e6)', boxShadow: showMenu ? '0 0 14px rgba(0,180,230,0.7)' : '0 0 8px rgba(0,180,230,0.35)' }}>
-            <button
-              onClick={(e) => { e.currentTarget.classList.remove('header-btn-pop'); void e.currentTarget.offsetWidth; e.currentTarget.classList.add('header-btn-pop'); setShowMenu(!showMenu); }}
-              onMouseEnter={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = '0 0 14px rgba(0,180,230,0.7)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00e5ff, #1e90ff)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '1'; }}
-              onMouseLeave={(e) => { (e.currentTarget.parentElement as HTMLElement).style.boxShadow = showMenu ? '0 0 14px rgba(0,180,230,0.7)' : '0 0 8px rgba(0,180,230,0.35)'; (e.currentTarget.parentElement as HTMLElement).style.background = 'linear-gradient(135deg, #00c8a0, #00b4e6)'; const tip = (e.currentTarget.parentElement?.parentElement?.querySelector('.hdr-tip') as HTMLElement); if (tip) tip.style.opacity = '0'; }}
-              style={{ background: showMenu ? 'rgba(0,180,230,0.2)' : 'rgba(10,20,40,0.85)', border: 'none', cursor: 'pointer', padding: '6px 8px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="3" y1="6" x2="21" y2="6"/>
-                <line x1="3" y1="12" x2="21" y2="12"/>
-                <line x1="3" y1="18" x2="21" y2="18"/>
-              </svg>
-            </button>
-          </div>
-          <div className="hdr-tip" style={{ position: 'absolute', top: '110%', right: 0, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(8px)', border: '1px solid rgba(0,180,230,0.4)', borderRadius: '8px', padding: '5px 10px', whiteSpace: 'nowrap', fontSize: '10px', fontWeight: '600', color: '#1e90ff', opacity: 0, pointerEvents: 'none', transition: 'opacity 0.15s ease', zIndex: 1100 }}>Mena principal</div>
+          <button
+            onClick={() => setShowMenu(!showMenu)}
+            style={{ background: showMenu ? 'rgba(0,180,230,0.25)' : 'rgba(10,20,40,0.75)', border: 'none', cursor: 'pointer', padding: '5px 6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', outline: 'none' }}
+          >
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
+            </svg>
+          </button>
         </div>
 
       </div>
@@ -2226,122 +2279,90 @@ const App: React.FC = () => {
     );
   };
 
-  // Modal del tiempo
+  // Dropdown del tiempo — pequeño, se cierra al tocar fuera
   const renderWeatherModal = () => {
     if (!showWeatherModal) return null;
     const conditions = [
-      { id: 'sunny', label: 'Soleado', icon: 'sun' },
-      { id: 'cloudy', label: 'Nublado', icon: 'cloud' },
-      { id: 'rain', label: 'Lluvia', icon: 'rain' }
+      { id: 'sunny', label: 'Soleado', icon: 'sun', color: '#fbbf24' },
+      { id: 'cloudy', label: 'Nublado', icon: 'cloud', color: '#9ca3af' },
+      { id: 'rain',   label: 'Lluvia',  icon: 'rain',  color: '#60a5fa' },
     ];
-    const otherCities = [
-      { city: 'Bata', temp: 26, condition: 'cloudy', country: 'GQ' },
-      { city: 'Ebebiyan', temp: 24, condition: 'rain', country: 'GQ' },
-      { city: 'Annobon', temp: 29, condition: 'sunny', country: 'GQ' },
-      { city: 'Madrid', temp: 18, condition: 'cloudy', country: 'ES' },
-      { city: 'Paras', temp: 14, condition: 'rain', country: 'FR' },
-      { city: 'Lagos', temp: 31, condition: 'sunny', country: 'NG' },
-      { city: 'Yaunda', temp: 25, condition: 'cloudy', country: 'CM' },
-      { city: 'Libreville', temp: 27, condition: 'rain', country: 'GA' },
-    ];
+    const weatherIcon = weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain';
     return (
-      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.45)', zIndex: 1100, display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-end', padding: '56px 12px 0' }}
-        onClick={() => setShowWeatherModal(false)}>
-        <div style={{ background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(28px) saturate(200%)', WebkitBackdropFilter: 'blur(28px) saturate(200%)', borderRadius: '14px', border: '1.5px solid rgba(255,255,255,0.6)', width: '260px', maxHeight: 'calc(100vh - 80px)', overflowY: 'auto', padding: '16px', boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)' }}
-          onClick={e => e.stopPropagation()}>
+      <>
+        {/* Capa invisible para cerrar al tocar fuera */}
+        <div style={{ position: 'fixed', inset: 0, zIndex: 1099 }} onClick={() => setShowWeatherModal(false)} />
+        {/* Dropdown anclado bajo el botón de clima */}
+        <div style={{
+          position: 'fixed', top: '52px', right: '80px',
+          background: 'rgba(12,22,48,0.95)', backdropFilter: 'blur(20px)',
+          WebkitBackdropFilter: 'blur(20px)',
+          borderRadius: '14px', border: '1px solid rgba(0,200,160,0.25)',
+          width: '210px', padding: '12px',
+          boxShadow: '0 8px 28px rgba(0,0,0,0.45)',
+          zIndex: 1100,
+          animation: 'dropdownIn 0.18s cubic-bezier(0.34,1.56,0.64,1)',
+        }} onClick={e => e.stopPropagation()}>
+          <style>{`@keyframes dropdownIn{from{opacity:0;transform:translateY(-6px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}`}</style>
 
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
-            <span style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>Tiempo</span>
-            <button onClick={() => setShowWeatherModal(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', fontSize: '16px', outline: 'none', padding: '0' }}></button>
-          </div>
-
-          {/* Ciudad actual grande */}
-          <div style={{ background: 'linear-gradient(135deg, rgba(0,180,230,0.15), rgba(0,200,160,0.1))', borderRadius: '12px', padding: '14px', marginBottom: '14px', border: '1px solid rgba(0,0,0,0.07)' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-              <div>
-                <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '2px' }}>Mi ubicacian</div>
-                <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d' }}>{weather.city}</div>
-                <div style={{ fontSize: '11px', color: '#6b7280', marginTop: '2px' }}>{currentTime}</div>
+          {/* Ciudad + temp actual */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'10px' }}>
+            <div>
+              <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.45)', marginBottom:'1px' }}>Mi ubicación</div>
+              <div style={{ fontSize:'14px', fontWeight:'700', color:'#fff' }}>{weather.city}</div>
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:'5px' }}>
+              <div style={{ color: conditions.find(c=>c.id===weather.condition)?.color || '#fbbf24' }}>
+                {renderIcon(weatherIcon, 20)}
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ color: '#fbbf24', marginBottom: '2px' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 24)}</div>
-                <div style={{ fontSize: '28px', fontWeight: '700', color: '#0d0d0d', lineHeight: 1 }}>{weather.temp}a</div>
-              </div>
+              <span style={{ fontSize:'20px', fontWeight:'800', color:'#fff' }}>{weather.temp}°</span>
             </div>
           </div>
 
-          {/* Editar mi ciudad */}
-          <div style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Editar mi ubicacian</div>
+          {/* Separador */}
+          <div style={{ height:'1px', background:'rgba(255,255,255,0.08)', marginBottom:'10px' }} />
 
-          <div style={{ display: 'flex', gap: '6px', marginBottom: '8px' }}>
-            <input type="number" value={editWeather.temp} onChange={e => setEditWeather({ ...editWeather, temp: e.target.value })}
-              placeholder="aC"
-              style={{ width: '60px', background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.09)', borderRadius: '8px', padding: '7px 8px', color: '#0d0d0d', fontSize: '12px', outline: 'none' }} />
-            <input type="text" value={editWeather.city} onChange={e => setEditWeather({ ...editWeather, city: e.target.value })}
+          {/* Editar manualmente */}
+          <div style={{ display:'flex', gap:'5px', marginBottom:'8px' }}>
+            <input type="number" value={editWeather.temp}
+              onChange={e => setEditWeather({ ...editWeather, temp: e.target.value })}
+              placeholder="°C"
+              style={{ width:'48px', background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'7px', padding:'5px 6px', color:'#fff', fontSize:'11px', outline:'none' }} />
+            <input type="text" value={editWeather.city}
+              onChange={e => setEditWeather({ ...editWeather, city: e.target.value })}
               placeholder="Ciudad"
-              style={{ flex: 1, background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.09)', borderRadius: '8px', padding: '7px 8px', color: '#0d0d0d', fontSize: '12px', outline: 'none' }} />
+              style={{ flex:1, background:'rgba(255,255,255,0.07)', border:'1px solid rgba(255,255,255,0.12)', borderRadius:'7px', padding:'5px 7px', color:'#fff', fontSize:'11px', outline:'none' }} />
           </div>
 
-          <div style={{ display: 'flex', gap: '5px', marginBottom: '12px' }}>
+          {/* Condición */}
+          <div style={{ display:'flex', gap:'4px', marginBottom:'10px' }}>
             {conditions.map(c => {
-              const isSelected = editWeather.condition === c.id;
-              const iconColors: Record<string, string> = {
-                sunny: '#fbbf24',
-                cloudy: '#9ca3af',
-                rain: '#1e90ff',
-              };
-              const iconColor = iconColors[c.id];
+              const sel = editWeather.condition === c.id;
               return (
-                <div key={c.id} style={{ flex: 1, padding: '1.5px', borderRadius: '10px', background: isSelected ? 'linear-gradient(135deg, #00c8a0, #00b4e6)' : 'linear-gradient(135deg, rgba(0,200,160,0.4), rgba(0,180,230,0.4))', boxShadow: isSelected ? '0 0 8px rgba(0,200,160,0.4)' : 'none', transition: 'all 0.15s' }}>
-                  <button onClick={() => setEditWeather({ ...editWeather, condition: c.id })}
-                    style={{ width: '100%', padding: '7px 3px', background: isSelected ? 'rgba(10,20,40,0.08)' : '#ffffff', borderRadius: '9px', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '3px' }}>
-                    <div style={{ color: iconColor, filter: isSelected ? `drop-shadow(0 0 4px ${iconColor})` : 'none' }}>{renderIcon(c.icon, 14)}</div>
-                    <span style={{ fontSize: '9px', fontWeight: '600', color: isSelected ? '#0d0d0d' : '#6b7280' }}>{c.label}</span>
-                  </button>
-                </div>
+                <button key={c.id} onClick={() => setEditWeather({ ...editWeather, condition: c.id })}
+                  style={{ flex:1, padding:'5px 2px', background: sel ? 'rgba(0,200,160,0.2)' : 'rgba(255,255,255,0.05)', border: sel ? '1px solid rgba(0,200,160,0.5)' : '1px solid rgba(255,255,255,0.08)', borderRadius:'7px', cursor:'pointer', outline:'none', display:'flex', flexDirection:'column', alignItems:'center', gap:'2px' }}>
+                  <div style={{ color: sel ? c.color : 'rgba(255,255,255,0.4)' }}>{renderIcon(c.icon, 12)}</div>
+                  <span style={{ fontSize:'8px', fontWeight:'600', color: sel ? '#fff' : 'rgba(255,255,255,0.4)' }}>{c.label}</span>
+                </button>
               );
             })}
           </div>
 
+          {/* Guardar */}
           <button onClick={() => {
             const temp = parseInt(editWeather.temp);
             if (!isNaN(temp) && editWeather.city.trim()) setWeather({ temp, city: editWeather.city.trim(), condition: editWeather.condition });
             setShowWeatherModal(false);
-          }} style={{ width: '100%', background: 'linear-gradient(135deg, rgba(0,200,160,0.3), rgba(0,180,230,0.3))', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '8px', color: '#0d0d0d', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none', marginBottom: '16px' }}>
+          }} style={{ width:'100%', background:'linear-gradient(90deg,#00c8a0,#00b4e6)', border:'none', borderRadius:'8px', padding:'7px', color:'#fff', fontSize:'11px', fontWeight:'700', cursor:'pointer', outline:'none' }}>
             Guardar
           </button>
-
-          {/* Otras ciudades */}
-          <div style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Otras ciudades</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            {otherCities.map((c, i) => (
-              <button key={i}
-                onClick={() => {
-                  setEditWeather({ temp: String(c.temp), city: c.city, condition: c.condition });
-                  setWeather({ temp: c.temp, city: c.city, condition: c.condition });
-                  setShowWeatherModal(false);
-                }}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: 'rgba(250,250,250,0.88)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '8px', padding: '8px 10px', cursor: 'pointer', outline: 'none', color: '#0d0d0d' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  <div style={{ color: c.condition === 'sunny' ? '#fbbf24' : c.condition === 'rain' ? '#1e90ff' : '#9ca3af' }}>
-                    {renderIcon(c.condition === 'sunny' ? 'sun' : c.condition === 'cloudy' ? 'cloud' : 'rain', 14)}
-                  </div>
-                  <div style={{ textAlign: 'left' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '500' }}>{c.city}</div>
-                    <div style={{ fontSize: '9px', color: '#6b7280' }}>{c.country}</div>
-                  </div>
-                </div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#1f2937' }}>{c.temp}a</div>
-              </button>
-            ))}
-          </div>
         </div>
-      </div>
+      </>
     );
   };
 
   // Iniciar llamada con acceso a camara/microfono
+
   const startCall = async (type: 'audio' | 'video', contact: any) => {
     try {
       const constraints = type === 'video'
@@ -3523,16 +3544,16 @@ const App: React.FC = () => {
         bottom: 0,
         left: 0,
         right: 0,
-        height: '88px',
+        height: '72px',
         background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
         borderTop: 'none',
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'space-around',
-        padding: '0 8px 12px',
+        padding: '0 8px 8px',
         zIndex: 1000,
         boxShadow: '0 -2px 12px rgba(0,180,230,0.35)',
-        paddingBottom: 'max(12px, env(safe-area-inset-bottom, 12px))',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
         overflow: 'hidden'
       }}>
         
@@ -3583,7 +3604,6 @@ const App: React.FC = () => {
               height: '30px',
               color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.8)',
               transition: 'all 0.15s ease',
-              transform: currentView === item.id ? 'scale(1.15)' : 'scale(1)',
             }}>
               {renderIcon(item.icon, 28)}
             </div>
@@ -3863,11 +3883,11 @@ const App: React.FC = () => {
         onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.93)'; }}
         onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; }}
       >
-        {/* Contenedor icono estilo WhatsApp: sin fondo, icono 28px */}
-        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
-          {renderIcon(icon, 28)}
+        {/* Contenedor icono estilo WhatsApp: sin fondo, icono 34px */}
+        <div style={{ width: '56px', height: '56px', borderRadius: '14px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+          {renderIcon(icon, 34)}
         </div>
-        <span style={{ fontSize: '12px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '62px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+        <span style={{ fontSize: '13px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '66px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
       </button>
     );
 
@@ -4004,33 +4024,33 @@ const App: React.FC = () => {
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <Avatar name={sc.title} size={34} status={sc.status as any} showStatus={true} photo={sc.avatarUrl} />
+                <Avatar name={sc.title} size={40} status={sc.status as any} showStatus={true} photo={sc.avatarUrl} />
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{sc.title}</div>
-                  <div style={{ fontSize: '10px', color: sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>{sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}</div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#0d0d0d' }}>{sc.title}</div>
+                  <div style={{ fontSize: '12px', color: sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>{sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}</div>
                 </div>
-                <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                   {/* Llamada */}
                   <button onClick={() => startCall('audio', sc)}
-                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
-                    {renderIcon('phone', 15)}
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    {renderIcon('phone', 18)}
                   </button>
                   {/* Videollamada */}
                   <button onClick={() => startCall('video', sc)}
-                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
-                    {renderIcon('video', 15)}
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    {renderIcon('video', 18)}
                   </button>
-                  {/* Cámara ? abre cámara en vivo */}
+                  {/* Cámara */}
                   <button onClick={() => { setLiveCameraChatId(sc.id?.toString()||''); setShowLiveCamera(true); }}
-                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                       <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                     </svg>
                   </button>
-                  {/* Tres puntos ? men? completo */}
+                  {/* Tres puntos */}
                   <button onClick={e => { e.stopPropagation(); setShowChatMenu(p => !p); }}
-                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}>
-                    <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                    style={{ background: 'transparent', border: 'none', color: '#54656f', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
                   </button>
                 </div>
               </div>
@@ -4105,21 +4125,27 @@ const App: React.FC = () => {
               {/* Mensajes */}
               <div
                 className="scroll-container"
-                style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '12px 12px 8px', display: 'flex', flexDirection: 'column', gap: '6px', background: '#efeae2' }}
+                style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', display: 'flex', flexDirection: 'column', gap: '3px', background: '#efeae2' }}
               >
                 {renderChatWallpaperContent()}
                 {msgs.map((msg) => (
-                  <div key={msg.id} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1 }}>
-                    <div style={{ maxWidth: '78%', background: msg.from === 'me' ? '#d9fdd3' : '#ffffff', border: 'none', borderRadius: msg.from === 'me' ? '12px 12px 2px 12px' : '12px 12px 12px 2px', padding: '7px 10px', boxShadow: '0 1px 2px rgba(0,0,0,0.12)' }}>
-                      <div style={{ fontSize: '12px', color: '#0d0d0d', lineHeight: '1.45' }}>{msg.text}</div>
-                      <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '3px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '3px' }}>
-                        {msg.time}
+                  <div key={msg.id} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px' }}>
+                    <div style={{
+                      maxWidth: '72%',
+                      background: msg.from === 'me' ? '#d9fdd3' : '#ffffff',
+                      borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                      padding: '9px 12px 7px',
+                      boxShadow: '0 1px 2px rgba(0,0,0,0.13)',
+                      position: 'relative',
+                    }}>
+                      <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word' }}>{msg.text}</div>
+                      <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                        <span>{msg.time}</span>
                         {msg.from === 'me' && showReadReceipts && (
-                          <span style={{ display: 'flex', gap: '3px', alignItems: 'center', marginLeft: '2px' }}>
-                            {/* 3 puntos: amarillo=pendiente, verde=entregado, azul=leído */}
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', flexShrink: 0 }}/>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: msg.status === 'delivered' || msg.status === 'read' ? '#22c55e' : 'rgba(34,197,94,0.25)', display: 'inline-block', flexShrink: 0 }}/>
-                            <span style={{ width: '6px', height: '6px', borderRadius: '50%', background: msg.status === 'read' ? '#00b4e6' : 'rgba(0,180,230,0.25)', display: 'inline-block', flexShrink: 0 }}/>
+                          <span style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#f59e0b', display: 'inline-block', flexShrink: 0 }}/>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: msg.status === 'delivered' || msg.status === 'read' ? '#22c55e' : 'rgba(34,197,94,0.25)', display: 'inline-block', flexShrink: 0 }}/>
+                            <span style={{ width: '7px', height: '7px', borderRadius: '50%', background: msg.status === 'read' ? '#00b4e6' : 'rgba(0,180,230,0.25)', display: 'inline-block', flexShrink: 0 }}/>
                           </span>
                         )}
                       </div>
@@ -4252,16 +4278,16 @@ const App: React.FC = () => {
               {/* Panel emojis a estilo WhatsApp */}
               {showChatEmojis && (() => {
                 const emojiCats: Record<string, {icon:string; emojis:string[]}> = {
-                  recientes: { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊'] },
-                  caras:     { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊'] },
-                  gestos:    { icon:'📊', emojis:['📊','📊','📊?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊'] },
-                  personas:  { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊📊📊📊','📊','📊','📊','📊','📊','📊📊📊📊','📊📊📊📊','📊📊📊📊📊?','📊'] },
-                  animales:  { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊'] },
-                  comida:    { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊'] },
-                  viajes:    { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊?','📊?','?','📊','📊','📊','📊','📊','?','📊','?','📊','📊?','📊?','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊?','📊','📊?','📊','📊','📊','📊?','📊?','📊?','📊?','📊?','📊?','📊?','📊?','📊','📊?','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','📊','📊','📊','📊','📊'] },
-                  objetos:   { icon:'📊', emojis:['?','📊','📊','📊','📊?','📊?','📊?','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','📊?','?','?','📊','📊','📊','📊','📊','📊?','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊?','📊?','📊?','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊?','📊?','📊','📊?','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','📊','📊','📊','📊'] },
-                  simbolos:  { icon:'📊', emojis:['📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊📊?','📊📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','?','?','?','?','?','?','?','?','?','?','?','?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊?','📊','📊','📊?','📊','?','?','📊','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','?','?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','📊','📊','?','📊','📊','📊','📊','📊','📊','📊','?','📊?','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','0📊','1📊','2📊','3📊','4📊','5📊','6📊','7📊','8📊','9📊','📊','📊','#📊','*📊','📊','📊','📊','📊','📊','📊','📊','?','?','?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','?','?','📊','📊','📊','📊','📊','📊','📊','📊','?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','?','?','📊','📊','📊','📊','📊','📊','📊','📊','?','?','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊','📊?','📊','📊','📊','📊','📊','📊','📊'] },
-                  custom:    { icon:'?', emojis:[] },
+                  recientes: { icon:'🕐', emojis:['😀','😂','🥰','😍','🤩','😎','🥳','😊','🙏','👍','❤️','🔥','✨','🎉','💯','😭','😅','🤣','😆','😋','😜','🤔','😴','🥺','😤','💪','🤝','👏','🫶','💬'] },
+                  caras:     { icon:'😀', emojis:['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🤫','🤔','🤐','🤨','😐','😑','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥴','😵','🤯','🤠','🥸','😎','🤓','🧐','😕','😟','🙁','☹️','😮','😯','😲','😳','🥺','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👽','👾','🤖'] },
+                  gestos:    { icon:'👋', emojis:['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🤟','🤘','🤙','👈','👉','👆','🖕','👇','☝️','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','✍️','💅','🤳','💪','🦾','🦿','🦵','🦶','👂','🦻','👃','🫀','🫁','🧠','🦷','🦴','👀','👁️','👅','👄','💋','🫦'] },
+                  personas:  { icon:'👤', emojis:['👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵','🙍','🙎','🙅','🙆','💁','🙋','🧏','🙇','🤦','🤷','👮','🕵️','💂','🥷','👷','🫅','🤴','👸','👳','👲','🧕','🤵','👰','🤰','🫃','🤱','👼','🎅','🤶','🦸','🦹','🧙','🧝','🧛','🧟','🧞','🧜','🧚','🧑‍🤝‍🧑','👫','👬','👭','💏','💑','👨‍👩‍👦','👨‍👩‍👧','👨‍👩‍👧‍👦','👨‍👦','👩‍👦','👨‍👧','👩‍👧'] },
+                  animales:  { icon:'🐶', emojis:['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🐤','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦐','🦞','🦀','🐡','🐠','🐟','🐬','🐳','🐋','🦈','🐊','🐅','🐆','🦓','🦍','🦧','🦣','🐘','🦛','🦏','🐪','🐫','🦒','🦘','🦬','🐃','🐂','🐄','🐎','🐖','🐏','🐑','🦙','🐐','🦌','🐕','🐩','🦮','🐕‍🦺','🐈','🐈‍⬛','🪶','🐓','🦃','🦤','🦚','🦜','🦢','🦩','🕊️','🐇','🦝','🦨','🦡','🦫','🦦','🦥','🐁','🐀','🐿️','🦔'] },
+                  comida:    { icon:'🍕', emojis:['🍏','🍎','🍐','🍊','🍋','🍌','🍉','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🍠','🥐','🥯','🍞','🥖','🥨','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥪','🥙','🧆','🌮','🌯','🫔','🥗','🥘','🫕','🥫','🍝','🍜','🍲','🍛','🍣','🍱','🥟','🦪','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','☕','🍵','🫖','🍺','🍻','🥂','🍷','🫗','🥃','🍸','🍹','🧉','🍾','🧊'] },
+                  viajes:    { icon:'✈️', emojis:['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🛺','🚲','🛴','🛹','🛼','🚏','🛣️','🛤️','⛽','🚨','🚥','🚦','🛑','🚧','⚓','🛟','⛵','🚤','🛥️','🛳️','⛴️','🚢','✈️','🛩️','🛫','🛬','🪂','💺','🚁','🚟','🚠','🚡','🛰️','🚀','🛸','🪐','🌍','🌎','🌏','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏞️','🏟️','🏛️','🏗️','🧱','🪨','🪵','🛖','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋'] },
+                  objetos:   { icon:'💡', emojis:['⌚','📱','📲','💻','⌨️','🖥️','🖨️','🖱️','🖲️','💽','💾','💿','📀','🧮','📷','📸','📹','🎥','📽️','🎞️','📞','☎️','📟','📠','📺','📻','🧭','⏱️','⏲️','⏰','🕰️','⌛','⏳','📡','🔋','🔌','💡','🔦','🕯️','🪔','🧯','🛢️','💰','💴','💵','💶','💷','💸','💳','🪙','💹','📈','📉','📊','📋','📌','📍','✂️','🗃️','🗄️','🗑️','🔒','🔓','🔏','🔐','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🛡️','🪚','🔧','🪛','🔩','⚙️','🗜️','⚖️','🦯','🔗','⛓️','🪝','🧲','🪜','🧰','🧲','🪤','🧸','🪆','🖼️','🪞','🪟','🛋️','🪑','🚽','🪠','🚿','🛁','🪤','🧴','🧷','🧹','🧺','🧻','🪣','🧼','🫧','🪥','🧽','🧯','🛒'] },
+                  simbolos:  { icon:'❤️', emojis:['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','❣️','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🚭','❗','❕','❓','❔','‼️','⁉️','🔅','🔆','〽️','⚠️','🚸','🔱','⚜️','🔰','♻️','✅','🈯','💹','❇️','✳️','❎','🌐','💠','Ⓜ️','🌀','💤','🏧','🚾','♿','🅿️','🛗','🈳','🈂️','🛂','🛃','🛄','🛅','🚹','🚺','🚼','⚧️','🚻','🚮','🎦','📶','🈁','🔣','ℹ️','🔤','🔡','🔠','🆖','🆗','🆙','🆒','🆕','🆓','0️⃣','1️⃣','2️⃣','3️⃣','4️⃣','5️⃣','6️⃣','7️⃣','8️⃣','9️⃣','🔟','🔢','#️⃣','*️⃣','⏏️','▶️','⏸️','⏹️','⏺️','⏭️','⏮️','⏩','⏪','⏫','⏬','◀️','🔼','🔽','➡️','⬅️','⬆️','⬇️','↗️','↘️','↙️','↖️','↕️','↔️','↪️','↩️','⤴️','⤵️','🔀','🔁','🔂','🔃','🎵','🎶','➕','➖','➗','✖️','♾️','💲','💱','™️','©️','®️','〰️','➰','➿','🔚','🔙','🔛','🔝','🔜','✔️','☑️','🔘','🔴','🟠','🟡','🟢','🔵','🟣','⚫','⚪','🟤','🔺','🔻','🔷','🔶','🔹','🔸','🔲','🔳','▪️','▫️','◾','◽','◼️','◻️','🟥','🟧','🟨','🟩','🟦','🟪','⬛','⬜','🟫','🔈','🔇','🔉','🔊','🔔','🔕','📣','📢','💬','💭','🗯️','♠️','♣️','♥️','♦️','🃏','🀄','🎴'] },
+                  custom:    { icon:'⭐', emojis:[] },
                 };
                 return (
                 <div style={{ background: '#f7f8fa', borderTop: '1px solid rgba(0,0,0,0.07)', flexShrink: 0 }}>
@@ -4375,40 +4401,40 @@ const App: React.FC = () => {
                 flexShrink: 0,
                 background: '#FFFFFF',
                 borderTop: '1px solid rgba(0,0,0,0.07)',
-                padding: '8px 10px',
+                padding: '10px 10px',
                 paddingBottom: 'calc(20px + env(safe-area-inset-bottom, 0px))',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '6px'
+                gap: '8px'
               }}>
-                {/* Botan + */}
+                {/* Botón + */}
                 <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
-                  style={{ background: showChatAttach ? 'rgba(0,180,230,0.15)' : '#f5f6f7', border: `1px solid ${showChatAttach ? 'rgba(0,180,230,0.3)' : '#f3f4f6'}`, borderRadius: '7px', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0, transition: 'all 0.15s' }}>
-                  <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                  style={{ background: showChatAttach ? 'rgba(0,180,230,0.15)' : '#f5f6f7', border: `1px solid ${showChatAttach ? 'rgba(0,180,230,0.3)' : '#f3f4f6'}`, borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0, transition: 'all 0.15s' }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 </button>
 
-                {/* Input con enviar integrado */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '8px', height: '36px', padding: '0 6px 0 10px', gap: '4px' }}>
+                {/* Input */}
+                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(249,250,251,0.95)', border: '1px solid rgba(0,0,0,0.09)', borderRadius: '22px', minHeight: '44px', padding: '0 10px 0 16px', gap: '6px' }}>
                   <input
                     type="text"
                     value={currentChatInput}
                     onChange={e => setCurrentChatInput(e.target.value)}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendChatMessage(); } }}
                     placeholder="Escribe un mensaje..."
-                    style={{ flex: 1, background: 'none', border: 'none', color: '#0d0d0d', fontSize: '12px', outline: 'none', fontFamily: 'inherit' }}
+                    style={{ flex: 1, background: 'none', border: 'none', color: '#111827', fontSize: '15px', outline: 'none', fontFamily: 'inherit', lineHeight: '1.4' }}
                   />
                   {currentChatInput.trim() && (
                     <button onClick={sendChatMessage}
-                      style={{ background: 'none', border: 'none', borderRadius: '5px', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: '#00b4e6', flexShrink: 0 }}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                      style={{ background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: '#fff', flexShrink: 0 }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
                     </button>
                   )}
                 </div>
 
                 {/* Emoji */}
                 <button onClick={() => { setShowChatEmojis(p => !p); setShowChatAttach(false); }}
-                  style={{ background: showChatEmojis ? '#FEF3C7' : 'transparent', border: 'none', borderRadius: '8px', color: showChatEmojis ? '#f59e0b' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '6px', display: 'flex', flexShrink: 0, transition: 'all 0.15s' }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  style={{ background: showChatEmojis ? '#FEF3C7' : 'transparent', border: 'none', borderRadius: '50%', color: showChatEmojis ? '#f59e0b' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, transition: 'all 0.15s' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
                   </svg>
                 </button>
@@ -4418,8 +4444,8 @@ const App: React.FC = () => {
                   onMouseDown={() => setIsRecordingAudio(true)}
                   onMouseUp={() => setIsRecordingAudio(false)}
                   onMouseLeave={() => setIsRecordingAudio(false)}
-                  style={{ background: isRecordingAudio ? '#FEE2E2' : 'transparent', border: 'none', borderRadius: '8px', color: isRecordingAudio ? '#ef4444' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '6px', display: 'flex', flexShrink: 0, transition: 'all 0.15s' }}>
-                  <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  style={{ background: isRecordingAudio ? '#FEE2E2' : 'transparent', border: 'none', borderRadius: '50%', color: isRecordingAudio ? '#ef4444' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, transition: 'all 0.15s' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
                 </button>
@@ -6177,18 +6203,18 @@ const App: React.FC = () => {
               <button
                 onClick={() => setCurrentSettingsTab('perfil')}
                 style={{
-                  padding: '8px 12px',
+                  padding: '8px 14px',
                   background: currentSettingsTab === 'perfil' ? 'rgba(0,200,160,0.15)' : '#f3f4f6',
                   border: currentSettingsTab === 'perfil' ? '1.5px solid rgba(0,200,160,0.5)' : '1px solid rgba(0,0,0,0.08)',
                   borderRadius: '8px',
                   color: currentSettingsTab === 'perfil' ? '#00c8a0' : '#374151',
-                  fontSize: '12px',
+                  fontSize: '14px',
                   fontWeight: '600',
                   cursor: 'pointer',
                   outline: 'none',
                   display: 'flex',
                   alignItems: 'center',
-                  gap: '4px'
+                  gap: '5px'
                 }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
@@ -6312,29 +6338,29 @@ const App: React.FC = () => {
                     borderRadius: '8px',
                     padding: '12px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       Información Personal
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Email</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.email}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Email</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.email}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Teléfono</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.phone}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Teléfono</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.phone}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>País</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.country}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>País</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.country}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Ciudad</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.city}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Ciudad</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.city}</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '2px' }}>Dirección</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.address}</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px' }}>Dirección</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>{userProfile.address}</div>
                       </div>
                     </div>
                   </div>

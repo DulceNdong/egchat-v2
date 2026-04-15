@@ -111,7 +111,7 @@ export const ContactProfileModal: React.FC<Props> = ({
         {/* Avatar + nombre — estilo WhatsApp */}
         <div style={{background:'#fff',padding:'28px 16px 20px',textAlign:'center',marginBottom:'8px'}}>
           <div style={{display:'inline-block',marginBottom:'14px'}}>
-            <Avatar name={cp.title||cp.name||'?'} size={90} status={cp.status} showStatus={true} />
+            <Avatar name={cp.title||cp.name||'?'} size={90} status={cp.status} showStatus={true} photo={cp.avatarUrl || cp.avatar_url || cp.photo} />
           </div>
           <div style={{fontSize:'22px',fontWeight:'700',color:'#111827',marginBottom:'3px'}}>{cp.title||cp.name}</div>
           <div style={{fontSize:'13px',color:cp.status==='online'?'#22c55e':cp.status==='away'?'#f59e0b':'#9CA3AF',marginBottom:'4px'}}>
