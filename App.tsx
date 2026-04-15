@@ -246,6 +246,7 @@ const App: React.FC = () => {
   const [liveCameraChatId, setLiveCameraChatId] = useState('');
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [showChatSearch, setShowChatSearch] = useState(false);
+  const [chatImageViewer, setChatImageViewer] = useState<string | null>(null); // visor de imagen inline
   const [saludInitTab, setSaludInitTab] = useState<'hospitales'|'farmacias'|'cita'|'urgencias'>('hospitales');
   const [showSvcModal, setShowSvcModal] = useState<string | null>(null); // servicios publicos + diarios + herramientas
   const [svcStep, setSvcStep] = useState<string>('main');
@@ -4169,8 +4170,8 @@ const App: React.FC = () => {
                         </div>
                       ) : (msg as any).type === 'image' && (msg as any).imageUrl ? (
                         <div>
-                          <img src={(msg as any).imageUrl} alt="foto" style={{ maxWidth: '200px', maxHeight: '200px', borderRadius: '10px', objectFit: 'cover', display: 'block', cursor: 'pointer' }}
-                            onClick={() => window.open((msg as any).imageUrl, '_blank')} />
+                          <img src={(msg as any).imageUrl} alt="foto" style={{ maxWidth: '220px', maxHeight: '220px', borderRadius: '10px', objectFit: 'cover', display: 'block', cursor: 'zoom-in' }}
+                            onClick={() => setChatImageViewer((msg as any).imageUrl)} />
                           {msg.text && msg.text !== '📷 Foto' && <div style={{ fontSize: '14px', color: '#111827', marginTop: '4px' }}>{msg.text}</div>}
                         </div>
                       ) : (
@@ -7147,6 +7148,37 @@ const App: React.FC = () => {
       {renderWeatherModal()}
       {renderTimeModal()}
       {renderActiveCall()}
+
+      {/* Visor de imagen inline — se abre dentro de la app */}
+      {chatImageViewer && (
+        <div
+          onClick={() => setChatImageViewer(null)}
+          style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+        >
+          <img
+            src={chatImageViewer}
+            alt="foto"
+            style={{ maxWidth: '95vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setChatImageViewer(null)}
+            style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+          >
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+          {/* Botón descargar */}
+          <a
+            href={chatImageViewer}
+            download="foto.jpg"
+            onClick={e => e.stopPropagation()}
+            style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '20px', padding: '8px 20px', color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+            Guardar
+          </a>
+        </div>
+      )}
 
       {/* Llamada entrante */}
       {incomingCall && !activeCall && (
