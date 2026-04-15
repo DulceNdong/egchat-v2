@@ -5008,69 +5008,113 @@ const App: React.FC = () => {
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Monedero EGChat
                 </div>
-                <div style={{ position: 'relative', marginBottom: '2px' }}>
-                  {/* Saldo real */}
-                  <div id="wallet-balance" style={{ fontSize: '30px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, filter: balanceRevealed ? 'none' : 'blur(8px)', transition: 'filter 0.4s ease', userSelect: 'none' }}>
-                    {userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.65)' }}>XAF</span>
+                <style>{`
+                  @keyframes zipReveal {
+                    0%   { clip-path: inset(0 100% 0 0); }
+                    100% { clip-path: inset(0 0% 0 0); }
+                  }
+                  @keyframes zipCursor {
+                    0%   { left: 0%; }
+                    100% { left: 100%; }
+                  }
+                  @keyframes toothMove {
+                    0%   { transform: translateX(0); }
+                    100% { transform: translateX(200px); }
+                  }
+                  @keyframes countUp {
+                    0%   { opacity: 0; transform: scale(0.8) translateY(4px); }
+                    60%  { opacity: 1; transform: scale(1.05) translateY(-2px); }
+                    100% { opacity: 1; transform: scale(1) translateY(0); }
+                  }
+                  @keyframes glowPulse {
+                    0%, 100% { text-shadow: 0 0 0px rgba(0,200,160,0); }
+                    50%       { text-shadow: 0 0 20px rgba(0,200,160,0.6), 0 0 40px rgba(0,180,230,0.3); }
+                  }
+                `}</style>
+                <div style={{ position: 'relative', marginBottom: '2px', minHeight: '38px' }}>
+                  {/* Saldo real — siempre renderizado, revelado con clip-path */}
+                  <div style={{
+                    fontSize: '30px', fontWeight: '800', color: '#ffffff',
+                    letterSpacing: '-1px', lineHeight: 1,
+                    clipPath: balanceRevealed ? 'inset(0 0% 0 0)' : balanceRevealing ? undefined : 'inset(0 100% 0 0)',
+                    animation: balanceRevealing ? 'zipReveal 1.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards' : 'none',
+                    userSelect: 'none',
+                  }}>
+                    <span style={{ animation: balanceRevealed ? 'countUp 0.5s ease forwards, glowPulse 1.5s ease 0.5s 2' : 'none', display: 'inline-block' }}>
+                      {userBalance.toLocaleString()}
+                    </span>
+                    {' '}<span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.65)' }}>XAF</span>
                   </div>
-                  {/* Capa de cremallera */}
+
+                  {/* Capa oscura + cremallera — visible cuando no revelado */}
                   {!balanceRevealed && (
                     <div
-                      onClick={async () => {
-                        // Intentar biometría del navegador
-                        try {
-                          if (window.PublicKeyCredential) {
-                            setBalanceRevealing(true);
-                            setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 900);
-                          } else {
-                            setBalanceRevealing(true);
-                            setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 900);
-                          }
-                        } catch {
-                          setBalanceRevealing(true);
-                          setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 900);
-                        }
+                      onClick={() => {
+                        if (balanceRevealing) return;
+                        setBalanceRevealing(true);
+                        setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 1300);
                       }}
                       style={{
                         position: 'absolute', inset: 0,
-                        background: 'rgba(10,30,60,0.75)',
-                        backdropFilter: 'blur(4px)',
+                        background: 'rgba(8,20,50,0.82)',
+                        backdropFilter: 'blur(6px)',
                         borderRadius: '8px',
-                        display: 'flex', alignItems: 'center', justifyContent: 'center',
                         cursor: 'pointer',
                         overflow: 'hidden',
-                        animation: balanceRevealing ? 'zipOpen 0.85s cubic-bezier(0.4,0,0.2,1) forwards' : 'none',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        clipPath: balanceRevealing ? 'inset(0 0 0 0)' : undefined,
+                        animation: balanceRevealing ? 'zipReveal 1.2s cubic-bezier(0.25,0.46,0.45,0.94) reverse forwards' : 'none',
                       }}
                     >
-                      {!balanceRevealing && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: '600' }}>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
-                          Toca para ver
+                      {/* Dientes de cremallera superior */}
+                      {balanceRevealing && (
+                        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '6px', display: 'flex', animation: 'toothMove 1.2s linear forwards', gap: '3px', paddingLeft: '4px' }}>
+                          {Array.from({length: 20}).map((_,i) => (
+                            <div key={i} style={{ width: '6px', height: '6px', background: '#00c8a0', borderRadius: '0 0 3px 3px', flexShrink: 0 }}/>
+                          ))}
                         </div>
                       )}
-                      {/* Línea de cremallera */}
+                      {/* Dientes de cremallera inferior */}
                       {balanceRevealing && (
-                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: '3px', background: 'linear-gradient(180deg, #00c8a0, #00b4e6)', boxShadow: '0 0 12px #00c8a0', animation: 'zipLine 0.85s cubic-bezier(0.4,0,0.2,1) forwards' }}/>
+                        <div style={{ position: 'absolute', bottom: 0, left: 0, right: 0, height: '6px', display: 'flex', animation: 'toothMove 1.2s linear forwards', gap: '3px', paddingLeft: '4px' }}>
+                          {Array.from({length: 20}).map((_,i) => (
+                            <div key={i} style={{ width: '6px', height: '6px', background: '#00b4e6', borderRadius: '3px 3px 0 0', flexShrink: 0 }}/>
+                          ))}
+                        </div>
+                      )}
+                      {/* Cursor de cremallera */}
+                      {balanceRevealing && (
+                        <div style={{
+                          position: 'absolute', top: '50%', transform: 'translateY(-50%)',
+                          width: '14px', height: '22px',
+                          background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
+                          borderRadius: '4px',
+                          boxShadow: '0 0 16px #00c8a0, 0 0 32px rgba(0,200,160,0.5)',
+                          animation: 'zipCursor 1.2s cubic-bezier(0.25,0.46,0.45,0.94) forwards',
+                          zIndex: 10,
+                        }}/>
+                      )}
+                      {/* Línea central de cremallera */}
+                      {balanceRevealing && (
+                        <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '2px', background: 'rgba(0,200,160,0.3)', transform: 'translateY(-50%)' }}/>
+                      )}
+                      {/* Texto inicial */}
+                      {!balanceRevealing && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: 'rgba(255,255,255,0.75)', fontSize: '12px', fontWeight: '600' }}>
+                          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          Toca para revelar
+                        </div>
                       )}
                     </div>
                   )}
-                  {/* Botón para ocultar de nuevo */}
+
+                  {/* Botón ocultar */}
                   {balanceRevealed && (
-                    <button onClick={() => setBalanceRevealed(false)} style={{ position: 'absolute', top: 0, right: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px' }}>
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    <button onClick={() => setBalanceRevealed(false)} style={{ position: 'absolute', top: '-2px', right: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.35)', padding: '2px' }}>
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
                     </button>
                   )}
                 </div>
-                <style>{`
-                  @keyframes zipOpen {
-                    0% { clip-path: inset(0 0 0 0); opacity: 1; }
-                    100% { clip-path: inset(0 0 0 100%); opacity: 0; }
-                  }
-                  @keyframes zipLine {
-                    0% { left: 0; }
-                    100% { left: 100%; }
-                  }
-                `}</style>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: '18px' }}>
                   Saldo disponible
                 </div>
