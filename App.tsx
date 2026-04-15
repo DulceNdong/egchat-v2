@@ -4257,14 +4257,43 @@ const App: React.FC = () => {
                           const lines = (msg.text || '').split('\n');
                           const label = lines[0].replace('📍 ', '');
                           const link = lines[1] || '';
+                          // Extraer coordenadas del link para el mapa estático
+                          const coordMatch = link.match(/q=(-?\d+\.\d+),(-?\d+\.\d+)/);
+                          const lat = coordMatch?.[1] || '3.7520';
+                          const lng = coordMatch?.[2] || '8.7735';
+                          const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+                          const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+                          const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=300x120&markers=${lat},${lng},red`;
                           return (
-                            <div style={{ minWidth: '200px' }}>
-                              <div style={{ background: 'linear-gradient(135deg,#e0f7fa,#e8f5e9)', borderRadius: '10px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px', position: 'relative' }}>
-                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
-                                <span style={{ position: 'absolute', bottom: '4px', right: '8px', fontSize: '9px', color: '#6b7280' }}>Maps</span>
+                            <div style={{ minWidth: '220px', cursor: 'pointer' }} onClick={() => window.open(mapsUrl, '_blank')}>
+                              {/* Mini mapa */}
+                              <div style={{ borderRadius: '10px 10px 0 0', height: '110px', overflow: 'hidden', position: 'relative', background: 'linear-gradient(135deg,#e8f5e9,#e3f2fd)' }}>
+                                <img src={staticMapUrl} alt="mapa"
+                                  style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+                                  onError={e => { (e.target as HTMLImageElement).style.display='none'; }}
+                                />
+                                {/* Pin overlay */}
+                                <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', pointerEvents: 'none' }}>
+                                  <svg width="28" height="36" viewBox="0 0 24 32" fill="none">
+                                    <path d="M12 0C7.58 0 4 3.58 4 8c0 5.25 8 16 8 16s8-10.75 8-16c0-4.42-3.58-8-8-8z" fill="#ef4444"/>
+                                    <circle cx="12" cy="8" r="3" fill="#fff"/>
+                                  </svg>
+                                </div>
                               </div>
-                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>{label}</div>
-                              {link && <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#00b4e6', textDecoration: 'none' }}>Ver en Google Maps →</a>}
+                              {/* Info + botones */}
+                              <div style={{ padding: '8px 10px 4px', background: 'rgba(0,0,0,0.02)', borderRadius: '0 0 10px 10px', borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', marginBottom: '6px' }}>{label}</div>
+                                <div style={{ display: 'flex', gap: '6px' }}>
+                                  <a href={mapsUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                                    style={{ flex: 1, background: '#e3f2fd', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: '600', color: '#1565c0', textDecoration: 'none', textAlign: 'center' }}>
+                                    🗺 Ver mapa
+                                  </a>
+                                  <a href={directionsUrl} target="_blank" rel="noreferrer" onClick={e => e.stopPropagation()}
+                                    style={{ flex: 1, background: '#e8f5e9', borderRadius: '6px', padding: '5px 8px', fontSize: '11px', fontWeight: '600', color: '#2e7d32', textDecoration: 'none', textAlign: 'center' }}>
+                                    🧭 Cómo llegar
+                                  </a>
+                                </div>
+                              </div>
                             </div>
                           );
                         })()
@@ -4276,34 +4305,78 @@ const App: React.FC = () => {
                           const phone = lines[1]?.replace('📞 ', '') || '';
                           const avatar = (msg as any).contactAvatar || '';
                           return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', padding: '4px 0' }}>
-                              <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden' }}>
-                                {avatar
-                                  ? <img src={avatar} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
-                                  : <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-                                }
+                            <div style={{ minWidth: '220px' }}>
+                              {/* Tarjeta contacto clickeable */}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 0 8px', cursor: 'pointer' }}
+                                onClick={() => {
+                                  // Buscar en contactos y abrir perfil
+                                  const found = allContacts.find(c => c.phone === phone || c.name === name);
+                                  if (found) setShowContactProfile({ id: found.id, title: found.name, phone: found.phone, avatarUrl: found.avatarUrl, status: found.status });
+                                }}>
+                                <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
+                                  {avatar
+                                    ? <img src={avatar} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                                    : <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                                  }
+                                </div>
+                                <div style={{ flex: 1 }}>
+                                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{name}</div>
+                                  <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>{phone}</div>
+                                </div>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                               </div>
-                              <div style={{ flex: 1 }}>
-                                <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>{name}</div>
-                                <div style={{ fontSize: '12px', color: '#6b7280' }}>{phone}</div>
-                                <button
-                                  onClick={() => {
-                                    if (phone) {
-                                      contactsAPI.add(undefined, phone, name).then(() => {
-                                        alert(`✅ ${name} añadido a contactos`);
-                                      }).catch(() => alert('No se pudo añadir'));
-                                    }
-                                  }}
-                                  style={{ fontSize: '11px', color: '#00c8a0', marginTop: '4px', fontWeight: '700', background: 'none', border: 'none', cursor: 'pointer', padding: 0, outline: 'none' }}>
-                                  + Añadir contacto
-                                </button>
-                              </div>
+                              {/* Separador */}
+                              <div style={{ height: '1px', background: 'rgba(0,0,0,0.08)', margin: '0 -12px' }}/>
+                              {/* Botón añadir */}
+                              <button
+                                onClick={() => {
+                                  if (phone) {
+                                    contactsAPI.add(undefined, phone, name)
+                                      .then(() => alert(`✅ ${name} añadido a contactos`))
+                                      .catch(() => alert('No se pudo añadir'));
+                                  }
+                                }}
+                                style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0 2px', fontSize: '13px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
+                                + Añadir a contactos
+                              </button>
                             </div>
                           );
                         })()
                       ) : (
-                        /* ── TEXTO NORMAL ── */
-                        <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</div>
+                        /* ── TEXTO NORMAL o DINERO ── */
+                        msg.text?.startsWith('💸') ? (() => {
+                          // Burbuja de transferencia de dinero
+                          const lines = (msg.text || '').split('\n');
+                          const amount = lines[1]?.replace('💰 ', '') || '';
+                          const recipient = lines[2]?.replace('👤 ', '') || '';
+                          const code = lines[3]?.replace('🔑 Código: ', '') || '';
+                          const status = lines[4]?.replace('📊 ', '') || '';
+                          return (
+                            <div style={{ minWidth: '220px' }}>
+                              <div style={{ background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', borderRadius: '10px', padding: '12px 14px', marginBottom: '6px' }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
+                                  <div style={{ width: '36px', height: '36px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                                  </div>
+                                  <div>
+                                    <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.8)', fontWeight: '600' }}>Transferencia enviada</div>
+                                    <div style={{ fontSize: '18px', fontWeight: '800', color: '#fff' }}>{amount}</div>
+                                  </div>
+                                </div>
+                                {recipient && <div style={{ fontSize: '12px', color: 'rgba(255,255,255,0.85)' }}>Para: {recipient}</div>}
+                              </div>
+                              {code && (
+                                <div style={{ background: '#f9fafb', borderRadius: '8px', padding: '8px 10px', border: '1px solid #e5e7eb' }}>
+                                  <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '3px', fontWeight: '600', textTransform: 'uppercase' }}>Código de confirmación</div>
+                                  <div style={{ fontSize: '16px', fontWeight: '800', color: '#111827', letterSpacing: '3px', fontFamily: 'monospace' }}>{code}</div>
+                                  <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '2px' }}>Comparte este código con el destinatario</div>
+                                </div>
+                              )}
+                              {status && <div style={{ fontSize: '11px', color: '#22c55e', marginTop: '4px', fontWeight: '600' }}>{status}</div>}
+                            </div>
+                          );
+                        })()
+                        : <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</div>
                       )}
 
                       {/* Hora + estado */}
@@ -4453,10 +4526,20 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="2"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          setTimeout(() => {
-                            setQuickTransferData({ contactId: sc.id?.toString()||'', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id||'' });
-                            setShowQuickTransferModal(true);
-                          }, 100);
+                          const key = sc.id?.toString() || sc.title;
+                          const amountStr = window.prompt(`Enviar dinero a ${sc.title}\n\nIngresa el monto en XAF:`);
+                          if (!amountStr || isNaN(Number(amountStr)) || Number(amountStr) <= 0) return;
+                          const amount = Number(amountStr);
+                          if (amount > userBalance) { alert('❌ Saldo insuficiente'); return; }
+                          const code = Math.floor(100000 + Math.random() * 900000).toString();
+                          const t = new Date();
+                          const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                          try { subtractBalance(amount); } catch {}
+                          setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), {
+                            id: Date.now().toString(), from: 'me' as const,
+                            text: `💸 Transferencia\n💰 ${amount.toLocaleString()} XAF\n👤 ${sc.title}\n🔑 Código: ${code}\n📊 ✅ Enviado`,
+                            time: tm, status: 'pending' as const
+                          }] }));
                         }
                       },
                     ].map((item, i) => (
