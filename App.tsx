@@ -2010,8 +2010,8 @@ const App: React.FC = () => {
             style={{ display: 'flex', alignItems: 'center', gap: '4px', background: 'rgba(10,20,40,0.75)', padding: '4px 8px', borderRadius: '50px', border: 'none', cursor: 'pointer', outline: 'none' }}
           >
             <div style={{ color: '#fbbf24' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 13)}</div>
-            <span style={{ fontSize: '11px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
-            <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
+            <span style={{ fontSize: '13px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
           </button>
         </div>
 
@@ -2019,7 +2019,7 @@ const App: React.FC = () => {
         <div style={{ position: 'relative' }}>
           <button
             onClick={() => { setEditTime(currentTime); setShowTimeModal(true); }}
-            style={{ fontSize: '11px', fontWeight: '700', color: '#ffffff', letterSpacing: '0.5px', borderRadius: '50px', padding: '4px 9px', background: 'rgba(10,20,40,0.75)', display: 'flex', alignItems: 'center', cursor: 'pointer', outline: 'none', border: 'none' }}
+            style={{ fontSize: '14px', fontWeight: '700', color: '#ffffff', letterSpacing: '0.5px', borderRadius: '50px', padding: '4px 9px', background: 'rgba(10,20,40,0.75)', display: 'flex', alignItems: 'center', cursor: 'pointer', outline: 'none', border: 'none' }}
           >
             {isManualTime ? manualTime : currentTime}
           </button>
@@ -2169,7 +2169,7 @@ const App: React.FC = () => {
               <button onClick={() => setSelectedNotif(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', display: 'flex' }}>
                 <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
               </button>
-              <span style={{ fontSize: '11px', fontWeight: '600', color: '#0d0d0d', flex: 1 }}>{d.title}</span>
+              <span style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d', flex: 1 }}>{d.title}</span>
               <button onClick={() => { setSelectedNotif(null); setShowNotifications(false); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', fontSize: '13px' }}></button>
             </div>
 
@@ -2180,8 +2180,8 @@ const App: React.FC = () => {
               </div>
               <div>
                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{d.from}</div>
-                {d.fromPhone && <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>{d.fromPhone}</div>}
-                {d.device && <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '1px' }}>{d.device}</div>}
+                {d.fromPhone && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '1px' }}>{d.fromPhone}</div>}
+                {d.device && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '1px' }}>{d.device}</div>}
               </div>
             </div>
 
@@ -2190,40 +2190,40 @@ const App: React.FC = () => {
               {d.amount && (
                 <div style={{ background: `${selectedNotif.color}12`, border: `1px solid ${selectedNotif.color}30`, borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
                   <div style={{ fontSize: '22px', fontWeight: '700', color: selectedNotif.color }}>{d.amount}</div>
-                  {d.concept && <div style={{ fontSize: '10px', color: '#6b7280', marginTop: '3px' }}>{d.concept}</div>}
+                  {d.concept && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '3px' }}>{d.concept}</div>}
                 </div>
               )}
               {d.message && (
-                <div style={{ background: 'rgba(249,250,251,0.88)', borderRadius: '8px', padding: '9px 10px', fontSize: '11px', color: '#1f2937', lineHeight: '1.5' }}>
+                <div style={{ background: 'rgba(249,250,251,0.88)', borderRadius: '8px', padding: '9px 10px', fontSize: '14px', color: '#1f2937', lineHeight: '1.5' }}>
                   {d.message}
                 </div>
               )}
               {d.version && (
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '10px', color: '#6b7280' }}>Versión</span>
-                  <span style={{ fontSize: '11px', fontWeight: '600', color: selectedNotif.color }}>{d.version}</span>
+                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Versión</span>
+                  <span style={{ fontSize: '14px', fontWeight: '600', color: selectedNotif.color }}>{d.version}</span>
                 </div>
               )}
               {d.ref && (
                 <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '10px', color: '#6b7280' }}>Referencia</span>
-                  <span style={{ fontSize: '10px', color: '#374151', fontFamily: 'monospace' }}>{d.ref}</span>
+                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Referencia</span>
+                  <span style={{ fontSize: '13px', color: '#374151', fontFamily: 'monospace' }}>{d.ref}</span>
                 </div>
               )}
               <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '10px', color: '#6b7280' }}>Fecha</span>
-                <span style={{ fontSize: '10px', color: '#374151' }}>{d.date}</span>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>Fecha</span>
+                <span style={{ fontSize: '13px', color: '#374151' }}>{d.date}</span>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '10px', color: '#6b7280' }}>Estado</span>
-                <span style={{ fontSize: '10px', fontWeight: '600', color: d.statusColor, background: `${d.statusColor}18`, padding: '2px 8px', borderRadius: '10px', border: `1px solid ${d.statusColor}30` }}>{d.status}</span>
+                <span style={{ fontSize: '13px', color: '#6b7280' }}>Estado</span>
+                <span style={{ fontSize: '13px', fontWeight: '600', color: d.statusColor, background: `${d.statusColor}18`, padding: '2px 8px', borderRadius: '10px', border: `1px solid ${d.statusColor}30` }}>{d.status}</span>
               </div>
             </div>
 
             {/* Botan accin */}
             <div style={{ padding: '0 14px 14px' }}>
               <button onClick={() => { d.action(); setSelectedNotif(null); setShowNotifications(false); }}
-                style={{ width: '100%', background: `linear-gradient(135deg, ${selectedNotif.color}30, ${selectedNotif.color}18)`, border: `1px solid ${selectedNotif.color}40`, borderRadius: '9px', padding: '9px', color: selectedNotif.color, fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
+                style={{ width: '100%', background: `linear-gradient(135deg, ${selectedNotif.color}30, ${selectedNotif.color}18)`, border: `1px solid ${selectedNotif.color}40`, borderRadius: '9px', padding: '9px', color: selectedNotif.color, fontSize: '14px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
                 {d.actionLabel} ?
               </button>
             </div>
@@ -2241,9 +2241,9 @@ const App: React.FC = () => {
           background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(28px) saturate(200%)', WebkitBackdropFilter: 'blur(28px) saturate(200%)', borderRadius: '12px', border: '1.5px solid rgba(255,255,255,0.6)', boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)', overflow: 'hidden'
         }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px 8px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-            <span style={{ fontSize: '11px', fontWeight: '600', color: '#0d0d0d' }}>Notificaciones</span>
+            <span style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d' }}>Notificaciones</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '9px', color: '#6b7280', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '1px 6px' }}>{notifs.length}</span>
+              <span style={{ fontSize: '12px', color: '#6b7280', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '1px 6px' }}>{notifs.length}</span>
               <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', fontSize: '13px' }}></button>
             </div>
           </div>
@@ -2259,18 +2259,18 @@ const App: React.FC = () => {
                   {renderIcon(n.icon, 13)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#0d0d0d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.label}</div>
-                  <div style={{ fontSize: '10px', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.desc}</div>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.label}</div>
+                  <div style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.desc}</div>
                 </div>
                 <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '9px', color: '#9ca3af' }}>{n.time}</span>
+                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>{n.time}</span>
                   <svg width="8" height="8" viewBox="0 0 24 24" stroke={n.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><polyline points="9 18 15 12 9 6"/></svg>
                 </div>
               </div>
             ))}
           </div>
           <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(0,0,0,0.07)', textAlign: 'center' }}>
-            <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '10px', cursor: 'pointer', outline: 'none' }}>
+            <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '13px', cursor: 'pointer', outline: 'none' }}>
               Marcar todas como leadas
             </button>
           </div>
@@ -2449,7 +2449,7 @@ const App: React.FC = () => {
               </span>
             ) : formatCallDuration(callDuration)}
           </div>
-          <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
+          <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.4)', marginTop: '4px' }}>
             {type === 'video' ? 'Videollamada' : 'Llamada de voz'}
           </div>
         </div>
@@ -2511,7 +2511,7 @@ const App: React.FC = () => {
             {isManualTime ? manualTime : currentTime}
           </div>
           <div style={{ marginBottom: '12px' }}>
-            <label style={{ fontSize: '10px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
+            <label style={{ fontSize: '13px', fontWeight: '600', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', display: 'block', marginBottom: '6px' }}>
               Hora personalizada
             </label>
             <input
@@ -2582,12 +2582,12 @@ const App: React.FC = () => {
               {!isEditingProfile ? (
                 <>
                   <button onClick={() => setShowProfileQR(!showProfileQR)}
-                    style={{ background: showProfileQR ? 'rgba(0,180,230,0.2)' : '#f5f6f7', border: `1px solid ${showProfileQR ? 'rgba(0,180,230,0.4)' : '#f3f4f6'}`, borderRadius: '8px', padding: '6px 10px', color: showProfileQR ? '#00b4e6' : '#6b7280', fontSize: '11px', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    style={{ background: showProfileQR ? 'rgba(0,180,230,0.2)' : '#f5f6f7', border: `1px solid ${showProfileQR ? 'rgba(0,180,230,0.4)' : '#f3f4f6'}`, borderRadius: '8px', padding: '6px 10px', color: showProfileQR ? '#00b4e6' : '#6b7280', fontSize: '14px', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/></svg>
                     QR
                   </button>
                   <button onClick={() => { setEditedProfile({ ...userProfile }); setIsEditingProfile(true); setShowProfileQR(false); }}
-                    style={{ background: 'rgba(0,200,160,0.15)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '8px', padding: '6px 10px', color: '#00c8a0', fontSize: '11px', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                    style={{ background: 'rgba(0,200,160,0.15)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '8px', padding: '6px 10px', color: '#00c8a0', fontSize: '14px', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}>
                     <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                     Editar
                   </button>
@@ -2595,11 +2595,11 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <button onClick={() => { setIsEditingProfile(false); setEditedProfile(null); }}
-                    style={{ background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '6px 10px', color: '#374151', fontSize: '11px', cursor: 'pointer', outline: 'none' }}>
+                    style={{ background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '6px 10px', color: '#374151', fontSize: '14px', cursor: 'pointer', outline: 'none' }}>
                     Cancelar
                   </button>
                   <button onClick={() => { setUserProfile({ ...editedProfile }); setIsEditingProfile(false); setEditedProfile(null); }}
-                    style={{ background: 'rgba(0,200,160,0.2)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '6px 10px', color: '#00c8a0', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
+                    style={{ background: 'rgba(0,200,160,0.2)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '6px 10px', color: '#00c8a0', fontSize: '14px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
                     Guardar
                   </button>
                 </>
@@ -2618,12 +2618,12 @@ const App: React.FC = () => {
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ fontSize: '16px', fontWeight: '700', color: '#0d0d0d', marginBottom: '4px' }}>{userProfile.name}</div>
-                <div style={{ fontSize: '10px', color: '#9ca3af', marginBottom: '6px', fontFamily: 'monospace' }}>ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}</div>
+                <div style={{ fontSize: '13px', color: '#9ca3af', marginBottom: '6px', fontFamily: 'monospace' }}>ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}</div>
                 <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '10px', fontWeight: '600', color: '#00c8a0', background: 'rgba(0,200,160,0.15)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '2px 8px' }}>
+                  <span style={{ fontSize: '13px', fontWeight: '600', color: '#00c8a0', background: 'rgba(0,200,160,0.15)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '2px 8px' }}>
                     ✓ Verificado
                   </span>
-                  <span style={{ fontSize: '10px', color: '#6b7280', background: 'rgba(249,250,251,0.88)', borderRadius: '10px', padding: '2px 8px' }}>
+                  <span style={{ fontSize: '13px', color: '#6b7280', background: 'rgba(249,250,251,0.88)', borderRadius: '10px', padding: '2px 8px' }}>
                     Desde {userProfile.joinDate}
                   </span>
                 </div>
@@ -2633,7 +2633,7 @@ const App: React.FC = () => {
             {/* QR Panel */}
             {showProfileQR && (
               <div style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '14px', border: '1px solid rgba(0,180,230,0.2)', padding: '16px', marginBottom: '16px', textAlign: 'center' }}>
-                <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
                   Escanea para añadirme
                 </div>
                 <div style={{ display: 'inline-block', padding: '10px', background: 'white', borderRadius: '12px', marginBottom: '10px', position: 'relative' }}>
@@ -2666,7 +2666,7 @@ const App: React.FC = () => {
                     {userProfile.name.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase()}
                   </div>
                 </div>
-                <div style={{ fontSize: '9px', color: '#9ca3af', marginTop: '8px' }}>
+                <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '8px' }}>
                   Válido para EGCHAT a {userProfile.id}
                 </div>
               </div>
@@ -2674,12 +2674,12 @@ const App: React.FC = () => {
 
             {/* Campos del perfil */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>informacion personal</div>
+              <div style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>informacion personal</div>
               {fields.map(f => (
                 <div key={f.key} style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.07)', padding: '10px 12px', display: 'flex', alignItems: 'center', gap: '10px' }}>
                   <div style={{ color: '#6b7280', flexShrink: 0 }}>{renderIcon(f.icon, 14)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '9px', color: '#6b7280', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{f.label}</div>
+                    <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '2px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>{f.label}</div>
                     {isEditingProfile ? (
                       <input
                         value={editedProfile?.[f.key] || ''}
@@ -2698,7 +2698,7 @@ const App: React.FC = () => {
 
             {/* Seguridad */}
             <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '10px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Seguridad</div>
+              <div style={{ fontSize: '13px', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '4px' }}>Seguridad</div>
               {[
                 { label: 'Autenticación 2FA', value: userProfile.twoFactorEnabled, key: 'twoFactorEnabled', color: '#00c8a0' },
                 { label: 'Notificaciones', value: userProfile.notificationsEnabled, key: 'notificationsEnabled', color: '#00b4e6' },
@@ -2814,7 +2814,7 @@ const App: React.FC = () => {
           <div style={{ display: 'flex', background: 'rgba(249,250,251,0.88)', borderRadius: '8px', padding: '3px', marginBottom: '16px' }}>
             {(['phone','qr'] as const).map(tab => (
               <button key={tab} onClick={() => setAddContactTab(tab)}
-                style={{ flex: 1, padding: '7px', background: addContactTab === tab ? 'rgba(0,180,230,0.3)' : 'none', border: addContactTab === tab ? '1px solid rgba(0,180,230,0.4)' : '1px solid transparent', borderRadius: '6px', color: addContactTab === tab ? '#00b4e6' : '#9ca3af', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none', transition: 'all 0.15s' }}>
+                style={{ flex: 1, padding: '7px', background: addContactTab === tab ? 'rgba(0,180,230,0.3)' : 'none', border: addContactTab === tab ? '1px solid rgba(0,180,230,0.4)' : '1px solid transparent', borderRadius: '6px', color: addContactTab === tab ? '#00b4e6' : '#9ca3af', fontSize: '14px', fontWeight: '600', cursor: 'pointer', outline: 'none', transition: 'all 0.15s' }}>
                 {tab === 'phone' ? ' Por Teléfono' : ' Escanear QR'}
               </button>
             ))}
@@ -2873,7 +2873,7 @@ const App: React.FC = () => {
                 <svg width="48" height="48" viewBox="0 0 24 24" stroke="rgba(0,180,230,0.6)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>
                 </svg>
-                <span style={{ fontSize: '11px', color: '#6b7280', textAlign: 'center' }}>Apunta la cámara al QR del contacto</span>
+                <span style={{ fontSize: '14px', color: '#6b7280', textAlign: 'center' }}>Apunta la cámara al QR del contacto</span>
               </div>
               <button onClick={() => { setShowAddContact(false); setShowQRScannerCamera(true); }}
                 style={{ background: '#00b4e6', border: 'none', borderRadius: '10px', padding: '12px 24px', color: '#fff', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '8px' }}>
@@ -2905,7 +2905,7 @@ const App: React.FC = () => {
           {/* Miembros seleccionados */}
           {groupMembers.length > 0 && (
             <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
+              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                 Miembros ({groupMembers.length})
               </div>
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
@@ -2914,7 +2914,7 @@ const App: React.FC = () => {
                     <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: `${m.color}30`, border: `1px solid ${m.color}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: '700', color: m.color }}>
                       {m.initials}
                     </div>
-                    <span style={{ fontSize: '11px', color: '#0d0d0d' }}>{m.name.split(' ')[0]}</span>
+                    <span style={{ fontSize: '14px', color: '#0d0d0d' }}>{m.name.split(' ')[0]}</span>
                     <button onClick={() => setGroupMembers(prev => prev.filter(x => x.id !== m.id))}
                       style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: 0, fontSize: '12px', lineHeight: 1, display: 'flex' }}></button>
                   </div>
@@ -2924,7 +2924,7 @@ const App: React.FC = () => {
           )}
 
           {/* Lista de contactos */}
-          <div style={{ fontSize: '10px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Aaadir participantes</div>
+          <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Aaadir participantes</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px' }}>
             {availableContacts.map(c => {
               const isAdded = groupMembers.some(m => m.id === c.id);
@@ -2935,12 +2935,12 @@ const App: React.FC = () => {
                     else setGroupMembers(prev => [...prev, { id: c.id, name: c.name, initials: c.initials, color: c.color }]);
                   }}
                   style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', background: isAdded ? `${c.color}12` : '#fafafa', border: `1px solid ${isAdded ? c.color + '35' : '#f5f6f7'}`, borderRadius: '10px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `${c.color}25`, border: `2px solid ${c.color}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: '700', color: c.color, flexShrink: 0 }}>
+                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `${c.color}25`, border: `2px solid ${c.color}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: c.color, flexShrink: 0 }}>
                     {c.initials}
                   </div>
                   <div style={{ flex: 1, textAlign: 'left' }}>
                     <div style={{ fontSize: '12px', fontWeight: '600', color: '#0d0d0d' }}>{c.name}</div>
-                    <div style={{ fontSize: '10px', color: '#6b7280' }}>{c.phone}</div>
+                    <div style={{ fontSize: '13px', color: '#6b7280' }}>{c.phone}</div>
                   </div>
                   <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: isAdded ? '#00c8a0' : '#f3f4f6', border: `1px solid ${isAdded ? '#00c8a0' : 'rgba(0,0,0,0.12)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
                     {isAdded && <svg width="10" height="10" viewBox="0 0 24 24" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
@@ -3051,7 +3051,7 @@ const App: React.FC = () => {
 
     const Section = ({ title, items }: { title: string; items: typeof wallpapers }) => (
       <div style={{ marginBottom: '12px' }}>
-        <div style={{ fontSize: '9px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>{title}</div>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>{title}</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
           {items.map(w => (
             <button key={w.id} onClick={() => { setSelectedWallpaper(w.id); setShowWallpaperCatalog(false); }}
@@ -3086,7 +3086,7 @@ const App: React.FC = () => {
 
           {/* Seccian: Mis fondos personalizados */}
           <div style={{ marginBottom: '12px' }}>
-            <div style={{ fontSize: '9px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Mis fondos</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Mis fondos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
               {/* Botan aaadir */}
               <button
@@ -3189,7 +3189,7 @@ const App: React.FC = () => {
               >
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>{l.icon}</div>
                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>{l.label}</div>
-                <div style={{ fontSize: '10px', color: '#6b7280' }}>{l.desc}</div>
+                <div style={{ fontSize: '13px', color: '#6b7280' }}>{l.desc}</div>
                 {homeLayout === l.id && (
                   <div style={{ position: 'absolute', top: '8px', right: '8px', width: '16px', height: '16px', borderRadius: '50%', background: '#00c8a0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <svg width="9" height="9" viewBox="0 0 24 24" stroke="white" strokeWidth="3"><polyline points="20 6 9 17 4 12"/></svg>
@@ -3635,7 +3635,7 @@ const App: React.FC = () => {
     if (homeLayout === 'minimal') return (
       <div style={containerStyle}>
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '20px', padding: '20px 18px 18px', border: 'none', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
-          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo disponible</div>
+          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo disponible</div>
           <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '18px', letterSpacing: '-1px' }}>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
@@ -3670,7 +3670,7 @@ const App: React.FC = () => {
             <button key={item.view} onClick={() => setCurrentView(item.view)}
               style={{ background: 'rgba(243,244,246,0.85)', border: `1.5px solid ${item.color}30`, borderRadius: '12px', padding: '16px 8px', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
               <div style={{ color: item.color }}>{renderIcon(item.icon, 22)}</div>
-              <span style={{ fontSize: '10px', fontWeight: '600', color: '#0d0d0d' }}>{item.label}</span>
+              <span style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -3681,7 +3681,7 @@ const App: React.FC = () => {
     if (homeLayout === 'news') return (
       <div style={containerStyle}>
         <div style={{ background: 'rgba(243,244,246,0.85)', borderRadius: '12px', padding: '14px', marginBottom: '12px', border: '1px solid rgba(0,0,0,0.07)' }}>
-          <div style={{ fontSize: '11px', color: '#6b7280', marginBottom: '4px' }}>SALDO</div>
+          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>SALDO</div>
           <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#0d0d0d' }}>45.200 XAF</div>
         </div>
         <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '10px' }}>ÚLTIMAS NOTICIAS</div>
@@ -3699,22 +3699,22 @@ const App: React.FC = () => {
     if (homeLayout === 'finance') return (
       <div style={containerStyle}>
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '16px', padding: '16px', marginBottom: '12px', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
-          <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', marginBottom: '4px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo Total</div>
+          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '4px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo Total</div>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '14px', letterSpacing: '-1px' }}>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></div>
           <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
               <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
               </div>
               RECARGAR
             </button>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
               <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </div>
               ENVIAR
             </button>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
+            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
               <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#F3F0FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4C1D95" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
               </div>
@@ -3747,7 +3747,7 @@ const App: React.FC = () => {
         marginBottom: '12px',
         boxShadow: '0 6px 24px rgba(14,95,138,0.25)'
       }}>
-        <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>
+        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>
           Saldo disponible
         </div>
         <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1 }}>
@@ -3755,13 +3755,13 @@ const App: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
             <div style={{ width: '20px', height: '20px', borderRadius: '5px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
             </div>
             RECARGAR
           </button>
-          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
+          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
             <div style={{ width: '20px', height: '20px', borderRadius: '5px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </div>
@@ -3794,10 +3794,10 @@ const App: React.FC = () => {
             color: '#0d0d0d'
           }}>
             {renderIcon('id-card', 14)}
-            <span style={{ fontSize: '11px', fontWeight: '600' }}>ID Digital</span>
+            <span style={{ fontSize: '14px', fontWeight: '600' }}>ID Digital</span>
           </div>
           <div style={{ 
-            fontSize: '9px', 
+            fontSize: '12px', 
             color: '#6b7280'
           }}>
             Verificado
@@ -3826,10 +3826,10 @@ const App: React.FC = () => {
             color: '#0d0d0d'
           }}>
             {renderIcon('noticias', 14)}
-            <span style={{ fontSize: '11px', fontWeight: '600' }}>Noticias</span>
+            <span style={{ fontSize: '14px', fontWeight: '600' }}>Noticias</span>
           </div>
           <div style={{ 
-            fontSize: '9px', 
+            fontSize: '12px', 
             color: '#6b7280'
           }}>
             8 nuevas
@@ -3839,7 +3839,7 @@ const App: React.FC = () => {
 
       {/* Accesos rápidos — 4 apps */}
       <div style={{ marginTop: '12px' }}>
-        <div style={{ fontSize: '10px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Apps</div>
+        <div style={{ fontSize: '13px', fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '8px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
           {[
             { id: 'estados',  label: 'Estados',   color: '#7c3aed', icon: renderIcon('estados',  42) },
@@ -4139,7 +4139,7 @@ const App: React.FC = () => {
                       position: 'relative',
                     }}>
                       <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word' }}>{msg.text}</div>
-                      <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+                      <div style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                         <span>{msg.time}</span>
                         {msg.from === 'me' && showReadReceipts && (
                           <span style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
@@ -4268,7 +4268,7 @@ const App: React.FC = () => {
                           onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.transform='scale(1)';}}>
                           {item.icon}
                         </div>
-                        <span style={{ fontSize: '10px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.2 }}>{item.label}</span>
+                        <span style={{ fontSize: '13px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.2 }}>{item.label}</span>
                       </button>
                     ))}
                   </div>
@@ -4296,7 +4296,7 @@ const App: React.FC = () => {
                     <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '6px', padding: '0 8px', height: '28px', gap: '6px' }}>
                       <svg width="11" height="11" viewBox="0 0 24 24" stroke="rgba(255,255,255,0.3)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                       <input value={emojiSearch} onChange={e => setEmojiSearch(e.target.value)} placeholder="Buscar emoji..."
-                        style={{ flex: 1, background: 'none', border: 'none', color: '#0d0d0d', fontSize: '11px', outline: 'none', fontFamily: 'inherit' }}/>
+                        style={{ flex: 1, background: 'none', border: 'none', color: '#0d0d0d', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}/>
                       {emojiSearch && <button onClick={() => setEmojiSearch('')} style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', outline: 'none', padding: 0, fontSize: '12px', lineHeight: 1 }}></button>}
                     </div>
                     <button onClick={() => { setEditingEmoji({ label: '', title: '' }); setShowEmojiEditor(true); setChatEmojiCategory('custom'); }}
@@ -4319,12 +4319,12 @@ const App: React.FC = () => {
                               style={{ background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '5px', padding: '4px 8px', color: '#0d0d0d', fontSize: '13px', outline: 'none', fontFamily: 'inherit' }}/>
                             <input value={editingEmoji.title} onChange={e => setEditingEmoji(p => p ? {...p, title: e.target.value} : p)}
                               placeholder="Nombre"
-                              style={{ background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '5px', padding: '4px 8px', color: '#0d0d0d', fontSize: '11px', outline: 'none', fontFamily: 'inherit' }}/>
+                              style={{ background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '5px', padding: '4px 8px', color: '#0d0d0d', fontSize: '14px', outline: 'none', fontFamily: 'inherit' }}/>
                           </div>
                         </div>
                         <div style={{ display: 'flex', gap: '6px' }}>
                           <button onClick={() => setShowEmojiEditor(false)}
-                            style={{ flex: 1, background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '6px', padding: '6px', color: '#6b7280', cursor: 'pointer', outline: 'none', fontSize: '11px' }}>Cancelar</button>
+                            style={{ flex: 1, background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '6px', padding: '6px', color: '#6b7280', cursor: 'pointer', outline: 'none', fontSize: '14px' }}>Cancelar</button>
                           <button onClick={() => {
                             if (!editingEmoji.label.trim()) return;
                             if (editingEmoji.id) {
@@ -4334,7 +4334,7 @@ const App: React.FC = () => {
                             }
                             setShowEmojiEditor(false); setEditingEmoji(null);
                           }}
-                            style={{ flex: 1, background: '#00b4e6', border: 'none', borderRadius: '6px', padding: '6px', color: '#0d0d0d', cursor: 'pointer', outline: 'none', fontSize: '11px', fontWeight: '600' }}>
+                            style={{ flex: 1, background: '#00b4e6', border: 'none', borderRadius: '6px', padding: '6px', color: '#0d0d0d', cursor: 'pointer', outline: 'none', fontSize: '14px', fontWeight: '600' }}>
                             {editingEmoji.id ? 'Guardar' : 'Crear'}
                           </button>
                         </div>
@@ -4361,7 +4361,7 @@ const App: React.FC = () => {
                           ];
                           setCustomEmojis(prev => [...prev, ...toCopy.filter(c => !prev.find(p => p.label === c.label))]);
                         }}
-                          style={{ background: 'rgba(0,200,160,0.08)', border: '1px dashed rgba(0,200,160,0.3)', borderRadius: '8px', fontSize: '11px', cursor: 'pointer', padding: '5px 8px', color: '#00c8a0', outline: 'none', display: 'flex', alignItems: 'center', gap: '4px', height: '42px' }}>
+                          style={{ background: 'rgba(0,200,160,0.08)', border: '1px dashed rgba(0,200,160,0.3)', borderRadius: '8px', fontSize: '14px', cursor: 'pointer', padding: '5px 8px', color: '#00c8a0', outline: 'none', display: 'flex', alignItems: 'center', gap: '4px', height: '42px' }}>
                           <svg width="11" height="11" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
                           Copiar
                         </button>
@@ -4538,7 +4538,7 @@ const App: React.FC = () => {
                   }}
                 >
                   <h3 style={{
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: '600',
                     color: '#374151',
                     margin: 0,
@@ -4553,7 +4553,7 @@ const App: React.FC = () => {
                     gap: '8px'
                   }}>
                     <span style={{
-                      fontSize: '10px',
+                      fontSize: '13px',
                       color: '#6b7280',
                       fontWeight: '500'
                     }}>
@@ -4572,7 +4572,7 @@ const App: React.FC = () => {
                     marginTop: '8px'
                   }}>
                     {favoriteContacts.length === 0 ? (
-                      <span style={{ fontSize: '11px', color: '#9ca3af', padding: '8px 0' }}>
+                      <span style={{ fontSize: '14px', color: '#9ca3af', padding: '8px 0' }}>
                         No tienes contactos favoritos aún
                       </span>
                     ) : favoriteContacts.map((contact: any) => (
@@ -4598,7 +4598,7 @@ const App: React.FC = () => {
                       >
                         <Avatar name={contact.name || contact.user?.name || '?'} size={56} showStatus={false} photo={contact.avatar_url || contact.user?.avatar_url} />
                         <span style={{ 
-                          fontSize: '10px', 
+                          fontSize: '13px', 
                           fontWeight: '600',
                           textAlign: 'center',
                           color: '#0d0d0d',
@@ -4654,7 +4654,7 @@ const App: React.FC = () => {
                         ?
                       </div>
                       <span style={{ 
-                        fontSize: '10px', 
+                        fontSize: '13px', 
                         fontWeight: '600',
                         textAlign: 'center',
                         color: '#374151',
@@ -4689,7 +4689,7 @@ const App: React.FC = () => {
                   }}
                 >
                   <h3 style={{
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: '600',
                     color: '#374151',
                     margin: 0,
@@ -4704,7 +4704,7 @@ const App: React.FC = () => {
                     gap: '8px'
                   }}>
                     <span style={{
-                      fontSize: '10px',
+                      fontSize: '13px',
                       color: '#6b7280',
                       fontWeight: '500'
                     }}>
@@ -4723,7 +4723,7 @@ const App: React.FC = () => {
                     marginTop: '8px'
                   }}>
                     {realChats.filter((c: any) => c.type === 'group' && favoriteGroupIds.includes(c.id?.toString())).length === 0 ? (
-                      <span style={{ fontSize: '11px', color: '#9ca3af', padding: '8px 0' }}>
+                      <span style={{ fontSize: '14px', color: '#9ca3af', padding: '8px 0' }}>
                         No tienes grupos favoritos aún
                       </span>
                     ) : realChats.filter((c: any) => c.type === 'group' && favoriteGroupIds.includes(c.id?.toString())).slice(0, 6).map((group: any) => (
@@ -4750,7 +4750,7 @@ const App: React.FC = () => {
                       >
                         <Avatar name={group.name || 'Grupo'} size={56} showStatus={false} />
                         <span style={{ 
-                          fontSize: '10px', 
+                          fontSize: '13px', 
                           fontWeight: '600',
                           textAlign: 'center',
                           color: '#0d0d0d',
@@ -4794,7 +4794,7 @@ const App: React.FC = () => {
                       borderRadius: '20px',
                       padding: '6px 14px',
                       color: messageFilter === filter.id ? '#ffffff' : '#374151',
-                      fontSize: '11px',
+                      fontSize: '14px',
                       fontWeight: '600',
                       cursor: 'pointer',
                       outline: 'none',
@@ -5031,7 +5031,7 @@ const App: React.FC = () => {
                 boxShadow: '0 6px 24px rgba(14,95,138,0.25)'
               }}>
                 {/* Label + saldo con animación de revelado */}
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>
+                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Monedero EGChat
                 </div>
                 <style>{`
@@ -5141,7 +5141,7 @@ const App: React.FC = () => {
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: '18px' }}>
+                <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: '18px' }}>
                   Saldo disponible
                 </div>
 
@@ -5149,7 +5149,7 @@ const App: React.FC = () => {
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px' }}>
                   {/* Recibir */}
                   <button onClick={() => { setQRType('receive'); setShowQRModal(true); setQrAmount(''); setQrConcept(''); }}
-                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '9px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#E8F4FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -5163,7 +5163,7 @@ const App: React.FC = () => {
 
                   {/* Pagar */}
                   <button onClick={() => { setQRType('pay'); setShowQRModal(true); setQrAmount(''); setQrConcept(''); }}
-                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '9px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -5176,7 +5176,7 @@ const App: React.FC = () => {
 
                   {/* Recarga */}
                   <button onClick={() => { setShowSalaryReloadModal(true); setShowSalaryReloadData({ amount: '', accountId: '', concept: '' }); }}
-                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '9px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -5190,7 +5190,7 @@ const App: React.FC = () => {
 
                   {/* Retiro */}
                   <button onClick={() => { setShowCardWithdrawalModal(true); setCardWithdrawalData({ amount: '', accountId: '', cardNumber: '' }); }}
-                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '9px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
+                    style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
                     <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#F3F0FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -5223,7 +5223,7 @@ const App: React.FC = () => {
                   marginBottom: '8px'
                 }}>
                   <h3 style={{
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: '800',
                     color: '#0d0d0d',
                     margin: 0,
@@ -5298,7 +5298,7 @@ const App: React.FC = () => {
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>
                         {account.bank}
                       </div>
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
                         {account.type}
                       </div>
                     </div>
@@ -5306,7 +5306,7 @@ const App: React.FC = () => {
                       <div style={{ fontSize: '12px', fontWeight: '800', color: '#0d0d0d' }}>
                         {account.balance.toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '9px', color: '#6b7280', fontWeight: '600' }}>XAF</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>XAF</div>
                     </div>
                   </button>
                 ))}
@@ -5316,7 +5316,7 @@ const App: React.FC = () => {
               {pendingTransfers.length > 0 && (
                 <div style={{ marginBottom: '12px' }}>
                   <h3 style={{
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: '700',
                     color: '#b45309',
                     margin: '0 0 8px 0',
@@ -5375,15 +5375,15 @@ const App: React.FC = () => {
                         </svg>
                       </div>
                       <div style={{ flex: 1, textAlign: 'left' }}>
-                        <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '2px' }}>
                           {transfer.from} ? {transfer.to}
                         </div>
-                        <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>
                           Expira en {Math.max(0, Math.ceil((transfer.expiresAt.getTime() - Date.now()) / 1000 / 60))} min
                         </div>
                       </div>
                       <div style={{ display: 'flex', gap: '6px' }}>
-                        <div style={{ fontSize: '11px', fontWeight: '600', color: '#b45309' }}>
+                        <div style={{ fontSize: '14px', fontWeight: '600', color: '#b45309' }}>
                           {transfer.amount.toLocaleString()} XAF
                         </div>
                         <button
@@ -5413,7 +5413,7 @@ const App: React.FC = () => {
                             border: '1px solid rgba(248, 113, 113, 0.25)',
                             borderRadius: '4px',
                             padding: '4px 8px',
-                            fontSize: '9px',
+                            fontSize: '12px',
                             fontWeight: '600',
                             color: '#f87171',
                             cursor: 'pointer',
@@ -5444,7 +5444,7 @@ const App: React.FC = () => {
                   marginBottom: '8px'
                 }}>
                   <h3 style={{
-                    fontSize: '11px',
+                    fontSize: '14px',
                     fontWeight: '800',
                     color: '#0d0d0d',
                     margin: 0,
@@ -5456,7 +5456,7 @@ const App: React.FC = () => {
                   <button
                     onClick={() => setCurrentView('historial-completo')}
                     style={{
-                      fontSize: '10px',
+                      fontSize: '13px',
                       color: '#00e5ff',
                       background: 'transparent',
                       border: 'none',
@@ -5524,7 +5524,7 @@ const App: React.FC = () => {
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>
                         {trans.description}
                       </div>
-                      <div style={{ fontSize: '10px', color: '#6b7280' }}>
+                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
                         {trans.date} a {trans.status === 'completed' ? 'Completada' : trans.status === 'pending' ? 'Pendiente' : 'Fallida'}
                       </div>
                     </div>
@@ -5532,7 +5532,7 @@ const App: React.FC = () => {
                       <div style={{ fontSize: '12px', fontWeight: '800', color: (trans.type === 'received' || trans.type === 'deposit' || trans.type === 'salary') ? '#00e5ff' : '#f87171' }}>
                         {trans.type === 'received' || trans.type === 'deposit' || trans.type === 'salary' ? '+' : '-'}{trans.amount.toLocaleString()}
                       </div>
-                      <div style={{ fontSize: '9px', color: '#6b7280', fontWeight: '600' }}>XAF</div>
+                      <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>XAF</div>
                     </div>
                   </button>
                 ))}
@@ -5602,7 +5602,7 @@ const App: React.FC = () => {
                     border: transactionFilter === filter ? '1px solid rgba(16, 185, 129, 0.4)' : '1px solid rgba(0,0,0,0.08)',
                     borderRadius: '20px',
                     color: transactionFilter === filter ? '#00c8a0' : 'rgba(255, 255, 255, 0.6)',
-                    fontSize: '10px',
+                    fontSize: '13px',
                     fontWeight: '600',
                     cursor: 'pointer',
                     outline: 'none',
@@ -5669,15 +5669,15 @@ const App: React.FC = () => {
                       {trans.type === 'salary' ? '' : trans.type === 'card_withdrawal' ? '' : trans.type === 'received' || trans.type === 'deposit' ? '' : ''}
                     </div>
                     <div style={{ flex: 1, textAlign: 'left' }}>
-                      <div style={{ fontSize: '11px', fontWeight: '600', marginBottom: '2px' }}>
+                      <div style={{ fontSize: '14px', fontWeight: '600', marginBottom: '2px' }}>
                         {trans.description}
                       </div>
-                      <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                      <div style={{ fontSize: '12px', color: '#6b7280' }}>
                         {trans.date} a {trans.status === 'completed' ? '? Completada' : trans.status === 'pending' ? '? Pendiente' : '? Fallida'}
                       </div>
                     </div>
                     <div style={{
-                      fontSize: '11px',
+                      fontSize: '14px',
                       fontWeight: '600',
                       color: trans.type === 'received' || trans.type === 'deposit' || trans.type === 'salary' ? '#00c8a0' : '#ef4444'
                     }}>
@@ -5796,7 +5796,7 @@ const App: React.FC = () => {
               overflowY: 'auto',
               overflowX: 'hidden'
             }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
                 Total: {allContacts.length} contactos
               </div>
               {allContacts.map((contact) => (
@@ -5886,7 +5886,7 @@ const App: React.FC = () => {
                     <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '2px', color: '#0d0d0d' }}>
                       {contact.name}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
                       {contact.phone}
                     </div>
                   </div>
@@ -5918,7 +5918,7 @@ const App: React.FC = () => {
 
                   {/* Estado online */}
                   <div style={{
-                    fontSize: '10px', fontWeight: '600',
+                    fontSize: '13px', fontWeight: '600',
                     color: contact.status === 'online' ? '#00c8a0' : contact.status === 'away' ? '#f59e0b' : '#9ca3af',
                     flexShrink: 0
                   }}>
@@ -6009,7 +6009,7 @@ const App: React.FC = () => {
               overflowY: 'auto',
               overflowX: 'hidden'
             }}>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+              <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
                 Total: {allGroups.length} grupos
               </div>
               {allGroups.map((group) => (
@@ -6087,7 +6087,7 @@ const App: React.FC = () => {
                     <div style={{ fontSize: '13px', fontWeight: '600', marginBottom: '2px', color: '#0d0d0d' }}>
                       {group.name}
                     </div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>
                       {group.members} miembros · {group.lastMessage}
                     </div>
                   </div>
@@ -6133,7 +6133,7 @@ const App: React.FC = () => {
                       display: 'flex',
                       alignItems: 'center',
                       justifyContent: 'center',
-                      fontSize: '10px',
+                      fontSize: '13px',
                       fontWeight: 'bold',
                       flexShrink: 0
                     }}>
@@ -6325,7 +6325,7 @@ const App: React.FC = () => {
                     </div>
                     {/* ID */}
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '4px', background: 'rgba(0,0,0,0.06)', borderRadius: '20px', padding: '3px 10px' }}>
-                      <span style={{ fontSize: '10px', color: '#6b7280', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
+                      <span style={{ fontSize: '13px', color: '#6b7280', fontFamily: 'monospace', letterSpacing: '0.5px' }}>
                         ID: {userProfile.id ? userProfile.id.slice(0,8).toUpperCase() : '—'}
                       </span>
                     </div>
@@ -6372,10 +6372,10 @@ const App: React.FC = () => {
                     borderRadius: '8px',
                     padding: '12px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: userProfile.verificationStatus === 'verified' ? '#00c8a0' : '#f59e0b', marginBottom: '4px' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: userProfile.verificationStatus === 'verified' ? '#00c8a0' : '#f59e0b', marginBottom: '4px' }}>
                       {userProfile.verificationStatus === 'verified' ? '✅ Verificado' : userProfile.verificationStatus === 'pending' ? '⏳ Pendiente' : '❌ No Verificado'}
                     </div>
-                    <div style={{ fontSize: '10px', color: '#374151' }}>
+                    <div style={{ fontSize: '13px', color: '#374151' }}>
                       Miembro desde {userProfile.joinDate}
                     </div>
                   </div>
@@ -6387,7 +6387,7 @@ const App: React.FC = () => {
                     borderRadius: '8px',
                     padding: '12px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
                       Seguridad
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -6589,7 +6589,7 @@ const App: React.FC = () => {
                     borderRadius: '8px',
                     padding: '12px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       Preguntas Frecuentes
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -6603,12 +6603,12 @@ const App: React.FC = () => {
                           background: 'rgba(255, 255, 255, 0.02)',
                           border: '1px solid rgba(255, 255, 255, 0.05)',
                           borderRadius: '6px',
-                          padding: '8px'
+                          padding: '10px'
                         }}>
-                          <div style={{ fontSize: '11px', fontWeight: '600', color: '#00c8a0', marginBottom: '4px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#00c8a0', marginBottom: '5px' }}>
                             {item.q}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#374151' }}>
+                          <div style={{ fontSize: '13px', color: '#374151' }}>
                             {item.a}
                           </div>
                         </div>
@@ -6623,7 +6623,7 @@ const App: React.FC = () => {
                     borderRadius: '8px',
                     padding: '12px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       Contacto y Soporte
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -6634,16 +6634,16 @@ const App: React.FC = () => {
                           background: 'rgba(249,250,251,0.88)',
                           border: '1px solid rgba(0,0,0,0.08)',
                           borderRadius: '6px',
-                          padding: '8px 12px',
+                          padding: '11px 14px',
                           color: '#0d0d0d',
-                          fontSize: '11px',
+                          fontSize: '14px',
                           fontWeight: '600',
                           cursor: 'pointer',
                           outline: 'none',
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'8px'}}><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
                         support@egchat.com
                       </button>
                       <button
@@ -6653,16 +6653,16 @@ const App: React.FC = () => {
                           background: 'rgba(249,250,251,0.88)',
                           border: '1px solid rgba(0,0,0,0.08)',
                           borderRadius: '6px',
-                          padding: '8px 12px',
+                          padding: '11px 14px',
                           color: '#0d0d0d',
-                          fontSize: '11px',
+                          fontSize: '14px',
                           fontWeight: '600',
                           cursor: 'pointer',
                           outline: 'none',
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'8px'}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
                         Chat en Vivo
                       </button>
                       <button
@@ -6672,16 +6672,16 @@ const App: React.FC = () => {
                           background: 'rgba(249,250,251,0.88)',
                           border: '1px solid rgba(0,0,0,0.08)',
                           borderRadius: '6px',
-                          padding: '8px 12px',
+                          padding: '11px 14px',
                           color: '#0d0d0d',
-                          fontSize: '11px',
+                          fontSize: '14px',
                           fontWeight: '600',
                           cursor: 'pointer',
                           outline: 'none',
                           transition: 'all 0.2s ease'
                         }}
                       >
-                        <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'6px'}}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                        <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{display:'inline',marginRight:'8px'}}><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
                         +240 222 123456
                       </button>
                     </div>
@@ -6694,21 +6694,21 @@ const App: React.FC = () => {
                     borderRadius: '8px',
                     padding: '12px'
                   }}>
-                    <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '8px', textTransform: 'uppercase' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '10px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                       Acerca de EGCHAT
                     </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280' }}>Versión</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>1.0.0</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Versión</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>1.0.0</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280' }}>Desarrollador</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>EGCHAT Team</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Desarrollador</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>EGCHAT Team</div>
                       </div>
                       <div>
-                        <div style={{ fontSize: '10px', color: '#6b7280' }}>Licencia</div>
-                        <div style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>Propietaria</div>
+                        <div style={{ fontSize: '12px', color: '#6b7280' }}>Licencia</div>
+                        <div style={{ fontSize: '14px', color: '#0d0d0d', fontWeight: '500' }}>Propietaria</div>
                       </div>
                     </div>
                   </div>
@@ -6717,7 +6717,7 @@ const App: React.FC = () => {
 
               {currentSettingsTab === 'actividad' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '600', color: '#374151', marginBottom: '4px', textTransform: 'uppercase' }}>
+                  <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
                     Registro de Actividad
                   </div>
                   {activityLog.map((log) => (
@@ -6727,39 +6727,33 @@ const App: React.FC = () => {
                         background: 'rgba(250,250,250,0.88)',
                         border: '1px solid rgba(0,0,0,0.07)',
                         borderRadius: '8px',
-                        padding: '10px'
+                        padding: '12px'
                       }}
                     >
-                      <div style={{ display: 'flex', gap: '8px', alignItems: 'flex-start' }}>
+                      <div style={{ display: 'flex', gap: '10px', alignItems: 'flex-start' }}>
                         <div style={{
-                          width: '32px',
-                          height: '32px',
-                          borderRadius: '50%',
-                          background: log.type === 'login' ? 'rgba(16, 185, 129, 0.2)' : log.type === 'transaction' ? 'rgba(59, 130, 246, 0.2)' : log.type === 'security' ? 'rgba(239, 68, 68, 0.2)' : 'rgba(168, 85, 247, 0.2)',
-                          border: log.type === 'login' ? '1px solid rgba(16, 185, 129, 0.4)' : log.type === 'transaction' ? '1px solid rgba(59, 130, 246, 0.4)' : log.type === 'security' ? '1px solid rgba(239, 68, 68, 0.4)' : '1px solid rgba(168, 85, 247, 0.4)',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          fontSize: '14px',
-                          flexShrink: 0
+                          width: '36px', height: '36px', borderRadius: '50%',
+                          background: log.type === 'login' ? 'rgba(16,185,129,0.2)' : log.type === 'transaction' ? 'rgba(59,130,246,0.2)' : log.type === 'security' ? 'rgba(239,68,68,0.2)' : 'rgba(168,85,247,0.2)',
+                          border: log.type === 'login' ? '1px solid rgba(16,185,129,0.4)' : log.type === 'transaction' ? '1px solid rgba(59,130,246,0.4)' : log.type === 'security' ? '1px solid rgba(239,68,68,0.4)' : '1px solid rgba(168,85,247,0.4)',
+                          display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0
                         }}>
-                          {log.type === 'login' 
-                            ? <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
-                            : log.type === 'transaction' 
-                            ? <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
-                            : log.type === 'security' 
+                          {log.type === 'login'
+                            ? <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
+                            : log.type === 'transaction'
+                            ? <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                            : log.type === 'security'
                             ? <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
                             : <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                           }
                         </div>
                         <div style={{ flex: 1 }}>
-                          <div style={{ fontSize: '11px', fontWeight: '600', color: '#0d0d0d', marginBottom: '2px' }}>
+                          <div style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d', marginBottom: '3px' }}>
                             {log.action}
                           </div>
-                          <div style={{ fontSize: '10px', color: '#374151', marginBottom: '2px' }}>
+                          <div style={{ fontSize: '13px', color: '#374151', marginBottom: '3px' }}>
                             {log.description}
                           </div>
-                          <div style={{ fontSize: '9px', color: '#6b7280' }}>
+                          <div style={{ fontSize: '14px', color: '#6b7280' }}>
                             {log.timestamp.toLocaleString('es-ES')}
                           </div>
                         </div>
@@ -7238,7 +7232,7 @@ const App: React.FC = () => {
               padding: '12px',
               marginBottom: '16px'
             }}>
-              <div style={{ fontSize: '11px', color: '#374151', marginBottom: '4px' }}>
+              <div style={{ fontSize: '14px', color: '#374151', marginBottom: '4px' }}>
                 Destinatario
               </div>
               <div style={{ fontSize: '14px', fontWeight: '600', color: '#00c8a0' }}>
@@ -7258,13 +7252,13 @@ const App: React.FC = () => {
                 justifyContent: 'space-between',
                 alignItems: 'center'
               }}>
-                <span style={{ fontSize: '11px', color: '#374151' }}>Monedero EGChat</span>
+                <span style={{ fontSize: '14px', color: '#374151' }}>Monedero EGChat</span>
                 <span style={{ fontSize: '12px', fontWeight: '600', color: '#00c8a0' }}>{userBalance.toLocaleString()} XAF</span>
               </div>
 
               {/* Cuenta Origen (respaldo) */}
               <div>
-                <label style={{ fontSize: '11px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '14px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
                   Cuenta bancaria (respaldo)
                 </label>
                 <select
@@ -7292,7 +7286,7 @@ const App: React.FC = () => {
 
               {/* Monto */}
               <div>
-                <label style={{ fontSize: '11px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '14px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
                   Monto (XAF)
                 </label>
                 <input
@@ -7321,7 +7315,7 @@ const App: React.FC = () => {
                   border: '1px solid rgba(239, 68, 68, 0.3)',
                   borderRadius: '8px',
                   padding: '8px 12px',
-                  fontSize: '11px',
+                  fontSize: '14px',
                   color: '#ef4444',
                   textAlign: 'center'
                 }}>
@@ -7493,7 +7487,7 @@ const App: React.FC = () => {
             <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
               {/* Banco */}
               <div>
-                <label style={{ fontSize: '11px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '14px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
                   Banco
                 </label>
                 <input
@@ -7517,7 +7511,7 @@ const App: React.FC = () => {
 
               {/* Tipo de Cuenta */}
               <div>
-                <label style={{ fontSize: '11px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '14px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
                   Tipo de Cuenta
                 </label>
                 <select
@@ -7544,7 +7538,7 @@ const App: React.FC = () => {
 
               {/* Saldo Inicial */}
               <div>
-                <label style={{ fontSize: '11px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
+                <label style={{ fontSize: '14px', color: '#374151', fontWeight: '600', display: 'block', marginBottom: '4px' }}>
                   Saldo Inicial (XAF)
                 </label>
                 <input
@@ -8909,7 +8903,7 @@ const App: React.FC = () => {
               <div style={{ background: gradBg, padding: '18px 18px 14px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
                 <div>
                   <div style={{ fontSize: '17px', fontWeight: '800', color: 'white' }}>{qrType === 'receive' ? 'Recibir dinero' : 'Realizar pago'}</div>
-                  <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.75)', marginTop: '2px' }}>{qrType === 'receive' ? 'Muestra este QR para recibir' : 'Genera tu QR de cobro'}</div>
+                  <div style={{ fontSize: '14px', color: 'rgba(255,255,255,0.75)', marginTop: '2px' }}>{qrType === 'receive' ? 'Muestra este QR para recibir' : 'Genera tu QR de cobro'}</div>
                 </div>
                 <button onClick={() => setShowQRModal(false)} style={{ background: 'rgba(255,255,255,0.2)', border: 'none', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: 'white', fontSize: '16px' }}>x</button>
               </div>
@@ -8924,7 +8918,7 @@ const App: React.FC = () => {
                   </div>
                   <div style={{ textAlign: 'center' }}>
                     <div style={{ fontSize: '13px', fontWeight: '700', color: '#0d0d0d' }}>{userProfile.name}</div>
-                    <div style={{ fontSize: '11px', color: '#6b7280' }}>{userProfile.phone}</div>
+                    <div style={{ fontSize: '14px', color: '#6b7280' }}>{userProfile.phone}</div>
                   </div>
                   {qrType === 'pay' && (
                     <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '8px' }}>
@@ -8973,7 +8967,7 @@ const App: React.FC = () => {
                 </button>
               ))}
             </div>
-            {pinAttempts > 0 && <div style={{ fontSize: '11px', color: '#ef4444', marginBottom: '8px' }}>PIN incorrecto. Intento {pinAttempts}/3</div>}
+            {pinAttempts > 0 && <div style={{ fontSize: '14px', color: '#ef4444', marginBottom: '8px' }}>PIN incorrecto. Intento {pinAttempts}/3</div>}
             <button onClick={() => { setShowPINModal(false); setPinInput(''); setPendingOperation(null); }}
               style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', outline: 'none' }}>Cancelar</button>
           </div>
