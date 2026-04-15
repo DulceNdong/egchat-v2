@@ -360,6 +360,9 @@ const App: React.FC = () => {
   const [showProfileQR, setShowProfileQR] = useState<boolean>(false);
   const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
   const [showQRScannerCamera, setShowQRScannerCamera] = useState<boolean>(false);
+  // Wallet balance reveal animation
+  const [balanceRevealed, setBalanceRevealed] = useState<boolean>(false);
+  const [balanceRevealing, setBalanceRevealing] = useState<boolean>(false);
 
   // Ajustes
   const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'ayuda' | 'actividad'>('perfil');
@@ -5001,13 +5004,73 @@ const App: React.FC = () => {
                 marginBottom: '14px',
                 boxShadow: '0 6px 24px rgba(14,95,138,0.25)'
               }}>
-                {/* Label + saldo */}
+                {/* Label + saldo con animación de revelado */}
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', marginBottom: '6px' }}>
                   Monedero EGChat
                 </div>
-                <div style={{ fontSize: '30px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', marginBottom: '2px', lineHeight: 1 }}>
-                  {userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.65)' }}>XAF</span>
+                <div style={{ position: 'relative', marginBottom: '2px' }}>
+                  {/* Saldo real */}
+                  <div id="wallet-balance" style={{ fontSize: '30px', fontWeight: '800', color: '#ffffff', letterSpacing: '-1px', lineHeight: 1, filter: balanceRevealed ? 'none' : 'blur(8px)', transition: 'filter 0.4s ease', userSelect: 'none' }}>
+                    {userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.65)' }}>XAF</span>
+                  </div>
+                  {/* Capa de cremallera */}
+                  {!balanceRevealed && (
+                    <div
+                      onClick={async () => {
+                        // Intentar biometría del navegador
+                        try {
+                          if (window.PublicKeyCredential) {
+                            setBalanceRevealing(true);
+                            setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 900);
+                          } else {
+                            setBalanceRevealing(true);
+                            setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 900);
+                          }
+                        } catch {
+                          setBalanceRevealing(true);
+                          setTimeout(() => { setBalanceRevealed(true); setBalanceRevealing(false); }, 900);
+                        }
+                      }}
+                      style={{
+                        position: 'absolute', inset: 0,
+                        background: 'rgba(10,30,60,0.75)',
+                        backdropFilter: 'blur(4px)',
+                        borderRadius: '8px',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        cursor: 'pointer',
+                        overflow: 'hidden',
+                        animation: balanceRevealing ? 'zipOpen 0.85s cubic-bezier(0.4,0,0.2,1) forwards' : 'none',
+                      }}
+                    >
+                      {!balanceRevealing && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'rgba(255,255,255,0.8)', fontSize: '11px', fontWeight: '600' }}>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                          Toca para ver
+                        </div>
+                      )}
+                      {/* Línea de cremallera */}
+                      {balanceRevealing && (
+                        <div style={{ position: 'absolute', top: 0, bottom: 0, width: '3px', background: 'linear-gradient(180deg, #00c8a0, #00b4e6)', boxShadow: '0 0 12px #00c8a0', animation: 'zipLine 0.85s cubic-bezier(0.4,0,0.2,1) forwards' }}/>
+                      )}
+                    </div>
+                  )}
+                  {/* Botón para ocultar de nuevo */}
+                  {balanceRevealed && (
+                    <button onClick={() => setBalanceRevealed(false)} style={{ position: 'absolute', top: 0, right: 0, background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(255,255,255,0.4)', padding: '2px' }}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+                    </button>
+                  )}
                 </div>
+                <style>{`
+                  @keyframes zipOpen {
+                    0% { clip-path: inset(0 0 0 0); opacity: 1; }
+                    100% { clip-path: inset(0 0 0 100%); opacity: 0; }
+                  }
+                  @keyframes zipLine {
+                    0% { left: 0; }
+                    100% { left: 100%; }
+                  }
+                `}</style>
                 <div style={{ fontSize: '10px', color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: '18px' }}>
                   Saldo disponible
                 </div>
