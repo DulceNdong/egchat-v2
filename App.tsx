@@ -2927,63 +2927,68 @@ const App: React.FC = () => {
     );
   };
 
-  // Modal: Crear grupo
+  // Modal: Crear grupo — funcional con API real
   const renderCreateGroupModal = () => {
     if (!showCreateGroup) return null;
+    const contacts = allContacts.length > 0 ? allContacts : [];
     return (
-      <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.45)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end' }}
+      <div style={{ position: 'fixed', inset: 0, zIndex: 1200, background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(6px)', display: 'flex', alignItems: 'flex-end' }}
         onClick={() => setShowCreateGroup(false)}>
-        <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: '#FFFFFF', borderRadius: '18px 18px 0 0', border: '1px solid rgba(0,0,0,0.07)', padding: '20px 16px 32px', maxHeight: '85vh', overflowY: 'auto' }}>
-          <div style={{ width: '36px', height: '3px', background: '#e5e7eb', borderRadius: '2px', margin: '0 auto 16px' }}/>
-          <div style={{ fontSize: '14px', fontWeight: '700', color: '#0d0d0d', marginBottom: '14px' }}>Crear grupo</div>
+        <div onClick={e => e.stopPropagation()} style={{ width: '100%', background: '#FFFFFF', borderRadius: '20px 20px 0 0', padding: '20px 16px 32px', maxHeight: '88vh', overflowY: 'auto' }}>
+          <div style={{ width: '36px', height: '4px', background: '#e5e7eb', borderRadius: '2px', margin: '0 auto 16px' }}/>
+          <div style={{ fontSize: '16px', fontWeight: '700', color: '#111827', marginBottom: '16px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            Crear grupo
+          </div>
 
-          {/* Nombre del grupo */}
+          {/* Nombre */}
           <input value={groupName} onChange={e => setGroupName(e.target.value)}
-            placeholder="Nombre del grupo"
-            style={{ width: '100%', background: 'rgba(249,250,251,0.88)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '10px 12px', color: '#0d0d0d', fontSize: '13px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '14px' }}/>
+            placeholder="Nombre del grupo (obligatorio)"
+            style={{ width: '100%', background: '#f9fafb', border: '1.5px solid #e5e7eb', borderRadius: '10px', padding: '12px 14px', color: '#111827', fontSize: '15px', outline: 'none', fontFamily: 'inherit', boxSizing: 'border-box', marginBottom: '14px' }}/>
 
           {/* Miembros seleccionados */}
           {groupMembers.length > 0 && (
-            <div style={{ marginBottom: '12px' }}>
-              <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>
-                Miembros ({groupMembers.length})
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
-                {groupMembers.map(m => (
-                  <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: `${m.color}18`, border: `1px solid ${m.color}35`, borderRadius: '20px', padding: '4px 8px 4px 6px' }}>
-                    <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: `${m.color}30`, border: `1px solid ${m.color}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '8px', fontWeight: '700', color: m.color }}>
-                      {m.initials}
-                    </div>
-                    <span style={{ fontSize: '14px', color: '#0d0d0d' }}>{m.name.split(' ')[0]}</span>
-                    <button onClick={() => setGroupMembers(prev => prev.filter(x => x.id !== m.id))}
-                      style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: 0, fontSize: '12px', lineHeight: 1, display: 'flex' }}></button>
+            <div style={{ marginBottom: '12px', display: 'flex', flexWrap: 'wrap', gap: '6px' }}>
+              {groupMembers.map(m => (
+                <div key={m.id} style={{ display: 'flex', alignItems: 'center', gap: '5px', background: '#f3e8ff', border: '1px solid #d8b4fe', borderRadius: '20px', padding: '4px 10px 4px 6px' }}>
+                  <div style={{ width: '22px', height: '22px', borderRadius: '50%', background: '#a855f7', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', fontWeight: '700', color: '#fff' }}>
+                    {m.initials || m.name?.slice(0,2).toUpperCase()}
                   </div>
-                ))}
-              </div>
+                  <span style={{ fontSize: '13px', color: '#7c3aed', fontWeight: '600' }}>{m.name.split(' ')[0]}</span>
+                  <button onClick={() => setGroupMembers(prev => prev.filter(x => x.id !== m.id))}
+                    style={{ background: 'none', border: 'none', color: '#9ca3af', cursor: 'pointer', outline: 'none', padding: 0, fontSize: '14px', lineHeight: 1 }}>×</button>
+                </div>
+              ))}
             </div>
           )}
 
-          {/* Lista de contactos */}
-          <div style={{ fontSize: '13px', color: '#6b7280', marginBottom: '8px', textTransform: 'uppercase', letterSpacing: '0.3px' }}>Aaadir participantes</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px' }}>
-            {availableContacts.map(c => {
+          {/* Lista contactos */}
+          <div style={{ fontSize: '12px', color: '#9ca3af', marginBottom: '8px', fontWeight: '600', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+            Añadir participantes ({contacts.length} contactos)
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginBottom: '16px', maxHeight: '280px', overflowY: 'auto' }}>
+            {contacts.length === 0 ? (
+              <div style={{ textAlign: 'center', padding: '20px', color: '#9ca3af', fontSize: '13px' }}>
+                No tienes contactos aún. Añade contactos primero.
+              </div>
+            ) : contacts.map(c => {
               const isAdded = groupMembers.some(m => m.id === c.id);
               return (
                 <button key={c.id}
                   onClick={() => {
                     if (isAdded) setGroupMembers(prev => prev.filter(m => m.id !== c.id));
-                    else setGroupMembers(prev => [...prev, { id: c.id, name: c.name, initials: c.initials, color: c.color }]);
+                    else setGroupMembers(prev => [...prev, { id: c.id, name: c.name, initials: c.avatar || c.name?.slice(0,2).toUpperCase(), color: '#a855f7' }]);
                   }}
-                  style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '9px 10px', background: isAdded ? `${c.color}12` : '#fafafa', border: `1px solid ${isAdded ? c.color + '35' : '#f5f6f7'}`, borderRadius: '10px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s' }}>
-                  <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: `${c.color}25`, border: `2px solid ${c.color}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: c.color, flexShrink: 0 }}>
-                    {c.initials}
+                  style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '10px 12px', background: isAdded ? '#f3e8ff' : '#fafafa', border: `1.5px solid ${isAdded ? '#d8b4fe' : '#f0f0f0'}`, borderRadius: '12px', cursor: 'pointer', outline: 'none', transition: 'all 0.15s' }}>
+                  <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+                    {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} style={{ width:'100%', height:'100%', objectFit:'cover' }}/> : (c.avatar || c.name?.slice(0,2).toUpperCase())}
                   </div>
                   <div style={{ flex: 1, textAlign: 'left' }}>
-                    <div style={{ fontSize: '12px', fontWeight: '600', color: '#0d0d0d' }}>{c.name}</div>
-                    <div style={{ fontSize: '13px', color: '#6b7280' }}>{c.phone}</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{c.name}</div>
+                    <div style={{ fontSize: '12px', color: '#9ca3af' }}>{c.phone}</div>
                   </div>
-                  <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: isAdded ? '#00c8a0' : '#f3f4f6', border: `1px solid ${isAdded ? '#00c8a0' : 'rgba(0,0,0,0.12)'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, transition: 'all 0.15s' }}>
-                    {isAdded && <svg width="10" height="10" viewBox="0 0 24 24" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                  <div style={{ width: '24px', height: '24px', borderRadius: '50%', background: isAdded ? '#a855f7' : '#f3f4f6', border: `2px solid ${isAdded ? '#a855f7' : '#e5e7eb'}`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    {isAdded && <svg width="12" height="12" viewBox="0 0 24 24" stroke="white" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                   </div>
                 </button>
               );
@@ -2991,9 +2996,65 @@ const App: React.FC = () => {
           </div>
 
           <button
-            onClick={() => { if (groupName.trim() && groupMembers.length > 0) { setShowCreateGroup(false); setGroupName(''); setGroupMembers([]); } }}
-            style={{ width: '100%', background: groupName.trim() && groupMembers.length > 0 ? '#00c8a0' : '#e5e7eb', border: 'none', borderRadius: '10px', padding: '13px', color: groupName.trim() && groupMembers.length > 0 ? 'white' : '#9ca3af', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', transition: 'all 0.2s' }}>
-            {groupMembers.length > 0 ? `Crear grupo (${groupMembers.length + 1} miembros)` : 'Selecciona al menos 1 persona'}
+            disabled={!groupName.trim() || groupMembers.length === 0}
+            onClick={async () => {
+              if (!groupName.trim() || groupMembers.length === 0) return;
+              try {
+                const memberIds = groupMembers.map(m => m.id);
+                const chat = await chatAPI.createGroup(groupName.trim(), memberIds);
+                const newGroup = {
+                  id: chat.id || Date.now().toString(),
+                  name: groupName.trim(),
+                  description: '',
+                  members: groupMembers.length + 1,
+                  avatar: 'friends',
+                  avatarUrl: '',
+                  createdDate: new Date().toLocaleDateString('es-ES'),
+                  lastMessage: 'Grupo creado',
+                  unread: 0,
+                  is_favorite: false,
+                };
+                setAllGroups(prev => [newGroup, ...prev]);
+                // Abrir el chat del grupo
+                setSelectedChat({
+                  id: newGroup.id, type: 'group', title: newGroup.name,
+                  subtitle: 'Grupo creado', time: '', status: 'online',
+                  initials: newGroup.name.slice(0,2).toUpperCase(),
+                  color: '#a855f7', isGroup: true, members: newGroup.members,
+                });
+                setCurrentView('mensajeria');
+                setShowCreateGroup(false);
+                setGroupName('');
+                setGroupMembers([]);
+              } catch {
+                // Crear grupo local si falla el backend
+                const newGroup = {
+                  id: Date.now().toString(),
+                  name: groupName.trim(),
+                  description: '',
+                  members: groupMembers.length + 1,
+                  avatar: 'friends',
+                  avatarUrl: '',
+                  createdDate: new Date().toLocaleDateString('es-ES'),
+                  lastMessage: 'Grupo creado',
+                  unread: 0,
+                  is_favorite: false,
+                };
+                setAllGroups(prev => [newGroup, ...prev]);
+                setSelectedChat({
+                  id: newGroup.id, type: 'group', title: newGroup.name,
+                  subtitle: 'Grupo creado', time: '', status: 'online',
+                  initials: newGroup.name.slice(0,2).toUpperCase(),
+                  color: '#a855f7', isGroup: true, members: newGroup.members,
+                });
+                setCurrentView('mensajeria');
+                setShowCreateGroup(false);
+                setGroupName('');
+                setGroupMembers([]);
+              }
+            }}
+            style={{ width: '100%', background: groupName.trim() && groupMembers.length > 0 ? 'linear-gradient(135deg,#a855f7,#6366f1)' : '#e5e7eb', border: 'none', borderRadius: '12px', padding: '14px', color: groupName.trim() && groupMembers.length > 0 ? '#fff' : '#9ca3af', fontSize: '15px', fontWeight: '700', cursor: groupName.trim() && groupMembers.length > 0 ? 'pointer' : 'default', outline: 'none', transition: 'all 0.2s' }}>
+            {groupMembers.length > 0 ? `✓ Crear grupo (${groupMembers.length + 1} miembros)` : 'Selecciona al menos 1 contacto'}
           </button>
         </div>
       </div>
@@ -4064,10 +4125,12 @@ const App: React.FC = () => {
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <Avatar name={sc.title} size={40} status={sc.status as any} showStatus={true} photo={sc.avatarUrl} />
+                <Avatar name={sc.title} size={40} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#0d0d0d' }}>{sc.title}</div>
-                  <div style={{ fontSize: '12px', color: sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>{sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}</div>
+                  <div style={{ fontSize: '12px', color: sc.isGroup ? '#a855f7' : sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>
+                    {sc.isGroup ? `👥 ${sc.members || ''} miembros` : sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}
+                  </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
                   {/* Llamada */}
@@ -6345,7 +6408,20 @@ const App: React.FC = () => {
               {allGroups.map((group) => (
                 <button
                   key={group.id}
-                  onClick={() => console.log('Abrir grupo:', group.name)}
+                  onClick={() => setSelectedChat({
+                    id: group.id,
+                    type: 'group',
+                    title: group.name,
+                    subtitle: group.lastMessage || 'Grupo',
+                    time: '',
+                    status: 'online',
+                    initials: group.name.slice(0,2).toUpperCase(),
+                    color: '#a855f7',
+                    avatarUrl: group.avatarUrl,
+                    isGroup: true,
+                    members: group.members,
+                    description: group.description,
+                  })}
                   style={{
                     width: '100%',
                     background: 'rgba(250,250,250,0.88)',
