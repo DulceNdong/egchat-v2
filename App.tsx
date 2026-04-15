@@ -4153,31 +4153,125 @@ const App: React.FC = () => {
                       maxWidth: '72%',
                       background: msg.from === 'me' ? '#d9fdd3' : '#ffffff',
                       borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      padding: '9px 12px 7px',
+                      padding: (msg as any).type === 'image' && (msg as any).imageUrl ? '4px 4px 7px' : '9px 12px 7px',
                       boxShadow: '0 1px 2px rgba(0,0,0,0.13)',
                       position: 'relative',
+                      overflow: 'hidden',
                     }}>
+                      {/* ── AUDIO ── */}
                       {(msg as any).type === 'audio' && (msg as any).audioUrl ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '160px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', padding: '2px 0' }}>
                           <button onClick={() => { const a = new Audio((msg as any).audioUrl); a.play(); }}
-                            style={{ background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', border: 'none', borderRadius: '50%', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            style={{ background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', border: 'none', borderRadius: '50%', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="6 3 20 12 6 21 6 3"/></svg>
                           </button>
-                          <div style={{ flex: 1, height: '3px', background: 'rgba(0,0,0,0.15)', borderRadius: '2px' }}>
-                            <div style={{ width: '0%', height: '100%', background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', borderRadius: '2px' }}/>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', marginBottom: '3px' }}>
+                              {[3,5,8,6,10,7,4,9,6,8,5,7,4,6,8,5,9,6,4,7].map((h,i) => (
+                                <div key={i} style={{ width: '3px', height: `${h * 2}px`, background: msg.from === 'me' ? 'rgba(0,200,160,0.7)' : 'rgba(0,180,230,0.7)', borderRadius: '2px', flexShrink: 0 }}/>
+                              ))}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>Mensaje de voz</div>
                           </div>
-                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={msg.from === 'me' ? '#00c8a0' : '#00b4e6'} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={msg.from === 'me' ? '#00c8a0' : '#00b4e6'} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                         </div>
                       ) : (msg as any).type === 'image' && (msg as any).imageUrl ? (
-                        <div>
-                          <img src={(msg as any).imageUrl} alt="foto" style={{ maxWidth: '220px', maxHeight: '220px', borderRadius: '10px', objectFit: 'cover', display: 'block', cursor: 'zoom-in' }}
-                            onClick={() => setChatImageViewer((msg as any).imageUrl)} />
-                          {msg.text && msg.text !== '📷 Foto' && <div style={{ fontSize: '14px', color: '#111827', marginTop: '4px' }}>{msg.text}</div>}
+                        /* ── IMAGEN ── */
+                        <div style={{ cursor: 'zoom-in' }} onClick={() => setChatImageViewer((msg as any).imageUrl)}>
+                          <img src={(msg as any).imageUrl} alt="foto"
+                            style={{ width: '220px', height: '180px', objectFit: 'cover', display: 'block', borderRadius: '12px 12px 0 0' }} />
+                          <div style={{ padding: '4px 8px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Foto</span>
+                          </div>
                         </div>
+                      ) : msg.text?.startsWith('📄') || msg.text?.startsWith('📎') ? (
+                        /* ── DOCUMENTO / ARCHIVO ── */
+                        (() => {
+                          const raw = (msg.text || '').replace(/^📄 |^📎 /, '');
+                          const match = raw.match(/^(.+?) \((.+?)\)$/);
+                          const fileName = match ? match[1] : raw;
+                          const fileSize = match ? match[2] : '';
+                          const ext = fileName.split('.').pop()?.toLowerCase() || '';
+                          const extColors: Record<string,string> = { pdf:'#ef4444', doc:'#2563eb', docx:'#2563eb', xls:'#16a34a', xlsx:'#16a34a', ppt:'#ea580c', pptx:'#ea580c', txt:'#6b7280', csv:'#16a34a', zip:'#7c3aed', rar:'#7c3aed' };
+                          const extColor = extColors[ext] || '#6b7280';
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', padding: '4px 0' }}>
+                              <div style={{ width: '44px', height: '52px', borderRadius: '8px', background: extColor + '18', border: `1.5px solid ${extColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke={extColor} strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                                <span style={{ fontSize: '7px', fontWeight: '800', color: extColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{ext}</span>
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{fileName}</div>
+                                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{fileSize}{fileSize ? ' · ' : ''}{ext.toUpperCase()}</div>
+                                <div style={{ fontSize: '11px', color: extColor, marginTop: '3px', fontWeight: '600' }}>Abrir documento</div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : msg.text?.startsWith('🎥') ? (
+                        /* ── VIDEO ── */
+                        (() => {
+                          const raw = (msg.text || '').replace(/^🎥 /, '');
+                          const match = raw.match(/^(.+?) \((.+?)\)$/);
+                          const fileName = match ? match[1] : raw;
+                          const fileSize = match ? match[2] : '';
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '200px', padding: '4px 0' }}>
+                              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#8b5cf618', border: '1.5px solid #8b5cf640', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                              </div>
+                              <div style={{ flex: 1, minWidth: 0 }}>
+                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{fileName}</div>
+                                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{fileSize}{fileSize ? ' · ' : ''}Video</div>
+                              </div>
+                            </div>
+                          );
+                        })()
+                      ) : msg.text?.startsWith('📍') ? (
+                        /* ── UBICACIÓN ── */
+                        (() => {
+                          const lines = (msg.text || '').split('\n');
+                          const label = lines[0].replace('📍 ', '');
+                          const link = lines[1] || '';
+                          return (
+                            <div style={{ minWidth: '200px' }}>
+                              <div style={{ background: 'linear-gradient(135deg,#e0f7fa,#e8f5e9)', borderRadius: '10px', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: '6px', position: 'relative' }}>
+                                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="2" strokeLinecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                                <span style={{ position: 'absolute', bottom: '4px', right: '8px', fontSize: '9px', color: '#6b7280' }}>Maps</span>
+                              </div>
+                              <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827' }}>{label}</div>
+                              {link && <a href={link} target="_blank" rel="noreferrer" style={{ fontSize: '11px', color: '#00b4e6', textDecoration: 'none' }}>Ver en Google Maps →</a>}
+                            </div>
+                          );
+                        })()
+                      ) : msg.text?.startsWith('👤') ? (
+                        /* ── CONTACTO ── */
+                        (() => {
+                          const lines = (msg.text || '').split('\n');
+                          const name = lines[0].replace('👤 ', '');
+                          const phone = lines[1]?.replace('📞 ', '') || '';
+                          return (
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', padding: '4px 0' }}>
+                              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                              </div>
+                              <div>
+                                <div style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>{name}</div>
+                                <div style={{ fontSize: '12px', color: '#6b7280' }}>{phone}</div>
+                                <div style={{ fontSize: '11px', color: '#00c8a0', marginTop: '3px', fontWeight: '600' }}>Añadir contacto</div>
+                              </div>
+                            </div>
+                          );
+                        })()
                       ) : (
+                        /* ── TEXTO NORMAL ── */
                         <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word', whiteSpace: 'pre-wrap' }}>{msg.text}</div>
                       )}
-                      <div style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
+
+                      {/* Hora + estado */}
+                      <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px',
+                        padding: (msg as any).type === 'image' && (msg as any).imageUrl ? '0 8px' : '0' }}>
                         <span>{msg.time}</span>
                         {msg.from === 'me' && showReadReceipts && (
                           <span style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
