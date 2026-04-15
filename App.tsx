@@ -3994,20 +3994,22 @@ const App: React.FC = () => {
           const initials = sc.initials || sc.title.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase();
           const color = sc.color || '#00b4e6';
           const chatId = sc.id?.toString() || sc.title;
-          const msgs = chatMessages[chatId] || [
-            { id: '1', from: 'them' as const, text: sc.subtitle || '¿Cómo estás?', time: sc.time || '10:17', status: 'read' as const },
-            { id: '2', from: 'me' as const, text: 'Hola! Todo bien por aqué', time: '10:18', status: 'read' as const },
-            { id: '3', from: 'them' as const, text: 'Muy bien gracias ?Quedamos esta semana?', time: '10:19', status: 'read' as const },
-          ];
+          const msgs = chatMessages[chatId] || [];
+
+          // Helper para añadir mensaje al chat
+          const addMsg = (msg: any) => {
+            setChatMessages(prev => ({
+              ...prev,
+              [chatId]: [...(prev[chatId] || []), msg]
+            }));
+          };
+          const makeTime = () => { const n = new Date(); return `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')}`; };
 
           const sendChatMessage = async () => {
             if (!currentChatInput.trim()) return;
             const messageText = currentChatInput.trim();
-            const now = new Date();
-            const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`; 
-            const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time, status: 'pending' as const };
-            
-            setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), newMsg] }));
+            const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time: makeTime(), status: 'pending' as const };
+            addMsg(newMsg);
             setCurrentChatInput('');
             setShowChatEmojis(false);
             
@@ -4205,10 +4207,7 @@ const App: React.FC = () => {
                               const reader = new FileReader();
                               reader.onload = (e) => {
                                 const url = e.target?.result as string;
-                                const now = new Date();
-                                const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                                const cid = sc.id?.toString()||'';
-                                setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📷 Foto`, time, status: 'pending' as const, type: 'image' as const, imageUrl: url }] }));
+                                addMsg({ id: Date.now().toString(), from: 'me' as const, text: '📷 Foto', time: makeTime(), status: 'pending' as const, type: 'image', imageUrl: url });
                               };
                               reader.readAsDataURL(file);
                             }
@@ -4235,11 +4234,8 @@ const App: React.FC = () => {
                           inp.onchange = () => {
                             const file = inp.files?.[0];
                             if (file) {
-                              const now = new Date();
-                              const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const cid = sc.id?.toString()||'';
                               const size = (file.size/1024/1024).toFixed(1);
-                              setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time, status: 'pending' as const }] }));
+                              addMsg({ id: Date.now().toString(), from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: makeTime(), status: 'pending' as const });
                             }
                           };
                           inp.click();
@@ -4255,11 +4251,8 @@ const App: React.FC = () => {
                           inp.onchange = () => {
                             const file = inp.files?.[0];
                             if (file) {
-                              const now = new Date();
-                              const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const cid = sc.id?.toString()||'';
                               const size = (file.size/1024).toFixed(1);
-                              setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📄 ${file.name} (${size} KB)`, time, status: 'pending' as const }] }));
+                              addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📄 ${file.name} (${size} KB)`, time: makeTime(), status: 'pending' as const });
                             }
                           };
                           inp.click();
@@ -4275,11 +4268,8 @@ const App: React.FC = () => {
                           inp.onchange = () => {
                             const file = inp.files?.[0];
                             if (file) {
-                              const now = new Date();
-                              const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                              const cid = sc.id?.toString()||'';
                               const size = (file.size/1024).toFixed(1);
-                              setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time, status: 'pending' as const }] }));
+                              addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: makeTime(), status: 'pending' as const });
                             }
                           };
                           inp.click();
@@ -4290,12 +4280,9 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          const now = new Date();
-                          const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                          const cid = sc.id?.toString()||'';
                           const myName = userProfile.name || 'Mi contacto';
                           const myPhone = userProfile.phone || '+240 222 *** ***';
-                          setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `👤 ${myName}\n📞 ${myPhone}`, time, status: 'pending' as const }] }));
+                          addMsg({ id: Date.now().toString(), from: 'me' as const, text: `👤 ${myName}\n📞 ${myPhone}`, time: makeTime(), status: 'pending' as const });
                         }
                       },
                       {
@@ -4303,20 +4290,19 @@ const App: React.FC = () => {
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
                         action: () => {
                           setShowChatAttach(false);
-                          const cid = sc.id?.toString()||'';
-                          const now = new Date();
-                          const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                           if (navigator.geolocation) {
                             navigator.geolocation.getCurrentPosition(
                               pos => {
                                 const lat = pos.coords.latitude.toFixed(6);
                                 const lng = pos.coords.longitude.toFixed(6);
-                                setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`, time, status: 'pending' as const }] }));
+                                addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📍 Mi ubicación\nhttps://maps.google.com/?q=${lat},${lng}`, time: makeTime(), status: 'pending' as const });
                               },
                               () => {
-                                setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial`, time, status: 'pending' as const }] }));
+                                addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial`, time: makeTime(), status: 'pending' as const });
                               }
                             );
+                          } else {
+                            addMsg({ id: Date.now().toString(), from: 'me' as const, text: `📍 Malabo, Guinea Ecuatorial`, time: makeTime(), status: 'pending' as const });
                           }
                         }
                       },
@@ -4525,13 +4511,7 @@ const App: React.FC = () => {
                         const now = new Date();
                         const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                         const newMsg = { id: Date.now().toString(), from: 'me' as const, text: `🎤 Mensaje de voz`, time, status: 'pending' as const, type: 'audio' as const, audioUrl: url };
-                        setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), newMsg] }));
-                        // Enviar al backend si es chat real
-                        if (chatId && chatId.includes('-') && chatId.length > 20) {
-                          try {
-                            await chatAPI.sendMessage(chatId, { text: '🎤 Mensaje de voz', type: 'audio' });
-                          } catch {}
-                        }
+                        addMsg(newMsg);
                       };
                       recorder.start();
                       chatRecorderRef.current = recorder;
@@ -4561,9 +4541,7 @@ const App: React.FC = () => {
                         setChatRecordingTime(0);
                         const blob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
                         const url = URL.createObjectURL(blob);
-                        const now = new Date();
-                        const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                        setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), { id: Date.now().toString(), from: 'me' as const, text: '🎤 Mensaje de voz', time, status: 'pending' as const, type: 'audio' as const, audioUrl: url }] }));
+                        addMsg({ id: Date.now().toString(), from: 'me' as const, text: '🎤 Mensaje de voz', time: makeTime(), status: 'pending' as const, type: 'audio' as const, audioUrl: url });
                       };
                       recorder.start();
                       chatRecorderRef.current = recorder;
