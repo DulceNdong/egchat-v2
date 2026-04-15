@@ -18,6 +18,7 @@ import { Lia25View } from './Lia25View';
 import { AvatarCropModal } from './AvatarCropModal';
 import { QRScanner } from './QRScanner';
 import { QRCodeSVG } from 'qrcode.react';
+import { useWebRTC } from './useWebRTC';
 
 interface Bank {
   id: string;
@@ -47,6 +48,15 @@ const App: React.FC = () => {
   const [previousView, setPreviousView] = useState<string>('home');
   // -- Auth persistente -----------------------------------------
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('token'));
+  // -- WebRTC real -----------------------------------------------
+  const webrtc = useWebRTC();
+  // -- Llamada entrante ------------------------------------------
+  const [incomingCall, setIncomingCall] = useState<{callId:string; callerId:string; type:'audio'|'video'; offer:any} | null>(null);
+  // -- Grabación de voz en chat ----------------------------------
+  const chatRecorderRef = useRef<MediaRecorder | null>(null);
+  const chatAudioChunksRef = useRef<Blob[]>([]);
+  const [chatRecordingTime, setChatRecordingTime] = useState(0);
+  const chatRecordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   // -- Mensajeria real -------------------------------------------
   const [realChats, setRealChats] = useState<any[]>([]);
   const [newChatSearching, setNewChatSearching] = useState(false);
@@ -2364,35 +2374,31 @@ const App: React.FC = () => {
   // Iniciar llamada con acceso a camara/microfono
 
   const startCall = async (type: 'audio' | 'video', contact: any) => {
-    try {
-      const constraints = type === 'video'
-        ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
-        : { audio: true, video: false };
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setLocalStream(stream);
+    const targetUserId = contact?.id?.toString() || contact?.user_id?.toString() || '';
+    // Usar WebRTC real si hay targetUserId válido
+    if (targetUserId && targetUserId.length > 5) {
+      await webrtc.startCall(type, targetUserId);
       setActiveCall({ type, contact, status: 'calling' });
-      setCallDuration(0);
-      setIsMuted(false);
-      setIsCameraOff(false);
-      // Simular conexian despuas de 2s
-      setTimeout(() => {
-        setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null);
-      }, 2000);
-    } catch (err) {
-      console.error('Error accediendo a dispositivos:', err);
-      // Iniciar llamada sin stream si no hay permisos
+      setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
+    } else {
+      // Fallback simulado para chats demo
+      try {
+        const constraints = type === 'video'
+          ? { audio: true, video: { facingMode: 'user' as const } }
+          : { audio: true, video: false };
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        setLocalStream(stream);
+      } catch {}
       setActiveCall({ type, contact, status: 'calling' });
+      setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
       setTimeout(() => setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null), 2000);
     }
   };
 
   const endCall = () => {
-    if (localStream) {
-      localStream.getTracks().forEach(t => t.stop());
-      setLocalStream(null);
-    }
-    setActiveCall(null);
-    setCallDuration(0);
+    webrtc.endCall();
+    if (localStream) { localStream.getTracks().forEach(t => t.stop()); setLocalStream(null); }
+    setActiveCall(null); setCallDuration(0);
   };
 
   // Temporizador de llamada
@@ -2418,18 +2424,25 @@ const App: React.FC = () => {
         {/* Video remoto (fondo) */}
         {type === 'video' && status === 'connected' && (
           <div style={{ position: 'absolute', inset: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: `${color}30`, border: `3px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color }}>
-              {initials}
-            </div>
+            {webrtc.remoteStream ? (
+              <video autoPlay playsInline
+                ref={el => { if (el && webrtc.remoteStream) el.srcObject = webrtc.remoteStream; }}
+                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
+              />
+            ) : (
+              <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: `${color}30`, border: `3px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color }}>
+                {initials}
+              </div>
+            )}
           </div>
         )}
 
         {/* Video local (esquina) */}
-        {type === 'video' && !isCameraOff && localStream && (
+        {type === 'video' && !isCameraOff && (webrtc.localStream || localStream) && (
           <div style={{ position: 'absolute', top: '80px', right: '16px', width: '90px', height: '120px', borderRadius: '12px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', zIndex: 10, background: '#222' }}>
             <video
               autoPlay muted playsInline
-              ref={el => { if (el && localStream) el.srcObject = localStream; }}
+              ref={el => { if (el) { const s = webrtc.localStream || localStream; if (s) el.srcObject = s; } }}
               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
             />
           </div>
@@ -2458,8 +2471,8 @@ const App: React.FC = () => {
         <div style={{ position: 'absolute', bottom: '60px', width: '100%', display: 'flex', justifyContent: 'center', gap: '20px', zIndex: 5 }}>
           {/* Silenciar */}
           <button onClick={() => {
+            webrtc.toggleMute();
             setIsMuted(m => !m);
-            localStream?.getAudioTracks().forEach(t => { t.enabled = isMuted; });
           }} style={{ width: '56px', height: '56px', borderRadius: '50%', background: isMuted ? 'rgba(239,68,68,0.3)' : 'rgba(255,255,255,0.15)', border: `2px solid ${isMuted ? '#f87171' : 'rgba(255,255,255,0.3)'}`, color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none' }}>
             <svg width="22" height="22" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
               {isMuted ? <><line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></> : <><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/></>}
@@ -4138,7 +4151,20 @@ const App: React.FC = () => {
                       boxShadow: '0 1px 2px rgba(0,0,0,0.13)',
                       position: 'relative',
                     }}>
-                      <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word' }}>{msg.text}</div>
+                      {(msg as any).type === 'audio' && (msg as any).audioUrl ? (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', minWidth: '160px' }}>
+                          <button onClick={() => { const a = new Audio((msg as any).audioUrl); a.play(); }}
+                            style={{ background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', border: 'none', borderRadius: '50%', width: '34px', height: '34px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0 }}>
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          </button>
+                          <div style={{ flex: 1, height: '3px', background: 'rgba(0,0,0,0.15)', borderRadius: '2px' }}>
+                            <div style={{ width: '0%', height: '100%', background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', borderRadius: '2px' }}/>
+                          </div>
+                          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={msg.from === 'me' ? '#00c8a0' : '#00b4e6'} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
+                        </div>
+                      ) : (
+                        <div style={{ fontSize: '15px', color: '#111827', lineHeight: '1.5', wordBreak: 'break-word' }}>{msg.text}</div>
+                      )}
                       <div style={{ fontSize: '14px', color: '#9ca3af', marginTop: '4px', textAlign: 'right', display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: '4px' }}>
                         <span>{msg.time}</span>
                         {msg.from === 'me' && showReadReceipts && (
@@ -4439,13 +4465,78 @@ const App: React.FC = () => {
                   </svg>
                 </button>
 
-                {/* Micrófono */}
+                {/* Micrófono — mantener pulsado para grabar voz */}
                 <button
-                  onMouseDown={() => setIsRecordingAudio(true)}
-                  onMouseUp={() => setIsRecordingAudio(false)}
-                  onMouseLeave={() => setIsRecordingAudio(false)}
-                  style={{ background: isRecordingAudio ? '#FEE2E2' : 'transparent', border: 'none', borderRadius: '50%', color: isRecordingAudio ? '#ef4444' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, transition: 'all 0.15s' }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  onMouseDown={async () => {
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                      chatAudioChunksRef.current = [];
+                      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg' });
+                      recorder.ondataavailable = e => { if (e.data.size > 0) chatAudioChunksRef.current.push(e.data); };
+                      recorder.onstop = async () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
+                        setChatRecordingTime(0);
+                        const blob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const now = new Date();
+                        const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                        const newMsg = { id: Date.now().toString(), from: 'me' as const, text: `🎤 Mensaje de voz`, time, status: 'pending' as const, type: 'audio' as const, audioUrl: url };
+                        setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), newMsg] }));
+                        // Enviar al backend si es chat real
+                        if (chatId && chatId.includes('-') && chatId.length > 20) {
+                          try {
+                            await chatAPI.sendMessage(chatId, { text: '🎤 Mensaje de voz', type: 'audio' });
+                          } catch {}
+                        }
+                      };
+                      recorder.start();
+                      chatRecorderRef.current = recorder;
+                      setIsRecordingAudio(true);
+                      setChatRecordingTime(0);
+                      chatRecordTimerRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
+                    } catch { setIsRecordingAudio(true); }
+                  }}
+                  onMouseUp={() => {
+                    chatRecorderRef.current?.stop();
+                    chatRecorderRef.current = null;
+                    setIsRecordingAudio(false);
+                  }}
+                  onMouseLeave={() => {
+                    if (isRecordingAudio) { chatRecorderRef.current?.stop(); chatRecorderRef.current = null; setIsRecordingAudio(false); }
+                  }}
+                  onTouchStart={async (e) => {
+                    e.preventDefault();
+                    try {
+                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                      chatAudioChunksRef.current = [];
+                      const recorder = new MediaRecorder(stream);
+                      recorder.ondataavailable = ev => { if (ev.data.size > 0) chatAudioChunksRef.current.push(ev.data); };
+                      recorder.onstop = async () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
+                        setChatRecordingTime(0);
+                        const blob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
+                        const url = URL.createObjectURL(blob);
+                        const now = new Date();
+                        const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                        setChatMessages(prev => ({ ...prev, [chatId]: [...(prev[chatId] || msgs), { id: Date.now().toString(), from: 'me' as const, text: '🎤 Mensaje de voz', time, status: 'pending' as const, type: 'audio' as const, audioUrl: url }] }));
+                      };
+                      recorder.start();
+                      chatRecorderRef.current = recorder;
+                      setIsRecordingAudio(true);
+                      setChatRecordingTime(0);
+                      chatRecordTimerRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
+                    } catch { setIsRecordingAudio(true); }
+                  }}
+                  onTouchEnd={() => { chatRecorderRef.current?.stop(); chatRecorderRef.current = null; setIsRecordingAudio(false); }}
+                  style={{ background: isRecordingAudio ? '#FEE2E2' : 'transparent', border: isRecordingAudio ? '2px solid #ef4444' : 'none', borderRadius: '50%', color: isRecordingAudio ? '#ef4444' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, transition: 'all 0.15s', position: 'relative' }}>
+                  {isRecordingAudio && (
+                    <span style={{ position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: '#ef4444', fontWeight: '700', whiteSpace: 'nowrap', background: '#fff', padding: '1px 5px', borderRadius: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
+                      {String(Math.floor(chatRecordingTime/60)).padStart(2,'0')}:{String(chatRecordingTime%60).padStart(2,'0')}
+                    </span>
+                  )}
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill={isRecordingAudio ? '#ef4444' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
                   </svg>
                 </button>
@@ -6791,6 +6882,25 @@ const App: React.FC = () => {
     }
   };
 
+  // -- Sincronizar estado WebRTC con activeCall ------------------
+  useEffect(() => {
+    if (webrtc.callState === 'connected' && activeCall) {
+      setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null);
+    }
+    if (webrtc.callState === 'ended') {
+      setActiveCall(null); setCallDuration(0);
+    }
+  }, [webrtc.callState]);
+
+  // -- Polling llamadas entrantes --------------------------------
+  useEffect(() => {
+    if (!isAuthenticated || !currentUserId.current) return;
+    const stop = webrtc.pollIncoming(currentUserId.current, (call) => {
+      if (!activeCall && !incomingCall) setIncomingCall(call);
+    });
+    return () => { stop.then(fn => fn()); };
+  }, [isAuthenticated, activeCall, incomingCall]);
+
   // -- useEffects mensajeria -------------------------------------
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -6994,6 +7104,37 @@ const App: React.FC = () => {
       {renderWeatherModal()}
       {renderTimeModal()}
       {renderActiveCall()}
+
+      {/* Llamada entrante */}
+      {incomingCall && !activeCall && (
+        <div style={{ position:'fixed', inset:0, zIndex:3000, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+          <div style={{ background:'linear-gradient(160deg,#1a1a2e,#16213e)', borderRadius:'24px', padding:'32px 24px', textAlign:'center', width:'280px', boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}>
+            <div style={{ width:'80px', height:'80px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'32px' }}>
+              {incomingCall.type === 'video' ? '📹' : '📞'}
+            </div>
+            <div style={{ fontSize:'18px', fontWeight:'700', color:'#fff', marginBottom:'6px' }}>Llamada entrante</div>
+            <div style={{ fontSize:'14px', color:'rgba(255,255,255,0.6)', marginBottom:'8px' }}>{incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'}</div>
+            <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.4)', marginBottom:'28px' }}>ID: {incomingCall.callerId.slice(0,8)}...</div>
+            <div style={{ display:'flex', gap:'24px', justifyContent:'center' }}>
+              <button onClick={() => { setIncomingCall(null); }}
+                style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#ef4444', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
+              </button>
+              <button onClick={async () => {
+                const contact = { id: incomingCall.callerId, title: 'Llamada entrante', status: 'online' };
+                setActiveCall({ type: incomingCall.type, contact, status: 'calling' });
+                setIncomingCall(null);
+                await webrtc.answerCall(incomingCall.callId, incomingCall.offer, incomingCall.type);
+                setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null);
+              }}
+                style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#22c55e', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.06 6.06l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {renderProfileView()}
       {renderAddContactModal()}
       {renderCreateGroupModal()}
