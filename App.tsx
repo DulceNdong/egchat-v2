@@ -9577,11 +9577,45 @@ const App: React.FC = () => {
           onClick={e=>{if(e.target===e.currentTarget){setShowNewChatModal(false);setNewChatPhone('');}}}>
           <div onClick={e=>e.stopPropagation()} style={{width:'100%',maxWidth:'420px',background:'#fff',borderRadius:'20px 20px 0 0',padding:'20px 16px 32px'}}>
             <div style={{width:'36px',height:'4px',borderRadius:'2px',background:'#e5e7eb',margin:'0 auto 16px'}}/>
-            <div style={{fontSize:'16px',fontWeight:'700',color:'#111827',marginBottom:'14px',display:'flex',alignItems:'center',gap:'8px'}}>
+            <div style={{fontSize:'16px',fontWeight:'700',color:'#111827',marginBottom:'6px',display:'flex',alignItems:'center',gap:'8px'}}>
               <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
               Nuevo Chat
             </div>
-            <div style={{fontSize:'12px',color:'#6b7280',marginBottom:'8px'}}>Introduce el número de teléfono del usuario</div>
+            <div style={{fontSize:'12px',color:'#6b7280',marginBottom:'12px'}}>Busca por número de teléfono o nombre</div>
+
+            {/* Buscar desde contactos existentes */}
+            {allContacts.length > 0 && (
+              <div style={{marginBottom:'12px'}}>
+                <div style={{fontSize:'11px',color:'#9ca3af',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'8px'}}>Tus contactos</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'160px',overflowY:'auto'}}>
+                  {allContacts.filter(c => !newChatPhone || c.name.toLowerCase().includes(newChatPhone.toLowerCase()) || c.phone.includes(newChatPhone)).slice(0,5).map(c => (
+                    <button key={c.id} onClick={async () => {
+                      setNewChatSearching(true);
+                      try {
+                        const chat = await chatAPI.createPrivate(c.id);
+                        if (chat?.id) {
+                          setSelectedChat({ id: chat.id, type: 'individual', title: c.name, subtitle: 'Chat', time: '', status: c.status, initials: c.avatar, color: '#00c8a0', avatarUrl: c.avatarUrl, user_id: c.id });
+                          setCurrentView('mensajeria'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
+                        }
+                      } catch(err: any) { showToast(err?.message || 'Error al crear chat', 'error'); }
+                      finally { setNewChatSearching(false); }
+                    }} style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 10px',background:'#f9fafb',border:'1px solid #f0f0f0',borderRadius:'10px',cursor:'pointer',outline:'none',textAlign:'left',fontFamily:'inherit'}}>
+                      <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'linear-gradient(135deg,#00c8a0,#00b4e6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:'700',color:'#fff',flexShrink:0,overflow:'hidden'}}>
+                        {c.avatarUrl ? <img src={c.avatarUrl} alt={c.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : c.avatar}
+                      </div>
+                      <div style={{flex:1,minWidth:0}}>
+                        <div style={{fontSize:'14px',fontWeight:'600',color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{c.name}</div>
+                        <div style={{fontSize:'12px',color:'#9ca3af'}}>{c.phone}</div>
+                      </div>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+                  ))}
+                </div>
+                <div style={{height:'1px',background:'#f0f0f0',margin:'12px 0'}}/>
+              </div>
+            )}
+
+            <div style={{fontSize:'11px',color:'#9ca3af',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'8px'}}>O busca por teléfono</div>
             <div style={{display:'flex',alignItems:'center',background:'#f9fafb',border:'1.5px solid #e5e7eb',borderRadius:'10px',padding:'0 14px',height:'48px',gap:'10px',marginBottom:'12px'}}>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.95-.95a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
               <input
@@ -9604,7 +9638,6 @@ const App: React.FC = () => {
                 if (!newChatPhone.trim()) return;
                 setNewChatSearching(true);
                 try {
-                  // Buscar usuario por teléfono
                   const users = await chatAPI.searchUsers(newChatPhone.trim());
                   if (!users || users.length === 0) {
                     showToast('Usuario no encontrado. Verifica el número.', 'error');
@@ -9612,28 +9645,20 @@ const App: React.FC = () => {
                     return;
                   }
                   const targetUser = users[0];
-                  // Crear chat privado
                   const chat = await chatAPI.createPrivate(targetUser.id);
                   if (chat?.id) {
                     const initials = (targetUser.full_name||targetUser.phone||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
                     setSelectedChat({
-                      id: chat.id,
-                      type: 'individual',
+                      id: chat.id, type: 'individual',
                       title: targetUser.full_name || targetUser.phone,
-                      subtitle: 'Nuevo chat',
-                      time: '',
-                      status: 'online',
-                      initials,
-                      color: '#00c8a0',
-                      phone: targetUser.phone
+                      subtitle: 'Nuevo chat', time: '', status: 'online',
+                      initials, color: '#00c8a0', phone: targetUser.phone,
+                      user_id: targetUser.id,
                     });
-                    setCurrentView('mensajeria');
-                    setShowNewChatModal(false);
-                    setNewChatPhone('');
-                    loadChats();
+                    setCurrentView('mensajeria'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
                   }
                 } catch(err: any) {
-                  showToast(err?.message || 'Error al crear el chat', 'error');
+                  showToast(err?.message || 'Error al crear el chat. El servidor puede estar iniciando.', 'error');
                 } finally {
                   setNewChatSearching(false);
                 }
