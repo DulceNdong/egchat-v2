@@ -87,21 +87,26 @@ const RealMap: React.FC<{
   onLocationSelect?: (lat: number, lng: number) => void;
   height?: string; vehicleFilter?: string;
 }> = ({ origin, destination, driver, status, onLocationSelect, height='100%', vehicleFilter }) => {
-  const iframeRef = useRef<HTMLIFrameElement>(null);
+  const mapContainer = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<any>(null);
+  const [mapLoaded, setMapLoaded] = useState(false);
   const [driverPos, setDriverPos] = useState(driver?.location ?? null);
+  const markersRef = useRef<any[]>([]);
+  const routeLayerRef = useRef(false);
 
+  const originLat = origin?.lat ?? 3.7523;
+  const originLng = origin?.lng ?? 8.7371;
+
+  // Animar conductor hacia origen
   useEffect(() => {
     if (!driver) return;
     setDriverPos(driver.location);
     if (status !== 'onway' && status !== 'matched') return;
     if (!origin) return;
-    // Animar conductor hacia el origen en 20 pasos
     const steps = 40;
     let step = 0;
-    const startLat = driver.location.lat;
-    const startLng = driver.location.lng;
-    const endLat = origin.lat;
-    const endLng = origin.lng;
+    const startLat = driver.location.lat, startLng = driver.location.lng;
+    const endLat = origin.lat, endLng = origin.lng;
     const iv = setInterval(() => {
       step++;
       const t = step / steps;
@@ -111,162 +116,138 @@ const RealMap: React.FC<{
     return () => clearInterval(iv);
   }, [driver, status, origin]);
 
-  const originLat  = origin?.lat  ?? 3.7523;
-  const originLng  = origin?.lng  ?? 8.7371;
-  const destLat    = destination?.lat;
-  const destLng    = destination?.lng;
-  const dLat       = driverPos?.lat;
-  const dLng       = driverPos?.lng;
-
-  const html = `<!DOCTYPE html>
-<html><head>
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<style>
-*{margin:0;padding:0;box-sizing:border-box}
-#map{width:100%;height:100vh;background:#1a2035}
-</style>
-</head><body>
-<div id="map"></div>
-<script>
-const map = L.map('map',{zoomControl:false}).setView([${originLat},${originLng}],14);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  attribution:'© OpenStreetMap',maxZoom:19
-}).addTo(map);
-
-const mkIcon=(color,emoji,pulse)=>L.divIcon({
-  className:'',
-  html:\`<div style="background:\${color};border:3px solid #fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 10px rgba(0,0,0,0.4);\${pulse?'animation:pulse 1.5s infinite':''}">\${emoji}</div>\`,
-  iconSize:[38,38],iconAnchor:[19,19]
-});
-
-// Origen
-const originM = L.marker([${originLat},${originLng}],{icon:mkIcon('#00c8a0','📍',true)}).addTo(map);
-originM.bindPopup('<b>Tu ubicación</b>');
-
-${!destLat && !dLat ? `
-// Todos los vehículos disponibles
-const allVehicles = [
-  {lat:${originLat}+0.003, lng:${originLng}+0.004, name:'Marcos N.', car:'Toyota Corolla', rating:'4.9', type:'taxi', eta:'2 min'},
-  {lat:${originLat}-0.004, lng:${originLng}+0.002, name:'Jose O.', car:'Hyundai Elantra', rating:'4.7', type:'comfort', eta:'4 min'},
-  {lat:${originLat}+0.002, lng:${originLng}-0.005, name:'Luis M.', car:'Kia K5 SUV', rating:'4.8', type:'suv', eta:'6 min'},
-  {lat:${originLat}-0.002, lng:${originLng}-0.003, name:'Ana M.', car:'Nissan Versa', rating:'4.9', type:'mujer', eta:'5 min'},
-  {lat:${originLat}+0.005, lng:${originLng}+0.001, name:'Pedro E.', car:'Honda CB500', rating:'4.6', type:'moto', eta:'3 min'},
-  {lat:${originLat}-0.001, lng:${originLng}+0.006, name:'Carlos B.', car:'Toyota Hiace', rating:'4.7', type:'xl', eta:'7 min'},
-  {lat:${originLat}+0.004, lng:${originLng}-0.002, name:'David K.', car:'Toyota Corolla', rating:'4.8', type:'taxi', eta:'4 min'},
-  {lat:${originLat}-0.003, lng:${originLng}+0.005, name:'Maria L.', car:'Honda CB300', rating:'4.9', type:'moto', eta:'2 min'},
-  {lat:${originLat}+0.001, lng:${originLng}+0.003, name:'Pablo R.', car:'BMW Serie 5', rating:'5.0', type:'comfort', eta:'5 min'},
-  {lat:${originLat}-0.005, lng:${originLng}-0.001, name:'Sofia T.', car:'Ford Transit', rating:'4.6', type:'minivan', eta:'8 min'},
-];
-
-// Filtrar por tipo seleccionado
-const activeFilter = '${vehicleFilter || 'all'}';
-const nearbyVehicles = activeFilter === 'all'
-  ? allVehicles
-  : allVehicles.filter(v => v.type === activeFilter);
-
-const vehicleSVGs = {
-  taxi: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><rect x="26" y="10" width="12" height="6" rx="1.5" fill="#FFD700"/><text x="32" y="15" font-size="4.5" text-anchor="middle" fill="#1E293B" font-weight="bold">TAXI</text><path d="M10 30 L16 20 L48 20 L54 30Z" fill="#FFD700" stroke="#1E293B" stroke-width="1.5"/><rect x="6" y="30" width="52" height="13" rx="3" fill="#FFD700" stroke="#1E293B" stroke-width="1.5"/><rect x="17" y="22" width="12" height="8" rx="1" fill="rgba(255,255,255,0.6)" stroke="#1E293B" stroke-width="1"/><rect x="35" y="22" width="12" height="8" rx="1" fill="rgba(255,255,255,0.6)" stroke="#1E293B" stroke-width="1"/><circle cx="17" cy="43" r="6" fill="#1E293B" stroke="#FFD700" stroke-width="1.5"/><circle cx="47" cy="43" r="6" fill="#1E293B" stroke="#FFD700" stroke-width="1.5"/></svg>\`,
-  comfort: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><path d="M32 8L34 13H39L35 16L37 21L32 18L27 21L29 16L25 13H30Z" fill="#FFD700"/><path d="M8 32 L14 20 L50 20 L56 32Z" fill="#22C55E" stroke="#1E293B" stroke-width="1.5"/><rect x="4" y="32" width="56" height="11" rx="4" fill="#22C55E" stroke="#1E293B" stroke-width="1.5"/><rect x="15" y="22" width="13" height="10" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="31" y="22" width="11" height="10" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><circle cx="15" cy="43" r="6" fill="#1E293B" stroke="#22C55E" stroke-width="1.5"/><circle cx="49" cy="43" r="6" fill="#1E293B" stroke="#22C55E" stroke-width="1.5"/></svg>\`,
-  suv: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><line x1="16" y1="13" x2="48" y2="13" stroke="#8B5CF6" stroke-width="2.5"/><line x1="20" y1="13" x2="20" y2="18" stroke="#8B5CF6" stroke-width="2"/><line x1="44" y1="13" x2="44" y2="18" stroke="#8B5CF6" stroke-width="2"/><rect x="10" y="18" width="44" height="14" rx="2" fill="#8B5CF6" stroke="#1E293B" stroke-width="1.5"/><rect x="8" y="30" width="48" height="13" rx="3" fill="#8B5CF6" stroke="#1E293B" stroke-width="1.5"/><rect x="12" y="20" width="16" height="10" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="36" y="20" width="16" height="10" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><circle cx="18" cy="43" r="7" fill="#1E293B" stroke="#8B5CF6" stroke-width="2"/><circle cx="46" cy="43" r="7" fill="#1E293B" stroke="#8B5CF6" stroke-width="2"/></svg>\`,
-  mujer: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><circle cx="54" cy="11" r="5.5" stroke="#EC4899" stroke-width="2"/><line x1="54" y1="16.5" x2="54" y2="23" stroke="#EC4899" stroke-width="2"/><line x1="51" y1="20" x2="57" y2="20" stroke="#EC4899" stroke-width="2"/><path d="M12 30 L18 20 L46 20 L52 30Z" fill="#EC4899" stroke="#1E293B" stroke-width="1.5"/><rect x="8" y="30" width="44" height="13" rx="4" fill="#EC4899" stroke="#1E293B" stroke-width="1.5"/><rect x="19" y="22" width="11" height="8" rx="1.5" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="33" y="22" width="11" height="8" rx="1.5" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><circle cx="16" cy="43" r="6" fill="#1E293B" stroke="#EC4899" stroke-width="2"/><circle cx="44" cy="43" r="6" fill="#1E293B" stroke="#EC4899" stroke-width="2"/></svg>\`,
-  moto: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><circle cx="14" cy="46" r="9" stroke="#F97316" stroke-width="2.5"/><circle cx="50" cy="46" r="9" stroke="#F97316" stroke-width="2.5"/><circle cx="14" cy="46" r="3.5" fill="#F97316" opacity="0.4"/><circle cx="50" cy="46" r="3.5" fill="#F97316" opacity="0.4"/><path d="M23 46h14" stroke="#F97316" stroke-width="2"/><path d="M30 46L26 30h10l8 10h6" stroke="#F97316" stroke-width="2.5" stroke-linecap="round"/><path d="M26 30l-4-10h-8" stroke="#F97316" stroke-width="2" stroke-linecap="round"/></svg>\`,
-  xl: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><rect x="4" y="16" width="56" height="28" rx="3" fill="#3B82F6" stroke="#1E293B" stroke-width="1.5"/><path d="M4 22 L4 16 L18 16 L18 22Z" fill="#2563EB" stroke="#1E293B" stroke-width="1.5"/><rect x="6" y="18" width="10" height="8" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="20" y="18" width="12" height="8" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="36" y="18" width="12" height="8" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><circle cx="14" cy="44" r="7" fill="#1E293B" stroke="#3B82F6" stroke-width="2"/><circle cx="50" cy="44" r="7" fill="#1E293B" stroke="#3B82F6" stroke-width="2"/></svg>\`,
-  minivan: \`<svg width="32" height="32" viewBox="0 0 64 64" fill="none"><rect x="4" y="20" width="52" height="22" rx="3" fill="#06B6D4" stroke="#1E293B" stroke-width="1.5"/><path d="M4 26 L4 20 L30 20 L30 26Z" fill="#0891B2" stroke="#1E293B" stroke-width="1.5"/><rect x="6" y="21" width="10" height="8" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="20" y="21" width="10" height="8" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><rect x="34" y="21" width="10" height="8" rx="1" fill="rgba(255,255,255,0.5)" stroke="#1E293B" stroke-width="1"/><circle cx="14" cy="42" r="6" fill="#1E293B" stroke="#06B6D4" stroke-width="2"/><circle cx="46" cy="42" r="6" fill="#1E293B" stroke="#06B6D4" stroke-width="2"/></svg>\`,
-};
-
-nearbyVehicles.forEach(v => {
-  const svg = vehicleSVGs[v.type] || vehicleSVGs.taxi;
-  const icon = L.divIcon({
-    className:'',
-    html:\`<div style="filter:drop-shadow(0 3px 6px rgba(0,0,0,0.5));cursor:pointer">\${svg}</div>\`,
-    iconSize:[32,32],iconAnchor:[16,16]
-  });
-  const m = L.marker([v.lat, v.lng], {icon}).addTo(map);
-  m.bindPopup(\`<div style="font-family:sans-serif;min-width:120px"><b style="font-size:13px">\${v.name}</b><br><span style="color:#666;font-size:11px">\${v.car}</span><br><span style="color:#f59e0b;font-size:11px">⭐ \${v.rating}</span> · <span style="color:#10B981;font-size:11px">⏱ \${v.eta}</span></div>\`);
-});
-` : ''}
-
-${destLat && destLng ? `
-const destM = L.marker([${destLat},${destLng}],{icon:mkIcon('#FFD700','🏁',false)}).addTo(map);
-destM.bindPopup('<b>Destino</b>');
-fetch('https://router.project-osrm.org/route/v1/driving/${originLng},${originLat};${destLng},${destLat}?overview=full&geometries=geojson')
-  .then(r=>r.json()).then(d=>{
-    if(d.routes&&d.routes[0]){
-      L.geoJSON(d.routes[0].geometry,{style:{color:'#00B4D8',weight:4,opacity:0.85,dashArray:'8,4'}}).addTo(map);
-      map.fitBounds([[${originLat},${originLng}],[${destLat},${destLng}]],{padding:[50,50]});
-    }
-  }).catch(()=>{
-    L.polyline([[${originLat},${originLng}],[${destLat},${destLng}]],{color:'#00B4D8',weight:4,dashArray:'8,4'}).addTo(map);
-    map.fitBounds([[${originLat},${originLng}],[${destLat},${destLng}]],{padding:[50,50]});
-  });
-` : ''}
-
-${dLat && dLng ? `
-// Conductor animado
-let driverMarker = L.marker([${dLat},${dLng}],{icon:mkIcon('#facc15','🚕',false)}).addTo(map);
-driverMarker.bindPopup('<b>Tu conductor</b>');
-
-// Escuchar actualizaciones de posición del conductor
-window.addEventListener('message', function(e){
-  try {
-    const d = JSON.parse(e.data);
-    if(d.type==='driverMove'){
-      driverMarker.setLatLng([d.lat,d.lng]);
-      // Dibujar ruta del conductor al origen
-    }
-  } catch(err){}
-});
-
-// Ajustar vista para mostrar conductor y origen
-map.fitBounds([[${originLat},${originLng}],[${dLat},${dLng}]],{padding:[60,60]});
-` : ''}
-
-// Clic en mapa
-map.on('click',function(e){
-  window.parent.postMessage(JSON.stringify({type:'locationSelected',lat:e.latlng.lat,lng:e.latlng.lng}),'*');
-});
-
-// Estilo CSS para pulse
-const style = document.createElement('style');
-style.textContent = '@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,200,160,0.7)}70%{box-shadow:0 0 0 10px rgba(0,200,160,0)}100%{box-shadow:0 0 0 0 rgba(0,200,160,0)}}';
-document.head.appendChild(style);
-</script>
-</body></html>`;
-
-  // Enviar posición actualizada del conductor al iframe
+  // Inicializar mapa MapTiler
   useEffect(() => {
-    if (!driverPos || !iframeRef.current) return;
-    try {
-      iframeRef.current.contentWindow?.postMessage(
-        JSON.stringify({ type:'driverMove', lat:driverPos.lat, lng:driverPos.lng }), '*'
-      );
-    } catch {}
-  }, [driverPos]);
+    if (!mapContainer.current || mapRef.current) return;
+    import('@maptiler/sdk').then(({ Map, config, MapStyle }) => {
+      config.apiKey = 'YOUR_MAPTILER_KEY'; // Reemplaza con tu key de cloud.maptiler.com
+      const map = new Map({
+        container: mapContainer.current!,
+        style: MapStyle.STREETS,
+        center: [originLng, originLat],
+        zoom: 14,
+      });
+      mapRef.current = map;
+      map.on('load', () => setMapLoaded(true));
+      if (onLocationSelect) {
+        map.on('click', (e: any) => onLocationSelect(e.lngLat.lat, e.lngLat.lng));
+      }
+    });
+    return () => { mapRef.current?.remove(); mapRef.current = null; };
+  }, []);
 
+  // Actualizar marcadores y ruta cuando cambian datos
   useEffect(() => {
-    const handler = (e: MessageEvent) => {
-      try {
-        const d = JSON.parse(e.data);
-        if (d.type === 'locationSelected' && onLocationSelect) onLocationSelect(d.lat, d.lng);
-      } catch {}
-    };
-    window.addEventListener('message', handler);
-    return () => window.removeEventListener('message', handler);
-  }, [onLocationSelect]);
+    if (!mapRef.current || !mapLoaded) return;
+    const map = mapRef.current;
+
+    import('@maptiler/sdk').then(({ Marker, Popup, LngLatBounds }) => {
+      // Limpiar marcadores anteriores
+      markersRef.current.forEach(m => m.remove());
+      markersRef.current = [];
+
+      const addMarker = (lat: number, lng: number, emoji: string, color: string, popupHtml?: string) => {
+        const el = document.createElement('div');
+        el.style.cssText = `width:38px;height:38px;border-radius:50%;background:${color};border:3px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,0.4);display:flex;align-items:center;justify-content:center;font-size:18px;cursor:pointer`;
+        el.textContent = emoji;
+        const m = new Marker({ element: el }).setLngLat([lng, lat]);
+        if (popupHtml) m.setPopup(new Popup({ offset: 25 }).setHTML(popupHtml));
+        m.addTo(map);
+        markersRef.current.push(m);
+        return m;
+      };
+
+      // Marcador origen
+      addMarker(originLat, originLng, '📍', '#00c8a0', '<b>Tu ubicación</b>');
+
+      // Marcador destino
+      if (destination) {
+        addMarker(destination.lat, destination.lng, '🏁', '#FFD700', '<b>Destino</b>');
+      }
+
+      // Marcador conductor
+      if (driverPos) {
+        addMarker(driverPos.lat, driverPos.lng, '🚕', '#facc15',
+          `<b>${driver?.name || 'Tu conductor'}</b><br>${driver?.car || ''}`);
+      }
+
+      // Vehículos disponibles (cuando no hay viaje activo)
+      if (!destination && !driverPos) {
+        const vehicles = [
+          { lat: originLat+0.003, lng: originLng+0.004, name:'Marcos N.', car:'Toyota Corolla', rating:'4.9', type:'taxi', eta:'2 min', emoji:'🚕', color:'#FFD700' },
+          { lat: originLat-0.004, lng: originLng+0.002, name:'Jose O.', car:'Hyundai Elantra', rating:'4.7', type:'comfort', eta:'4 min', emoji:'🚗', color:'#22C55E' },
+          { lat: originLat+0.002, lng: originLng-0.005, name:'Luis M.', car:'Kia K5 SUV', rating:'4.8', type:'suv', eta:'6 min', emoji:'🚙', color:'#8B5CF6' },
+          { lat: originLat-0.002, lng: originLng-0.003, name:'Ana M.', car:'Nissan Versa', rating:'4.9', type:'mujer', eta:'5 min', emoji:'🚗', color:'#EC4899' },
+          { lat: originLat+0.005, lng: originLng+0.001, name:'Pedro E.', car:'Honda CB500', rating:'4.6', type:'moto', eta:'3 min', emoji:'🏍️', color:'#F97316' },
+          { lat: originLat-0.001, lng: originLng+0.006, name:'Carlos B.', car:'Toyota Hiace', rating:'4.7', type:'xl', eta:'7 min', emoji:'🚐', color:'#3B82F6' },
+        ];
+        const filtered = vehicleFilter && vehicleFilter !== 'all'
+          ? vehicles.filter(v => v.type === vehicleFilter)
+          : vehicles;
+        filtered.forEach(v => {
+          addMarker(v.lat, v.lng, v.emoji, v.color,
+            `<div style="font-family:sans-serif;min-width:130px"><b style="font-size:13px">${v.name}</b><br><span style="color:#666;font-size:11px">${v.car}</span><br><span style="color:#f59e0b">⭐ ${v.rating}</span> · <span style="color:#10B981">⏱ ${v.eta}</span></div>`
+          );
+        });
+      }
+
+      // Ruta con OSRM
+      if (destination) {
+        // Eliminar ruta anterior
+        if (routeLayerRef.current) {
+          try { map.removeLayer('route-line'); map.removeSource('route'); } catch {}
+          routeLayerRef.current = false;
+        }
+        const from = `${originLng},${originLat}`;
+        const to = `${destination.lng},${destination.lat}`;
+        fetch(`https://router.project-osrm.org/route/v1/driving/${from};${to}?overview=full&geometries=geojson`)
+          .then(r => r.json())
+          .then(data => {
+            const geometry = data.routes?.[0]?.geometry;
+            if (!geometry) return;
+            map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {}, geometry } });
+            map.addLayer({ id: 'route-line', type: 'line', source: 'route',
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: { 'line-color': '#00B4D8', 'line-width': 5, 'line-opacity': 0.85 }
+            });
+            routeLayerRef.current = true;
+            // Ajustar vista
+            const coords = geometry.coordinates;
+            const bounds = coords.reduce(
+              (b: any, c: [number,number]) => b.extend(c),
+              new LngLatBounds(coords[0], coords[0])
+            );
+            map.fitBounds(bounds, { padding: 60, duration: 1000 });
+          })
+          .catch(() => {
+            // Fallback línea recta
+            map.addSource('route', { type: 'geojson', data: { type: 'Feature', properties: {},
+              geometry: { type: 'LineString', coordinates: [[originLng,originLat],[destination.lng,destination.lat]] }
+            }});
+            map.addLayer({ id: 'route-line', type: 'line', source: 'route',
+              layout: { 'line-join': 'round', 'line-cap': 'round' },
+              paint: { 'line-color': '#00B4D8', 'line-width': 5 }
+            });
+            routeLayerRef.current = true;
+          });
+      }
+    });
+  }, [mapLoaded, origin, destination, driverPos, vehicleFilter]);
 
   return (
-    <iframe
-      ref={iframeRef}
-      srcDoc={html}
-      style={{ width:'100%', height, border:'none', borderRadius:'16px', display:'block' }}
-      sandbox="allow-scripts allow-same-origin allow-popups"
-      title="map"
-    />
+    <div style={{ position: 'relative', width: '100%', height }}>
+      <div ref={mapContainer} style={{ width: '100%', height: '100%', borderRadius: '16px' }} />
+      {!mapLoaded && (
+        <div style={{ position:'absolute', inset:0, background:'#1a2035', borderRadius:'16px',
+          display:'flex', alignItems:'center', justifyContent:'center', flexDirection:'column', gap:'8px' }}>
+          <div style={{ width:'32px', height:'32px', border:'3px solid #00c8a0', borderTopColor:'transparent',
+            borderRadius:'50%', animation:'spin 0.8s linear infinite' }}/>
+          <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.6)' }}>Cargando mapa...</span>
+        </div>
+      )}
+    </div>
   );
 };
-
 
 // Input simple para direcciones
 const AddressInput: React.FC<{

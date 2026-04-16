@@ -254,14 +254,41 @@ export const ContactProfileModal: React.FC<Props> = ({
                     </div>
                     <div style={{display:'grid',gridTemplateColumns:'1fr 1fr 1fr',gap:'2px',marginBottom:'8px'}}>
                       {[...mediaImgs, ...mediaVids].map((m:any,i) => (
-                        <div key={m.id||i} style={{aspectRatio:'1',background:'#F3F4F6',overflow:'hidden',position:'relative',cursor:'pointer'}}
-                          onClick={() => { if(m.imageUrl) { const w=window.open('','_blank'); w?.document.write(`<img src="${m.imageUrl}" style="max-width:100%;max-height:100vh;margin:auto;display:block;">`); } }}>
-                          {m.imageUrl
-                            ? <img src={m.imageUrl} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                            : <div style={{width:'100%',height:'100%',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'28px'}}>
-                                {m.text?.startsWith('🎥') ? '🎥' : '📷'}
-                              </div>
-                          }
+                        <div key={m.id||i}
+                          style={{aspectRatio:'1',background:'#e5e7eb',overflow:'hidden',position:'relative',cursor:m.imageUrl?'zoom-in':'default'}}
+                          onClick={() => {
+                            if (m.imageUrl) {
+                              // Abrir visor inline — crear overlay temporal
+                              const overlay = document.createElement('div');
+                              overlay.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.92);display:flex;align-items:center;justify-content:center;cursor:zoom-out';
+                              const img = document.createElement('img');
+                              img.src = m.imageUrl;
+                              img.style.cssText = 'max-width:95vw;max-height:90vh;object-fit:contain;border-radius:8px';
+                              overlay.appendChild(img);
+                              overlay.onclick = () => document.body.removeChild(overlay);
+                              document.body.appendChild(overlay);
+                            }
+                          }}>
+                          {m.imageUrl ? (
+                            <img src={m.imageUrl} alt="foto"
+                              style={{width:'100%',height:'100%',objectFit:'cover',display:'block'}}
+                              onError={e => { (e.target as HTMLImageElement).style.display='none'; }}
+                            />
+                          ) : m.text?.startsWith('🎥') ? (
+                            <div style={{width:'100%',height:'100%',background:'#1f2937',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'4px'}}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="1.5" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                              <span style={{fontSize:'9px',color:'#6b7280',fontWeight:'600'}}>VIDEO</span>
+                            </div>
+                          ) : (
+                            <div style={{width:'100%',height:'100%',background:'#f3f4f6',display:'flex',flexDirection:'column',alignItems:'center',justifyContent:'center',gap:'4px'}}>
+                              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                              <span style={{fontSize:'9px',color:'#9ca3af',fontWeight:'600'}}>FOTO</span>
+                            </div>
+                          )}
+                          {/* Hora en esquina */}
+                          <div style={{position:'absolute',bottom:'3px',right:'4px',fontSize:'9px',color:'rgba(255,255,255,0.85)',fontWeight:'600',textShadow:'0 1px 2px rgba(0,0,0,0.5)'}}>
+                            {m.time}
+                          </div>
                         </div>
                       ))}
                     </div>
