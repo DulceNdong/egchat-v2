@@ -2409,12 +2409,26 @@ const App: React.FC = () => {
   // Iniciar llamada con acceso a camara/microfono
 
   const startCall = async (type: 'audio' | 'video', contact: any) => {
-    const targetUserId = contact?.id?.toString() || contact?.user_id?.toString() || '';
-    // Usar WebRTC real si hay targetUserId válido
-    if (targetUserId && targetUserId.length > 5) {
-      await webrtc.startCall(type, targetUserId);
-      setActiveCall({ type, contact, status: 'calling' });
-      setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
+    // Buscar el user_id real del contacto — puede estar en distintos campos
+    const targetUserId = contact?.user_id?.toString()
+      || contact?.participant_id?.toString()
+      || contact?.id?.toString()
+      || '';
+
+    // Validar que es un UUID real (no un ID de chat demo)
+    const isRealUser = targetUserId && targetUserId.includes('-') && targetUserId.length > 20;
+    if (isRealUser) {
+      try {
+        await webrtc.startCall(type, targetUserId);
+        setActiveCall({ type, contact, status: 'calling' });
+        setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
+      } catch (err) {
+        console.error('WebRTC startCall error:', err);
+        // Fallback si WebRTC falla
+        setActiveCall({ type, contact, status: 'calling' });
+        setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
+        setTimeout(() => setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null), 2000);
+      }
     } else {
       // Fallback simulado para chats demo
       try {
@@ -4369,20 +4383,30 @@ const App: React.FC = () => {
                           );
                         })()
                       ) : msg.text?.startsWith('👤') ? (
-                        /* ── CONTACTO ── */
+                        /* ── CONTACTO — siempre abre modal con opciones ── */
                         (() => {
                           const lines = (msg.text || '').split('\n');
                           const name = lines[0].replace('👤 ', '');
                           const phone = lines[1]?.replace('📞 ', '') || '';
                           const avatar = (msg as any).contactAvatar || '';
+                          const found = allContacts.find(c => c.phone === phone || c.name === name);
+                          const isAlreadyContact = !!found;
                           return (
                             <div style={{ minWidth: '220px' }}>
-                              {/* Tarjeta contacto clickeable */}
+                              {/* Tarjeta — toca para abrir perfil o modal */}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 0 8px', cursor: 'pointer' }}
                                 onClick={() => {
-                                  // Buscar en contactos y abrir perfil
-                                  const found = allContacts.find(c => c.phone === phone || c.name === name);
-                                  if (found) setShowContactProfile({ id: found.id, title: found.name, phone: found.phone, avatarUrl: found.avatarUrl, status: found.status });
+                                  if (found) {
+                                    // Abrir perfil del contacto existente
+                                    setShowContactProfile({ id: found.id, title: found.name, phone: found.phone, avatarUrl: found.avatarUrl, status: found.status });
+                                  } else {
+                                    // Mostrar opciones para contacto nuevo
+                                    if (window.confirm(`¿Añadir a ${name} (${phone}) a tus contactos?`)) {
+                                      contactsAPI.add(undefined, phone, name)
+                                        .then(() => showToast(`✅ ${name} añadido`, 'success'))
+                                        .catch(() => showToast('No se pudo añadir.', 'error'));
+                                    }
+                                  }
                                 }}>
                                 <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
                                   {avatar
@@ -4393,23 +4417,43 @@ const App: React.FC = () => {
                                 <div style={{ flex: 1 }}>
                                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#111827' }}>{name}</div>
                                   <div style={{ fontSize: '12px', color: '#6b7280', marginTop: '1px' }}>{phone}</div>
+                                  {isAlreadyContact && <div style={{ fontSize: '11px', color: '#00c8a0', fontWeight: '600', marginTop: '2px' }}>✓ En tus contactos</div>}
                                 </div>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                               </div>
                               {/* Separador */}
                               <div style={{ height: '1px', background: 'rgba(0,0,0,0.08)', margin: '0 -12px' }}/>
-                              {/* Botón añadir */}
-                              <button
-                                onClick={() => {
-                                  if (phone) {
-                                    contactsAPI.add(undefined, phone, name)
-                                      .then(() => showToast(`✅ ${name} añadido`, 'success'))
-                                      .catch(() => showToast('No se pudo añadir el contacto.', 'error'));
-                                  }
-                                }}
-                                style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0 2px', fontSize: '13px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
-                                + Añadir a contactos
-                              </button>
+                              {/* Acciones */}
+                              <div style={{ display: 'flex', gap: '8px', padding: '8px 0 2px' }}>
+                                {!isAlreadyContact && (
+                                  <button onClick={() => {
+                                    if (phone) {
+                                      contactsAPI.add(undefined, phone, name)
+                                        .then(() => showToast(`✅ ${name} añadido`, 'success'))
+                                        .catch(() => showToast('No se pudo añadir.', 'error'));
+                                    }
+                                  }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '13px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
+                                    + Añadir
+                                  </button>
+                                )}
+                                {phone && (
+                                  <button onClick={() => { try { window.open(`tel:${phone}`); } catch {} }}
+                                    style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '13px', fontWeight: '700', color: '#3b82f6', outline: 'none', textAlign: 'center' }}>
+                                    📞 Llamar
+                                  </button>
+                                )}
+                                {isAlreadyContact && (
+                                  <button onClick={() => {
+                                    if (found && window.confirm(`¿Eliminar a ${name} de tus contactos?`)) {
+                                      contactsAPI.remove(found.id)
+                                        .then(() => { setAllContacts(prev => prev.filter(c => c.id !== found.id)); showToast(`${name} eliminado`, 'info'); })
+                                        .catch(() => showToast('No se pudo eliminar.', 'error'));
+                                    }
+                                  }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '13px', fontWeight: '700', color: '#ef4444', outline: 'none', textAlign: 'center' }}>
+                                    🗑 Eliminar
+                                  </button>
+                                )}
+                              </div>
                             </div>
                           );
                         })()
@@ -5265,13 +5309,19 @@ const App: React.FC = () => {
                   const time = chat.last_message?.created_at
                     ? new Date(chat.last_message.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'})
                     : '';
+                  // Extraer user_id real del otro participante para WebRTC
+                  const otherParticipant = !isGroup && chat.participants
+                    ? chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())
+                    : null;
+                  const otherUserId = otherParticipant?.user_id?.toString() || '';
                   return (
                     <div key={chat.id}
                       onClick={() => setSelectedChat({
                         id: chat.id, type: chat.type||'individual',
                         title: name, subtitle: lastMsg, time,
                         status: 'online', initials, color: isGroup ? '#a855f7' : '#00c8a0',
-                        avatarUrl: avatarUrl
+                        avatarUrl: avatarUrl,
+                        user_id: otherUserId, // para WebRTC
                       })}
                       style={{ background:'#fff', borderRadius:'8px', padding:'12px 10px', marginBottom:'6px', border:'1px solid #F0F2F5', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px' }}
                       onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
@@ -7171,14 +7221,28 @@ const App: React.FC = () => {
     }
   }, [webrtc.callState]);
 
-  // -- Polling llamadas entrantes --------------------------------
+  // -- Polling llamadas entrantes — solo se inicia una vez al autenticarse
   useEffect(() => {
-    if (!isAuthenticated || !currentUserId.current) return;
-    const stop = webrtc.pollIncoming(currentUserId.current, (call) => {
-      if (!activeCall && !incomingCall) setIncomingCall(call);
-    });
-    return () => { stop.then(fn => fn()); };
-  }, [isAuthenticated, activeCall, incomingCall]);
+    if (!isAuthenticated) return;
+    // Esperar a que currentUserId esté disponible
+    const startPolling = () => {
+      const uid = currentUserId.current;
+      if (!uid) {
+        // Reintentar en 2s si el userId aún no está disponible
+        const t = setTimeout(startPolling, 2000);
+        return () => clearTimeout(t);
+      }
+      const stop = webrtc.pollIncoming(uid, (call) => {
+        setIncomingCall(prev => {
+          if (prev) return prev; // ya hay una llamada entrante, no sobreescribir
+          return call;
+        });
+      });
+      return stop;
+    };
+    const cleanup = startPolling();
+    return () => { if (typeof cleanup === 'function') cleanup(); };
+  }, [isAuthenticated]); // solo depende de isAuthenticated
 
   // -- useEffects mensajeria -------------------------------------
   useEffect(() => {

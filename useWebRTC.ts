@@ -175,14 +175,16 @@ export function useWebRTC() {
     setIsCamOff(p => !p);
   }, []);
 
-  // Polling para llamadas entrantes
-  const pollIncoming = useCallback(async (myUserId: string, onIncoming: (call: any) => void) => {
+  // Polling para llamadas entrantes — retorna función de limpieza directamente
+  const pollIncoming = useCallback((myUserId: string, onIncoming: (call: any) => void) => {
+    if (!myUserId) return () => {};
     const check = async () => {
       try {
         const calls = await sigFetch(`/call/incoming/${myUserId}`);
-        if (calls.length > 0) onIncoming(calls[0]);
+        if (Array.isArray(calls) && calls.length > 0) onIncoming(calls[0]);
       } catch {}
     };
+    check(); // check inmediato al iniciar
     const id = setInterval(check, 3000);
     return () => clearInterval(id);
   }, []);
