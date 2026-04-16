@@ -318,152 +318,108 @@ const LocationIcon = ({ size=24, color='#FF4444', filled=false }: { size?:number
     <circle cx="12" cy="9" r="2.5" fill={filled?'white':'none'} stroke={color} strokeWidth="2"/>
   </svg>
 );
-// ─── ICONOS DE VEHÍCULOS SVG ÚNICOS (ESTILO UBER) ───────────────────────────
-const UberMotoIcon = ({ size=40, color='#FFD700', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="20" cy="56" r="12" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <circle cx="20" cy="56" r="5" fill="#fff"/>
-    <circle cx="60" cy="56" r="12" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <circle cx="60" cy="56" r="5" fill="#fff"/>
-    <path d="M30 56 L36 32 L46 28 L54 28 L60 40 L60 56" fill={filled?color:'none'} stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M36 32 Q38 26 44 26 Q50 26 52 32" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <path d="M54 28 L58 22 L64 22" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+// ─── ICONOS DE VEHÍCULOS SVG ÚNICOS (SILUETA SÓLIDA ESTILO UBER) ────────────
+const UberMotoIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="18" cy="46" r="13" fill={color}/>
+    <circle cx="18" cy="46" r="5" fill="#fff"/>
+    <circle cx="82" cy="46" r="13" fill={color}/>
+    <circle cx="82" cy="46" r="5" fill="#fff"/>
+    <path d="M18 46 L28 20 L48 16 L62 16 L72 30 L82 30" fill="none" stroke={color} strokeWidth="7" strokeLinecap="round" strokeLinejoin="round"/>
+    <ellipse cx="50" cy="17" rx="14" ry="5" fill={color}/>
+    <path d="M72 30 L80 20 L90 20" fill="none" stroke={color} strokeWidth="5" strokeLinecap="round"/>
+    <rect x="30" y="11" width="28" height="7" rx="3.5" fill={color}/>
   </svg>
 );
-
-const UberTaxiIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <path d="M12 50 L12 40 Q12 34 18 32 L26 24 Q32 20 40 20 L52 20 Q60 20 64 28 L68 40 L68 50" fill={filled?color:'none'} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <line x1="10" y1="50" x2="70" y2="50" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <rect x="28" y="24" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="40" y="24" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="52" y="28" width="8" height="4" rx="1" fill={color} opacity="0.15"/>
-    <circle cx="22" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="22" cy="50" r="3" fill="#fff"/>
-    <circle cx="58" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="58" cy="50" r="3" fill="#fff"/>
-    <line x1="14" y1="42" x2="66" y2="42" stroke={color} strokeWidth="1" opacity="0.3"/>
+const UberTaxiIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 44 L5 32 Q5 28 9 26 L20 14 Q26 10 36 10 L64 10 Q74 10 80 16 L90 28 L95 28 L95 44 Z" fill={color}/>
+    <path d="M22 14 L16 26 L46 26 L46 12 Q38 10 30 12 Z" fill="rgba(255,255,255,0.2)"/>
+    <rect x="48" y="12" width="22" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="72" y="16" width="12" height="10" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="24" cy="44" r="12" fill="#fff"/><circle cx="24" cy="44" r="7" fill={color}/><circle cx="24" cy="44" r="3" fill="#fff"/>
+    <circle cx="76" cy="44" r="12" fill="#fff"/><circle cx="76" cy="44" r="7" fill={color}/><circle cx="76" cy="44" r="3" fill="#fff"/>
   </svg>
 );
-
-const UberComfortIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <path d="M10 52 L10 42 Q10 36 16 34 L24 26 Q32 22 42 22 L56 22 Q66 22 70 32 L72 42 L72 52" fill={filled?color:'none'} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <line x1="8" y1="52" x2="72" y2="52" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <rect x="26" y="26" width="12" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="40" y="26" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="52" y="28" width="10" height="6" rx="1" fill={color} opacity="0.15"/>
-    <circle cx="22" cy="52" r="9" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="22" cy="52" r="3.5" fill="#fff"/>
-    <circle cx="58" cy="52" r="9" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="58" cy="52" r="3.5" fill="#fff"/>
-    <line x1="12" y1="44" x2="68" y2="44" stroke={color} strokeWidth="1.5" opacity="0.4"/>
-    <path d="M64 20 L65 23 L68 23 L65.5 25 L66.5 28 L64 26 L61.5 28 L62.5 25 L60 23 L63 23Z" fill={color} opacity="0.8"/>
+const UberComfortIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 44 L4 34 Q4 30 8 28 L18 14 Q24 8 36 8 L68 8 Q80 8 86 16 L94 30 L96 30 L96 44 Z" fill={color}/>
+    <path d="M20 14 L14 28 L48 28 L48 10 Q40 8 32 10 Z" fill="rgba(255,255,255,0.2)"/>
+    <rect x="50" y="10" width="24" height="18" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="76" y="14" width="12" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="24" cy="44" r="12" fill="#fff"/><circle cx="24" cy="44" r="7" fill={color}/><circle cx="24" cy="44" r="3" fill="#fff"/>
+    <circle cx="78" cy="44" r="12" fill="#fff"/><circle cx="78" cy="44" r="7" fill={color}/><circle cx="78" cy="44" r="3" fill="#fff"/>
+    <path d="M50 3 L51.5 6.5 L55 6.5 L52.5 8.5 L53.5 12 L50 10 L46.5 12 L47.5 8.5 L45 6.5 L48.5 6.5Z" fill="#FFD700"/>
   </svg>
 );
-
-const UberSUVIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <line x1="16" y1="16" x2="64" y2="16" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <line x1="22" y1="16" x2="22" y2="22" stroke={color} strokeWidth="2"/>
-    <line x1="58" y1="16" x2="58" y2="22" stroke={color} strokeWidth="2"/>
-    <rect x="10" y="22" width="60" height="28" rx="4" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <line x1="8" y1="50" x2="72" y2="50" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <rect x="14" y="26" width="22" height="14" rx="2" fill={color} opacity="0.15"/>
-    <rect x="40" y="26" width="22" height="14" rx="2" fill={color} opacity="0.15"/>
-    <circle cx="22" cy="50" r="10" fill={color} stroke={color} strokeWidth="2.5"/>
-    <circle cx="22" cy="50" r="4" fill="#fff"/>
-    <circle cx="58" cy="50" r="10" fill={color} stroke={color} strokeWidth="2.5"/>
-    <circle cx="58" cy="50" r="4" fill="#fff"/>
-    <rect x="6" y="42" width="6" height="6" rx="1.5" fill={color} opacity="0.4"/>
-    <rect x="68" y="42" width="6" height="6" rx="1.5" fill={color} opacity="0.4"/>
+const UberSUVIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 48 L4 20 Q4 14 10 12 L22 6 Q28 4 38 4 L72 4 Q82 4 88 10 L94 20 L96 20 L96 48 Z" fill={color}/>
+    <rect x="14" y="8" width="28" height="18" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="46" y="8" width="28" height="18" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="78" y="12" width="12" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="20" y="2" width="60" height="3" rx="1.5" fill={color}/>
+    <circle cx="24" cy="48" r="13" fill="#fff"/><circle cx="24" cy="48" r="8" fill={color}/><circle cx="24" cy="48" r="3.5" fill="#fff"/>
+    <circle cx="78" cy="48" r="13" fill="#fff"/><circle cx="78" cy="48" r="8" fill={color}/><circle cx="78" cy="48" r="3.5" fill="#fff"/>
   </svg>
 );
-
-const UberVanIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <rect x="6" y="18" width="68" height="30" rx="4" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <path d="M6 28 L6 18 L22 18 L22 28" fill="none" stroke={color} strokeWidth="1.5"/>
-    <rect x="8" y="22" width="12" height="10" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="24" y="22" width="14" height="10" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="42" y="22" width="14" height="10" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="60" y="22" width="10" height="10" rx="1.5" fill={color} opacity="0.15"/>
-    <line x1="4" y1="48" x2="76" y2="48" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <line x1="52" y1="18" x2="52" y2="48" stroke={color} strokeWidth="1.5" strokeDasharray="3,2"/>
-    <rect x="30" y="36" width="14" height="6" rx="2" fill={color}/>
-    <text x="37" y="41" fontSize="4" textAnchor="middle" fill="#fff" fontWeight="bold">XL</text>
-    <circle cx="18" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="18" cy="48" r="3" fill="#fff"/>
-    <circle cx="62" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="62" cy="48" r="3" fill="#fff"/>
+const UberVanIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 48 L4 14 Q4 8 10 6 L20 4 L80 4 Q90 4 94 12 L96 24 L96 48 Z" fill={color}/>
+    <rect x="8" y="8" width="18" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="30" y="8" width="18" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="52" y="8" width="18" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="74" y="12" width="14" height="10" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="22" cy="48" r="12" fill="#fff"/><circle cx="22" cy="48" r="7" fill={color}/><circle cx="22" cy="48" r="3" fill="#fff"/>
+    <circle cx="78" cy="48" r="12" fill="#fff"/><circle cx="78" cy="48" r="7" fill={color}/><circle cx="78" cy="48" r="3" fill="#fff"/>
   </svg>
 );
-
-const UberMiniVanIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <path d="M8 48 Q8 20 40 18 Q72 20 72 48Z" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <line x1="6" y1="48" x2="74" y2="48" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <path d="M14 48 Q14 30 26 30 L26 48" fill={color} opacity="0.15" stroke={color} strokeWidth="1.5"/>
-    <rect x="30" y="28" width="16" height="20" rx="2" fill={color} opacity="0.15"/>
-    <rect x="50" y="30" width="14" height="18" rx="2" fill={color} opacity="0.15"/>
-    <circle cx="20" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="20" cy="48" r="3" fill="#fff"/>
-    <circle cx="60" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="60" cy="48" r="3" fill="#fff"/>
-    <rect x="34" y="38" width="12" height="5" rx="1.5" fill={color}/>
-    <text x="40" y="42" fontSize="3.5" textAnchor="middle" fill="#fff" fontWeight="bold">FAM</text>
+const UberMiniVanIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 48 L4 30 Q4 18 14 12 L28 6 Q36 4 46 4 L70 4 Q82 4 88 12 L94 24 L96 28 L96 48 Z" fill={color}/>
+    <path d="M10 30 Q10 16 22 10 L22 28 Z" fill="rgba(255,255,255,0.2)"/>
+    <rect x="26" y="8" width="22" height="18" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="52" y="10" width="22" height="16" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="78" y="14" width="12" height="12" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="24" cy="48" r="12" fill="#fff"/><circle cx="24" cy="48" r="7" fill={color}/><circle cx="24" cy="48" r="3" fill="#fff"/>
+    <circle cx="76" cy="48" r="12" fill="#fff"/><circle cx="76" cy="48" r="7" fill={color}/><circle cx="76" cy="48" r="3" fill="#fff"/>
   </svg>
 );
-
-const UberMujerIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <circle cx="66" cy="14" r="7" stroke={color} strokeWidth="2" fill="none"/>
-    <line x1="66" y1="21" x2="66" y2="28" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <line x1="63" y1="25" x2="69" y2="25" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <path d="M10 52 L10 42 Q10 36 16 34 L22 26 Q28 22 36 22 L48 22 Q58 22 62 30 L66 42 L66 52" fill={filled?color:'none'} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
-    <line x1="8" y1="52" x2="68" y2="52" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <rect x="24" y="26" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="36" y="26" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <path d="M36 42 C36 40 34 39 33 41 C32 43 34 45 36 47 C38 45 40 43 39 41 C38 39 36 40 36 42Z" fill={color} opacity="0.7"/>
-    <circle cx="20" cy="52" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="20" cy="52" r="3" fill="#fff"/>
-    <circle cx="52" cy="52" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="52" cy="52" r="3" fill="#fff"/>
-    <circle cx="12" cy="28" r="1.5" fill={color} opacity="0.5"/>
-    <circle cx="16" cy="24" r="1" fill={color} opacity="0.5"/>
+const UberMujerIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M5 44 L5 32 Q5 28 9 26 L20 14 Q26 10 36 10 L64 10 Q74 10 80 16 L90 28 L95 28 L95 44 Z" fill={color}/>
+    <path d="M22 14 L16 26 L46 26 L46 12 Q38 10 30 12 Z" fill="rgba(255,255,255,0.2)"/>
+    <rect x="48" y="12" width="22" height="14" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <rect x="72" y="16" width="12" height="10" rx="2" fill="rgba(255,255,255,0.2)"/>
+    <circle cx="24" cy="44" r="12" fill="#fff"/><circle cx="24" cy="44" r="7" fill={color}/><circle cx="24" cy="44" r="3" fill="#fff"/>
+    <circle cx="76" cy="44" r="12" fill="#fff"/><circle cx="76" cy="44" r="7" fill={color}/><circle cx="76" cy="44" r="3" fill="#fff"/>
+    <circle cx="90" cy="7" r="5" fill="none" stroke={color} strokeWidth="2.5"/>
+    <line x1="90" y1="12" x2="90" y2="17" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="87" y1="15" x2="93" y2="15" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
   </svg>
 );
-
-const UberCargoIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
-    <rect x="4" y="34" width="24" height="16" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <rect x="6" y="36" width="12" height="8" rx="1.5" fill={color} opacity="0.15"/>
-    <rect x="30" y="24" width="46" height="26" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
-    <line x1="36" y1="24" x2="36" y2="50" stroke={color} strokeWidth="1.5" opacity="0.4"/>
-    <line x1="52" y1="24" x2="52" y2="50" stroke={color} strokeWidth="1.5" opacity="0.4"/>
-    <line x1="30" y1="37" x2="76" y2="37" stroke={color} strokeWidth="1.5" opacity="0.4"/>
-    <line x1="2" y1="50" x2="78" y2="50" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <rect x="44" y="40" width="18" height="7" rx="2" fill={color}/>
-    <text x="53" y="45" fontSize="4.5" textAnchor="middle" fill="#fff" fontWeight="bold">CARGO</text>
-    <circle cx="16" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="16" cy="50" r="3" fill="#fff"/>
-    <circle cx="62" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
-    <circle cx="62" cy="50" r="3" fill="#fff"/>
-    <rect x="2" y="44" width="6" height="5" rx="1.5" fill={color} opacity="0.5"/>
+const UberCargoIcon = ({ size=40, color='#1A2B4A' }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 100 60" xmlns="http://www.w3.org/2000/svg">
+    <path d="M4 48 L4 20 Q4 14 10 12 L24 8 L24 48 Z" fill={color}/>
+    <rect x="8" y="14" width="12" height="12" rx="2" fill="rgba(255,255,255,0.3)"/>
+    <rect x="26" y="6" width="70" height="42" rx="3" fill={color}/>
+    <line x1="26" y1="6" x2="26" y2="48" stroke="#fff" strokeWidth="2" opacity="0.2"/>
+    <circle cx="16" cy="48" r="12" fill="#fff"/><circle cx="16" cy="48" r="7" fill={color}/><circle cx="16" cy="48" r="3" fill="#fff"/>
+    <circle cx="72" cy="48" r="12" fill="#fff"/><circle cx="72" cy="48" r="7" fill={color}/><circle cx="72" cy="48" r="3" fill="#fff"/>
+    <circle cx="88" cy="48" r="10" fill="#fff"/><circle cx="88" cy="48" r="6" fill={color}/><circle cx="88" cy="48" r="2.5" fill="#fff"/>
   </svg>
 );
-
 const getVehicleIcon = (id: string, size=36, color='#1A2B4A', filled=false) => {
   switch(id) {
-    case 'moto':    return <UberMotoIcon size={size} color={color} filled={filled}/>;
-    case 'basic':   return <UberTaxiIcon size={size} color={color} filled={filled}/>;
-    case 'comfort': return <UberComfortIcon size={size} color={color} filled={filled}/>;
-    case 'suv':     return <UberSUVIcon size={size} color={color} filled={filled}/>;
-    case 'xl':      return <UberVanIcon size={size} color={color} filled={filled}/>;
-    case 'minivan': return <UberMiniVanIcon size={size} color={color} filled={filled}/>;
-    case 'mujer':   return <UberMujerIcon size={size} color={color} filled={filled}/>;
-    case 'cargo':   return <UberCargoIcon size={size} color={color} filled={filled}/>;
-    default:        return <UberTaxiIcon size={size} color={color} filled={filled}/>;
+    case 'moto':    return <UberMotoIcon size={size} color={color}/>;
+    case 'basic':   return <UberTaxiIcon size={size} color={color}/>;
+    case 'comfort': return <UberComfortIcon size={size} color={color}/>;
+    case 'suv':     return <UberSUVIcon size={size} color={color}/>;
+    case 'xl':      return <UberVanIcon size={size} color={color}/>;
+    case 'minivan': return <UberMiniVanIcon size={size} color={color}/>;
+    case 'mujer':   return <UberMujerIcon size={size} color={color}/>;
+    case 'cargo':   return <UberCargoIcon size={size} color={color}/>;
+    default:        return <UberTaxiIcon size={size} color={color}/>;
   }
 };
 const StarIcon = ({ size=20, filled=false, color='#FFB800' }: { size?:number; filled?:boolean; color?:string }) => (
