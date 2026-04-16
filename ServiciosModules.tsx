@@ -2149,17 +2149,37 @@ export const SaludModal: React.FC<{ onClose:()=>void; userBalance:number; onDebi
 
   const mapHtml = mapItem ? `<!DOCTYPE html><html><head>
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <link rel="stylesheet" href="https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.css"/>
+    <script src="https://cdn.maptiler.com/maptiler-sdk-js/latest/maptiler-sdk.umd.min.js"></script>
     <style>*{margin:0;padding:0}#map{width:100%;height:100vh}</style>
     </head><body><div id="map"></div><script>
-    const map = L.map('map').setView([${mapItem.lat},${mapItem.lng}],15);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19}).addTo(map);
-    const icon = L.divIcon({className:'',html:'<div style="background:#C0392B;border:3px solid #fff;border-radius:50%;width:36px;height:36px;display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:0 2px 8px rgba(0,0,0,0.4)">${mapItem.type==='hospital'||!mapItem.type?'🏥':'💊'}</div>',iconSize:[36,36],iconAnchor:[18,18]});
-    L.marker([${mapItem.lat},${mapItem.lng}],{icon}).addTo(map).bindPopup('<b>${mapItem.name}</b><br>${mapItem.address}').openPopup();
-    // Ruta desde ubicación aproximada de Malabo centro
-    fetch('https://router.project-osrm.org/route/v1/driving/8.7737,3.7523;${mapItem.lng},${mapItem.lat}?overview=full&geometries=geojson')
-      .then(r=>r.json()).then(d=>{if(d.routes&&d.routes[0]){L.geoJSON(d.routes[0].geometry,{style:{color:'#C0392B',weight:4,opacity:0.8,dashArray:'8,4'}}).addTo(map);}}).catch(()=>{});
+    maptilersdk.config.apiKey = 'bg3FUa7es7Qn1TITIWjO';
+    const map = new maptilersdk.Map({container:'map',style:maptilersdk.MapStyle.STREETS,center:[${mapItem.lng},${mapItem.lat}],zoom:15});
+    map.on('load',function(){
+      const el = document.createElement('div');
+      el.style.cssText='background:#C0392B;border:3px solid #fff;border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;font-size:20px;box-shadow:0 2px 10px rgba(0,0,0,0.4)';
+      el.textContent='${mapItem.type==='hospital'||!mapItem.type?'🏥':'💊'}';
+      new maptilersdk.Marker({element:el}).setLngLat([${mapItem.lng},${mapItem.lat}])
+        .setPopup(new maptilersdk.Popup({offset:25}).setHTML('<b>${mapItem.name}</b><br>${mapItem.address}'))
+        .addTo(map).togglePopup();
+      // Ruta desde GPS del usuario o Malabo centro
+      navigator.geolocation.getCurrentPosition(function(pos){
+        const from = pos.coords.longitude+','+pos.coords.latitude;
+        fetch('https://router.project-osrm.org/route/v1/driving/'+from+';${mapItem.lng},${mapItem.lat}?overview=full&geometries=geojson')
+          .then(r=>r.json()).then(d=>{
+            if(d.routes&&d.routes[0]){
+              map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:d.routes[0].geometry}});
+              map.addLayer({id:'route',type:'line',source:'route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#C0392B','line-width':4,'line-opacity':0.85}});
+              const coords=d.routes[0].geometry.coordinates;
+              const bounds=coords.reduce((b,c)=>b.extend(c),new maptilersdk.LngLatBounds(coords[0],coords[0]));
+              map.fitBounds(bounds,{padding:60});
+            }
+          }).catch(()=>{});
+      },function(){
+        fetch('https://router.project-osrm.org/route/v1/driving/8.7737,3.7523;${mapItem.lng},${mapItem.lat}?overview=full&geometries=geojson')
+          .then(r=>r.json()).then(d=>{if(d.routes&&d.routes[0]){map.addSource('route',{type:'geojson',data:{type:'Feature',properties:{},geometry:d.routes[0].geometry}});map.addLayer({id:'route',type:'line',source:'route',layout:{'line-join':'round','line-cap':'round'},paint:{'line-color':'#C0392B','line-width':4}});}}).catch(()=>{});
+      });
+    });
     </script></body></html>` : '';
 
   return (

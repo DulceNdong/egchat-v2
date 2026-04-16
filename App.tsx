@@ -4334,7 +4334,7 @@ const App: React.FC = () => {
                           const lng = coordMatch?.[2] || '8.7735';
                           const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
                           const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-                          const staticMapUrl = `https://staticmap.openstreetmap.de/staticmap.php?center=${lat},${lng}&zoom=15&size=300x120&markers=${lat},${lng},red`;
+                          const staticMapUrl = `https://api.maptiler.com/maps/streets-v2/static/${lng},${lat},15/300x120.png?key=bg3FUa7es7Qn1TITIWjO&markers=icon:pin-s-red+${lng},${lat}`;
                           return (
                             <div style={{ minWidth: '220px', cursor: 'pointer' }} onClick={() => window.open(mapsUrl, '_blank')}>
                               {/* Mini mapa */}
