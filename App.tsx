@@ -412,35 +412,44 @@ const App: React.FC = () => {
   const [showCreateGroupModal, setShowCreateGroupModal] = useState<boolean>(false);
   const [newGroupData, setNewGroupData] = useState<{ name: string; description: string; selectedMembers: string[] }>({ name: '', description: '', selectedMembers: [] });
 
-  // Persistir mensajes en localStorage — incluye imágenes base64 (permanentes hasta que el usuario las elimine)
+  // Persistir mensajes en localStorage — incluye imágenes comprimidas
   useEffect(() => {
     try {
       const toSave: Record<string, any[]> = {};
       for (const [k, msgs] of Object.entries(chatMessages)) {
         toSave[k] = msgs.map(m => {
           const saved: any = { ...(m as any) };
-          // Guardar imageUrl base64 — son permanentes
-          // Solo excluir blob: URLs de audio que expiran
+          // Excluir blob: URLs de audio que expiran
           if (saved.audioUrl && saved.audioUrl.startsWith('blob:')) {
-            delete saved.audioUrl; // blob URLs expiran, no guardar
+            delete saved.audioUrl;
+          }
+          // Comprimir imágenes base64 grandes a thumbnail para localStorage
+          if (saved.imageUrl && saved.imageUrl.startsWith('data:image') && saved.imageUrl.length > 50000) {
+            // Guardar versión comprimida como thumbnail
+            try {
+              const canvas = document.createElement('canvas');
+              const img = new Image();
+              img.src = saved.imageUrl;
+              canvas.width = 200; canvas.height = 160;
+              const ctx = canvas.getContext('2d');
+              if (ctx && img.complete) {
+                ctx.drawImage(img, 0, 0, 200, 160);
+                saved.imageUrl = canvas.toDataURL('image/jpeg', 0.4);
+              }
+            } catch {}
           }
           return saved;
         });
       }
-      // Intentar guardar — si falla por tamaño, guardar sin imágenes grandes
       try {
         localStorage.setItem('egchat_messages', JSON.stringify(toSave));
       } catch {
-        // Si falla (localStorage lleno), guardar sin imágenes base64
+        // Si aún falla, guardar solo mensajes de texto (sin imágenes)
         const toSaveLite: Record<string, any[]> = {};
         for (const [k, msgs] of Object.entries(toSave)) {
-          toSaveLite[k] = msgs.map((m: any) => {
-            const lite = { ...m };
-            if (lite.imageUrl?.startsWith('data:')) lite.imageUrl = ''; // placeholder
-            return lite;
-          });
+          toSaveLite[k] = msgs.filter((m: any) => !m.imageUrl || !m.imageUrl.startsWith('data:'));
         }
-        localStorage.setItem('egchat_messages', JSON.stringify(toSaveLite));
+        try { localStorage.setItem('egchat_messages', JSON.stringify(toSaveLite)); } catch {}
       }
     } catch {}
   }, [chatMessages]);
@@ -4297,16 +4306,25 @@ const App: React.FC = () => {
                           </div>
                           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={msg.from === 'me' ? '#00c8a0' : '#00b4e6'} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                         </div>
-                      ) : (msg as any).type === 'image' && (msg as any).imageUrl ? (
+                      ) : (msg as any).type === 'image' ? (
                         /* ── IMAGEN ── */
-                        <div style={{ cursor: 'zoom-in' }} onClick={() => setChatImageViewer((msg as any).imageUrl)}>
-                          <img src={(msg as any).imageUrl} alt="foto"
-                            style={{ width: '220px', height: '180px', objectFit: 'cover', display: 'block', borderRadius: '12px 12px 0 0' }} />
-                          <div style={{ padding: '4px 8px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Foto</span>
+                        (msg as any).imageUrl ? (
+                          <div style={{ cursor: 'zoom-in' }} onClick={() => setChatImageViewer((msg as any).imageUrl)}>
+                            <img src={(msg as any).imageUrl} alt="foto"
+                              style={{ width: '220px', height: '180px', objectFit: 'cover', display: 'block', borderRadius: '12px 12px 0 0' }}
+                              onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                            <div style={{ padding: '4px 8px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
+                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                              <span style={{ fontSize: '11px', color: '#9ca3af' }}>Foto</span>
+                            </div>
                           </div>
-                        </div>
+                        ) : (
+                          /* imageUrl vacío — foto no disponible (localStorage lleno) */
+                          <div style={{ width: '220px', height: '120px', background: '#f3f4f6', borderRadius: '12px 12px 0 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                            <span style={{ fontSize: '11px', color: '#9ca3af' }}>Foto no disponible</span>
+                          </div>
+                        )
                       ) : msg.text?.startsWith('📄') || msg.text?.startsWith('📎') ? (
                         /* ── DOCUMENTO / ARCHIVO ── */
                         (() => {
