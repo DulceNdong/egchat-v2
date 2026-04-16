@@ -4391,23 +4391,15 @@ const App: React.FC = () => {
                           const avatar = (msg as any).contactAvatar || '';
                           const found = allContacts.find(c => c.phone === phone || c.name === name);
                           const isAlreadyContact = !!found;
+                          // Construir objeto de perfil con los datos disponibles
+                          const contactProfile = found
+                            ? { id: found.id, title: found.name, phone: found.phone, avatarUrl: found.avatarUrl, status: found.status }
+                            : { id: phone, title: name, phone, avatarUrl: avatar, status: 'offline' as const };
                           return (
                             <div style={{ minWidth: '220px' }}>
-                              {/* Tarjeta — toca para abrir perfil o modal */}
+                              {/* Tarjeta — toca para abrir perfil completo */}
                               <div style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '6px 0 8px', cursor: 'pointer' }}
-                                onClick={() => {
-                                  if (found) {
-                                    // Abrir perfil del contacto existente
-                                    setShowContactProfile({ id: found.id, title: found.name, phone: found.phone, avatarUrl: found.avatarUrl, status: found.status });
-                                  } else {
-                                    // Mostrar opciones para contacto nuevo
-                                    if (window.confirm(`¿Añadir a ${name} (${phone}) a tus contactos?`)) {
-                                      contactsAPI.add(undefined, phone, name)
-                                        .then(() => showToast(`✅ ${name} añadido`, 'success'))
-                                        .catch(() => showToast('No se pudo añadir.', 'error'));
-                                    }
-                                  }
-                                }}>
+                                onClick={() => setShowContactProfile(contactProfile)}>
                                 <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, overflow: 'hidden', boxShadow: '0 2px 8px rgba(0,0,0,0.15)' }}>
                                   {avatar
                                     ? <img src={avatar} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
@@ -4423,8 +4415,12 @@ const App: React.FC = () => {
                               </div>
                               {/* Separador */}
                               <div style={{ height: '1px', background: 'rgba(0,0,0,0.08)', margin: '0 -12px' }}/>
-                              {/* Acciones */}
+                              {/* Acciones rápidas */}
                               <div style={{ display: 'flex', gap: '8px', padding: '8px 0 2px' }}>
+                                <button onClick={() => setShowContactProfile(contactProfile)}
+                                  style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '12px', fontWeight: '700', color: '#6b7280', outline: 'none', textAlign: 'center' }}>
+                                  👁 Ver perfil
+                                </button>
                                 {!isAlreadyContact && (
                                   <button onClick={() => {
                                     if (phone) {
@@ -4432,24 +4428,18 @@ const App: React.FC = () => {
                                         .then(() => showToast(`✅ ${name} añadido`, 'success'))
                                         .catch(() => showToast('No se pudo añadir.', 'error'));
                                     }
-                                  }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '13px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
+                                  }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '12px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
                                     + Añadir
-                                  </button>
-                                )}
-                                {phone && (
-                                  <button onClick={() => { try { window.open(`tel:${phone}`); } catch {} }}
-                                    style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '13px', fontWeight: '700', color: '#3b82f6', outline: 'none', textAlign: 'center' }}>
-                                    📞 Llamar
                                   </button>
                                 )}
                                 {isAlreadyContact && (
                                   <button onClick={() => {
-                                    if (found && window.confirm(`¿Eliminar a ${name} de tus contactos?`)) {
+                                    if (found && window.confirm(`¿Eliminar a ${name}?`)) {
                                       contactsAPI.remove(found.id)
                                         .then(() => { setAllContacts(prev => prev.filter(c => c.id !== found.id)); showToast(`${name} eliminado`, 'info'); })
                                         .catch(() => showToast('No se pudo eliminar.', 'error'));
                                     }
-                                  }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '13px', fontWeight: '700', color: '#ef4444', outline: 'none', textAlign: 'center' }}>
+                                  }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '12px', fontWeight: '700', color: '#ef4444', outline: 'none', textAlign: 'center' }}>
                                     🗑 Eliminar
                                   </button>
                                 )}
