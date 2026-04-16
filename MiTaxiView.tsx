@@ -493,7 +493,7 @@ const ServiceCard: React.FC<{
     </div>
     <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'6px', flexShrink:0 }}>
       <span style={{ fontSize:'17px', fontWeight:'700', color:'#1A2B4A' }}>{price}</span>
-      {selected && <div style={{ width:'20px', height:'20px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+      {selected && <div style={{ width:'20px', height:'20px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
         <CheckIcon size={12}/>
       </div>}
     </div>
@@ -736,7 +736,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
   const rideIconEmoji = (icon: string) => ({ moto:'🛵', taxi:'🚕', comfort:'🚙', xl:'🚐', mujer:'👩', cargo:'📦' }[icon] || '🚕');
 
   const Header = ({ title, sub, back, showSafety: sb=false }: { title:string; sub?:string; back?:()=>void; showSafety?:boolean }) => (
-    <div style={{ padding:'44px 16px 12px', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
+    <div style={{ padding:'44px 16px 12px', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', gap:'8px', flexShrink:0 }}>
       <button onClick={back||onBack} style={{ background:'rgba(0,200,160,0.15)', border:'none', borderRadius:'50%', width:'34px', height:'34px', display:'flex', alignItems:'center', justifyContent:'center', cursor:'pointer', color:'#fff', flexShrink:0 }}>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
       </button>
@@ -1210,14 +1210,14 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
   // ── MATCHED ───────────────────────────────────────────────────────────────
   if (screen === 'matched' && driver) return (
     <div style={{ height:'100vh', background:'#EEF2F7', display:'flex', flexDirection:'column' }}>
-      <Header title="Conductor encontrado" back={() => setScreen('booking')} showSafety/>
+      <Header title="¡Conductor encontrado! 🎉" back={() => setScreen('booking')} showSafety/>
       <div style={{ flex:1, overflowY:'auto', padding:'12px 16px 90px' }}>
         <div style={{ height:'220px', marginBottom:'16px', borderRadius:'16px', overflow:'hidden' }}>
           <RealMap origin={origin} destination={destination} driver={driver} status="matched"/>
         </div>
         <div style={{ background:'#FFFFFF', borderRadius:'20px', padding:'20px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'16px' }}>
-            <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:'64px', height:'64px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <UserIcon size={32} color="#fff" filled/>
             </div>
             <div style={{ flex:1 }}>
@@ -1245,9 +1245,9 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
             </div>
           </div>
           <div style={{ display:'flex', gap:'10px', marginBottom:'16px' }}>
-            <button onClick={() => { try { const {shell}=(window as any).require('electron'); shell.openExternal(`tel:${driver.phone}`); } catch { alert(`Llamando a ${driver.name} (${driver.phone})...`); }}} style={{ flex:1, background:'rgba(0,200,160,0.12)', border:'1px solid rgba(0,200,160,0.3)', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:'pointer', color:'#00B4D8', fontWeight:'700', fontSize:'13px' }}>📞 Llamar</button>
-            <button onClick={() => setShowChat(true)} style={{ flex:1, background:'rgba(59,130,246,0.12)', border:'1px solid rgba(59,130,246,0.3)', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:'pointer', color:'#60a5fa', fontWeight:'700', fontSize:'13px' }}>💬 Chat</button>
-            <button onClick={() => setShowSafety(true)} style={{ flex:1, background:'rgba(220,38,38,0.15)', border:'none', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:'pointer', color:'#ef4444' }}>🛡️ Seguridad</button>
+            <button onClick={() => { try { const {shell}=(window as any).require('electron'); shell.openExternal(`tel:${driver.phone}`); } catch { alert(`Llamando a ${driver.name} (${driver.phone})...`); }}} style={{ flex:1, background:'#dcfce7', border:'none', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:'pointer', color:'#00B4D8', fontWeight:'700', fontSize:'13px' }}>📞 Llamar</button>
+            <button onClick={() => setShowChat(true)} style={{ flex:1, background:'#dbeafe', border:'none', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:'pointer', color:'#60a5fa', fontWeight:'700', fontSize:'13px' }}>💬 Chat</button>
+            <button onClick={() => setShowSafety(true)} style={{ flex:1, background:'#fee2e2', border:'none', borderRadius:'12px', padding:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', display:'flex', alignItems:'center', justifyContent:'center', gap:'6px', cursor:'pointer', color:'#ef4444' }}>🛡️ Seguridad</button>
           </div>
           <PBtn title="Confirmar viaje" onPress={() => setScreen('onway')} type="primary" icon={<TaxiIcon size={18} color="#1E293B" filled/>}/>
         </div>
@@ -1258,7 +1258,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:500, display:'flex', alignItems:'flex-end' }}>
           <div style={{ background:'#EEF2F7', borderRadius:'24px 24px 0 0', width:'100%', height:'70vh', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+              <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center' }}>
                 <UserIcon size={20} color="#fff" filled/>
               </div>
               <div style={{ flex:1 }}>
@@ -1322,7 +1322,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         </div>
         <div style={{ background:'#FFFFFF', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
           <div style={{ display:'flex', alignItems:'center', gap:'12px', marginBottom:'12px' }}>
-            <div style={{ width:'48px', height:'48px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+            <div style={{ width:'48px', height:'48px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
               <UserIcon size={24} color="#fff" filled/>
             </div>
             <div style={{ flex:1 }}>
@@ -1395,7 +1395,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         <div style={{ position:'fixed', inset:0, background:'rgba(0,0,0,0.45)', zIndex:500, display:'flex', alignItems:'flex-end' }}>
           <div style={{ background:'#EEF2F7', borderRadius:'24px 24px 0 0', width:'100%', height:'65vh', display:'flex', flexDirection:'column' }}>
             <div style={{ display:'flex', alignItems:'center', gap:'10px', padding:'16px 20px', borderBottom:'1px solid rgba(255,255,255,0.08)' }}>
-              <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center' }}><UserIcon size={20} color="#fff" filled/></div>
+              <div style={{ width:'40px', height:'40px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center' }}><UserIcon size={20} color="#fff" filled/></div>
               <div style={{ flex:1 }}><div style={{ fontSize:'15px', fontWeight:'700', color:'#1A2B4A' }}>{driver.name}</div><div style={{ fontSize:'11px', color: driverArrivalCountdown === 0 ? '#00c8a0' : '#00B4D8' }}>● {driverArrivalCountdown === 0 ? 'Ha llegado' : 'En camino'}</div></div>
               <button onClick={() => setShowChat(false)} style={{ background:'#EFF6FF', border:'none', borderRadius:'50%', width:'32px', height:'32px', color:'#1A2B4A', cursor:'pointer', fontSize:'16px' }}>✕</button>
             </div>
@@ -1596,7 +1596,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
     <div style={{ height:'100vh', background:'#EEF2F7', display:'flex', flexDirection:'column' }}>
       <Header title="Califica tu viaje"/>
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px' }}>
-        <div style={{ width:'72px', height:'72px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'16px' }}>
+        <div style={{ width:'72px', height:'72px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'16px' }}>
           <UserIcon size={36} color="#fff" filled/>
         </div>
         <div style={{ fontSize:'18px', fontWeight:'800', color:'#fff', marginBottom:'4px' }}>{driver.name}</div>
@@ -1624,7 +1624,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
   if (screen === 'completed') return (
     <div style={{ height:'100vh', background:'#EEF2F7', display:'flex', flexDirection:'column' }}>
       <div style={{ flex:1, display:'flex', flexDirection:'column', alignItems:'center', justifyContent:'center', padding:'24px' }}>
-        <div style={{ width:'80px', height:'80px', borderRadius:'50%', background:'linear-gradient(135deg,#48CAE4,#0096C7)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'20px', boxShadow:'0 8px 32px rgba(0,200,160,0.3)' }}>
+        <div style={{ width:'80px', height:'80px', borderRadius:'50%', background:'linear-gradient(135deg,#0096C7,#48CAE4)', display:'flex', alignItems:'center', justifyContent:'center', marginBottom:'20px', boxShadow:'0 8px 32px rgba(0,200,160,0.3)' }}>
           <CheckIcon size={36}/>
         </div>
         <div style={{ fontSize:'22px', fontWeight:'800', color:'#fff', marginBottom:'8px' }}>Viaje completado</div>
@@ -1951,7 +1951,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
             </div>
           </div>
           <button onClick={() => { setDriverEarnings(p => p+activeRequest.price); setDriverTripsToday(p => p+1); setActiveRequest(null); setScreen('driver-home'); }}
-            style={{ width:'100%', padding:'16px', background:'linear-gradient(135deg,#48CAE4,#0096C7)', border:'none', borderRadius:'14px', color:'#fff', fontSize:'15px', fontWeight:'800', cursor:'pointer' }}>
+            style={{ width:'100%', padding:'16px', background:'linear-gradient(135deg,#0096C7,#48CAE4)', border:'none', borderRadius:'14px', color:'#fff', fontSize:'15px', fontWeight:'800', cursor:'pointer' }}>
             Completar viaje
           </button>
         </div>
@@ -1999,7 +1999,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
             <div style={{ fontSize:'15px', fontWeight:'800', color:'#facc15' }}>{h.amount.toLocaleString()} XAF</div>
           </div>
         ))}
-        <button onClick={() => { if(window.confirm(`¿Retirar ${driverEarnings.toLocaleString()} XAF a tu cuenta bancaria?`)){ alert('✅ Retiro solicitado. Recibirás el dinero en 24-48h.'); setDriverEarnings(0); }}} style={{ width:'100%', marginTop:'8px', padding:'16px', background:'linear-gradient(135deg,#48CAE4,#0096C7)', border:'none', borderRadius:'14px', color:'#fff', fontSize:'15px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
+        <button onClick={() => { if(window.confirm(`¿Retirar ${driverEarnings.toLocaleString()} XAF a tu cuenta bancaria?`)){ alert('✅ Retiro solicitado. Recibirás el dinero en 24-48h.'); setDriverEarnings(0); }}} style={{ width:'100%', marginTop:'8px', padding:'16px', background:'linear-gradient(135deg,#0096C7,#48CAE4)', border:'none', borderRadius:'14px', color:'#fff', fontSize:'15px', fontWeight:'800', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px' }}>
           <WalletIcon size={20} color="#fff" filled/> Retirar a cuenta bancaria
         </button>
       </div>
