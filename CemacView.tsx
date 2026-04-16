@@ -1,4 +1,5 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { useGPS, distanceKm } from './useGPS';
 
 type Lang = 'ES' | 'FR' | 'EN' | 'AR';
 type CountryCode = 'GQ' | 'CM' | 'GA' | 'CG' | 'CF' | 'TD';
@@ -190,6 +191,15 @@ export const CemacView: React.FC<{ onBack?: ()=>void }> = ({ onBack }) => {
   const [query,   setQuery]   = useState('');
   const [mapAtm,  setMapAtm]  = useState<typeof ATMS[0] | null>(null);
   const [openNews,setOpenNews]= useState<string|null>(null);
+
+  // GPS — ordenar cajeros por proximidad
+  const { position: gpsPos } = useGPS({ watch: false, highAccuracy: false });
+  const sortedAtms = gpsPos
+    ? [...ATMS].sort((a, b) =>
+        distanceKm(gpsPos.lat, gpsPos.lng, a.lat, a.lng) -
+        distanceKm(gpsPos.lat, gpsPos.lng, b.lat, b.lng)
+      )
+    : ATMS;
   const [xaf,     setXaf]     = useState('');
   const [cur,     setCur]     = useState('EUR');
   const [modal,   setModal]   = useState<'send'|'deposit'|'withdraw'|null>(null);
@@ -456,13 +466,24 @@ export const CemacView: React.FC<{ onBack?: ()=>void }> = ({ onBack }) => {
     // ── CAJEROS ────────────────────────────────────────────────────────────────
     if (tab === 'cajeros') return (
       <div style={{ padding:'12px 14px 90px', display:'flex', flexDirection:'column', gap:12 }}>
-        {ATMS.map(a => (
+        {gpsPos && (
+          <div style={{ background:'#f0fdf4', borderRadius:'10px', padding:'8px 12px', fontSize:'12px', color:'#16a34a', fontWeight:'600', display:'flex', alignItems:'center', gap:'6px' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M1 12h4M19 12h4"/></svg>
+            Ordenados por proximidad a tu ubicación
+          </div>
+        )}
+        {sortedAtms.map(a => {
+          const dist = gpsPos ? distanceKm(gpsPos.lat, gpsPos.lng, a.lat, a.lng) : null;
+          return (
           <div key={a.id} style={{ background:'#fff', borderRadius:18, padding:16, boxShadow:'0 1px 4px rgba(0,0,0,0.07)' }}>
             <div style={{ display:'flex', alignItems:'center', gap:12, marginBottom:10 }}>
               <div style={{ width:46, height:46, borderRadius:14, background:a.ok?'#F0FDF4':'#FFF1F2', display:'flex', alignItems:'center', justifyContent:'center', fontSize:22, flexShrink:0 }}>🏧</div>
               <div style={{ flex:1 }}>
                 <div style={{ fontWeight:700, fontSize:15, color:'#111', marginBottom:4 }}>{a.bank}</div>
-                <Chip label={a.ok?t.available:t.unavailable} bg={a.ok?'#F0FDF4':'#FFF1F2'} color={a.ok?'#16A34A':'#DC2626'} />
+                <div style={{ display:'flex', alignItems:'center', gap:'6px' }}>
+                  <Chip label={a.ok?t.available:t.unavailable} bg={a.ok?'#F0FDF4':'#FFF1F2'} color={a.ok?'#16A34A':'#DC2626'} />
+                  {dist !== null && <span style={{ fontSize:'11px', color:'#6b7280', fontWeight:'600' }}>📍 {dist < 1 ? `${Math.round(dist*1000)}m` : `${dist.toFixed(1)}km`}</span>}
+                </div>
               </div>
             </div>
             <div style={{ fontSize:12, color:'#666', marginBottom:10 }}>📍 {a.addr}</div>
@@ -473,7 +494,8 @@ export const CemacView: React.FC<{ onBack?: ()=>void }> = ({ onBack }) => {
             </div>
             <button onClick={() => setMapAtm(a)} style={{ width:'100%', background:grad, border:'none', borderRadius:12, padding:'11px', color:'#fff', fontWeight:600, fontSize:13, cursor:'pointer' }}>{t.viewMap}</button>
           </div>
-        ))}
+          );
+        })}
       </div>
     );
 

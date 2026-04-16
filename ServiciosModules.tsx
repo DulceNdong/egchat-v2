@@ -1,4 +1,5 @@
 ﻿import React, { useState } from 'react';
+import { useGPS, distanceKm } from './useGPS';
 
 // ─── DATOS INTERNET ───────────────────────────────────────────────────────────
 const INTERNET_PROVIDERS = [
@@ -2121,6 +2122,9 @@ export const SaludModal: React.FC<{ onClose:()=>void; userBalance:number; onDebi
   const [deliveryForm, setDeliveryForm] = React.useState({name:'',phone:'',address:'',notes:''});
   const [showMedModal, setShowMedModal] = React.useState(false);
 
+  // GPS — ordenar hospitales y farmacias por proximidad
+  const { position: gpsPos } = useGPS({ watch: false, highAccuracy: false });
+
   const medResults = medSearch.length>=2 ? MEDICAMENTOS.filter(m=>m.name.toLowerCase().includes(medSearch.toLowerCase())||m.cat.toLowerCase().includes(medSearch.toLowerCase())) : [];
   const cartTotal = medCart.reduce((s,i)=>s+i.price*i.qty,0);
   const addToCart = (m:typeof MEDICAMENTOS[0]) => setMedCart(p=>{const ex=p.find(i=>i.id===m.id);return ex?p.map(i=>i.id===m.id?{...i,qty:i.qty+1}:i):[...p,{id:m.id,name:m.name,qty:1,price:m.price}];});
@@ -2130,6 +2134,12 @@ export const SaludModal: React.FC<{ onClose:()=>void; userBalance:number; onDebi
     (cityFilter==='Todos'||h.city===cityFilter) &&
     (!search || h.name.toLowerCase().includes(search.toLowerCase()) || h.specialties.some(s=>s.toLowerCase().includes(search.toLowerCase())))
   );
+
+  // Ordenar hospitales por distancia si hay GPS
+  const sortedHospitals = gpsPos
+    ? [...filteredHospitals].sort((a,b) => distanceKm(gpsPos.lat,gpsPos.lng,a.lat,a.lng) - distanceKm(gpsPos.lat,gpsPos.lng,b.lat,b.lng))
+    : filteredHospitals;
+
   const [pharmCity, setPharmCity] = React.useState('Malabo');
   const [pharmBarrio, setPharmBarrio] = React.useState('Todos');
   const filteredPharmacies = PHARMACIES.filter(f =>
@@ -2245,7 +2255,7 @@ export const SaludModal: React.FC<{ onClose:()=>void; userBalance:number; onDebi
 
           {/* HOSPITALES */}
           {tab==='hospitales'&&<div>
-            {filteredHospitals.map(h=>(
+            {sortedHospitals.map(h=>(
               <div key={h.id} style={{background:'#fff',borderRadius:'14px',marginBottom:'10px',overflow:'hidden',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',border:'1px solid #F0F2F5'}}>
                 <div style={{padding:'14px',display:'flex',alignItems:'flex-start',gap:'12px'}}>
                   <div style={{width:'40px',height:'40px',borderRadius:'10px',background:'transparent',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0,color:'#C0392B'}}><svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='1.8' strokeLinecap='round' strokeLinejoin='round'><path d='M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z'/><polyline points='9 22 9 12 15 12 15 22'/></svg></div>
