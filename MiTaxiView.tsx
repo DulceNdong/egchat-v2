@@ -120,7 +120,7 @@ const RealMap: React.FC<{
   useEffect(() => {
     if (!mapContainer.current || mapRef.current) return;
     import('@maptiler/sdk').then(({ Map, config, MapStyle }) => {
-      config.apiKey = 'YOUR_MAPTILER_KEY'; // Reemplaza con tu key de cloud.maptiler.com
+      config.apiKey = 'bg3FUa7es7Qn1TITIWjO';
       const map = new Map({
         container: mapContainer.current!,
         style: MapStyle.STREETS,

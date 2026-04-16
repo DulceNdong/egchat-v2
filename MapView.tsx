@@ -4,7 +4,7 @@ import * as maptilersdk from '@maptiler/sdk';
 import '@maptiler/sdk/dist/maptiler-sdk.css';
 
 // API Key de MapTiler — gratis en cloud.maptiler.com
-const MAPTILER_KEY = 'get_your_key_at_cloud.maptiler.com';
+const MAPTILER_KEY = 'bg3FUa7es7Qn1TITIWjO';
 
 maptilersdk.config.apiKey = MAPTILER_KEY;
 
