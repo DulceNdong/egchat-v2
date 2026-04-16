@@ -405,6 +405,14 @@ const App: React.FC = () => {
     setSoundSettings(updated);
     saveSoundSettings(updated);
   };
+  // Tonos personalizados subidos por el usuario
+  const [customTones, setCustomTones] = React.useState<Array<{id:string; name:string; url:string; type:'message'|'ringtone'|'notification'}>>(() => {
+    try { const s = localStorage.getItem('egchat_custom_tones'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const saveCustomTones = (tones: typeof customTones) => {
+    setCustomTones(tones);
+    try { localStorage.setItem('egchat_custom_tones', JSON.stringify(tones)); } catch {}
+  };
   const [activityLog, setActivityLog] = useState<Array<{ id: string; action: string; description: string; timestamp: Date; type: 'login' | 'transaction' | 'security' | 'profile' }>>([
     { id: '1', action: 'Login', description: 'Inicio de sesión exitoso', timestamp: new Date(Date.now() - 3600000), type: 'login' },
     { id: '2', action: 'Transferencia', description: 'Transferencia de 25,000 XAF a María', timestamp: new Date(Date.now() - 7200000), type: 'transaction' },
@@ -6866,6 +6874,110 @@ const App: React.FC = () => {
                           )}
                         </button>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* ── TONOS PERSONALIZADOS ── */}
+                  <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ fontSize:'13px', fontWeight:'700', color:'#374151', marginBottom:'12px', textTransform:'uppercase', letterSpacing:'0.3px', display:'flex', alignItems:'center', gap:'6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                      Mis tonos personalizados
+                    </div>
+
+                    {/* Botones para subir */}
+                    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'8px', marginBottom:'14px' }}>
+                      {[
+                        { label:'Mensaje', type:'message' as const, color:'#22c55e', bg:'#f0fdf4' },
+                        { label:'Llamada', type:'ringtone' as const, color:'#3b82f6', bg:'#eff6ff' },
+                        { label:'Notif.', type:'notification' as const, color:'#a855f7', bg:'#fdf4ff' },
+                      ].map(btn => (
+                        <button key={btn.type} onClick={() => {
+                          const inp = document.createElement('input');
+                          inp.type = 'file'; inp.accept = 'audio/*'; inp.style.display = 'none';
+                          document.body.appendChild(inp);
+                          inp.onchange = () => {
+                            const file = inp.files?.[0];
+                            document.body.removeChild(inp);
+                            if (!file) return;
+                            const reader = new FileReader();
+                            reader.onload = (e) => {
+                              const url = e.target?.result as string;
+                              const name = file.name.replace(/\.[^.]+$/, '').slice(0, 30);
+                              const id = `custom_${Date.now()}`;
+                              const newTone = { id, name, url, type: btn.type };
+                              const updated = [...customTones, newTone];
+                              saveCustomTones(updated);
+                              // Seleccionar automáticamente como tono activo
+                              if (btn.type === 'message') updateSoundSetting('messageTone', id);
+                              else if (btn.type === 'ringtone') updateSoundSetting('ringtone', id);
+                              else updateSoundSetting('notificationTone', id);
+                              showToast(`✅ "${name}" añadido`, 'success');
+                            };
+                            reader.readAsDataURL(file);
+                          };
+                          inp.click();
+                        }} style={{ background: btn.bg, border:`1.5px dashed ${btn.color}40`, borderRadius:'10px', padding:'10px 6px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', fontFamily:'inherit' }}>
+                          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={btn.color} strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                          <span style={{ fontSize:'11px', fontWeight:'700', color: btn.color }}>+ {btn.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Lista de tonos subidos */}
+                    {customTones.length === 0 ? (
+                      <div style={{ textAlign:'center', padding:'16px', color:'#9ca3af', fontSize:'13px' }}>
+                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" style={{ margin:'0 auto 8px', display:'block' }}><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                        Sube tus propias canciones o sonidos
+                      </div>
+                    ) : (
+                      <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                        {customTones.map(tone => {
+                          const typeColors: Record<string,string> = { message:'#22c55e', ringtone:'#3b82f6', notification:'#a855f7' };
+                          const typeLabels: Record<string,string> = { message:'Mensaje', ringtone:'Llamada', notification:'Notif.' };
+                          const color = typeColors[tone.type] || '#6b7280';
+                          const isActive = soundSettings.messageTone === tone.id || soundSettings.ringtone === tone.id || soundSettings.notificationTone === tone.id;
+                          return (
+                            <div key={tone.id} style={{ display:'flex', alignItems:'center', gap:'10px', padding:'10px 12px', background: isActive ? `${color}10` : '#f9fafb', border: isActive ? `1.5px solid ${color}40` : '1px solid #f0f0f0', borderRadius:'10px' }}>
+                              <div style={{ width:'32px', height:'32px', borderRadius:'8px', background:`${color}20`, display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>
+                              </div>
+                              <div style={{ flex:1, minWidth:0 }}>
+                                <div style={{ fontSize:'13px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{tone.name}</div>
+                                <div style={{ fontSize:'11px', color, fontWeight:'600' }}>{typeLabels[tone.type]}</div>
+                              </div>
+                              {/* Reproducir */}
+                              <button onClick={() => { const a = new Audio(tone.url); a.volume = soundSettings.volume; a.play().catch(()=>{}); }}
+                                style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px', display:'flex' }}>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                              </button>
+                              {/* Usar como tono */}
+                              <button onClick={() => {
+                                if (tone.type === 'message') updateSoundSetting('messageTone', tone.id);
+                                else if (tone.type === 'ringtone') updateSoundSetting('ringtone', tone.id);
+                                else updateSoundSetting('notificationTone', tone.id);
+                                showToast(`✅ "${tone.name}" activado`, 'success');
+                              }} style={{ background: isActive ? color : '#f3f4f6', border:'none', borderRadius:'6px', padding:'5px 8px', cursor:'pointer', fontSize:'11px', fontWeight:'700', color: isActive ? '#fff' : '#374151' }}>
+                                {isActive ? '✓ Activo' : 'Usar'}
+                              </button>
+                              {/* Eliminar */}
+                              <button onClick={() => {
+                                const updated = customTones.filter(t => t.id !== tone.id);
+                                saveCustomTones(updated);
+                                // Si era el activo, volver al por defecto
+                                if (soundSettings.messageTone === tone.id) updateSoundSetting('messageTone', 'whatsapp');
+                                if (soundSettings.ringtone === tone.id) updateSoundSetting('ringtone', 'classic');
+                                if (soundSettings.notificationTone === tone.id) updateSoundSetting('notificationTone', 'pop');
+                              }} style={{ background:'none', border:'none', cursor:'pointer', color:'#ef4444', padding:'4px', display:'flex' }}>
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg>
+                              </button>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+
+                    <div style={{ marginTop:'10px', padding:'8px 10px', background:'#f8f9fa', borderRadius:'8px', fontSize:'11px', color:'#9ca3af', lineHeight:'1.5' }}>
+                      💡 Formatos soportados: MP3, WAV, OGG, M4A · Máx. recomendado: 30 segundos
                     </div>
                   </div>
 
