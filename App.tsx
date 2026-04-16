@@ -104,6 +104,14 @@ const App: React.FC = () => {
   const [msgNotif, setMsgNotif] = useState<{id:string; sender:string; text:string; chatId:string; avatar?:string} | null>(null);
   const msgNotifTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastMsgIds = React.useRef<Record<string, string>>({});
+  // -- Toast system --
+  const [toast, setToast] = useState<{msg:string; type:'success'|'error'|'info'} | null>(null);
+  const toastTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const showToast = React.useCallback((msg: string, type: 'success'|'error'|'info' = 'success') => {
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    setToast({ msg, type });
+    toastTimer.current = setTimeout(() => setToast(null), 3000);
+  }, []);
   const realChatsRef = React.useRef<any[]>([]);
 
   const notifyNewMessage = React.useCallback((chatId: string, text: string) => {
@@ -862,7 +870,7 @@ const App: React.FC = () => {
       setAudioChunks(chunks);
     } catch (error) {
       console.error('Error al acceder al microfono:', error);
-      alert('No se pudo acceder al microfono. Verifica los permisos.');
+      showToast('No se pudo acceder al micrófono. Verifica los permisos.', 'error');
     }
   };
 
@@ -1367,7 +1375,7 @@ const App: React.FC = () => {
     };
     setTransactionLog([...transactionLog, newLog]);
     setDailyTransactionTotal(dailyTransactionTotal + amount);
-    console.log(' Transaccin registrada en auditoraa:', newLog);
+    
   };
 
   // Requerir PIN para operacian sensible
@@ -2892,14 +2900,14 @@ const App: React.FC = () => {
                   } catch (err: any) {
                     const msg = err?.message || '';
                     if (msg.includes('no encontrado') || msg.includes('404')) {
-                      alert('No se encontró ningún usuario con ese número. Verifica que esté registrado en EGCHAT.');
+                      showToast('No se encontró ningún usuario con ese número.', 'error');
                     } else if (msg.includes('Token inválido') || msg.includes('Token expirado')) {
-                      alert('Sesión expirada. Recarga la app e inicia sesión de nuevo.');
+                      showToast('Sesión expirada. Inicia sesión de nuevo.', 'error');
                     } else if (msg.includes('ya existe') || msg.includes('409') || msg.includes('duplicate')) {
-                      alert('Este contacto ya está en tu lista.');
+                      showToast('Este contacto ya está en tu lista.', 'info');
                       setNewContactPhone(''); setNewContactName(''); setShowAddContact(false);
                     } else {
-                      alert('Error: ' + (msg || 'El servidor puede estar iniciando, intenta en unos segundos.'));
+                      showToast(msg || 'Error al añadir contacto. Intenta de nuevo.', 'error');
                     }
                   }
                 } }}
@@ -3590,7 +3598,7 @@ const App: React.FC = () => {
       <button
         onClick={(e) => {
           e.stopPropagation();
-          console.log('Botan + presionado, isMenuOpen actual:', isMenuOpen);
+          
           setIsMenuOpen(!isMenuOpen);
         }}
         style={{
@@ -4395,8 +4403,8 @@ const App: React.FC = () => {
                                 onClick={() => {
                                   if (phone) {
                                     contactsAPI.add(undefined, phone, name)
-                                      .then(() => alert(`✅ ${name} añadido a contactos`))
-                                      .catch(() => alert('No se pudo añadir'));
+                                      .then(() => showToast(`✅ ${name} añadido`, 'success'))
+                                      .catch(() => showToast('No se pudo añadir el contacto.', 'error'));
                                   }
                                 }}
                                 style={{ width: '100%', background: 'none', border: 'none', cursor: 'pointer', padding: '8px 0 2px', fontSize: '13px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
@@ -4584,7 +4592,7 @@ const App: React.FC = () => {
                           const amountStr = window.prompt(`Enviar dinero a ${sc.title}\n\nIngresa el monto en XAF:`);
                           if (!amountStr || isNaN(Number(amountStr)) || Number(amountStr) <= 0) return;
                           const amount = Number(amountStr);
-                          if (amount > userBalance) { alert('❌ Saldo insuficiente'); return; }
+                          if (amount > userBalance) { showToast('❌ Saldo insuficiente', 'error'); return; }
                           const code = Math.floor(100000 + Math.random() * 900000).toString();
                           const t = new Date();
                           const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
@@ -5799,7 +5807,7 @@ const App: React.FC = () => {
                               setBankAccounts(updatedAccounts);
                             }
                             
-                            console.log('Transferencia cancelada:', transfer.id);
+                            
                           }}
                           style={{
                             background: 'rgba(248, 113, 113, 0.1)',
@@ -6990,7 +6998,7 @@ const App: React.FC = () => {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       <button
-                        onClick={() => console.log('Email support')}
+                        onClick={() => window.open('mailto:support@egchat.com')}
                         style={{
                           width: '100%',
                           background: 'rgba(249,250,251,0.88)',
@@ -7009,7 +7017,7 @@ const App: React.FC = () => {
                         support@egchat.com
                       </button>
                       <button
-                        onClick={() => console.log('Chat support')}
+                        onClick={() => {}}
                         style={{
                           width: '100%',
                           background: 'rgba(249,250,251,0.88)',
@@ -7028,7 +7036,7 @@ const App: React.FC = () => {
                         Chat en Vivo
                       </button>
                       <button
-                        onClick={() => console.log('Phone support')}
+                        onClick={() => window.open('tel:+240222123456')}
                         style={{
                           width: '100%',
                           background: 'rgba(249,250,251,0.88)',
@@ -7195,7 +7203,7 @@ const App: React.FC = () => {
       setTimeout(async () => {
         try {
           await contactsAPI.add(undefined, addPhone, addName || undefined);
-          alert(`✅ Contacto ${addName || addPhone} añadido desde QR`);
+          showToast(`✅ ${addName || addPhone} añadido a contactos`, 'success');
         } catch {}
       }, 2000);
     }
@@ -7376,6 +7384,20 @@ const App: React.FC = () => {
       {renderTimeModal()}
       {renderActiveCall()}
 
+      {/* Toast global */}
+      {toast && (
+        <div style={{
+          position: 'fixed', bottom: '100px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 9999, background: toast.type === 'error' ? '#ef4444' : toast.type === 'info' ? '#3b82f6' : '#22c55e',
+          color: '#fff', padding: '10px 20px', borderRadius: '20px',
+          fontSize: '14px', fontWeight: '600', boxShadow: '0 4px 16px rgba(0,0,0,0.25)',
+          whiteSpace: 'nowrap', maxWidth: '90vw', textAlign: 'center',
+          animation: 'dropdownIn 0.2s ease',
+        }}>
+          {toast.msg}
+        </div>
+      )}
+
       {/* Visor de imagen inline — se abre dentro de la app */}
       {chatImageViewer && (
         <div
@@ -7519,7 +7541,7 @@ const App: React.FC = () => {
               const name = url.searchParams.get('name');
               if (phone) {
                 const result = await contactsAPI.add(undefined, phone, name || undefined);
-                alert(`✅ Contacto ${name || phone} añadido correctamente`);
+                showToast(`✅ ${name || phone} añadido a contactos`, 'success');
                 // Recargar contactos
                 const contacts = await contactsAPI.getAll();
                 if (Array.isArray(contacts)) {
@@ -7534,10 +7556,10 @@ const App: React.FC = () => {
                   })));
                 }
               } else {
-                alert('QR no reconocido como contacto EGCHAT');
+                showToast('QR no reconocido como contacto EGCHAT', 'error');
               }
             } catch {
-              alert('QR no válido o no es un contacto EGCHAT');
+              showToast('QR no válido o no es un contacto EGCHAT', 'error');
             }
           }}
         />
@@ -9531,7 +9553,7 @@ const App: React.FC = () => {
                   // Buscar usuario por teléfono
                   const users = await chatAPI.searchUsers(newChatPhone.trim());
                   if (!users || users.length === 0) {
-                    alert('Usuario no encontrado. Verifica el número.');
+                    showToast('Usuario no encontrado. Verifica el número.', 'error');
                     setNewChatSearching(false);
                     return;
                   }
@@ -9557,7 +9579,7 @@ const App: React.FC = () => {
                     loadChats();
                   }
                 } catch(err: any) {
-                  alert(err?.message || 'Error al crear el chat');
+                  showToast(err?.message || 'Error al crear el chat', 'error');
                 } finally {
                   setNewChatSearching(false);
                 }
