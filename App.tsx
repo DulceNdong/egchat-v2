@@ -19,6 +19,7 @@ import { AvatarCropModal } from './AvatarCropModal';
 import { QRScanner } from './QRScanner';
 import { QRCodeSVG } from 'qrcode.react';
 import { useWebRTC } from './useWebRTC';
+import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio } from './useSounds';
 
 interface Bank {
   id: string;
@@ -86,6 +87,7 @@ const App: React.FC = () => {
             const newest = newFromThem[newFromThem.length - 1];
             if (lastId && newest.id !== lastId) {
               notifyNewMessage(chatId, newest.text);
+              playMessageReceived(); vibrate([50, 30, 50]); // sonido + vibración doble al recibir
             }
             lastMsgIds.current[chatId] = newest.id;
           }
@@ -111,6 +113,10 @@ const App: React.FC = () => {
     if (toastTimer.current) clearTimeout(toastTimer.current);
     setToast({ msg, type });
     toastTimer.current = setTimeout(() => setToast(null), 3000);
+    // Sonido según tipo
+    if (type === 'success') playSuccess();
+    else if (type === 'error') playError();
+    else playNotification();
   }, []);
   const realChatsRef = React.useRef<any[]>([]);
 
@@ -2443,6 +2449,7 @@ const App: React.FC = () => {
     const isRealUser = targetUserId && targetUserId.includes('-') && targetUserId.length > 20;
     if (isRealUser) {
       try {
+        startDialingTone(); // tono de marcación
         await webrtc.startCall(type, targetUserId);
         setActiveCall({ type, contact, status: 'calling' });
         setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
@@ -2469,6 +2476,7 @@ const App: React.FC = () => {
   };
 
   const endCall = () => {
+    stopRingtone(); stopDialingTone(); playCallEnded(); vibrate([100, 50, 100]);
     webrtc.endCall();
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); setLocalStream(null); }
     setActiveCall(null); setCallDuration(0);
@@ -4139,6 +4147,7 @@ const App: React.FC = () => {
 
           const sendChatMessage = async () => {
             if (!currentChatInput.trim()) return;
+            playMessageSent(); vibrate(30); // sonido + vibración al enviar
             const messageText = currentChatInput.trim();
             const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time: makeTime(), status: 'pending' as const };
             addMsg(newMsg);
@@ -7251,9 +7260,11 @@ const App: React.FC = () => {
   // -- Sincronizar estado WebRTC con activeCall ------------------
   useEffect(() => {
     if (webrtc.callState === 'connected' && activeCall) {
+      stopDialingTone(); stopRingtone(); playCallConnected(); // llamada conectada
       setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null);
     }
     if (webrtc.callState === 'ended') {
+      stopDialingTone(); stopRingtone(); playCallEnded();
       setActiveCall(null); setCallDuration(0);
     }
   }, [webrtc.callState]);
@@ -7271,7 +7282,8 @@ const App: React.FC = () => {
       }
       const stop = webrtc.pollIncoming(uid, (call) => {
         setIncomingCall(prev => {
-          if (prev) return prev; // ya hay una llamada entrante, no sobreescribir
+          if (prev) return prev;
+          startRingtone(); vibrate([500, 200, 500, 200, 500]); // ringtone + vibración
           return call;
         });
       });
@@ -7424,13 +7436,16 @@ const App: React.FC = () => {
   }} />;
 
   return (
-    <div style={{
-      minHeight: '100vh',
-      height: '100vh',
-      overflow: 'hidden',
-      background: selectedWallpaper === 'none' ? '#f0f2f5' : 'transparent',
-      position: 'relative'
-    }}>
+    <div
+      onClick={unlockAudio}
+      style={{
+        minHeight: '100vh',
+        height: '100vh',
+        overflow: 'hidden',
+        background: selectedWallpaper === 'none' ? '#f0f2f5' : 'transparent',
+        position: 'relative'
+      }}
+    >
       {/* Wallpaper de fondo */}
       {renderWallpaperBg()}
       {renderWallpaperCatalog()}
@@ -7642,7 +7657,7 @@ const App: React.FC = () => {
                 </div>
                 <div style={{ display:'flex', gap:'24px', justifyContent:'center' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'8px' }}>
-                    <button onClick={() => { setIncomingCall(null); }}
+                    <button onClick={() => { stopRingtone(); playCallEnded(); vibrate(200); setIncomingCall(null); }}
                       style={{ width:'64px', height:'64px', borderRadius:'50%', background:'#ef4444', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(239,68,68,0.4)' }}>
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
                     </button>
@@ -7650,6 +7665,7 @@ const App: React.FC = () => {
                   </div>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'8px' }}>
                     <button onClick={async () => {
+                      stopRingtone(); playCallConnected(); vibrate(100);
                       const contact = { id: incomingCall.callerId, title: callerName, status: 'online', avatarUrl: callerAvatar };
                       setActiveCall({ type: incomingCall.type, contact, status: 'calling' });
                       setIncomingCall(null);
