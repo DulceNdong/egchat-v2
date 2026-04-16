@@ -257,6 +257,7 @@ const App: React.FC = () => {
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [showChatSearch, setShowChatSearch] = useState(false);
   const [chatImageViewer, setChatImageViewer] = useState<string | null>(null); // visor de imagen inline
+  const [msgContextMenu, setMsgContextMenu] = useState<{msg: any; x: number; y: number} | null>(null); // menú contextual de mensaje
   const [saludInitTab, setSaludInitTab] = useState<'hospitales'|'farmacias'|'cita'|'urgencias'>('hospitales');
   const [showSvcModal, setShowSvcModal] = useState<string | null>(null); // servicios publicos + diarios + herramientas
   const [svcStep, setSvcStep] = useState<string>('main');
@@ -4280,15 +4281,27 @@ const App: React.FC = () => {
                 {renderChatWallpaperContent()}
                 {msgs.map((msg) => (
                   <div key={msg.id} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px' }}>
-                    <div style={{
-                      maxWidth: '72%',
-                      background: msg.from === 'me' ? '#d9fdd3' : '#ffffff',
-                      borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
-                      padding: (msg as any).type === 'image' && (msg as any).imageUrl ? '4px 4px 7px' : '9px 12px 7px',
-                      boxShadow: '0 1px 2px rgba(0,0,0,0.13)',
-                      position: 'relative',
-                      overflow: 'hidden',
-                    }}>
+                    <div
+                      style={{
+                        maxWidth: '72%',
+                        background: msg.from === 'me' ? '#d9fdd3' : '#ffffff',
+                        borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        padding: (msg as any).type === 'image' && (msg as any).imageUrl ? '4px 4px 7px' : '9px 12px 7px',
+                        boxShadow: '0 1px 2px rgba(0,0,0,0.13)',
+                        position: 'relative',
+                        overflow: 'hidden',
+                        cursor: 'pointer',
+                        userSelect: 'none',
+                      }}
+                      onContextMenu={e => { e.preventDefault(); setMsgContextMenu({ msg, x: e.clientX, y: e.clientY }); }}
+                      onTouchStart={e => {
+                        const touch = e.touches[0];
+                        const timer = setTimeout(() => setMsgContextMenu({ msg, x: touch.clientX, y: touch.clientY }), 500);
+                        const cancel = () => clearTimeout(timer);
+                        e.currentTarget.addEventListener('touchend', cancel, { once: true });
+                        e.currentTarget.addEventListener('touchmove', cancel, { once: true });
+                      }}
+                    >
                       {/* ── AUDIO ── */}
                       {(msg as any).type === 'audio' && (msg as any).audioUrl ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', padding: '2px 0' }}>
@@ -7484,6 +7497,83 @@ const App: React.FC = () => {
         }}>
           {toast.msg}
         </div>
+      )}
+
+      {/* Menú contextual de mensaje — estilo WhatsApp */}
+      {msgContextMenu && (
+        <>
+          {/* Overlay para cerrar */}
+          <div style={{ position:'fixed', inset:0, zIndex:5999 }} onClick={() => setMsgContextMenu(null)}/>
+          {/* Menú */}
+          <div style={{
+            position: 'fixed',
+            left: Math.min(msgContextMenu.x, window.innerWidth - 200),
+            top: Math.min(msgContextMenu.y, window.innerHeight - 280),
+            zIndex: 6000,
+            background: '#fff',
+            borderRadius: '14px',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
+            overflow: 'hidden',
+            minWidth: '180px',
+            animation: 'dropdownIn 0.15s ease',
+          }}>
+            {/* Reacciones rápidas */}
+            <div style={{ display:'flex', gap:'4px', padding:'10px 12px', borderBottom:'1px solid #f3f4f6', justifyContent:'space-around' }}>
+              {['❤️','😂','👍','😮','😢','🙏'].map(emoji => (
+                <button key={emoji} onClick={() => {
+                  const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
+                  const t = new Date(); const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                  setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: emoji, time: tm, status: 'pending' as const }] }));
+                  setMsgContextMenu(null);
+                }} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'22px', padding:'2px', borderRadius:'8px', transition:'transform 0.1s' }}
+                  onMouseEnter={e => (e.currentTarget.style.transform='scale(1.3)')}
+                  onMouseLeave={e => (e.currentTarget.style.transform='scale(1)')}>
+                  {emoji}
+                </button>
+              ))}
+            </div>
+            {/* Opciones */}
+            {[
+              { icon:'📋', label:'Copiar', action: () => { navigator.clipboard?.writeText(msgContextMenu.msg.text || ''); showToast('Copiado', 'success'); setMsgContextMenu(null); } },
+              { icon:'↩️', label:'Responder', action: () => { setCurrentChatInput(`> ${msgContextMenu.msg.text?.slice(0,40) || ''}...\n`); setMsgContextMenu(null); } },
+              { icon:'⭐', label:'Destacar', action: () => {
+                const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
+                setStarredMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), msgContextMenu.msg.id] }));
+                showToast('Mensaje destacado', 'success'); setMsgContextMenu(null);
+              }},
+              { icon:'📤', label:'Reenviar', action: () => { showToast('Función próximamente', 'info'); setMsgContextMenu(null); } },
+              ...(msgContextMenu.msg.from === 'me' ? [
+                { icon:'🗑', label:'Eliminar', danger: true, action: () => {
+                  const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
+                  setChatMessages(prev => ({ ...prev, [cid]: (prev[cid]||[]).filter(m => m.id !== msgContextMenu.msg.id) }));
+                  // Intentar eliminar del backend
+                  if (msgContextMenu.msg.id && msgContextMenu.msg.id.includes('-')) {
+                    chatAPI.deleteMessage(msgContextMenu.msg.id).catch(() => {});
+                  }
+                  showToast('Mensaje eliminado', 'info'); setMsgContextMenu(null);
+                }}
+              ] : [
+                { icon:'🚫', label:'Eliminar para mí', danger: true, action: () => {
+                  const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
+                  setChatMessages(prev => ({ ...prev, [cid]: (prev[cid]||[]).filter(m => m.id !== msgContextMenu.msg.id) }));
+                  showToast('Mensaje eliminado', 'info'); setMsgContextMenu(null);
+                }}
+              ]),
+            ].map((item: any) => (
+              <button key={item.label} onClick={item.action} style={{
+                width:'100%', background:'none', border:'none', padding:'13px 16px',
+                display:'flex', alignItems:'center', gap:'12px', cursor:'pointer',
+                textAlign:'left', fontFamily:'inherit', borderBottom:'1px solid #f9fafb',
+                color: item.danger ? '#ef4444' : '#111827',
+              }}
+                onMouseEnter={e => e.currentTarget.style.background='#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.background='none'}>
+                <span style={{ fontSize:'18px' }}>{item.icon}</span>
+                <span style={{ fontSize:'14px', fontWeight:'500' }}>{item.label}</span>
+              </button>
+            ))}
+          </div>
+        </>
       )}
 
       {/* Visor de imagen inline — se abre dentro de la app */}
