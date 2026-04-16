@@ -19,7 +19,7 @@ import { AvatarCropModal } from './AvatarCropModal';
 import { QRScanner } from './QRScanner';
 import { QRCodeSVG } from 'qrcode.react';
 import { useWebRTC } from './useWebRTC';
-import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio } from './useSounds';
+import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio, getSoundSettings, saveSoundSettings, MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES, type SoundSettings } from './useSounds';
 
 interface Bank {
   id: string;
@@ -398,7 +398,13 @@ const App: React.FC = () => {
   const [balanceRevealing, setBalanceRevealing] = useState<boolean>(false);
 
   // Ajustes
-  const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'ayuda' | 'actividad'>('perfil');
+  const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'sonidos' | 'ayuda' | 'actividad'>('perfil');
+  const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
+  const updateSoundSetting = (key: keyof SoundSettings, value: any) => {
+    const updated = { ...soundSettings, [key]: value };
+    setSoundSettings(updated);
+    saveSoundSettings(updated);
+  };
   const [activityLog, setActivityLog] = useState<Array<{ id: string; action: string; description: string; timestamp: Date; type: 'login' | 'transaction' | 'security' | 'profile' }>>([
     { id: '1', action: 'Login', description: 'Inicio de sesión exitoso', timestamp: new Date(Date.now() - 3600000), type: 'login' },
     { id: '2', action: 'Transferencia', description: 'Transferencia de 25,000 XAF a María', timestamp: new Date(Date.now() - 7200000), type: 'transaction' },
@@ -6712,60 +6718,28 @@ const App: React.FC = () => {
             }}>
               <button
                 onClick={() => setCurrentSettingsTab('perfil')}
-                style={{
-                  padding: '8px 14px',
-                  background: currentSettingsTab === 'perfil' ? 'rgba(0,200,160,0.15)' : '#f3f4f6',
-                  border: currentSettingsTab === 'perfil' ? '1.5px solid rgba(0,200,160,0.5)' : '1px solid rgba(0,0,0,0.08)',
-                  borderRadius: '8px',
-                  color: currentSettingsTab === 'perfil' ? '#00c8a0' : '#374151',
-                  fontSize: '14px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '5px'
-                }}
+                style={{ padding: '8px 14px', background: currentSettingsTab === 'perfil' ? 'rgba(0,200,160,0.15)' : '#f3f4f6', border: currentSettingsTab === 'perfil' ? '1.5px solid rgba(0,200,160,0.5)' : '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', color: currentSettingsTab === 'perfil' ? '#00c8a0' : '#374151', fontSize: '14px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '5px' }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 Perfil
               </button>
               <button
+                onClick={() => setCurrentSettingsTab('sonidos')}
+                style={{ padding: '8px 12px', background: currentSettingsTab === 'sonidos' ? 'rgba(245,158,11,0.15)' : '#f3f4f6', border: currentSettingsTab === 'sonidos' ? '1.5px solid rgba(245,158,11,0.5)' : '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', color: currentSettingsTab === 'sonidos' ? '#f59e0b' : '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+              >
+                <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                Sonidos
+              </button>
+              <button
                 onClick={() => setCurrentSettingsTab('ayuda')}
-                style={{
-                  padding: '8px 12px',
-                  background: currentSettingsTab === 'ayuda' ? 'rgba(0,180,230,0.15)' : '#f3f4f6',
-                  border: currentSettingsTab === 'ayuda' ? '1.5px solid rgba(0,180,230,0.5)' : '1px solid rgba(0,0,0,0.08)',
-                  borderRadius: '8px',
-                  color: currentSettingsTab === 'ayuda' ? '#00b4e6' : '#374151',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
+                style={{ padding: '8px 12px', background: currentSettingsTab === 'ayuda' ? 'rgba(0,180,230,0.15)' : '#f3f4f6', border: currentSettingsTab === 'ayuda' ? '1.5px solid rgba(0,180,230,0.5)' : '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', color: currentSettingsTab === 'ayuda' ? '#00b4e6' : '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg>
                 Ayuda
               </button>
               <button
                 onClick={() => setCurrentSettingsTab('actividad')}
-                style={{
-                  padding: '8px 12px',
-                  background: currentSettingsTab === 'actividad' ? 'rgba(168,85,247,0.15)' : '#f3f4f6',
-                  border: currentSettingsTab === 'actividad' ? '1.5px solid rgba(168,85,247,0.5)' : '1px solid rgba(0,0,0,0.08)',
-                  borderRadius: '8px',
-                  color: currentSettingsTab === 'actividad' ? '#a855f7' : '#374151',
-                  fontSize: '12px',
-                  fontWeight: '600',
-                  cursor: 'pointer',
-                  outline: 'none',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px'
-                }}
+                style={{ padding: '8px 12px', background: currentSettingsTab === 'actividad' ? 'rgba(168,85,247,0.15)' : '#f3f4f6', border: currentSettingsTab === 'actividad' ? '1.5px solid rgba(168,85,247,0.5)' : '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', color: currentSettingsTab === 'actividad' ? '#a855f7' : '#374151', fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
               >
                 <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
                 Actividad
@@ -6778,6 +6752,126 @@ const App: React.FC = () => {
               overflowY: 'auto',
               overflowX: 'hidden'
             }}>
+              {/* TAB SONIDOS */}
+              {currentSettingsTab === 'sonidos' && (
+                <div style={{ display:'flex', flexDirection:'column', gap:'16px' }}>
+
+                  {/* Volumen */}
+                  <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:'10px', marginBottom:'14px' }}>
+                      <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'#fef3c7', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg>
+                      </div>
+                      <div style={{ flex:1 }}>
+                        <div style={{ fontSize:'15px', fontWeight:'700', color:'#111827' }}>Volumen</div>
+                        <div style={{ fontSize:'12px', color:'#9ca3af' }}>{Math.round(soundSettings.volume * 100)}%</div>
+                      </div>
+                    </div>
+                    <input type="range" min="0" max="1" step="0.05" value={soundSettings.volume}
+                      onChange={e => updateSoundSetting('volume', parseFloat(e.target.value))}
+                      style={{ width:'100%', accentColor:'#f59e0b', height:'4px' }}/>
+                  </div>
+
+                  {/* Vibración */}
+                  <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)', display:'flex', alignItems:'center', gap:'12px' }}>
+                    <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M2 12h1M21 12h1M4.22 4.22l.71.71M18.36 18.36l.71.71M4.22 19.78l.71-.71M18.36 5.64l.71-.71"/><circle cx="12" cy="12" r="4"/></svg>
+                    </div>
+                    <div style={{ flex:1 }}>
+                      <div style={{ fontSize:'15px', fontWeight:'700', color:'#111827' }}>Vibración</div>
+                      <div style={{ fontSize:'12px', color:'#9ca3af' }}>Al recibir mensajes y llamadas</div>
+                    </div>
+                    <div onClick={() => updateSoundSetting('vibrationEnabled', !soundSettings.vibrationEnabled)}
+                      style={{ width:'44px', height:'24px', borderRadius:'12px', background: soundSettings.vibrationEnabled ? '#22c55e' : '#d1d5db', cursor:'pointer', position:'relative', transition:'background 0.2s', flexShrink:0 }}>
+                      <div style={{ position:'absolute', top:'2px', left: soundSettings.vibrationEnabled ? '22px' : '2px', width:'20px', height:'20px', borderRadius:'50%', background:'#fff', boxShadow:'0 1px 3px rgba(0,0,0,0.2)', transition:'left 0.2s' }}/>
+                    </div>
+                  </div>
+
+                  {/* Tono de mensajes */}
+                  <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ fontSize:'13px', fontWeight:'700', color:'#374151', marginBottom:'12px', textTransform:'uppercase', letterSpacing:'0.3px', display:'flex', alignItems:'center', gap:'6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                      Tono de mensajes
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                      {MESSAGE_TONES.map(tone => (
+                        <button key={tone.id} onClick={() => { updateSoundSetting('messageTone', tone.id); if (tone.id !== 'none') tone.play(soundSettings.volume); }}
+                          style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 12px', background: soundSettings.messageTone === tone.id ? '#f0fdf4' : '#f9fafb', border: soundSettings.messageTone === tone.id ? '1.5px solid #22c55e' : '1px solid #f0f0f0', borderRadius:'10px', cursor:'pointer', outline:'none', textAlign:'left', fontFamily:'inherit' }}>
+                          <div style={{ width:'32px', height:'32px', borderRadius:'8px', background: soundSettings.messageTone === tone.id ? '#22c55e' : '#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {soundSettings.messageTone === tone.id
+                              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/></svg>
+                            }
+                          </div>
+                          <span style={{ fontSize:'14px', fontWeight: soundSettings.messageTone === tone.id ? '700' : '500', color: soundSettings.messageTone === tone.id ? '#16a34a' : '#374151', flex:1 }}>{tone.name}</span>
+                          <button onClick={e => { e.stopPropagation(); if (tone.id !== 'none') tone.play(soundSettings.volume); }}
+                            style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px', display:'flex' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                          </button>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tono de llamada */}
+                  <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ fontSize:'13px', fontWeight:'700', color:'#374151', marginBottom:'12px', textTransform:'uppercase', letterSpacing:'0.3px', display:'flex', alignItems:'center', gap:'6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.06 6.06l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                      Tono de llamada
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                      {RINGTONES.map(tone => (
+                        <button key={tone.id} onClick={() => { updateSoundSetting('ringtone', tone.id); if (tone.id !== 'none' && tone.id !== 'vibrate_only') tone.play(soundSettings.volume); }}
+                          style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 12px', background: soundSettings.ringtone === tone.id ? '#eff6ff' : '#f9fafb', border: soundSettings.ringtone === tone.id ? '1.5px solid #3b82f6' : '1px solid #f0f0f0', borderRadius:'10px', cursor:'pointer', outline:'none', textAlign:'left', fontFamily:'inherit' }}>
+                          <div style={{ width:'32px', height:'32px', borderRadius:'8px', background: soundSettings.ringtone === tone.id ? '#3b82f6' : '#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {soundSettings.ringtone === tone.id
+                              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12"/></svg>
+                            }
+                          </div>
+                          <span style={{ fontSize:'14px', fontWeight: soundSettings.ringtone === tone.id ? '700' : '500', color: soundSettings.ringtone === tone.id ? '#2563eb' : '#374151', flex:1 }}>{tone.name}</span>
+                          {tone.id !== 'none' && tone.id !== 'vibrate_only' && (
+                            <button onClick={e => { e.stopPropagation(); tone.play(soundSettings.volume); }}
+                              style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px', display:'flex' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </button>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Tono de notificación */}
+                  <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)' }}>
+                    <div style={{ fontSize:'13px', fontWeight:'700', color:'#374151', marginBottom:'12px', textTransform:'uppercase', letterSpacing:'0.3px', display:'flex', alignItems:'center', gap:'6px' }}>
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                      Tono de notificación
+                    </div>
+                    <div style={{ display:'flex', flexDirection:'column', gap:'6px' }}>
+                      {NOTIFICATION_TONES.map(tone => (
+                        <button key={tone.id} onClick={() => { updateSoundSetting('notificationTone', tone.id); if (tone.id !== 'none') tone.play(soundSettings.volume); }}
+                          style={{ display:'flex', alignItems:'center', gap:'12px', padding:'10px 12px', background: soundSettings.notificationTone === tone.id ? '#fdf4ff' : '#f9fafb', border: soundSettings.notificationTone === tone.id ? '1.5px solid #a855f7' : '1px solid #f0f0f0', borderRadius:'10px', cursor:'pointer', outline:'none', textAlign:'left', fontFamily:'inherit' }}>
+                          <div style={{ width:'32px', height:'32px', borderRadius:'8px', background: soundSettings.notificationTone === tone.id ? '#a855f7' : '#e5e7eb', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
+                            {soundSettings.notificationTone === tone.id
+                              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
+                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/></svg>
+                            }
+                          </div>
+                          <span style={{ fontSize:'14px', fontWeight: soundSettings.notificationTone === tone.id ? '700' : '500', color: soundSettings.notificationTone === tone.id ? '#7c3aed' : '#374151', flex:1 }}>{tone.name}</span>
+                          {tone.id !== 'none' && (
+                            <button onClick={e => { e.stopPropagation(); tone.play(soundSettings.volume); }}
+                              style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'4px', display:'flex' }}>
+                              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+                            </button>
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                </div>
+              )}
+
               {currentSettingsTab === 'perfil' && (
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                   {/* Tarjeta de perfil — diseño profesional centrado */}
