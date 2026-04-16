@@ -318,188 +318,152 @@ const LocationIcon = ({ size=24, color='#FF4444', filled=false }: { size?:number
     <circle cx="12" cy="9" r="2.5" fill={filled?'white':'none'} stroke={color} strokeWidth="2"/>
   </svg>
 );
-// ─── ICONOS DE VEHÍCULOS SVG ÚNICOS ──────────────────────────────────────────
-const TaxiStandardIcon = ({ size=40, color='#FFD700', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Letrero TAXI en el techo */}
-    <rect x="26" y="10" width="12" height="6" rx="1.5" fill={color}/>
-    <text x="32" y="15" fontSize="4.5" textAnchor="middle" fill="#1E293B" fontWeight="bold">TAXI</text>
-    {/* Techo inclinado sedán */}
-    <path d="M10 30 L16 20 L48 20 L54 30Z" fill={filled?color:'none'} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-    {/* Cuerpo */}
-    <rect x="6" y="30" width="52" height="13" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* 2 ventanas */}
-    <rect x="17" y="22" width="12" height="8" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="35" y="22" width="12" height="8" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Ruedas con llanta */}
-    <circle cx="17" cy="43" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="47" cy="43" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="17" cy="43" r="2.5" fill={color} opacity="0.5"/>
-    <circle cx="47" cy="43" r="2.5" fill={color} opacity="0.5"/>
-    {/* Faros */}
-    <rect x="55" y="32" width="4" height="5" rx="1" fill="#FFFDE7"/>
-    <rect x="5" y="32" width="4" height="5" rx="1" fill="#FFFDE7"/>
-  </svg>
-);
-const ComfortIcon = ({ size=40, color='#4A90E2', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Estrella premium */}
-    <path d="M32 8L34 13H39L35 16L37 21L32 18L27 21L29 16L25 13H30Z" fill="#FFD700"/>
-    {/* Techo fastback muy inclinado — berlina larga */}
-    <path d="M8 32 L14 20 L50 20 L56 32Z" fill={filled?color:'none'} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-    {/* Cuerpo largo y bajo */}
-    <rect x="4" y="32" width="56" height="11" rx="4" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* 3 ventanas largas */}
-    <rect x="15" y="22" width="13" height="10" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="30" y="22" width="11" height="10" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="43" y="24" width="9" height="8" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Ruedas grandes */}
-    <circle cx="15" cy="43" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="49" cy="43" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="15" cy="43" r="2.5" fill={color} opacity="0.5"/>
-    <circle cx="49" cy="43" r="2.5" fill={color} opacity="0.5"/>
-    {/* Franja lateral elegante */}
-    <line x1="6" y1="37" x2="58" y2="37" stroke={color} strokeWidth="1" opacity="0.4"/>
-  </svg>
-);
-const XLIcon = ({ size=40, color='#10B981', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Furgoneta alta con cabina diferenciada */}
-    <rect x="4" y="16" width="56" height="28" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Cabina delantera */}
-    <path d="M4 22 L4 16 L18 16 L18 22Z" fill={filled?color:'none'} stroke={color} strokeWidth="1.5"/>
-    {/* 3 ventanas laterales */}
-    <rect x="6" y="18" width="10" height="8" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="20" y="18" width="12" height="8" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="36" y="18" width="12" height="8" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Puerta corredera */}
-    <line x1="32" y1="16" x2="32" y2="44" stroke={color} strokeWidth="1.5" strokeDasharray="3,2"/>
-    {/* Badge XL */}
-    <rect x="50" y="20" width="8" height="6" rx="1" fill={color}/>
-    <text x="54" y="25" fontSize="5" textAnchor="middle" fill="#fff" fontWeight="bold">XL</text>
-    {/* Ruedas */}
-    <circle cx="14" cy="44" r="7" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="50" cy="44" r="7" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="14" cy="44" r="3" fill={color} opacity="0.5"/>
-    <circle cx="50" cy="44" r="3" fill={color} opacity="0.5"/>
-  </svg>
-);
-const MujerGQIcon = ({ size=40, color='#EC4899', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Símbolo femenino arriba a la derecha */}
-    <circle cx="54" cy="11" r="5.5" stroke={color} strokeWidth="2"/>
-    <line x1="54" y1="16.5" x2="54" y2="23" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <line x1="51" y1="20" x2="57" y2="20" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    {/* Techo redondeado elegante */}
-    <path d="M12 30 L18 20 L46 20 L52 30Z" fill={filled?color:'none'} stroke={color} strokeWidth="2" strokeLinejoin="round"/>
-    {/* Cuerpo */}
-    <rect x="8" y="30" width="44" height="13" rx="4" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Ventanas */}
-    <rect x="19" y="22" width="11" height="8" rx="1.5" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="33" y="22" width="11" height="8" rx="1.5" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Corazón en la puerta */}
-    <path d="M28 36 C28 34.5 26.5 33.5 25.5 35 C24.5 36.5 26.5 38.5 28 40 C29.5 38.5 31.5 36.5 30.5 35 C29.5 33.5 28 34.5 28 36Z" fill={color} opacity="0.8"/>
-    {/* Ruedas */}
-    <circle cx="16" cy="43" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="44" cy="43" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="16" cy="43" r="2.5" fill={color} opacity="0.5"/>
-    <circle cx="44" cy="43" r="2.5" fill={color} opacity="0.5"/>
-    {/* Destellos */}
-    <circle cx="8" cy="20" r="1.5" fill="#FFD700"/>
-    <circle cx="12" cy="16" r="1" fill="#FFD700"/>
-  </svg>
-);
-const CargoVehicleIcon = ({ size=40, color='#F59E0B', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Cabina del camión */}
-    <rect x="4" y="28" width="22" height="22" rx="2" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Caja de carga separada y más alta */}
-    <rect x="28" y="20" width="32" height="30" rx="2" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Ventana cabina */}
-    <rect x="6" y="30" width="14" height="10" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Líneas de carga horizontales */}
-    <line x1="32" y1="28" x2="56" y2="28" stroke={color} strokeWidth="1.5"/>
-    <line x1="32" y1="35" x2="56" y2="35" stroke={color} strokeWidth="1.5"/>
-    <line x1="32" y1="42" x2="56" y2="42" stroke={color} strokeWidth="1.5"/>
-    {/* División vertical caja */}
-    <line x1="44" y1="20" x2="44" y2="50" stroke={color} strokeWidth="1.5"/>
-    {/* Ruedas */}
-    <circle cx="13" cy="50" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="51" cy="50" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="13" cy="50" r="2.5" fill={color} opacity="0.5"/>
-    <circle cx="51" cy="50" r="2.5" fill={color} opacity="0.5"/>
-    {/* Parachoques delantero */}
-    <rect x="2" y="44" width="6" height="4" rx="1" fill={color} opacity="0.7"/>
-  </svg>
-);
-const SUVVehicleIcon = ({ size=40, color='#8B5CF6', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Barras de techo — distintivo del SUV */}
-    <line x1="16" y1="13" x2="48" y2="13" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
-    <line x1="20" y1="13" x2="20" y2="18" stroke={color} strokeWidth="2"/>
-    <line x1="44" y1="13" x2="44" y2="18" stroke={color} strokeWidth="2"/>
-    {/* Techo alto y cuadrado */}
-    <rect x="10" y="18" width="44" height="14" rx="2" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Cuerpo alto */}
-    <rect x="8" y="30" width="48" height="13" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Ventanas cuadradas grandes */}
-    <rect x="12" y="20" width="16" height="10" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    <rect x="36" y="20" width="16" height="10" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Ruedas grandes con llanta doble */}
-    <circle cx="18" cy="43" r="7" fill="#1E293B" stroke={color} strokeWidth="2.5"/>
-    <circle cx="46" cy="43" r="7" fill="#1E293B" stroke={color} strokeWidth="2.5"/>
-    <circle cx="18" cy="43" r="3" fill={color} opacity="0.5"/>
-    <circle cx="46" cy="43" r="3" fill={color} opacity="0.5"/>
-    {/* Parachoques prominente */}
-    <rect x="2" y="36" width="7" height="5" rx="1.5" fill={color} opacity="0.7"/>
-    <rect x="55" y="36" width="7" height="5" rx="1.5" fill={color} opacity="0.7"/>
-  </svg>
-);
-const MiniVanVehicleIcon = ({ size=40, color='#06B6D4', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    {/* Techo redondeado tipo monovolumen — muy diferente al SUV cuadrado */}
-    <path d="M8 32 Q8 16 32 16 Q56 16 56 32Z" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Cuerpo */}
-    <rect x="6" y="32" width="52" height="12" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2"/>
-    {/* Parabrisas inclinado */}
-    <path d="M10 32 Q10 22 20 22 L20 32Z" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Ventana central grande */}
-    <rect x="22" y="20" width="14" height="12" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Ventana trasera */}
-    <rect x="38" y="22" width="14" height="10" rx="1" fill={filled?'rgba(255,255,255,0.45)':'none'} stroke={color} strokeWidth="1.5"/>
-    {/* Ruedas */}
-    <circle cx="17" cy="44" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="47" cy="44" r="6" fill="#1E293B" stroke={color} strokeWidth="2"/>
-    <circle cx="17" cy="44" r="2.5" fill={color} opacity="0.5"/>
-    <circle cx="47" cy="44" r="2.5" fill={color} opacity="0.5"/>
-    {/* Badge MINI */}
-    <rect x="26" y="36" width="12" height="6" rx="1.5" fill={color}/>
-    <text x="32" y="41" fontSize="4.5" textAnchor="middle" fill="#fff" fontWeight="bold">MINI</text>
-  </svg>
-);
-const MotoIcon = ({ size=40, color='#FFD700' }: { size?:number; color?:string }) => (
-  <svg width={size} height={size} viewBox="0 0 64 64" fill="none">
-    <circle cx="16" cy="44" r="9" stroke={color} strokeWidth="2.5"/>
-    <circle cx="48" cy="44" r="9" stroke={color} strokeWidth="2.5"/>
-    <path d="M25 44h14M32 44V28l8-6h10l3 12H16l6-6h8l2 4" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-    <path d="M40 22l3-6h6" stroke={color} strokeWidth="2" strokeLinecap="round"/>
-    <circle cx="16" cy="44" r="4" fill="#1E293B"/>
-    <circle cx="48" cy="44" r="4" fill="#1E293B"/>
+// ─── ICONOS DE VEHÍCULOS SVG ÚNICOS (ESTILO UBER) ───────────────────────────
+const UberMotoIcon = ({ size=40, color='#FFD700', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="20" cy="56" r="12" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <circle cx="20" cy="56" r="5" fill="#fff"/>
+    <circle cx="60" cy="56" r="12" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <circle cx="60" cy="56" r="5" fill="#fff"/>
+    <path d="M30 56 L36 32 L46 28 L54 28 L60 40 L60 56" fill={filled?color:'none'} stroke={color} strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"/>
+    <path d="M36 32 Q38 26 44 26 Q50 26 52 32" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <path d="M54 28 L58 22 L64 22" fill="none" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
   </svg>
 );
 
-// Helper para obtener el icono por tipo de vehículo
-const getVehicleIcon = (id: string, size=36, color='#FFD700', filled=false) => {
+const UberTaxiIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <path d="M12 50 L12 40 Q12 34 18 32 L26 24 Q32 20 40 20 L52 20 Q60 20 64 28 L68 40 L68 50" fill={filled?color:'none'} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <line x1="10" y1="50" x2="70" y2="50" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <rect x="28" y="24" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="40" y="24" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="52" y="28" width="8" height="4" rx="1" fill={color} opacity="0.15"/>
+    <circle cx="22" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="22" cy="50" r="3" fill="#fff"/>
+    <circle cx="58" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="58" cy="50" r="3" fill="#fff"/>
+    <line x1="14" y1="42" x2="66" y2="42" stroke={color} strokeWidth="1" opacity="0.3"/>
+  </svg>
+);
+
+const UberComfortIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <path d="M10 52 L10 42 Q10 36 16 34 L24 26 Q32 22 42 22 L56 22 Q66 22 70 32 L72 42 L72 52" fill={filled?color:'none'} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <line x1="8" y1="52" x2="72" y2="52" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <rect x="26" y="26" width="12" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="40" y="26" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="52" y="28" width="10" height="6" rx="1" fill={color} opacity="0.15"/>
+    <circle cx="22" cy="52" r="9" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="22" cy="52" r="3.5" fill="#fff"/>
+    <circle cx="58" cy="52" r="9" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="58" cy="52" r="3.5" fill="#fff"/>
+    <line x1="12" y1="44" x2="68" y2="44" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+    <path d="M64 20 L65 23 L68 23 L65.5 25 L66.5 28 L64 26 L61.5 28 L62.5 25 L60 23 L63 23Z" fill={color} opacity="0.8"/>
+  </svg>
+);
+
+const UberSUVIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <line x1="16" y1="16" x2="64" y2="16" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="22" y1="16" x2="22" y2="22" stroke={color} strokeWidth="2"/>
+    <line x1="58" y1="16" x2="58" y2="22" stroke={color} strokeWidth="2"/>
+    <rect x="10" y="22" width="60" height="28" rx="4" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <line x1="8" y1="50" x2="72" y2="50" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <rect x="14" y="26" width="22" height="14" rx="2" fill={color} opacity="0.15"/>
+    <rect x="40" y="26" width="22" height="14" rx="2" fill={color} opacity="0.15"/>
+    <circle cx="22" cy="50" r="10" fill={color} stroke={color} strokeWidth="2.5"/>
+    <circle cx="22" cy="50" r="4" fill="#fff"/>
+    <circle cx="58" cy="50" r="10" fill={color} stroke={color} strokeWidth="2.5"/>
+    <circle cx="58" cy="50" r="4" fill="#fff"/>
+    <rect x="6" y="42" width="6" height="6" rx="1.5" fill={color} opacity="0.4"/>
+    <rect x="68" y="42" width="6" height="6" rx="1.5" fill={color} opacity="0.4"/>
+  </svg>
+);
+
+const UberVanIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="6" y="18" width="68" height="30" rx="4" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <path d="M6 28 L6 18 L22 18 L22 28" fill="none" stroke={color} strokeWidth="1.5"/>
+    <rect x="8" y="22" width="12" height="10" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="24" y="22" width="14" height="10" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="42" y="22" width="14" height="10" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="60" y="22" width="10" height="10" rx="1.5" fill={color} opacity="0.15"/>
+    <line x1="4" y1="48" x2="76" y2="48" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <line x1="52" y1="18" x2="52" y2="48" stroke={color} strokeWidth="1.5" strokeDasharray="3,2"/>
+    <rect x="30" y="36" width="14" height="6" rx="2" fill={color}/>
+    <text x="37" y="41" fontSize="4" textAnchor="middle" fill="#fff" fontWeight="bold">XL</text>
+    <circle cx="18" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="18" cy="48" r="3" fill="#fff"/>
+    <circle cx="62" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="62" cy="48" r="3" fill="#fff"/>
+  </svg>
+);
+
+const UberMiniVanIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <path d="M8 48 Q8 20 40 18 Q72 20 72 48Z" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <line x1="6" y1="48" x2="74" y2="48" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <path d="M14 48 Q14 30 26 30 L26 48" fill={color} opacity="0.15" stroke={color} strokeWidth="1.5"/>
+    <rect x="30" y="28" width="16" height="20" rx="2" fill={color} opacity="0.15"/>
+    <rect x="50" y="30" width="14" height="18" rx="2" fill={color} opacity="0.15"/>
+    <circle cx="20" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="20" cy="48" r="3" fill="#fff"/>
+    <circle cx="60" cy="48" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="60" cy="48" r="3" fill="#fff"/>
+    <rect x="34" y="38" width="12" height="5" rx="1.5" fill={color}/>
+    <text x="40" y="42" fontSize="3.5" textAnchor="middle" fill="#fff" fontWeight="bold">FAM</text>
+  </svg>
+);
+
+const UberMujerIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <circle cx="66" cy="14" r="7" stroke={color} strokeWidth="2" fill="none"/>
+    <line x1="66" y1="21" x2="66" y2="28" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <line x1="63" y1="25" x2="69" y2="25" stroke={color} strokeWidth="2" strokeLinecap="round"/>
+    <path d="M10 52 L10 42 Q10 36 16 34 L22 26 Q28 22 36 22 L48 22 Q58 22 62 30 L66 42 L66 52" fill={filled?color:'none'} stroke={color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"/>
+    <line x1="8" y1="52" x2="68" y2="52" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <rect x="24" y="26" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="36" y="26" width="10" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <path d="M36 42 C36 40 34 39 33 41 C32 43 34 45 36 47 C38 45 40 43 39 41 C38 39 36 40 36 42Z" fill={color} opacity="0.7"/>
+    <circle cx="20" cy="52" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="20" cy="52" r="3" fill="#fff"/>
+    <circle cx="52" cy="52" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="52" cy="52" r="3" fill="#fff"/>
+    <circle cx="12" cy="28" r="1.5" fill={color} opacity="0.5"/>
+    <circle cx="16" cy="24" r="1" fill={color} opacity="0.5"/>
+  </svg>
+);
+
+const UberCargoIcon = ({ size=40, color='#1A2B4A', filled=true }: { size?:number; color?:string; filled?:boolean }) => (
+  <svg width={size} height={size} viewBox="0 0 80 80" xmlns="http://www.w3.org/2000/svg">
+    <rect x="4" y="34" width="24" height="16" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <rect x="6" y="36" width="12" height="8" rx="1.5" fill={color} opacity="0.15"/>
+    <rect x="30" y="24" width="46" height="26" rx="3" fill={filled?color:'none'} stroke={color} strokeWidth="2.5"/>
+    <line x1="36" y1="24" x2="36" y2="50" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+    <line x1="52" y1="24" x2="52" y2="50" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+    <line x1="30" y1="37" x2="76" y2="37" stroke={color} strokeWidth="1.5" opacity="0.4"/>
+    <line x1="2" y1="50" x2="78" y2="50" stroke={color} strokeWidth="2.5" strokeLinecap="round"/>
+    <rect x="44" y="40" width="18" height="7" rx="2" fill={color}/>
+    <text x="53" y="45" fontSize="4.5" textAnchor="middle" fill="#fff" fontWeight="bold">CARGO</text>
+    <circle cx="16" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="16" cy="50" r="3" fill="#fff"/>
+    <circle cx="62" cy="50" r="8" fill={color} stroke={color} strokeWidth="2"/>
+    <circle cx="62" cy="50" r="3" fill="#fff"/>
+    <rect x="2" y="44" width="6" height="5" rx="1.5" fill={color} opacity="0.5"/>
+  </svg>
+);
+
+const getVehicleIcon = (id: string, size=36, color='#1A2B4A', filled=false) => {
   switch(id) {
-    case 'moto':    return <MotoIcon size={size} color={color}/>;
-    case 'basic':   return <TaxiStandardIcon size={size} color={color} filled={filled}/>;
-    case 'comfort': return <ComfortIcon size={size} color={color} filled={filled}/>;
-    case 'suv':     return <SUVVehicleIcon size={size} color={color} filled={filled}/>;
-    case 'xl':      return <XLIcon size={size} color={color} filled={filled}/>;
-    case 'minivan': return <MiniVanVehicleIcon size={size} color={color} filled={filled}/>;
-    case 'mujer':   return <MujerGQIcon size={size} color={color} filled={filled}/>;
-    case 'cargo':   return <CargoVehicleIcon size={size} color={color} filled={filled}/>;
-    default:        return <TaxiStandardIcon size={size} color={color} filled={filled}/>;
+    case 'moto':    return <UberMotoIcon size={size} color={color} filled={filled}/>;
+    case 'basic':   return <UberTaxiIcon size={size} color={color} filled={filled}/>;
+    case 'comfort': return <UberComfortIcon size={size} color={color} filled={filled}/>;
+    case 'suv':     return <UberSUVIcon size={size} color={color} filled={filled}/>;
+    case 'xl':      return <UberVanIcon size={size} color={color} filled={filled}/>;
+    case 'minivan': return <UberMiniVanIcon size={size} color={color} filled={filled}/>;
+    case 'mujer':   return <UberMujerIcon size={size} color={color} filled={filled}/>;
+    case 'cargo':   return <UberCargoIcon size={size} color={color} filled={filled}/>;
+    default:        return <UberTaxiIcon size={size} color={color} filled={filled}/>;
   }
 };
 const StarIcon = ({ size=20, filled=false, color='#FFB800' }: { size?:number; filled?:boolean; color?:string }) => (
@@ -905,7 +869,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'12px' }}>
           <button onClick={() => setScreen('booking')} className="taxi-action-btn"
             style={{ background:'linear-gradient(135deg,#0096C7,#48CAE4)', border:'none', borderRadius:'14px', padding:'14px 12px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', justifyContent:'center', transition:'all 0.2s ease', boxShadow:'0 4px 12px rgba(0,150,199,0.3)', fontFamily:'inherit' }}>
-            <TaxiStandardIcon size={20} color="#fff" filled/>
+            <UberTaxiIcon size={20} color="#fff" filled/>
             <span style={{ fontSize:'13px', fontWeight:'700', color:'#fff' }}>Pedir viaje</span>
           </button>
           <button onClick={() => setScreen(driverRegistered ? 'driver-home' : 'driver-register')} className="taxi-action-btn"
@@ -918,7 +882,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         {/* Stats compactos */}
         <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'6px', marginBottom:'12px' }}>
           {[
-            { v:'248', l:'Conductores', c:'#0096C7', icon:<TaxiStandardIcon size={16} color="#0096C7"/> },
+            { v:'248', l:'Conductores', c:'#0096C7', icon:<UberTaxiIcon size={16} color="#0096C7"/> },
             { v:'1.2K', l:'Viajes hoy', c:'#48CAE4', icon:<NavigationIcon size={16} color="#48CAE4"/> },
             { v:'4.9', l:'Rating', c:'#f59e0b', icon:<StarIcon size={14} filled color="#f59e0b"/> },
           ].map(s => (
@@ -1113,7 +1077,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
                   <span style={{ fontSize:'13px', color:'#8A9BB5' }}>Total estimado</span>
                   <span style={{ fontSize:'20px', fontWeight:'800', color:'#1A2B4A' }}>{finalPrice.toLocaleString()} XAF</span>
                 </div>
-                <PBtn title="Ver vehículos disponibles" onPress={() => setScreen('vehicle-select')} type="primary" icon={<TaxiStandardIcon size={20} color="#1E293B" filled/>}/>
+                <PBtn title="Ver vehículos disponibles" onPress={() => setScreen('vehicle-select')} type="primary" icon={<UberTaxiIcon size={20} color="#1E293B" filled/>}/>
               </div>
             )}
           </>
@@ -1782,7 +1746,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
           </div>
         ))}
         <div style={{ fontSize:'12px', fontWeight:'700', color:'#0096C7', textTransform:'uppercase', letterSpacing:'0.5px', marginBottom:'10px', marginTop:'16px', display:'flex', alignItems:'center', gap:'6px' }}>
-          <TaxiStandardIcon size={14} color="#0096C7"/> Datos del vehículo
+          <UberTaxiIcon size={14} color="#0096C7"/> Datos del vehículo
         </div>
         {[{key:'car',label:'Marca y modelo',placeholder:'Ej: Toyota Corolla 2019',type:'text',icon:'🚗'},{key:'plate',label:'Matrícula',placeholder:'GQ-XXXX',type:'text',icon:'🔢'}].map(f => (
           <div key={f.key} style={{ marginBottom:'10px' }}>
@@ -1886,7 +1850,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         <div style={{ background:'#FFFFFF', borderRadius:'16px', padding:'16px', marginBottom:'12px', boxShadow:'0 2px 8px rgba(0,0,0,0.05)' }}>
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'12px' }}>
             <div style={{ fontSize:'13px', fontWeight:'700', color:'#1A2B4A', display:'flex', alignItems:'center', gap:'6px' }}>
-              <TaxiStandardIcon size={14} color="#0096C7"/> Datos del vehículo
+              <UberTaxiIcon size={14} color="#0096C7"/> Datos del vehículo
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:'4px', background:'#E8F5E9', borderRadius:'20px', padding:'3px 10px' }}>
               <span style={{ fontSize:'10px' }}>🔒</span>
@@ -1908,7 +1872,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
         <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'10px', marginBottom:'12px' }}>
           <button onClick={() => setScreen('driver-requests')} className="taxi-action-btn"
             style={{ background:'linear-gradient(135deg,#0096C7,#48CAE4)', border:'none', borderRadius:'16px', padding:'16px', cursor:'pointer', textAlign:'left', transition:'all 0.2s', fontFamily:'inherit', boxShadow:'0 4px 12px rgba(0,150,199,0.3)' }}>
-            <div style={{ marginBottom:'8px' }}><TaxiStandardIcon size={26} color="#fff" filled/></div>
+            <div style={{ marginBottom:'8px' }}><UberTaxiIcon size={26} color="#fff" filled/></div>
             <div style={{ fontSize:'14px', fontWeight:'700', color:'#fff', marginBottom:'2px' }}>Solicitudes</div>
             <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.8)' }}>{requests.length} pendientes</div>
           </button>
