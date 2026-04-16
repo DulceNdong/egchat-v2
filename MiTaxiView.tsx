@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef } from 'react';
+import { useGPS } from './useGPS';
 
 // ─── TIPOS ────────────────────────────────────────────────────────────────────
 type Screen = 'home' | 'booking' | 'vehicle-select' | 'searching' | 'matched' | 'onway' | 'arrived' | 'qr-pay' | 'rating' | 'completed'
@@ -295,21 +296,6 @@ const AddressInput: React.FC<{
 };
 
 // Geolocalización real del navegador con fallback a Malabo
-const useMockGeolocation = () => {
-  const [location, setLocation] = useState<Location | null>(null);
-  useEffect(() => {
-    if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        pos => setLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude, address: 'Tu ubicación actual' }),
-        () => setLocation({ lat: 3.7523, lng: 8.7371, address: 'Centro Malabo' })
-      );
-    } else {
-      setLocation({ lat: 3.7523, lng: 8.7371, address: 'Centro Malabo' });
-    }
-  }, []);
-  return location;
-};
-
 // ─── ICONOS ───────────────────────────────────────────────────────────────────
 const TaxiIcon = ({ size=24, color='#FFD700', filled=false }: { size?:number; color?:string; filled?:boolean }) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -775,7 +761,22 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
     { id:'3', from:'Caracolas',     to:'Sipopo',         passenger:'Maria E.', price:3200, dist:'6.1 km', time:'18 min', rating:4.7 },
   ]);
 
-  const userLocation = useMockGeolocation();
+  // GPS real — posición del usuario
+  const { position: gpsPos, error: gpsError, loading: gpsLoading } = useGPS({
+    watch: true,
+    highAccuracy: true,
+    reverseGeocode: true,
+  });
+
+  // Convertir posición GPS al formato Location
+  const userLocation = gpsPos ? {
+    lat: gpsPos.lat,
+    lng: gpsPos.lng,
+    address: gpsPos.city || `${gpsPos.lat.toFixed(4)}, ${gpsPos.lng.toFixed(4)}`,
+  } : {
+    lat: 3.7523, lng: 8.7737, address: 'Centro Malabo' // fallback
+  };
+
   const finalPrice = Math.round(BASE_PRICE * rideType.multiplier * (promoApplied ? 0.85 : 1));
 
   useEffect(() => { if (userLocation && !origin) setOrigin(userLocation); }, [userLocation]);
@@ -788,7 +789,7 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
     return () => { clearInterval(iv); clearTimeout(to); };
   }, [screen]);
 
-  const reset = () => { setScreen('home'); setOrigin(userLocation||null); setDestination(null); setDriver(null); setRating(0); setPromoApplied(false); setShowSafety(false); setShowArrivalNotif(false); setDriverArrivalCountdown(null); };
+  const reset = () => { setScreen('home'); setOrigin(userLocation); setDestination(null); setDriver(null); setRating(0); setPromoApplied(false); setShowSafety(false); setShowArrivalNotif(false); setDriverArrivalCountdown(null); };
 
   // Auto-llegada del conductor en pantalla onway
   useEffect(() => {
