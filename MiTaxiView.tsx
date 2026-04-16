@@ -756,185 +756,101 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
 
   // ── HOME ──────────────────────────────────────────────────────────────────
   if (screen === 'home') return (
-    <div style={{ height:'100vh', background:'#EEF2F7', display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', overflow:'hidden' }}>
-      {/* Header rediseñado — más visual, con regreso */}
-      <div style={{ background:'linear-gradient(160deg,#0096C7 0%,#48CAE4 60%,#90E0EF 100%)', padding:'44px 16px 20px', flexShrink:0, position:'relative', overflow:'hidden' }}>
-        {/* Círculos decorativos de fondo */}
-        <div style={{ position:'absolute', top:'-30px', right:'-30px', width:'140px', height:'140px', borderRadius:'50%', background:'rgba(255,255,255,0.08)', pointerEvents:'none' }}/>
-        <div style={{ position:'absolute', bottom:'-20px', left:'-20px', width:'100px', height:'100px', borderRadius:'50%', background:'rgba(255,255,255,0.06)', pointerEvents:'none' }}/>
+    <div style={{ height:'100vh', background:'#111827', display:'flex', flexDirection:'column', fontFamily:'-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif', overflow:'hidden', position:'relative' }}>
 
-        {/* Fila superior: regreso + acciones */}
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'16px' }}>
-          <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:'6px', background:'rgba(255,255,255,0.2)', border:'none', borderRadius:'20px', padding:'6px 12px 6px 8px', cursor:'pointer', color:'#fff' }}>
+      {/* MAPA — ocupa toda la pantalla */}
+      <div style={{ position:'absolute', inset:0, zIndex:0 }}>
+        <RealMap origin={userLocation} status="idle" height="100%" vehicleFilter={rideType.id}/>
+      </div>
+
+      {/* Header flotante */}
+      <div style={{ position:'absolute', top:0, left:0, right:0, zIndex:20, padding:'48px 16px 0' }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+          <button onClick={onBack} style={{ display:'flex', alignItems:'center', gap:'6px', background:'rgba(255,255,255,0.95)', border:'none', borderRadius:'20px', padding:'8px 14px 8px 10px', cursor:'pointer', color:'#111827', boxShadow:'0 2px 12px rgba(0,0,0,0.2)' }}>
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-            <span style={{ fontSize:'12px', fontWeight:'600' }}>Inicio</span>
+            <span style={{ fontSize:'13px', fontWeight:'700' }}>Inicio</span>
           </button>
           <div style={{ display:'flex', gap:'8px' }}>
-            <button onClick={() => setShowSafety(true)} style={{ width:'34px', height:'34px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2"><path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3z"/></svg>
+            <button onClick={() => setShowSafety(true)} style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.95)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 12px rgba(0,0,0,0.2)' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth="2"><path d="M12 2L3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-3z"/></svg>
             </button>
-            <button style={{ width:'34px', height:'34px', borderRadius:'50%', background:'rgba(255,255,255,0.2)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <UserIcon size={16} color="#fff" filled/>
+            <button style={{ width:'40px', height:'40px', borderRadius:'50%', background:'rgba(255,255,255,0.95)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 2px 12px rgba(0,0,0,0.2)' }}>
+              <UserIcon size={18} color="#111827" filled/>
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Saludo */}
-        <div style={{ marginBottom:'16px' }}>
-          <div style={{ fontSize:'22px', fontWeight:'800', color:'#fff', letterSpacing:'-0.3px', marginBottom:'4px' }}>
-            ¡Hola, {userName}! 👋
-          </div>
-          <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.85)' }}>¿A dónde quieres ir hoy?</div>
+      {/* Badge conductores disponibles */}
+      <div style={{ position:'absolute', top:'110px', left:'50%', transform:'translateX(-50%)', zIndex:20 }}>
+        <div style={{ background:'rgba(17,24,39,0.85)', backdropFilter:'blur(10px)', borderRadius:'20px', padding:'6px 16px', display:'flex', alignItems:'center', gap:'6px', border:'1px solid rgba(255,255,255,0.1)' }}>
+          <div style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#00c8a0' }}/>
+          <span style={{ fontSize:'12px', color:'#fff', fontWeight:'600' }}>10 conductores disponibles</span>
+        </div>
+      </div>
+
+      {/* BOTTOM SHEET — panel inferior */}
+      <div style={{ position:'absolute', bottom:0, left:0, right:0, zIndex:20, background:'#fff', borderRadius:'24px 24px 0 0', boxShadow:'0 -8px 40px rgba(0,0,0,0.25)' }}>
+        {/* Handle */}
+        <div style={{ display:'flex', justifyContent:'center', paddingTop:'10px', paddingBottom:'4px' }}>
+          <div style={{ width:'40px', height:'4px', borderRadius:'2px', background:'#e5e7eb' }}/>
         </div>
 
-        {/* Saldo — tarjeta flotante */}
-        <div style={{ background:'rgba(255,255,255,0.18)', backdropFilter:'blur(10px)', padding:'12px 16px', borderRadius:'16px', display:'flex', alignItems:'center', justifyContent:'space-between', border:'1px solid rgba(255,255,255,0.25)' }}>
-          <div style={{ display:'flex', alignItems:'center', gap:'10px' }}>
-            <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-              <WalletIcon size={18} color="#fff" filled/>
-            </div>
+        <div style={{ padding:'12px 20px 0' }}>
+          {/* Saludo + saldo */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:'14px' }}>
             <div>
-              <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.75)', fontWeight:'600', textTransform:'uppercase', letterSpacing:'0.5px' }}>Saldo EGCHAT</div>
-              <div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>{userBalance.toLocaleString()} <span style={{ fontSize:'12px', fontWeight:'600' }}>XAF</span></div>
+              <div style={{ fontSize:'20px', fontWeight:'800', color:'#111827', letterSpacing:'-0.3px' }}>¡Hola, {userName}! 👋</div>
+              <div style={{ fontSize:'13px', color:'#6b7280', marginTop:'2px' }}>¿A dónde quieres ir?</div>
+            </div>
+            <div style={{ background:'#f0fdf4', borderRadius:'12px', padding:'8px 12px', textAlign:'right' }}>
+              <div style={{ fontSize:'10px', color:'#16a34a', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>Saldo</div>
+              <div style={{ fontSize:'16px', fontWeight:'800', color:'#111827' }}>{userBalance.toLocaleString()} <span style={{ fontSize:'11px', color:'#6b7280' }}>XAF</span></div>
             </div>
           </div>
-          <div style={{ textAlign:'right' }}>
-            <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.75)', marginBottom:'2px' }}>MiTaxi GQ</div>
-            <div style={{ display:'flex', gap:'4px', alignItems:'center' }}>
-              <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#90E0EF' }}/>
-              <span style={{ fontSize:'11px', color:'rgba(255,255,255,0.9)', fontWeight:'600' }}>Activo</span>
+
+          {/* Barra de búsqueda de destino */}
+          <button onClick={() => setScreen('booking')} style={{ width:'100%', background:'#f8f9fa', border:'1.5px solid #e5e7eb', borderRadius:'16px', padding:'14px 16px', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px', marginBottom:'14px', textAlign:'left', fontFamily:'inherit' }}>
+            <div style={{ width:'10px', height:'10px', borderRadius:'50%', background:'#111827', flexShrink:0 }}/>
+            <span style={{ fontSize:'15px', color:'#9ca3af', fontWeight:'500', flex:1 }}>¿A dónde vas?</span>
+            <div style={{ background:'#111827', borderRadius:'10px', padding:'6px 12px' }}>
+              <span style={{ fontSize:'12px', color:'#fff', fontWeight:'700' }}>Ir</span>
             </div>
+          </button>
+
+          {/* Tipos de vehículo — scroll horizontal */}
+          <div style={{ display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'8px', marginLeft:'-20px', marginRight:'-20px', paddingLeft:'20px', paddingRight:'20px', scrollbarWidth:'none' }}>
+            <style>{`.taxi-scroll::-webkit-scrollbar{display:none}`}</style>
+            {RIDE_TYPES.map(rt => {
+              const iconColor = rt.id==='moto'?'#F97316':rt.id==='basic'?'#1A2B4A':rt.id==='comfort'?'#22C55E':rt.id==='suv'?'#8B5CF6':rt.id==='xl'?'#3B82F6':rt.id==='minivan'?'#06B6D4':rt.id==='mujer'?'#EC4899':'#EF4444';
+              const sel = rideType.id===rt.id;
+              return (
+                <button key={rt.id} onClick={() => { setRideType(rt); setScreen('booking'); }}
+                  style={{ flexShrink:0, background: sel?'#111827':'#f8f9fa', border: sel?'2px solid #111827':'1.5px solid #e5e7eb', borderRadius:'14px', padding:'10px 12px', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px', minWidth:'68px', fontFamily:'inherit', transition:'all 0.15s' }}>
+                  <div style={{ width:'40px', height:'40px', borderRadius:'10px', background: sel?'rgba(255,255,255,0.1)':`${iconColor}15`, display:'flex', alignItems:'center', justifyContent:'center' }}>
+                    {getVehicleIcon(rt.id, 26, sel?'#fff':iconColor, false)}
+                  </div>
+                  <span style={{ fontSize:'10px', fontWeight:'700', color: sel?'#fff':'#111827' }}>{rt.label}</span>
+                  <span style={{ fontSize:'9px', color: sel?'rgba(255,255,255,0.6)':'#9ca3af' }}>{rt.waitTime}</span>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Acciones rápidas */}
+          <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginTop:'10px', marginBottom:'16px' }}>
+            <button onClick={() => setScreen('booking')} style={{ background:'#111827', border:'none', borderRadius:'14px', padding:'14px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontFamily:'inherit' }}>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+              <span style={{ fontSize:'13px', fontWeight:'700', color:'#fff' }}>Pedir viaje</span>
+            </button>
+            <button onClick={() => setScreen(driverRegistered?'driver-home':'driver-register')} style={{ background:'#f8f9fa', border:'1.5px solid #e5e7eb', borderRadius:'14px', padding:'14px', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:'8px', fontFamily:'inherit' }}>
+              <UserIcon size={16} color="#111827" filled/>
+              <span style={{ fontSize:'13px', fontWeight:'700', color:'#111827' }}>Conducir</span>
+            </button>
           </div>
         </div>
       </div>
 
-      <div style={{ flex:1, overflowY:'auto', overflowX:'hidden', padding:'12px 14px 80px' }}>
-        {/* Ubicación */}
-        <div style={{ background:'#FFFFFF', padding:'12px 14px', borderRadius:'14px', boxShadow:'0 2px 8px rgba(0,0,0,0.06)', marginBottom:'10px', display:'flex', alignItems:'center', gap:'10px' }}>
-          <LocationIcon size={18} color="#00c8a0" filled/>
-          <div style={{ flex:1 }}>
-            <div style={{ fontSize:'10px', color:'#8A9BB5', fontWeight:'600' }}>UBICACIÓN ACTUAL</div>
-            <div style={{ fontSize:'13px', fontWeight:'600', color:'#1A2B4A' }}>{userLocation?.address || 'Obteniendo ubicación...'}</div>
-          </div>
-          <button onClick={() => userLocation && setOrigin(userLocation)} style={{ width:'34px', height:'34px', borderRadius:'10px', background:'rgba(0,180,230,0.1)', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-            <NavigationIcon size={16} color="#00b4e6"/>
-          </button>
-        </div>
-
-        {/* Botones acción */}
-        <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'12px' }}>
-          <button onClick={() => setScreen('booking')} className="taxi-action-btn"
-            style={{ background:'linear-gradient(135deg,#0096C7,#48CAE4)', border:'none', borderRadius:'14px', padding:'14px 12px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', justifyContent:'center', transition:'all 0.2s ease', boxShadow:'0 4px 12px rgba(0,150,199,0.3)', fontFamily:'inherit' }}>
-            <UberTaxiIcon size={20} color="#fff" filled/>
-            <span style={{ fontSize:'13px', fontWeight:'700', color:'#fff' }}>Pedir viaje</span>
-          </button>
-          <button onClick={() => setScreen(driverRegistered ? 'driver-home' : 'driver-register')} className="taxi-action-btn"
-            style={{ background:'#FFFFFF', border:'1.5px solid #E8EEF5', borderRadius:'14px', padding:'14px 12px', cursor:'pointer', display:'flex', alignItems:'center', gap:'8px', justifyContent:'center', boxShadow:'0 2px 6px rgba(0,0,0,0.05)', transition:'all 0.2s ease', fontFamily:'inherit' }}>
-            <UserIcon size={20} color="#0096C7" filled/>
-            <span style={{ fontSize:'13px', fontWeight:'700', color:'#0096C7' }}>Conducir</span>
-          </button>
-        </div>
-
-        {/* Stats compactos */}
-        <div style={{ display:'grid', gridTemplateColumns:'repeat(3,1fr)', gap:'6px', marginBottom:'12px' }}>
-          {[
-            { v:'248', l:'Conductores', c:'#0096C7', icon:<UberTaxiIcon size={16} color="#0096C7"/> },
-            { v:'1.2K', l:'Viajes hoy', c:'#48CAE4', icon:<NavigationIcon size={16} color="#48CAE4"/> },
-            { v:'4.9', l:'Rating', c:'#f59e0b', icon:<StarIcon size={14} filled color="#f59e0b"/> },
-          ].map(s => (
-            <div key={s.l} className="taxi-stat-card" style={{ background:'#FFFFFF', borderRadius:'12px', padding:'10px 8px', textAlign:'center', boxShadow:'0 2px 8px rgba(0,0,0,0.05)', transition:'all 0.2s ease', cursor:'default' }}>
-              <div style={{ display:'flex', justifyContent:'center', marginBottom:'4px' }}>{s.icon}</div>
-              <div style={{ fontSize:'16px', fontWeight:'700', color:s.c }}>{s.v}</div>
-              <div style={{ fontSize:'10px', color:'#8A9BB5' }}>{s.l}</div>
-            </div>
-          ))}
-        </div>
-
-        {/* Servicios — horizontal scroll */}
-        <div style={{ fontSize:'13px', fontWeight:'700', color:'#1A2B4A', marginBottom:'8px' }}>Servicios disponibles</div>
-        <div className="taxi-services-scroll" style={{ display:'flex', gap:'8px', overflowX:'auto', paddingBottom:'6px', marginBottom:'12px', marginLeft:'-14px', marginRight:'-14px', paddingLeft:'14px', paddingRight:'14px', scrollSnapType:'x mandatory' }}>
-          {RIDE_TYPES.map(rt => {
-            // Colores únicos por tipo — solo para el icono
-            const iconColor = rt.id==='moto' ? '#F97316'      // naranja moto
-              : rt.id==='basic'   ? '#FFD700'                  // amarillo taxi Guinea
-              : rt.id==='comfort' ? '#22C55E'                  // verde comfort
-              : rt.id==='suv'     ? '#8B5CF6'                  // morado SUV
-              : rt.id==='xl'      ? '#3B82F6'                  // azul van XL
-              : rt.id==='minivan' ? '#06B6D4'                  // cyan minivan
-              : rt.id==='mujer'   ? '#EC4899'                  // rosa MujerGQ
-              : rt.id==='cargo'   ? '#EF4444'                  // rojo cargo
-              : '#8A9BB5';
-            const sel = rideType.id===rt.id;
-            return (
-              <button key={rt.id} onClick={() => { setRideType(rt); setScreen('booking'); }}
-                className="taxi-service-btn"
-                style={{
-                  flexShrink:0, scrollSnapAlign:'start',
-                  background: sel ? '#FFFFFF' : '#FFFFFF',
-                  border: sel ? `2px solid ${iconColor}` : '1.5px solid #E8EEF5',
-                  borderRadius:'14px', padding:'10px 12px', cursor:'pointer',
-                  display:'flex', flexDirection:'column', alignItems:'center', gap:'4px',
-                  minWidth:'72px',
-                  boxShadow: sel ? `0 4px 14px ${iconColor}40` : '0 2px 6px rgba(0,0,0,0.05)',
-                  transition:'all 0.2s ease', fontFamily:'inherit'
-                }}>
-                {/* Icono con su color propio */}
-                <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:`${iconColor}15`, display:'flex', alignItems:'center', justifyContent:'center' }}>
-                  {getVehicleIcon(rt.id, 28, iconColor, false)}
-                </div>
-                <span style={{ fontSize:'10px', fontWeight:'700', color:'#1A2B4A', marginTop:'2px' }}>{rt.label}</span>
-                <span style={{ fontSize:'9px', color:'#8A9BB5' }}>{rt.waitTime}</span>
-              </button>
-            );
-          })}
-        </div>
-        <style>{`
-          .taxi-services-scroll { -webkit-overflow-scrolling: touch; }
-          .taxi-services-scroll::-webkit-scrollbar { display: none; }
-          .taxi-service-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 16px rgba(0,0,0,0.12) !important; border-color: #CBD5E1 !important; }
-          .taxi-action-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(0,150,199,0.25) !important; opacity: 0.92; }
-          .taxi-recent-btn:hover { background: #F0F8FF !important; border-color: #0096C7 !important; transform: translateX(2px); }
-          .taxi-stat-card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,150,199,0.15) !important; }
-        `}</style>
-
-        {/* Mapa conductores cercanos */}
-        <div style={{ fontSize:'13px', fontWeight:'700', color:'#1A2B4A', marginBottom:'8px' }}>
-          {rideType.id === 'all' ? 'Conductores cerca de ti' : `${rideType.label} cerca de ti`}
-        </div>
-        <div style={{ borderRadius:'14px', overflow:'hidden', marginBottom:'12px', height:'180px', position:'relative', boxShadow:'0 1px 4px rgba(0,0,0,0.1)' }}>
-          <RealMap origin={userLocation} status="idle" height="180px" vehicleFilter={rideType.id}/>
-          <div style={{ position:'absolute', top:'8px', left:'8px', background:'rgba(0,150,199,0.9)', borderRadius:'20px', padding:'4px 10px', display:'flex', alignItems:'center', gap:'5px', zIndex:10 }}>
-            <div style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#90E0EF', animation:'pulse 1.5s infinite' }}/>
-            <span style={{ fontSize:'10px', color:'#fff', fontWeight:'600' }}>
-              {rideType.id === 'all' ? '10 disponibles' :
-               rideType.id === 'taxi' ? '3 disponibles' :
-               rideType.id === 'moto' ? '2 disponibles' :
-               rideType.id === 'comfort' ? '2 disponibles' :
-               rideType.id === 'suv' ? '1 disponible' :
-               rideType.id === 'xl' ? '1 disponible' :
-               rideType.id === 'mujer' ? '1 disponible' : '1 disponible'}
-            </span>
-          </div>
-        </div>
-
-        {/* Viajes recientes */}
-        <div style={{ fontSize:'13px', fontWeight:'700', color:'#1A2B4A', marginBottom:'8px' }}>Recientes</div>
-        {[{from:'Centro Malabo',to:'Aeropuerto SSG',date:'Hoy, 09:14',price:2500},{from:'Puerto',to:'Ela Nguema',date:'Ayer, 18:32',price:1800}].map((h,i) => (
-          <button key={i} className="taxi-recent-btn" onClick={() => {
-            const oz=ZONES.find(z=>z.name===h.from), dz=ZONES.find(z=>z.name===h.to);
-            if(oz&&dz){setOrigin({lat:oz.lat,lng:oz.lng,address:h.from});setDestination({lat:dz.lat,lng:dz.lng,address:h.to});setScreen('booking');}
-          }} style={{ width:'100%', background:'#FFFFFF', border:'1px solid #E8EEF5', borderRadius:'12px', padding:'11px 14px', cursor:'pointer', display:'flex', alignItems:'center', gap:'10px', marginBottom:'6px', textAlign:'left', boxShadow:'0 2px 6px rgba(0,0,0,0.04)', transition:'all 0.2s ease', fontFamily:'inherit' }}>
-            <div style={{ width:'34px', height:'34px', borderRadius:'10px', background:'rgba(0,150,199,0.08)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <LocationIcon size={16} color="#0096C7" filled/>
-            </div>
-            <div style={{ flex:1 }}>
-              <div style={{ fontSize:'12px', fontWeight:'600', color:'#1A2B4A', marginBottom:'2px' }}>{h.from} → {h.to}</div>
-              <div style={{ fontSize:'10px', color:'#8A9BB5' }}>{h.date}</div>
-            </div>
-            <div style={{ fontSize:'13px', fontWeight:'700', color:'#0096C7' }}>{h.price.toLocaleString()} XAF</div>
-          </button>
-        ))}
-      </div>
       {showSafety && <SafetyCenter onClose={() => setShowSafety(false)} driver={driver}/>}
     </div>
   );
