@@ -412,22 +412,36 @@ const App: React.FC = () => {
   const [showCreateGroupModal, setShowCreateGroupModal] = useState<boolean>(false);
   const [newGroupData, setNewGroupData] = useState<{ name: string; description: string; selectedMembers: string[] }>({ name: '', description: '', selectedMembers: [] });
 
-  // Persistir mensajes en localStorage (solo texto/metadata, no blobs grandes)
+  // Persistir mensajes en localStorage — incluye imágenes base64 (permanentes hasta que el usuario las elimine)
   useEffect(() => {
     try {
-      // Guardar solo mensajes de texto y metadata (no imageUrl base64 grandes)
       const toSave: Record<string, any[]> = {};
       for (const [k, msgs] of Object.entries(chatMessages)) {
         toSave[k] = msgs.map(m => {
-          const { imageUrl, audioUrl, ...rest } = m as any;
-          // Guardar imageUrl solo si es una URL real (no base64)
-          const saved: any = { ...rest };
-          if (imageUrl && !imageUrl.startsWith('data:')) saved.imageUrl = imageUrl;
-          if (audioUrl && !audioUrl.startsWith('blob:')) saved.audioUrl = audioUrl;
+          const saved: any = { ...(m as any) };
+          // Guardar imageUrl base64 — son permanentes
+          // Solo excluir blob: URLs de audio que expiran
+          if (saved.audioUrl && saved.audioUrl.startsWith('blob:')) {
+            delete saved.audioUrl; // blob URLs expiran, no guardar
+          }
           return saved;
         });
       }
-      localStorage.setItem('egchat_messages', JSON.stringify(toSave));
+      // Intentar guardar — si falla por tamaño, guardar sin imágenes grandes
+      try {
+        localStorage.setItem('egchat_messages', JSON.stringify(toSave));
+      } catch {
+        // Si falla (localStorage lleno), guardar sin imágenes base64
+        const toSaveLite: Record<string, any[]> = {};
+        for (const [k, msgs] of Object.entries(toSave)) {
+          toSaveLite[k] = msgs.map((m: any) => {
+            const lite = { ...m };
+            if (lite.imageUrl?.startsWith('data:')) lite.imageUrl = ''; // placeholder
+            return lite;
+          });
+        }
+        localStorage.setItem('egchat_messages', JSON.stringify(toSaveLite));
+      }
     } catch {}
   }, [chatMessages]);
 
@@ -4147,8 +4161,10 @@ const App: React.FC = () => {
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <Avatar name={sc.title} size={40} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
-                <div style={{ flex: 1 }}>
+                <div style={{ cursor: 'pointer' }} onClick={() => setShowContactProfile(sc)}>
+                  <Avatar name={sc.title} size={40} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
+                </div>
+                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setShowContactProfile(sc)}>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#0d0d0d' }}>{sc.title}</div>
                   <div style={{ fontSize: '12px', color: sc.isGroup ? '#a855f7' : sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>
                     {sc.isGroup ? `👥 ${sc.members || ''} miembros` : sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}
@@ -7486,30 +7502,61 @@ const App: React.FC = () => {
       {/* Llamada entrante */}
       {incomingCall && !activeCall && (
         <div style={{ position:'fixed', inset:0, zIndex:3000, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center' }}>
-          <div style={{ background:'linear-gradient(160deg,#1a1a2e,#16213e)', borderRadius:'24px', padding:'32px 24px', textAlign:'center', width:'280px', boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}>
-            <div style={{ width:'80px', height:'80px', borderRadius:'50%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', margin:'0 auto 16px', fontSize:'32px' }}>
-              {incomingCall.type === 'video' ? '📹' : '📞'}
-            </div>
-            <div style={{ fontSize:'18px', fontWeight:'700', color:'#fff', marginBottom:'6px' }}>Llamada entrante</div>
-            <div style={{ fontSize:'14px', color:'rgba(255,255,255,0.6)', marginBottom:'8px' }}>{incomingCall.type === 'video' ? 'Videollamada' : 'Llamada de voz'}</div>
-            <div style={{ fontSize:'13px', color:'rgba(255,255,255,0.4)', marginBottom:'28px' }}>ID: {incomingCall.callerId.slice(0,8)}...</div>
-            <div style={{ display:'flex', gap:'24px', justifyContent:'center' }}>
-              <button onClick={() => { setIncomingCall(null); }}
-                style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#ef4444', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
-              </button>
-              <button onClick={async () => {
-                const contact = { id: incomingCall.callerId, title: 'Llamada entrante', status: 'online' };
-                setActiveCall({ type: incomingCall.type, contact, status: 'calling' });
-                setIncomingCall(null);
-                await webrtc.answerCall(incomingCall.callId, incomingCall.offer, incomingCall.type);
-                setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null);
-              }}
-                style={{ width:'60px', height:'60px', borderRadius:'50%', background:'#22c55e', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center' }}>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.06 6.06l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              </button>
-            </div>
-          </div>
+          {(() => {
+            // Buscar el contacto que llama por su user_id
+            const callerContact = allContacts.find(c =>
+              c.id?.toString() === incomingCall.callerId ||
+              (realChats as any[]).some((ch: any) =>
+                ch.participants?.some((p: any) => p.user_id?.toString() === incomingCall.callerId)
+              )
+            );
+            const callerName = callerContact?.name || 'Llamada entrante';
+            const callerAvatar = callerContact?.avatarUrl || '';
+            const callerInitials = callerName.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase();
+            return (
+              <div style={{ background:'linear-gradient(160deg,#1a1a2e,#16213e)', borderRadius:'24px', padding:'32px 24px', textAlign:'center', width:'280px', boxShadow:'0 20px 60px rgba(0,0,0,0.5)' }}>
+                {/* Foto real del llamante */}
+                <div style={{ width:'90px', height:'90px', borderRadius:'50%', margin:'0 auto 16px', overflow:'hidden', border:'3px solid rgba(0,200,160,0.5)', boxShadow:'0 0 0 6px rgba(0,200,160,0.15)' }}>
+                  {callerAvatar
+                    ? <img src={callerAvatar} alt={callerName} style={{ width:'100%', height:'100%', objectFit:'cover' }}/>
+                    : <div style={{ width:'100%', height:'100%', background:'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'28px', fontWeight:'800', color:'#fff' }}>{callerInitials}</div>
+                  }
+                </div>
+                <div style={{ fontSize:'20px', fontWeight:'800', color:'#fff', marginBottom:'4px' }}>{callerName}</div>
+                <div style={{ fontSize:'14px', color:'rgba(255,255,255,0.6)', marginBottom:'6px' }}>
+                  {incomingCall.type === 'video' ? '📹 Videollamada entrante' : '📞 Llamada de voz entrante'}
+                </div>
+                {/* Animación de pulso */}
+                <div style={{ display:'flex', justifyContent:'center', gap:'4px', marginBottom:'24px' }}>
+                  {[0,1,2].map(i => (
+                    <div key={i} style={{ width:'6px', height:'6px', borderRadius:'50%', background:'#00c8a0', animation:`pulse ${0.8 + i*0.2}s ease infinite` }}/>
+                  ))}
+                </div>
+                <div style={{ display:'flex', gap:'24px', justifyContent:'center' }}>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'8px' }}>
+                    <button onClick={() => { setIncomingCall(null); }}
+                      style={{ width:'64px', height:'64px', borderRadius:'50%', background:'#ef4444', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(239,68,68,0.4)' }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
+                    </button>
+                    <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)' }}>Rechazar</span>
+                  </div>
+                  <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'8px' }}>
+                    <button onClick={async () => {
+                      const contact = { id: incomingCall.callerId, title: callerName, status: 'online', avatarUrl: callerAvatar };
+                      setActiveCall({ type: incomingCall.type, contact, status: 'calling' });
+                      setIncomingCall(null);
+                      await webrtc.answerCall(incomingCall.callId, incomingCall.offer, incomingCall.type);
+                      setActiveCall(prev => prev ? { ...prev, status: 'connected' } : null);
+                    }}
+                      style={{ width:'64px', height:'64px', borderRadius:'50%', background:'#22c55e', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(34,197,94,0.4)' }}>
+                      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.06 6.06l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                    </button>
+                    <span style={{ fontSize:'12px', color:'rgba(255,255,255,0.5)' }}>Aceptar</span>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
         </div>
       )}
 
