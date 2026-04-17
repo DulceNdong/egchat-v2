@@ -7673,16 +7673,22 @@ const App: React.FC = () => {
       }));
     }
     setIsAuthenticated(true);
-    // Pedir permiso de notificaciones del sistema y suscribir al Web Push
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
+    // En iOS PWA, el permiso push DEBE pedirse desde un gesto del usuario
+    // Solo pedimos en no-iOS o si ya fue concedido
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isIOS && 'Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission().then(perm => {
+        if (perm === 'granted' && typeof (window as any).__egchat_registerPush === 'function') {
+          (window as any).__egchat_registerPush();
+        }
+      });
     }
-    // Suscribir al Web Push (con token ya disponible)
+    // Registro push (funciona si el permiso ya fue concedido antes)
     setTimeout(() => {
       if (typeof (window as any).__egchat_registerPush === 'function') {
         (window as any).__egchat_registerPush();
       }
-    }, 1000);
+    }, 1500);
   }} />;
 
   return (
@@ -7764,79 +7770,227 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Menú contextual de mensaje — estilo WhatsApp */}
+      {/* Menú contextual de mensaje — diseño premium EGChat */}
       {msgContextMenu && (
         <>
-          {/* Overlay para cerrar */}
-          <div style={{ position:'fixed', inset:0, zIndex:5999 }} onClick={() => setMsgContextMenu(null)}/>
-          {/* Menú */}
+          {/* Overlay blur */}
+          <div style={{
+            position: 'fixed', inset: 0, zIndex: 5999,
+            background: 'rgba(0,0,0,0.35)',
+            backdropFilter: 'blur(4px)',
+            WebkitBackdropFilter: 'blur(4px)',
+          }} onClick={() => setMsgContextMenu(null)}/>
+
+          {/* Contenedor centrado en pantalla */}
           <div style={{
             position: 'fixed',
-            left: Math.min(msgContextMenu.x, window.innerWidth - 200),
-            top: Math.min(msgContextMenu.y, window.innerHeight - 280),
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
             zIndex: 6000,
-            background: '#fff',
-            borderRadius: '14px',
-            boxShadow: '0 8px 32px rgba(0,0,0,0.2)',
-            overflow: 'hidden',
-            minWidth: '180px',
-            animation: 'dropdownIn 0.15s ease',
+            width: '280px',
+            animation: 'contextMenuIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
           }}>
+            <style>{`
+              @keyframes contextMenuIn {
+                from { opacity:0; transform:translate(-50%,-50%) scale(0.85); }
+                to   { opacity:1; transform:translate(-50%,-50%) scale(1); }
+              }
+              @keyframes emojiPop {
+                0%   { transform: scale(1); }
+                50%  { transform: scale(1.4); }
+                100% { transform: scale(1); }
+              }
+            `}</style>
+
+            {/* Preview del mensaje */}
+            {msgContextMenu.msg.text && (
+              <div style={{
+                background: 'rgba(255,255,255,0.12)',
+                backdropFilter: 'blur(20px)',
+                WebkitBackdropFilter: 'blur(20px)',
+                borderRadius: '16px',
+                padding: '10px 14px',
+                marginBottom: '8px',
+                border: '1px solid rgba(255,255,255,0.2)',
+              }}>
+                <p style={{
+                  margin: 0, fontSize: '13px', color: 'rgba(255,255,255,0.9)',
+                  overflow: 'hidden', textOverflow: 'ellipsis',
+                  display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' as any,
+                  lineHeight: '1.4',
+                }}>
+                  {msgContextMenu.msg.text}
+                </p>
+              </div>
+            )}
+
             {/* Reacciones rápidas */}
-            <div style={{ display:'flex', gap:'4px', padding:'10px 12px', borderBottom:'1px solid #f3f4f6', justifyContent:'space-around' }}>
-              {['❤️','😂','👍','😮','😢','🙏'].map(emoji => (
+            <div style={{
+              background: 'rgba(255,255,255,0.95)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '20px',
+              padding: '10px 14px',
+              marginBottom: '8px',
+              display: 'flex',
+              justifyContent: 'space-around',
+              alignItems: 'center',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              border: '1px solid rgba(255,255,255,0.8)',
+            }}>
+              {['❤️','😂','👍','😮','😢','🙏','🔥'].map((emoji, i) => (
                 <button key={emoji} onClick={() => {
                   const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
                   const t = new Date(); const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                   setChatMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), { id: Date.now().toString(), from: 'me' as const, text: emoji, time: tm, status: 'pending' as const }] }));
                   setMsgContextMenu(null);
-                }} style={{ background:'none', border:'none', cursor:'pointer', fontSize:'22px', padding:'2px', borderRadius:'8px', transition:'transform 0.1s' }}
-                  onMouseEnter={e => (e.currentTarget.style.transform='scale(1.3)')}
-                  onMouseLeave={e => (e.currentTarget.style.transform='scale(1)')}>
+                }} style={{
+                  background: 'none', border: 'none', cursor: 'pointer',
+                  fontSize: '26px', padding: '4px', borderRadius: '50%',
+                  transition: 'transform 0.15s',
+                  animationDelay: `${i * 0.03}s`,
+                }}
+                  onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.35)'; e.currentTarget.style.animation = 'emojiPop 0.3s ease'; }}
+                  onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; e.currentTarget.style.animation = 'none'; }}>
                   {emoji}
                 </button>
               ))}
             </div>
-            {/* Opciones */}
-            {[
-              { icon:'📋', label:'Copiar', action: () => { navigator.clipboard?.writeText(msgContextMenu.msg.text || ''); showToast('Copiado', 'success'); setMsgContextMenu(null); } },
-              { icon:'↩️', label:'Responder', action: () => { setCurrentChatInput(`> ${msgContextMenu.msg.text?.slice(0,40) || ''}...\n`); setMsgContextMenu(null); } },
-              { icon:'⭐', label:'Destacar', action: () => {
-                const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
-                setStarredMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), msgContextMenu.msg.id] }));
-                showToast('Mensaje destacado', 'success'); setMsgContextMenu(null);
-              }},
-              { icon:'📤', label:'Reenviar', action: () => { showToast('Función próximamente', 'info'); setMsgContextMenu(null); } },
-              ...(msgContextMenu.msg.from === 'me' ? [
-                { icon:'🗑', label:'Eliminar', danger: true, action: () => {
-                  const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
-                  setChatMessages(prev => ({ ...prev, [cid]: (prev[cid]||[]).filter(m => m.id !== msgContextMenu.msg.id) }));
-                  // Intentar eliminar del backend
-                  if (msgContextMenu.msg.id && msgContextMenu.msg.id.includes('-')) {
-                    chatAPI.deleteMessage(msgContextMenu.msg.id).catch(() => {});
+
+            {/* Opciones principales */}
+            <div style={{
+              background: 'rgba(255,255,255,0.97)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              border: '1px solid rgba(255,255,255,0.8)',
+            }}>
+              {[
+                {
+                  icon: (
+                    <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#667eea,#764ba2)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                    </div>
+                  ),
+                  label: 'Copiar',
+                  sub: 'Copiar texto',
+                  action: () => { navigator.clipboard?.writeText(msgContextMenu.msg.text || ''); showToast('✅ Copiado', 'success'); setMsgContextMenu(null); }
+                },
+                {
+                  icon: (
+                    <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#11998e,#38ef7d)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>
+                    </div>
+                  ),
+                  label: 'Responder',
+                  sub: 'Citar mensaje',
+                  action: () => { setCurrentChatInput(`> ${msgContextMenu.msg.text?.slice(0,40) || ''}...\n`); setMsgContextMenu(null); }
+                },
+                {
+                  icon: (
+                    <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#f7971e,#ffd200)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="0.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
+                    </div>
+                  ),
+                  label: 'Destacar',
+                  sub: 'Guardar mensaje',
+                  action: () => {
+                    const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
+                    setStarredMessages(prev => ({ ...prev, [cid]: [...(prev[cid]||[]), msgContextMenu.msg.id] }));
+                    showToast('⭐ Mensaje destacado', 'success'); setMsgContextMenu(null);
                   }
-                  showToast('Mensaje eliminado', 'info'); setMsgContextMenu(null);
+                },
+                {
+                  icon: (
+                    <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#4facfe,#00f2fe)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                    </div>
+                  ),
+                  label: 'Reenviar',
+                  sub: 'Compartir mensaje',
+                  action: () => { showToast('Próximamente', 'info'); setMsgContextMenu(null); }
+                },
+              ].map((item, i, arr) => (
+                <button key={item.label} onClick={item.action} style={{
+                  width: '100%', background: 'none', border: 'none',
+                  padding: '12px 16px',
+                  display: 'flex', alignItems: 'center', gap: '12px',
+                  cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                  borderBottom: i < arr.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                  transition: 'background 0.15s',
                 }}
-              ] : [
-                { icon:'🚫', label:'Eliminar para mí', danger: true, action: () => {
-                  const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
-                  setChatMessages(prev => ({ ...prev, [cid]: (prev[cid]||[]).filter(m => m.id !== msgContextMenu.msg.id) }));
-                  showToast('Mensaje eliminado', 'info'); setMsgContextMenu(null);
-                }}
-              ]),
-            ].map((item: any) => (
-              <button key={item.label} onClick={item.action} style={{
-                width:'100%', background:'none', border:'none', padding:'13px 16px',
-                display:'flex', alignItems:'center', gap:'12px', cursor:'pointer',
-                textAlign:'left', fontFamily:'inherit', borderBottom:'1px solid #f9fafb',
-                color: item.danger ? '#ef4444' : '#111827',
+                  onMouseEnter={e => e.currentTarget.style.background = 'rgba(0,0,0,0.03)'}
+                  onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                  {item.icon}
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#111827' }}>{item.label}</div>
+                    <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '1px' }}>{item.sub}</div>
+                  </div>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                </button>
+              ))}
+            </div>
+
+            {/* Eliminar — separado y rojo */}
+            <div style={{
+              background: 'rgba(255,255,255,0.97)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              borderRadius: '20px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              border: '1px solid rgba(255,255,255,0.8)',
+              marginTop: '8px',
+            }}>
+              <button onClick={() => {
+                const cid = selectedChat?.id?.toString() || selectedChat?.title || '';
+                setChatMessages(prev => ({ ...prev, [cid]: (prev[cid]||[]).filter(m => m.id !== msgContextMenu.msg.id) }));
+                if (msgContextMenu.msg.from === 'me' && msgContextMenu.msg.id?.includes('-')) {
+                  chatAPI.deleteMessage(msgContextMenu.msg.id).catch(() => {});
+                }
+                showToast('Mensaje eliminado', 'info'); setMsgContextMenu(null);
+              }} style={{
+                width: '100%', background: 'none', border: 'none',
+                padding: '13px 16px',
+                display: 'flex', alignItems: 'center', gap: '12px',
+                cursor: 'pointer', textAlign: 'left', fontFamily: 'inherit',
+                transition: 'background 0.15s',
               }}
-                onMouseEnter={e => e.currentTarget.style.background='#f9fafb'}
-                onMouseLeave={e => e.currentTarget.style.background='none'}>
-                <span style={{ fontSize:'18px' }}>{item.icon}</span>
-                <span style={{ fontSize:'14px', fontWeight:'500' }}>{item.label}</span>
+                onMouseEnter={e => e.currentTarget.style.background = 'rgba(239,68,68,0.05)'}
+                onMouseLeave={e => e.currentTarget.style.background = 'none'}>
+                <div style={{ width:32, height:32, borderRadius:10, background:'linear-gradient(135deg,#ff416c,#ff4b2b)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#ef4444' }}>
+                    {msgContextMenu.msg.from === 'me' ? 'Eliminar' : 'Eliminar para mí'}
+                  </div>
+                  <div style={{ fontSize: '11px', color: '#fca5a5', marginTop: '1px' }}>No se puede deshacer</div>
+                </div>
               </button>
-            ))}
+            </div>
+
+            {/* Cancelar */}
+            <button onClick={() => setMsgContextMenu(null)} style={{
+              width: '100%', marginTop: '8px',
+              background: 'rgba(255,255,255,0.97)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.8)',
+              borderRadius: '20px',
+              padding: '14px',
+              fontSize: '15px', fontWeight: '600', color: '#374151',
+              cursor: 'pointer', fontFamily: 'inherit',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+              transition: 'background 0.15s',
+            }}
+              onMouseEnter={e => e.currentTarget.style.background = 'rgba(243,244,246,0.97)'}
+              onMouseLeave={e => e.currentTarget.style.background = 'rgba(255,255,255,0.97)'}>
+              Cancelar
+            </button>
           </div>
         </>
       )}
