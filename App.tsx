@@ -4313,20 +4313,61 @@ const App: React.FC = () => {
                     >
                       {/* ── AUDIO ── */}
                       {(msg as any).type === 'audio' && (msg as any).audioUrl ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '200px', padding: '2px 0' }}>
-                          <button onClick={() => { const a = new Audio((msg as any).audioUrl); a.play(); }}
-                            style={{ background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', border: 'none', borderRadius: '50%', width: '38px', height: '38px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 6px rgba(0,0,0,0.2)' }}>
-                            <svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px', padding: '4px 0' }}>
+                          {/* Elemento audio oculto — necesario para iOS Safari */}
+                          <audio
+                            id={`audio-${msg.id}`}
+                            src={(msg as any).audioUrl}
+                            preload="metadata"
+                            style={{ display: 'none' }}
+                            onEnded={() => {
+                              const btn = document.getElementById(`play-btn-${msg.id}`);
+                              if (btn) btn.setAttribute('data-playing', 'false');
+                              const bars = document.getElementById(`bars-${msg.id}`);
+                              if (bars) bars.style.animation = 'none';
+                            }}
+                          />
+                          <button
+                            id={`play-btn-${msg.id}`}
+                            data-playing="false"
+                            onClick={() => {
+                              const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
+                              const btn = document.getElementById(`play-btn-${msg.id}`);
+                              if (!audio) return;
+                              if (audio.paused) {
+                                // Pausar todos los demás audios
+                                document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
+                                audio.play().catch(() => {});
+                                btn?.setAttribute('data-playing', 'true');
+                                btn?.querySelector('svg')?.setAttribute('data-state', 'playing');
+                              } else {
+                                audio.pause();
+                                btn?.setAttribute('data-playing', 'false');
+                              }
+                            }}
+                            style={{ background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+                              <polygon points="6 3 20 12 6 21 6 3"/>
+                            </svg>
                           </button>
                           <div style={{ flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '24px', marginBottom: '3px' }}>
-                              {[3,5,8,6,10,7,4,9,6,8,5,7,4,6,8,5,9,6,4,7].map((h,i) => (
-                                <div key={i} style={{ width: '3px', height: `${h * 2}px`, background: msg.from === 'me' ? 'rgba(0,200,160,0.7)' : 'rgba(0,180,230,0.7)', borderRadius: '2px', flexShrink: 0 }}/>
+                            {/* Barras de onda animadas */}
+                            <div id={`bars-${msg.id}`} style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '28px', marginBottom: '2px' }}>
+                              {[3,5,8,6,10,7,4,9,6,8,5,7,4,6,8,5,9,6,4,7].map((h, i) => (
+                                <div key={i} style={{
+                                  width: '3px',
+                                  height: `${h * 2}px`,
+                                  background: msg.from === 'me' ? 'rgba(0,200,160,0.8)' : 'rgba(0,180,230,0.8)',
+                                  borderRadius: '2px',
+                                  flexShrink: 0,
+                                  transition: 'height 0.1s',
+                                }}/>
                               ))}
                             </div>
-                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>Mensaje de voz</div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                              🎤 Mensaje de voz
+                            </div>
                           </div>
-                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke={msg.from === 'me' ? '#00c8a0' : '#00b4e6'} strokeWidth="2" strokeLinecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                         </div>
                       ) : (msg as any).type === 'image' ? (
                         /* ── IMAGEN ── */
@@ -4894,26 +4935,37 @@ const App: React.FC = () => {
                   </svg>
                 </button>
 
-                {/* Micrófono — mantener pulsado para grabar voz */}
+                {/* Micrófono — toca para grabar, toca de nuevo para enviar */}
                 <button
-                  onMouseDown={async () => {
+                  onClick={async () => {
+                    if (isRecordingAudio) {
+                      chatRecorderRef.current?.stop();
+                      chatRecorderRef.current = null;
+                      setIsRecordingAudio(false);
+                      if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
+                      return;
+                    }
                     try {
                       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                       chatAudioChunksRef.current = [];
-                      const recorder = new MediaRecorder(stream, { mimeType: MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg' });
+                      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
+                        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
+                        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+                      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
                       recorder.ondataavailable = e => { if (e.data.size > 0) chatAudioChunksRef.current.push(e.data); };
                       recorder.onstop = async () => {
                         stream.getTracks().forEach(t => t.stop());
                         if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
                         setChatRecordingTime(0);
-                        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
-                        const blob = new Blob(chatAudioChunksRef.current, { type: mimeType });
-                        const ext = mimeType.includes('webm') ? 'webm' : 'ogg';
+                        if (chatAudioChunksRef.current.length === 0) return;
+                        const finalMime = mimeType || 'audio/webm';
+                        const ext = finalMime.includes('mp4') ? 'm4a' : 'webm';
+                        const blob = new Blob(chatAudioChunksRef.current, { type: finalMime });
+                        if (blob.size < 100) return;
                         const now = new Date();
                         const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
                         const msgId = Date.now().toString();
                         const localUrl = URL.createObjectURL(blob);
-                        // Mostrar inmediatamente con URL local
                         const newMsg = { id: msgId, from: 'me' as const, text: `🎤 Mensaje de voz`, time, status: 'pending' as const, type: 'audio' as const, audioUrl: localUrl };
                         addMsg(newMsg);
                         // Subir al servidor para que persista
@@ -4931,69 +4983,26 @@ const App: React.FC = () => {
                           } catch {}
                         }
                       };
-                      recorder.start();
+                      recorder.start(100);
                       chatRecorderRef.current = recorder;
                       setIsRecordingAudio(true);
                       setChatRecordingTime(0);
                       chatRecordTimerRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
-                    } catch { setIsRecordingAudio(true); }
+                    } catch { showToast('No se pudo acceder al micrófono', 'error'); }
                   }}
-                  onMouseUp={() => {
-                    chatRecorderRef.current?.stop();
-                    chatRecorderRef.current = null;
-                    setIsRecordingAudio(false);
-                  }}
-                  onMouseLeave={() => {
-                    if (isRecordingAudio) { chatRecorderRef.current?.stop(); chatRecorderRef.current = null; setIsRecordingAudio(false); }
-                  }}
-                  onTouchStart={async (e) => {
-                    e.preventDefault();
-                    try {
-                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                      chatAudioChunksRef.current = [];
-                      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
-                      const recorder = new MediaRecorder(stream, { mimeType });
-                      recorder.ondataavailable = ev => { if (ev.data.size > 0) chatAudioChunksRef.current.push(ev.data); };
-                      recorder.onstop = async () => {
-                        stream.getTracks().forEach(t => t.stop());
-                        if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
-                        setChatRecordingTime(0);
-                        const ext = mimeType.includes('webm') ? 'webm' : 'ogg';
-                        const blob = new Blob(chatAudioChunksRef.current, { type: mimeType });
-                        const msgId = Date.now().toString();
-                        const localUrl = URL.createObjectURL(blob);
-                        addMsg({ id: msgId, from: 'me' as const, text: '🎤 Mensaje de voz', time: makeTime(), status: 'pending' as const, type: 'audio' as const, audioUrl: localUrl });
-                        // Subir al servidor
-                        const chatId = sc?.id?.toString() || '';
-                        if (chatId && chatId.length > 10) {
-                          try {
-                            const audioFile = new File([blob], `audio_${msgId}.${ext}`, { type: mimeType });
-                            const result = await chatAPI.uploadFile(chatId, audioFile);
-                            if (result.file_url) {
-                              await chatAPI.sendMessage(chatId, { text: '🎤 Mensaje de voz', type: 'audio', file_url: result.file_url });
-                              const key = sc?.id?.toString() || sc?.title;
-                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, audioUrl: result.file_url, status: 'delivered' } : m) }));
-                            }
-                          } catch {}
-                        }
-                      };
-                      recorder.start();
-                      chatRecorderRef.current = recorder;
-                      setIsRecordingAudio(true);
-                      setChatRecordingTime(0);
-                      chatRecordTimerRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
-                    } catch { setIsRecordingAudio(true); }
-                  }}
-                  onTouchEnd={() => { chatRecorderRef.current?.stop(); chatRecorderRef.current = null; setIsRecordingAudio(false); }}
-                  style={{ background: isRecordingAudio ? '#FEE2E2' : 'transparent', border: isRecordingAudio ? '2px solid #ef4444' : 'none', borderRadius: '50%', color: isRecordingAudio ? '#ef4444' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, transition: 'all 0.15s', position: 'relative' }}>
+                  style={{ background: isRecordingAudio ? '#ef4444' : 'transparent', border: 'none', borderRadius: '50%', color: isRecordingAudio ? '#fff' : '#6b7280', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, transition: 'all 0.15s', position: 'relative' }}>
                   {isRecordingAudio && (
-                    <span style={{ position: 'absolute', top: '-18px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: '#ef4444', fontWeight: '700', whiteSpace: 'nowrap', background: '#fff', padding: '1px 5px', borderRadius: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)' }}>
-                      {String(Math.floor(chatRecordingTime/60)).padStart(2,'0')}:{String(chatRecordingTime%60).padStart(2,'0')}
+                    <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: '#ef4444', fontWeight: '700', whiteSpace: 'nowrap', background: '#fff', padding: '2px 6px', borderRadius: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', border: '1px solid rgba(239,68,68,0.2)' }}>
+                      ● {String(Math.floor(chatRecordingTime/60)).padStart(2,'0')}:{String(chatRecordingTime%60).padStart(2,'0')}
                     </span>
                   )}
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill={isRecordingAudio ? '#ef4444' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-                  </svg>
+                  {isRecordingAudio ? (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
+                  ) : (
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                    </svg>
+                  )}
                 </button>
               </div>
             </div>
