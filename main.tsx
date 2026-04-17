@@ -9,13 +9,18 @@ initSelectionErrorHandler();
 
 // ── Service Worker + Web Push ─────────────────────────────────────────────
 const VAPID_PUBLIC_KEY = 'BNeDJFYqIX59vgqEKxWfrI263knyPGHafMEK_WrMPeYaIm8bn62vcOah7hDlgIek4R4utB82g-cT9CwAtGn0wUs';
-const API_BASE = import.meta.env.VITE_API_URL || 'https://egchat-api.onrender.com';
+const API_BASE = (typeof import.meta !== 'undefined' && (import.meta as any).env?.VITE_API_URL) || 'https://egchat-api.onrender.com';
 
-function urlBase64ToUint8Array(base64String: string): Uint8Array {
+function urlBase64ToUint8Array(base64String: string): ArrayBuffer {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
   const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
   const rawData = atob(base64);
-  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  const buffer = new ArrayBuffer(rawData.length);
+  const view = new Uint8Array(buffer);
+  for (let i = 0; i < rawData.length; i++) {
+    view[i] = rawData.charCodeAt(i);
+  }
+  return buffer;
 }
 
 async function registerPush(registration: ServiceWorkerRegistration) {
