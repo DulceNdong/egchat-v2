@@ -5949,7 +5949,7 @@ const App: React.FC = () => {
                     textTransform: 'uppercase',
                     letterSpacing: '0.5px'
                   }}>
-                    Historial de Transacciones
+                    Historial de Transferencias
                   </h3>
                   <button
                     onClick={() => setCurrentView('historial-completo')}
@@ -5966,7 +5966,9 @@ const App: React.FC = () => {
                     Ver todo ?
                   </button>
                 </div>
-                {transactionHistory.map((trans) => (
+                {transactionHistory
+                  .filter(trans => trans.type === 'sent' || trans.type === 'received')
+                  .map((trans) => (
                   <button
                     key={trans.id}
                     onClick={() => {
@@ -6020,15 +6022,18 @@ const App: React.FC = () => {
                     </div>
                     <div style={{ flex: 1, textAlign: 'left' }}>
                       <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '2px' }}>
+                        {trans.type === 'sent' ? '↑ Enviado' : '↓ Recibido'}
+                      </div>
+                      <div style={{ fontSize: '11px', color: '#374151', marginBottom: '2px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {trans.description}
                       </div>
-                      <div style={{ fontSize: '13px', color: '#6b7280' }}>
-                        {trans.date} a {trans.status === 'completed' ? 'Completada' : trans.status === 'pending' ? 'Pendiente' : 'Fallida'}
+                      <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                        {trans.date}
                       </div>
                     </div>
                     <div style={{ textAlign: 'right' }}>
-                      <div style={{ fontSize: '12px', fontWeight: '800', color: (trans.type === 'received' || trans.type === 'deposit' || trans.type === 'salary') ? '#00e5ff' : '#f87171' }}>
-                        {trans.type === 'received' || trans.type === 'deposit' || trans.type === 'salary' ? '+' : '-'}{trans.amount.toLocaleString()}
+                      <div style={{ fontSize: '12px', fontWeight: '800', color: trans.type === 'received' ? '#00e5ff' : '#f87171' }}>
+                        {trans.type === 'received' ? '+' : '-'}{trans.amount.toLocaleString()}
                       </div>
                       <div style={{ fontSize: '12px', color: '#6b7280', fontWeight: '600' }}>XAF</div>
                     </div>
