@@ -102,7 +102,13 @@ const App: React.FC = () => {
           const localOnly = (prev[chatId] || []).filter((m: any) =>
             !backendIds.has(m.id) && (m.type === 'image' || m.type === 'audio' || m.imageUrl || m.audioUrl || m.status === 'pending')
           );
-          return { ...prev, [chatId]: [...fmt, ...localOnly] };
+          // Ordenar por tiempo para mantener el orden correcto
+          const merged = [...fmt, ...localOnly].sort((a: any, b: any) => {
+            const ta = a.time || '00:00';
+            const tb = b.time || '00:00';
+            return ta.localeCompare(tb);
+          });
+          return { ...prev, [chatId]: merged };
         });
       }
     } catch {}
@@ -134,6 +140,13 @@ const App: React.FC = () => {
     if (msgNotifTimer.current) clearTimeout(msgNotifTimer.current);
     setMsgNotif({ id: Date.now().toString(), sender: senderName, text, chatId, avatar });
     msgNotifTimer.current = setTimeout(() => setMsgNotif(null), 5000);
+    // Añadir a notificaciones reales de la app
+    const t = new Date();
+    const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+    setAppNotifications(prev => [{
+      id: Date.now().toString(), type: 'message' as const,
+      title: `💬 ${senderName}`, body: text, time, read: false, chatId,
+    }, ...prev].slice(0, 50));
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
       new Notification(`💬 ${senderName}`, { body: text, icon: '/logo-transparent.png', tag: chatId });
     }
@@ -146,6 +159,16 @@ const App: React.FC = () => {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [selectedNewsCategory, setSelectedNewsCategory] = useState<string>('Todas');
   const [showNotifications, setShowNotifications] = useState<boolean>(false);
+  // Notificaciones reales de la app
+  const [appNotifications, setAppNotifications] = useState<Array<{
+    id: string; type: 'message' | 'payment' | 'system' | 'security' | 'taxi' | 'bet';
+    title: string; body: string; time: string; read: boolean; chatId?: string; action?: () => void;
+  }>>([]);
+  const addAppNotification = React.useCallback((notif: { type: 'message'|'payment'|'system'|'security'|'taxi'|'bet'; title: string; body: string; chatId?: string; action?: () => void }) => {
+    const t = new Date();
+    const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+    setAppNotifications(prev => [{ id: Date.now().toString(), ...notif, time, read: false }, ...prev].slice(0, 50));
+  }, []);
   const [showMenu, setShowMenu] = useState<boolean>(false);
   const [showAddContact, setShowAddContact] = useState<boolean>(false);
   const [showCreateGroup, setShowCreateGroup] = useState<boolean>(false);
@@ -709,7 +732,15 @@ const App: React.FC = () => {
   const processTransfer = (amount: number, recipient: string): boolean => {
     if (amount > 0 && amount <= userBalance) {
       setUserBalance(userBalance - amount);
-      console.log(`Transferencia de ${amount} XAF a ${recipient} completada`);
+      // Notificación real de pago enviado
+      const t = new Date();
+      const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+      setAppNotifications(prev => [{
+        id: Date.now().toString(), type: 'payment' as const,
+        title: '💸 Transferencia enviada',
+        body: `${amount.toLocaleString()} XAF a ${recipient}`,
+        time, read: false,
+      }, ...prev].slice(0, 50));
       setShowTransferModal(false);
       setTransferAmount('');
       setTransferRecipient('');
@@ -2127,14 +2158,25 @@ const App: React.FC = () => {
         {/* Notificaciones */}
         <div style={{ position: 'relative' }}>
           <button
-            onClick={() => setShowNotifications(!showNotifications)}
+            onClick={() => { setShowNotifications(!showNotifications); setAppNotifications(prev => prev.map(n => ({ ...n, read: true }))); }}
             style={{ background: showNotifications ? 'rgba(0,200,160,0.25)' : 'rgba(10,20,40,0.75)', border: 'none', cursor: 'pointer', padding: '5px 6px', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative', outline: 'none' }}
           >
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </svg>
-            <div style={{ position: 'absolute', top: '2px', right: '2px', width: '5px', height: '5px', background: '#fbbf24', borderRadius: '50%', border: '1px solid rgba(10,20,40,0.9)' }} />
+            {appNotifications.filter(n => !n.read).length > 0 && (
+              <div style={{
+                position: 'absolute', top: '1px', right: '1px',
+                minWidth: '14px', height: '14px',
+                background: '#ef4444', borderRadius: '7px',
+                border: '1.5px solid rgba(10,20,40,0.9)',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: '8px', fontWeight: '800', color: '#fff', padding: '0 2px',
+              }}>
+                {appNotifications.filter(n => !n.read).length > 9 ? '9+' : appNotifications.filter(n => !n.read).length}
+              </div>
+            )}
           </button>
         </div>
 
@@ -2160,219 +2202,110 @@ const App: React.FC = () => {
   const renderNotificationsPanel = () => {
     if (!showNotifications) return null;
 
-    const notifs = [
-      {
-        id: 1, icon: 'money', label: 'Pago recibido', desc: '50.000 XAF a Juan P.', time: '5m', color: '#00c8a0',
-        detail: {
-          title: 'Pago recibido',
-          from: 'Juan Pérez',
-          fromPhone: '+240 222 111111',
-          fromAvatar: 'JP',
-          amount: '50.000 XAF',
-          date: '19/03/2026 a 10:24',
-          ref: 'TXN-2026-00481',
-          concept: 'Transferencia personal',
-          status: 'Completado',
-          statusColor: '#00c8a0',
-          action: () => {
-            // Abrir cartera y mostrar el detalle de la transacción
-            setCurrentView('monedero');
-          },
-          actionLabel: 'Ver transacción en Cartera'
-        }
-      },
-      {
-        id: 2, icon: 'message-square', label: 'Mensaje nuevo', desc: 'María: ¿Cómo estás?', time: '12m', color: '#00b4e6',
-        detail: {
-          title: 'Mensaje nuevo',
-          from: 'Maria Garcia',
-          fromPhone: '+240 222 222222',
-          fromAvatar: 'MG',
-          message: '¿Cómo estás? Hace tiempo que no hablamos, espero que todo vaya bien ',
-          date: '19/03/2026 a 10:17',
-          status: 'No leído',
-          statusColor: '#00b4e6',
-          action: () => { setSelectedChat({ id: 2, type: 'individual', title: 'Maria Garcia', subtitle: '¿Cómo estás? Hace tiempo que no hablamos...', time: '10:17', status: 'online', icon: 'contactos', color: '#00c8a0', initials: 'MG' }); setCurrentView('mensajeria'); },
-          actionLabel: 'Abrir conversación'
-        }
-      },
-      {
-        id: 3, icon: 'zap', label: 'Actualización', desc: 'Versión 2.1 disponible', time: '1h', color: '#a855f7',
-        detail: {
-          title: 'Nueva versión disponible',
-          from: 'EGCHAT Sistema',
-          fromAvatar: 'EG',
-          message: 'La versión 2.1 incluye mejoras de rendimiento, nuevos iconos y corrección de errores.',
-          date: '19/03/2026 a 09:30',
-          version: 'v2.1.0',
-          status: 'Disponible',
-          statusColor: '#a855f7',
-          action: () => {
-            setCurrentView('ajustes');
-            setCurrentSettingsTab('ayuda');
-          },
-          actionLabel: 'Ver en Ajustes - Ayuda'
-        }
-      },
-      {
-        id: 4, icon: 'alert-triangle', label: 'Recordatorio', desc: 'Pago servicios pendiente', time: '2h', color: '#f59e0b',
-        detail: {
-          title: 'Pago pendiente',
-          from: 'SEGESA a Electricidad',
-          fromAvatar: 'SE',
-          amount: '15.000 XAF',
-          date: 'Vence: 22/03/2026',
-          concept: 'Factura de electricidad - Marzo 2026',
-          status: 'Pendiente',
-          statusColor: '#f59e0b',
-          action: () => {
-            setCurrentView('monedero');
-          },
-          actionLabel: 'Ir a Cartera y pagar'
-        }
-      },
-      {
-        id: 5, icon: 'shield', label: 'Seguridad', desc: 'Nuevo inicio de sesión', time: '3h', color: '#ef4444',
-        detail: {
-          title: 'Inicio de sesión detectado',
-          from: 'Dispositivo nuevo',
-          fromAvatar: '',
-          message: 'Se detect un inicio de sesión desde un dispositivo no reconocido.',
-          device: 'Windows a Chrome a Malabo',
-          date: '19/03/2026 a 08:15',
-          status: 'Revisar',
-          statusColor: '#ef4444',
-          action: () => {
-            setCurrentView('ajustes');
-            setCurrentSettingsTab('actividad');
-          },
-          actionLabel: 'Revisar actividad de seguridad'
-        }
-      },
-    ];
+    const iconForType = (type: string) => {
+      if (type === 'message') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
+      if (type === 'payment') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
+      if (type === 'taxi') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>;
+      if (type === 'security') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
+      return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
+    };
+    const colorForType = (type: string) => {
+      if (type === 'message') return '#00b4e6';
+      if (type === 'payment') return '#00c8a0';
+      if (type === 'taxi') return '#f59e0b';
+      if (type === 'security') return '#ef4444';
+      if (type === 'bet') return '#a855f7';
+      return '#6b7280';
+    };
 
-    // Vista detalle de una notificacian
-    if (selectedNotif) {
-      const d = selectedNotif.detail;
-      return (
-        <div onClick={() => { setSelectedNotif(null); setShowNotifications(false); }}
-          style={{ position: 'fixed', inset: 0, zIndex: 1002, background: 'rgba(0,0,0,0.4)' }}>
-          <div onClick={e => e.stopPropagation()} style={{
-            position: 'absolute', top: '52px', right: '10px', width: '240px',
-            background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(28px) saturate(200%)', WebkitBackdropFilter: 'blur(28px) saturate(200%)', borderRadius: '14px', border: `1px solid ${selectedNotif.color}30`,
-            boxShadow: `0 8px 32px rgba(0,0,0,0.45), 0 0 0 1px ${selectedNotif.color}15`,
-            overflow: 'hidden'
-          }}>
-            {/* Header detalle */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '12px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-              <button onClick={() => setSelectedNotif(null)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', display: 'flex' }}>
-                <svg width="14" height="14" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-              </button>
-              <span style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d', flex: 1 }}>{d.title}</span>
-              <button onClick={() => { setSelectedNotif(null); setShowNotifications(false); }} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', fontSize: '13px' }}></button>
-            </div>
+    const unreadCount = appNotifications.filter(n => !n.read).length;
 
-            {/* Avatar + remitente */}
-            <div style={{ padding: '14px 14px 10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <div style={{ width: '42px', height: '42px', borderRadius: '50%', background: `${selectedNotif.color}20`, border: `2px solid ${selectedNotif.color}50`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', fontWeight: '700', color: selectedNotif.color, flexShrink: 0 }}>
-                {d.fromAvatar}
-              </div>
-              <div>
-                <div style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{d.from}</div>
-                {d.fromPhone && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '1px' }}>{d.fromPhone}</div>}
-                {d.device && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '1px' }}>{d.device}</div>}
-              </div>
-            </div>
-
-            {/* Contenido */}
-            <div style={{ padding: '0 14px 14px', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-              {d.amount && (
-                <div style={{ background: `${selectedNotif.color}12`, border: `1px solid ${selectedNotif.color}30`, borderRadius: '10px', padding: '10px 12px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '22px', fontWeight: '700', color: selectedNotif.color }}>{d.amount}</div>
-                  {d.concept && <div style={{ fontSize: '13px', color: '#6b7280', marginTop: '3px' }}>{d.concept}</div>}
-                </div>
-              )}
-              {d.message && (
-                <div style={{ background: 'rgba(249,250,251,0.88)', borderRadius: '8px', padding: '9px 10px', fontSize: '14px', color: '#1f2937', lineHeight: '1.5' }}>
-                  {d.message}
-                </div>
-              )}
-              {d.version && (
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Versión</span>
-                  <span style={{ fontSize: '14px', fontWeight: '600', color: selectedNotif.color }}>{d.version}</span>
-                </div>
-              )}
-              {d.ref && (
-                <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                  <span style={{ fontSize: '13px', color: '#6b7280' }}>Referencia</span>
-                  <span style={{ fontSize: '13px', color: '#374151', fontFamily: 'monospace' }}>{d.ref}</span>
-                </div>
-              )}
-              <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>Fecha</span>
-                <span style={{ fontSize: '13px', color: '#374151' }}>{d.date}</span>
-              </div>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <span style={{ fontSize: '13px', color: '#6b7280' }}>Estado</span>
-                <span style={{ fontSize: '13px', fontWeight: '600', color: d.statusColor, background: `${d.statusColor}18`, padding: '2px 8px', borderRadius: '10px', border: `1px solid ${d.statusColor}30` }}>{d.status}</span>
-              </div>
-            </div>
-
-            {/* Botan accin */}
-            <div style={{ padding: '0 14px 14px' }}>
-              <button onClick={() => { d.action(); setSelectedNotif(null); setShowNotifications(false); }}
-                style={{ width: '100%', background: `linear-gradient(135deg, ${selectedNotif.color}30, ${selectedNotif.color}18)`, border: `1px solid ${selectedNotif.color}40`, borderRadius: '9px', padding: '9px', color: selectedNotif.color, fontSize: '14px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
-                {d.actionLabel} ?
-              </button>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    // Vista lista
     return (
       <div onClick={() => setShowNotifications(false)}
         style={{ position: 'fixed', inset: 0, zIndex: 1001 }}>
         <div onClick={e => e.stopPropagation()} style={{
-          position: 'absolute', top: '52px', right: '10px', width: '230px',
-          background: 'rgba(255,255,255,0.35)', backdropFilter: 'blur(28px) saturate(200%)', WebkitBackdropFilter: 'blur(28px) saturate(200%)', borderRadius: '12px', border: '1.5px solid rgba(255,255,255,0.6)', boxShadow: '0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)', overflow: 'hidden'
+          position: 'absolute', top: '58px', right: '8px',
+          width: '320px', maxWidth: 'calc(100vw - 16px)',
+          background: '#fff', borderRadius: '16px',
+          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
+          border: '1px solid rgba(0,0,0,0.07)',
+          overflow: 'hidden',
         }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px 12px 8px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-            <span style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d' }}>Notificaciones</span>
+          {/* Header */}
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 10px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '12px', color: '#6b7280', background: 'rgba(239,68,68,0.2)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', padding: '1px 6px' }}>{notifs.length}</span>
-              <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', fontSize: '13px' }}></button>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: '#0d0d0d' }}>Notificaciones</span>
+              {unreadCount > 0 && (
+                <span style={{ fontSize: '11px', fontWeight: '700', background: '#ef4444', color: '#fff', borderRadius: '10px', padding: '1px 7px' }}>{unreadCount}</span>
+              )}
+            </div>
+            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+              {appNotifications.length > 0 && (
+                <button onClick={() => setAppNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+                  style={{ background: 'none', border: 'none', color: '#00c8a0', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
+                  Marcar todas
+                </button>
+              )}
+              <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', fontSize: '16px' }}>✕</button>
             </div>
           </div>
-          <div style={{ maxHeight: '280px', overflowY: 'auto' }}>
-            {notifs.map((n, i) => (
+
+          {/* Lista */}
+          <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
+            {appNotifications.length === 0 ? (
+              <div style={{ padding: '32px 16px', textAlign: 'center' }}>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔔</div>
+                <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Sin notificaciones</div>
+                <div style={{ fontSize: '12px', color: '#9ca3af' }}>Las notificaciones de mensajes, pagos y más aparecerán aquí</div>
+              </div>
+            ) : appNotifications.map((n, i) => (
               <div key={n.id}
-                onClick={() => setSelectedNotif(n)}
-                style={{ display: 'flex', alignItems: 'center', gap: '9px', padding: '8px 12px', borderBottom: i < notifs.length - 1 ? '1px solid rgba(255,255,255,0.04)' : 'none', cursor: 'pointer', transition: 'background 0.15s' }}
-                onMouseEnter={e => (e.currentTarget.style.background = '#f9fafb')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                onClick={() => {
+                  setAppNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
+                  if (n.chatId) { setCurrentView('mensajeria'); }
+                  if (n.action) n.action();
+                  setShowNotifications(false);
+                }}
+                style={{
+                  display: 'flex', alignItems: 'flex-start', gap: '10px',
+                  padding: '10px 14px',
+                  borderBottom: i < appNotifications.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
+                  cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(0,180,230,0.04)',
+                  transition: 'background 0.15s',
+                }}
+                onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(0,180,230,0.04)'}
               >
-                <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: `${n.color}18`, border: `1px solid ${n.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, color: n.color }}>
-                  {renderIcon(n.icon, 13)}
+                <div style={{
+                  width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
+                  background: colorForType(n.type) + '18',
+                  border: `1.5px solid ${colorForType(n.type)}30`,
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  color: colorForType(n.type),
+                }}>
+                  {iconForType(n.type)}
                 </div>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '14px', fontWeight: '600', color: '#0d0d0d', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.label}</div>
-                  <div style={{ fontSize: '13px', color: '#6b7280', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{n.desc}</div>
+                  <div style={{ fontSize: '13px', fontWeight: n.read ? '500' : '700', color: '#111827', marginBottom: '2px' }}>{n.title}</div>
+                  <div style={{ fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</div>
                 </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '3px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '12px', color: '#9ca3af' }}>{n.time}</span>
-                  <svg width="8" height="8" viewBox="0 0 24 24" stroke={n.color} strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.6 }}><polyline points="9 18 15 12 9 6"/></svg>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
+                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>{n.time}</span>
+                  {!n.read && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: colorForType(n.type) }}/>}
                 </div>
               </div>
             ))}
           </div>
-          <div style={{ padding: '8px 12px', borderTop: '1px solid rgba(0,0,0,0.07)', textAlign: 'center' }}>
-            <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', fontSize: '13px', cursor: 'pointer', outline: 'none' }}>
-              Marcar todas como leadas
-            </button>
-          </div>
+
+          {/* Footer */}
+          {appNotifications.length > 0 && (
+            <div style={{ padding: '8px 14px', borderTop: '1px solid rgba(0,0,0,0.07)', display: 'flex', justifyContent: 'center' }}>
+              <button onClick={() => setAppNotifications([])}
+                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '12px', cursor: 'pointer', outline: 'none' }}>
+                Limpiar todo
+              </button>
+            </div>
+          )}
         </div>
       </div>
     );
