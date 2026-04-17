@@ -31,7 +31,7 @@ async function registerPush(registration: ServiceWorkerRegistration) {
     });
 
     // Enviar suscripción al backend
-    const token = localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
     if (!token) return;
 
     await fetch(`${API_BASE}/api/push/subscribe`, {
@@ -72,7 +72,7 @@ if ('serviceWorker' in navigator) {
       // Suscribirse al push cuando el usuario ya esté autenticado
       // Intentar inmediatamente y también cuando el token aparezca
       const trySubscribe = () => {
-        const token = localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
+        const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
         if (token) registerPush(registration);
       };
 
