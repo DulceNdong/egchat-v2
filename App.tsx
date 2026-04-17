@@ -3809,7 +3809,10 @@ const App: React.FC = () => {
       <div style={containerStyle}>
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '20px', padding: '20px 18px 18px', border: 'none', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo disponible</div>
-          <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '18px', letterSpacing: '-1px' }}>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></div>
+          <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '18px', letterSpacing: '-1px', cursor: 'pointer' }} onClick={() => toggleBalanceVisible('home-minimal')}>
+          {isBalanceVisible('home-minimal') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>••••••</span>}
+          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-minimal') ? '🙈' : '👁'}</span>
+        </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
               <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -3873,7 +3876,10 @@ const App: React.FC = () => {
       <div style={containerStyle}>
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '16px', padding: '16px', marginBottom: '12px', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '4px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo Total</div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '14px', letterSpacing: '-1px' }}>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></div>
+          <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '14px', letterSpacing: '-1px', cursor: 'pointer' }} onClick={() => toggleBalanceVisible('home-finance')}>
+          {isBalanceVisible('home-finance') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>••••••</span>}
+          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-finance') ? '🙈' : '👁'}</span>
+        </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
               <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
@@ -3923,8 +3929,13 @@ const App: React.FC = () => {
         <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>
           Saldo disponible
         </div>
-        <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1 }}>
-          {userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span>
+        <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1, cursor: 'pointer', userSelect: 'none' }}
+          onClick={() => toggleBalanceVisible('home-default')}>
+          {isBalanceVisible('home-default')
+            ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></>
+            : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>••••••</span>
+          }
+          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-default') ? '🙈' : '👁'}</span>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
