@@ -2887,19 +2887,10 @@ const App: React.FC = () => {
                   try {
                     const phone = newContactPhone.startsWith('+') ? newContactPhone : '+240' + newContactPhone.replace(/\D/g, '').slice(-9);
                     await contactsAPI.add(undefined, phone, newContactName.trim() || undefined);
-                    // Refrescar lista de contactos
-                    const data = await contactsAPI.getAll();
-                    if (Array.isArray(data)) {
-                      setAllContacts(data.map((c: any) => ({
-                        id: c.id?.toString() || c.contact_user_id?.toString() || '',
-                        name: c.name || c.full_name || c.contact_name || 'Sin nombre',
-                        phone: c.phone || c.contact_phone || '',
-                        avatar: (c.name || c.full_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-                        avatarUrl: c.avatar_url || c.contact_avatar || '',
-                        status: (c.status || 'offline') as 'online' | 'offline' | 'away',
-                        addedDate: c.created_at || new Date().toISOString(),
-                      })));
-                    }
+                    showToast('✅ Contacto añadido', 'success');
+                    setShowAddContact(false);
+                    setNewContactPhone(''); setNewContactName('');
+                    await loadContacts();
                   } catch (err: any) {
                     const msg = err?.message || '';
                     if (msg.includes('no encontrado') || msg.includes('404')) {
@@ -4449,7 +4440,7 @@ const App: React.FC = () => {
                                   <button onClick={() => {
                                     if (phone) {
                                       contactsAPI.add(undefined, phone, name)
-                                        .then(() => showToast(`✅ ${name} añadido`, 'success'))
+                                        .then(async () => { showToast(`✅ ${name} añadido`, 'success'); await loadContacts(); })
                                         .catch(() => showToast('No se pudo añadir.', 'error'));
                                     }
                                   }} style={{ flex: 1, background: 'none', border: 'none', cursor: 'pointer', padding: '6px 0', fontSize: '12px', fontWeight: '700', color: '#00c8a0', outline: 'none', textAlign: 'center' }}>
@@ -5314,18 +5305,7 @@ const App: React.FC = () => {
                             try {
                               const phone = otherParticipant.phone || otherParticipant.users?.phone || '';
                               await contactsAPI.add(otherUserId as any, phone || undefined, name || undefined);
-                              const updated = await contactsAPI.getAll();
-                              if (Array.isArray(updated)) {
-                                setAllContacts(updated.map((c: any) => ({
-                                  id: c.id?.toString() || c.contact_user_id?.toString() || '',
-                                  name: c.name || c.full_name || c.contact_name || 'Sin nombre',
-                                  phone: c.phone || c.contact_phone || '',
-                                  avatar: (c.name || c.full_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-                                  avatarUrl: c.avatar_url || c.contact_avatar || '',
-                                  status: (c.status || 'offline') as 'online' | 'offline' | 'away',
-                                  addedDate: c.created_at || new Date().toISOString(),
-                                })));
-                              }
+                              await loadContacts();
                             } catch {}
                           }
                         }
@@ -7538,19 +7518,7 @@ const App: React.FC = () => {
     });
     loadChats();
     // Cargar todos los contactos reales
-    contactsAPI.getAll().then((data: any[]) => {
-      if (Array.isArray(data)) {
-        setAllContacts(data.map((c: any) => ({
-          id: c.contact_user_id?.toString() || c.id?.toString() || '',
-          name: c.name || c.nickname || c.full_name || 'Sin nombre',
-          phone: c.phone || '',
-          avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-          avatarUrl: c.avatar_url || '',
-          status: 'offline' as 'online' | 'offline' | 'away',
-          addedDate: c.created_at || new Date().toISOString(),
-        })));
-      }
-    }).catch(() => {});
+    loadContacts();
     // Cargar contactos favoritos reales
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
     // Cargar grupos favoritos reales
@@ -7563,7 +7531,7 @@ const App: React.FC = () => {
         (window as any).__egchat_registerPush();
       }
     }, 2000);
-  }, [isAuthenticated, loadChats]);
+  }, [isAuthenticated, loadChats, loadContacts]);
 
   // Escuchar evento de token expirado desde api.ts
   useEffect(() => {
@@ -7604,10 +7572,10 @@ const App: React.FC = () => {
   }, [selectedChat, loadMessages]);
 
   // -- Cargar contactos cuando se navega a la vista de contactos --
-  useEffect(() => {
-    if (currentView !== 'contactos') return;
-    contactsAPI.getAll().then((data: any[]) => {
-      console.log('Contactos cargados:', data?.length, data);
+  // -- Cargar contactos — función reutilizable --
+  const loadContacts = React.useCallback(async () => {
+    try {
+      const data = await contactsAPI.getAll();
       if (Array.isArray(data)) {
         setAllContacts(data.map((c: any) => ({
           id: c.contact_user_id?.toString() || c.id?.toString() || '',
@@ -7619,8 +7587,13 @@ const App: React.FC = () => {
           addedDate: c.created_at || new Date().toISOString(),
         })));
       }
-    }).catch((err) => { console.error('Error cargando contactos:', err); });
-  }, [currentView]);
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    if (currentView !== 'contactos') return;
+    loadContacts();
+  }, [currentView, loadContacts]);
 
   // -- Auth check  todos los hooks declarados -------------------
   if (!isAuthenticated) return <AuthScreen onAuth={(user) => {
@@ -8132,18 +8105,7 @@ const App: React.FC = () => {
                 const result = await contactsAPI.add(undefined, phone, name || undefined);
                 showToast(`✅ ${name || phone} añadido a contactos`, 'success');
                 // Recargar contactos
-                const contacts = await contactsAPI.getAll();
-                if (Array.isArray(contacts)) {
-                  setAllContacts(contacts.map((c: any) => ({
-                    id: c.contact_user_id?.toString() || c.id?.toString() || '',
-                    name: c.name || c.nickname || 'Sin nombre',
-                    phone: c.phone || '',
-                    avatar: (c.name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-                    avatarUrl: c.avatar_url || '',
-                    status: 'offline' as const,
-                    addedDate: c.created_at || new Date().toISOString(),
-                  })));
-                }
+                await loadContacts();
               } else {
                 showToast('QR no reconocido como contacto EGCHAT', 'error');
               }
