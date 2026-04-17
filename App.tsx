@@ -80,9 +80,10 @@ const App: React.FC = () => {
           status: (m.status||'delivered') as 'pending'|'delivered'|'read',
           // Archivos e imágenes del backend
           ...(m.file_url ? {
-            fileUrl: m.file_url,
+            fileUrl: m.type !== 'image' && m.type !== 'audio' ? m.file_url : undefined,
             imageUrl: m.type === 'image' ? m.file_url : undefined,
-            type: m.type === 'image' ? 'image' : (m.type === 'file' ? 'file' : m.type),
+            audioUrl: m.type === 'audio' ? m.file_url : undefined,
+            type: m.type === 'image' ? 'image' : m.type === 'audio' ? 'audio' : (m.type === 'file' ? 'file' : m.type),
           } : {}),
         }));
         setChatMessages((prev: any) => {
@@ -2492,8 +2493,10 @@ const App: React.FC = () => {
     if (!activeCall) return null;
     const { type, contact, status } = activeCall;
     const color = contact?.color || '#00c8a0';
-    const initials = contact?.initials || contact?.title?.slice(0, 2) || 'EG';
-    const name = contact?.title || contact?.name || 'Contacto';
+    // Nombre correcto: title > name > subtitle (evitar IDs)
+    const rawName = contact?.title || contact?.name || contact?.subtitle || '';
+    const name = rawName && !rawName.match(/^[0-9a-f-]{20,}$/i) ? rawName : 'Contacto';
+    const initials = name.split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase() || 'EG';
 
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: type === 'video' ? '#000' : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
@@ -4903,12 +4906,30 @@ const App: React.FC = () => {
                         stream.getTracks().forEach(t => t.stop());
                         if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
                         setChatRecordingTime(0);
-                        const blob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
-                        const url = URL.createObjectURL(blob);
+                        const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+                        const blob = new Blob(chatAudioChunksRef.current, { type: mimeType });
+                        const ext = mimeType.includes('webm') ? 'webm' : 'ogg';
                         const now = new Date();
                         const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                        const newMsg = { id: Date.now().toString(), from: 'me' as const, text: `🎤 Mensaje de voz`, time, status: 'pending' as const, type: 'audio' as const, audioUrl: url };
+                        const msgId = Date.now().toString();
+                        const localUrl = URL.createObjectURL(blob);
+                        // Mostrar inmediatamente con URL local
+                        const newMsg = { id: msgId, from: 'me' as const, text: `🎤 Mensaje de voz`, time, status: 'pending' as const, type: 'audio' as const, audioUrl: localUrl };
                         addMsg(newMsg);
+                        // Subir al servidor para que persista
+                        const chatId = sc?.id?.toString() || '';
+                        if (chatId && chatId.length > 10) {
+                          try {
+                            const audioFile = new File([blob], `audio_${msgId}.${ext}`, { type: mimeType });
+                            const result = await chatAPI.uploadFile(chatId, audioFile);
+                            if (result.file_url) {
+                              await chatAPI.sendMessage(chatId, { text: '🎤 Mensaje de voz', type: 'audio', file_url: result.file_url });
+                              // Actualizar URL local con la del servidor
+                              const key = sc?.id?.toString() || sc?.title;
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, audioUrl: result.file_url, status: 'delivered' } : m) }));
+                            }
+                          } catch {}
+                        }
                       };
                       recorder.start();
                       chatRecorderRef.current = recorder;
@@ -4930,15 +4951,31 @@ const App: React.FC = () => {
                     try {
                       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
                       chatAudioChunksRef.current = [];
-                      const recorder = new MediaRecorder(stream);
+                      const mimeType = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/ogg';
+                      const recorder = new MediaRecorder(stream, { mimeType });
                       recorder.ondataavailable = ev => { if (ev.data.size > 0) chatAudioChunksRef.current.push(ev.data); };
                       recorder.onstop = async () => {
                         stream.getTracks().forEach(t => t.stop());
                         if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
                         setChatRecordingTime(0);
-                        const blob = new Blob(chatAudioChunksRef.current, { type: 'audio/webm' });
-                        const url = URL.createObjectURL(blob);
-                        addMsg({ id: Date.now().toString(), from: 'me' as const, text: '🎤 Mensaje de voz', time: makeTime(), status: 'pending' as const, type: 'audio' as const, audioUrl: url });
+                        const ext = mimeType.includes('webm') ? 'webm' : 'ogg';
+                        const blob = new Blob(chatAudioChunksRef.current, { type: mimeType });
+                        const msgId = Date.now().toString();
+                        const localUrl = URL.createObjectURL(blob);
+                        addMsg({ id: msgId, from: 'me' as const, text: '🎤 Mensaje de voz', time: makeTime(), status: 'pending' as const, type: 'audio' as const, audioUrl: localUrl });
+                        // Subir al servidor
+                        const chatId = sc?.id?.toString() || '';
+                        if (chatId && chatId.length > 10) {
+                          try {
+                            const audioFile = new File([blob], `audio_${msgId}.${ext}`, { type: mimeType });
+                            const result = await chatAPI.uploadFile(chatId, audioFile);
+                            if (result.file_url) {
+                              await chatAPI.sendMessage(chatId, { text: '🎤 Mensaje de voz', type: 'audio', file_url: result.file_url });
+                              const key = sc?.id?.toString() || sc?.title;
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, audioUrl: result.file_url, status: 'delivered' } : m) }));
+                            }
+                          } catch {}
+                        }
                       };
                       recorder.start();
                       chatRecorderRef.current = recorder;
