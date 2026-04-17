@@ -102,7 +102,12 @@ export function useWebRTC() {
 
   // Crear PeerConnection con handlers correctos
   const createPC = useCallback(() => {
-    const p = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const p = new RTCPeerConnection({
+      iceServers: ICE_SERVERS,
+      // Ancho de banda adaptable — el navegador ajusta según la red
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+    });
 
     // Recibir stream remoto
     p.ontrack = (e) => {
@@ -115,6 +120,24 @@ export function useWebRTC() {
       if (p.connectionState === 'connected') {
         setCallState('connected');
         stopPolling();
+        // Ajustar bitrate máximo tras conectar (ancho de banda adaptable)
+        p.getSenders().forEach(async sender => {
+          if (!sender.track) return;
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+          }
+          if (sender.track.kind === 'video') {
+            // Video: máx 2.5 Mbps, mín 200 kbps
+            params.encodings[0].maxBitrate = 2_500_000;
+            params.encodings[0].minBitrate = 200_000;
+            params.encodings[0].maxFramerate = 30;
+          } else if (sender.track.kind === 'audio') {
+            // Audio: máx 128 kbps
+            params.encodings[0].maxBitrate = 128_000;
+          }
+          try { await sender.setParameters(params); } catch {}
+        });
       } else if (p.connectionState === 'failed' || p.connectionState === 'disconnected') {
         cleanup();
       }
@@ -142,17 +165,33 @@ export function useWebRTC() {
     cleanup();
     setCallType(type);
 
-    // Obtener stream local
+    // Restricciones de video adaptables — intenta 720p, acepta menos si no hay ancho de banda
+    const videoConstraints: MediaTrackConstraints = {
+      facingMode: 'user',
+      width:  { ideal: 1280, min: 320, max: 1920 },
+      height: { ideal: 720,  min: 240, max: 1080 },
+      frameRate: { ideal: 30, min: 15, max: 60 },
+    };
+
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia(
         type === 'video'
-          ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
-          : { audio: true, video: false }
+          ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: videoConstraints }
+          : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }
       );
     } catch (err) {
-      console.error('getUserMedia error:', err);
-      throw new Error('No se pudo acceder al micrófono/cámara');
+      // Fallback a resolución más baja si falla
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(
+          type === 'video'
+            ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
+            : { audio: true, video: false }
+        );
+      } catch (err2) {
+        console.error('getUserMedia error:', err2);
+        throw new Error('No se pudo acceder al micrófono/cámara');
+      }
     }
 
     localStreamRef.current = stream;
@@ -233,17 +272,31 @@ export function useWebRTC() {
     cleanup();
     setCallType(type);
 
-    // Obtener stream local
+    const videoConstraints: MediaTrackConstraints = {
+      facingMode: 'user',
+      width:  { ideal: 1280, min: 320, max: 1920 },
+      height: { ideal: 720,  min: 240, max: 1080 },
+      frameRate: { ideal: 30, min: 15, max: 60 },
+    };
+
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia(
         type === 'video'
-          ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
-          : { audio: true, video: false }
+          ? { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: videoConstraints }
+          : { audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false }
       );
     } catch (err) {
-      console.error('getUserMedia error (callee):', err);
-      throw new Error('No se pudo acceder al micrófono/cámara');
+      try {
+        stream = await navigator.mediaDevices.getUserMedia(
+          type === 'video'
+            ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
+            : { audio: true, video: false }
+        );
+      } catch (err2) {
+        console.error('getUserMedia error (callee):', err2);
+        throw new Error('No se pudo acceder al micrófono/cámara');
+      }
     }
 
     localStreamRef.current = stream;
