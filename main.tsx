@@ -20,28 +20,38 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array {
 
 async function registerPush(registration: ServiceWorkerRegistration) {
   try {
-    // Pedir permiso de notificaciones
-    const permission = await Notification.requestPermission();
-    if (permission !== 'granted') return;
+    // Si el permiso no está concedido, pedirlo
+    if (Notification.permission !== 'granted') {
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+    }
 
     // Suscribirse al push
-    const subscription = await registration.pushManager.subscribe({
-      userVisibleOnly: true,
-      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
-    });
+    let subscription = await registration.pushManager.getSubscription();
+    if (!subscription) {
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+      });
+    }
 
     // Enviar suscripción al backend
-    const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
-    if (!token) return;
+    const token = localStorage.getItem('token') || localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || localStorage.getItem('egchat_token_backup') || '';
+    if (!token) { console.warn('Push: no token found'); return; }
 
-    await fetch(`${API_BASE}/api/push/subscribe`, {
+    const resp = await fetch(`${API_BASE}/api/push/subscribe`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${token}`,
       },
-      body: JSON.stringify({ subscription }),
+      body: JSON.stringify({ subscription: subscription.toJSON() }),
     });
+    if (resp.ok) {
+      console.log('Push subscription registered successfully');
+    } else {
+      console.warn('Push subscription failed:', await resp.text());
+    }
   } catch (e) {
     console.warn('Push subscription failed:', e);
   }
