@@ -2454,10 +2454,29 @@ const App: React.FC = () => {
   const remoteVideoRef = React.useRef<HTMLVideoElement | null>(null);
   const localVideoRef = React.useRef<HTMLVideoElement | null>(null);
 
-  // Sincronizar streams con elementos de video
+  // Callback refs que asignan el stream en cuanto el elemento se monta
+  const setRemoteVideoRef = React.useCallback((el: HTMLVideoElement | null) => {
+    remoteVideoRef.current = el;
+    if (el && webrtc.remoteStream) {
+      el.srcObject = webrtc.remoteStream;
+      el.play().catch(() => {});
+    }
+  }, [webrtc.remoteStream]);
+
+  const setLocalVideoRef = React.useCallback((el: HTMLVideoElement | null) => {
+    localVideoRef.current = el;
+    const s = webrtc.localStream || localStream;
+    if (el && s) {
+      el.srcObject = s;
+      el.play().catch(() => {});
+    }
+  }, [webrtc.localStream, localStream]);
+
+  // Sincronizar streams cuando cambian (para cuando el elemento ya está montado)
   React.useEffect(() => {
     if (remoteVideoRef.current && webrtc.remoteStream) {
       remoteVideoRef.current.srcObject = webrtc.remoteStream;
+      remoteVideoRef.current.play().catch(() => {});
     }
   }, [webrtc.remoteStream]);
 
@@ -2465,6 +2484,7 @@ const App: React.FC = () => {
     const s = webrtc.localStream || localStream;
     if (localVideoRef.current && s) {
       localVideoRef.current.srcObject = s;
+      localVideoRef.current.play().catch(() => {});
     }
   }, [webrtc.localStream, localStream]);
 
@@ -2481,7 +2501,7 @@ const App: React.FC = () => {
         {type === 'video' && (
           <div style={{ position: 'absolute', inset: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
             <video
-              ref={remoteVideoRef}
+              ref={setRemoteVideoRef}
               autoPlay playsInline
               style={{ width: '100%', height: '100%', objectFit: 'cover', display: webrtc.remoteStream ? 'block' : 'none' }}
             />
@@ -2497,7 +2517,7 @@ const App: React.FC = () => {
         {type === 'video' && !isCameraOff && (
           <div style={{ position: 'absolute', top: '80px', right: '16px', width: '90px', height: '120px', borderRadius: '12px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', zIndex: 10, background: '#222' }}>
             <video
-              ref={localVideoRef}
+              ref={setLocalVideoRef}
               autoPlay muted playsInline
               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
             />

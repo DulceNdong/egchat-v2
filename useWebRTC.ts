@@ -13,6 +13,7 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
+  // TURN servers - múltiples para mayor fiabilidad
   {
     urls: 'turn:openrelay.metered.ca:80',
     username: 'openrelayproject',
@@ -26,6 +27,17 @@ const ICE_SERVERS = [
   {
     urls: 'turn:openrelay.metered.ca:443?transport=tcp',
     username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  // TURN adicional de Metered
+  {
+    urls: 'turn:a.relay.metered.ca:80',
+    username: 'e8dd65f0a7c3e0a7e8dd65f0',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:a.relay.metered.ca:443',
+    username: 'e8dd65f0a7c3e0a7e8dd65f0',
     credential: 'openrelayproject',
   },
 ];
