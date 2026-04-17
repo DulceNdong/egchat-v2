@@ -5337,13 +5337,39 @@ const App: React.FC = () => {
                   const otherUserId = otherParticipant?.user_id?.toString() || '';
                   return (
                     <div key={chat.id}
-                      onClick={() => setSelectedChat({
-                        id: chat.id, type: chat.type||'individual',
-                        title: name, subtitle: lastMsg, time,
-                        status: 'online', initials, color: isGroup ? '#a855f7' : '#00c8a0',
-                        avatarUrl: avatarUrl,
-                        user_id: otherUserId, // para WebRTC
-                      })}
+                      onClick={async () => {
+                        setSelectedChat({
+                          id: chat.id, type: chat.type||'individual',
+                          title: name, subtitle: lastMsg, time,
+                          status: 'online', initials, color: isGroup ? '#a855f7' : '#00c8a0',
+                          avatarUrl: avatarUrl,
+                          user_id: otherUserId, // para WebRTC
+                        });
+                        // Auto-registrar contacto si es chat individual y no está en la lista
+                        if (!isGroup && otherParticipant) {
+                          const alreadyInContacts = allContacts.some(
+                            (c: any) => c.id?.toString() === otherUserId || c.user_id?.toString() === otherUserId
+                          );
+                          if (!alreadyInContacts && otherUserId) {
+                            try {
+                              const phone = otherParticipant.phone || otherParticipant.users?.phone || '';
+                              await contactsAPI.add(otherUserId as any, phone || undefined, name || undefined);
+                              const updated = await contactsAPI.getAll();
+                              if (Array.isArray(updated)) {
+                                setAllContacts(updated.map((c: any) => ({
+                                  id: c.id?.toString() || c.contact_user_id?.toString() || '',
+                                  name: c.name || c.full_name || c.contact_name || 'Sin nombre',
+                                  phone: c.phone || c.contact_phone || '',
+                                  avatar: (c.name || c.full_name || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+                                  avatarUrl: c.avatar_url || c.contact_avatar || '',
+                                  status: (c.status || 'offline') as 'online' | 'offline' | 'away',
+                                  addedDate: c.created_at || new Date().toISOString(),
+                                })));
+                              }
+                            } catch {}
+                          }
+                        }
+                      }}
                       style={{ background:'#fff', borderRadius:'8px', padding:'12px 10px', marginBottom:'6px', border:'1px solid #F0F2F5', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px' }}
                       onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
                       onMouseLeave={e=>{e.currentTarget.style.background='#fff';}}
