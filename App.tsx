@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import './index.css';
 import { chatAPI, authAPI, contactsAPI } from './api';
 import AuthScreen from './AuthScreen';
@@ -3842,13 +3842,13 @@ const App: React.FC = () => {
         </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-              <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
               </div>
               RECARGAR
             </button>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-              <div style={{ width: '22px', height: '22px', borderRadius: '6px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </div>
               ENVIAR
@@ -3909,13 +3909,13 @@ const App: React.FC = () => {
         </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
               </div>
               RECARGAR
             </button>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+              <div style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
               </div>
               ENVIAR
@@ -3967,13 +3967,13 @@ const App: React.FC = () => {
 
         <div style={{ display: 'flex', gap: '8px' }}>
           <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-            <div style={{ width: '20px', height: '20px', borderRadius: '5px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
             </div>
             RECARGAR
           </button>
           <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-            <div style={{ width: '20px', height: '20px', borderRadius: '5px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
               <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             </div>
             ENVIAR
@@ -5874,7 +5874,7 @@ const App: React.FC = () => {
                     style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#E8F4FD', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#0E5F8A" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/>
                         <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
@@ -5888,7 +5888,7 @@ const App: React.FC = () => {
                     style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#E8F5F0', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/>
                       </svg>
@@ -5901,7 +5901,7 @@ const App: React.FC = () => {
                     style={{ background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '10px 4px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', transition: 'all 0.15s', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = '#fff'; e.currentTarget.style.transform = 'translateY(-1px)'; }}
                     onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(255,255,255,0.92)'; e.currentTarget.style.transform = 'none'; }}>
-                    <div style={{ width: '28px', height: '28px', borderRadius: '8px', background: '#FEF9E7', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <div style={{ width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                         <polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/>
                         <path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
