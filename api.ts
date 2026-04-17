@@ -202,7 +202,7 @@ export const chatAPI = {
 // ══════════════════════════════════════════════════════════════════
 export const contactsAPI = {
   getAll:       () => get<any[]>('/contacts'),
-  add:          (contact_user_id?: string, phone?: string, name?: string) => post<any>('/contacts', { contact_user_id, phone, name }),
+  add:          (contact_user_id?: string, phone?: string, name?: string) => post<any>('/contacts', { contact_user_id, phone, nickname: name }),
   remove:       (id:string) => del<void>(`/contacts/${id}`),
   block:        (id:string) => post<any>(`/contacts/${id}/block`, {}),
   getFavorites: () => get<any[]>('/contacts/favorites'),
