@@ -78,6 +78,12 @@ const App: React.FC = () => {
           id: m.id, from: m.sender_id === currentUserId.current ? 'me' as const : 'them' as const,
           text: m.text || '', time: new Date(m.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
           status: (m.status||'delivered') as 'pending'|'delivered'|'read',
+          // Archivos e imágenes del backend
+          ...(m.file_url ? {
+            fileUrl: m.file_url,
+            imageUrl: m.type === 'image' ? m.file_url : undefined,
+            type: m.type === 'image' ? 'image' : (m.type === 'file' ? 'file' : m.type),
+          } : {}),
         }));
         setChatMessages((prev: any) => {
           // Detectar mensajes nuevos para notificar
@@ -4597,21 +4603,30 @@ const App: React.FC = () => {
                         action: () => {
                           setShowChatAttach(false);
                           const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
                           const inp = document.createElement('input');
                           inp.type='file'; inp.accept='image/*'; inp.style.display='none';
                           document.body.appendChild(inp);
-                          inp.onchange = () => {
+                          inp.onchange = async () => {
                             const file = inp.files?.[0];
                             document.body.removeChild(inp);
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (ev) => {
-                                const url = ev.target?.result as string;
-                                const t = new Date();
-                                const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                                setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: '📷 Foto', time: tm, status: 'pending' as const, type: 'image', imageUrl: url }] }));
-                              };
-                              reader.readAsDataURL(file);
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const msgId = Date.now().toString();
+                            // Mostrar preview local inmediatamente
+                            const localUrl = URL.createObjectURL(file);
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: '📷 Foto', time: tm, status: 'pending' as const, type: 'image', imageUrl: localUrl } as any] }));
+                            try {
+                              // Subir al servidor
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              const serverUrl = result.file_url;
+                              // Enviar mensaje al backend con la URL real
+                              await chatAPI.sendMessage(chatId, '📷 Foto', 'image', undefined, serverUrl);
+                              // Actualizar mensaje local con URL del servidor
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, imageUrl: serverUrl, status: 'delivered' } : m) }));
+                            } catch (e) {
+                              showToast('Error al subir foto', 'error');
                             }
                           };
                           inp.click();
@@ -4623,18 +4638,24 @@ const App: React.FC = () => {
                         action: () => {
                           setShowChatAttach(false);
                           const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
                           const inp = document.createElement('input');
                           inp.type='file'; inp.accept='video/*'; inp.style.display='none';
                           document.body.appendChild(inp);
-                          inp.onchange = () => {
+                          inp.onchange = async () => {
                             const file = inp.files?.[0];
                             document.body.removeChild(inp);
-                            if (file) {
-                              const t = new Date();
-                              const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                              const size = (file.size/1024/1024).toFixed(1);
-                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, status: 'pending' as const }] }));
-                            }
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const size = (file.size/1024/1024).toFixed(1);
+                            const msgId = Date.now().toString();
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, status: 'pending' as const } as any] }));
+                            try {
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              await chatAPI.sendMessage(chatId, `🎥 ${file.name} (${size} MB)`, 'file', undefined, result.file_url);
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, fileUrl: result.file_url, fileName: file.name, fileSize: size + ' MB', fileExt: 'mp4', status: 'delivered' } : m) }));
+                            } catch { showToast('Error al subir video', 'error'); }
                           };
                           inp.click();
                         }
@@ -4645,20 +4666,26 @@ const App: React.FC = () => {
                         action: () => {
                           setShowChatAttach(false);
                           const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
                           const inp = document.createElement('input');
                           inp.type='file'; inp.style.display='none';
                           document.body.appendChild(inp);
-                          inp.onchange = () => {
+                          inp.onchange = async () => {
                             const file = inp.files?.[0];
                             document.body.removeChild(inp);
-                            if (file) {
-                              const t = new Date();
-                              const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                              const size = (file.size/1024).toFixed(1);
-                              const fileUrl = URL.createObjectURL(file);
-                              const ext = file.name.split('.').pop()?.toLowerCase() || '';
-                              setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: Date.now().toString(), from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const, fileUrl, fileName: file.name, fileSize: size + ' KB', fileExt: ext } as any] }));
-                            }
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const size = (file.size/1024).toFixed(1);
+                            const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                            const msgId = Date.now().toString();
+                            // Mostrar pendiente
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const, fileName: file.name, fileSize: size + ' KB', fileExt: ext } as any] }));
+                            try {
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              await chatAPI.sendMessage(chatId, `📎 ${file.name} (${size} KB)`, 'file', undefined, result.file_url);
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, fileUrl: result.file_url, status: 'delivered' } : m) }));
+                            } catch { showToast('Error al subir archivo', 'error'); }
                           };
                           inp.click();
                         }

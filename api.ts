@@ -162,15 +162,20 @@ export const chatAPI = {
   markAsRead: (chatId:string, message_id: string) => 
     post<any>(`/chats/${chatId}/read`, { message_id }),
   
-  // Subir archivo
-  uploadFile: async (chatId:string, file:File) => {
-    const fd = new FormData(); 
-    fd.append('file', file);
-    const res = await fetch(`${BASE}/chats/${chatId}/upload`, { 
-      method:'POST', 
-      body: fd,
-      headers: { Authorization: `Bearer ${getToken()}` }
+  // Subir archivo — envía el buffer directamente con headers de metadata
+  uploadFile: async (chatId: string, file: File) => {
+    const token = getToken();
+    const arrayBuffer = await file.arrayBuffer();
+    const res = await fetch(`${BASE}/chats/${chatId}/upload`, {
+      method: 'POST',
+      body: arrayBuffer,
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': file.type || 'application/octet-stream',
+        'X-File-Name': encodeURIComponent(file.name),
+      },
     });
+    if (!res.ok) throw new Error(`Upload failed: ${res.status}`);
     return res.json();
   },
   
