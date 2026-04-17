@@ -4409,20 +4409,46 @@ const App: React.FC = () => {
                           </button>
                         </div>
                       ) : (msg as any).type === 'audio' && (msg as any).audioUrl ? (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px', padding: '4px 0' }}>
-                          {/* Elemento audio oculto — necesario para iOS Safari */}
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '240px', maxWidth: '280px', padding: '6px 4px' }}>
+                          {/* Audio element oculto */}
                           <audio
                             id={`audio-${msg.id}`}
                             src={(msg as any).audioUrl}
                             preload="metadata"
                             style={{ display: 'none' }}
+                            onTimeUpdate={() => {
+                              const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
+                              const bar = document.getElementById(`progress-${msg.id}`) as HTMLElement;
+                              const timeEl = document.getElementById(`time-${msg.id}`) as HTMLElement;
+                              if (!audio || !bar) return;
+                              const pct = audio.duration ? (audio.currentTime / audio.duration) * 100 : 0;
+                              bar.style.width = `${pct}%`;
+                              if (timeEl) {
+                                const rem = audio.duration - audio.currentTime;
+                                timeEl.textContent = isNaN(rem) ? '0:00' : `${Math.floor(rem/60)}:${String(Math.floor(rem%60)).padStart(2,'0')}`;
+                              }
+                            }}
+                            onLoadedMetadata={() => {
+                              const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
+                              const timeEl = document.getElementById(`time-${msg.id}`) as HTMLElement;
+                              if (audio && timeEl && !isNaN(audio.duration)) {
+                                timeEl.textContent = `${Math.floor(audio.duration/60)}:${String(Math.floor(audio.duration%60)).padStart(2,'0')}`;
+                              }
+                            }}
                             onEnded={() => {
-                              const btn = document.getElementById(`play-btn-${msg.id}`);
+                              const bar = document.getElementById(`progress-${msg.id}`) as HTMLElement;
+                              const btn = document.getElementById(`play-btn-${msg.id}`) as HTMLElement;
+                              const timeEl = document.getElementById(`time-${msg.id}`) as HTMLElement;
+                              const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
+                              if (bar) bar.style.width = '0%';
                               if (btn) btn.setAttribute('data-playing', 'false');
-                              const bars = document.getElementById(`bars-${msg.id}`);
-                              if (bars) bars.style.animation = 'none';
+                              if (timeEl && audio && !isNaN(audio.duration)) {
+                                timeEl.textContent = `${Math.floor(audio.duration/60)}:${String(Math.floor(audio.duration%60)).padStart(2,'0')}`;
+                              }
                             }}
                           />
+
+                          {/* Botón play/pause */}
                           <button
                             id={`play-btn-${msg.id}`}
                             data-playing="false"
@@ -4431,51 +4457,104 @@ const App: React.FC = () => {
                               const btn = document.getElementById(`play-btn-${msg.id}`);
                               if (!audio) return;
                               if (audio.paused) {
-                                // Pausar todos los demás audios
-                                document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
+                                document.querySelectorAll('audio').forEach(a => { if (a !== audio) { a.pause(); } });
                                 audio.play().catch(() => {});
                                 btn?.setAttribute('data-playing', 'true');
-                                btn?.querySelector('svg')?.setAttribute('data-state', 'playing');
                               } else {
                                 audio.pause();
                                 btn?.setAttribute('data-playing', 'false');
                               }
                             }}
-                            style={{ background: msg.from === 'me' ? '#00c8a0' : '#00b4e6', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', flexShrink: 0, boxShadow: '0 2px 8px rgba(0,0,0,0.2)' }}>
+                            style={{
+                              background: msg.from === 'me'
+                                ? 'linear-gradient(135deg,#00c8a0,#00b4e6)'
+                                : 'linear-gradient(135deg,#00b4e6,#667eea)',
+                              border: 'none', borderRadius: '50%',
+                              width: '42px', height: '42px', flexShrink: 0,
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                              transition: 'transform 0.1s',
+                            }}
+                            onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
+                            onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
+                          >
+                            {/* Icono cambia dinámicamente via CSS — siempre play por defecto */}
                             <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
                               <polygon points="6 3 20 12 6 21 6 3"/>
                             </svg>
                           </button>
-                          <div style={{ flex: 1 }}>
-                            {/* Barras de onda animadas */}
-                            <div id={`bars-${msg.id}`} style={{ display: 'flex', alignItems: 'center', gap: '2px', height: '28px', marginBottom: '2px' }}>
-                              {[3,5,8,6,10,7,4,9,6,8,5,7,4,6,8,5,9,6,4,7].map((h, i) => (
-                                <div key={i} style={{
-                                  width: '3px',
-                                  height: `${h * 2}px`,
-                                  background: msg.from === 'me' ? 'rgba(0,200,160,0.8)' : 'rgba(0,180,230,0.8)',
-                                  borderRadius: '2px',
-                                  flexShrink: 0,
-                                  transition: 'height 0.1s',
-                                }}/>
-                              ))}
+
+                          {/* Waveform + progreso + tiempo */}
+                          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '5px' }}>
+                            {/* Barra de progreso con waveform */}
+                            <div
+                              style={{ position: 'relative', height: '28px', cursor: 'pointer' }}
+                              onClick={(e) => {
+                                const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
+                                if (!audio || !audio.duration) return;
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                const pct = (e.clientX - rect.left) / rect.width;
+                                audio.currentTime = pct * audio.duration;
+                              }}
+                            >
+                              {/* Fondo waveform estático */}
+                              <div style={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', gap: '2px', padding: '0 2px' }}>
+                                {[2,4,7,5,9,6,3,8,5,7,4,6,3,5,7,4,8,5,3,6,4,7,5,8,3,5,7,4,6,3].map((h, i) => (
+                                  <div key={i} style={{
+                                    flex: 1, height: `${h * 2.5}px`,
+                                    background: msg.from === 'me' ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)',
+                                    borderRadius: '2px',
+                                  }}/>
+                                ))}
+                              </div>
+                              {/* Progreso coloreado (clip) */}
+                              <div
+                                id={`progress-clip-${msg.id}`}
+                                style={{ position: 'absolute', inset: 0, overflow: 'hidden', width: '0%', transition: 'width 0.1s linear' }}
+                              >
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '2px', padding: '0 2px', height: '100%' }}>
+                                  {[2,4,7,5,9,6,3,8,5,7,4,6,3,5,7,4,8,5,3,6,4,7,5,8,3,5,7,4,6,3].map((h, i) => (
+                                    <div key={i} style={{
+                                      flex: 1, height: `${h * 2.5}px`,
+                                      background: msg.from === 'me' ? '#00c8a0' : '#00b4e6',
+                                      borderRadius: '2px',
+                                    }}/>
+                                  ))}
+                                </div>
+                              </div>
+                              {/* Barra de progreso invisible para el cálculo */}
+                              <div id={`progress-${msg.id}`} style={{ display: 'none' }}
+                                ref={el => {
+                                  if (el) {
+                                    // Sincronizar con el clip
+                                    const observer = new MutationObserver(() => {
+                                      const clip = document.getElementById(`progress-clip-${msg.id}`);
+                                      if (clip) clip.style.width = el.style.width;
+                                    });
+                                    observer.observe(el, { attributes: true, attributeFilter: ['style'] });
+                                  }
+                                }}
+                              />
                             </div>
-                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>
-                              🎤 Mensaje de voz
+
+                            {/* Tiempo restante */}
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                              <span style={{ fontSize: '10px', color: msg.from === 'me' ? 'rgba(0,200,160,0.8)' : 'rgba(0,180,230,0.8)', fontWeight: '600' }}>
+                                🎤 Voz
+                              </span>
+                              <span id={`time-${msg.id}`} style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500', fontVariantNumeric: 'tabular-nums' }}>
+                                0:00
+                              </span>
                             </div>
                           </div>
                         </div>
                       ) : (msg as any).type === 'image' ? (
                         /* ── IMAGEN ── */
                         (msg as any).imageUrl ? (
-                          <div style={{ cursor: 'zoom-in' }} onClick={() => setChatImageViewer((msg as any).imageUrl)}>
+                          <div style={{ cursor: 'zoom-in', borderRadius: '12px 12px 0 0', overflow: 'hidden' }} onClick={(e) => { e.stopPropagation(); setChatImageViewer((msg as any).imageUrl); }}>
                             <img src={(msg as any).imageUrl} alt="foto"
-                              style={{ width: '220px', height: '180px', objectFit: 'cover', display: 'block', borderRadius: '12px 12px 0 0' }}
+                              style={{ width: '240px', height: '200px', objectFit: 'cover', display: 'block' }}
                               onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
-                            <div style={{ padding: '4px 8px 0', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
-                              <span style={{ fontSize: '11px', color: '#9ca3af' }}>Foto</span>
-                            </div>
                           </div>
                         ) : (
                           /* imageUrl vacío — foto no disponible (localStorage lleno) */
@@ -8111,33 +8190,60 @@ const App: React.FC = () => {
       {chatImageViewer && (
         <div
           onClick={() => setChatImageViewer(null)}
-          style={{ position: 'fixed', inset: 0, zIndex: 5000, background: 'rgba(0,0,0,0.92)', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'zoom-out' }}
+          style={{
+            position: 'fixed', inset: 0, zIndex: 5000,
+            background: 'rgba(0,0,0,0.95)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            cursor: 'zoom-out',
+            animation: 'fadeIn 0.2s ease',
+          }}
         >
+          <style>{`@keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }`}</style>
           <img
             src={chatImageViewer}
             alt="foto"
-            style={{ maxWidth: '95vw', maxHeight: '90vh', objectFit: 'contain', borderRadius: '8px', boxShadow: '0 8px 40px rgba(0,0,0,0.6)' }}
+            style={{
+              maxWidth: '95vw', maxHeight: '88vh',
+              objectFit: 'contain',
+              borderRadius: '4px',
+              boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
+              userSelect: 'none',
+            }}
             onClick={e => e.stopPropagation()}
           />
+          {/* Cerrar */}
           <button
             onClick={() => setChatImageViewer(null)}
-            style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
+            style={{
+              position: 'absolute', top: '16px', right: '16px',
+              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '50%', width: '40px', height: '40px',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: '#fff',
+            }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          {/* Botón descargar */}
+          {/* Descargar */}
           <a
             href={chatImageViewer}
             download="foto.jpg"
             onClick={e => e.stopPropagation()}
-            style={{ position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)', background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: '20px', padding: '8px 20px', color: '#fff', fontSize: '13px', fontWeight: '600', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px' }}
+            style={{
+              position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              borderRadius: '20px', padding: '8px 20px',
+              color: '#fff', fontSize: '13px', fontWeight: '600',
+              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px',
+            }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Guardar
+            Guardar foto
           </a>
         </div>
       )}
-
       {/* Llamada entrante */}
       {incomingCall && !activeCall && (
         <div style={{ position:'fixed', inset:0, zIndex:3000, background:'rgba(0,0,0,0.7)', display:'flex', alignItems:'center', justifyContent:'center' }}>
