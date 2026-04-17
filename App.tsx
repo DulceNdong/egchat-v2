@@ -7135,6 +7135,46 @@ const App: React.FC = () => {
                           {userProfile.notificationsEnabled ? 'ON' : 'OFF'}
                         </span>
                       </button>
+
+                      {/* Botón activar notificaciones push */}
+                      <button
+                        onClick={async () => {
+                          if (!('Notification' in window)) {
+                            alert('Tu navegador no soporta notificaciones.');
+                            return;
+                          }
+                          if (Notification.permission === 'denied') {
+                            alert('Las notificaciones están bloqueadas. Ve a los ajustes del navegador → Permisos del sitio → Notificaciones → Permitir para egchat-app.vercel.app');
+                            return;
+                          }
+                          const perm = await Notification.requestPermission();
+                          if (perm === 'granted') {
+                            if (typeof (window as any).__egchat_registerPush === 'function') {
+                              await (window as any).__egchat_registerPush();
+                              showToast('✅ Notificaciones push activadas', 'success');
+                            }
+                          } else {
+                            showToast('Permiso denegado', 'error');
+                          }
+                        }}
+                        style={{
+                          width: '100%', background: 'transparent', border: 'none', borderBottom: '1px solid rgba(0,0,0,0.06)',
+                          padding: '12px 0', color: '#0d0d0d', fontSize: '14px', fontWeight: '500',
+                          cursor: 'pointer', outline: 'none', display: 'flex', justifyContent: 'space-between', alignItems: 'center'
+                        }}
+                      >
+                        <span style={{display:'flex',alignItems:'center',gap:'10px'}}>
+                          <svg width="18" height="18" viewBox="0 0 24 24" stroke="#6b7280" strokeWidth="1.8" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                          Activar notificaciones push
+                        </span>
+                        <span style={{
+                          fontSize: '11px', fontWeight: '700', padding: '3px 8px', borderRadius: '10px',
+                          background: ('Notification' in window && Notification.permission === 'granted') ? 'rgba(0,200,160,0.15)' : 'rgba(239,68,68,0.12)',
+                          color: ('Notification' in window && Notification.permission === 'granted') ? '#00c8a0' : '#ef4444'
+                        }}>
+                          {('Notification' in window && Notification.permission === 'granted') ? 'ACTIVO' : 'TOCAR'}
+                        </span>
+                      </button>
                       <button
                         onClick={() => setShowReadReceipts(p => !p)}
                         style={{
@@ -7557,6 +7597,12 @@ const App: React.FC = () => {
     chatAPI.getFavoriteChats().then((data: any[]) => {
       setFavoriteGroupIds((data || []).map((c: any) => c.id?.toString()));
     }).catch(() => {});
+    // Registrar Web Push (con pequeño delay para que el SW esté listo)
+    setTimeout(() => {
+      if (typeof (window as any).__egchat_registerPush === 'function') {
+        (window as any).__egchat_registerPush();
+      }
+    }, 2000);
   }, [isAuthenticated, loadChats]);
 
   // Escuchar evento de token expirado desde api.ts
