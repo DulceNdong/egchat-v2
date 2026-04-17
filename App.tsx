@@ -5131,61 +5131,7 @@ const App: React.FC = () => {
                         </span>
                       </button>
                     ))}
-                    <button
-                      onClick={() => setShowContactsModal(true)}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        padding: '0',
-                        color: '#0d0d0d',
-                        cursor: 'pointer',
-                        display: 'flex',
-                        flexDirection: 'column',
-                        alignItems: 'center',
-                        gap: '6px',
-                        outline: 'none',
-                        transition: 'all 0.2s ease',
-                        minWidth: '70px',
-                        flexShrink: 0
-                      }}
-                      onMouseEnter={(e) => {
-                        e.currentTarget.style.transform = 'scale(1.1)';
-                      }}
-                      onMouseLeave={(e) => {
-                        e.currentTarget.style.transform = 'scale(1)';
-                      }}
-                    >
-                      <div style={{
-                        width: '56px',
-                        height: '56px',
-                        borderRadius: '50%',
-                        background: 'rgba(249,250,251,0.88)',
-                        border: '2.5px solid rgba(255, 255, 255, 0.2)',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        color: '#374151',
-                        flexShrink: 0,
-                        boxShadow: '0 0 16px rgba(255, 255, 255, 0.1)',
-                        transition: 'all 0.2s ease',
-                        fontSize: '24px',
-                        fontWeight: '700'
-                      }}>
-                        ?
-                      </div>
-                      <span style={{ 
-                        fontSize: '13px', 
-                        fontWeight: '600',
-                        textAlign: 'center',
-                        color: '#374151',
-                        maxWidth: '70px',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        whiteSpace: 'nowrap'
-                      }}>
-                        Ver todos
-                      </span>
-                    </button>
+
                   </div>
                 )}
               </div>
