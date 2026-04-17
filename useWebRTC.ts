@@ -11,6 +11,24 @@ const BASE = (() => {
 const ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun2.l.google.com:19302' },
+  { urls: 'stun:stun3.l.google.com:19302' },
+  // TURN servers gratuitos para NAT traversal (redes móviles ↔ WiFi)
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
 ];
 
 async function sigFetch(path: string, method = 'GET', body?: object) {
@@ -96,9 +114,11 @@ export function useWebRTC() {
 
       setCallState('calling');
 
-      // Polling para recibir answer
+      // Polling para recibir answer — más agresivo al inicio
+      let pollCount = 0;
       pollingRef.current = setInterval(async () => {
         try {
+          pollCount++;
           const session = await sigFetch(`/call/${callId}`);
           if (session.answer && p.signalingState !== 'stable') {
             await p.setRemoteDescription(new RTCSessionDescription(session.answer));
@@ -106,7 +126,10 @@ export function useWebRTC() {
               try { await p.addIceCandidate(new RTCIceCandidate(c)); } catch {}
             }
             setCallState('connected');
+            stopPolling();
           }
+          // Si no hay respuesta en 45s, terminar
+          if (pollCount > 30) { cleanup(); }
         } catch { cleanup(); }
       }, 1500);
 
@@ -152,6 +175,19 @@ export function useWebRTC() {
       }
 
       setCallState('connected');
+
+      // Seguir añadiendo ICE candidates que lleguen tarde
+      let iceCount = session.callerCandidates?.length || 0;
+      pollingRef.current = setInterval(async () => {
+        try {
+          const s = await sigFetch(`/call/${callId}`);
+          const newCandidates = (s.callerCandidates || []).slice(iceCount);
+          for (const c of newCandidates) {
+            try { await p.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+          }
+          iceCount += newCandidates.length;
+        } catch { stopPolling(); }
+      }, 2000);
     } catch (err) {
       console.error('answerCall error:', err);
       setCallState('connected'); // fallback
