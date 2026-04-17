@@ -58,7 +58,7 @@ const App: React.FC = () => {
   const chatAudioChunksRef = useRef<Blob[]>([]);
   const [chatRecordingTime, setChatRecordingTime] = useState(0);
   const chatRecordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  // -- Mensajeria real -------------------------------------------
+  // -- Mensajería real -------------------------------------------
   const [realChats, setRealChats] = useState<any[]>([]);
   const [newChatSearching, setNewChatSearching] = useState(false);
   const currentUserId = useRef<string>('');
@@ -94,7 +94,7 @@ const App: React.FC = () => {
             const newest = newFromThem[newFromThem.length - 1];
             if (lastId && newest.id !== lastId) {
               notifyNewMessage(chatId, newest.text);
-              playMessageReceived(); vibrate([50, 30, 50]); // sonido + vibraci�n doble al recibir
+              playMessageReceived(); vibrate([50, 30, 50]); // sonido + vibración doble al recibir
             }
             lastMsgIds.current[chatId] = newest.id;
           }
@@ -146,10 +146,10 @@ const App: React.FC = () => {
     const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
     setAppNotifications(prev => [{
       id: Date.now().toString(), type: 'message' as const,
-      title: `?? ${senderName}`, body: text, time, read: false, chatId,
+      title: `💬 ${senderName}`, body: text, time, read: false, chatId,
     }, ...prev].slice(0, 50));
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
-      new Notification(`?? ${senderName}`, { body: text, icon: '/logo-transparent.png', tag: chatId });
+      new Notification(`💬 ${senderName}`, { body: text, icon: '/logo-transparent.png', tag: chatId });
     }
   }, []);
   // Helper: navegar a una vista siempre cierra el men� radial
@@ -217,12 +217,12 @@ const App: React.FC = () => {
   const [emojiSearch, setEmojiSearch] = useState<string>('');
   const [isRecordingAudio, setIsRecordingAudio] = useState<boolean>(false);
   const [customEmojis, setCustomEmojis] = useState<Array<{id:string; label:string; title:string; source:'created'|'copied'; from?:string}>>([
-    { id:'1', label:'??', title:'Rico',    source:'created' },
-    { id:'2', label:'??', title:'Leon GQ', source:'created' },
+    { id:'1', label:'🦁', title:'Rico',    source:'created' },
+    { id:'2', label:'🌍', title:'Leon GQ', source:'created' },
     { id:'3', label:'?', title:'Africa',  source:'created' },
-    { id:'4', label:'??', title:'Verde GQ',source:'created' },
-    { id:'5', label:'??', title:'Medalla', source:'copied', from:'Juan' },
-    { id:'6', label:'??', title:'Fuerza',  source:'copied', from:'Maria Garcia' },
+    { id:'4', label:'💚', title:'Verde GQ',source:'created' },
+    { id:'5', label:'🏅', title:'Medalla', source:'copied', from:'Juan' },
+    { id:'6', label:'💪', title:'Fuerza',  source:'copied', from:'Maria Garcia' },
   ]);
   const [showEmojiEditor, setShowEmojiEditor] = useState<boolean>(false);
   const [editingEmoji, setEditingEmoji] = useState<{id?:string; label:string; title:string} | null>(null);
@@ -312,7 +312,7 @@ const App: React.FC = () => {
     {
       id: '1',
       type: 'assistant',
-      content: '�Hola! Soy Lia-25, tu asistente inteligente de EGCHAT. Puedo ayudarte con cualquier cosa: responder preguntas, enviar mensajes a contactos, gestionar tu dinero, y mucho m�s. �En qu� puedo ayudarte?',
+      content: '�Hola! Soy Lia-25, tu asistente inteligente de EGCHAT. Puedo ayudarte con Cuálquier cosa: responder preguntas, enviar mensajes a contactos, gestionar tu dinero, y mucho m�s. �En qu� puedo ayudarte?',
       timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -738,7 +738,7 @@ const App: React.FC = () => {
       const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
       setAppNotifications(prev => [{
         id: Date.now().toString(), type: 'payment' as const,
-        title: '?? Transferencia enviada',
+        title: '💸 Transferencia enviada',
         body: `${amount.toLocaleString()} XAF a ${recipient}`,
         time, read: false,
       }, ...prev].slice(0, 50));
@@ -760,7 +760,7 @@ const App: React.FC = () => {
     {
       id: 'ccei',
       name: 'CCEI Bank',
-      services: ['Transferencias Internacionales', 'Pagos M�viles', 'Consulta de Cuenta', 'Inversiones', 'Tarjetas', 'Seguros']
+      services: ['Transferencias Internacionales', 'Pagos Móviles', 'Consulta de Cuenta', 'Inversiones', 'Tarjetas', 'Seguros']
     },
     {
       id: 'bgfi',
@@ -775,7 +775,7 @@ const App: React.FC = () => {
     {
       id: 'ecobank',
       name: 'Ecobank',
-      services: ['Banca M�vil', 'Transferencias', 'Pagos', 'Pr�stamos', 'Tarjetas', 'Seguros']
+      services: ['Banca Móvil', 'Transferencias', 'Pagos', 'Pr�stamos', 'Tarjetas', 'Seguros']
     },
     {
       id: 'societe',
@@ -972,10 +972,10 @@ const App: React.FC = () => {
   const handleAudioMessage = (audioBlob: Blob) => {
     // Simular transcripci�n de audio (en producci�n usar�s una API de speech-to-text)
     const transcriptions = [
-      '�Cu�l es mi saldo?',
+      '¿Cuál es mi saldo?',
       'Enviar 5000 XAF a Juan',
-      'Abrir Mensajer�a',
-      '�Qu� noticias hay?',
+      'Abrir Mensajería',
+      '¿Qué noticias hay?',
       'Ayuda',
       'Hola asistente',
       'Qu hora es?',
@@ -1022,8 +1022,8 @@ const App: React.FC = () => {
     const charCount = content.length;
     const paragraphs = content.split('\n\n').length;
 
-    let analysis = `?? AN�LISIS DE DOCUMENTO\n\n`;
-    analysis += `?? Estad�sticas B�sicas:\n`;
+    let analysis = `📄 AN�LISIS DE DOCUMENTO\n\n`;
+    analysis += `📊 Estad�sticas B�sicas:\n`;
     analysis += `- Palabras: ${wordCount}\n`;
     analysis += `- Caracteres: ${charCount}\n`;
     analysis += `- Parrafos: ${paragraphs}\n`;
@@ -1036,7 +1036,7 @@ const App: React.FC = () => {
       const positiveCount = positiveWords.filter(word => content.toLowerCase().includes(word)).length;
       const negativeCount = negativeWords.filter(word => content.toLowerCase().includes(word)).length;
       
-      analysis += `?? AN�LISIS de Sentimiento:\n`;
+      analysis += `📄 AN�LISIS de Sentimiento:\n`;
       analysis += `- Palabras positivas: ${positiveCount}\n`;
       analysis += `- Palabras negativas: ${negativeCount}\n`;
       analysis += `- Sentimiento general: ${positiveCount > negativeCount ? 'Positivo' : negativeCount > positiveCount ? 'Negativo' : 'Neutral'}\n\n`;
@@ -1055,7 +1055,7 @@ const App: React.FC = () => {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 5);
       
-      analysis += `?? Palabras Clave:\n`;
+      analysis += `🔑 Palabras Clave:\n`;
       topWords.forEach(([word, count]) => {
         analysis += `- "${word}" (${count} veces)\n`;
       });
@@ -1067,7 +1067,7 @@ const App: React.FC = () => {
       const summaryLength = Math.ceil(sentences.length / 3);
       const summary = sentences.slice(0, summaryLength).join('. ');
       
-      analysis += `?? Resumen:\n${summary}...\n\n`;
+      analysis += `📝 Resumen:\n${summary}...\n\n`;
     }
 
     return analysis;
@@ -1181,7 +1181,7 @@ const App: React.FC = () => {
       const fileMessage = {
         id: Date.now().toString(),
         type: 'user' as const,
-        content: `?? Archivo cargado: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`,
+        content: `📎 Archivo cargado: ${file.name} (${(file.size / 1024).toFixed(2)} KB)`,
         timestamp: new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })
       };
       setAiMessages(prev => [...prev, fileMessage]);
@@ -1246,11 +1246,11 @@ const App: React.FC = () => {
       }
       // Saldo
       else if (lowerMessage.includes('saldo') || lowerMessage.includes('balance')) {
-        assistantResponse = `?? TU SALDO ACTUAL\n\nSaldo: ${userBalance.toLocaleString()} XAF\n\nPuedo ayudarte con:\n- Transferencias\n- Consultas\n- Historial`;
+        assistantResponse = `📊 TU SALDO ACTUAL\n\nSaldo: ${userBalance.toLocaleString()} XAF\n\nPuedo ayudarte con:\n- Transferencias\n- Consultas\n- Historial`;
       }
       // Enviar dinero
       else if (lowerMessage.includes('enviar') && lowerMessage.includes('dinero')) {
-        assistantResponse = `?? TRANSFERENCIA DE DINERO\n\nTu saldo: ${userBalance.toLocaleString()} XAF\n\nPara enviar dinero:\n- Escribe: "Enviar 5000 XAF a Juan"\n- O: "Transferir 10000 XAF a Maria"\n\nContactos disponibles:\n- Juan P�rez\n- Mar�a Gonz�lez\n- Carlos Mendoza`;
+        assistantResponse = `💸 TRANSFERENCIA DE DINERO\n\nTu saldo: ${userBalance.toLocaleString()} XAF\n\nPara enviar dinero:\n- Escribe: "Enviar 5000 XAF a Juan"\n- O: "Transferir 10000 XAF a Maria"\n\nContactos disponibles:\n- Juan P�rez\n- Mar�a Gonz�lez\n- Carlos Mendoza`;
       }
       // Procesar transferencia
       else if (lowerMessage.match(/enviar\s+(\d+)\s*xaf\s+a\s+(\w+)/i)) {
@@ -1268,15 +1268,15 @@ const App: React.FC = () => {
       }
       // Noticias
       else if (lowerMessage.includes('noticias') || lowerMessage.includes('noticia')) {
-        assistantResponse = `?? NOTICIAS RECIENTES\n\n1. Presidente anuncia nuevas medidas economicas\n2. CEMAC aprueba nuevo marco financiero\n3. Ministerio de Salud reporta avances en vacunacion\n4. Nueva tecnologia 5G llega a Malabo\n5. Seleccion nacional se prepara para eliminatorias\n\nEscribe el numero para mas detalles`;
+        assistantResponse = `📰 NOTICIAS RECIENTES\n\n1. Presidente anuncia nuevas medidas economicas\n2. CEMAC aprueba nuevo marco financiero\n3. Ministerio de Salud reporta avances en vacunacion\n4. Nueva tecnologia 5G llega a Malabo\n5. Seleccion nacional se prepara para eliminatorias\n\nEscribe el numero para mas detalles`;
       }
       // Servicios
       else if (lowerMessage.includes('servicios') || lowerMessage.includes('banco')) {
-        assistantResponse = `?? SERVICIOS BANCARIOS\n\nBancos disponibles:\n- BANGE\n- CCEI Bank\n- BGFI Bank\n- Afrexim Bank\n- Ecobank\n- Societe Generale\n\n�Cu�l necesitas?`;
+        assistantResponse = `🏦 SERVICIOS BANCARIOS\n\nBancos disponibles:\n- BANGE\n- CCEI Bank\n- BGFI Bank\n- Afrexim Bank\n- Ecobank\n- Societe Generale\n\n¿Cuál necesitas?`;
       }
       // Contactos
       else if (lowerMessage.includes('contactos') || lowerMessage.includes('amigos')) {
-        assistantResponse = `?? TUS CONTACTOS\n\n- Juan P�rez (Dinero)\n- Mar�a Gonz�lez (Personal)\n- Carlos Mendoza (Negocios)\n\n�Deseas contactar a alguien?`;
+        assistantResponse = `👥 TUS CONTACTOS\n\n- Juan P�rez (Dinero)\n- Mar�a Gonz�lez (Personal)\n- Carlos Mendoza (Negocios)\n\n�Deseas contactar a alguien?`;
       }
       // Hora
       else if (lowerMessage.includes('hora') || lowerMessage.includes('que hora')) {
@@ -1284,36 +1284,36 @@ const App: React.FC = () => {
       }
       // Clima
       else if (lowerMessage.includes('clima') || lowerMessage.includes('tiempo')) {
-        assistantResponse = `??? CLIMA EN MALABO\n\nTemperatura: 28?C\nCondicion: Soleado\nHumedad: 75%\n\nPerfecto para el dia`;
+        assistantResponse = `🌤 CLIMA EN MALABO\n\nTemperatura: 28°C\nCondicion: Soleado\nHumedad: 75%\n\nPerfecto para el dia`;
       }
       // Navegar
       else if (lowerMessage.includes('ir a') || lowerMessage.includes('abrir')) {
-        if (lowerMessage.includes('mensajeria') || lowerMessage.includes('mensajes')) {
-          setCurrentView('mensajeria');
-          assistantResponse = `?? Abriendo Mensajer�a...`;
+        if (lowerMessage.includes('Mensajería') || lowerMessage.includes('mensajes')) {
+          setCurrentView('Mensajería');
+          assistantResponse = `?? Abriendo Mensajería...`;
         } else if (lowerMessage.includes('monedero') || lowerMessage.includes('cartera')) {
           setCurrentView('monedero');
-          assistantResponse = `?? Abriendo monedero...`;
+          assistantResponse = `💰 Abriendo monedero...`;
         } else if (lowerMessage.includes('servicios')) {
           setCurrentView('servicios');
-          assistantResponse = `?? Abriendo servicios...`;
+          assistantResponse = `🛠 Abriendo servicios...`;
         } else if (lowerMessage.includes('noticias')) {
           setCurrentView('news');
-          assistantResponse = `?? Abriendo noticias...`;
+          assistantResponse = `📰 Abriendo noticias...`;
         } else if (lowerMessage.includes('inicio') || lowerMessage.includes('home')) {
           setCurrentView('home');
-          assistantResponse = `?? Volviendo al inicio...`;
+          assistantResponse = `🏠 Volviendo al inicio...`;
         } else {
-          assistantResponse = `Puedo abrir:\n- Mensajer�a\n- Monedero\n- Servicios\n- Noticias\n- Inicio\n\n�Cu�l prefieres?`;
+          assistantResponse = `Puedo abrir:\n- Mensajería\n- Monedero\n- Servicios\n- Noticias\n- Inicio\n\n¿Cuál prefieres?`;
         }
       }
       // capacidades
       else if (lowerMessage.includes('capacidades') || lowerMessage.includes('que puedes hacer')) {
-        assistantResponse = `?? MIS CAPACIDADES\n\n?? DINERO:\n- Consultar saldo\n- Transferencias\n- Historial\n\n?? AN�LISIS:\n- Documentos\n- Sentimiento\n- Palabras clave\n\n? GENERACI�N:\n- Presentaciones\n- Contenido\n- Reportes\n\n?? AUDIO:\n- Grabar comandos\n- Reproducir respuestas\n\n?? NAVEGACI�N:\n- Abrir vistas\n- Gestionar app\n\n�Qu� necesitas?`;
+        assistantResponse = `🤖 MIS CAPACIDADES\n\n?? DINERO:\n- Consultar saldo\n- Transferencias\n- Historial\n\n?? AN�LISIS:\n- Documentos\n- Sentimiento\n- Palabras clave\n\n? GENERACI�N:\n- Presentaciones\n- Contenido\n- Reportes\n\n?? AUDIO:\n- Grabar comandos\n- Reproducir respuestas\n\n?? NAVEGACI�N:\n- Abrir vistas\n- Gestionar app\n\n¿Qué necesitas?`;
       }
       // Ayuda
       else if (lowerMessage.includes('ayuda') || lowerMessage.includes('help')) {
-        assistantResponse = `? AYUDA\n\nPuedo ayudarte con:\n\nEscribe:\n- "Saldo" - Ver tu saldo\n- "Enviar 5000 XAF a Juan" - Transferir\n- "presentacion de negocios" - Crear slides\n- "Noticias" - Ver noticias\n- "capacidades" - Ver todo lo que puedo hacer\n\nO habla:\n- Manten presionado el microfono\n- Habla tu comando\n- Suelta para enviar\n\nQu necesitas?`;
+        assistantResponse = `❓ AYUDA\n\nPuedo ayudarte con:\n\nEscribe:\n- "Saldo" - Ver tu saldo\n- "Enviar 5000 XAF a Juan" - Transferir\n- "presentacion de negocios" - Crear slides\n- "Noticias" - Ver noticias\n- "capacidades" - Ver todo lo que puedo hacer\n\nO habla:\n- Manten presionado el microfono\n- Habla tu comando\n- Suelta para enviar\n\nQu necesitas?`;
       }
       // Fallback
       else {
@@ -2043,7 +2043,7 @@ const App: React.FC = () => {
     }
   };
 
-  // Renderizar header - OPTIMIZADO PARA M�vil CON COLORES DEL LOGO
+  // Renderizar header - OPTIMIZADO PARA Móvil CON COLORES DEL LOGO
   const renderHeader = () => (
     <div style={{
       position: 'fixed',
@@ -2256,7 +2256,7 @@ const App: React.FC = () => {
           <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
             {appNotifications.length === 0 ? (
               <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>??</div>
+                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔔</div>
                 <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Sin notificaciones</div>
                 <div style={{ fontSize: '12px', color: '#9ca3af' }}>Las notificaciones de mensajes, pagos y m�s aparecer�n aqu�</div>
               </div>
@@ -2280,7 +2280,7 @@ const App: React.FC = () => {
                       }
                       setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials: name.slice(0,2).toUpperCase(), color: isGroup ? '#a855f7' : '#00c8a0', avatarUrl });
                     }
-                    setCurrentView('mensajeria');
+                    setCurrentView('Mensajería');
                   }
                   if (n.action) n.action();
                 }}
@@ -2458,8 +2458,8 @@ const App: React.FC = () => {
     const t = new Date();
     const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
     const durationStr = duration > 0 ? ` � ${String(Math.floor(duration/60)).padStart(2,'0')}:${String(duration%60).padStart(2,'0')}` : '';
-    const icon = type === 'video' ? '??' : '??';
-    const statusText = status === 'missed' ? '?? Llamada perdida' : status === 'outgoing' ? `${icon} Llamada saliente${durationStr}` : `${icon} Llamada${durationStr}`;
+    const icon = type === 'video' ? '📹' : '📞';
+    const statusText = status === 'missed' ? '📵 Llamada perdida' : status === 'outgoing' ? `${icon} Llamada saliente${durationStr}` : `${icon} Llamada${durationStr}`;
     const msgId = `call_${Date.now()}`;
     const callMsg: any = {
       id: msgId,
@@ -2915,7 +2915,7 @@ const App: React.FC = () => {
             else if (item.id==='nuevo-contacto') { setShowAddContact(true); }
             else if (item.id==='crear-grupo') { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
             else if (item.id==='contactos') { setShowMenu(false); setCurrentView('contactos'); }
-            else if (item.id==='mensajes-arch') { setCurrentView('mensajeria'); setMessageFilter('all'); }
+            else if (item.id==='mensajes-arch') { setCurrentView('Mensajería'); setMessageFilter('all'); }
             else if (item.id==='notificaciones') { setShowNotifications(true); }
             else if (item.id==='privacidad') { setCurrentView('ajustes'); setCurrentSettingsTab('perfil'); }
             else if (item.id==='ajustes') { setCurrentView('ajustes'); }
@@ -3118,7 +3118,7 @@ const App: React.FC = () => {
                   initials: newGroup.name.slice(0,2).toUpperCase(),
                   color: '#a855f7', isGroup: true, members: newGroup.members,
                 });
-                setCurrentView('mensajeria');
+                setCurrentView('Mensajería');
                 setShowCreateGroup(false);
                 setGroupName('');
                 setGroupMembers([]);
@@ -3143,7 +3143,7 @@ const App: React.FC = () => {
                   initials: newGroup.name.slice(0,2).toUpperCase(),
                   color: '#a855f7', isGroup: true, members: newGroup.members,
                 });
-                setCurrentView('mensajeria');
+                setCurrentView('Mensajería');
                 setShowCreateGroup(false);
                 setGroupName('');
                 setGroupMembers([]);
@@ -3281,7 +3281,7 @@ const App: React.FC = () => {
             Fondo de pantalla
           </div>
 
-          {/* Seccian: Mis fondos personalizados */}
+          {/* Sección: Mis fondos personalizados */}
           <div style={{ marginBottom: '12px' }}>
             <div style={{ fontSize: '12px', fontWeight: '700', color: '#6b7280', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>Mis fondos</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '6px' }}>
@@ -3342,12 +3342,12 @@ const App: React.FC = () => {
     if (!showLayoutPanel) return null;
 
     const layouts = [
-      { id: 'default',   label: 'Est�ndar',    desc: 'Balance + tarjetas',       icon: '??' },
+      { id: 'default',   label: 'Est�ndar',    desc: 'Balance + tarjetas',       icon: '🏠' },
       { id: 'compact',   label: 'Compacto',    desc: 'Solo accesos r�pidos',      icon: '?' },
-      { id: 'cards',     label: 'Tarjetas',    desc: 'Grid de servicios grande',  icon: '??' },
+      { id: 'cards',     label: 'Tarjetas',    desc: 'Grid de servicios grande',  icon: '🏠' },
       { id: 'minimal',   label: 'Minimal',     desc: 'Solo saldo y botones',      icon: '?' },
-      { id: 'news',      label: 'Noticias',    desc: 'Noticias en portada',       icon: '??' },
-      { id: 'finance',   label: 'Finanzas',    desc: 'Enfocado en cartera',       icon: '??' },
+      { id: 'news',      label: 'Noticias',    desc: 'Noticias en portada',       icon: '🏠' },
+      { id: 'finance',   label: 'Finanzas',    desc: 'Enfocado en cartera',       icon: '🏠' },
     ];
 
     return (
@@ -3548,7 +3548,7 @@ const App: React.FC = () => {
               onClick={() => {
                 if (item.id === 'noticias') setCurrentView('news');
                 else if (item.id === 'cartera' || item.id === 'banking') setCurrentView('banking');
-                else if (item.id === 'mensajes') setCurrentView('mensajeria');
+                else if (item.id === 'mensajes') setCurrentView('Mensajería');
                 else if (item.id === 'fondo') { setShowWallpaperCatalog(true); setIsMenuOpen(false); }
                 else if (item.id === 'comercio') { setShowLayoutPanel(true); setIsMenuOpen(false); }
                 else setCurrentView(item.id);
@@ -3722,14 +3722,14 @@ const App: React.FC = () => {
       </button>
     );
   };
-  // Renderizar NAVEGACION inferior - OPTIMIZADA PARA M�vil
+  // Renderizar NAVEGACION inferior - OPTIMIZADA PARA Móvil
   const renderBottomNavigation = () => {
-    const allViews = ['home', 'mensajeria', 'monedero', 'servicios', 'ajustes', 'Lia-25', 'estados', 'apuestas', 'cemac', 'mitaxi'];
+    const allViews = ['home', 'Mensajería', 'monedero', 'servicios', 'ajustes', 'Lia-25', 'estados', 'apuestas', 'cemac', 'mitaxi'];
     if (!allViews.includes(currentView)) return null;
-    if (currentView === 'mensajeria' && selectedChat) return null;
+    if (currentView === 'Mensajería' && selectedChat) return null;
 
     const navItems = [
-      { id: 'mensajeria', label: 'Mensajer�a', icon: 'mensajes' },
+      { id: 'Mensajería', label: 'Mensajería', icon: 'mensajes' },
       { id: 'monedero',   label: 'Cartera',    icon: 'wallet'   },
       { id: 'servicios',  label: 'Servicios',  icon: 'services' },
       { id: 'ajustes',    label: 'Ajustes',    icon: 'ajustes'  },
@@ -3837,8 +3837,8 @@ const App: React.FC = () => {
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '20px', padding: '20px 18px 18px', border: 'none', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo disponible</div>
           <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '18px', letterSpacing: '-1px', cursor: 'pointer' }} onClick={() => toggleBalanceVisible('home-minimal')}>
-          {isBalanceVisible('home-minimal') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>������</span>}
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-minimal') ? '??' : '??'}</span>
+          {isBalanceVisible('home-minimal') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>••••••</span>}
+          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-minimal') ? '🙈' : '��'}</span>
         </div>
           <div style={{ display: 'flex', gap: '10px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
@@ -3863,7 +3863,7 @@ const App: React.FC = () => {
       <div style={containerStyle}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
           {[
-            { label: 'Mensajes', icon: 'mensajes', view: 'mensajeria', color: '#00b4e6' },
+            { label: 'Mensajes', icon: 'mensajes', view: 'Mensajería', color: '#00b4e6' },
             { label: 'Cartera', icon: 'wallet', view: 'monedero', color: '#00c8a0' },
             { label: 'Servicios', icon: 'services', view: 'servicios', color: '#8b5cf6' },
             { label: 'Noticias', icon: 'noticias', view: 'news', color: '#ef4444' },
@@ -3904,8 +3904,8 @@ const App: React.FC = () => {
         <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '16px', padding: '16px', marginBottom: '12px', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
           <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '4px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo Total</div>
           <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '14px', letterSpacing: '-1px', cursor: 'pointer' }} onClick={() => toggleBalanceVisible('home-finance')}>
-          {isBalanceVisible('home-finance') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>������</span>}
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-finance') ? '??' : '??'}</span>
+          {isBalanceVisible('home-finance') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>••••••</span>}
+          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-finance') ? '🙈' : '👁'}</span>
         </div>
           <div style={{ display: 'flex', gap: '8px' }}>
             <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
@@ -3960,9 +3960,9 @@ const App: React.FC = () => {
           onClick={() => toggleBalanceVisible('home-default')}>
           {isBalanceVisible('home-default')
             ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></>
-            : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>������</span>
+            : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>••••••</span>
           }
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-default') ? '??' : '??'}</span>
+          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-default') ? '🙈' : '👁'}</span>
         </div>
 
         <div style={{ display: 'flex', gap: '8px' }}>
@@ -4185,8 +4185,8 @@ const App: React.FC = () => {
         return renderHomeView();
       case 'servicios':
         return renderServicesView();
-      case 'mensajeria':
-        // Si hay un chat seleccionado, mostrar la conversaci�n directamente
+      case 'Mensajería':
+        // Si hay un chat seleccionado, mostrar la conversación directamente
         if (selectedChat) {
           const sc = selectedChat;
           const initials = sc.initials || sc.title.split(' ').map((w: string) => w[0]).join('').slice(0,2).toUpperCase();
@@ -4203,7 +4203,7 @@ const App: React.FC = () => {
 
           const sendChatMessage = async () => {
             if (!currentChatInput.trim()) return;
-            playMessageSent(); vibrate(30); // sonido + vibraci�n al enviar
+            playMessageSent(); vibrate(30); // sonido + vibración al enviar
             const messageText = currentChatInput.trim();
             const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time: makeTime(), status: 'pending' as const };
             addMsg(newMsg);
@@ -4228,7 +4228,7 @@ const App: React.FC = () => {
 
           return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', paddingTop: '56px', overflow: 'hidden' }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
-              {/* Header conversaci�n */}
+              {/* Header conversación */}
               <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px 6px 4px', background: '#ffffff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
                 <button
                   onClick={() => { setSelectedChat(null); setShowChatEmojis(false); setCurrentChatInput(''); setShowChatMenu(false); }}
@@ -4242,7 +4242,7 @@ const App: React.FC = () => {
                 <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => setShowContactProfile(sc)}>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#0d0d0d' }}>{sc.title}</div>
                   <div style={{ fontSize: '12px', color: sc.isGroup ? '#a855f7' : sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>
-                    {sc.isGroup ? `?? ${sc.members || ''} miembros` : sc.status === 'online' ? 'En l�nea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}
+                    {sc.isGroup ? `👥 ${sc.members || ''} miembros` : sc.status === 'online' ? 'En l�nea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}
                   </div>
                 </div>
                 <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
@@ -4276,7 +4276,7 @@ const App: React.FC = () => {
                 <div style={{position:'fixed',inset:0,zIndex:200}} onClick={()=>setShowChatMenu(false)}>
                   <div style={{position:'absolute',top:'100px',right:'8px',background:'rgba(255,255,255,0.35)',backdropFilter:'blur(28px) saturate(200%)',WebkitBackdropFilter:'blur(28px) saturate(200%)',borderRadius:'16px',boxShadow:'0 8px 32px rgba(0,0,0,0.2), inset 0 1px 0 rgba(255,255,255,0.8)',width:'240px',border:'1.5px solid rgba(255,255,255,0.6)'}}
                     onClick={e=>e.stopPropagation()}>
-                    {/* Secci�n principal */}
+                    {/* Sección principal */}
                     {[
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,label:'Ver perfil',color:'#374151',action:()=>{setShowChatMenu(false);setShowContactProfile(sc);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35"/></svg>,label:'Buscar en el chat',color:'#374151',action:()=>{setShowChatMenu(false);setShowChatSearch(true);setChatSearchQuery('');}},
@@ -4288,7 +4288,7 @@ const App: React.FC = () => {
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
                     ))}
-                    {/* Secci�n configuraci�n */}
+                    {/* Sección configuraci�n */}
                     {[
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,label:mutedChats.includes(sc.id?.toString()||'')?'Activar notificaciones':'Silenciar',color:'#374151',action:()=>{const id=sc.id?.toString()||'';setMutedChats(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);setShowChatMenu(false);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,label:'Fondo de pantalla',color:'#374151',action:()=>{setShowChatMenu(false);setShowWallpaperCatalog(true);}},
@@ -4299,10 +4299,10 @@ const App: React.FC = () => {
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
                     ))}
-                    {/* Secci�n acciones */}
+                    {/* Sección acciones */}
                     {[
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,label:'Enviar dinero',color:'#374151',action:()=>{setShowChatMenu(false);setQuickTransferData({contactId:sc.id?.toString()||'',contactName:sc.title,amount:'',accountId:bankAccounts[0]?.id||''});setShowQuickTransferModal(true);}},
-                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,label:'Compartir contacto',color:'#374151',action:()=>{setShowChatMenu(false);const now=new Date();const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;const chatId=sc.id?.toString()||'';setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`?? Contacto: ${sc.title}`,time,status:'pending'}]}));}},
+                      {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,label:'Compartir contacto',color:'#374151',action:()=>{setShowChatMenu(false);const now=new Date();const time=`${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;const chatId=sc.id?.toString()||'';setChatMessages(prev=>({...prev,[chatId]:[...(prev[chatId]||[]),{id:Date.now().toString(),from:'me',text:`👤 Contacto: ${sc.title}`,time,status:'pending'}]}));}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,label:'Crear grupo con este contacto',color:'#374151',action:()=>{setShowChatMenu(false);setShowCreateGroupModal(true);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,label:'Exportar chat',color:'#374151',action:()=>{setShowChatMenu(false);const chatId=sc.id?.toString()||'';const msgs=chatMessages[chatId]||[];const text=msgs.map(m=>`[${m.time}] ${m.from==='me'?'Yo':sc.title}: ${m.text}`).join('\n');const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`chat_${sc.title}.txt`;a.click();}},
                     ].map((item,i)=>(
@@ -4311,7 +4311,7 @@ const App: React.FC = () => {
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
                     ))}
-                    {/* Secci�n peligrosa */}
+                    {/* Sección peligrosa */}
                     {[
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>,label:'Vaciar chat',color:'#F59E0B',action:()=>{if(window.confirm('?Vaciar todos los mensajes?')){setChatMessages(prev=>({...prev,[sc.id?.toString()||'']:[]}));}setShowChatMenu(false);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,label:'Reportar',color:'#EF4444',action:()=>{setShowChatMenu(false);alert(`"${sc.title}" reportado.`);}},
@@ -4381,7 +4381,7 @@ const App: React.FC = () => {
                             display: 'flex', alignItems: 'center', justifyContent: 'center',
                           }}>
                             <span style={{ fontSize: '18px' }}>
-                              {(msg as any).callStatus === 'missed' ? '??' : (msg as any).callType === 'video' ? '??' : '??'}
+                              {(msg as any).callStatus === 'missed' ? '📵' : (msg as any).callType === 'video' ? '📹' : '📞'}
                             </span>
                           </div>
                           <div style={{ flex: 1 }}>
@@ -4749,10 +4749,10 @@ const App: React.FC = () => {
                         msg.text?.startsWith('💸') ? (() => {
                           // Burbuja de transferencia de dinero
                           const lines = (msg.text || '').split('\n');
-                          const amount = lines[1]?.replace('?? ', '') || '';
-                          const recipient = lines[2]?.replace('?? ', '') || '';
+                          const amount = lines[1]?.replace('💸 ', '') || '';
+                          const recipient = lines[2]?.replace('💸 ', '') || '';
                           const code = lines[3]?.replace('?? C�digo: ', '') || '';
-                          const status = lines[4]?.replace('?? ', '') || '';
+                          const status = lines[4]?.replace('💸 ', '') || '';
                           return (
                             <div style={{ minWidth: '220px' }}>
                               <div style={{ background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', borderRadius: '10px', padding: '12px 14px', marginBottom: '6px' }}>
@@ -4822,13 +4822,13 @@ const App: React.FC = () => {
                             const msgId = Date.now().toString();
                             // Mostrar preview local inmediatamente
                             const localUrl = URL.createObjectURL(file);
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: '?? Foto', time: tm, status: 'pending' as const, type: 'image', imageUrl: localUrl } as any] }));
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: '📷 Foto', time: tm, status: 'pending' as const, type: 'image', imageUrl: localUrl } as any] }));
                             try {
                               // Subir al servidor
                               const result = await chatAPI.uploadFile(chatId, file);
                               const serverUrl = result.file_url;
                               // Enviar mensaje al backend con la URL real
-                              await chatAPI.sendMessage(chatId, { text: '?? Foto', type: 'image', file_url: serverUrl });
+                              await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: serverUrl });
                               // Actualizar mensaje local con URL del servidor
                               setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, imageUrl: serverUrl, status: 'delivered' } : m) }));
                             } catch (e) {
@@ -4856,10 +4856,10 @@ const App: React.FC = () => {
                             const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                             const size = (file.size/1024/1024).toFixed(1);
                             const msgId = Date.now().toString();
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `?? ${file.name} (${size} MB)`, time: tm, status: 'pending' as const } as any] }));
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, status: 'pending' as const } as any] }));
                             try {
                               const result = await chatAPI.uploadFile(chatId, file);
-                              await chatAPI.sendMessage(chatId, { text: `?? ${file.name} (${size} MB)`, type: 'file', file_url: result.file_url });
+                              await chatAPI.sendMessage(chatId, { text: `🎥 ${file.name} (${size} MB)`, type: 'file', file_url: result.file_url });
                               setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, fileUrl: result.file_url, fileName: file.name, fileSize: size + ' MB', fileExt: 'mp4', status: 'delivered' } : m) }));
                             } catch { showToast('Error al subir video', 'error'); }
                           };
@@ -4886,10 +4886,10 @@ const App: React.FC = () => {
                             const ext = file.name.split('.').pop()?.toLowerCase() || '';
                             const msgId = Date.now().toString();
                             // Mostrar pendiente
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `?? ${file.name} (${size} KB)`, time: tm, status: 'pending' as const, fileName: file.name, fileSize: size + ' KB', fileExt: ext } as any] }));
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎥 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const, fileName: file.name, fileSize: size + ' KB', fileExt: ext } as any] }));
                             try {
                               const result = await chatAPI.uploadFile(chatId, file);
-                              await chatAPI.sendMessage(chatId, { text: `?? ${file.name} (${size} KB)`, type: 'file', file_url: result.file_url });
+                              await chatAPI.sendMessage(chatId, { text: `🎥 ${file.name} (${size} KB)`, type: 'file', file_url: result.file_url });
                               setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, fileUrl: result.file_url, status: 'delivered' } : m) }));
                             } catch { showToast('Error al subir archivo', 'error'); }
                           };
@@ -5274,7 +5274,7 @@ const App: React.FC = () => {
                 </button>
               </div>
 
-              {/* Seccian: Contactos Favoritos - COLAPSABLE */}
+              {/* Sección: Contactos Favoritos - COLAPSABLE */}
               <div style={{
                 marginBottom: '8px'
               }}>
@@ -5371,7 +5371,7 @@ const App: React.FC = () => {
                 )}
               </div>
 
-              {/* Seccian: Grupos Favoritos - COLAPSABLE */}
+              {/* Sección: Grupos Favoritos - COLAPSABLE */}
               <div style={{
                 marginBottom: '8px'
               }}>
@@ -5527,7 +5527,7 @@ const App: React.FC = () => {
               </div>
             </div>
 
-            {/* Lista de conversaciones � datos reales del backend */}
+            {/* Lista de conversaciónes � datos reales del backend */}
             <div
               className="scroll-container"
               style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: '100px' }}
@@ -5622,7 +5622,7 @@ const App: React.FC = () => {
               {realChats.length === 0 && (
                 <div style={{ textAlign:'center', padding:'60px 20px', color:'#9ca3af' }}>
                   <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="1.5" strokeLinecap="round" style={{margin:'0 auto 16px',display:'block'}}><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  <div style={{ fontSize:'15px', fontWeight:'600', color:'#374151', marginBottom:'6px' }}>Sin conversaciones</div>
+                  <div style={{ fontSize:'15px', fontWeight:'600', color:'#374151', marginBottom:'6px' }}>Sin conversaciónes</div>
                   <div style={{ fontSize:'13px' }}>Toca <strong>+</strong> para iniciar un chat</div>
                 </div>
               )}
@@ -6546,7 +6546,7 @@ const App: React.FC = () => {
                           color: '#00c8a0',
                           avatarUrl: contact.avatarUrl || '',
                         });
-                        navigateTo('mensajeria');
+                        navigateTo('Mensajería');
                       }
                     } catch {}
                   }}
@@ -6996,13 +6996,13 @@ const App: React.FC = () => {
                       style={{ width:'100%', accentColor:'#f59e0b', height:'4px' }}/>
                   </div>
 
-                  {/* Vibraci�n */}
+                  {/* vibración */}
                   <div style={{ background:'#fff', borderRadius:'14px', padding:'16px', border:'1px solid rgba(0,0,0,0.07)', display:'flex', alignItems:'center', gap:'12px' }}>
                     <div style={{ width:'36px', height:'36px', borderRadius:'10px', background:'#f0fdf4', display:'flex', alignItems:'center', justifyContent:'center' }}>
                       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth="2" strokeLinecap="round"><path d="M2 12h1M21 12h1M4.22 4.22l.71.71M18.36 18.36l.71.71M4.22 19.78l.71-.71M18.36 5.64l.71-.71"/><circle cx="12" cy="12" r="4"/></svg>
                     </div>
                     <div style={{ flex:1 }}>
-                      <div style={{ fontSize:'15px', fontWeight:'700', color:'#111827' }}>Vibraci�n</div>
+                      <div style={{ fontSize:'15px', fontWeight:'700', color:'#111827' }}>vibración</div>
                       <div style={{ fontSize:'12px', color:'#9ca3af' }}>Al recibir mensajes y llamadas</div>
                     </div>
                     <div onClick={() => updateSoundSetting('vibrationEnabled', !soundSettings.vibrationEnabled)}
@@ -7418,7 +7418,7 @@ const App: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Acciones de perfil � estilo app m�vil profesional */}
+                  {/* Acciones de perfil � estilo app Móvil profesional */}
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: '8px' }}>
 
                     {/* Cambiar foto */}
@@ -7523,7 +7523,7 @@ const App: React.FC = () => {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                       {[
                         { q: '�C�mo cambio mi PIN?', a: 'Ve a Perfil > Seguridad > Cambiar PIN' },
-                        { q: '�Cu�l es el l�mite de transferencia?', a: 'El l�mite diario es 2,000,000 XAF' },
+                        { q: '¿Cuál es el l�mite de transferencia?', a: 'El l�mite diario es 2,000,000 XAF' },
                         { q: '�C�mo activo 2FA?', a: 'Ve a Perfil > Seguridad > Autenticaci�n de Dos Factores' },
                         { q: '�C�mo reporto una transacci�n?', a: 'Abre la transacci�n y selecciona "Reportar"' }
                       ].map((item, idx) => (
@@ -7745,7 +7745,7 @@ const App: React.FC = () => {
       const stop = webrtc.pollIncoming(uid, (call) => {
         setIncomingCall(prev => {
           if (prev) return prev;
-          startRingtone(); vibrate([500, 200, 500, 200, 500]); // ringtone + vibraci�n
+          startRingtone(); vibrate([500, 200, 500, 200, 500]); // ringtone + vibración
           return call;
         });
       });
@@ -7851,7 +7851,7 @@ const App: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    if (currentView === 'mensajeria') loadChats();
+    if (currentView === 'Mensajería') loadChats();
   }, [currentView, loadChats]);
 
   // -- Polling: actualizar mensajes del chat abierto cada 3s ---
@@ -7963,7 +7963,7 @@ const App: React.FC = () => {
       )}
       
       {/* Header � solo en home y vistas principales */}
-      {['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderHeader()}
+      {['home','Mensajería','monedero','servicios','ajustes'].includes(currentView) && renderHeader()}
       
       {/* Paneles desplegables */}
       {renderNotificationsPanel()}
@@ -8315,7 +8315,7 @@ const App: React.FC = () => {
                         const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
                         const missedMsg: any = {
                           id: `call_${Date.now()}`, from: 'them' as const,
-                          text: `?? Llamada perdida`, time, status: 'delivered',
+                          text: `📵 Llamada perdida`, time, status: 'delivered',
                           type: 'call', callType: incomingCall.type, callStatus: 'missed',
                           callDuration: 0, contactId: incomingCall.callerId, contactName: callerName,
                         };
@@ -8325,7 +8325,7 @@ const App: React.FC = () => {
                         // Notificaci�n en campanita
                         const nt = new Date();
                         const ntime = `${nt.getHours().toString().padStart(2,'0')}:${nt.getMinutes().toString().padStart(2,'0')}`;
-                        setAppNotifications(prev => [{ id: Date.now().toString(), type: 'message' as const, title: `?? Llamada perdida de ${callerName}`, body: incomingCall.type === 'video' ? 'Videollamada perdida' : 'Llamada de voz perdida', time: ntime, read: false, chatId: key }, ...prev].slice(0, 50));
+                        setAppNotifications(prev => [{ id: Date.now().toString(), type: 'message' as const, title: `📵 Llamada perdida de ${callerName}`, body: incomingCall.type === 'video' ? 'Videollamada perdida' : 'Llamada de voz perdida', time: ntime, read: false, chatId: key }, ...prev].slice(0, 50));
                       }
                       setIncomingCall(null);
                     }}
@@ -8375,14 +8375,14 @@ const App: React.FC = () => {
       </div>
       
       {/* NAVEGACION inferior - solo en vistas principales */}
-      {!isMenuOpen && ['home','mensajeria','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
+      {!isMenuOpen && ['home','Mensajería','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
       
       {/* Botan catalogo wallpaper a dentro del mena radial, no aqua */}
 
       {/* Toast de notificaci�n de mensaje nuevo */}
       {msgNotif && (
         <div
-          onClick={() => { setMsgNotif(null); setSelectedChat(null); setCurrentView('mensajeria'); }}
+          onClick={() => { setMsgNotif(null); setSelectedChat(null); setCurrentView('Mensajería'); }}
           style={{
             position: 'fixed', top: '70px', left: '50%', transform: 'translateX(-50%)',
             zIndex: 9999, background: '#1a1a2e', borderRadius: '16px',
@@ -9729,7 +9729,7 @@ const App: React.FC = () => {
                 <div style={{ background:'linear-gradient(135deg,#576B95,#1485EE)', borderRadius:'16px', padding:'20px', marginBottom:'16px', color:'#fff' }}>
                   <div style={{ fontSize:'10px', opacity:0.8, marginBottom:'12px', letterSpacing:'1px' }}>REPUBLICA DE GUINEA ECUATORIAL</div>
                   <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'14px' }}>
-                    <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px' }}>??</div>
+                    <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'24px' }}>🔔</div>
                     <div>
                       <div style={{ fontSize:'16px', fontWeight:'800' }}>USUARIO EGCHAT</div>
                       <div style={{ fontSize:'11px', opacity:0.8 }}>DNI: GQ-2024-XXXXX</div>
@@ -9863,7 +9863,7 @@ const App: React.FC = () => {
                   { id:'local',  svg:<svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>, label:'Transferencia Local',    sub:'Entre cuentas del mismo banco',  color:'#1485EE' },
                   { id:'inter',  svg:<svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>, label:'Transferencia Interna',   sub:'Entre bancos de Guinea Ec.',     color:'#07C160' },
                   { id:'intl',   svg:<svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>, label:'Transferencia CEMAC',     sub:'Camerun, Gabon, Congo...',       color:'#576B95' },
-                  { id:'mobile', svg:<svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>, label:'Pago Movil',              sub:'Enviar a numero de telefono',    color:'#FA9D3B' },
+                  { id:'mobile', svg:<svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>, label:'Pago Móvil',              sub:'Enviar a numero de telefono',    color:'#FA9D3B' },
                 ].map((t) => (
                   <button key={t.id} onClick={() => { setFinStep('transfer-form'); setFinData({ type: t.id, typeLabel: t.label }); }}
                     style={{ width:'100%', background:'#fff', border:'none', borderRadius:'10px', padding:'12px 14px', cursor:'pointer', outline:'none', display:'flex', alignItems:'center', gap:'12px', marginBottom:'6px' }}
@@ -9880,7 +9880,7 @@ const App: React.FC = () => {
                 <div style={{ marginTop:'16px', background:'#fff', borderRadius:'10px', padding:'12px 14px' }}>
                   <div style={{ fontSize:'11px', color:'#9ca3af', marginBottom:'4px' }}>Saldo disponible</div>
                   <div style={{ fontSize:'22px', fontWeight:'800', color:'#0d0d0d', cursor:'pointer', userSelect:'none' }} onClick={() => toggleBalanceVisible('fin-transfer')}>
-                    {isBalanceVisible('fin-transfer') ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></> : <span style={{ letterSpacing:'4px', color:'#d1d5db' }}>������</span>}
+                    {isBalanceVisible('fin-transfer') ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></> : <span style={{ letterSpacing:'4px', color:'#d1d5db' }}>••••••</span>}
                     <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'6px' }}>{isBalanceVisible('fin-transfer') ? '??' : '??'}</span>
                   </div>
                 </div>
@@ -10100,7 +10100,7 @@ const App: React.FC = () => {
                 <div style={{ background:'#fff', borderRadius:'10px', padding:'12px 14px', marginTop:'8px' }}>
                   <div style={{ fontSize:'11px', color:'#9ca3af', marginBottom:'4px' }}>Saldo disponible para invertir</div>
                   <div style={{ fontSize:'22px', fontWeight:'800', color:'#0d0d0d', cursor:'pointer', userSelect:'none' }} onClick={() => toggleBalanceVisible('fin-invest')}>
-                    {isBalanceVisible('fin-invest') ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></> : <span style={{ letterSpacing:'4px', color:'#d1d5db' }}>������</span>}
+                    {isBalanceVisible('fin-invest') ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></> : <span style={{ letterSpacing:'4px', color:'#d1d5db' }}>••••••</span>}
                     <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'6px' }}>{isBalanceVisible('fin-invest') ? '??' : '??'}</span>
                   </div>
                 </div>
@@ -10432,7 +10432,7 @@ const App: React.FC = () => {
                         const chat = await chatAPI.createPrivate(c.id);
                         if (chat?.id) {
                           setSelectedChat({ id: chat.id, type: 'individual', title: c.name, subtitle: 'Chat', time: '', status: c.status, initials: c.avatar, color: '#00c8a0', avatarUrl: c.avatarUrl, user_id: c.id });
-                          setCurrentView('mensajeria'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
+                          setCurrentView('Mensajería'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
                         }
                       } catch(err: any) { showToast(err?.message || 'Error al crear chat', 'error'); }
                       finally { setNewChatSearching(false); }
@@ -10492,7 +10492,7 @@ const App: React.FC = () => {
                       initials, color: '#00c8a0', phone: targetUser.phone,
                       user_id: targetUser.id,
                     });
-                    setCurrentView('mensajeria'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
+                    setCurrentView('Mensajería'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
                   }
                 } catch(err: any) {
                   showToast(err?.message || 'Error al crear el chat. El servidor puede estar iniciando.', 'error');
@@ -10541,7 +10541,7 @@ const App: React.FC = () => {
                   <div style={{textAlign:'center',padding:'50px 0',color:'#9CA3AF'}}>
                     <div style={{fontSize:'40px',marginBottom:'12px'}}>?</div>
                     <div style={{fontSize:'14px',fontWeight:'600',color:'#374151',marginBottom:'6px'}}>Sin mensajes destacados</div>
-                    <div style={{fontSize:'12px'}}>Toca ? en cualquier mensaje para destacarlo</div>
+                    <div style={{fontSize:'12px'}}>Toca ? en Cuálquier mensaje para destacarlo</div>
                   </div>
                 ) : starredMsgs.map(msg => (
                   <div key={msg.id} style={{background:'#fff',borderRadius:'12px',padding:'12px 14px',marginBottom:'8px',border:'1px solid #FEF3C7',boxShadow:'0 1px 3px rgba(0,0,0,0.05)'}}>
