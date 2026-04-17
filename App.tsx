@@ -2261,11 +2261,27 @@ const App: React.FC = () => {
               </div>
             ) : appNotifications.map((n, i) => (
               <div key={n.id}
-                onClick={() => {
-                  setAppNotifications(prev => prev.map(x => x.id === n.id ? { ...x, read: true } : x));
-                  if (n.chatId) { setCurrentView('mensajeria'); }
-                  if (n.action) n.action();
+                onClick={async () => {
+                  // Eliminar notificación vista inmediatamente
+                  setAppNotifications(prev => prev.filter(x => x.id !== n.id));
                   setShowNotifications(false);
+                  // Si es de chat, navegar directamente al chat
+                  if (n.chatId) {
+                    // Buscar el chat en la lista
+                    const chat = realChats.find((c: any) => c.id === n.chatId);
+                    if (chat) {
+                      const isGroup = chat.type === 'group';
+                      let name = chat.name || chat.title || '';
+                      let avatarUrl = chat.avatar_url || '';
+                      if (!isGroup && chat.participants) {
+                        const other = chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString());
+                        if (other) { name = other.full_name || other.users?.full_name || name; avatarUrl = other.avatar_url || other.users?.avatar_url || avatarUrl; }
+                      }
+                      setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials: name.slice(0,2).toUpperCase(), color: isGroup ? '#a855f7' : '#00c8a0', avatarUrl });
+                    }
+                    setCurrentView('mensajeria');
+                  }
+                  if (n.action) n.action();
                 }}
                 style={{
                   display: 'flex', alignItems: 'flex-start', gap: '10px',
@@ -2433,8 +2449,44 @@ const App: React.FC = () => {
     }
   };
 
+  // Añadir registro de llamada en el chat
+  const addCallRecord = React.useCallback((type: 'audio' | 'video', status: 'completed' | 'missed' | 'outgoing', duration: number, contact: any) => {
+    const chatId = selectedChat?.id?.toString() || '';
+    if (!chatId) return;
+    const key = chatId;
+    const t = new Date();
+    const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+    const durationStr = duration > 0 ? ` · ${String(Math.floor(duration/60)).padStart(2,'0')}:${String(duration%60).padStart(2,'0')}` : '';
+    const icon = type === 'video' ? '📹' : '📞';
+    const statusText = status === 'missed' ? '📵 Llamada perdida' : status === 'outgoing' ? `${icon} Llamada saliente${durationStr}` : `${icon} Llamada${durationStr}`;
+    const msgId = `call_${Date.now()}`;
+    const callMsg: any = {
+      id: msgId,
+      from: status === 'missed' ? 'them' : 'me',
+      text: statusText,
+      time,
+      status: 'delivered',
+      type: 'call',
+      callType: type,
+      callStatus: status,
+      callDuration: duration,
+      contactId: contact?.user_id || contact?.id,
+      contactName: contact?.title || contact?.name || 'Contacto',
+    };
+    setChatMessages(prev => ({ ...prev, [key]: [...(prev[key] || []), callMsg] }));
+    // Enviar al backend como mensaje de texto
+    if (chatId.length > 10) {
+      chatAPI.sendMessage(chatId, { text: statusText, type: 'text' }).catch(() => {});
+    }
+  }, [selectedChat]);
+
   const endCall = () => {
     stopRingtone(); stopDialingTone(); playCallEnded(); vibrate([100, 50, 100]);
+    // Registrar llamada en el chat
+    if (activeCall) {
+      const status = activeCall.status === 'connected' ? 'completed' : 'outgoing';
+      addCallRecord(activeCall.type, status, callDuration, activeCall.contact);
+    }
     webrtc.endCall();
     if (localStream) { localStream.getTracks().forEach(t => t.stop()); setLocalStream(null); }
     setActiveCall(null); setCallDuration(0);
@@ -4311,8 +4363,52 @@ const App: React.FC = () => {
                         e.currentTarget.addEventListener('touchmove', cancel, { once: true });
                       }}
                     >
-                      {/* ── AUDIO ── */}
-                      {(msg as any).type === 'audio' && (msg as any).audioUrl ? (
+                      {/* ── LLAMADA ── */}
+                      {(msg as any).type === 'call' ? (
+                        <div style={{
+                          display: 'flex', alignItems: 'center', gap: '10px',
+                          padding: '8px 12px', minWidth: '200px',
+                          background: (msg as any).callStatus === 'missed' ? 'rgba(239,68,68,0.08)' : 'rgba(0,200,160,0.08)',
+                          borderRadius: '12px', border: `1px solid ${(msg as any).callStatus === 'missed' ? 'rgba(239,68,68,0.2)' : 'rgba(0,200,160,0.2)'}`,
+                        }}>
+                          <div style={{
+                            width: '36px', height: '36px', borderRadius: '50%', flexShrink: 0,
+                            background: (msg as any).callStatus === 'missed' ? 'rgba(239,68,68,0.15)' : 'rgba(0,200,160,0.15)',
+                            display: 'flex', alignItems: 'center', justifyContent: 'center',
+                          }}>
+                            <span style={{ fontSize: '18px' }}>
+                              {(msg as any).callStatus === 'missed' ? '📵' : (msg as any).callType === 'video' ? '📹' : '📞'}
+                            </span>
+                          </div>
+                          <div style={{ flex: 1 }}>
+                            <div style={{ fontSize: '13px', fontWeight: '600', color: (msg as any).callStatus === 'missed' ? '#ef4444' : '#111827' }}>
+                              {(msg as any).callStatus === 'missed' ? 'Llamada perdida' : (msg as any).callStatus === 'outgoing' ? 'Llamada saliente' : 'Llamada'}
+                            </div>
+                            <div style={{ fontSize: '11px', color: '#9ca3af' }}>
+                              {(msg as any).callType === 'video' ? 'Video' : 'Voz'}
+                              {(msg as any).callDuration > 0 && ` · ${String(Math.floor((msg as any).callDuration/60)).padStart(2,'0')}:${String((msg as any).callDuration%60).padStart(2,'0')}`}
+                            </div>
+                          </div>
+                          {/* Botón devolver llamada */}
+                          <button
+                            onClick={() => {
+                              if (selectedChat) startCall((msg as any).callType || 'audio', selectedChat);
+                            }}
+                            style={{
+                              background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', border: 'none',
+                              borderRadius: '50%', width: '32px', height: '32px',
+                              display: 'flex', alignItems: 'center', justifyContent: 'center',
+                              cursor: 'pointer', flexShrink: 0,
+                            }}
+                            title="Devolver llamada"
+                          >
+                            {(msg as any).callType === 'video'
+                              ? <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                              : <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                            }
+                          </button>
+                        </div>
+                      ) : (msg as any).type === 'audio' && (msg as any).audioUrl ? (
                         <div style={{ display: 'flex', alignItems: 'center', gap: '10px', minWidth: '220px', padding: '4px 0' }}>
                           {/* Elemento audio oculto — necesario para iOS Safari */}
                           <audio
@@ -8077,7 +8173,31 @@ const App: React.FC = () => {
                 </div>
                 <div style={{ display:'flex', gap:'24px', justifyContent:'center' }}>
                   <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'8px' }}>
-                    <button onClick={() => { stopRingtone(); playCallEnded(); vibrate(200); setIncomingCall(null); }}
+                    <button onClick={() => {
+                      stopRingtone(); playCallEnded(); vibrate(200);
+                      // Registrar llamada perdida en el chat del llamante
+                      const callerChat = realChats.find((ch: any) =>
+                        ch.participants?.some((p: any) => p.user_id?.toString() === incomingCall.callerId)
+                      );
+                      if (callerChat) {
+                        const t = new Date();
+                        const time = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                        const missedMsg: any = {
+                          id: `call_${Date.now()}`, from: 'them' as const,
+                          text: `📵 Llamada perdida`, time, status: 'delivered',
+                          type: 'call', callType: incomingCall.type, callStatus: 'missed',
+                          callDuration: 0, contactId: incomingCall.callerId, contactName: callerName,
+                        };
+                        const key = callerChat.id?.toString();
+                        setChatMessages(prev => ({ ...prev, [key]: [...(prev[key] || []), missedMsg] }));
+                        chatAPI.sendMessage(key, { text: '📵 Llamada perdida', type: 'text' }).catch(() => {});
+                        // Notificación en campanita
+                        const nt = new Date();
+                        const ntime = `${nt.getHours().toString().padStart(2,'0')}:${nt.getMinutes().toString().padStart(2,'0')}`;
+                        setAppNotifications(prev => [{ id: Date.now().toString(), type: 'message' as const, title: `📵 Llamada perdida de ${callerName}`, body: incomingCall.type === 'video' ? 'Videollamada perdida' : 'Llamada de voz perdida', time: ntime, read: false, chatId: key }, ...prev].slice(0, 50));
+                      }
+                      setIncomingCall(null);
+                    }}
                       style={{ width:'64px', height:'64px', borderRadius:'50%', background:'#ef4444', border:'none', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', boxShadow:'0 4px 16px rgba(239,68,68,0.4)' }}>
                       <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.42 19.42 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8"/><line x1="23" y1="1" x2="1" y2="23"/></svg>
                     </button>
