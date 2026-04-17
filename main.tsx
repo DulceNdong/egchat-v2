@@ -7,12 +7,97 @@ import { WalletProvider } from './WalletSystem';
 
 initSelectionErrorHandler();
 
-// Desregistrar Service Workers para evitar que intercepten headers de auth
+// ── Service Worker + Web Push ─────────────────────────────────────────────
+const VAPID_PUBLIC_KEY = 'BNeDJFYqIX59vgqEKxWfrI263knyPGHafMEK_WrMPeYaIm8bn62vcOah7hDlgIek4R4utB82g-cT9CwAtGn0wUs';
+const API_BASE = import.meta.env.VITE_API_URL || 'https://egchat-api.onrender.com';
+
+function urlBase64ToUint8Array(base64String: string): Uint8Array {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+}
+
+async function registerPush(registration: ServiceWorkerRegistration) {
+  try {
+    // Pedir permiso de notificaciones
+    const permission = await Notification.requestPermission();
+    if (permission !== 'granted') return;
+
+    // Suscribirse al push
+    const subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: urlBase64ToUint8Array(VAPID_PUBLIC_KEY),
+    });
+
+    // Enviar suscripción al backend
+    const token = localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
+    if (!token) return;
+
+    await fetch(`${API_BASE}/api/push/subscribe`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+      },
+      body: JSON.stringify({ subscription }),
+    });
+  } catch (e) {
+    console.warn('Push subscription failed:', e);
+  }
+}
+
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.getRegistrations().then(registrations => {
-    registrations.forEach(r => r.unregister());
+  window.addEventListener('load', async () => {
+    try {
+      // Desregistrar SWs viejos que no sean el nuestro
+      const registrations = await navigator.serviceWorker.getRegistrations();
+      for (const reg of registrations) {
+        if (!reg.active?.scriptURL?.includes('/sw.js')) {
+          await reg.unregister();
+        }
+      }
+
+      // Registrar nuestro SW
+      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+
+      // Escuchar mensajes del SW (click en notificación)
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data?.type === 'NOTIFICATION_CLICK') {
+          // Disparar evento global para que App.tsx lo maneje
+          window.dispatchEvent(new CustomEvent('sw-notification-click', { detail: event.data }));
+        }
+      });
+
+      // Suscribirse al push cuando el usuario ya esté autenticado
+      // Intentar inmediatamente y también cuando el token aparezca
+      const trySubscribe = () => {
+        const token = localStorage.getItem('auth_token') || localStorage.getItem('egchat_token') || '';
+        if (token) registerPush(registration);
+      };
+
+      trySubscribe();
+
+      // Reintentar cada 5s hasta que haya token (máx 60s)
+      let attempts = 0;
+      const interval = setInterval(() => {
+        attempts++;
+        trySubscribe();
+        if (attempts >= 12) clearInterval(interval);
+      }, 5000);
+
+    } catch (e) {
+      console.warn('SW registration failed:', e);
+    }
   });
 }
+
+// Exportar función para que App.tsx pueda re-suscribir tras login
+(window as any).__egchat_registerPush = async () => {
+  if (!('serviceWorker' in navigator)) return;
+  const reg = await navigator.serviceWorker.ready;
+  await registerPush(reg);
+};
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

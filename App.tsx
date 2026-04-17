@@ -7627,10 +7627,16 @@ const App: React.FC = () => {
       }));
     }
     setIsAuthenticated(true);
-    // Pedir permiso de notificaciones del sistema
+    // Pedir permiso de notificaciones del sistema y suscribir al Web Push
     if ('Notification' in window && Notification.permission === 'default') {
       Notification.requestPermission();
     }
+    // Suscribir al Web Push (con token ya disponible)
+    setTimeout(() => {
+      if (typeof (window as any).__egchat_registerPush === 'function') {
+        (window as any).__egchat_registerPush();
+      }
+    }, 1000);
   }} />;
 
   return (
