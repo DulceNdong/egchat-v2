@@ -2450,6 +2450,24 @@ const App: React.FC = () => {
   const formatCallDuration = (s: number) => `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
 
   // Pantalla de llamada activa
+  // Refs estables para los elementos de video (evitan parpadeo)
+  const remoteVideoRef = React.useRef<HTMLVideoElement | null>(null);
+  const localVideoRef = React.useRef<HTMLVideoElement | null>(null);
+
+  // Sincronizar streams con elementos de video
+  React.useEffect(() => {
+    if (remoteVideoRef.current && webrtc.remoteStream) {
+      remoteVideoRef.current.srcObject = webrtc.remoteStream;
+    }
+  }, [webrtc.remoteStream]);
+
+  React.useEffect(() => {
+    const s = webrtc.localStream || localStream;
+    if (localVideoRef.current && s) {
+      localVideoRef.current.srcObject = s;
+    }
+  }, [webrtc.localStream, localStream]);
+
   const renderActiveCall = () => {
     if (!activeCall) return null;
     const { type, contact, status } = activeCall;
@@ -2460,14 +2478,14 @@ const App: React.FC = () => {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: type === 'video' ? '#000' : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
         {/* Video remoto (fondo) */}
-        {type === 'video' && status === 'connected' && (
+        {type === 'video' && (
           <div style={{ position: 'absolute', inset: 0, background: '#111', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {webrtc.remoteStream ? (
-              <video autoPlay playsInline
-                ref={el => { if (el && webrtc.remoteStream) el.srcObject = webrtc.remoteStream; }}
-                style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-              />
-            ) : (
+            <video
+              ref={remoteVideoRef}
+              autoPlay playsInline
+              style={{ width: '100%', height: '100%', objectFit: 'cover', display: webrtc.remoteStream ? 'block' : 'none' }}
+            />
+            {!webrtc.remoteStream && (
               <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: `${color}30`, border: `3px solid ${color}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color }}>
                 {initials}
               </div>
@@ -2476,11 +2494,11 @@ const App: React.FC = () => {
         )}
 
         {/* Video local (esquina) */}
-        {type === 'video' && !isCameraOff && (webrtc.localStream || localStream) && (
+        {type === 'video' && !isCameraOff && (
           <div style={{ position: 'absolute', top: '80px', right: '16px', width: '90px', height: '120px', borderRadius: '12px', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.3)', zIndex: 10, background: '#222' }}>
             <video
+              ref={localVideoRef}
               autoPlay muted playsInline
-              ref={el => { if (el) { const s = webrtc.localStream || localStream; if (s) el.srcObject = s; } }}
               style={{ width: '100%', height: '100%', objectFit: 'cover', transform: 'scaleX(-1)' }}
             />
           </div>

@@ -1,5 +1,5 @@
-// ─── useWebRTC — señalización via HTTP polling ────────────────────────────────
-import { useRef, useState, useCallback } from 'react';
+// ─── useWebRTC — señalización via HTTP polling (v2 - robusto) ────────────────
+import { useRef, useState, useCallback, useEffect } from 'react';
 import { authAPI } from './api';
 
 const BASE = (() => {
@@ -13,7 +13,6 @@ const ICE_SERVERS = [
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun2.l.google.com:19302' },
   { urls: 'stun:stun3.l.google.com:19302' },
-  // TURN servers gratuitos para NAT traversal (redes móviles ↔ WiFi)
   {
     urls: 'turn:openrelay.metered.ca:80',
     username: 'openrelayproject',
@@ -36,7 +35,10 @@ async function sigFetch(path: string, method = 'GET', body?: object) {
   const url = `${BASE}${path}${token ? (path.includes('?') ? '&' : '?') + '_t=' + encodeURIComponent(token) : ''}`;
   const res = await fetch(url, {
     method,
-    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+    },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
   if (!res.ok) throw new Error(`Signal error ${res.status}`);
@@ -47,152 +49,243 @@ export type CallState = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
 
 export function useWebRTC() {
   const pc = useRef<RTCPeerConnection | null>(null);
-  const localStream = useRef<MediaStream | null>(null);
-  const remoteStream = useRef<MediaStream | null>(null);
+  const localStreamRef = useRef<MediaStream | null>(null);
   const callIdRef = useRef<string>('');
   const roleRef = useRef<'caller' | 'callee'>('caller');
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const iceSentRef = useRef<Set<string>>(new Set());
 
   const [callState, setCallState] = useState<CallState>('idle');
-  const [remoteStreamState, setRemoteStreamState] = useState<MediaStream | null>(null);
-  const [localStreamState, setLocalStreamState] = useState<MediaStream | null>(null);
+  const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
+  const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [isMuted, setIsMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
 
-  const stopPolling = () => { if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; } };
+  const stopPolling = useCallback(() => {
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+  }, []);
 
   const cleanup = useCallback(() => {
     stopPolling();
-    pc.current?.close(); pc.current = null;
-    localStream.current?.getTracks().forEach(t => t.stop()); localStream.current = null;
-    remoteStream.current = null;
-    setRemoteStreamState(null); setLocalStreamState(null);
+    if (pc.current) {
+      pc.current.ontrack = null;
+      pc.current.onicecandidate = null;
+      pc.current.onconnectionstatechange = null;
+      pc.current.close();
+      pc.current = null;
+    }
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach(t => t.stop());
+      localStreamRef.current = null;
+    }
+    iceSentRef.current.clear();
+    setRemoteStream(null);
+    setLocalStream(null);
     setCallState('idle');
-  }, []);
+  }, [stopPolling]);
 
-  const createPC = (onTrack: (stream: MediaStream) => void) => {
+  // Crear PeerConnection con handlers correctos
+  const createPC = useCallback(() => {
     const p = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+
+    // Recibir stream remoto
     p.ontrack = (e) => {
-      const s = e.streams[0] || new MediaStream([e.track]);
-      remoteStream.current = s;
-      onTrack(s);
+      const stream = e.streams[0] || new MediaStream([e.track]);
+      setRemoteStream(stream);
     };
+
+    // Monitorear estado de conexión
+    p.onconnectionstatechange = () => {
+      if (p.connectionState === 'connected') {
+        setCallState('connected');
+        stopPolling();
+      } else if (p.connectionState === 'failed' || p.connectionState === 'disconnected') {
+        cleanup();
+      }
+    };
+
     return p;
-  };
+  }, [cleanup, stopPolling]);
+
+  // Enviar ICE candidate al servidor (evitar duplicados)
+  const sendIceCandidate = useCallback(async (candidate: RTCIceCandidate, role: string) => {
+    const key = candidate.candidate;
+    if (!key || iceSentRef.current.has(key)) return;
+    iceSentRef.current.add(key);
+    try {
+      await sigFetch('/call/ice', 'POST', {
+        callId: callIdRef.current,
+        candidate: candidate.toJSON(),
+        role,
+      });
+    } catch {}
+  }, []);
 
   // ── CALLER: iniciar llamada ──────────────────────────────────────────────────
   const startCall = useCallback(async (type: 'audio' | 'video', targetUserId: string) => {
+    cleanup();
+    setCallType(type);
+
+    // Obtener stream local
+    let stream: MediaStream;
     try {
-      setCallType(type);
-      const stream = await navigator.mediaDevices.getUserMedia(
-        type === 'video' ? { audio: true, video: { facingMode: 'user' } } : { audio: true, video: false }
+      stream = await navigator.mediaDevices.getUserMedia(
+        type === 'video'
+          ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
+          : { audio: true, video: false }
       );
-      localStream.current = stream;
-      setLocalStreamState(stream);
-
-      const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
-      callIdRef.current = callId;
-      roleRef.current = 'caller';
-
-      const p = createPC((s) => setRemoteStreamState(s));
-      pc.current = p;
-      stream.getTracks().forEach(t => p.addTrack(t, stream));
-
-      const iceCandidates: RTCIceCandidate[] = [];
-      p.onicecandidate = (e) => { if (e.candidate) iceCandidates.push(e.candidate); };
-
-      const offer = await p.createOffer();
-      await p.setLocalDescription(offer);
-
-      // Esperar a que se recojan ICE candidates
-      await new Promise(r => setTimeout(r, 1000));
-
-      await sigFetch('/call/offer', 'POST', { callId, offer: p.localDescription, targetUserId, type });
-      // Enviar ICE candidates
-      for (const c of iceCandidates) await sigFetch('/call/ice', 'POST', { callId, candidate: c, role: 'caller' });
-
-      setCallState('calling');
-
-      // Polling para recibir answer — más agresivo al inicio
-      let pollCount = 0;
-      pollingRef.current = setInterval(async () => {
-        try {
-          pollCount++;
-          const session = await sigFetch(`/call/${callId}`);
-          if (session.answer && p.signalingState !== 'stable') {
-            await p.setRemoteDescription(new RTCSessionDescription(session.answer));
-            for (const c of (session.calleeCandidates || [])) {
-              try { await p.addIceCandidate(new RTCIceCandidate(c)); } catch {}
-            }
-            setCallState('connected');
-            stopPolling();
-          }
-          // Si no hay respuesta en 45s, terminar
-          if (pollCount > 30) { cleanup(); }
-        } catch { cleanup(); }
-      }, 1500);
-
     } catch (err) {
-      console.error('startCall error:', err);
-      // Fallback: llamada simulada si no hay permisos
-      setCallState('calling');
-      setTimeout(() => setCallState('connected'), 2000);
+      console.error('getUserMedia error:', err);
+      throw new Error('No se pudo acceder al micrófono/cámara');
     }
-  }, [cleanup]);
+
+    localStreamRef.current = stream;
+    setLocalStream(stream);
+
+    const callId = `call_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+    callIdRef.current = callId;
+    roleRef.current = 'caller';
+
+    const p = createPC();
+    pc.current = p;
+
+    // Añadir tracks ANTES de crear offer
+    stream.getTracks().forEach(t => p.addTrack(t, stream));
+
+    // Configurar ICE candidate handler ANTES de createOffer
+    p.onicecandidate = (e) => {
+      if (e.candidate) sendIceCandidate(e.candidate, 'caller');
+    };
+
+    // Crear y enviar offer
+    const offer = await p.createOffer({
+      offerToReceiveAudio: true,
+      offerToReceiveVideo: type === 'video',
+    });
+    await p.setLocalDescription(offer);
+
+    // Esperar trickle ICE (500ms es suficiente con TURN)
+    await new Promise(r => setTimeout(r, 500));
+
+    await sigFetch('/call/offer', 'POST', {
+      callId,
+      offer: p.localDescription,
+      targetUserId,
+      type,
+    });
+
+    setCallState('calling');
+
+    // Polling para recibir answer + ICE candidates del callee
+    let pollCount = 0;
+    let answerSet = false;
+    let calleeCandidatesApplied = 0;
+
+    pollingRef.current = setInterval(async () => {
+      try {
+        pollCount++;
+        const session = await sigFetch(`/call/${callId}`);
+
+        // Aplicar answer si aún no se ha hecho
+        if (!answerSet && session.answer && p.signalingState === 'have-local-offer') {
+          await p.setRemoteDescription(new RTCSessionDescription(session.answer));
+          answerSet = true;
+        }
+
+        // Aplicar ICE candidates del callee
+        if (answerSet) {
+          const calleeCandidates = session.calleeCandidates || [];
+          for (let i = calleeCandidatesApplied; i < calleeCandidates.length; i++) {
+            try { await p.addIceCandidate(new RTCIceCandidate(calleeCandidates[i])); } catch {}
+          }
+          calleeCandidatesApplied = calleeCandidates.length;
+        }
+
+        // Timeout: 45 segundos sin respuesta
+        if (pollCount > 30 && !answerSet) {
+          cleanup();
+        }
+      } catch {
+        // No limpiar en errores de red transitorios
+      }
+    }, 1500);
+
+  }, [cleanup, createPC, sendIceCandidate]);
 
   // ── CALLEE: responder llamada ────────────────────────────────────────────────
   const answerCall = useCallback(async (callId: string, offer: RTCSessionDescriptionInit, type: 'audio' | 'video') => {
+    cleanup();
+    setCallType(type);
+
+    // Obtener stream local
+    let stream: MediaStream;
     try {
-      setCallType(type);
-      const stream = await navigator.mediaDevices.getUserMedia(
-        type === 'video' ? { audio: true, video: { facingMode: 'user' } } : { audio: true, video: false }
+      stream = await navigator.mediaDevices.getUserMedia(
+        type === 'video'
+          ? { audio: true, video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } } }
+          : { audio: true, video: false }
       );
-      localStream.current = stream;
-      setLocalStreamState(stream);
-      callIdRef.current = callId;
-      roleRef.current = 'callee';
-
-      const p = createPC((s) => setRemoteStreamState(s));
-      pc.current = p;
-      stream.getTracks().forEach(t => p.addTrack(t, stream));
-
-      await p.setRemoteDescription(new RTCSessionDescription(offer));
-      const answer = await p.createAnswer();
-      await p.setLocalDescription(answer);
-
-      const iceCandidates: RTCIceCandidate[] = [];
-      p.onicecandidate = (e) => { if (e.candidate) iceCandidates.push(e.candidate); };
-      await new Promise(r => setTimeout(r, 800));
-
-      await sigFetch('/call/answer', 'POST', { callId, answer: p.localDescription });
-      for (const c of iceCandidates) await sigFetch('/call/ice', 'POST', { callId, candidate: c, role: 'callee' });
-
-      // Añadir ICE candidates del caller
-      const session = await sigFetch(`/call/${callId}`);
-      for (const c of (session.callerCandidates || [])) {
-        try { await p.addIceCandidate(new RTCIceCandidate(c)); } catch {}
-      }
-
-      setCallState('connected');
-
-      // Seguir añadiendo ICE candidates que lleguen tarde
-      let iceCount = session.callerCandidates?.length || 0;
-      pollingRef.current = setInterval(async () => {
-        try {
-          const s = await sigFetch(`/call/${callId}`);
-          const newCandidates = (s.callerCandidates || []).slice(iceCount);
-          for (const c of newCandidates) {
-            try { await p.addIceCandidate(new RTCIceCandidate(c)); } catch {}
-          }
-          iceCount += newCandidates.length;
-        } catch { stopPolling(); }
-      }, 2000);
     } catch (err) {
-      console.error('answerCall error:', err);
-      setCallState('connected'); // fallback
+      console.error('getUserMedia error (callee):', err);
+      throw new Error('No se pudo acceder al micrófono/cámara');
     }
-  }, []);
+
+    localStreamRef.current = stream;
+    setLocalStream(stream);
+    callIdRef.current = callId;
+    roleRef.current = 'callee';
+
+    const p = createPC();
+    pc.current = p;
+
+    // Añadir tracks ANTES de crear answer
+    stream.getTracks().forEach(t => p.addTrack(t, stream));
+
+    // Configurar ICE candidate handler ANTES de setRemoteDescription
+    p.onicecandidate = (e) => {
+      if (e.candidate) sendIceCandidate(e.candidate, 'callee');
+    };
+
+    // Aplicar offer del caller
+    await p.setRemoteDescription(new RTCSessionDescription(offer));
+
+    // Crear answer
+    const answer = await p.createAnswer();
+    await p.setLocalDescription(answer);
+
+    // Esperar trickle ICE
+    await new Promise(r => setTimeout(r, 500));
+
+    // Enviar answer
+    await sigFetch('/call/answer', 'POST', { callId, answer: p.localDescription });
+
+    // Aplicar ICE candidates del caller que ya llegaron
+    const session = await sigFetch(`/call/${callId}`);
+    let callerCandidatesApplied = 0;
+    for (const c of (session.callerCandidates || [])) {
+      try { await p.addIceCandidate(new RTCIceCandidate(c)); } catch {}
+      callerCandidatesApplied++;
+    }
+
+    setCallState('connected');
+
+    // Seguir aplicando ICE candidates del caller que lleguen tarde
+    pollingRef.current = setInterval(async () => {
+      try {
+        const s = await sigFetch(`/call/${callId}`);
+        const callerCandidates = s.callerCandidates || [];
+        for (let i = callerCandidatesApplied; i < callerCandidates.length; i++) {
+          try { await p.addIceCandidate(new RTCIceCandidate(callerCandidates[i])); } catch {}
+        }
+        callerCandidatesApplied = callerCandidates.length;
+      } catch { stopPolling(); }
+    }, 2000);
+
+  }, [cleanup, createPC, sendIceCandidate, stopPolling]);
 
   const endCall = useCallback(async () => {
     if (callIdRef.current) {
@@ -202,16 +295,16 @@ export function useWebRTC() {
   }, [cleanup]);
 
   const toggleMute = useCallback(() => {
-    localStream.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
+    localStreamRef.current?.getAudioTracks().forEach(t => { t.enabled = !t.enabled; });
     setIsMuted(p => !p);
   }, []);
 
   const toggleCamera = useCallback(() => {
-    localStream.current?.getVideoTracks().forEach(t => { t.enabled = !t.enabled; });
+    localStreamRef.current?.getVideoTracks().forEach(t => { t.enabled = !t.enabled; });
     setIsCamOff(p => !p);
   }, []);
 
-  // Polling para llamadas entrantes — retorna función de limpieza directamente
+  // Polling para llamadas entrantes
   const pollIncoming = useCallback((myUserId: string, onIncoming: (call: any) => void) => {
     if (!myUserId) return () => {};
     const check = async () => {
@@ -220,14 +313,19 @@ export function useWebRTC() {
         if (Array.isArray(calls) && calls.length > 0) onIncoming(calls[0]);
       } catch {}
     };
-    check(); // check inmediato al iniciar
+    check();
     const id = setInterval(check, 3000);
     return () => clearInterval(id);
   }, []);
 
+  // Limpiar al desmontar
+  useEffect(() => {
+    return () => { cleanup(); };
+  }, [cleanup]);
+
   return {
     callState, callType, isMuted, isCamOff,
-    localStream: localStreamState, remoteStream: remoteStreamState,
+    localStream, remoteStream,
     startCall, answerCall, endCall, toggleMute, toggleCamera, pollIncoming,
   };
 }
