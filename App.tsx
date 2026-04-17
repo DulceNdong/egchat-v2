@@ -2050,17 +2050,20 @@ const App: React.FC = () => {
       top: 0,
       left: 0,
       right: 0,
-      height: '56px',
+      height: 'calc(56px + env(safe-area-inset-top, 0px))',
       background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
       borderBottom: 'none',
       display: 'flex',
-      alignItems: 'center',
+      alignItems: 'flex-end',
       justifyContent: 'space-between',
       padding: '0 16px',
+      paddingTop: 'env(safe-area-inset-top, 0px)',
+      paddingBottom: '0',
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden'
     }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '56px' }}>
       
       <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '4px', background: 'linear-gradient(180deg, #00c8a0 0%, #ffffff 20%, #000000 40%, #ffffff 60%, #000000 80%, #00c8a0 100%)', boxShadow: '0 0 10px rgba(255,255,255,0.9), 0 0 20px rgba(0,200,160,0.5)', pointerEvents: 'none', zIndex: 1 }} />
       
@@ -2195,6 +2198,7 @@ const App: React.FC = () => {
           </button>
         </div>
 
+      </div>
       </div>
     </div>
   );
@@ -3821,7 +3825,10 @@ const App: React.FC = () => {
   // Renderizar vista principal - PÁGINA DE INICIO CON SOPORTE DE LAYOUTS
   const renderHomeView = () => {
     const containerStyle: React.CSSProperties = {
-      padding: '66px 16px 90px',
+      paddingTop: 'calc(66px + env(safe-area-inset-top, 0px))',
+      paddingLeft: '16px',
+      paddingRight: '16px',
+      paddingBottom: '90px',
       height: '100vh',
       overflowY: 'auto',
       background: 'transparent'
@@ -4225,17 +4232,17 @@ const App: React.FC = () => {
           return (
             <div style={{ height: '100vh', display: 'flex', flexDirection: 'column', paddingTop: '56px', overflow: 'hidden' }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Header conversación */}
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '6px 10px', background: '#ffffff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '6px 8px 6px 4px', background: '#ffffff', borderBottom: '1px solid rgba(0,0,0,0.08)', flexShrink: 0 }}>
                 <button
                   onClick={() => { setSelectedChat(null); setShowChatEmojis(false); setCurrentChatInput(''); setShowChatMenu(false); }}
-                  style={{ background: 'transparent', border: 'none', color: '#0d0d0d', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%' }}
+                  style={{ background: 'transparent', border: 'none', color: '#0d0d0d', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%', flexShrink: 0 }}
                 >
                   <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
                 </button>
-                <div style={{ cursor: 'pointer' }} onClick={() => setShowContactProfile(sc)}>
-                  <Avatar name={sc.title} size={40} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
+                <div style={{ cursor: 'pointer', flexShrink: 0 }} onClick={() => setShowContactProfile(sc)}>
+                  <Avatar name={sc.title} size={48} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
                 </div>
-                <div style={{ flex: 1, cursor: 'pointer' }} onClick={() => setShowContactProfile(sc)}>
+                <div style={{ flex: 1, cursor: 'pointer', minWidth: 0 }} onClick={() => setShowContactProfile(sc)}>
                   <div style={{ fontSize: '15px', fontWeight: '700', color: '#0d0d0d' }}>{sc.title}</div>
                   <div style={{ fontSize: '12px', color: sc.isGroup ? '#a855f7' : sc.status === 'online' ? '#00c8a0' : sc.status === 'away' ? '#f59e0b' : '#9ca3af' }}>
                     {sc.isGroup ? `👥 ${sc.members || ''} miembros` : sc.status === 'online' ? 'En línea' : sc.status === 'away' ? 'Ausente' : 'Desconectado'}
