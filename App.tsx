@@ -4440,8 +4440,10 @@ const App: React.FC = () => {
                               const btn = document.getElementById(`play-btn-${msg.id}`) as HTMLElement;
                               const timeEl = document.getElementById(`time-${msg.id}`) as HTMLElement;
                               const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
+                              const iconEl = document.getElementById(`play-icon-${msg.id}`);
                               if (bar) bar.style.width = '0%';
                               if (btn) btn.setAttribute('data-playing', 'false');
+                              if (iconEl) iconEl.innerHTML = '<polygon points="6 3 20 12 6 21 6 3"/>';
                               if (timeEl && audio && !isNaN(audio.duration)) {
                                 timeEl.textContent = `${Math.floor(audio.duration/60)}:${String(Math.floor(audio.duration%60)).padStart(2,'0')}`;
                               }
@@ -4455,14 +4457,29 @@ const App: React.FC = () => {
                             onClick={() => {
                               const audio = document.getElementById(`audio-${msg.id}`) as HTMLAudioElement;
                               const btn = document.getElementById(`play-btn-${msg.id}`);
+                              const iconEl = document.getElementById(`play-icon-${msg.id}`);
                               if (!audio) return;
                               if (audio.paused) {
-                                document.querySelectorAll('audio').forEach(a => { if (a !== audio) { a.pause(); } });
+                                // Pausar todos los demás
+                                document.querySelectorAll('audio').forEach(a => {
+                                  if (a !== audio) {
+                                    a.pause();
+                                    const otherId = a.id.replace('audio-', '');
+                                    const otherIcon = document.getElementById(`play-icon-${otherId}`);
+                                    if (otherIcon) otherIcon.innerHTML = '<polygon points="6 3 20 12 6 21 6 3"/>';
+                                    const otherBtn = document.getElementById(`play-btn-${otherId}`);
+                                    if (otherBtn) otherBtn.setAttribute('data-playing', 'false');
+                                  }
+                                });
                                 audio.play().catch(() => {});
                                 btn?.setAttribute('data-playing', 'true');
+                                // Cambiar a icono pause
+                                if (iconEl) iconEl.innerHTML = '<rect x="6" y="4" width="4" height="16" rx="1"/><rect x="14" y="4" width="4" height="16" rx="1"/>';
                               } else {
                                 audio.pause();
                                 btn?.setAttribute('data-playing', 'false');
+                                // Cambiar a icono play
+                                if (iconEl) iconEl.innerHTML = '<polygon points="6 3 20 12 6 21 6 3"/>';
                               }
                             }}
                             style={{
@@ -4470,16 +4487,16 @@ const App: React.FC = () => {
                                 ? 'linear-gradient(135deg,#6ee7b7,#34d399)'
                                 : 'linear-gradient(135deg,#c4b5fd,#a78bfa)',
                               border: 'none', borderRadius: '50%',
-                              width: '42px', height: '42px', flexShrink: 0,
+                              width: '40px', height: '40px', flexShrink: 0,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: 'pointer', boxShadow: '0 3px 10px rgba(0,0,0,0.15)',
-                              transition: 'transform 0.1s',
+                              cursor: 'pointer', boxShadow: '0 2px 8px rgba(0,0,0,0.12)',
+                              transition: 'transform 0.15s',
+                              alignSelf: 'center',
                             }}
                             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
                             onMouseLeave={e => e.currentTarget.style.transform = 'scale(1)'}
                           >
-                            {/* Icono cambia dinámicamente via CSS — siempre play por defecto */}
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="#fff">
+                            <svg id={`play-icon-${msg.id}`} width="15" height="15" viewBox="0 0 24 24" fill="#fff">
                               <polygon points="6 3 20 12 6 21 6 3"/>
                             </svg>
                           </button>
