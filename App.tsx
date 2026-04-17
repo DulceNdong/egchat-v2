@@ -4564,7 +4564,7 @@ const App: React.FC = () => {
                               const result = await chatAPI.uploadFile(chatId, file);
                               const serverUrl = result.file_url;
                               // Enviar mensaje al backend con la URL real
-                              await chatAPI.sendMessage(chatId, '📷 Foto', 'image', undefined, serverUrl);
+                              await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: serverUrl });
                               // Actualizar mensaje local con URL del servidor
                               setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, imageUrl: serverUrl, status: 'delivered' } : m) }));
                             } catch (e) {
@@ -4595,7 +4595,7 @@ const App: React.FC = () => {
                             setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, status: 'pending' as const } as any] }));
                             try {
                               const result = await chatAPI.uploadFile(chatId, file);
-                              await chatAPI.sendMessage(chatId, `🎥 ${file.name} (${size} MB)`, 'file', undefined, result.file_url);
+                              await chatAPI.sendMessage(chatId, { text: `🎥 ${file.name} (${size} MB)`, type: 'file', file_url: result.file_url });
                               setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, fileUrl: result.file_url, fileName: file.name, fileSize: size + ' MB', fileExt: 'mp4', status: 'delivered' } : m) }));
                             } catch { showToast('Error al subir video', 'error'); }
                           };
@@ -4625,7 +4625,7 @@ const App: React.FC = () => {
                             setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `📎 ${file.name} (${size} KB)`, time: tm, status: 'pending' as const, fileName: file.name, fileSize: size + ' KB', fileExt: ext } as any] }));
                             try {
                               const result = await chatAPI.uploadFile(chatId, file);
-                              await chatAPI.sendMessage(chatId, `📎 ${file.name} (${size} KB)`, 'file', undefined, result.file_url);
+                              await chatAPI.sendMessage(chatId, { text: `📎 ${file.name} (${size} KB)`, type: 'file', file_url: result.file_url });
                               setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, fileUrl: result.file_url, status: 'delivered' } : m) }));
                             } catch { showToast('Error al subir archivo', 'error'); }
                           };
@@ -7489,6 +7489,24 @@ const App: React.FC = () => {
     return () => { if (typeof cleanup === 'function') cleanup(); };
   }, [isAuthenticated]); // solo depende de isAuthenticated
 
+  // -- Cargar contactos — función reutilizable (debe estar ANTES del useEffect que la usa) --
+  const loadContacts = React.useCallback(async () => {
+    try {
+      const data = await contactsAPI.getAll();
+      if (Array.isArray(data)) {
+        setAllContacts(data.map((c: any) => ({
+          id: c.contact_user_id?.toString() || c.id?.toString() || '',
+          name: c.name || c.nickname || c.full_name || 'Sin nombre',
+          phone: c.phone || '',
+          avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
+          avatarUrl: c.avatar_url || '',
+          status: 'offline' as const,
+          addedDate: c.created_at || new Date().toISOString(),
+        })));
+      }
+    } catch {}
+  }, []);
+
   // -- useEffects mensajeria -------------------------------------
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -7588,25 +7606,6 @@ const App: React.FC = () => {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
     };
   }, [selectedChat, loadMessages]);
-
-  // -- Cargar contactos cuando se navega a la vista de contactos --
-  // -- Cargar contactos — función reutilizable --
-  const loadContacts = React.useCallback(async () => {
-    try {
-      const data = await contactsAPI.getAll();
-      if (Array.isArray(data)) {
-        setAllContacts(data.map((c: any) => ({
-          id: c.contact_user_id?.toString() || c.id?.toString() || '',
-          name: c.name || c.nickname || c.full_name || 'Sin nombre',
-          phone: c.phone || '',
-          avatar: (c.name || c.nickname || 'U').split(' ').map((w: string) => w[0]).join('').slice(0, 2).toUpperCase(),
-          avatarUrl: c.avatar_url || '',
-          status: 'offline' as const,
-          addedDate: c.created_at || new Date().toISOString(),
-        })));
-      }
-    } catch {}
-  }, []);
 
   useEffect(() => {
     if (currentView !== 'contactos') return;
