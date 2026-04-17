@@ -396,6 +396,10 @@ const App: React.FC = () => {
   // Wallet balance reveal animation
   const [balanceRevealed, setBalanceRevealed] = useState<boolean>(false);
   const [balanceRevealing, setBalanceRevealing] = useState<boolean>(false);
+  // Balance oculto en otros lugares
+  const [balanceVisibleMap, setBalanceVisibleMap] = useState<Record<string, boolean>>({});
+  const toggleBalanceVisible = (key: string) => setBalanceVisibleMap(prev => ({ ...prev, [key]: !prev[key] }));
+  const isBalanceVisible = (key: string) => !!balanceVisibleMap[key];
 
   // Ajustes
   const [currentSettingsTab, setCurrentSettingsTab] = useState<'perfil' | 'sonidos' | 'ayuda' | 'actividad'>('perfil');
@@ -9425,7 +9429,10 @@ const App: React.FC = () => {
                 ))}
                 <div style={{ marginTop:'16px', background:'#fff', borderRadius:'10px', padding:'12px 14px' }}>
                   <div style={{ fontSize:'11px', color:'#9ca3af', marginBottom:'4px' }}>Saldo disponible</div>
-                  <div style={{ fontSize:'22px', fontWeight:'800', color:'#0d0d0d' }}>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></div>
+                  <div style={{ fontSize:'22px', fontWeight:'800', color:'#0d0d0d', cursor:'pointer', userSelect:'none' }} onClick={() => toggleBalanceVisible('fin-transfer')}>
+                    {isBalanceVisible('fin-transfer') ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></> : <span style={{ letterSpacing:'4px', color:'#d1d5db' }}>••••••</span>}
+                    <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'6px' }}>{isBalanceVisible('fin-transfer') ? '🙈' : '👁'}</span>
+                  </div>
                 </div>
               </div>
             )}
@@ -9642,7 +9649,10 @@ const App: React.FC = () => {
                 ))}
                 <div style={{ background:'#fff', borderRadius:'10px', padding:'12px 14px', marginTop:'8px' }}>
                   <div style={{ fontSize:'11px', color:'#9ca3af', marginBottom:'4px' }}>Saldo disponible para invertir</div>
-                  <div style={{ fontSize:'22px', fontWeight:'800', color:'#0d0d0d' }}>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></div>
+                  <div style={{ fontSize:'22px', fontWeight:'800', color:'#0d0d0d', cursor:'pointer', userSelect:'none' }} onClick={() => toggleBalanceVisible('fin-invest')}>
+                    {isBalanceVisible('fin-invest') ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'13px', fontWeight:'500', color:'#9ca3af' }}>XAF</span></> : <span style={{ letterSpacing:'4px', color:'#d1d5db' }}>••••••</span>}
+                    <span style={{ fontSize:'11px', color:'#9ca3af', marginLeft:'6px' }}>{isBalanceVisible('fin-invest') ? '🙈' : '👁'}</span>
+                  </div>
                 </div>
               </div>
             )}

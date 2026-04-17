@@ -803,9 +803,14 @@ export const MiTaxiView: React.FC<Props> = ({ onBack, userBalance, onDebit, user
               <div style={{ fontSize:'20px', fontWeight:'800', color:'#111827', letterSpacing:'-0.3px' }}>¡Hola, {userName}! 👋</div>
               <div style={{ fontSize:'13px', color:'#6b7280', marginTop:'2px' }}>¿A dónde quieres ir?</div>
             </div>
-            <div style={{ background:'#f0fdf4', borderRadius:'12px', padding:'8px 12px', textAlign:'right' }}>
+            <div style={{ background:'#f0fdf4', borderRadius:'12px', padding:'8px 12px', textAlign:'right', cursor:'pointer' }}
+              onClick={() => setDriverOnline(p => !p)} // reutilizamos driverOnline como toggle de visibilidad del saldo
+            >
               <div style={{ fontSize:'10px', color:'#16a34a', fontWeight:'700', textTransform:'uppercase', letterSpacing:'0.5px' }}>Saldo</div>
-              <div style={{ fontSize:'16px', fontWeight:'800', color:'#111827' }}>{userBalance.toLocaleString()} <span style={{ fontSize:'11px', color:'#6b7280' }}>XAF</span></div>
+              <div style={{ fontSize:'16px', fontWeight:'800', color:'#111827' }}>
+                {driverOnline ? <>{userBalance.toLocaleString()} <span style={{ fontSize:'11px', color:'#6b7280' }}>XAF</span></> : <span style={{ letterSpacing:'3px', color:'#9ca3af', fontSize:'14px' }}>••••••</span>}
+                <span style={{ fontSize:'10px', color:'#9ca3af', marginLeft:'4px' }}>{driverOnline ? '🙈' : '👁'}</span>
+              </div>
             </div>
           </div>
 
