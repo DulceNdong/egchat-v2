@@ -4467,12 +4467,12 @@ const App: React.FC = () => {
                             }}
                             style={{
                               background: msg.from === 'me'
-                                ? 'linear-gradient(135deg,#00c8a0,#00b4e6)'
-                                : 'linear-gradient(135deg,#00b4e6,#667eea)',
+                                ? 'linear-gradient(135deg,#6ee7b7,#34d399)'
+                                : 'linear-gradient(135deg,#c4b5fd,#a78bfa)',
                               border: 'none', borderRadius: '50%',
                               width: '42px', height: '42px', flexShrink: 0,
                               display: 'flex', alignItems: 'center', justifyContent: 'center',
-                              cursor: 'pointer', boxShadow: '0 3px 10px rgba(0,0,0,0.2)',
+                              cursor: 'pointer', boxShadow: '0 3px 10px rgba(0,0,0,0.15)',
                               transition: 'transform 0.1s',
                             }}
                             onMouseEnter={e => e.currentTarget.style.transform = 'scale(1.08)'}
@@ -4502,8 +4502,10 @@ const App: React.FC = () => {
                                 {[2,4,7,5,9,6,3,8,5,7,4,6,3,5,7,4,8,5,3,6,4,7,5,8,3,5,7,4,6,3].map((h, i) => (
                                   <div key={i} style={{
                                     flex: 1, height: `${h * 2.5}px`,
-                                    background: msg.from === 'me' ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)',
-                                    borderRadius: '2px',
+                                    background: msg.from === 'me'
+                                      ? 'rgba(134,239,172,0.3)'
+                                      : 'rgba(196,181,253,0.35)',
+                                    borderRadius: '3px',
                                   }}/>
                                 ))}
                               </div>
@@ -4516,8 +4518,10 @@ const App: React.FC = () => {
                                   {[2,4,7,5,9,6,3,8,5,7,4,6,3,5,7,4,8,5,3,6,4,7,5,8,3,5,7,4,6,3].map((h, i) => (
                                     <div key={i} style={{
                                       flex: 1, height: `${h * 2.5}px`,
-                                      background: msg.from === 'me' ? '#00c8a0' : '#00b4e6',
-                                      borderRadius: '2px',
+                                      background: msg.from === 'me'
+                                        ? 'linear-gradient(180deg, #6ee7b7, #34d399)'
+                                        : 'linear-gradient(180deg, #c4b5fd, #a78bfa)',
+                                      borderRadius: '3px',
                                     }}/>
                                   ))}
                                 </div>
@@ -4539,8 +4543,8 @@ const App: React.FC = () => {
 
                             {/* Tiempo restante */}
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ fontSize: '10px', color: msg.from === 'me' ? 'rgba(0,200,160,0.8)' : 'rgba(0,180,230,0.8)', fontWeight: '600' }}>
-                                🎤 Voz
+                              <span style={{ fontSize: '10px', color: msg.from === 'me' ? 'rgba(134,239,172,0.9)' : 'rgba(147,197,253,0.9)', fontWeight: '600', letterSpacing: '0.3px' }}>
+                                Voz
                               </span>
                               <span id={`time-${msg.id}`} style={{ fontSize: '11px', color: '#9ca3af', fontWeight: '500', fontVariantNumeric: 'tabular-nums' }}>
                                 0:00
