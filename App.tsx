@@ -56,14 +56,14 @@ const App: React.FC = () => {
   const device = useDevice();
 
   // Helper: padding de contenido según dispositivo
-  // móvil: header fijo (44px) + safe area top + bottom nav (49px)
+  // móvil: header fijo (44px) + safe area top + bottom nav (58px)
   // tablet/desktop: sin bottom nav, sin safe area top (la sidebar lo gestiona)
   const viewPadding = {
     top: device.isMobile
       ? 'calc(44px + max(36px, env(safe-area-inset-top, 36px)) + 8px)'
       : '60px',
     bottom: device.isMobile
-      ? 'calc(49px + env(safe-area-inset-bottom, 0px) + 8px)'
+      ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
       : '24px',
     left: device.isDesktop ? '24px' : '16px',
     right: device.isDesktop ? '24px' : '16px',
@@ -4455,7 +4455,7 @@ const App: React.FC = () => {
       <>
       <div style={{
         position: 'fixed',
-        bottom: 'calc(49px + env(safe-area-inset-bottom, 0px) + 24px)',
+        bottom: 'calc(58px + env(safe-area-inset-bottom, 0px) + 24px)',
         left: '50%',
         transform: 'translateX(-50%)',
         zIndex: 1002,
@@ -4621,7 +4621,7 @@ const App: React.FC = () => {
         }}
         style={{
           position: 'fixed',
-          bottom: 'calc(49px + env(safe-area-inset-bottom, 0px) + 24px)',
+          bottom: 'calc(58px + env(safe-area-inset-bottom, 0px) + 24px)',
           left: '50%',
           transform: 'translateX(-50%)',
           width: '65px',
@@ -4709,7 +4709,7 @@ const App: React.FC = () => {
       paddingTop: viewPadding.top,
       paddingLeft: '16px',
       paddingRight: '16px',
-      paddingBottom: 'calc(49px + env(safe-area-inset-bottom, 0px) + 8px)',
+      paddingBottom: 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)',
       height: '100vh',
       overflowY: 'auto',
       background: 'transparent'
