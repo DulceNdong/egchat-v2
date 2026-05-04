@@ -779,6 +779,12 @@ const App: React.FC = () => {
       document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
       document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winHeight - vvHeight - vvTop)}px`);
 
+      // DEBUG: mostrar valores en pantalla para diagnóstico iOS
+      const dbg = document.getElementById('vv-debug');
+      if (dbg) {
+        dbg.textContent = `win:${winHeight} vvH:${Math.round(vvHeight)} vvTop:${Math.round(vvTop)} kb:${Math.max(0,winHeight-Math.round(vvHeight)-Math.round(vvTop))}`;
+      }
+
       // En iOS, mover el container directamente con JS (más confiable que CSS vars con position:fixed)
       if (isIOS) {
         const container = document.querySelector('.chat-view-container') as HTMLElement;
@@ -5205,6 +5211,13 @@ const App: React.FC = () => {
                 );
               })()}
               {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
+              {/* DEBUG OVERLAY — eliminar después del diagnóstico */}
+              <div id="vv-debug" style={{
+                position: 'absolute', top: 0, left: 0, right: 0,
+                background: 'rgba(255,0,0,0.85)', color: '#fff',
+                fontSize: '11px', fontFamily: 'monospace', padding: '2px 6px',
+                zIndex: 9999, pointerEvents: 'none'
+              }}></div>
               <div style={{ 
                 display: 'flex', alignItems: 'center', flexShrink: 0,
                 paddingTop: device.isMobile ? 'max(var(--ios-safe-top, env(safe-area-inset-top, 44px)), 44px)' : '8px', 
@@ -10148,7 +10161,7 @@ const App: React.FC = () => {
           onClick={() => setChatImageViewer(null)}
           style={{
             position: 'fixed', inset: 0, zIndex: 5000,
-            background: 'rgba(0,0,0,0.95)',
+            background: '#000',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             cursor: 'zoom-out',
             animation: 'fadeIn 0.2s ease',
@@ -10172,7 +10185,7 @@ const App: React.FC = () => {
             onClick={() => setChatImageViewer(null)}
             style={{
               position: 'absolute', top: '16px', right: '16px',
-              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
+              background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
               border: '1px solid rgba(255,255,255,0.15)',
               borderRadius: '50%', width: '40px', height: '40px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -10181,23 +10194,60 @@ const App: React.FC = () => {
           >
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
           </button>
-          {/* Descargar */}
-          <a
-            href={chatImageViewer}
-            download="foto.jpg"
-            onClick={e => e.stopPropagation()}
+          {/* Descargar — guarda en carpeta Fotos/Imágenes del dispositivo */}
+          <button
+            onClick={async (e) => {
+              e.stopPropagation();
+              try {
+                const url = chatImageViewer;
+                // Detectar extensión y tipo MIME
+                const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'jpg';
+                const mimeMap: Record<string, string> = {
+                  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
+                  gif: 'image/gif', webp: 'image/webp', mp4: 'video/mp4',
+                  mov: 'video/quicktime', avi: 'video/x-msvideo', pdf: 'application/pdf',
+                };
+                const mime = mimeMap[ext] || 'image/jpeg';
+                const isVideo = mime.startsWith('video/');
+                const filename = `egchat_${Date.now()}.${ext}`;
+
+                // Fetch como blob para forzar descarga local
+                const resp = await fetch(url);
+                const blob = await resp.blob();
+                const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
+
+                const a = document.createElement('a');
+                a.href = blobUrl;
+                a.download = filename;
+                // En iOS Safari, abrir en nueva pestaña permite "Guardar en Fotos"
+                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
+                  a.target = '_blank';
+                  a.rel = 'noopener';
+                }
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                showToast(isVideo ? '📹 Video guardado' : '🖼️ Foto guardada', 'success');
+              } catch {
+                // Fallback: abrir en nueva pestaña
+                window.open(chatImageViewer, '_blank');
+                showToast('Abre la imagen y guárdala manualmente', 'info');
+              }
+            }}
             style={{
-              position: 'absolute', bottom: '24px', left: '50%', transform: 'translateX(-50%)',
-              background: 'rgba(0,0,0,0.5)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '20px', padding: '8px 20px',
+              position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', left: '50%', transform: 'translateX(-50%)',
+              background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              borderRadius: '20px', padding: '10px 24px',
               color: '#fff', fontSize: '13px', fontWeight: '600',
-              textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '6px',
+              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
+              outline: 'none',
             }}
           >
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Guardar foto
-          </a>
+            Guardar en dispositivo
+          </button>
         </div>
       )}
       {/* Llamada entrante */}
