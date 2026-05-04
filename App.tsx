@@ -746,31 +746,23 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fix teclado iOS/Android: ajusta el chat container Y el header al visualViewport
-  // En iOS Safari, position:fixed se posiciona relativo al layout viewport (pantalla completa),
-  // NO al visual viewport (área visible). Cuando el teclado sube, los elementos fixed
-  // quedan fuera de la pantalla visible. Solución: moverlos con JS directamente.
+  // Fix teclado iOS/Android: ajusta el chat container al visualViewport
+  // El header ahora está DENTRO del container, así que se mueve automáticamente con él.
+  // El container se ajusta para ocupar exactamente el área visible cuando el teclado aparece.
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     if (!vv) return;
 
     const onResize = () => {
-      const vvTop = vv.offsetTop;       // cuánto ha hecho scroll iOS del viewport
-      const vvHeight = vv.height;       // altura visible (se reduce con el teclado)
+      const vvTop = vv.offsetTop;
+      const vvHeight = vv.height;
 
-      // CSS vars para el chat-view-container
       document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
       document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
       document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - vvHeight - vvTop)}px`);
 
-      // Mover el header del chat directamente con JS para que siga el visual viewport
-      // Esto es necesario porque en iOS position:fixed no sigue el visual viewport
-      const chatHeader = document.getElementById('chat-header-fixed');
-      if (chatHeader) {
-        chatHeader.style.top = `${vvTop}px`;
-      }
-
-      // Mover el chat-view-container para que ocupe exactamente el área visible
+      // Mover el chat-view-container para que ocupe exactamente el área visible del viewport
+      // Esto es necesario en iOS donde position:fixed no sigue el visual viewport
       const chatContainer = document.querySelector('.chat-view-container') as HTMLElement;
       if (chatContainer) {
         chatContainer.style.top = `${vvTop}px`;
@@ -5177,7 +5169,40 @@ const App: React.FC = () => {
                   </div>
                 );
               })()}
-              {/* Header conversacin — renderizado en el return principal como elemento fijo separado */}
+              {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
+              <div style={{ 
+                display: 'flex', alignItems: 'center', flexShrink: 0,
+                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
+                paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
+                background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
+                boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
+                position: 'relative', zIndex: 2,
+              }}>
+                <button onClick={() => { setSelectedChat(null); setShowChatEmojis(false); setCurrentChatInput(''); setShowChatMenu(false); setSelectionMode(false); setSelectedMsgIds([]); }}
+                  style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%', flexShrink: 0 }}>
+                  <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+                </button>
+                <div style={{ cursor: 'pointer', flexShrink: 0, marginLeft: '4px' }} onClick={async () => { setShowContactProfile(withGroupOverrides(sc)); if (sc.isGroup) await loadGroupMembers(sc.id?.toString() || ''); }}>
+                  <Avatar name={sc.title} size={50} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
+                </div>
+                <div style={{ flex: 1, cursor: 'pointer', minWidth: 0, marginLeft: '10px' }} onClick={async () => { setShowContactProfile(withGroupOverrides(sc)); if (sc.isGroup) await loadGroupMembers(sc.id?.toString() || ''); }}>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{sc.title}</div>
+                  <div style={{ fontSize: '11px', fontWeight: '600', color: sc.isGroup ? 'rgba(255,255,255,0.85)' : sc.status === 'online' ? '#a8ffdd' : sc.status === 'away' ? '#ffe08a' : 'rgba(255,255,255,0.6)' }}>
+                    {sc.isGroup ? `👥 ${sc.members || ''} miembros` : sc.status === 'online' ? '● En línea' : sc.status === 'away' ? '● Ausente' : '○ Desconectado'}
+                  </div>
+                </div>
+                <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
+                  <button onClick={() => startCall('audio', sc)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                  </button>
+                  <button onClick={() => startCall('video', sc)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                  </button>
+                  <button onClick={e => { e.stopPropagation(); setShowChatMenu(p => !p); }} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
+                    <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+                  </button>
+                </div>
+              </div>
 
               {/* Panel lateral del chat — desliza desde la derecha */}
               {showChatMenu && (
@@ -5270,7 +5295,7 @@ const App: React.FC = () => {
               <div
                 className="scroll-container chat-messages-scroll"
                 ref={(el) => { if (el) { el.onscroll = () => { const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80; isAtBottomRef.current = atBottom; }; } }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 50px), 50px) + 54px)' : '70px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
               >
                 {[...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);}).map((msg) => (
                   <div key={msg.id} onClick={() => { if (selectionMode) { setSelectedMsgIds(prev => prev.includes(msg.id) ? prev.filter(x => x !== msg.id) : [...prev, msg.id]); } }} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px', alignItems: 'center', gap: '8px', padding: selectionMode ? '2px 8px' : '0', background: selectionMode && selectedMsgIds.includes(msg.id) ? 'rgba(0,180,230,0.10)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s', cursor: selectionMode ? 'pointer' : 'default' }}>
@@ -10472,51 +10497,6 @@ const App: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Header del chat — renderizado fuera del chat-view-container para evitar overflow:hidden */}
-      {selectedChat && currentView === 'Mensajería' && (() => {
-        const sc = selectedChat;
-        return (
-          <div id="chat-header-fixed" style={{ 
-            position: 'fixed',
-            top: 0,
-            left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
-            right: 0,
-            zIndex: 1102,
-            display: 'flex', alignItems: 'center', 
-            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
-            paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
-            background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
-            flexShrink: 0, 
-            boxShadow: '0 2px 12px rgba(0,180,230,0.3)' 
-          }}>
-            <button onClick={() => { setSelectedChat(null); setShowChatEmojis(false); setCurrentChatInput(''); setShowChatMenu(false); setSelectionMode(false); setSelectedMsgIds([]); }}
-              style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%', flexShrink: 0 }}>
-              <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-            </button>
-            <div style={{ cursor: 'pointer', flexShrink: 0, marginLeft: '4px' }} onClick={async () => { setShowContactProfile(withGroupOverrides(sc)); if (sc.isGroup) await loadGroupMembers(sc.id?.toString() || ''); }}>
-              <Avatar name={sc.title} size={50} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
-            </div>
-            <div style={{ flex: 1, cursor: 'pointer', minWidth: 0, marginLeft: '10px' }} onClick={async () => { setShowContactProfile(withGroupOverrides(sc)); if (sc.isGroup) await loadGroupMembers(sc.id?.toString() || ''); }}>
-              <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{sc.title}</div>
-              <div style={{ fontSize: '11px', fontWeight: '600', color: sc.isGroup ? 'rgba(255,255,255,0.85)' : sc.status === 'online' ? '#a8ffdd' : sc.status === 'away' ? '#ffe08a' : 'rgba(255,255,255,0.6)' }}>
-                {sc.isGroup ? `👥 ${sc.members || ''} miembros` : sc.status === 'online' ? '● En línea' : sc.status === 'away' ? '● Ausente' : '○ Desconectado'}
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', flexShrink: 0 }}>
-              <button onClick={() => startCall('audio', sc)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              </button>
-              <button onClick={() => startCall('video', sc)} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-              </button>
-              <button onClick={e => { e.stopPropagation(); setShowChatMenu(p => !p); }} style={{ background: 'transparent', border: 'none', color: '#fff', cursor: 'pointer', outline: 'none', padding: '7px', display: 'flex', borderRadius: '50%' }}>
-                <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-              </button>
-            </div>
-          </div>
-        );
-      })()}
 
       {/* Panel bienvenida desktop — visible en Mensajería sin chat seleccionado */}
       {!device.isMobile && currentView === 'Mensajería' && !selectedChat && (
