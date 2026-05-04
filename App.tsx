@@ -5574,20 +5574,41 @@ const App: React.FC = () => {
                           );
                         })()
                       ) : msg.text?.startsWith('🎥') ? (
-                        /* -- VIDEO -- */
+                        /* -- VIDEO reproducible con descarga -- */
                         (() => {
-                          const raw = (msg.text || '').replace(/^[^\s]+ /, '');
+                          const raw = (msg.text || '').replace(/^🎥 /, '');
                           const match = raw.match(/^(.+?) \((.+?)\)$/);
                           const fileName = match ? match[1] : raw;
                           const fileSize = match ? match[2] : '';
+                          const fileUrl = (msg as any).fileUrl || (msg as any).file_url || (msg as any).videoUrl || '';
                           return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '200px', padding: '4px 0' }}>
-                              <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#8b5cf618', border: '1.5px solid #8b5cf640', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
-                              </div>
-                              <div style={{ flex: 1, minWidth: 0 }}>
-                                <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{fileName}</div>
-                                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{fileSize}{fileSize ? ' ? ' : ''}Video</div>
+                            <div style={{ minWidth: '220px', maxWidth: '260px' }}>
+                              {fileUrl ? (
+                                <div style={{ borderRadius: '10px', overflow: 'hidden', background: '#000', position: 'relative', marginBottom: '6px' }}>
+                                  <video
+                                    src={fileUrl}
+                                    controls
+                                    playsInline
+                                    preload="metadata"
+                                    style={{ width: '100%', maxHeight: '200px', display: 'block', objectFit: 'cover' }}
+                                    onError={e => { (e.target as HTMLVideoElement).style.display='none'; }}
+                                  />
+                                </div>
+                              ) : null}
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '4px 0' }}>
+                                <div style={{ width: '36px', height: '36px', borderRadius: '8px', background: '#8b5cf618', border: '1.5px solid #8b5cf640', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.8" strokeLinecap="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                                </div>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                  <div style={{ fontSize: '12px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{fileName}</div>
+                                  <div style={{ fontSize: '11px', color: '#9ca3af' }}>{fileSize}{fileSize ? ' · ' : ''}Video</div>
+                                </div>
+                                {fileUrl && (
+                                  <button onClick={() => { const a = document.createElement('a'); a.href = fileUrl; a.download = fileName; a.click(); }}
+                                    style={{ background: '#8b5cf6', border: 'none', borderRadius: '6px', padding: '4px 8px', color: '#fff', fontSize: '11px', fontWeight: '600', cursor: 'pointer', flexShrink: 0 }}>
+                                    ↓
+                                  </button>
+                                )}
                               </div>
                             </div>
                           );
