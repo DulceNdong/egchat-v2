@@ -761,8 +761,8 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fix teclado iOS/Android: ajusta el chat container al visualViewport
-  // Manipulación directa del DOM — más confiable que CSS variables en iOS PWA
+  // Fix teclado Android: ajusta el chat container al visualViewport
+  // En iOS el visualViewport no cambia con el teclado — usamos scrollIntoView en el input
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
@@ -774,19 +774,12 @@ const App: React.FC = () => {
       const vvHeight = vv ? vv.height : window.innerHeight;
       const winHeight = window.innerHeight;
 
-      // CSS vars para otros usos
       document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
       document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
       document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winHeight - vvHeight - vvTop)}px`);
 
-      // DEBUG: mostrar valores en pantalla para diagnóstico iOS
-      const dbg = document.getElementById('vv-debug');
-      if (dbg) {
-        dbg.textContent = `win:${winHeight} vvH:${Math.round(vvHeight)} vvTop:${Math.round(vvTop)} kb:${Math.max(0,winHeight-Math.round(vvHeight)-Math.round(vvTop))}`;
-      }
-
-      // En iOS, mover el container directamente con JS (más confiable que CSS vars con position:fixed)
-      if (isIOS) {
+      // Solo en Android mover el container (en iOS el visualViewport no cambia con el teclado)
+      if (!isIOS) {
         const container = document.querySelector('.chat-view-container') as HTMLElement;
         if (container) {
           container.style.top = `${vvTop}px`;
@@ -795,28 +788,16 @@ const App: React.FC = () => {
       }
     };
 
-    if (!vv) {
-      applyViewport();
-      return;
-    }
+    if (!vv) { applyViewport(); return; }
 
     const onVVChange = () => applyViewport();
-
     vv.addEventListener('resize', onVVChange);
     vv.addEventListener('scroll', onVVChange);
-    if (isIOS) {
-      document.addEventListener('focusin', onVVChange);
-      document.addEventListener('focusout', () => setTimeout(applyViewport, 100));
-    }
     applyViewport();
 
     return () => {
       vv.removeEventListener('resize', onVVChange);
       vv.removeEventListener('scroll', onVVChange);
-      if (isIOS) {
-        document.removeEventListener('focusin', onVVChange);
-        document.removeEventListener('focusout', onVVChange);
-      }
     };
   }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
@@ -5215,13 +5196,6 @@ const App: React.FC = () => {
                 );
               })()}
               {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
-              {/* DEBUG OVERLAY — eliminar después del diagnóstico */}
-              <div id="vv-debug" style={{
-                position: 'absolute', top: 0, left: 0, right: 0,
-                background: 'rgba(255,0,0,0.85)', color: '#fff',
-                fontSize: '11px', fontFamily: 'monospace', padding: '2px 6px',
-                zIndex: 9999, pointerEvents: 'none'
-              }}></div>
               <div style={{ 
                 display: 'flex', alignItems: 'center', flexShrink: 0,
                 paddingTop: device.isMobile ? 'max(var(--ios-safe-top, env(safe-area-inset-top, 44px)), 44px)' : '8px', 
@@ -6345,6 +6319,12 @@ const App: React.FC = () => {
                     value={currentChatInput}
                     onChange={e => { setCurrentChatInput(e.target.value); if (!e.target.value && editingMsgId) setEditingMsgId(null); }}
                     onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendChatMessage(); } }}
+                    onFocus={e => {
+                      // iOS: cuando el teclado sube, hacer scroll para que el input sea visible
+                      setTimeout(() => {
+                        e.target.scrollIntoView({ block: 'end', behavior: 'smooth' });
+                      }, 350);
+                    }}
                     placeholder="Escribe un mensaje..."
                     autoFocus
                     autoComplete="off"
