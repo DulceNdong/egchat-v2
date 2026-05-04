@@ -10471,8 +10471,8 @@ const App: React.FC = () => {
             right: 0,
             zIndex: 1102,
             display: 'flex', alignItems: 'center', 
-            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '10px', 
-            paddingLeft: '4px', paddingRight: '8px', paddingBottom: '10px', 
+            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 0px), 8px)' : '8px', 
+            paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
             background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
             flexShrink: 0, 
             boxShadow: '0 2px 12px rgba(0,180,230,0.3)' 
