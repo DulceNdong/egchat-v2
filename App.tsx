@@ -5127,10 +5127,8 @@ const App: React.FC = () => {
             <>
             <div className="chat-view-container" style={{ 
               position: 'fixed', 
-              top: 'var(--vv-offset-top, 0px)',
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0, 
-              height: device.isMobile ? 'var(--vv-height, 100svh)' : '100vh',
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
