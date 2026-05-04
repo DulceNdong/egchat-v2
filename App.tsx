@@ -753,12 +753,15 @@ const App: React.FC = () => {
     if (!vv) return;
 
     const onResize = () => {
-      // Calcular cuánto ha subido el teclado
+      // En iOS, cuando el teclado aparece:
+      // - vv.height se reduce (altura visible)
+      // - vv.offsetTop puede ser > 0 (iOS hace scroll del viewport)
+      // El chat-view-container debe ocupar exactamente el área visible del viewport
       const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
       document.documentElement.style.setProperty('--keyboard-offset', `${keyboardHeight}px`);
       document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
-      // El header del chat debe seguir el offsetTop del viewport (iOS hace scroll del viewport)
-      // offsetTop > 0 significa que iOS ha hecho scroll hacia abajo → el header debe bajar también
+      // IMPORTANTE: el header usa position:fixed top:0 (siempre visible)
+      // El chat-view-container usa top: vv.offsetTop para seguir el viewport visible
       document.documentElement.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`);
     };
 
@@ -10463,12 +10466,12 @@ const App: React.FC = () => {
         return (
           <div style={{ 
             position: 'fixed',
-            top: 'var(--vv-offset-top, 0px)',
+            top: 0,
             left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
             right: 0,
             zIndex: 1102,
             display: 'flex', alignItems: 'center', 
-            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 50px)' : '10px', 
+            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '10px', 
             paddingLeft: '4px', paddingRight: '8px', paddingBottom: '10px', 
             background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
             flexShrink: 0, 
