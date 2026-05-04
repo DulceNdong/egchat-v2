@@ -747,36 +747,51 @@ const App: React.FC = () => {
   }, []);
 
   // Fix teclado iOS/Android: ajusta el chat container al visualViewport
-  // El header ahora está DENTRO del container, así que se mueve automáticamente con él.
-  // El container se ajusta para ocupar exactamente el área visible cuando el teclado aparece.
+  // En iOS standalone (PWA), position:fixed se posiciona relativo al layout viewport.
+  // Usamos CSS variables actualizadas via JS para mover el container al área visible.
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
-    const applyViewport = (top: number, height: number) => {
+    const applyViewport = () => {
+      const top = vv ? vv.offsetTop : 0;
+      const height = vv ? vv.height : window.innerHeight;
       document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
       document.documentElement.style.setProperty('--vv-height', `${height}px`);
       document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - height - top)}px`);
     };
 
     if (!vv) {
-      // Fallback sin visualViewport
-      applyViewport(0, window.innerHeight);
+      applyViewport();
       return;
     }
 
-    const onResize = () => {
-      // Usar rAF para sincronizar con el frame de pintura y evitar lag visual
-      requestAnimationFrame(() => {
-        applyViewport(vv.offsetTop, vv.height);
-      });
+    // En iOS, escuchar también el evento 'resize' del window como fallback
+    const onVVChange = () => {
+      // Sin rAF en iOS para evitar el frame de retraso
+      if (isIOS) {
+        applyViewport();
+      } else {
+        requestAnimationFrame(applyViewport);
+      }
     };
 
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
-    onResize();
+    vv.addEventListener('resize', onVVChange);
+    vv.addEventListener('scroll', onVVChange);
+    if (isIOS) {
+      // En iOS, también escuchar focusin/focusout para detectar teclado
+      document.addEventListener('focusin', onVVChange);
+      document.addEventListener('focusout', onVVChange);
+    }
+    applyViewport();
+
     return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
+      vv.removeEventListener('resize', onVVChange);
+      vv.removeEventListener('scroll', onVVChange);
+      if (isIOS) {
+        document.removeEventListener('focusin', onVVChange);
+        document.removeEventListener('focusout', onVVChange);
+      }
     };
   }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);

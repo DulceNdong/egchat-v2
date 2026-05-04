@@ -31,8 +31,13 @@
       html, body, #root {
         background-color: #f0f2f5 !important;
         margin: 0;
+        /* iOS PWA: evitar scroll del body */
+        height: 100%;
+        overflow: hidden;
+        position: fixed;
+        width: 100%;
       }
-      /* iOS keyboard fix: el chat container sigue el visual viewport */
+      /* iOS keyboard fix: el chat container sigue el visual viewport via JS */
       .chat-view-container {
         top: var(--vv-offset-top, 0px) !important;
         height: var(--vv-height, 100svh) !important;
