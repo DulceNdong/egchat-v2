@@ -746,23 +746,36 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fix teclado iOS/Android: el chat container se ajusta al visualViewport
-  // Esto hace que el input quede PEGADO al teclado sin espacio extra, como WhatsApp
+  // Fix teclado iOS/Android: ajusta el chat container Y el header al visualViewport
+  // En iOS Safari, position:fixed se posiciona relativo al layout viewport (pantalla completa),
+  // NO al visual viewport (área visible). Cuando el teclado sube, los elementos fixed
+  // quedan fuera de la pantalla visible. Solución: moverlos con JS directamente.
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     if (!vv) return;
 
     const onResize = () => {
-      // En iOS, cuando el teclado aparece:
-      // - vv.height se reduce (altura visible)
-      // - vv.offsetTop puede ser > 0 (iOS hace scroll del viewport)
-      // El chat-view-container debe ocupar exactamente el área visible del viewport
-      const keyboardHeight = Math.max(0, window.innerHeight - vv.height - vv.offsetTop);
-      document.documentElement.style.setProperty('--keyboard-offset', `${keyboardHeight}px`);
-      document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
-      // IMPORTANTE: el header usa position:fixed top:0 (siempre visible)
-      // El chat-view-container usa top: vv.offsetTop para seguir el viewport visible
-      document.documentElement.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`);
+      const vvTop = vv.offsetTop;       // cuánto ha hecho scroll iOS del viewport
+      const vvHeight = vv.height;       // altura visible (se reduce con el teclado)
+
+      // CSS vars para el chat-view-container
+      document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
+      document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - vvHeight - vvTop)}px`);
+
+      // Mover el header del chat directamente con JS para que siga el visual viewport
+      // Esto es necesario porque en iOS position:fixed no sigue el visual viewport
+      const chatHeader = document.getElementById('chat-header-fixed');
+      if (chatHeader) {
+        chatHeader.style.top = `${vvTop}px`;
+      }
+
+      // Mover el chat-view-container para que ocupe exactamente el área visible
+      const chatContainer = document.querySelector('.chat-view-container') as HTMLElement;
+      if (chatContainer) {
+        chatContainer.style.top = `${vvTop}px`;
+        chatContainer.style.height = `${vvHeight}px`;
+      }
     };
 
     vv.addEventListener('resize', onResize);
@@ -10464,14 +10477,14 @@ const App: React.FC = () => {
       {selectedChat && currentView === 'Mensajería' && (() => {
         const sc = selectedChat;
         return (
-          <div style={{ 
+          <div id="chat-header-fixed" style={{ 
             position: 'fixed',
             top: 0,
             left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
             right: 0,
             zIndex: 1102,
             display: 'flex', alignItems: 'center', 
-            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 0px), 8px)' : '8px', 
+            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
             paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
             background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
             flexShrink: 0, 
