@@ -5188,7 +5188,7 @@ const App: React.FC = () => {
               {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
               <div style={{ 
                 display: 'flex', alignItems: 'center', flexShrink: 0,
-                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 0px), 8px)' : '8px', 
+                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
                 paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
                 background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
                 boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
@@ -6288,7 +6288,7 @@ const App: React.FC = () => {
                 background: '#f0f2f5',
                 borderTop: 'none',
                 padding: '8px 8px',
-                paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+                paddingBottom: '8px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',

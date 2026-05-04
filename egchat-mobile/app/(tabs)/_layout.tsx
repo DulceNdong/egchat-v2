@@ -12,9 +12,9 @@ export default function TabsLayout() {
   return (
     <Tabs screenOptions={{
       headerShown: false,
-      tabBarStyle: { backgroundColor: '#fff', borderTopColor: '#F0F2F5', height: 60, paddingBottom: 8 },
-      tabBarActiveTintColor: '#00c8a0',
-      tabBarInactiveTintColor: '#9CA3AF',
+      tabBarStyle: { backgroundColor: '#00c8a0', borderTopColor: '#00b090', height: 60, paddingBottom: 8 },
+      tabBarActiveTintColor: '#ffffff',
+      tabBarInactiveTintColor: 'rgba(255,255,255,0.6)',
       tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
     }}>
       <Tabs.Screen name="index" options={{ title: 'Mensajes', tabBarIcon: ({ color }) => <Icon name="mensajes" color={color} /> }} />
