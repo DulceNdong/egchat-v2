@@ -4672,32 +4672,35 @@ const App: React.FC = () => {
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: '#00bec3',
-          display: 'flex', alignItems: 'flex-start', justifyContent: 'space-around',
-          zIndex: 1000, borderTop: '0.5px solid rgba(255,255,255,0.25)',
+          zIndex: 1000,
+          borderTop: '0.5px solid rgba(255,255,255,0.25)',
           boxShadow: '0 -1px 0 rgba(0,0,0,0.1)',
-          paddingTop: '8px',
-          paddingBottom: 'env(safe-area-inset-bottom, 0px)',
-          height: 'calc(58px + env(safe-area-inset-bottom, 0px))',
-          boxSizing: 'border-box',
-          overflow: 'visible',
           willChange: 'transform',
           transform: 'translateZ(0)',
         }}>
-          {navItems.map((item) => (
-            <button key={item.id} onClick={() => {
-              if (item.id === 'servicios') {
-                if (currentView === 'servicios') { setCurrentView(previousView); }
-                else { setPreviousView(currentView); setCurrentView('servicios'); }
-              } else { setCurrentView(item.id); }
-            }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'flex-start', gap: '3px', padding: '0 4px', outline: 'none', flex: 1, WebkitTapHighlightColor: 'transparent' }}>
-              <div style={{ color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', flexShrink: 0 }}>
-                {renderIcon(item.icon, 22)}
-              </div>
-              <span style={{ fontSize: '10px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: 1.2, letterSpacing: '0.2px', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                {item.label}
-              </span>
-            </button>
-          ))}
+          {/* Zona de iconos + labels — altura fija 56px */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-around',
+            height: '56px',
+          }}>
+            {navItems.map((item) => (
+              <button key={item.id} onClick={() => {
+                if (item.id === 'servicios') {
+                  if (currentView === 'servicios') { setCurrentView(previousView); }
+                  else { setPreviousView(currentView); setCurrentView('servicios'); }
+                } else { setCurrentView(item.id); }
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '0 4px', outline: 'none', flex: 1, height: '100%', WebkitTapHighlightColor: 'transparent' }}>
+                <div style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flexShrink: 0 }}>
+                  {renderIcon(item.icon, 22)}
+                </div>
+                <span style={{ fontSize: '10px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                  {item.label}
+                </span>
+              </button>
+            ))}
+          </div>
+          {/* Zona safe-area — rellena el espacio del home indicator en iPhone */}
+          <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: '#00bec3' }} />
         </div>
       </>
     );
