@@ -737,28 +737,56 @@ const App: React.FC = () => {
   }, []);
 
   // Detectar Android y establecer altura de status bar
+  // También detectar iOS safe area inset top
   React.useEffect(() => {
     const isAndroid = /android/i.test(navigator.userAgent);
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isCapacitor = !!(window as any).Capacitor;
     if (isAndroid || isCapacitor) {
       document.documentElement.style.setProperty('--status-bar-height', '28px');
       document.documentElement.style.setProperty('--header-top-padding', '28px');
     }
+    if (isIOS) {
+      // Leer el safe-area-inset-top real usando un elemento temporal
+      // Esto funciona incluso con body { position: fixed }
+      const el = document.createElement('div');
+      el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;';
+      document.body.appendChild(el);
+      const safeTop = el.getBoundingClientRect().top;
+      document.body.removeChild(el);
+      // safeTop es la distancia desde el top de la pantalla al área segura
+      // En iPhone con notch: ~44-59px. Sin notch: ~20px
+      const safeAreaTop = Math.max(safeTop, 20);
+      document.documentElement.style.setProperty('--ios-safe-top', `${safeAreaTop}px`);
+    }
   }, []);
 
   // Fix teclado iOS/Android: ajusta el chat container al visualViewport
-  // En iOS standalone (PWA), position:fixed se posiciona relativo al layout viewport.
-  // Usamos CSS variables actualizadas via JS para mover el container al área visible.
+  // Manipulación directa del DOM — más confiable que CSS variables en iOS PWA
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isStandalone = (window.navigator as any).standalone === true || 
+                         window.matchMedia('(display-mode: standalone)').matches;
 
     const applyViewport = () => {
-      const top = vv ? vv.offsetTop : 0;
-      const height = vv ? vv.height : window.innerHeight;
-      document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
-      document.documentElement.style.setProperty('--vv-height', `${height}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - height - top)}px`);
+      const vvTop = vv ? vv.offsetTop : 0;
+      const vvHeight = vv ? vv.height : window.innerHeight;
+      const winHeight = window.innerHeight;
+
+      // CSS vars para otros usos
+      document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
+      document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winHeight - vvHeight - vvTop)}px`);
+
+      // En iOS, mover el container directamente con JS (más confiable que CSS vars con position:fixed)
+      if (isIOS) {
+        const container = document.querySelector('.chat-view-container') as HTMLElement;
+        if (container) {
+          container.style.top = `${vvTop}px`;
+          container.style.height = `${vvHeight}px`;
+        }
+      }
     };
 
     if (!vv) {
@@ -766,22 +794,13 @@ const App: React.FC = () => {
       return;
     }
 
-    // En iOS, escuchar también el evento 'resize' del window como fallback
-    const onVVChange = () => {
-      // Sin rAF en iOS para evitar el frame de retraso
-      if (isIOS) {
-        applyViewport();
-      } else {
-        requestAnimationFrame(applyViewport);
-      }
-    };
+    const onVVChange = () => applyViewport();
 
     vv.addEventListener('resize', onVVChange);
     vv.addEventListener('scroll', onVVChange);
     if (isIOS) {
-      // En iOS, también escuchar focusin/focusout para detectar teclado
       document.addEventListener('focusin', onVVChange);
-      document.addEventListener('focusout', onVVChange);
+      document.addEventListener('focusout', () => setTimeout(applyViewport, 100));
     }
     applyViewport();
 
@@ -5188,7 +5207,7 @@ const App: React.FC = () => {
               {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
               <div style={{ 
                 display: 'flex', alignItems: 'center', flexShrink: 0,
-                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
+                paddingTop: device.isMobile ? 'max(var(--ios-safe-top, env(safe-area-inset-top, 44px)), 44px)' : '8px', 
                 paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
                 background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
                 boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
