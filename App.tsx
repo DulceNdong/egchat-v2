@@ -751,23 +751,24 @@ const App: React.FC = () => {
   // El container se ajusta para ocupar exactamente el área visible cuando el teclado aparece.
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
-    if (!vv) return;
+
+    const applyViewport = (top: number, height: number) => {
+      document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
+      document.documentElement.style.setProperty('--vv-height', `${height}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - height - top)}px`);
+    };
+
+    if (!vv) {
+      // Fallback sin visualViewport
+      applyViewport(0, window.innerHeight);
+      return;
+    }
 
     const onResize = () => {
-      const vvTop = vv.offsetTop;
-      const vvHeight = vv.height;
-
-      document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
-      document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - vvHeight - vvTop)}px`);
-
-      // Mover el chat-view-container para que ocupe exactamente el área visible del viewport
-      // Esto es necesario en iOS donde position:fixed no sigue el visual viewport
-      const chatContainer = document.querySelector('.chat-view-container') as HTMLElement;
-      if (chatContainer) {
-        chatContainer.style.top = `${vvTop}px`;
-        chatContainer.style.height = `${vvHeight}px`;
-      }
+      // Usar rAF para sincronizar con el frame de pintura y evitar lag visual
+      requestAnimationFrame(() => {
+        applyViewport(vv.offsetTop, vv.height);
+      });
     };
 
     vv.addEventListener('resize', onResize);
@@ -5104,7 +5105,7 @@ const App: React.FC = () => {
               top: 'var(--vv-offset-top, 0px)',
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0, 
-              height: device.isMobile ? 'var(--vv-height, 100vh)' : '100vh',
+              height: device.isMobile ? 'var(--vv-height, 100svh)' : '100vh',
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
@@ -5172,7 +5173,7 @@ const App: React.FC = () => {
               {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
               <div style={{ 
                 display: 'flex', alignItems: 'center', flexShrink: 0,
-                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
+                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 0px), 8px)' : '8px', 
                 paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
                 background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
                 boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
