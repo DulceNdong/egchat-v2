@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/egchat-icon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-    <title>EGCHAT v2.5.1</title>
+    <title>EGCHAT v2.5.2</title>
     <meta name="description" content="EGCHAT v2.5.1 - Super App Guinea Ecuatorial" />
     <meta name="cache-control" content="no-cache, no-store, must-revalidate" />
     <meta name="pragma" content="no-cache" />
@@ -50,7 +50,7 @@
         height: auto !important;
       }
     </style>
-    <script type="module" crossorigin src="./assets/index-Ci_1fJBR.js"></script>
+    <script type="module" crossorigin src="./assets/index-B1aLYMIT.js"></script>
     <link rel="modulepreload" crossorigin href="./assets/react-core-B1rSPtcn.js">
     <link rel="modulepreload" crossorigin href="./assets/icons-Be6fsX7F.js">
     <link rel="modulepreload" crossorigin href="./assets/qr-PoIushue.js">
@@ -66,12 +66,29 @@
         navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
         if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
       }
+      // Eliminar cualquier elemento de debug que pueda existir en el DOM (inyectado por versiones antiguas)
+      (function removeDebugElements() {
+        var ids = ['vv-debug', 'debug-bar', 'vite-debug', 'dev-debug'];
+        ids.forEach(function(id) {
+          var el = document.getElementById(id);
+          if (el) el.remove();
+        });
+        // También eliminar cualquier div con fondo rojo en posición fixed en la parte superior
+        var observer = new MutationObserver(function() {
+          ids.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.remove();
+          });
+        });
+        observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
+        // Detener observer después de 5 segundos
+        setTimeout(function() { observer.disconnect(); }, 5000);
+      })();
       // Status bar height para Android WebView (Capacitor)
       (function() {
         var isAndroid = /android/i.test(navigator.userAgent);
         var isCapacitor = typeof window !== 'undefined' && !!(window.Capacitor);
         if (isAndroid || isCapacitor) {
-          // Android status bar: 24-28px según densidad
           document.documentElement.style.setProperty('--status-bar-height', '28px');
           document.documentElement.style.setProperty('--header-top-padding', '28px');
         } else {
