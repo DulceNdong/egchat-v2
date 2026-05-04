@@ -486,6 +486,18 @@ input:focus {
 /* Fondo global — body y #root con el mismo color para evitar flash en iOS */
 body { background: #f0f2f5 !important; }
 
+/* En móvil, el safe-area-inset-bottom (zona del home indicator en iPhone)
+   debe tener el mismo color que la barra de navegación inferior (#00c8a0)
+   para evitar la franja blanca/gris debajo de los iconos */
+@media (max-width: 767px) {
+  body {
+    background-color: #00c8a0 !important;
+  }
+  #root {
+    background-color: #f0f2f5;
+  }
+}
+
 /* El color del header se aplica solo al header, no al body completo.
    Antes body era #00c8a0 (verde) y #root era #f0f2f5 (gris), causando
    un flash de color verde en iOS Safari antes de que React pintara el root. */
