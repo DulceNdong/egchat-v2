@@ -491,7 +491,7 @@ body { background: #f0f2f5 !important; }
    para evitar la franja blanca/gris debajo de los iconos */
 @media (max-width: 767px) {
   body {
-    background-color: #00c8a0 !important;
+    background-color: #00bec3 !important;
   }
   #root {
     background-color: #f0f2f5;

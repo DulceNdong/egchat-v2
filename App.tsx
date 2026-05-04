@@ -4665,7 +4665,7 @@ const App: React.FC = () => {
       <>
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
+          background: '#00bec3',
           display: 'flex', alignItems: 'flex-start', justifyContent: 'space-around',
           zIndex: 1000, borderTop: '0.5px solid rgba(255,255,255,0.25)',
           boxShadow: '0 -1px 0 rgba(0,0,0,0.1)',
