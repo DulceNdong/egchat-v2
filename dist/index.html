@@ -3,8 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/egchat-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
-    <title>EGCHAT v2.5.2</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>EGCHAT v2.5.1</title>
     <meta name="description" content="EGCHAT v2.5.1 - Super App Guinea Ecuatorial" />
     <meta name="cache-control" content="no-cache, no-store, must-revalidate" />
     <meta name="pragma" content="no-cache" />
@@ -22,9 +22,9 @@
     <link rel="apple-touch-icon" sizes="152x152" href="./logo-transparent.png" />
     <link rel="apple-touch-icon" sizes="180x180" href="./logo-transparent.png" />
 
-    <!-- Theme color — teal para que la barra del sistema Android coincida con la nav bar -->
-    <meta name="theme-color" content="#00c8a0" />
-    <meta name="msapplication-TileColor" content="#00c8a0" />
+    <!-- Theme color -->
+    <meta name="theme-color" content="#f0f2f5" />
+    <meta name="msapplication-TileColor" content="#f0f2f5" />
 
     <!-- Anti-flash inline: fondo del body antes de que cargue el CSS -->
     <style>
@@ -49,30 +49,10 @@
     
     <!-- Forzar limpieza de SW y cache antigua -->
     <script>
-      // Eliminar SW y caché completamente
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.getRegistrations().then(regs => regs.forEach(r => r.unregister()));
         if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
       }
-      // Eliminar cualquier elemento de debug que pueda existir en el DOM (inyectado por versiones antiguas)
-      (function removeDebugElements() {
-        var ids = ['vv-debug', 'debug-bar', 'vite-debug', 'dev-debug'];
-        ids.forEach(function(id) {
-          var el = document.getElementById(id);
-          if (el) el.remove();
-        });
-        // También eliminar cualquier div con fondo rojo en posición fixed en la parte superior
-        var observer = new MutationObserver(function() {
-          ids.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.remove();
-          });
-        });
-        observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
-        // Detener observer después de 5 segundos
-        setTimeout(function() { observer.disconnect(); }, 5000);
-      })();
-      // Status bar height para Android WebView (Capacitor)
       (function() {
         var isAndroid = /android/i.test(navigator.userAgent);
         var isCapacitor = typeof window !== 'undefined' && !!(window.Capacitor);
