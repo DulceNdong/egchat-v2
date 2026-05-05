@@ -769,11 +769,18 @@ const App: React.FC = () => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     const update = () => {
-      const height = vv ? vv.height : window.innerHeight;
-      const top = vv ? vv.offsetTop : 0;
+      // En iOS: window.innerHeight se reduce cuando el teclado sube
+      // visualViewport.height puede no cambiar, pero window.innerHeight sí
+      const winH = window.innerHeight;
+      const vvH = vv ? vv.height : winH;
+      const vvTop = vv ? vv.offsetTop : 0;
+      // Usar el menor de los dos para capturar el teclado
+      const height = Math.min(winH, vvH);
+      const top = vvTop;
+
       document.documentElement.style.setProperty('--vv-height', `${height}px`);
       document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - height - top)}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winH - height - top)}px`);
 
       if (isIOS) {
         // Prevenir scroll del body/html que iOS hace cuando el input tiene foco
