@@ -761,35 +761,18 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fix teclado iOS: usa visualViewport.offsetTop para seguir el scroll que hace iOS
-  // Cuando el teclado sube en iOS, el browser hace scroll del layout viewport hacia arriba.
-  // visualViewport.offsetTop mide ese scroll. Movemos el container para compensarlo.
+  // Fix teclado iOS: solo actualiza CSS variables, sin mover el container
+  // El parpadeo era causado por mover el container con JS en cada keypress
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     const update = () => {
       const winH = window.innerHeight;
       const vvH = vv ? vv.height : winH;
       const vvTop = vv ? vv.offsetTop : 0;
-      const height = Math.min(winH, vvH);
-      const top = vvTop;
-
-      document.documentElement.style.setProperty('--vv-height', `${height}px`);
-      document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winH - height - top)}px`);
-
-      if (isIOS) {
-        // Prevenir scroll del body/html que iOS hace cuando el input tiene foco
-        document.documentElement.scrollTop = 0;
-        document.body.scrollTop = 0;
-
-        const container = document.querySelector('.chat-view-container') as HTMLElement | null;
-        if (container) {
-          container.style.top = `${top}px`;
-          container.style.height = `${height}px`;
-        }
-      }
+      document.documentElement.style.setProperty('--vv-height', `${Math.min(winH, vvH)}px`);
+      document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winH - Math.min(winH,vvH) - vvTop)}px`);
     };
 
     if (vv) {
@@ -797,18 +780,10 @@ const App: React.FC = () => {
       vv.addEventListener('scroll', update);
     }
     window.addEventListener('resize', update);
-    document.addEventListener('focusin', update);
-    document.addEventListener('focusout', () => setTimeout(update, 100));
     update();
-
     return () => {
-      if (vv) {
-        vv.removeEventListener('resize', update);
-        vv.removeEventListener('scroll', update);
-      }
+      if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); }
       window.removeEventListener('resize', update);
-      document.removeEventListener('focusin', update);
-      document.removeEventListener('focusout', update);
     };
   }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
