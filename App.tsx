@@ -768,14 +768,12 @@ const App: React.FC = () => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     const update = () => {
-      // Usar visualViewport si está disponible y cambia, sino window.innerHeight
       const height = vv ? vv.height : window.innerHeight;
       const top = vv ? vv.offsetTop : 0;
       document.documentElement.style.setProperty('--vv-height', `${height}px`);
       document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
       document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - height - top)}px`);
 
-      // En iOS: mover el container directamente con JS para que siga el viewport visible
       if (isIOS) {
         const container = document.querySelector('.chat-view-container') as HTMLElement | null;
         if (container) {
@@ -785,12 +783,26 @@ const App: React.FC = () => {
       }
     };
 
+    // En iOS: prevenir que el browser haga scroll del documento cuando el input tiene foco
+    // Esto es lo que hace que el header desaparezca
+    const preventScroll = (e: Event) => {
+      if (isIOS) {
+        const target = e.target as HTMLElement;
+        if (target && (target.tagName === 'INPUT' || target.tagName === 'TEXTAREA')) {
+          // Forzar que el container vuelva a top:0 después del scroll automático de iOS
+          setTimeout(update, 50);
+          setTimeout(update, 150);
+          setTimeout(update, 300);
+        }
+      }
+    };
+
     if (vv) {
       vv.addEventListener('resize', update);
       vv.addEventListener('scroll', update);
     }
-    // window resize como fallback (funciona en iOS cuando visualViewport no cambia)
     window.addEventListener('resize', update);
+    document.addEventListener('focusin', preventScroll);
     update();
 
     return () => {
@@ -799,6 +811,7 @@ const App: React.FC = () => {
         vv.removeEventListener('scroll', update);
       }
       window.removeEventListener('resize', update);
+      document.removeEventListener('focusin', preventScroll);
     };
   }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
@@ -5134,7 +5147,10 @@ const App: React.FC = () => {
               flexDirection: 'column', 
               overflow: 'hidden',
               background: '#f0f2f5',
-              zIndex: 1100 
+              zIndex: 1100,
+              WebkitOverflowScrolling: 'auto' as any,
+              transform: 'translateZ(0)',
+              willChange: 'transform',
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Wallpaper del chat — individual por chat, no afecta a otros */}
               {(() => {
