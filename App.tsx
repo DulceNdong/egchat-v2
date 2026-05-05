@@ -5336,7 +5336,7 @@ const App: React.FC = () => {
               <div
                 className="scroll-container chat-messages-scroll"
                 ref={(el) => { if (el) { el.onscroll = () => { const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80; isAtBottomRef.current = atBottom; }; } }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: '10px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: '10px', paddingBottom: device.isMobile ? '70px' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
               >
                 {[...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);}).map((msg) => (
                   <div key={msg.id} onClick={() => { if (selectionMode) { setSelectedMsgIds(prev => prev.includes(msg.id) ? prev.filter(x => x !== msg.id) : [...prev, msg.id]); } }} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px', alignItems: 'center', gap: '8px', padding: selectionMode ? '2px 8px' : '0', background: selectionMode && selectedMsgIds.includes(msg.id) ? 'rgba(0,180,230,0.10)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s', cursor: selectionMode ? 'pointer' : 'default' }}>
@@ -6307,20 +6307,21 @@ const App: React.FC = () => {
               )}
 
               {/* Fin del scroll de mensajes — ref para scroll automático */}
-              {/* Barra de input */}
-              <div style={{
+              {/* Barra de input — position fixed para que quede siempre encima del teclado en iOS */}
+              <div id="chat-input-bar" style={{
+                position: device.isMobile ? 'fixed' : 'relative',
+                bottom: device.isMobile ? 0 : 'auto',
+                left: device.isMobile ? (device.isTablet ? '72px' : '0') : 'auto',
+                right: device.isMobile ? 0 : 'auto',
                 flexShrink: 0,
                 background: '#f0f2f5',
-                borderTop: 'none',
+                borderTop: '1px solid rgba(0,0,0,0.06)',
                 padding: '8px 8px',
-                // env(keyboard-inset-height) es la altura del teclado virtual en iOS 15+
-                // Cuando el teclado está abierto, empuja el input hacia arriba
-                paddingBottom: 'max(8px, env(keyboard-inset-height, 0px))',
+                paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                position: 'relative',
-                zIndex: 1,
+                zIndex: 1101,
               }}>
                 {/* Botón + */}
                 <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
