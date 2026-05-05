@@ -8,7 +8,7 @@ initSelectionErrorHandler();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260504-header-fix-v4';
+const APP_VERSION = 'v20260505-typing-bar-fix-v1';
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
   // Nueva versión detectada — limpiar todos los caches del SW
@@ -21,13 +21,9 @@ if (storedVersion !== APP_VERSION) {
     });
   }
   localStorage.setItem('egchat_app_version', APP_VERSION);
-  // Recargar solo si ya había una versión anterior (no en primera carga)
-  // Diferir el reload para que la app cargue primero y no cause parpadeo en iOS
+  // Recargar para aplicar la nueva versión
   if (storedVersion) {
-    // Esperar a que la app esté completamente pintada antes de recargar
-    window.addEventListener('load', () => {
-      setTimeout(() => window.location.reload(), 2000);
-    }, { once: true });
+    window.location.reload();
   }
 }
 
