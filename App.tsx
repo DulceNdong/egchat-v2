@@ -769,12 +769,9 @@ const App: React.FC = () => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
 
     const update = () => {
-      // En iOS: window.innerHeight se reduce cuando el teclado sube
-      // visualViewport.height puede no cambiar, pero window.innerHeight sí
       const winH = window.innerHeight;
       const vvH = vv ? vv.height : winH;
       const vvTop = vv ? vv.offsetTop : 0;
-      // Usar el menor de los dos para capturar el teclado
       const height = Math.min(winH, vvH);
       const top = vvTop;
 
@@ -5148,9 +5145,6 @@ const App: React.FC = () => {
               overflow: 'hidden',
               background: '#f0f2f5',
               zIndex: 1100,
-              WebkitOverflowScrolling: 'auto' as any,
-              transform: 'translateZ(0)',
-              willChange: 'transform',
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Wallpaper del chat — individual por chat, no afecta a otros */}
               {(() => {
@@ -6309,10 +6303,6 @@ const App: React.FC = () => {
               {/* Fin del scroll de mensajes — ref para scroll automático */}
               {/* Barra de input — position fixed para que quede siempre encima del teclado en iOS */}
               <div id="chat-input-bar" style={{
-                position: device.isMobile ? 'fixed' : 'relative',
-                bottom: device.isMobile ? 0 : 'auto',
-                left: device.isMobile ? (device.isTablet ? '72px' : '0') : 'auto',
-                right: device.isMobile ? 0 : 'auto',
                 flexShrink: 0,
                 background: '#f0f2f5',
                 borderTop: '1px solid rgba(0,0,0,0.06)',
@@ -6321,7 +6311,8 @@ const App: React.FC = () => {
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
-                zIndex: 1101,
+                position: 'relative',
+                zIndex: 2,
               }}>
                 {/* Botón + */}
                 <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
