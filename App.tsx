@@ -761,43 +761,21 @@ const App: React.FC = () => {
     }
   }, []);
 
-  // Fix teclado Android: ajusta el chat container al visualViewport
-  // En iOS el visualViewport no cambia con el teclado — usamos scrollIntoView en el input
+  // Fix teclado iOS/Android: ajusta el chat container al visualViewport
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
-    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isStandalone = (window.navigator as any).standalone === true || 
-                         window.matchMedia('(display-mode: standalone)').matches;
-
-    const applyViewport = () => {
-      const vvTop = vv ? vv.offsetTop : 0;
-      const vvHeight = vv ? vv.height : window.innerHeight;
-      const winHeight = window.innerHeight;
-
-      document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
-      document.documentElement.style.setProperty('--vv-height', `${vvHeight}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winHeight - vvHeight - vvTop)}px`);
-
-      // Solo en Android mover el container (en iOS el visualViewport no cambia con el teclado)
-      if (!isIOS) {
-        const container = document.querySelector('.chat-view-container') as HTMLElement;
-        if (container) {
-          container.style.top = `${vvTop}px`;
-          container.style.height = `${vvHeight}px`;
-        }
-      }
+    if (!vv) return;
+    const onResize = () => {
+      document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
+      document.documentElement.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - vv.height - vv.offsetTop)}px`);
     };
-
-    if (!vv) { applyViewport(); return; }
-
-    const onVVChange = () => applyViewport();
-    vv.addEventListener('resize', onVVChange);
-    vv.addEventListener('scroll', onVVChange);
-    applyViewport();
-
+    vv.addEventListener('resize', onResize);
+    vv.addEventListener('scroll', onResize);
+    onResize();
     return () => {
-      vv.removeEventListener('resize', onVVChange);
-      vv.removeEventListener('scroll', onVVChange);
+      vv.removeEventListener('resize', onResize);
+      vv.removeEventListener('scroll', onResize);
     };
   }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
@@ -5127,8 +5105,10 @@ const App: React.FC = () => {
             <>
             <div className="chat-view-container" style={{ 
               position: 'fixed', 
+              top: 'var(--vv-offset-top, 0px)',
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0, 
+              height: device.isMobile ? 'var(--vv-height, 100svh)' : '100vh',
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
@@ -5196,7 +5176,7 @@ const App: React.FC = () => {
               {/* Header del chat — DENTRO del container para que siga el visual viewport en iOS */}
               <div style={{ 
                 display: 'flex', alignItems: 'center', flexShrink: 0,
-                paddingTop: device.isMobile ? 'max(var(--ios-safe-top, env(safe-area-inset-top, 44px)), 44px)' : '8px', 
+                paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
                 paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
                 background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
                 boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
@@ -6296,7 +6276,7 @@ const App: React.FC = () => {
                 background: '#f0f2f5',
                 borderTop: 'none',
                 padding: '8px 8px',
-                paddingBottom: '8px',
+                paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
