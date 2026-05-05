@@ -762,20 +762,43 @@ const App: React.FC = () => {
   }, []);
 
   // Fix teclado iOS/Android: ajusta el chat container al visualViewport
+  // En iOS Safari, window.innerHeight SÍ cambia cuando el teclado sube (a diferencia de visualViewport)
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
-    if (!vv) return;
-    const onResize = () => {
-      document.documentElement.style.setProperty('--vv-height', `${vv.height}px`);
-      document.documentElement.style.setProperty('--vv-offset-top', `${vv.offsetTop}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - vv.height - vv.offsetTop)}px`);
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+
+    const update = () => {
+      // Usar visualViewport si está disponible y cambia, sino window.innerHeight
+      const height = vv ? vv.height : window.innerHeight;
+      const top = vv ? vv.offsetTop : 0;
+      document.documentElement.style.setProperty('--vv-height', `${height}px`);
+      document.documentElement.style.setProperty('--vv-offset-top', `${top}px`);
+      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, window.innerHeight - height - top)}px`);
+
+      // En iOS: mover el container directamente con JS para que siga el viewport visible
+      if (isIOS) {
+        const container = document.querySelector('.chat-view-container') as HTMLElement | null;
+        if (container) {
+          container.style.top = `${top}px`;
+          container.style.height = `${height}px`;
+        }
+      }
     };
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
-    onResize();
+
+    if (vv) {
+      vv.addEventListener('resize', update);
+      vv.addEventListener('scroll', update);
+    }
+    // window resize como fallback (funciona en iOS cuando visualViewport no cambia)
+    window.addEventListener('resize', update);
+    update();
+
     return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
+      if (vv) {
+        vv.removeEventListener('resize', update);
+        vv.removeEventListener('scroll', update);
+      }
+      window.removeEventListener('resize', update);
     };
   }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
@@ -5105,10 +5128,8 @@ const App: React.FC = () => {
             <>
             <div className="chat-view-container" style={{ 
               position: 'fixed', 
-              top: 'var(--vv-offset-top, 0px)',
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0, 
-              height: device.isMobile ? 'var(--vv-height, 100svh)' : '100vh',
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
