@@ -8,7 +8,7 @@ initSelectionErrorHandler();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260505-typing-bar-fix-v3';
+const APP_VERSION = 'v20260505-typing-bar-fix-v4';
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
   // Nueva versión detectada — limpiar todos los caches del SW
