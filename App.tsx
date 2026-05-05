@@ -6313,7 +6313,9 @@ const App: React.FC = () => {
                 background: '#f0f2f5',
                 borderTop: 'none',
                 padding: '8px 8px',
-                paddingBottom: 'calc(8px + env(safe-area-inset-bottom, 0px))',
+                // env(keyboard-inset-height) es la altura del teclado virtual en iOS 15+
+                // Cuando el teclado está abierto, empuja el input hacia arriba
+                paddingBottom: 'max(8px, env(keyboard-inset-height, 0px))',
                 display: 'flex',
                 alignItems: 'center',
                 gap: '6px',
