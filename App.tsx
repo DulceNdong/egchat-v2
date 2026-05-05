@@ -4652,7 +4652,7 @@ const App: React.FC = () => {
       <>
         <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
-          background: '#00bec3',
+          background: '#0088cc',
           zIndex: 1000,
           borderTop: '0.5px solid rgba(255,255,255,0.25)',
           boxShadow: '0 -1px 0 rgba(0,0,0,0.1)',
@@ -4681,7 +4681,7 @@ const App: React.FC = () => {
             ))}
           </div>
           {/* Zona safe-area — rellena el espacio del home indicator en iPhone */}
-          <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: '#00bec3' }} />
+          <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: '#0088cc' }} />
         </div>
       </>
     );
