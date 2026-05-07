@@ -1,3 +1,6 @@
 .vercel
 node_modules
 dist/
+# Credenciales Firebase — NUNCA subir a Git
+*firebase-adminsdk*.json
+firebase-service-account.json
