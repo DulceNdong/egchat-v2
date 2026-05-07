@@ -1,5 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  ic_launcher.xml — Icono adaptativo EGCHAT (API 26+)
+  Background: color sólido #00c8a0 (verde EGCHAT)
+  Foreground: vector con logo EG centrado, padding 33%
+  Monochrome: versión monocromática para Android 13+ (themed icons)
+-->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Fondo: color sólido verde EGCHAT -->
     <background android:drawable="@color/ic_launcher_background"/>
-    <foreground android:drawable="@mipmap/ic_launcher_foreground"/>
+    <!-- Foreground: logo vectorial con padding 33% -->
+    <foreground android:drawable="@drawable/ic_launcher_foreground"/>
+    <!-- Monochrome para themed icons (Android 13+) -->
+    <monochrome android:drawable="@drawable/ic_launcher_foreground"/>
 </adaptive-icon>

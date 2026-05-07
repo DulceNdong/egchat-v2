@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ic_launcher_foreground.xml — Foreground del icono adaptativo EGCHAT
+  Tamaño del viewport: 108x108dp (estándar Android adaptativo)
+  Zona segura: 72x72dp centrada (padding 18dp cada lado = 33%)
+  El logo ocupa el 66% del espacio total — el 33% restante es padding.
+
+  Diseño: círculo blanco con las letras "EG" en verde EGCHAT.
+  Compatible con todas las formas de máscara (círculo, cuadrado, squircle, etc.)
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <!--
+      ZONA SEGURA: 18dp de padding en cada borde
+      El contenido visible está entre (18,18) y (90,90) = 72x72dp
+    -->
+
+    <!-- Círculo blanco de fondo del logo (dentro de la zona segura) -->
+    <path
+        android:fillColor="#FFFFFF"
+        android:pathData="M54,18 a36,36 0 1,0 0.001,0 Z"/>
+
+    <!-- Letra E — trazo verde EGCHAT -->
+    <path
+        android:fillColor="#00c8a0"
+        android:pathData="M38,38 L38,70 L62,70 L62,64 L44,64 L44,57 L60,57 L60,51 L44,51 L44,44 L62,44 L62,38 Z"/>
+
+    <!-- Letra G -->
+    <path
+        android:fillColor="#00c8a0"
+        android:pathData="M70,38 a18,18 0 1,0 0.001,0 Z M70,44 a12,12 0 1,1 -0.001,0 Z M70,54 L82,54 L82,70 L76,70 L76,60 L70,60 Z"/>
+
+</vector>
