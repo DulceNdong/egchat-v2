@@ -44,6 +44,11 @@
             </intent-filter>
         </service>
 
+        <!-- AlarmReceiver — recibe alarmas de AlarmManager (modo Doze) -->
+        <receiver
+            android:name=".AlarmReceiver"
+            android:exported="false" />
+
         <!-- Canal de notificación por defecto para FCM (Android 8+) -->
         <!-- Define el canal que FCM usa cuando la notificación no especifica uno -->
         <meta-data
