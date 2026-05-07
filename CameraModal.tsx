@@ -44,7 +44,20 @@ export const CameraModal: React.FC<Props> = ({ chatId, onClose, onPhotoTaken }) 
           videoRef.current.srcObject = stream;
           videoRef.current.onloadedmetadata = () => { videoRef.current?.play(); setCamReady(true); };
         }
-      } catch (e: any) { setCamError(e.message || 'No se pudo acceder a la cámara'); }
+    } catch (e: any) { 
+      // Mensaje de error específico según el tipo
+      let errorMsg = e.message || 'No se pudo acceder a la cámara';
+      if (e.name === 'NotAllowedError' || e.name === 'PermissionDeniedError') {
+        errorMsg = 'Permiso denegado. Ve a Ajustes del navegador → Permisos → Cámara y actívala para este sitio.';
+      } else if (e.name === 'NotFoundError' || e.name === 'DevicesNotFoundError') {
+        errorMsg = 'No se encontró cámara en este dispositivo.';
+      } else if (e.name === 'NotReadableError' || e.name === 'TrackStartError') {
+        errorMsg = 'La cámara está siendo usada por otra app. Cierra otras apps y vuelve a intentarlo.';
+      } else if (e.name === 'OverconstrainedError') {
+        errorMsg = 'La cámara no soporta la resolución requerida.';
+      }
+      setCamError(errorMsg); 
+    }
     }
   }, [facingMode]);
 
