@@ -1,15 +1,36 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import { authAPI, userAPI } from '../../src/api';
 import { runPushDiagnostic } from '../../src/pushDiagnostic';
+import { checkAllPermissions, requestAllPermissions, permissionEmoji, permissionLabel, type AppPermissions, type PermissionStatus } from '../../src/permissions';
 
 export default function AjustesScreen() {
   const [user, setUser] = useState<any>(null);
+  const [permissions, setPermissions] = useState<AppPermissions | null>(null);
+  const [requesting, setRequesting] = useState(false);
 
   useEffect(() => {
     userAPI.getProfile().then(setUser).catch(() => {});
+    loadPermissions();
   }, []);
+
+  const loadPermissions = async () => {
+    const perms = await checkAllPermissions();
+    setPermissions(perms);
+  };
+
+  const handleRequestAllPermissions = async () => {
+    setRequesting(true);
+    const result = await requestAllPermissions();
+    setPermissions(result);
+    setRequesting(false);
+
+    const allGranted = Object.values(result).every(v => v === 'granted');
+    if (allGranted) {
+      Alert.alert('✅ Permisos activados', 'Todos los permisos fueron concedidos correctamente.');
+    }
+  };
 
   const logout = async () => {
     Alert.alert('Cerrar sesión', '¿Estás seguro?', [
@@ -55,6 +76,53 @@ export default function AjustesScreen() {
           ))}
         </View>
 
+        {/* Seguridad y Permisos */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>🔐 Seguridad y Permisos</Text>
+          </View>
+
+          {permissions && (
+            <View style={styles.permissionsGrid}>
+              <View style={styles.permissionItem}>
+                <Text style={styles.permissionEmoji}>{permissionEmoji(permissions.notifications)}</Text>
+                <Text style={styles.permissionName}>Notificaciones</Text>
+                <Text style={styles.permissionStatus}>{permissionLabel(permissions.notifications)}</Text>
+              </View>
+              <View style={styles.permissionItem}>
+                <Text style={styles.permissionEmoji}>{permissionEmoji(permissions.camera)}</Text>
+                <Text style={styles.permissionName}>Cámara</Text>
+                <Text style={styles.permissionStatus}>{permissionLabel(permissions.camera)}</Text>
+              </View>
+              <View style={styles.permissionItem}>
+                <Text style={styles.permissionEmoji}>{permissionEmoji(permissions.microphone)}</Text>
+                <Text style={styles.permissionName}>Micrófono</Text>
+                <Text style={styles.permissionStatus}>{permissionLabel(permissions.microphone)}</Text>
+              </View>
+              <View style={styles.permissionItem}>
+                <Text style={styles.permissionEmoji}>{permissionEmoji(permissions.location)}</Text>
+                <Text style={styles.permissionName}>Ubicación</Text>
+                <Text style={styles.permissionStatus}>{permissionLabel(permissions.location)}</Text>
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity 
+            style={[styles.activateBtn, requesting && styles.activateBtnDisabled]} 
+            onPress={handleRequestAllPermissions}
+            disabled={requesting}
+          >
+            {requesting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <>
+                <Text style={styles.activateBtnIcon}>🔓</Text>
+                <Text style={styles.activateBtnText}>Activar todos los permisos</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
         {/* Cerrar sesión */}
         <TouchableOpacity style={styles.logoutBtn} onPress={logout}>
           <Text style={styles.logoutText}>Cerrar sesión</Text>
@@ -84,4 +152,15 @@ const styles = StyleSheet.create({
   logoutBtn: { margin: 16, backgroundColor: '#FEF2F2', borderRadius: 14, padding: 16, alignItems: 'center', borderWidth: 1, borderColor: '#FECACA' },
   logoutText: { color: '#EF4444', fontSize: 15, fontWeight: '700' },
   version: { textAlign: 'center', color: '#9CA3AF', fontSize: 11, marginBottom: 24 },
+  sectionHeader: { paddingHorizontal: 14, paddingTop: 14, paddingBottom: 8 },
+  sectionTitle: { fontSize: 13, fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: 0.5 },
+  permissionsGrid: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: 10, paddingBottom: 8 },
+  permissionItem: { width: '50%', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 8 },
+  permissionEmoji: { fontSize: 26, marginBottom: 4 },
+  permissionName: { fontSize: 12, fontWeight: '600', color: '#374151', marginBottom: 2 },
+  permissionStatus: { fontSize: 11, color: '#9CA3AF' },
+  activateBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', margin: 14, marginTop: 4, backgroundColor: '#00c8a0', borderRadius: 12, padding: 14, gap: 8 },
+  activateBtnDisabled: { opacity: 0.6 },
+  activateBtnIcon: { fontSize: 18 },
+  activateBtnText: { color: '#fff', fontSize: 15, fontWeight: '700' },
 });
