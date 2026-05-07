@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Color principal EGCHAT — usado en el icono de notificaciones FCM -->
+    <color name="colorPrimary">#00c8a0</color>
+    <color name="colorPrimaryDark">#00a882</color>
+    <color name="colorAccent">#00c8a0</color>
+</resources>
