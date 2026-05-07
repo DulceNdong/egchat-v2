@@ -119,8 +119,11 @@ export const CameraModal: React.FC<Props> = ({ chatId, onClose, onPhotoTaken }) 
             </svg>
             <div style={{ fontSize:'15px', fontWeight:'700', marginBottom:'8px' }}>Sin acceso a la cámara</div>
             <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.6)', marginBottom:'20px', lineHeight:'1.5' }}>{camError}</div>
+            <button onClick={startCamera} style={{ background:'#00b4e6', border:'none', borderRadius:'12px', padding:'11px 24px', color:'#fff', fontSize:'13px', fontWeight:'700', cursor:'pointer', marginBottom:'10px', display:'block', width:'100%' }}>
+              🔄 Reintentar
+            </button>
             <button onClick={pickFromGallery} style={{ background:'#00c8a0', border:'none', borderRadius:'12px', padding:'11px 24px', color:'#fff', fontSize:'13px', fontWeight:'700', cursor:'pointer', marginBottom:'10px', display:'block', width:'100%' }}>
-              Elegir de la galería
+              🖼️ Elegir de la galería
             </button>
             <button onClick={() => { streamRef.current?.getTracks().forEach(t=>t.stop()); onClose(); }}
               style={{ background:'rgba(255,255,255,0.15)', border:'none', borderRadius:'12px', padding:'11px 24px', color:'#fff', fontSize:'13px', fontWeight:'600', cursor:'pointer', width:'100%' }}>
