@@ -17,6 +17,7 @@ import {
   type ActionPerformed,
 } from '@capacitor/push-notifications';
 import { Capacitor } from '@capacitor/core';
+import { showIncomingCall } from './call-manager';
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
@@ -25,6 +26,48 @@ const API_BASE =
 
 // Clave de localStorage donde se guarda el token FCM para reutilizarlo
 const FCM_TOKEN_KEY = 'egchat_fcm_token';
+
+// Tipos de notificación que se tratan como llamada VoIP
+// El servidor debe enviar data.type con uno de estos valores
+const VOIP_TYPES = new Set(['VOIP_CALL', 'incoming_call', 'call']);
+
+// ── Parser de datos VoIP ──────────────────────────────────────────────────────
+
+interface VoipCallData {
+  callId: string;
+  callerName: string;
+  roomName: string;
+  callType: 'audio' | 'video';
+}
+
+/**
+ * parseVoipData()
+ * Extrae y normaliza los campos de llamada VoIP del payload FCM.
+ * El servidor puede enviar los campos con distintos nombres — los normalizamos aquí.
+ */
+function parseVoipData(data: Record<string, string>): VoipCallData {
+  return {
+    callId:     data.call_id     || data.callId     || data.room      || Date.now().toString(),
+    callerName: data.caller_name || data.callerName || data.username  || data.from || 'Llamada entrante',
+    roomName:   data.room_name   || data.roomName   || data.room      || data.call_id || '',
+    callType:   (data.call_type  || data.callType   || 'audio') as 'audio' | 'video',
+  };
+}
+
+/**
+ * isVoipNotification()
+ * Devuelve true si la notificación FCM es una llamada VoIP.
+ * Comprueba data.type, data.notification_type y data.is_call.
+ */
+function isVoipNotification(data: Record<string, string>): boolean {
+  if (!data) return false;
+  return (
+    VOIP_TYPES.has(data.type) ||
+    VOIP_TYPES.has(data.notification_type) ||
+    data.is_call === 'true' ||
+    data.call_type === 'incoming'
+  );
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -141,49 +184,96 @@ export async function initPushNotifications(): Promise<void> {
   });
 
   // Listener: notificación recibida con la app en primer plano (foreground)
-  // En este estado Android NO muestra la notificación automáticamente —
-  // debemos decidir qué hacer nosotros (mostrar un banner in-app, etc.)
+  // ── LÓGICA VOIP ──────────────────────────────────────────────────────────
+  // Si la notificación es una llamada VoIP:
+  //   → NO disparamos el evento normal (evitamos el banner de mensaje)
+  //   → Llamamos directamente a showIncomingCall() del plugin call-screen
+  // Si es una notificación normal:
+  //   → Disparamos 'egchat-push-received' para que App.tsx la procese
   PushNotifications.addListener(
     'pushNotificationReceived',
-    (notification: PushNotificationSchema) => {
+    async (notification: PushNotificationSchema) => {
       console.log('[Push] Notificación recibida en foreground:', notification);
 
-      // Disparar un evento global para que App.tsx o cualquier componente
-      // pueda reaccionar (mostrar badge, banner, actualizar chat, etc.)
-      window.dispatchEvent(
-        new CustomEvent('egchat-push-received', {
-          detail: {
-            title: notification.title,
-            body: notification.body,
-            data: notification.data,
-          },
-        })
-      );
+      const data: Record<string, string> = notification.data ?? {};
+
+      if (isVoipNotification(data)) {
+        // ── Llamada VoIP entrante ─────────────────────────────────────────
+        console.log('[Push] Notificación VoIP detectada — mostrando pantalla de llamada.');
+
+        const voip = parseVoipData(data);
+        console.log(`[Push] VoIP → callId:${voip.callId} caller:${voip.callerName} room:${voip.roomName}`);
+
+        // Mostrar pantalla nativa de llamada (call-screen plugin)
+        // Esto reemplaza la notificación normal del sistema
+        try {
+          await showIncomingCall(voip.callId, voip.callerName, voip.roomName);
+        } catch (err) {
+          console.error('[Push] Error al mostrar pantalla VoIP:', err);
+          // Fallback: disparar evento para que App.tsx lo gestione
+          window.dispatchEvent(
+            new CustomEvent('egchat-voip-call', {
+              detail: voip,
+            })
+          );
+        }
+
+        // Disparar también el evento VoIP para que App.tsx pueda
+        // preparar el estado WebRTC (precargar offer, etc.)
+        window.dispatchEvent(
+          new CustomEvent('egchat-voip-call', {
+            detail: voip,
+          })
+        );
+
+      } else {
+        // ── Notificación normal (mensaje, sistema, etc.) ──────────────────
+        window.dispatchEvent(
+          new CustomEvent('egchat-push-received', {
+            detail: {
+              title: notification.title,
+              body:  notification.body,
+              data,
+            },
+          })
+        );
+      }
     }
   );
 
   // Listener: el usuario tocó una notificación (app en background o cerrada)
-  // Este es el evento más importante para la navegación — redirigir al chat,
-  // pantalla de llamada, etc. según notification.actionId y notification.notification.data
   PushNotifications.addListener(
     'pushNotificationActionPerformed',
-    (action: ActionPerformed) => {
+    async (action: ActionPerformed) => {
       console.log('[Push] Acción realizada sobre notificación:', action);
 
-      const data = action.notification?.data ?? {};
+      const data: Record<string, string> = action.notification?.data ?? {};
       const actionId = action.actionId; // 'tap' cuando el usuario toca la notificación
 
-      // Disparar evento global para que el router de la app navegue al destino correcto
-      window.dispatchEvent(
-        new CustomEvent('egchat-push-action', {
-          detail: { actionId, data, notification: action.notification },
-        })
-      );
+      if (isVoipNotification(data)) {
+        // ── El usuario tocó una notificación de llamada VoIP ──────────────
+        // La app estaba en background — mostrar pantalla de llamada ahora
+        const voip = parseVoipData(data);
+        console.log(`[Push] VoIP action tap → callId:${voip.callId} caller:${voip.callerName}`);
 
-      // Ejemplo de navegación directa si el proyecto usa window.location:
-      // if (data.type === 'chat' && data.chat_id) {
-      //   window.location.hash = `#/chat/${data.chat_id}`;
-      // }
+        try {
+          await showIncomingCall(voip.callId, voip.callerName, voip.roomName);
+        } catch (err) {
+          console.error('[Push] Error al mostrar pantalla VoIP desde action:', err);
+        }
+
+        window.dispatchEvent(
+          new CustomEvent('egchat-voip-call', { detail: voip })
+        );
+
+      } else {
+        // ── Notificación normal — navegar al destino ──────────────────────
+        window.dispatchEvent(
+          new CustomEvent('egchat-push-action', {
+            detail: { actionId, data, notification: action.notification },
+          })
+        );
+      }
     }
   );
 

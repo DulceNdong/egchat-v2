@@ -9623,11 +9623,24 @@ const App: React.FC = () => {
     window.addEventListener('egchat-push-action', handlePushAction);
     window.addEventListener(CALL_ANSWERED_EVENT, handleCallAnswered);
     window.addEventListener(CALL_REJECTED_EVENT, handleCallRejected);
+    // Notificación VoIP recibida via FCM — preparar estado WebRTC
+    const handleVoipCall = (e: Event) => {
+      const { callId, callerName, callType } = (e as CustomEvent).detail ?? {};
+      console.log('[App] Evento VoIP recibido via FCM:', callId, callerName);
+      // Si no hay llamada activa ya registrada, preparar el estado
+      if (!incomingCallIdRef.current) {
+        incomingCallIdRef.current = callId;
+        setIncomingCall({ callId, callerId: callId, type: callType || 'audio', offer: null });
+        startRingtone(); vibrate([500, 200, 500, 200, 500]);
+      }
+    };
+    window.addEventListener('egchat-voip-call', handleVoipCall);
     return () => {
       window.removeEventListener('egchat-push-received', handlePushReceived);
       window.removeEventListener('egchat-push-action', handlePushAction);
       window.removeEventListener(CALL_ANSWERED_EVENT, handleCallAnswered);
       window.removeEventListener(CALL_REJECTED_EVENT, handleCallRejected);
+      window.removeEventListener('egchat-voip-call', handleVoipCall);
     };
   }, [notifyNewMessage, loadChats, incomingCall, webrtc]);
 
