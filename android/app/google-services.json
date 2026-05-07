@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "253400283958",
+    "project_id": "egchat-nativa",
+    "storage_bucket": "egchat-nativa.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253400283958:android:ef7300526665738d6f9197",
+        "android_client_info": {
+          "package_name": "com.egchat.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB30xpmUDKPNhfSf0z8r0nlzvZo5Ac287U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:253400283958:android:5ff8ff339d50e2df6f9197",
+        "android_client_info": {
+          "package_name": "com.egchatv2.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyB30xpmUDKPNhfSf0z8r0nlzvZo5Ac287U"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
