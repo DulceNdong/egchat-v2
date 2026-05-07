@@ -22,6 +22,52 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
   const [editingPhoto, setEditingPhoto] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [profilePhoto, setProfilePhoto] = useState(userProfile?.avatar_url || '');
+  const [notificationPermission, setNotificationPermission] = useState<NotificationPermission>('default');
+
+  // Verificar permisos de notificación al cargar
+  React.useEffect(() => {
+    if ('Notification' in window) {
+      setNotificationPermission(Notification.permission);
+    }
+  }, []);
+
+  // Solicitar permisos de notificación
+  const requestNotificationPermission = async () => {
+    if (!('Notification' in window)) {
+      alert('Tu navegador no soporta notificaciones');
+      return;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      setNotificationPermission(permission);
+      
+      if (permission === 'granted') {
+        new Notification('✅ Notificaciones activadas', {
+          body: 'Ahora recibirás notificaciones de EGCHAT',
+          icon: '/logo-120.svg.png'
+        });
+      }
+    } catch (error) {
+      console.error('Error solicitando permisos:', error);
+    }
+  };
+
+  const getPermissionEmoji = (perm: NotificationPermission) => {
+    switch (perm) {
+      case 'granted': return '✅';
+      case 'denied': return '❌';
+      default: return '⏳';
+    }
+  };
+
+  const getPermissionLabel = (perm: NotificationPermission) => {
+    switch (perm) {
+      case 'granted': return 'Activadas';
+      case 'denied': return 'Bloqueadas';
+      default: return 'Sin configurar';
+    }
+  };
 
   // Generar QR personal
   const generatePersonalQR = async () => {
