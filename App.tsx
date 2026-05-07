@@ -27,6 +27,7 @@ import { useWebRTC } from './useWebRTC';
 import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio, getSoundSettings, saveSoundSettings, MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES, type SoundSettings } from './useSounds';
 import { initPushNotifications, removePushListeners } from './push-config';
 import { scheduleMessageReminder, cancelMessageReminder } from './alarm-plugin';
+import { initCallManager, cleanupCallManager, showIncomingCall, rejectCall as rejectCallNative, CALL_ANSWERED_EVENT, CALL_REJECTED_EVENT } from './call-manager';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -3389,6 +3390,7 @@ const App: React.FC = () => {
               if(window.confirm('Cerrar sesión?')) {
                 authAPI.logout().catch(()=>{});
                 removePushListeners().catch(()=>{});
+                cleanupCallManager().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setShowProfileView(false);
@@ -3454,6 +3456,7 @@ const App: React.FC = () => {
               if(window.confirm('Cerrar sesión?')) {
                 authAPI.logout().catch(()=>{});
                 removePushListeners().catch(()=>{});
+                cleanupCallManager().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setIsAuthenticated(false);
@@ -8874,6 +8877,7 @@ const App: React.FC = () => {
                           try {
                             await authAPI.logout();
                             await removePushListeners().catch(()=>{});
+                            await cleanupCallManager().catch(()=>{});
                             localStorage.removeItem('user_avatar');
                             setIsAuthenticated(false);
                             setUserProfile({ id:'', name:'Usuario', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
@@ -9219,6 +9223,12 @@ const App: React.FC = () => {
         incomingCallIdRef.current = call.callId;
         setIncomingCall(call);
         startRingtone(); vibrate([500, 200, 500, 200, 500]);
+        // Mostrar pantalla nativa de llamada entrante (call-screen plugin)
+        const callerContact = realChatsRef.current
+          .flatMap((c: any) => c.participants || [])
+          .find((p: any) => p.user_id?.toString() === call.callerId?.toString());
+        const callerName = callerContact?.users?.full_name || callerContact?.full_name || 'Llamada entrante';
+        showIncomingCall(call.callId, callerName, call.callId).catch(console.warn);
         // Avisar al SW que la llamada ya fue recibida — cancela re-notificaciones push
         if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
           navigator.serviceWorker.controller.postMessage({ type: 'CALL_HANDLED', callId: call.callId });
@@ -9572,13 +9582,11 @@ const App: React.FC = () => {
     const handlePushReceived = (e: Event) => {
       const { title, body, data } = (e as CustomEvent).detail ?? {};
       const chatId = data?.chat_id || data?.chatId || '';
-      // Reutilizar el sistema de notificaciones in-app ya existente
       notifyNewMessage(chatId, body || title || 'Nueva notificación');
       playNotification();
     };
     const handlePushAction = (e: Event) => {
       const { data } = (e as CustomEvent).detail ?? {};
-      // Navegar al chat si la notificación trae chat_id
       const chatId = data?.chat_id || data?.chatId || '';
       if (chatId) {
         (window as any).__pendingOpenChatId = chatId;
@@ -9586,13 +9594,38 @@ const App: React.FC = () => {
         setCurrentView('Mensajería');
       }
     };
+    // Llamada aceptada desde pantalla nativa (call-screen plugin)
+    const handleCallAnswered = (e: Event) => {
+      const { callId, callerName, roomName } = (e as CustomEvent).detail ?? {};
+      console.log('[App] Llamada aceptada desde pantalla nativa:', callId, callerName);
+      stopRingtone();
+      // Conectar WebRTC — el offer ya está en incomingCall state
+      if (incomingCall) {
+        webrtc.answerCall(incomingCall.offer).catch(console.warn);
+        setActiveCall({ type: incomingCall.type, contact: { id: incomingCall.callerId, title: callerName, name: callerName }, status: 'connected' });
+        setIncomingCall(null);
+        incomingCallIdRef.current = null;
+      }
+    };
+    // Llamada rechazada desde pantalla nativa (call-screen plugin)
+    const handleCallRejected = (e: Event) => {
+      const { callId } = (e as CustomEvent).detail ?? {};
+      console.log('[App] Llamada rechazada desde pantalla nativa:', callId);
+      stopRingtone();
+      setIncomingCall(null);
+      incomingCallIdRef.current = null;
+    };
     window.addEventListener('egchat-push-received', handlePushReceived);
     window.addEventListener('egchat-push-action', handlePushAction);
+    window.addEventListener(CALL_ANSWERED_EVENT, handleCallAnswered);
+    window.addEventListener(CALL_REJECTED_EVENT, handleCallRejected);
     return () => {
       window.removeEventListener('egchat-push-received', handlePushReceived);
       window.removeEventListener('egchat-push-action', handlePushAction);
+      window.removeEventListener(CALL_ANSWERED_EVENT, handleCallAnswered);
+      window.removeEventListener(CALL_REJECTED_EVENT, handleCallRejected);
     };
-  }, [notifyNewMessage, loadChats]);
+  }, [notifyNewMessage, loadChats, incomingCall, webrtc]);
 
   useEffect(() => {
     // Solo recargar chats al entrar a Mensajería si no hay grupo seleccionado
@@ -9724,6 +9757,8 @@ const App: React.FC = () => {
     }, 1500);
     // Push nativo Capacitor (FCM) — solo activo en Android/iOS compilado
     initPushNotifications().catch(e => console.warn('[Push] initPushNotifications error:', e));
+    // Pantalla de llamada nativa (call-screen plugin)
+    initCallManager().catch(e => console.warn('[CallManager] init error:', e));
   }} />;
 
   return (

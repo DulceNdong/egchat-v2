@@ -33,6 +33,7 @@
         "@vitejs/plugin-react": "^5.0.4",
         "bcryptjs": "^2.4.3",
         "better-sqlite3": "^12.4.1",
+        "call-screen": "0.0.7",
         "cors": "^2.8.5",
         "dotenv": "^17.2.3",
         "express": "^4.21.2",
