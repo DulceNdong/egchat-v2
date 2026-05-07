@@ -6,8 +6,12 @@ import { WalletProvider } from './WalletSystem';
 import { initOfflineDB } from './src/offline-db';
 import { initSyncManager } from './src/sync-manager';
 import { initOfflineUI } from './src/offline-ui';
+import { setupSplashSafetyTimeout, hideSplashWhenReady } from './splash-screen';
 
 initSelectionErrorHandler();
+
+// ── Splash Screen — timeout de seguridad (evita que quede bloqueada) ─────────
+setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
@@ -256,3 +260,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
     <App />
   </WalletProvider>
 );
+
+// ── Ocultar splash cuando React esté montado y la web lista ──────────────────
+// Se ejecuta después del primer render — la app ya es visible para el usuario
+hideSplashWhenReady();
