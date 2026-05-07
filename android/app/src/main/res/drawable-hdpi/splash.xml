@@ -1,0 +1,40 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<!--
+  splash.xml â€” Splash Screen nativa EGCHAT (modo claro)
+  Fondo verde #00c8a0 con el logo centrado.
+  Se usa en todas las densidades via vector drawable.
+  Colocado en drawable/ para que aplique a todas las densidades.
+-->
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Fondo sÃ³lido color EGCHAT -->
+    <item>
+        <shape android:shape="rectangle">
+            <solid android:color="#00c8a0" />
+        </shape>
+    </item>
+
+    <!-- Logo centrado â€” cÃ­rculo blanco con las iniciales EG -->
+    <item
+        android:gravity="center"
+        android:width="160dp"
+        android:height="160dp">
+        <layer-list>
+            <!-- CÃ­rculo blanco de fondo -->
+            <item>
+                <shape android:shape="oval">
+                    <solid android:color="#FFFFFF" />
+                    <size android:width="160dp" android:height="160dp" />
+                </shape>
+            </item>
+            <!-- Texto EG centrado (representado como forma) -->
+            <item android:gravity="center">
+                <shape android:shape="rectangle">
+                    <solid android:color="#00000000" />
+                </shape>
+            </item>
+        </layer-list>
+    </item>
+
+</layer-list>
+
