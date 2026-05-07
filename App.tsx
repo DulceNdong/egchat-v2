@@ -25,6 +25,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { RestaurantesModule, VuelosModule, GasolinerasModule } from './ServiciosDiarios';
 import { useWebRTC } from './useWebRTC';
 import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio, getSoundSettings, saveSoundSettings, MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES, type SoundSettings } from './useSounds';
+import { initPushNotifications, removePushListeners } from './push-config';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -3381,6 +3382,7 @@ const App: React.FC = () => {
             <button onClick={() => {
               if(window.confirm('Cerrar sesión?')) {
                 authAPI.logout().catch(()=>{});
+                removePushListeners().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setShowProfileView(false);
@@ -3445,6 +3447,7 @@ const App: React.FC = () => {
             else if (item.id==='salir') {
               if(window.confirm('Cerrar sesión?')) {
                 authAPI.logout().catch(()=>{});
+                removePushListeners().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setIsAuthenticated(false);
@@ -8862,6 +8865,7 @@ const App: React.FC = () => {
                         if (confirm('Ests seguro de que deseas cerrar sesión?')) {
                           try {
                             await authAPI.logout();
+                            await removePushListeners().catch(()=>{});
                             localStorage.removeItem('user_avatar');
                             setIsAuthenticated(false);
                             setUserProfile({ id:'', name:'Usuario', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
@@ -9555,6 +9559,33 @@ const App: React.FC = () => {
     return () => window.removeEventListener('auth:expired', handleExpired);
   }, []);
 
+  // Escuchar notificaciones push nativas (Capacitor FCM) recibidas en foreground
+  useEffect(() => {
+    const handlePushReceived = (e: Event) => {
+      const { title, body, data } = (e as CustomEvent).detail ?? {};
+      const chatId = data?.chat_id || data?.chatId || '';
+      // Reutilizar el sistema de notificaciones in-app ya existente
+      notifyNewMessage(chatId, body || title || 'Nueva notificación');
+      playNotification();
+    };
+    const handlePushAction = (e: Event) => {
+      const { data } = (e as CustomEvent).detail ?? {};
+      // Navegar al chat si la notificación trae chat_id
+      const chatId = data?.chat_id || data?.chatId || '';
+      if (chatId) {
+        (window as any).__pendingOpenChatId = chatId;
+        loadChats();
+        setCurrentView('Mensajería');
+      }
+    };
+    window.addEventListener('egchat-push-received', handlePushReceived);
+    window.addEventListener('egchat-push-action', handlePushAction);
+    return () => {
+      window.removeEventListener('egchat-push-received', handlePushReceived);
+      window.removeEventListener('egchat-push-action', handlePushAction);
+    };
+  }, [notifyNewMessage, loadChats]);
+
   useEffect(() => {
     // Solo recargar chats al entrar a Mensajería si no hay grupo seleccionado
     if (currentView === 'Mensajería' && !selectedChat?.isGroup) loadChats();
@@ -9683,6 +9714,8 @@ const App: React.FC = () => {
         (window as any).__egchat_registerPush();
       }
     }, 1500);
+    // Push nativo Capacitor (FCM) — solo activo en Android/iOS compilado
+    initPushNotifications().catch(e => console.warn('[Push] initPushNotifications error:', e));
   }} />;
 
   return (
