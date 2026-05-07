@@ -26,6 +26,7 @@ public class MainActivity extends BridgeActivity {
     protected void onCreate(Bundle savedInstanceState) {
         // Registrar plugins personalizados antes de super.onCreate()
         registerPlugin(AlarmPlugin.class);
+        registerPlugin(VoipServicePlugin.class);
         super.onCreate(savedInstanceState);
 
         // Hacer que la barra de estado sea transparente y el contenido se extienda debajo

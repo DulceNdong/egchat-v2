@@ -28,6 +28,7 @@ import { playMessageReceived, playMessageSent, playNotification, startRingtone, 
 import { initPushNotifications, removePushListeners } from './push-config';
 import { scheduleMessageReminder, cancelMessageReminder } from './alarm-plugin';
 import { initCallManager, cleanupCallManager, showIncomingCall, rejectCall as rejectCallNative, CALL_ANSWERED_EVENT, CALL_REJECTED_EVENT } from './call-manager';
+import { startVoipService, stopVoipService } from './voip-service';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -2807,7 +2808,8 @@ const App: React.FC = () => {
     const isRealUser = targetUserId && targetUserId.includes('-') && targetUserId.length > 20;
     if (isRealUser) {
       try {
-        startDialingTone(); // tono de marcaci?n
+        startDialingTone(); // tono de marcación
+        startVoipService(`En llamada con ${contact?.title || contact?.name || 'contacto'}`).catch(() => {});
         await webrtc.startCall(type, targetUserId);
         setActiveCall({ type, contact, status: 'calling' });
         setCallDuration(0); setIsMuted(false); setIsCameraOff(false);
@@ -2886,6 +2888,7 @@ const App: React.FC = () => {
 
   const endCall = () => {
     stopRingtone(); stopDialingTone(); playCallEnded(); vibrate([100, 50, 100]);
+    stopVoipService().catch(() => {}); // detener foreground service al colgar
     if (activeCall) {
       const status = activeCall.status === 'connected' ? 'completed' : 'outgoing';
       addCallRecord(activeCall.type, status, callDuration, activeCall.contact);
@@ -9599,6 +9602,7 @@ const App: React.FC = () => {
       const { callId, callerName, roomName } = (e as CustomEvent).detail ?? {};
       console.log('[App] Llamada aceptada desde pantalla nativa:', callId, callerName);
       stopRingtone();
+      startVoipService(`En llamada con ${callerName || 'contacto'}`).catch(() => {});
       // Conectar WebRTC — el offer ya está en incomingCall state
       if (incomingCall) {
         webrtc.answerCall(incomingCall.offer).catch(console.warn);

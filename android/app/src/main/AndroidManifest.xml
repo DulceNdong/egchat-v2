@@ -49,6 +49,13 @@
             android:name=".AlarmReceiver"
             android:exported="false" />
 
+        <!-- VoipForegroundService — mantiene la app viva para VoIP -->
+        <!-- FOREGROUND_SERVICE_MICROPHONE requerido en Android 14+ para servicios de audio -->
+        <service
+            android:name=".VoipForegroundService"
+            android:foregroundServiceType="microphone|phoneCall"
+            android:exported="false" />
+
         <!-- Canal de notificación por defecto para FCM (Android 8+) -->
         <!-- Define el canal que FCM usa cuando la notificación no especifica uno -->
         <meta-data
