@@ -29,6 +29,7 @@ import { initPushNotifications, removePushListeners } from './push-config';
 import { scheduleMessageReminder, cancelMessageReminder } from './alarm-plugin';
 import { initCallManager, cleanupCallManager, showIncomingCall, rejectCall as rejectCallNative, CALL_ANSWERED_EVENT, CALL_REJECTED_EVENT } from './call-manager';
 import { startVoipService, stopVoipService } from './voip-service';
+import { initDeepLinks, removeDeepLinkListeners, processPendingDeepLink, handleDeepLinkRoute, parseDeepLink } from './deep-links';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -3394,6 +3395,7 @@ const App: React.FC = () => {
                 authAPI.logout().catch(()=>{});
                 removePushListeners().catch(()=>{});
                 cleanupCallManager().catch(()=>{});
+                removeDeepLinkListeners().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setShowProfileView(false);
@@ -9635,12 +9637,33 @@ const App: React.FC = () => {
       }
     };
     window.addEventListener('egchat-voip-call', handleVoipCall);
+
+    // Deep links — navegar al chat cuando llega un link
+    const handleDeepLinkChat = (e: Event) => {
+      const { chatId } = (e as CustomEvent).detail ?? {};
+      if (chatId) {
+        (window as any).__pendingOpenChatId = chatId;
+        loadChats();
+        setCurrentView('Mensajería');
+      }
+    };
+    const handleDeepLinkPay = (e: Event) => {
+      const { userId } = (e as CustomEvent).detail ?? {};
+      if (userId) setCurrentView('monedero');
+    };
+    window.addEventListener('egchat-deep-link-chat',    handleDeepLinkChat);
+    window.addEventListener('egchat-deep-link-home',    () => setCurrentView('home'));
+    window.addEventListener('egchat-deep-link-pay',     handleDeepLinkPay);
+
     return () => {
       window.removeEventListener('egchat-push-received', handlePushReceived);
       window.removeEventListener('egchat-push-action', handlePushAction);
       window.removeEventListener(CALL_ANSWERED_EVENT, handleCallAnswered);
       window.removeEventListener(CALL_REJECTED_EVENT, handleCallRejected);
       window.removeEventListener('egchat-voip-call', handleVoipCall);
+      window.removeEventListener('egchat-deep-link-chat', handleDeepLinkChat);
+      window.removeEventListener('egchat-deep-link-home', () => {});
+      window.removeEventListener('egchat-deep-link-pay',  handleDeepLinkPay);
     };
   }, [notifyNewMessage, loadChats, incomingCall, webrtc]);
 
@@ -9776,6 +9799,8 @@ const App: React.FC = () => {
     initPushNotifications().catch(e => console.warn('[Push] initPushNotifications error:', e));
     // Pantalla de llamada nativa (call-screen plugin)
     initCallManager().catch(e => console.warn('[CallManager] init error:', e));
+    // Procesar deep link pendiente (si el usuario llegó via link antes de autenticarse)
+    processPendingDeepLink();
   }} />;
 
   return (

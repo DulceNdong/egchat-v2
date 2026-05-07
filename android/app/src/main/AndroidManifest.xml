@@ -23,6 +23,33 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 
+            <!-- Deep Links: scheme personalizado egchat:// -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="egchat" />
+            </intent-filter>
+
+            <!-- App Links: https://egchat-v2.vercel.app (verificado) -->
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data
+                    android:scheme="https"
+                    android:host="egchat-v2.vercel.app"
+                    android:pathPrefix="/chat" />
+                <data
+                    android:scheme="https"
+                    android:host="egchat-v2.vercel.app"
+                    android:pathPrefix="/profile" />
+                <data
+                    android:scheme="https"
+                    android:host="egchat-v2.vercel.app"
+                    android:pathPrefix="/pay" />
+            </intent-filter>
+
         </activity>
 
         <provider

@@ -7,6 +7,7 @@ import { initOfflineDB } from './src/offline-db';
 import { initSyncManager } from './src/sync-manager';
 import { initOfflineUI } from './src/offline-ui';
 import { setupSplashSafetyTimeout, hideSplashWhenReady } from './splash-screen';
+import { initDeepLinks } from './deep-links';
 
 initSelectionErrorHandler();
 
@@ -45,7 +46,8 @@ if (storedVersion !== APP_VERSION) {
     await initOfflineDB();
     initOfflineUI();
     initSyncManager();
-    console.log('[EGCHAT] Sistema offline inicializado');
+    await initDeepLinks();
+    console.log('[EGCHAT] Sistema offline + deep links inicializado');
   } catch (err) {
     console.warn('[EGCHAT] Error inicializando sistema offline:', err);
     // No bloquear el arranque de la app si falla
