@@ -26,6 +26,7 @@ import { RestaurantesModule, VuelosModule, GasolinerasModule } from './Servicios
 import { useWebRTC } from './useWebRTC';
 import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio, getSoundSettings, saveSoundSettings, MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES, type SoundSettings } from './useSounds';
 import { initPushNotifications, removePushListeners } from './push-config';
+import { scheduleMessageReminder, cancelMessageReminder } from './alarm-plugin';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -361,6 +362,11 @@ const App: React.FC = () => {
     }, ...prev].slice(0, 50));
     if (document.hidden && 'Notification' in window && Notification.permission === 'granted') {
       new Notification(`💬 ${senderName}`, { body: text, icon: '/logo-transparent.png', tag: chatId });
+    }
+    // Programar alarma nativa (Android) para recordar el mensaje si no se lee en 5 min
+    // Solo si la app está en background (document.hidden) para no molestar si está activa
+    if (document.hidden && chatId) {
+      scheduleMessageReminder(chatId, senderName, 5 * 60 * 1000).catch(() => {});
     }
   }, []);
   // Helper: navegar a una vista siempre cierra el men radial
@@ -6793,6 +6799,8 @@ const App: React.FC = () => {
                           isGroup,
                           user_id: otherUserId, // para WebRTC
                         });
+                        // Cancelar alarma de recordatorio al abrir el chat
+                        cancelMessageReminder(chat.id?.toString() || '').catch(() => {});
                         // Auto-registrar contacto si es chat individual y no est en la lista
                         if (!isGroup && otherParticipant) {
                           const alreadyInContacts = allContacts.some(
