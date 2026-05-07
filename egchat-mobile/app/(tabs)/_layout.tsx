@@ -12,7 +12,7 @@ const Icon = ({ name, color }: { name: string; color: string }) => {
 const GradientTabBar = (props: any) => {
   return (
     <LinearGradient
-      colors={['#00c8a0', '#00b4e6']}
+      colors={['#00d4aa', '#00bcd4', '#0099cc']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
       style={[styles.tabBarGradient, props.style]}
@@ -44,7 +44,7 @@ export default function TabsLayout() {
         },
         tabBarBackground: () => (
           <LinearGradient
-            colors={['#00c8a0', '#00b4e6']}
+            colors={['#00d4aa', '#00bcd4', '#0099cc']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={StyleSheet.absoluteFillObject}
