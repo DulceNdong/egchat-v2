@@ -19,17 +19,14 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 3. Esperar a que Vercel procese el deployment
-Write-Host "Esperando 90s para que Vercel procese el deployment..."
-Start-Sleep -Seconds 90
-
-# 4. Intentar asignar alias en Vercel
+# 3. Intentar asignar alias en Vercel (sin espera — Vercel despliega por webhook al recibir el push)
 $vercelOutput = npx vercel ls --scope dulcendongs-projects 2>&1
 $vercelUrl = ($vercelOutput | Select-String -Pattern 'egchat-v2-[a-z0-9]+-dulcendongs-projects\.vercel\.app' | Select-Object -First 1).Matches.Value
 
 if ($vercelUrl) {
     npx vercel alias set $vercelUrl egchat-v2.vercel.app --scope dulcendongs-projects
     Write-Host "Vercel alias asignado: $vercelUrl"
+    Write-Host "Deploy completado. Vercel procesara el build en ~1-2 minutos."
     exit 0
 }
 
