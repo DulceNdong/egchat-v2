@@ -4,3 +4,7 @@ dist/
 # Credenciales Firebase — NUNCA subir a Git
 *firebase-adminsdk*.json
 firebase-service-account.json
+# APKs generados y keystore — NUNCA subir a Git
+dist-apk/
+*.keystore
+*.jks
