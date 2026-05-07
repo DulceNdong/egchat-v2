@@ -51,7 +51,7 @@ export const ResponsiveLayout: React.FC<ResponsiveLayoutProps> = ({
         {!hideMobileNav && (
           <nav style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
-            background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
+            background: 'linear-gradient(90deg, #00d4aa 0%, #00bcd4 50%, #0099cc 100%)',
             display: 'flex', alignItems: 'flex-start', justifyContent: 'space-around',
             zIndex: 1000, borderTop: '0.5px solid rgba(255,255,255,0.25)',
             paddingTop: '6px',
