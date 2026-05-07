@@ -453,6 +453,134 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         </div>
       )}
 
+      {/* Seguridad y Permisos */}
+      <div style={{
+        background: '#fff',
+        borderRadius: '16px',
+        padding: '16px',
+        marginBottom: '16px',
+        boxShadow: '0 2px 8px rgba(0,0,0,0.08)'
+      }}>
+        <h3 style={{
+          fontSize: '14px',
+          fontWeight: '700',
+          margin: '0 0 14px',
+          color: '#111827',
+          textTransform: 'uppercase',
+          letterSpacing: '0.5px'
+        }}>
+          🔐 Seguridad y Permisos
+        </h3>
+
+        {/* Estado de permisos */}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '1fr 1fr',
+          gap: '10px',
+          marginBottom: '14px'
+        }}>
+          {/* Notificaciones */}
+          <div style={{
+            background: '#F9FAFB',
+            borderRadius: '12px',
+            padding: '12px',
+            textAlign: 'center',
+            border: '1px solid #F0F2F5'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '4px' }}>
+              {getPermissionEmoji(notificationPermission)}
+            </div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Notificaciones</div>
+            <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>
+              {getPermissionLabel(notificationPermission)}
+            </div>
+          </div>
+
+          {/* Cámara — solo informativo en web */}
+          <div style={{
+            background: '#F9FAFB',
+            borderRadius: '12px',
+            padding: '12px',
+            textAlign: 'center',
+            border: '1px solid #F0F2F5'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '4px' }}>📷</div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Cámara</div>
+            <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>Al usar QR/Foto</div>
+          </div>
+
+          {/* Micrófono */}
+          <div style={{
+            background: '#F9FAFB',
+            borderRadius: '12px',
+            padding: '12px',
+            textAlign: 'center',
+            border: '1px solid #F0F2F5'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎤</div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Micrófono</div>
+            <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>Al hacer llamadas</div>
+          </div>
+
+          {/* Ubicación */}
+          <div style={{
+            background: '#F9FAFB',
+            borderRadius: '12px',
+            padding: '12px',
+            textAlign: 'center',
+            border: '1px solid #F0F2F5'
+          }}>
+            <div style={{ fontSize: '24px', marginBottom: '4px' }}>📍</div>
+            <div style={{ fontSize: '12px', fontWeight: '600', color: '#374151' }}>Ubicación</div>
+            <div style={{ fontSize: '11px', color: '#9CA3AF', marginTop: '2px' }}>Al compartir mapa</div>
+          </div>
+        </div>
+
+        {/* Botón activar notificaciones */}
+        {notificationPermission !== 'granted' && (
+          <button
+            onClick={requestNotificationPermission}
+            style={{
+              width: '100%',
+              padding: '12px',
+              background: notificationPermission === 'denied'
+                ? '#F3F4F6'
+                : 'linear-gradient(90deg, #00c8a0, #00b4e6)',
+              color: notificationPermission === 'denied' ? '#9CA3AF' : '#fff',
+              border: 'none',
+              borderRadius: '12px',
+              cursor: notificationPermission === 'denied' ? 'not-allowed' : 'pointer',
+              fontSize: '14px',
+              fontWeight: '700',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: '8px'
+            }}
+            disabled={notificationPermission === 'denied'}
+          >
+            🔓 {notificationPermission === 'denied'
+              ? 'Permisos bloqueados — actívalos en el navegador'
+              : 'Activar notificaciones'}
+          </button>
+        )}
+
+        {notificationPermission === 'granted' && (
+          <div style={{
+            padding: '10px 14px',
+            background: '#F0FDF9',
+            borderRadius: '10px',
+            border: '1px solid #A7F3D0',
+            fontSize: '13px',
+            color: '#065F46',
+            textAlign: 'center',
+            fontWeight: '600'
+          }}>
+            ✅ Todos los permisos activos
+          </div>
+        )}
+      </div>
+
       {/* Más Opciones */}
       <div style={{
         background: '#fff',
