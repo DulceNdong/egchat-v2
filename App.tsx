@@ -8737,6 +8737,67 @@ const App: React.FC = () => {
                           {showReadReceipts ? 'ON' : 'OFF'}
                         </span>
                       </button>
+
+                      {/* Botón activar TODOS los permisos */}
+                      <button
+                        onClick={async () => {
+                          const results: Record<string, string> = {};
+
+                          // Notificaciones
+                          if ('Notification' in window) {
+                            if (Notification.permission !== 'granted') {
+                              results.notificaciones = await Notification.requestPermission();
+                            } else {
+                              results.notificaciones = 'granted';
+                            }
+                          }
+
+                          // Cámara
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                            stream.getTracks().forEach(t => t.stop());
+                            results.camara = 'granted';
+                          } catch {
+                            results.camara = 'denied';
+                          }
+
+                          // Micrófono
+                          try {
+                            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                            stream.getTracks().forEach(t => t.stop());
+                            results.microfono = 'granted';
+                          } catch {
+                            results.microfono = 'denied';
+                          }
+
+                          // Ubicación
+                          try {
+                            await new Promise<void>((resolve, reject) => {
+                              navigator.geolocation.getCurrentPosition(() => resolve(), reject, { timeout: 5000 });
+                            });
+                            results.ubicacion = 'granted';
+                          } catch {
+                            results.ubicacion = 'denied';
+                          }
+
+                          const allOk = Object.values(results).every(v => v === 'granted');
+                          const denied = Object.entries(results).filter(([,v]) => v !== 'granted').map(([k]) => k);
+
+                          if (allOk) {
+                            showToast('✅ Todos los permisos activados', 'success');
+                          } else {
+                            showToast(`⚠️ Denegados: ${denied.join(', ')} — actívalos en el navegador`, 'error');
+                          }
+                        }}
+                        style={{
+                          width: '100%', background: 'linear-gradient(90deg,#00c8a0,#00b4e6)', border: 'none',
+                          borderRadius: '10px', padding: '13px 16px', color: '#fff', fontSize: '14px', fontWeight: '700',
+                          cursor: 'pointer', outline: 'none', display: 'flex', justifyContent: 'center', alignItems: 'center',
+                          gap: '8px', marginTop: '8px'
+                        }}
+                      >
+                        🔓 Activar todos los permisos
+                      </button>
                     </div>
                   </div>
 
