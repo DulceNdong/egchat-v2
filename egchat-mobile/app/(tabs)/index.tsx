@@ -1,5 +1,6 @@
 import React from 'react';
 import { View, Text, FlatList, TouchableOpacity, StyleSheet, SafeAreaView } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 
 const CHATS = [
   { id: '1', name: 'Juan García', msg: 'Hola, ¿cómo estás?', time: '10:30', unread: 2, color: '#00c8a0' },
@@ -13,7 +14,16 @@ export default function MensajesScreen() {
     <SafeAreaView style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.headerTitle}>Mensajes</Text>
-        <TouchableOpacity style={styles.newBtn}><Text style={styles.newBtnText}>+</Text></TouchableOpacity>
+        <TouchableOpacity style={styles.newBtn}>
+          <LinearGradient
+            colors={['#00c8a0', '#0099cc', '#0066bb']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={styles.newBtnGradient}
+          >
+            <Text style={styles.newBtnText}>+</Text>
+          </LinearGradient>
+        </TouchableOpacity>
       </View>
       <FlatList
         data={CHATS}
@@ -45,7 +55,8 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
   headerTitle: { fontSize: 20, fontWeight: '800', color: '#111827' },
-  newBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#00c8a0', alignItems: 'center', justifyContent: 'center' },
+  newBtn: { width: 36, height: 36, borderRadius: 18, overflow: 'hidden' },
+  newBtnGradient: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
   newBtnText: { color: '#fff', fontSize: 22, fontWeight: '300', lineHeight: 28 },
   chatItem: { flexDirection: 'row', alignItems: 'center', padding: 14, backgroundColor: '#fff', gap: 12 },
   avatar: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
