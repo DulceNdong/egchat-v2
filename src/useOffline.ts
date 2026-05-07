@@ -1,79 +1,44 @@
 /**
  * useOffline.ts
- * ─────────────────────────────────────────────────────────────────
- * Hook React que expone el estado de conectividad y los métodos
- * del sistema offline a cualquier componente.
+ * Hook React que expone el estado del sistema offline.
  *
  * Uso:
- *   const { isOnline, pendingCount, retrySync } = useOffline();
- * ─────────────────────────────────────────────────────────────────
+ *   const { isOnline, pendingCount, isSyncing, retrySync } = useOffline();
  */
 
 import { useState, useEffect, useCallback } from 'react';
-import { getPendingMessages } from './offline-db';
-import { syncPendingMessages, onSyncEvent } from './sync-manager';
+import { onSyncStateChange, getSyncState, retrySync as retrySyncFn, type SyncState } from './sync-manager';
 
 export interface UseOfflineReturn {
-  /** true si hay conexión a internet */
-  isOnline: boolean;
-  /** número de mensajes pendientes de sincronizar */
+  isOnline:     boolean;
+  isSyncing:    boolean;
   pendingCount: number;
-  /** true mientras se está sincronizando */
-  isSyncing: boolean;
-  /** fuerza una sincronización manual */
-  retrySync: () => Promise<void>;
+  lastSyncAt:   number | null;
+  error:        string | null;
+  retrySync:    () => Promise<void>;
 }
 
 export function useOffline(): UseOfflineReturn {
-  const [isOnline, setIsOnline] = useState(navigator.onLine);
-  const [pendingCount, setPendingCount] = useState(0);
-  const [isSyncing, setIsSyncing] = useState(false);
-
-  // Actualizar contador de pendientes
-  const refreshPendingCount = useCallback(async () => {
-    const pending = await getPendingMessages();
-    setPendingCount(pending.length);
-  }, []);
+  const [syncState, setSyncState] = useState<SyncState>(getSyncState());
 
   useEffect(() => {
-    // Listeners de conectividad
-    const handleOnline = () => {
-      setIsOnline(true);
-      refreshPendingCount();
-    };
-    const handleOffline = () => {
-      setIsOnline(false);
-      refreshPendingCount();
-    };
-
-    window.addEventListener('online', handleOnline);
-    window.addEventListener('offline', handleOffline);
-
-    // Listeners de sync-manager
-    const unsubStart = onSyncEvent('sync-start', () => setIsSyncing(true));
-    const unsubEnd = onSyncEvent('sync-end', () => {
-      setIsSyncing(false);
-      refreshPendingCount();
-    });
-    const unsubSynced = onSyncEvent('message-synced', refreshPendingCount);
-
-    // Carga inicial
-    refreshPendingCount();
-
-    return () => {
-      window.removeEventListener('online', handleOnline);
-      window.removeEventListener('offline', handleOffline);
-      unsubStart();
-      unsubEnd();
-      unsubSynced();
-    };
-  }, [refreshPendingCount]);
+    // Suscribirse a cambios del sync manager
+    const unsubscribe = onSyncStateChange(setSyncState);
+    // Sincronizar estado inicial
+    setSyncState(getSyncState());
+    return unsubscribe;
+  }, []);
 
   const retrySync = useCallback(async () => {
-    if (!isOnline) return;
-    await syncPendingMessages();
-    await refreshPendingCount();
-  }, [isOnline, refreshPendingCount]);
+    await retrySyncFn();
+  }, []);
 
-  return { isOnline, pendingCount, isSyncing, retrySync };
+  return {
+    isOnline:     syncState.isOnline,
+    isSyncing:    syncState.isSyncing,
+    pendingCount: syncState.pendingCount,
+    lastSyncAt:   syncState.lastSyncAt,
+    error:        syncState.error,
+    retrySync,
+  };
 }

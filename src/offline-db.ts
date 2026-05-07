@@ -1,379 +1,213 @@
 /**
  * offline-db.ts
- * ─────────────────────────────────────────────────────────────────
- * Capa de persistencia offline para EGCHAT.
- *
- * Estrategia:
- *  - Intenta usar @capacitor-community/sqlite cuando corre en Android/iOS
- *  - Cae automáticamente a IndexedDB (idb-keyval) en web/PWA
+ * Base de datos local IndexedDB para EGCHAT.
+ * Almacena mensajes y conversaciones para acceso offline.
  *
  * Tablas:
- *  conversations  — lista de chats con último mensaje y contador no leídos
- *  messages       — mensajes con flag `synced` (0 = pendiente, 1 = enviado)
- * ─────────────────────────────────────────────────────────────────
+ *   conversations — lista de chats con último mensaje
+ *   messages      — mensajes individuales con estado de sincronización
  */
 
-// ── Tipos ─────────────────────────────────────────────────────────
+const DB_NAME    = 'egchat_offline';
+const DB_VERSION = 1;
+
+let db: IDBDatabase | null = null;
+
+// ── Tipos ─────────────────────────────────────────────────────────────────────
+
+export interface OfflineMessage {
+  id: string;                          // ID local (puede ser 'local-timestamp' antes de sync)
+  serverId?: string;                   // ID del servidor tras sincronizar
+  conversationId: string;
+  senderId: string;
+  text: string;
+  type: 'text' | 'image' | 'audio' | 'file' | 'video' | 'contact' | 'location';
+  imageUrl?: string;
+  audioUrl?: string;
+  fileUrl?: string;
+  fileName?: string;
+  createdAt: number;                   // timestamp ms
+  status: 'pending' | 'sent' | 'delivered' | 'read' | 'error';
+  synced: boolean;                     // true = confirmado por el servidor
+  retries: number;                     // intentos de envío fallidos
+}
 
 export interface OfflineConversation {
   id: string;
-  contact_name: string;
-  contact_avatar?: string;
-  last_message: string;
-  last_message_time: string; // ISO string
-  unread_count: number;
-  updated_at: string;
+  type: 'individual' | 'group';
+  title: string;
+  avatarUrl: string;
+  lastMessage: string;
+  lastMessageAt: number;
+  unreadCount: number;
+  updatedAt: number;
 }
 
-export interface OfflineMessage {
-  id: string;               // UUID local o del servidor
-  conversation_id: string;
-  sender_id: string;
-  text?: string;
-  media_url?: string;
-  file_type?: string;
-  type: string;             // 'text' | 'image' | 'file' | ...
-  timestamp: string;        // ISO string
-  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
-  synced: 0 | 1;            // 0 = pendiente de enviar al servidor
-  retry_count: number;      // intentos de reenvío
-  local_id?: string;        // ID temporal antes de confirmar con servidor
-}
+// ── Inicialización ────────────────────────────────────────────────────────────
 
-// ── Detección de plataforma ───────────────────────────────────────
-
-const isNative = (): boolean => {
-  return !!(window as any).Capacitor?.isNativePlatform?.();
-};
-
-// ══════════════════════════════════════════════════════════════════
-// BACKEND: IndexedDB (funciona en web, PWA y Capacitor OTA)
-// ══════════════════════════════════════════════════════════════════
-
-const DB_NAME = 'egchat_offline';
-const DB_VERSION = 1;
-
-let _idb: IDBDatabase | null = null;
-
-function openIDB(): Promise<IDBDatabase> {
-  if (_idb) return Promise.resolve(_idb);
-
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open(DB_NAME, DB_VERSION);
-
-    req.onupgradeneeded = (e) => {
-      const db = (e.target as IDBOpenDBRequest).result;
-
-      // ── conversations ──────────────────────────────────────────
-      if (!db.objectStoreNames.contains('conversations')) {
-        const convStore = db.createObjectStore('conversations', { keyPath: 'id' });
-        convStore.createIndex('updated_at', 'updated_at', { unique: false });
-      }
-
-      // ── messages ───────────────────────────────────────────────
-      if (!db.objectStoreNames.contains('messages')) {
-        const msgStore = db.createObjectStore('messages', { keyPath: 'id' });
-        msgStore.createIndex('conversation_id', 'conversation_id', { unique: false });
-        msgStore.createIndex('synced', 'synced', { unique: false });
-        msgStore.createIndex('timestamp', 'timestamp', { unique: false });
-      }
-    };
-
-    req.onsuccess = (e) => {
-      _idb = (e.target as IDBOpenDBRequest).result;
-      resolve(_idb);
-    };
-
-    req.onerror = () => reject(req.error);
-  });
-}
-
-/** Wrapper genérico para transacciones IDB */
-function idbTx<T>(
-  storeName: string,
-  mode: IDBTransactionMode,
-  fn: (store: IDBObjectStore) => IDBRequest<T>
-): Promise<T> {
-  return openIDB().then(
-    (db) =>
-      new Promise<T>((resolve, reject) => {
-        const tx = db.transaction(storeName, mode);
-        const store = tx.objectStore(storeName);
-        const req = fn(store);
-        req.onsuccess = () => resolve(req.result);
-        req.onerror = () => reject(req.error);
-      })
-  );
-}
-
-/** Obtener todos los registros de un store con un índice opcional */
-function idbGetAll<T>(
-  storeName: string,
-  indexName?: string,
-  query?: IDBValidKey | IDBKeyRange
-): Promise<T[]> {
-  return openIDB().then(
-    (db) =>
-      new Promise<T[]>((resolve, reject) => {
-        const tx = db.transaction(storeName, 'readonly');
-        const store = tx.objectStore(storeName);
-        const source = indexName ? store.index(indexName) : store;
-        const req = query ? source.getAll(query) : source.getAll();
-        req.onsuccess = () => resolve(req.result as T[]);
-        req.onerror = () => reject(req.error);
-      })
-  );
-}
-
-// ══════════════════════════════════════════════════════════════════
-// API PÚBLICA
-// ══════════════════════════════════════════════════════════════════
-
-/**
- * Inicializa la base de datos offline.
- * Llama esto una vez al arrancar la app (en main.tsx o App.tsx).
- */
 export async function initOfflineDB(): Promise<void> {
-  try {
-    await openIDB();
-    console.log('[OfflineDB] IndexedDB inicializado correctamente');
-  } catch (err) {
-    console.error('[OfflineDB] Error al inicializar:', err);
-    throw err;
-  }
-}
-
-// ── Conversaciones ────────────────────────────────────────────────
-
-/**
- * Guarda o actualiza una conversación en local.
- */
-export async function saveConversation(conv: OfflineConversation): Promise<void> {
-  await idbTx<IDBValidKey>('conversations', 'readwrite', (store) =>
-    store.put(conv)
-  );
-}
-
-/**
- * Devuelve todas las conversaciones ordenadas por updated_at desc.
- */
-export async function getAllConversations(): Promise<OfflineConversation[]> {
-  const all = await idbGetAll<OfflineConversation>('conversations');
-  return all.sort(
-    (a, b) =>
-      new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()
-  );
-}
-
-/**
- * Actualiza el contador de no leídos de una conversación.
- */
-export async function updateUnreadCount(
-  conversationId: string,
-  count: number
-): Promise<void> {
-  const db = await openIDB();
   return new Promise((resolve, reject) => {
-    const tx = db.transaction('conversations', 'readwrite');
-    const store = tx.objectStore('conversations');
-    const getReq = store.get(conversationId);
-    getReq.onsuccess = () => {
-      const conv = getReq.result as OfflineConversation | undefined;
-      if (conv) {
-        conv.unread_count = count;
-        store.put(conv);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const database = (event.target as IDBOpenDBRequest).result;
+
+      // Tabla conversations
+      if (!database.objectStoreNames.contains('conversations')) {
+        const convStore = database.createObjectStore('conversations', { keyPath: 'id' });
+        convStore.createIndex('updatedAt', 'updatedAt', { unique: false });
       }
+
+      // Tabla messages
+      if (!database.objectStoreNames.contains('messages')) {
+        const msgStore = database.createObjectStore('messages', { keyPath: 'id' });
+        msgStore.createIndex('conversationId', 'conversationId', { unique: false });
+        msgStore.createIndex('createdAt',      'createdAt',      { unique: false });
+        msgStore.createIndex('synced',         'synced',         { unique: false });
+        msgStore.createIndex('status',         'status',         { unique: false });
+      }
+    };
+
+    request.onsuccess = (event) => {
+      db = (event.target as IDBOpenDBRequest).result;
+      console.log('[OfflineDB] Inicializada correctamente.');
       resolve();
     };
-    getReq.onerror = () => reject(getReq.error);
+
+    request.onerror = (event) => {
+      console.error('[OfflineDB] Error al abrir:', (event.target as IDBOpenDBRequest).error);
+      reject((event.target as IDBOpenDBRequest).error);
+    };
   });
 }
 
-// ── Mensajes ──────────────────────────────────────────────────────
+// ── Helper: obtener store ─────────────────────────────────────────────────────
 
-/**
- * Guarda un mensaje localmente.
- * Si no hay internet, lo marca como synced=0 (pendiente).
- */
-export async function saveMessageOffline(
-  message: Omit<OfflineMessage, 'synced' | 'retry_count'> & {
-    synced?: 0 | 1;
-    retry_count?: number;
-  }
-): Promise<void> {
-  const isOnline = navigator.onLine;
-
-  const record: OfflineMessage = {
-    ...message,
-    synced: message.synced ?? (isOnline ? 1 : 0),
-    retry_count: message.retry_count ?? 0,
-    status: message.status ?? (isOnline ? 'sent' : 'pending'),
-  };
-
-  await idbTx<IDBValidKey>('messages', 'readwrite', (store) =>
-    store.put(record)
-  );
-
-  // Actualizar último mensaje en la conversación
-  const convs = await idbGetAll<OfflineConversation>('conversations');
-  const conv = convs.find((c) => c.id === message.conversation_id);
-  if (conv) {
-    conv.last_message = message.text || (message.media_url ? '📎 Archivo' : '');
-    conv.last_message_time = message.timestamp;
-    conv.updated_at = message.timestamp;
-    await saveConversation(conv);
-  }
+function getStore(storeName: string, mode: IDBTransactionMode = 'readonly'): IDBObjectStore {
+  if (!db) throw new Error('[OfflineDB] Base de datos no inicializada.');
+  const tx = db.transaction(storeName, mode);
+  return tx.objectStore(storeName);
 }
 
-/**
- * Recupera los mensajes de una conversación, ordenados por timestamp.
- * @param conversationId  ID del chat
- * @param limit           Máximo de mensajes a devolver (0 = todos)
- */
-export async function getConversationMessages(
-  conversationId: string,
-  limit = 50
-): Promise<OfflineMessage[]> {
-  const all = await idbGetAll<OfflineMessage>(
-    'messages',
-    'conversation_id',
-    IDBKeyRange.only(conversationId)
-  );
-
-  const sorted = all.sort(
-    (a, b) =>
-      new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
-  );
-
-  return limit > 0 ? sorted.slice(-limit) : sorted;
+function promisify<T>(request: IDBRequest<T>): Promise<T> {
+  return new Promise((resolve, reject) => {
+    request.onsuccess = () => resolve(request.result);
+    request.onerror  = () => reject(request.error);
+  });
 }
 
-/**
- * Devuelve todos los mensajes que aún no se han enviado al servidor.
- */
+// ── Mensajes ──────────────────────────────────────────────────────────────────
+
+/** Guarda o actualiza un mensaje en IndexedDB */
+export async function saveMessageOffline(msg: OfflineMessage): Promise<void> {
+  if (!db) return;
+  const store = getStore('messages', 'readwrite');
+  await promisify(store.put(msg));
+}
+
+/** Obtiene todos los mensajes de una conversación, ordenados por fecha */
+export async function getConversationMessages(conversationId: string): Promise<OfflineMessage[]> {
+  if (!db) return [];
+  const store = getStore('messages');
+  const index = store.index('conversationId');
+  const msgs  = await promisify<OfflineMessage[]>(index.getAll(conversationId));
+  return msgs.sort((a, b) => a.createdAt - b.createdAt);
+}
+
+/** Obtiene todos los mensajes pendientes de sincronizar */
 export async function getPendingMessages(): Promise<OfflineMessage[]> {
-  return idbGetAll<OfflineMessage>('messages', 'synced', IDBKeyRange.only(0));
+  if (!db) return [];
+  const store = getStore('messages');
+  const index = store.index('synced');
+  const all   = await promisify<OfflineMessage[]>(index.getAll(false));
+  // Solo los que tienen status pending o error (no los que ya están en tránsito)
+  return all.filter(m => m.status === 'pending' || m.status === 'error');
 }
 
-/**
- * Marca un mensaje como sincronizado con el servidor.
- * Opcionalmente actualiza el ID local con el ID real del servidor.
- */
-export async function markAsSynced(
-  localId: string,
-  serverId?: string
-): Promise<void> {
-  const db = await openIDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('messages', 'readwrite');
-    const store = tx.objectStore('messages');
-    const getReq = store.get(localId);
-
-    getReq.onsuccess = () => {
-      const msg = getReq.result as OfflineMessage | undefined;
-      if (msg) {
-        msg.synced = 1;
-        msg.status = 'sent';
-        if (serverId && serverId !== localId) {
-          // Eliminar el registro con ID local y crear uno con ID del servidor
-          store.delete(localId);
-          msg.id = serverId;
-          msg.local_id = localId;
-        }
-        store.put(msg);
-      }
-      resolve();
-    };
-    getReq.onerror = () => reject(getReq.error);
-  });
+/** Marca un mensaje como sincronizado con el servidor */
+export async function markAsSynced(localId: string, serverId: string): Promise<void> {
+  if (!db) return;
+  const store = getStore('messages', 'readwrite');
+  const msg   = await promisify<OfflineMessage>(store.get(localId));
+  if (msg) {
+    msg.synced   = true;
+    msg.serverId = serverId;
+    msg.status   = 'sent';
+    await promisify(store.put(msg));
+  }
 }
 
-/**
- * Incrementa el contador de reintentos de un mensaje fallido.
- */
-export async function incrementRetryCount(messageId: string): Promise<void> {
-  const db = await openIDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('messages', 'readwrite');
-    const store = tx.objectStore('messages');
-    const getReq = store.get(messageId);
-    getReq.onsuccess = () => {
-      const msg = getReq.result as OfflineMessage | undefined;
-      if (msg) {
-        msg.retry_count = (msg.retry_count || 0) + 1;
-        if (msg.retry_count >= 3) {
-          msg.status = 'failed';
-        }
-        store.put(msg);
-      }
-      resolve();
-    };
-    getReq.onerror = () => reject(getReq.error);
-  });
-}
-
-/**
- * Actualiza el estado visual de un mensaje (pending → sent → delivered → read).
- */
+/** Actualiza el estado de un mensaje */
 export async function updateMessageStatus(
-  messageId: string,
-  status: OfflineMessage['status']
+  id: string,
+  status: OfflineMessage['status'],
+  retries?: number
 ): Promise<void> {
-  const db = await openIDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('messages', 'readwrite');
-    const store = tx.objectStore('messages');
-    const getReq = store.get(messageId);
-    getReq.onsuccess = () => {
-      const msg = getReq.result as OfflineMessage | undefined;
-      if (msg) {
-        msg.status = status;
-        store.put(msg);
-      }
-      resolve();
-    };
-    getReq.onerror = () => reject(getReq.error);
-  });
+  if (!db) return;
+  const store = getStore('messages', 'readwrite');
+  const msg   = await promisify<OfflineMessage>(store.get(id));
+  if (msg) {
+    msg.status = status;
+    if (retries !== undefined) msg.retries = retries;
+    await promisify(store.put(msg));
+  }
 }
 
-/**
- * Elimina mensajes más antiguos que `daysToKeep` días.
- * Útil para liberar espacio en dispositivos con poca memoria.
- */
-export async function deleteOldMessages(daysToKeep = 30): Promise<number> {
-  const cutoff = new Date();
-  cutoff.setDate(cutoff.getDate() - daysToKeep);
-  const cutoffISO = cutoff.toISOString();
-
-  const all = await idbGetAll<OfflineMessage>('messages');
-  const toDelete = all.filter(
-    (m) => m.timestamp < cutoffISO && m.synced === 1
-  );
-
-  const db = await openIDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction('messages', 'readwrite');
-    const store = tx.objectStore('messages');
-    let deleted = 0;
-    toDelete.forEach((m) => {
-      store.delete(m.id);
+/** Elimina mensajes antiguos ya sincronizados (limpieza periódica) */
+export async function deleteOldMessages(olderThanMs = 7 * 24 * 60 * 60 * 1000): Promise<number> {
+  if (!db) return 0;
+  const cutoff = Date.now() - olderThanMs;
+  const store  = getStore('messages', 'readwrite');
+  const all    = await promisify<OfflineMessage[]>(store.getAll());
+  let deleted  = 0;
+  for (const msg of all) {
+    if (msg.synced && msg.createdAt < cutoff) {
+      await promisify(store.delete(msg.id));
       deleted++;
-    });
-    tx.oncomplete = () => resolve(deleted);
-    tx.onerror = () => reject(tx.error);
-  });
+    }
+  }
+  return deleted;
 }
 
-/**
- * Limpia toda la base de datos offline (útil al cerrar sesión).
- */
+// ── Conversaciones ────────────────────────────────────────────────────────────
+
+/** Guarda o actualiza una conversación */
+export async function saveConversationOffline(conv: OfflineConversation): Promise<void> {
+  if (!db) return;
+  const store = getStore('conversations', 'readwrite');
+  await promisify(store.put(conv));
+}
+
+/** Obtiene todas las conversaciones ordenadas por fecha */
+export async function getAllConversations(): Promise<OfflineConversation[]> {
+  if (!db) return [];
+  const store = getStore('conversations');
+  const all   = await promisify<OfflineConversation[]>(store.getAll());
+  return all.sort((a, b) => b.lastMessageAt - a.lastMessageAt);
+}
+
+/** Actualiza el último mensaje de una conversación */
+export async function updateConversationLastMessage(
+  conversationId: string,
+  lastMessage: string,
+  lastMessageAt: number
+): Promise<void> {
+  if (!db) return;
+  const store = getStore('conversations', 'readwrite');
+  const conv  = await promisify<OfflineConversation>(store.get(conversationId));
+  if (conv) {
+    conv.lastMessage   = lastMessage;
+    conv.lastMessageAt = lastMessageAt;
+    conv.updatedAt     = Date.now();
+    await promisify(store.put(conv));
+  }
+}
+
+/** Limpia toda la base de datos (al hacer logout) */
 export async function clearOfflineDB(): Promise<void> {
-  const db = await openIDB();
-  return new Promise((resolve, reject) => {
-    const tx = db.transaction(['conversations', 'messages'], 'readwrite');
-    tx.objectStore('conversations').clear();
-    tx.objectStore('messages').clear();
-    tx.oncomplete = () => resolve();
-    tx.onerror = () => reject(tx.error);
-  });
+  if (!db) return;
+  const tx = db.transaction(['conversations', 'messages'], 'readwrite');
+  tx.objectStore('conversations').clear();
+  tx.objectStore('messages').clear();
+  console.log('[OfflineDB] Base de datos limpiada.');
 }

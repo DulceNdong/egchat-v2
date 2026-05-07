@@ -1,341 +1,249 @@
 /**
  * sync-manager.ts
- * ─────────────────────────────────────────────────────────────────
- * Gestiona la sincronización de mensajes pendientes con el servidor.
+ * Gestiona la sincronización de mensajes offline con el servidor.
  *
  * Funcionalidades:
- *  - Escucha el evento 'online' del navegador
- *  - Cola de mensajes pendientes con reintentos (backoff exponencial)
- *  - Descarga mensajes nuevos desde el servidor al reconectar
- *  - Resolución de conflictos (gana el mensaje más reciente)
- * ─────────────────────────────────────────────────────────────────
+ * - Escucha eventos online/offline del navegador
+ * - Cola de mensajes pendientes con backoff exponencial
+ * - Lotes de hasta 10 mensajes por ciclo
+ * - Descarga mensajes nuevos al reconectar
+ * - Resolución de conflictos por timestamp
  */
 
 import {
   getPendingMessages,
   markAsSynced,
-  incrementRetryCount,
-  saveMessageOffline,
-  saveConversation,
-  OfflineMessage,
-  OfflineConversation,
+  updateMessageStatus,
+  deleteOldMessages,
+  type OfflineMessage,
 } from './offline-db';
 
-// ── Configuración ─────────────────────────────────────────────────
+// ── Constantes ────────────────────────────────────────────────────────────────
 
-const API_BASE =
-  ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(
-    /\/api$/,
-    ''
-  ) + '/api';
+const API_BASE    = (import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com';
+const BATCH_SIZE  = 10;
+const MAX_RETRIES = 5;
 
-// Backoff exponencial: intento 0→5s, 1→15s, 2→30s
-const RETRY_DELAYS_MS = [5_000, 15_000, 30_000];
+// Backoff exponencial: 5s → 15s → 30s → 60s → 120s
+const RETRY_DELAYS = [5_000, 15_000, 30_000, 60_000, 120_000];
 
-// Tamaño del lote al enviar mensajes pendientes
-const BATCH_SIZE = 10;
+// ── Estado ────────────────────────────────────────────────────────────────────
 
-// ── Estado interno ────────────────────────────────────────────────
+let isSyncing    = false;
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let isOnline     = navigator.onLine;
 
-let _isSyncing = false;
-let _syncListenersAttached = false;
+// Callbacks para notificar a la UI
+const listeners = new Set<(state: SyncState) => void>();
 
-// Callbacks que la UI puede registrar para recibir eventos
-type SyncEventType = 'sync-start' | 'sync-end' | 'message-synced' | 'sync-error';
-const _listeners: Map<SyncEventType, Set<(data?: any) => void>> = new Map();
-
-function emit(event: SyncEventType, data?: any) {
-  _listeners.get(event)?.forEach((fn) => fn(data));
+export interface SyncState {
+  isOnline:     boolean;
+  isSyncing:    boolean;
+  pendingCount: number;
+  lastSyncAt:   number | null;
+  error:        string | null;
 }
 
-export function onSyncEvent(event: SyncEventType, fn: (data?: any) => void) {
-  if (!_listeners.has(event)) _listeners.set(event, new Set());
-  _listeners.get(event)!.add(fn);
-  return () => _listeners.get(event)!.delete(fn); // devuelve función para desuscribirse
+let state: SyncState = {
+  isOnline:     navigator.onLine,
+  isSyncing:    false,
+  pendingCount: 0,
+  lastSyncAt:   null,
+  error:        null,
+};
+
+function setState(partial: Partial<SyncState>) {
+  state = { ...state, ...partial };
+  listeners.forEach(fn => fn(state));
 }
 
-// ── Helpers ───────────────────────────────────────────────────────
+// ── API ───────────────────────────────────────────────────────────────────────
 
-function getToken(): string {
+export function getSyncState(): SyncState { return state; }
+
+export function onSyncStateChange(fn: (s: SyncState) => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function getAuthToken(): string {
   return (
     localStorage.getItem('token') ||
+    localStorage.getItem('egchat_token') ||
     localStorage.getItem('egchat_token_backup') ||
     ''
   );
 }
 
-function authHeaders(): Record<string, string> {
-  const token = getToken();
-  return {
-    'Content-Type': 'application/json',
-    ...(token ? { Authorization: `Bearer ${token}` } : {}),
-  };
-}
+async function sendMessageToServer(msg: OfflineMessage): Promise<string | null> {
+  const token = getAuthToken();
+  if (!token) return null;
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((r) => setTimeout(r, ms));
-}
+  const response = await fetch(`${API_BASE}/api/messages`, {
+    method: 'POST',
+    headers: {
+      'Content-Type':  'application/json',
+      'Authorization': `Bearer ${token}`,
+    },
+    body: JSON.stringify({
+      chat_id:  msg.conversationId,
+      text:     msg.text,
+      type:     msg.type || 'text',
+      // Incluir metadatos de archivo si existen
+      ...(msg.imageUrl && { file_url: msg.imageUrl }),
+      ...(msg.audioUrl && { file_url: msg.audioUrl }),
+      ...(msg.fileUrl  && { file_url: msg.fileUrl, file_name: msg.fileName }),
+    }),
+  });
 
-// ── Envío de un mensaje individual con reintentos ─────────────────
-
-async function sendMessageToServer(
-  msg: OfflineMessage,
-  attempt = 0
-): Promise<boolean> {
-  try {
-    const res = await fetch(`${API_BASE}/chats/${msg.conversation_id}/messages`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: JSON.stringify({
-        text: msg.text,
-        type: msg.type,
-        media_url: msg.media_url,
-        file_type: msg.file_type,
-        // Incluir ID local para que el servidor pueda deduplicar
-        client_message_id: msg.id,
-      }),
-    });
-
-    if (res.ok) {
-      const serverMsg = await res.json();
-      // Marcar como sincronizado y actualizar con el ID del servidor
-      await markAsSynced(msg.id, serverMsg.id || serverMsg.message_id);
-      emit('message-synced', { localId: msg.id, serverId: serverMsg.id });
-      return true;
-    }
-
-    // 409 Conflict = el servidor ya tiene este mensaje (deduplicación)
-    if (res.status === 409) {
-      await markAsSynced(msg.id);
-      return true;
-    }
-
-    // Error del servidor — reintentar si quedan intentos
-    if (attempt < RETRY_DELAYS_MS.length - 1) {
-      await sleep(RETRY_DELAYS_MS[attempt]);
-      return sendMessageToServer(msg, attempt + 1);
-    }
-
-    // Agotados los reintentos
-    await incrementRetryCount(msg.id);
-    return false;
-  } catch (err) {
-    // Error de red
-    if (attempt < RETRY_DELAYS_MS.length - 1) {
-      await sleep(RETRY_DELAYS_MS[attempt]);
-      return sendMessageToServer(msg, attempt + 1);
-    }
-    await incrementRetryCount(msg.id);
-    console.error('[SyncManager] Error enviando mensaje:', msg.id, err);
-    return false;
+  if (!response.ok) {
+    throw new Error(`HTTP ${response.status}`);
   }
+
+  const data = await response.json();
+  return data.id || data.message_id || null;
 }
 
-// ── Sincronización de mensajes pendientes ─────────────────────────
+// ── Ciclo de sincronización ───────────────────────────────────────────────────
 
-/**
- * Obtiene todos los mensajes con synced=0 y los envía al servidor
- * en lotes de BATCH_SIZE, con backoff exponencial por mensaje.
- */
-export async function syncPendingMessages(): Promise<void> {
-  if (_isSyncing) return; // evitar ejecuciones paralelas
-  if (!navigator.onLine) return;
+async function syncPendingMessages(): Promise<void> {
+  if (isSyncing || !isOnline) return;
 
-  const pending = await getPendingMessages();
-  if (pending.length === 0) return;
+  const token = getAuthToken();
+  if (!token) return; // usuario no autenticado
 
-  _isSyncing = true;
-  emit('sync-start', { count: pending.length });
+  isSyncing = true;
+  setState({ isSyncing: true, error: null });
 
   try {
+    const pending = await getPendingMessages();
+    setState({ pendingCount: pending.length });
+
+    if (pending.length === 0) {
+      setState({ isSyncing: false, lastSyncAt: Date.now() });
+      isSyncing = false;
+      return;
+    }
+
+    console.log(`[SyncManager] Sincronizando ${pending.length} mensajes pendientes...`);
+
     // Procesar en lotes
-    for (let i = 0; i < pending.length; i += BATCH_SIZE) {
-      const batch = pending.slice(i, i + BATCH_SIZE);
+    const batch = pending.slice(0, BATCH_SIZE);
 
-      // Enviar el lote en paralelo
-      await Promise.allSettled(
-        batch
-          .filter((m) => m.retry_count < 3) // omitir mensajes con demasiados fallos
-          .map((m) => sendMessageToServer(m))
-      );
+    for (const msg of batch) {
+      if (!isOnline) break; // parar si se pierde la conexión
 
-      // Pequeña pausa entre lotes para no saturar la red
-      if (i + BATCH_SIZE < pending.length) {
-        await sleep(500);
+      try {
+        const serverId = await sendMessageToServer(msg);
+        if (serverId) {
+          await markAsSynced(msg.id, serverId);
+          console.log(`[SyncManager] Mensaje ${msg.id} sincronizado → ${serverId}`);
+        }
+      } catch (err: any) {
+        const retries = (msg.retries || 0) + 1;
+        console.warn(`[SyncManager] Error enviando ${msg.id} (intento ${retries}):`, err.message);
+
+        if (retries >= MAX_RETRIES) {
+          await updateMessageStatus(msg.id, 'error', retries);
+        } else {
+          await updateMessageStatus(msg.id, 'pending', retries);
+          // Programar reintento con backoff
+          const delay = RETRY_DELAYS[Math.min(retries - 1, RETRY_DELAYS.length - 1)];
+          setTimeout(() => syncPendingMessages(), delay);
+        }
       }
     }
-  } finally {
-    _isSyncing = false;
-    emit('sync-end');
-  }
-}
 
-// ── Descarga de conversaciones nuevas ────────────────────────────
-
-/**
- * Descarga las conversaciones actualizadas desde el servidor
- * y las guarda en la base de datos local.
- */
-export async function syncConversations(): Promise<void> {
-  if (!navigator.onLine) return;
-
-  try {
-    const res = await fetch(`${API_BASE}/chats`, {
-      headers: authHeaders(),
+    // Actualizar contador tras el lote
+    const remaining = await getPendingMessages();
+    setState({
+      isSyncing:    false,
+      pendingCount: remaining.length,
+      lastSyncAt:   Date.now(),
     });
 
-    if (!res.ok) return;
-
-    const serverChats: any[] = await res.json();
-
-    for (const chat of serverChats) {
-      const otherParticipant = chat.participants?.find(
-        (p: any) => p.user_id !== chat.participants?.[0]?.user_id
-      );
-
-      const conv: OfflineConversation = {
-        id: chat.id,
-        contact_name:
-          chat.type === 'private'
-            ? otherParticipant?.full_name || 'Usuario'
-            : chat.name || 'Grupo',
-        contact_avatar:
-          chat.avatar_url || otherParticipant?.avatar_url,
-        last_message:
-          chat.last_message?.text ||
-          (chat.last_message?.type === 'image' ? '📷 Foto' : '') ||
-          '',
-        last_message_time:
-          chat.last_message?.created_at || chat.updated_at,
-        unread_count: chat.unread_count || 0,
-        updated_at: chat.updated_at,
-      };
-
-      await saveConversation(conv);
+    // Si quedan más, programar otro ciclo
+    if (remaining.length > 0 && isOnline) {
+      syncTimer = setTimeout(syncPendingMessages, 2_000);
     }
-  } catch (err) {
-    console.warn('[SyncManager] Error sincronizando conversaciones:', err);
+
+  } catch (err: any) {
+    console.error('[SyncManager] Error en ciclo de sync:', err);
+    setState({ isSyncing: false, error: err.message });
+  } finally {
+    isSyncing = false;
   }
 }
 
-// ── Descarga de mensajes nuevos ───────────────────────────────────
+// ── Eventos online/offline ────────────────────────────────────────────────────
 
-/**
- * Descarga mensajes nuevos desde el servidor para una conversación.
- * Usa el timestamp del último mensaje local como punto de partida.
- */
-export async function syncMessagesForConversation(
-  conversationId: string,
-  since?: string
-): Promise<void> {
-  if (!navigator.onLine) return;
+function handleOnline() {
+  console.log('[SyncManager] Conexión restaurada — iniciando sync...');
+  isOnline = true;
+  setState({ isOnline: true });
 
-  try {
-    const sinceParam = since
-      ? `&since=${encodeURIComponent(since)}`
-      : '';
+  // Disparar evento global para que la UI reaccione
+  window.dispatchEvent(new CustomEvent('egchat-online'));
 
-    const res = await fetch(
-      `${API_BASE}/chats/${conversationId}/messages?limit=100${sinceParam}`,
-      { headers: authHeaders() }
-    );
+  // Limpiar mensajes viejos y sincronizar
+  deleteOldMessages().then(n => {
+    if (n > 0) console.log(`[SyncManager] ${n} mensajes antiguos eliminados.`);
+  });
 
-    if (!res.ok) return;
-
-    const serverMessages: any[] = await res.json();
-
-    for (const msg of serverMessages) {
-      await saveMessageOffline({
-        id: msg.id,
-        conversation_id: conversationId,
-        sender_id: msg.sender_id,
-        text: msg.text,
-        media_url: msg.file_url,
-        file_type: msg.file_type,
-        type: msg.type || 'text',
-        timestamp: msg.created_at,
-        status: msg.status || 'delivered',
-        synced: 1, // ya está en el servidor
-      });
-    }
-  } catch (err) {
-    console.warn('[SyncManager] Error descargando mensajes:', err);
-  }
+  // Pequeño delay para que la conexión se estabilice
+  setTimeout(syncPendingMessages, 1_000);
 }
 
-// ── Resolución de conflictos ──────────────────────────────────────
+function handleOffline() {
+  console.log('[SyncManager] Sin conexión.');
+  isOnline = false;
+  setState({ isOnline: false });
 
-/**
- * Compara un mensaje local con la versión del servidor.
- * Gana el más reciente (last-write-wins).
- * Devuelve el mensaje que debe usarse.
- */
-export function detectConflicts(
-  localMessage: OfflineMessage,
-  serverMessage: { id: string; text?: string; updated_at?: string; created_at: string }
-): OfflineMessage {
-  const localTime = new Date(localMessage.timestamp).getTime();
-  const serverTime = new Date(
-    serverMessage.updated_at || serverMessage.created_at
-  ).getTime();
-
-  if (serverTime >= localTime) {
-    // El servidor tiene la versión más reciente — usar la del servidor
-    return {
-      ...localMessage,
-      id: serverMessage.id,
-      text: serverMessage.text,
-      timestamp: serverMessage.updated_at || serverMessage.created_at,
-      synced: 1,
-      status: 'delivered',
-    };
+  // Cancelar sync en curso
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
   }
 
-  // El local es más reciente — mantener el local pero marcarlo para reenvío
-  return {
-    ...localMessage,
-    synced: 0,
-  };
+  // Disparar evento global para que la UI reaccione
+  window.dispatchEvent(new CustomEvent('egchat-offline'));
 }
 
-// ── Inicialización del listener de conectividad ───────────────────
+// ── Inicialización ────────────────────────────────────────────────────────────
 
-/**
- * Registra los listeners de online/offline.
- * Llama esto UNA VEZ al arrancar la app.
- */
 export function initSyncManager(): void {
-  if (_syncListenersAttached) return;
-  _syncListenersAttached = true;
+  window.addEventListener('online',  handleOnline);
+  window.addEventListener('offline', handleOffline);
 
-  // Al recuperar conexión → sincronizar todo
-  window.addEventListener('online', async () => {
-    console.log('[SyncManager] Conexión recuperada — sincronizando...');
-    // Pequeña espera para que la red se estabilice
-    await sleep(1_500);
-    await syncConversations();
-    await syncPendingMessages();
-  });
+  // Estado inicial
+  isOnline = navigator.onLine;
+  setState({ isOnline });
 
-  // Al perder conexión → solo loguear (la UI lo maneja con offline-ui.ts)
-  window.addEventListener('offline', () => {
-    console.log('[SyncManager] Sin conexión — mensajes se guardarán localmente');
-  });
-
-  // Sincronización periódica cada 2 minutos cuando hay conexión
-  setInterval(async () => {
-    if (navigator.onLine) {
-      await syncPendingMessages();
-    }
-  }, 2 * 60 * 1_000);
-
-  // Sincronización inicial al cargar (por si había pendientes de sesión anterior)
-  if (navigator.onLine) {
-    setTimeout(async () => {
-      await syncConversations();
-      await syncPendingMessages();
-    }, 3_000); // esperar 3s a que la app termine de inicializarse
+  // Sincronizar al arrancar si hay conexión
+  if (isOnline) {
+    setTimeout(syncPendingMessages, 3_000);
   }
 
-  console.log('[SyncManager] Inicializado');
+  // Sync periódico cada 30s cuando hay conexión
+  setInterval(() => {
+    if (isOnline && !isSyncing) syncPendingMessages();
+  }, 30_000);
+
+  console.log('[SyncManager] Inicializado. Online:', isOnline);
+}
+
+/** Forzar sincronización manual (para botón de reintento en la UI) */
+export async function retrySync(): Promise<void> {
+  if (!isOnline) return;
+  await syncPendingMessages();
+}
+
+/** Notificar al sync manager que hay un nuevo mensaje pendiente */
+export function notifyPendingMessage(): void {
+  setState({ pendingCount: state.pendingCount + 1 });
+  if (isOnline && !isSyncing) {
+    setTimeout(syncPendingMessages, 500);
+  }
 }
