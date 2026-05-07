@@ -3,6 +3,9 @@ import App from './App';
 import './index.css';
 import initSelectionErrorHandler from './selectionErrorHandler';
 import { WalletProvider } from './WalletSystem';
+import { initOfflineDB } from './src/offline-db';
+import { initSyncManager } from './src/sync-manager';
+import { initOfflineUI } from './src/offline-ui';
 
 initSelectionErrorHandler();
 
@@ -29,6 +32,21 @@ if (storedVersion !== APP_VERSION) {
 
 // Registrar tiempo de carga para evitar reload del SW en páginas ya abiertas
 (window as any).__pageLoadTime = Date.now();
+
+// ── Offline system ────────────────────────────────────────────────
+// Inicializar base de datos local, sync manager y UI offline
+// Se hace antes del render para que los datos locales estén disponibles
+(async () => {
+  try {
+    await initOfflineDB();
+    initOfflineUI();
+    initSyncManager();
+    console.log('[EGCHAT] Sistema offline inicializado');
+  } catch (err) {
+    console.warn('[EGCHAT] Error inicializando sistema offline:', err);
+    // No bloquear el arranque de la app si falla
+  }
+})();
 
 // ── Fix viewport height para Android WebView / Capacitor ─────────────────
 // Con adjustPan el teclado no redimensiona el viewport, solo hace pan.
