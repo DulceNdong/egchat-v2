@@ -24,20 +24,16 @@ const config: CapacitorConfig = {
   },
   plugins: {
     SplashScreen: {
-      // launchAutoHide: false → ocultamos manualmente cuando la web esté lista
-      launchAutoHide: false,
-      // Tiempo máximo de seguridad — si algo falla, se oculta sola a los 8s
-      launchShowDuration: 8000,
-      // Color de fondo EGCHAT (debe coincidir con el color del splash drawable)
+      // launchAutoHide: true — se oculta automáticamente tras launchShowDuration
+      // El control manual causaba que la splash se quedara bloqueada en OTA
+      launchAutoHide: true,
+      launchShowDuration: 3000,
       backgroundColor: '#00c8a0',
-      // Android: usar SplashScreen nativa de Android 12+ si está disponible
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
-      // Animación de fade al ocultar
       fadeInDuration: 200,
       fadeOutDuration: 400,
       showSpinner: false,
-      // Modo oscuro: mismo color (la imagen cambia via drawable-night)
       splashFullScreen: true,
       splashImmersive: true,
     },
