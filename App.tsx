@@ -36,6 +36,7 @@ import {
   hapticsOnIncomingCall, hapticsOnMessageReceived, hapticsOnError,
   hapticsOnSwipeDelete, impactLight, hapticsEnabled, toggleHaptics,
 } from './haptics-manager';
+import { increaseBadge, decreaseBadge, clearBadge, syncBadgeWithUnread, requestBadgePermission } from './badge-manager';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -224,7 +225,9 @@ const App: React.FC = () => {
             (window as any).__pendingOpenChatId = null;
           }
         }
-      }
+        // Sincronizar badge con total de mensajes no leídos del servidor
+        const totalUnread = d.reduce((sum: number, c: any) => sum + (c.unread_count || 0), 0);
+        syncBadgeWithUnread(totalUnread).catch(() => {});
     } catch {}
   }, []);
 
@@ -379,6 +382,8 @@ const App: React.FC = () => {
     }
     // Háptico al recibir mensaje nuevo
     hapticsOnMessageReceived().catch(() => {});
+    // Badge — incrementar al recibir mensaje (solo si app en background)
+    if (document.hidden) increaseBadge().catch(() => {});
   }, []);
   // Helper: navegar a una vista siempre cierra el men radial
   const navigateTo = (view: string) => { setIsMenuOpen(false); setCurrentView(view); };
@@ -3418,6 +3423,7 @@ const App: React.FC = () => {
                 cleanupCallManager().catch(()=>{});
                 removeDeepLinkListeners().catch(()=>{});
                 removeShortcutListeners().catch(()=>{});
+                clearBadge().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setShowProfileView(false);
@@ -6835,6 +6841,8 @@ const App: React.FC = () => {
                         });
                         // Cancelar alarma de recordatorio al abrir el chat
                         cancelMessageReminder(chat.id?.toString() || '').catch(() => {});
+                        // Badge — decrementar al abrir chat
+                        decreaseBadge().catch(() => {});
                         // Auto-registrar contacto si es chat individual y no est en la lista
                         if (!isGroup && otherParticipant) {
                           const alreadyInContacts = allContacts.some(
@@ -9850,6 +9858,8 @@ const App: React.FC = () => {
     initShortcuts().catch(e => console.warn('[Shortcuts] init error:', e));
     // Hápticos — verificar soporte y cargar configuración del usuario
     initHaptics().catch(e => console.warn('[Haptics] init error:', e));
+    // Badge — solicitar permiso (iOS) y limpiar al iniciar sesión
+    requestBadgePermission().catch(() => {});
   }} />;
 
   return (
