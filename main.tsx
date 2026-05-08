@@ -57,9 +57,9 @@ if (storedVersion !== APP_VERSION) {
 })();
 
 // ── Fix viewport height para Android WebView / Capacitor ─────────────────
-// Con adjustPan el teclado NO redimensiona el viewport, solo hace pan.
-// Usamos visualViewport para detectar cuánto espacio queda visible
-// y movemos el input bar hacia arriba cuando el teclado aparece.
+// Con adjustNothing el teclado aparece ENCIMA del contenido sin mover nada.
+// Usamos visualViewport para detectar el espacio real disponible y
+// movemos el input bar hacia arriba con CSS transform.
 function fixAndroidViewportHeight() {
   const setVh = () => {
     const h = window.visualViewport?.height || window.innerHeight;
@@ -67,26 +67,30 @@ function fixAndroidViewportHeight() {
   };
   setVh();
   window.addEventListener('resize', setVh);
+
   if (window.visualViewport) {
     window.visualViewport.addEventListener('resize', () => {
       setVh();
-      // Calcular cuánto subió el teclado
       const viewportHeight = window.visualViewport!.height;
       const windowHeight   = window.innerHeight;
-      const keyboardHeight = Math.max(0, windowHeight - viewportHeight - (window.visualViewport!.offsetTop || 0));
+      const offsetTop      = window.visualViewport!.offsetTop || 0;
+      const keyboardHeight = Math.max(0, windowHeight - viewportHeight - offsetTop);
 
-      // Mover el input bar hacia arriba cuando el teclado está visible
       const inputBar = document.getElementById('chat-input-bar');
       if (inputBar) {
         if (keyboardHeight > 100) {
+          // Teclado visible — subir el input bar
           inputBar.style.bottom = `${keyboardHeight}px`;
-          // Hacer scroll al último mensaje
+          inputBar.style.transition = 'bottom 0.15s ease';
+          // Scroll al último mensaje
           setTimeout(() => {
             const scroll = document.querySelector('.chat-messages-scroll');
             if (scroll) scroll.scrollTop = scroll.scrollHeight;
-          }, 50);
+          }, 100);
         } else {
+          // Teclado oculto — restaurar posición
           inputBar.style.bottom = '0px';
+          inputBar.style.transition = 'bottom 0.15s ease';
         }
       }
     });

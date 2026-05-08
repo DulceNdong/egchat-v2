@@ -1,0 +1,243 @@
+To honour the JVM settings for this build a single-use Daemon process will be forked. For more on this, please refer to https://docs.gradle.org/8.13/userguide/gradle_daemon.html#sec:disabling_the_daemon in the Gradle documentation.
+Daemon JVM discovery is an incubating feature.
+Daemon will be stopped at the end of the build 
+
+> Configure project :app
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Configure project :capacitor-cordova-android-plugins
+WARNING: Using flatDir should be avoided because it doesn't support any meta-data formats.
+
+> Task :clean
+> Task :app:clean
+> Task :call-screen:clean
+> Task :capacitor-android:clean
+> Task :capacitor-app:clean
+> Task :capacitor-cordova-android-plugins:clean
+> Task :capacitor-haptics:clean
+> Task :capacitor-push-notifications:clean
+> Task :capacitor-splash-screen:clean
+> Task :capawesome-capacitor-app-shortcuts:clean
+> Task :capawesome-capacitor-badge:clean
+> Task :app:preBuild UP-TO-DATE
+> Task :app:preReleaseBuild UP-TO-DATE
+> Task :app:mergeReleaseJniLibFolders
+> Task :call-screen:preBuild UP-TO-DATE
+> Task :call-screen:preReleaseBuild UP-TO-DATE
+> Task :call-screen:mergeReleaseJniLibFolders
+> Task :call-screen:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-android:preBuild UP-TO-DATE
+> Task :capacitor-android:preReleaseBuild UP-TO-DATE
+> Task :call-screen:copyReleaseJniLibsProjectOnly
+> Task :capacitor-android:mergeReleaseJniLibFolders
+> Task :capacitor-android:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-app:preBuild UP-TO-DATE
+> Task :capacitor-android:copyReleaseJniLibsProjectOnly
+> Task :capacitor-app:preReleaseBuild UP-TO-DATE
+> Task :capacitor-app:mergeReleaseJniLibFolders
+> Task :capacitor-app:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-cordova-android-plugins:preBuild UP-TO-DATE
+> Task :capacitor-app:copyReleaseJniLibsProjectOnly
+> Task :capacitor-cordova-android-plugins:preReleaseBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:mergeReleaseJniLibFolders
+> Task :capacitor-cordova-android-plugins:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-haptics:preBuild UP-TO-DATE
+> Task :capacitor-cordova-android-plugins:copyReleaseJniLibsProjectOnly
+> Task :capacitor-haptics:preReleaseBuild UP-TO-DATE
+> Task :capacitor-haptics:mergeReleaseJniLibFolders
+> Task :capacitor-haptics:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-push-notifications:preBuild UP-TO-DATE
+> Task :capacitor-haptics:copyReleaseJniLibsProjectOnly
+> Task :capacitor-push-notifications:preReleaseBuild UP-TO-DATE
+> Task :capacitor-push-notifications:mergeReleaseJniLibFolders
+> Task :capacitor-push-notifications:mergeReleaseNativeLibs NO-SOURCE
+> Task :capacitor-splash-screen:preBuild UP-TO-DATE
+> Task :capacitor-push-notifications:copyReleaseJniLibsProjectOnly
+> Task :capacitor-splash-screen:preReleaseBuild UP-TO-DATE
+> Task :capacitor-splash-screen:mergeReleaseJniLibFolders
+> Task :capacitor-splash-screen:mergeReleaseNativeLibs NO-SOURCE
+> Task :capawesome-capacitor-app-shortcuts:preBuild UP-TO-DATE
+> Task :capawesome-capacitor-app-shortcuts:preReleaseBuild UP-TO-DATE
+> Task :capacitor-splash-screen:copyReleaseJniLibsProjectOnly
+> Task :capawesome-capacitor-app-shortcuts:mergeReleaseJniLibFolders
+> Task :capawesome-capacitor-app-shortcuts:mergeReleaseNativeLibs NO-SOURCE
+> Task :capawesome-capacitor-badge:preBuild UP-TO-DATE
+> Task :capawesome-capacitor-badge:preReleaseBuild UP-TO-DATE
+> Task :capawesome-capacitor-app-shortcuts:copyReleaseJniLibsProjectOnly
+> Task :capawesome-capacitor-badge:mergeReleaseJniLibFolders
+> Task :capawesome-capacitor-badge:mergeReleaseNativeLibs NO-SOURCE
+> Task :capawesome-capacitor-badge:copyReleaseJniLibsProjectOnly
+> Task :app:mergeReleaseNativeLibs
+> Task :capacitor-android:generateReleaseResValues
+> Task :capacitor-android:generateReleaseResources
+
+> Task :app:stripReleaseDebugSymbols
+Unable to strip the following libraries, packaging them as they are: libdatastore_shared_counter.so. Run with --info option to learn more.
+
+> Task :capacitor-android:packageReleaseResources
+> Task :capacitor-android:processReleaseNavigationResources
+> Task :app:extractReleaseNativeSymbolTables
+> Task :app:mergeReleaseNativeDebugMetadata NO-SOURCE
+> Task :capacitor-app:generateReleaseResValues
+> Task :capacitor-android:javaPreCompileRelease
+> Task :capacitor-app:generateReleaseResources
+> Task :capacitor-app:packageReleaseResources
+> Task :capacitor-app:processReleaseNavigationResources
+> Task :capacitor-app:javaPreCompileRelease
+> Task :capacitor-app:parseReleaseLocalResources
+> Task :capacitor-android:parseReleaseLocalResources
+> Task :capacitor-haptics:generateReleaseResValues
+> Task :capacitor-android:generateReleaseRFile
+> Task :capacitor-app:generateReleaseRFile
+> Task :capacitor-haptics:generateReleaseResources
+> Task :capacitor-android:compileReleaseJavaWithJavac
+Note: Some input files use unchecked or unsafe operations.
+Note: Recompile with -Xlint:unchecked for details.
+
+> Task :capacitor-haptics:packageReleaseResources
+> Task :capacitor-haptics:processReleaseNavigationResources
+> Task :capacitor-android:bundleLibCompileToJarRelease
+> Task :capacitor-haptics:parseReleaseLocalResources
+> Task :capacitor-app:compileReleaseJavaWithJavac
+> Task :capacitor-app:bundleLibRuntimeToDirRelease
+> Task :capacitor-haptics:javaPreCompileRelease
+> Task :capacitor-push-notifications:generateReleaseResValues
+> Task :capacitor-haptics:generateReleaseRFile
+> Task :capacitor-push-notifications:generateReleaseResources
+> Task :capacitor-haptics:compileReleaseJavaWithJavac
+> Task :capacitor-haptics:bundleLibRuntimeToDirRelease
+> Task :capacitor-push-notifications:packageReleaseResources
+> Task :capacitor-push-notifications:processReleaseNavigationResources
+> Task :capacitor-push-notifications:javaPreCompileRelease
+> Task :capacitor-push-notifications:parseReleaseLocalResources
+> Task :capacitor-splash-screen:generateReleaseResValues
+> Task :capacitor-push-notifications:generateReleaseRFile
+> Task :capacitor-splash-screen:generateReleaseResources
+> Task :capacitor-push-notifications:compileReleaseJavaWithJavac
+Note: C:\Users\User\Desktop\EGCHAT_BACKUP_20260320\node_modules\@capacitor\push-notifications\android\src\main\java\com\capacitorjs\plugins\pushnotifications\PushNotificationsPlugin.java uses or overrides a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :capacitor-push-notifications:bundleLibRuntimeToDirRelease
+> Task :capacitor-splash-screen:packageReleaseResources
+> Task :capacitor-splash-screen:processReleaseNavigationResources
+> Task :capacitor-splash-screen:parseReleaseLocalResources
+> Task :capacitor-splash-screen:javaPreCompileRelease
+> Task :capawesome-capacitor-app-shortcuts:generateReleaseResValues
+> Task :capawesome-capacitor-app-shortcuts:generateReleaseResources
+> Task :capacitor-splash-screen:generateReleaseRFile
+> Task :capawesome-capacitor-app-shortcuts:packageReleaseResources
+> Task :capacitor-splash-screen:compileReleaseJavaWithJavac
+> Task :capawesome-capacitor-app-shortcuts:processReleaseNavigationResources
+> Task :capawesome-capacitor-app-shortcuts:javaPreCompileRelease
+> Task :capawesome-capacitor-badge:generateReleaseResValues
+> Task :capawesome-capacitor-app-shortcuts:parseReleaseLocalResources
+> Task :capawesome-capacitor-badge:generateReleaseResources
+> Task :capacitor-splash-screen:bundleLibRuntimeToDirRelease
+> Task :capawesome-capacitor-app-shortcuts:generateReleaseRFile
+> Task :capawesome-capacitor-badge:packageReleaseResources
+> Task :capawesome-capacitor-app-shortcuts:compileReleaseJavaWithJavac
+> Task :capawesome-capacitor-badge:processReleaseNavigationResources
+> Task :capawesome-capacitor-app-shortcuts:bundleLibRuntimeToDirRelease
+> Task :call-screen:generateReleaseResValues
+> Task :capawesome-capacitor-badge:javaPreCompileRelease
+> Task :capawesome-capacitor-badge:parseReleaseLocalResources
+> Task :call-screen:generateReleaseResources
+> Task :capawesome-capacitor-badge:generateReleaseRFile
+> Task :call-screen:packageReleaseResources
+> Task :capawesome-capacitor-badge:compileReleaseJavaWithJavac
+> Task :call-screen:processReleaseNavigationResources
+> Task :call-screen:javaPreCompileRelease
+> Task :capawesome-capacitor-badge:bundleLibRuntimeToDirRelease
+> Task :capacitor-cordova-android-plugins:generateReleaseResValues
+> Task :call-screen:parseReleaseLocalResources
+> Task :capacitor-android:bundleLibRuntimeToDirRelease
+> Task :capacitor-cordova-android-plugins:generateReleaseResources
+> Task :capacitor-cordova-android-plugins:packageReleaseResources
+> Task :capacitor-cordova-android-plugins:processReleaseNavigationResources
+> Task :call-screen:generateReleaseRFile
+> Task :capacitor-cordova-android-plugins:parseReleaseLocalResources
+> Task :call-screen:compileReleaseJavaWithJavac
+Note: Some input files use or override a deprecated API.
+Note: Recompile with -Xlint:deprecation for details.
+
+> Task :capacitor-cordova-android-plugins:generateReleaseRFile
+> Task :capacitor-cordova-android-plugins:javaPreCompileRelease
+> Task :call-screen:bundleLibRuntimeToDirRelease
+> Task :app:checkReleaseDuplicateClasses
+> Task :capacitor-cordova-android-plugins:compileReleaseJavaWithJavac NO-SOURCE
+> Task :capacitor-cordova-android-plugins:bundleLibRuntimeToDirRelease
+> Task :app:javaPreCompileRelease
+> Task :call-screen:writeReleaseAarMetadata
+> Task :capacitor-android:writeReleaseAarMetadata
+> Task :capacitor-app:writeReleaseAarMetadata
+> Task :capacitor-cordova-android-plugins:writeReleaseAarMetadata
+> Task :capacitor-haptics:writeReleaseAarMetadata
+> Task :capacitor-push-notifications:writeReleaseAarMetadata
+> Task :capacitor-splash-screen:writeReleaseAarMetadata
+> Task :capawesome-capacitor-app-shortcuts:writeReleaseAarMetadata
+> Task :capawesome-capacitor-badge:writeReleaseAarMetadata
+> Task :app:checkReleaseAarMetadata
+> Task :app:processReleaseNavigationResources
+> Task :app:generateReleaseResValues
+> Task :app:compileReleaseNavigationResources
+> Task :app:processReleaseGoogleServices
+> Task :app:mapReleaseSourceSetPaths
+> Task :app:generateReleaseResources
+> Task :app:packageReleaseResources
+> Task :app:createReleaseCompatibleScreenManifests
+> Task :app:extractDeepLinksRelease
+> Task :call-screen:extractDeepLinksRelease
+> Task :capacitor-android:extractDeepLinksRelease
+> Task :capacitor-app:extractDeepLinksRelease
+> Task :app:parseReleaseLocalResources
+> Task :capacitor-cordova-android-plugins:extractDeepLinksRelease
+> Task :capacitor-haptics:extractDeepLinksRelease
+
+> Task :call-screen:processReleaseManifest
+package="com.goalplay.callscreen" found in source AndroidManifest.xml: C:\Users\User\Desktop\EGCHAT_BACKUP_20260320\node_modules\call-screen\android\src\main\AndroidManifest.xml.
+Setting the namespace via the package attribute in the source AndroidManifest.xml is no longer supported, and the value is ignored.
+Recommendation: remove package="com.goalplay.callscreen" from the source AndroidManifest.xml: C:\Users\User\Desktop\EGCHAT_BACKUP_20260320\node_modules\call-screen\android\src\main\AndroidManifest.xml.
+
+> Task :capacitor-android:processReleaseManifest
+> Task :capacitor-app:processReleaseManifest
+> Task :capacitor-cordova-android-plugins:processReleaseManifest
+> Task :capacitor-haptics:processReleaseManifest
+> Task :capacitor-push-notifications:extractDeepLinksRelease
+> Task :capacitor-push-notifications:processReleaseManifest
+> Task :capacitor-splash-screen:extractDeepLinksRelease
+> Task :capacitor-splash-screen:processReleaseManifest
+> Task :capawesome-capacitor-app-shortcuts:extractDeepLinksRelease
+> Task :capawesome-capacitor-app-shortcuts:processReleaseManifest
+> Task :capawesome-capacitor-badge:extractDeepLinksRelease
+> Task :capawesome-capacitor-badge:processReleaseManifest
+> Task :app:mergeReleaseResources
+> Task :call-screen:compileReleaseLibraryResources
+> Task :app:processReleaseMainManifest
+> Task :app:mergeReleaseResources FAILED
+> Task :app:processReleaseManifest
+
+[Incubating] Problems report is available at: file:///C:/Users/User/Desktop/EGCHAT_BACKUP_20260320/android/build/reports/problems/problems-report.html
+
+FAILURE: Build failed with an exception.
+
+* What went wrong:
+Execution failed for task ':app:mergeReleaseResources'.
+> A failure occurred while executing com.android.build.gradle.internal.res.Aapt2CompileRunnable
+   > AAPT2 aapt2-8.13.2-14304508-windows Daemon #3: Daemon startup failed
+     Please check if you installed the Windows Universal C Runtime.
+     This should not happen under normal circumstances, please file an issue if it does.
+
+* Try:
+> Run with --stacktrace option to get the stack trace.
+> Run with --info or --debug option to get more log output.
+> Run with --scan to get full insights.
+> Get more help at https://help.gradle.org.
+
+Deprecated Gradle features were used in this build, making it incompatible with Gradle 9.0.
+
+You can use '--warning-mode all' to show the individual deprecation warnings and determine if they come from your own scripts or plugins.
+
+For more on this, please refer to https://docs.gradle.org/8.13/userguide/command_line_interface.html#sec:command_line_warnings in the Gradle documentation.
+
+BUILD FAILED in 36m 29s
+158 actionable tasks: 158 executed

@@ -159,48 +159,18 @@ export default function RootLayout() {
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
         <StatusBar style="light" backgroundColor="#00c8a0" />
-        
-        {/* Header with QR and Open buttons */}
-        <View style={styles.header}>
-          <View style={styles.logoContainer}>
-            <Text style={styles.logo}>🇬🇶</Text>
-            <Text style={styles.brand}>EGCHAT</Text>
-          </View>
-          
-          <View style={styles.buttonsContainer}>
-            <TouchableOpacity 
-              style={styles.qrButton} 
-              onPress={() => setShowQR(true)}
-            >
-              <Text style={styles.qrButtonText}>📱 QR</Text>
-            </TouchableOpacity>
-            
-            <TouchableOpacity 
-              style={styles.openButton} 
-              onPress={handleOpenEGCHAT}
-            >
-              <Text style={styles.openButtonText}>🚀 Abrir</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        {/* Main content */}
+        {/* Stack principal — sin header ni footer globales que interfieran con el teclado */}
         <Stack screenOptions={{ headerShown: false }}>
           <Stack.Screen name="(auth)" />
           <Stack.Screen name="(tabs)" />
+          <Stack.Screen
+            name="chat/[id]"
+            options={{
+              headerShown: false,
+              animation: 'slide_from_right',
+            }}
+          />
         </Stack>
-
-        {/* Footer with download option */}
-        <View style={styles.footer}>
-          <TouchableOpacity style={styles.storeButton} onPress={handleOpenStore}>
-            <Text style={styles.storeButtonText}>📥 Descargar App</Text>
-          </TouchableOpacity>
-          
-          <View style={styles.infoContainer}>
-            <Text style={styles.infoText}>🌐 Conectando Guinea Ecuatorial</Text>
-            <Text style={styles.versionText}>v1.0.0</Text>
-          </View>
-        </View>
       </SafeAreaProvider>
     </GestureHandlerRootView>
   );
