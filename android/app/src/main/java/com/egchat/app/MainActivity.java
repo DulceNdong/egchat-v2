@@ -101,33 +101,52 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void requestAllPermissions() {
-        String[] permissions;
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            permissions = new String[]{
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_MEDIA_IMAGES,
-                Manifest.permission.READ_MEDIA_VIDEO
-            };
-        } else {
-            permissions = new String[]{
-                Manifest.permission.CAMERA,
-                Manifest.permission.RECORD_AUDIO,
-                Manifest.permission.READ_EXTERNAL_STORAGE,
-                Manifest.permission.WRITE_EXTERNAL_STORAGE
-            };
-        }
+        // Lista completa de permisos que EGCHAT necesita
+        // Se piden todos al inicio para evitar que funciones fallen silenciosamente
+        java.util.List<String> permList = new java.util.ArrayList<>();
 
-        boolean allGranted = true;
-        for (String perm : permissions) {
-            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
-                allGranted = false;
-                break;
+        // Cámara y audio — siempre necesarios
+        permList.add(Manifest.permission.CAMERA);
+        permList.add(Manifest.permission.RECORD_AUDIO);
+        permList.add(Manifest.permission.MODIFY_AUDIO_SETTINGS);
+
+        // Almacenamiento — según versión de Android
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            // Android 13+ — permisos granulares por tipo de media
+            permList.add(Manifest.permission.READ_MEDIA_IMAGES);
+            permList.add(Manifest.permission.READ_MEDIA_VIDEO);
+            permList.add(Manifest.permission.READ_MEDIA_AUDIO);
+        } else {
+            // Android 12 y anteriores — permiso de almacenamiento general
+            permList.add(Manifest.permission.READ_EXTERNAL_STORAGE);
+            if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.P) {
+                permList.add(Manifest.permission.WRITE_EXTERNAL_STORAGE);
             }
         }
 
-        if (!allGranted) {
-            ActivityCompat.requestPermissions(this, permissions, PERMISSION_REQUEST);
+        // Contactos — para tarjetas de contacto en chat
+        permList.add(Manifest.permission.READ_CONTACTS);
+        permList.add(Manifest.permission.WRITE_CONTACTS);
+
+        // Notificaciones — Android 13+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permList.add(Manifest.permission.POST_NOTIFICATIONS);
+        }
+
+        // Filtrar solo los no concedidos
+        java.util.List<String> toRequest = new java.util.ArrayList<>();
+        for (String perm : permList) {
+            if (ContextCompat.checkSelfPermission(this, perm) != PackageManager.PERMISSION_GRANTED) {
+                toRequest.add(perm);
+            }
+        }
+
+        if (!toRequest.isEmpty()) {
+            ActivityCompat.requestPermissions(
+                this,
+                toRequest.toArray(new String[0]),
+                PERMISSION_REQUEST
+            );
         }
     }
 
