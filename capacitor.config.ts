@@ -17,7 +17,10 @@ const config: CapacitorConfig = {
     allowMixedContent: true,
     backgroundColor: '#00c8a0',
     captureInput: true,
-    webContentsDebuggingEnabled: false
+    webContentsDebuggingEnabled: false,
+    // Barra de navegación transparente — el modo inmersivo la oculta completamente
+    // pero cuando reaparece temporalmente (gesture hint) se ve transparente
+    navigationBarColor: '#00000000',
   },
   plugins: {
     SplashScreen: {
