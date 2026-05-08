@@ -43,9 +43,10 @@ android {
 
     buildTypes {
         release {
-            // Activar minify para reducir tamaño del APK (~30% más pequeño)
-            minifyEnabled true
-            shrinkResources true
+            // Minify desactivado temporalmente — causa crash al arrancar con Capacitor
+            // Reactivar cuando se verifique que ProGuard no rompe los plugins
+            minifyEnabled false
+            shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
 
             // Usar firma de producción si está configurada
