@@ -30,6 +30,7 @@ import { scheduleMessageReminder, cancelMessageReminder } from './alarm-plugin';
 import { initCallManager, cleanupCallManager, showIncomingCall, rejectCall as rejectCallNative, CALL_ANSWERED_EVENT, CALL_REJECTED_EVENT } from './call-manager';
 import { startVoipService, stopVoipService } from './voip-service';
 import { initDeepLinks, removeDeepLinkListeners, processPendingDeepLink, handleDeepLinkRoute, parseDeepLink } from './deep-links';
+import { initShortcuts, removeShortcutListeners, SHORTCUT_EVENTS } from './shortcuts-manager';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -3396,6 +3397,7 @@ const App: React.FC = () => {
                 removePushListeners().catch(()=>{});
                 cleanupCallManager().catch(()=>{});
                 removeDeepLinkListeners().catch(()=>{});
+                removeShortcutListeners().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setShowProfileView(false);
@@ -9655,6 +9657,21 @@ const App: React.FC = () => {
     window.addEventListener('egchat-deep-link-home',    () => setCurrentView('home'));
     window.addEventListener('egchat-deep-link-pay',     handleDeepLinkPay);
 
+    // App Shortcuts — navegación desde accesos directos del icono
+    const handleShortcutNuevoChat = () => {
+      setCurrentView('Mensajería');
+      setShowNewChatModal(true);
+    };
+    const handleShortcutContactos = () => setCurrentView('contactos');
+    const handleShortcutLlamada   = () => {
+      setCurrentView('Mensajería');
+      // Abrir el modal de nueva llamada si existe, o ir a contactos
+      window.dispatchEvent(new CustomEvent('egchat-open-call-modal'));
+    };
+    window.addEventListener(SHORTCUT_EVENTS['nuevo-chat'], handleShortcutNuevoChat);
+    window.addEventListener(SHORTCUT_EVENTS['contactos'],  handleShortcutContactos);
+    window.addEventListener(SHORTCUT_EVENTS['llamada'],    handleShortcutLlamada);
+
     return () => {
       window.removeEventListener('egchat-push-received', handlePushReceived);
       window.removeEventListener('egchat-push-action', handlePushAction);
@@ -9664,6 +9681,9 @@ const App: React.FC = () => {
       window.removeEventListener('egchat-deep-link-chat', handleDeepLinkChat);
       window.removeEventListener('egchat-deep-link-home', () => {});
       window.removeEventListener('egchat-deep-link-pay',  handleDeepLinkPay);
+      window.removeEventListener(SHORTCUT_EVENTS['nuevo-chat'], handleShortcutNuevoChat);
+      window.removeEventListener(SHORTCUT_EVENTS['contactos'],  handleShortcutContactos);
+      window.removeEventListener(SHORTCUT_EVENTS['llamada'],    handleShortcutLlamada);
     };
   }, [notifyNewMessage, loadChats, incomingCall, webrtc]);
 
@@ -9801,6 +9821,8 @@ const App: React.FC = () => {
     initCallManager().catch(e => console.warn('[CallManager] init error:', e));
     // Procesar deep link pendiente (si el usuario llegó via link antes de autenticarse)
     processPendingDeepLink();
+    // App Shortcuts — registrar accesos directos del icono
+    initShortcuts().catch(e => console.warn('[Shortcuts] init error:', e));
   }} />;
 
   return (

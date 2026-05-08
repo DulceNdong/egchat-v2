@@ -1,0 +1,48 @@
+<!--
+  ios-shortcuts.plist
+  Fragmento para añadir en ios/App/App/Info.plist dentro de <dict>
+  Configura los App Shortcuts estáticos de iOS (3D Touch / Haptic Touch).
+
+  INSTRUCCIONES:
+  1. Abre ios/App/App/Info.plist en Xcode o con un editor de texto
+  2. Añade este bloque dentro del <dict> principal (antes del </dict> final)
+-->
+
+<key>UIApplicationShortcutItems</key>
+<array>
+    <!-- Shortcut 1: Nuevo chat -->
+    <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.egchat.app.nuevo-chat</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Nuevo chat</string>
+        <key>UIApplicationShortcutItemSubtitle</key>
+        <string>Iniciar una nueva conversación</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeCompose</string>
+    </dict>
+
+    <!-- Shortcut 2: Mis contactos -->
+    <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.egchat.app.contactos</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Mis contactos</string>
+        <key>UIApplicationShortcutItemSubtitle</key>
+        <string>Ver lista de contactos</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeContact</string>
+    </dict>
+
+    <!-- Shortcut 3: Llamada rápida -->
+    <dict>
+        <key>UIApplicationShortcutItemType</key>
+        <string>com.egchat.app.llamada</string>
+        <key>UIApplicationShortcutItemTitle</key>
+        <string>Llamada rápida</string>
+        <key>UIApplicationShortcutItemSubtitle</key>
+        <string>Iniciar una llamada</string>
+        <key>UIApplicationShortcutItemIconType</key>
+        <string>UIApplicationShortcutIconTypeAudio</string>
+    </dict>
+</array>
