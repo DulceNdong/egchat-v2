@@ -19,41 +19,24 @@ android {
         }
     }
 
-    // ── Firma de producción via variables de entorno ──────────────────────────
-    // Configurar en Render/CI o localmente:
-    //   KEYSTORE_PATH  = ruta al .keystore
-    //   KEYSTORE_PASS  = contraseña del keystore
-    //   KEY_ALIAS      = alias de la clave (egchat)
-    //   KEY_PASS       = contraseña de la clave
     signingConfigs {
         release {
-            def keystorePath = System.getenv("KEYSTORE_PATH") ?: project.findProperty("KEYSTORE_PATH") ?: ""
-            def keystorePass = System.getenv("KEYSTORE_PASS") ?: project.findProperty("KEYSTORE_PASS") ?: ""
-            def keyAlias     = System.getenv("KEY_ALIAS")     ?: project.findProperty("KEY_ALIAS")     ?: "egchat"
-            def keyPass      = System.getenv("KEY_PASS")      ?: project.findProperty("KEY_PASS")      ?: ""
-
-            if (keystorePath && file(keystorePath).exists()) {
-                storeFile     file(keystorePath)
-                storePassword keystorePass
-                keyAlias      keyAlias
-                keyPassword   keyPass
-            }
+            // Firma hardcodeada para compilación local
+            // El keystore está en android/app/egchat-release.keystore
+            storeFile     file('egchat-release.keystore')
+            storePassword 'egchat2025prod'
+            keyAlias      'egchat'
+            keyPassword   'egchat2025prod'
         }
     }
 
     buildTypes {
         release {
-            // Minify desactivado temporalmente — causa crash al arrancar con Capacitor
-            // Reactivar cuando se verifique que ProGuard no rompe los plugins
             minifyEnabled false
             shrinkResources false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
-
-            // Usar firma de producción si está configurada
-            def ks = System.getenv("KEYSTORE_PATH") ?: project.findProperty("KEYSTORE_PATH") ?: ""
-            if (ks && file(ks).exists()) {
-                signingConfig signingConfigs.release
-            }
+            // Gradle firma el APK internamente — produce APK válido para Android
+            signingConfig signingConfigs.release
         }
         debug {
             minifyEnabled false
