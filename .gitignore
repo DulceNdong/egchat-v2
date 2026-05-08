@@ -8,3 +8,5 @@ firebase-service-account.json
 dist-apk/
 *.keystore
 *.jks
+# Keystore de producción EGCHAT
+android/app/egchat-release.keystore
