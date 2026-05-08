@@ -57,21 +57,39 @@ if (storedVersion !== APP_VERSION) {
 })();
 
 // ── Fix viewport height para Android WebView / Capacitor ─────────────────
-// Con adjustResize el teclado SÍ redimensiona el viewport.
-// Actualizamos --real-vh en cada resize para que el chat-view-container
-// siempre ocupe exactamente el espacio visible disponible.
+// Con adjustPan el teclado NO redimensiona el viewport, solo hace pan.
+// Usamos visualViewport para detectar cuánto espacio queda visible
+// y movemos el input bar hacia arriba cuando el teclado aparece.
 function fixAndroidViewportHeight() {
   const setVh = () => {
-    // Usar visualViewport si está disponible (más preciso con el teclado)
     const h = window.visualViewport?.height || window.innerHeight;
     document.documentElement.style.setProperty('--real-vh', `${h}px`);
   };
   setVh();
   window.addEventListener('resize', setVh);
-  // visualViewport es más preciso en Android con el teclado
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', setVh);
-    window.visualViewport.addEventListener('scroll', setVh);
+    window.visualViewport.addEventListener('resize', () => {
+      setVh();
+      // Calcular cuánto subió el teclado
+      const viewportHeight = window.visualViewport!.height;
+      const windowHeight   = window.innerHeight;
+      const keyboardHeight = Math.max(0, windowHeight - viewportHeight - (window.visualViewport!.offsetTop || 0));
+
+      // Mover el input bar hacia arriba cuando el teclado está visible
+      const inputBar = document.getElementById('chat-input-bar');
+      if (inputBar) {
+        if (keyboardHeight > 100) {
+          inputBar.style.bottom = `${keyboardHeight}px`;
+          // Hacer scroll al último mensaje
+          setTimeout(() => {
+            const scroll = document.querySelector('.chat-messages-scroll');
+            if (scroll) scroll.scrollTop = scroll.scrollHeight;
+          }, 50);
+        } else {
+          inputBar.style.bottom = '0px';
+        }
+      }
+    });
   }
 }
 fixAndroidViewportHeight();
