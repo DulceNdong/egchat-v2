@@ -37,6 +37,7 @@ import {
   hapticsOnSwipeDelete, impactLight, hapticsEnabled, toggleHaptics,
 } from './haptics-manager';
 import { increaseBadge, decreaseBadge, clearBadge, syncBadgeWithUnread, requestBadgePermission } from './badge-manager';
+import { initPredictiveBack, pushView, clearHistory } from './predictive-back-manager';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -385,8 +386,8 @@ const App: React.FC = () => {
     // Badge — incrementar al recibir mensaje (solo si app en background)
     if (document.hidden) increaseBadge().catch(() => {});
   }, []);
-  // Helper: navegar a una vista siempre cierra el men radial
-  const navigateTo = (view: string) => { setIsMenuOpen(false); setCurrentView(view); };
+  // Helper: navegar a una vista siempre cierra el men radial y actualiza el historial de atrás
+  const navigateTo = (view: string) => { setIsMenuOpen(false); setCurrentView(view); pushView(view); };
   const [selectedBank, setSelectedBank] = useState<Bank | null>(null);
   const [selectedService, setSelectedService] = useState<string>('');
   const [formData, setFormData] = useState<Record<string, string>>({});
@@ -3424,6 +3425,7 @@ const App: React.FC = () => {
                 removeDeepLinkListeners().catch(()=>{});
                 removeShortcutListeners().catch(()=>{});
                 clearBadge().catch(()=>{});
+                clearHistory();
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 setShowProfileView(false);
@@ -9594,6 +9596,8 @@ const App: React.FC = () => {
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
     // Cargar grupos favoritos reales - endpoint deshabilitado hasta que el backend lo implemente
     // chatAPI.getFavoriteChats().then(...)
+    // Inicializar gesto de atrás predictivo (Android 14+ y anteriores)
+    initPredictiveBack((view: string) => setCurrentView(view));
     // Registrar Web Push (con peque?o delay para que el SW est listo)
     setTimeout(() => {
       if (typeof (window as any).__egchat_registerPush === 'function') {

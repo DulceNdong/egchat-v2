@@ -14,7 +14,10 @@ import android.view.WindowManager;
 import android.webkit.PermissionRequest;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.window.OnBackInvokedCallback;
+import android.window.OnBackInvokedDispatcher;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
@@ -49,6 +52,11 @@ public class MainActivity extends BridgeActivity {
                 new Handler().postDelayed(this::hideNavigationBar, 1500);
             }
         });
+
+        // Gesto de atrás predictivo (Android 14+ / API 34+)
+        // Registra el callback que intercepta el gesto ANTES de ejecutarlo,
+        // permitiendo mostrar una vista previa de la pantalla anterior.
+        setupPredictiveBack();
 
         requestAllPermissions();
         new Handler().postDelayed(this::setupWebViewCameraPermissions, 500);
@@ -141,6 +149,71 @@ public class MainActivity extends BridgeActivity {
             });
         } catch (Exception e) {
             new Handler().postDelayed(this::setupWebViewCameraPermissions, 500);
+        }
+    }
+
+    /**
+     * setupPredictiveBack()
+     * Configura el gesto de atrás predictivo de Android 14+ (API 34+).
+     *
+     * Estrategia:
+     * - Android 14+ (API 34): usa OnBackInvokedDispatcher (API nativa predictiva)
+     * - Android 13 y anteriores: usa OnBackPressedCallback (compatibilidad)
+     *
+     * En ambos casos, el gesto de atrás se delega a JavaScript via evaluateJavascript,
+     * permitiendo que la web gestione su propio historial de navegación (vistas/pantallas).
+     * Si la web no tiene historial, se cierra la app normalmente.
+     */
+    private void setupPredictiveBack() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            // Android 14+ — API nativa con vista previa predictiva
+            // El sistema muestra automáticamente la animación de vista previa
+            // cuando el usuario inicia el gesto de deslizar desde el borde.
+            getOnBackInvokedDispatcher().registerOnBackInvokedCallback(
+                OnBackInvokedDispatcher.PRIORITY_DEFAULT,
+                () -> {
+                    // Notificar a JavaScript para que gestione la navegación
+                    WebView webView = getBridge().getWebView();
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('egchat-back-gesture', { detail: { predictive: true } }))",
+                            result -> {
+                                // Si JS devuelve 'false', no hay historial web → cerrar app
+                                if ("false".equals(result) || result == null) {
+                                    finish();
+                                }
+                            }
+                        );
+                    } else {
+                        finish();
+                    }
+                }
+            );
+        } else {
+            // Android 13 y anteriores — OnBackPressedCallback (sin vista previa)
+            getOnBackPressedDispatcher().addCallback(this, new OnBackPressedCallback(true) {
+                @Override
+                public void handleOnBackPressed() {
+                    WebView webView = getBridge().getWebView();
+                    if (webView != null) {
+                        webView.evaluateJavascript(
+                            "window.dispatchEvent(new CustomEvent('egchat-back-gesture', { detail: { predictive: false } }))",
+                            result -> {
+                                if ("false".equals(result) || result == null) {
+                                    // Sin historial web — comportamiento por defecto
+                                    setEnabled(false);
+                                    getOnBackPressedDispatcher().onBackPressed();
+                                    setEnabled(true);
+                                }
+                            }
+                        );
+                    } else {
+                        setEnabled(false);
+                        getOnBackPressedDispatcher().onBackPressed();
+                        setEnabled(true);
+                    }
+                }
+            });
         }
     }
 }
