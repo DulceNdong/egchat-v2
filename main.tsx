@@ -57,14 +57,22 @@ if (storedVersion !== APP_VERSION) {
 })();
 
 // ── Fix viewport height para Android WebView / Capacitor ─────────────────
-// Con adjustPan el teclado no redimensiona el viewport, solo hace pan.
-// Solo necesitamos fijar --real-vh al inicio para referencias CSS.
+// Con adjustResize el teclado SÍ redimensiona el viewport.
+// Actualizamos --real-vh en cada resize para que el chat-view-container
+// siempre ocupe exactamente el espacio visible disponible.
 function fixAndroidViewportHeight() {
   const setVh = () => {
-    document.documentElement.style.setProperty('--real-vh', `${window.innerHeight}px`);
+    // Usar visualViewport si está disponible (más preciso con el teclado)
+    const h = window.visualViewport?.height || window.innerHeight;
+    document.documentElement.style.setProperty('--real-vh', `${h}px`);
   };
   setVh();
   window.addEventListener('resize', setVh);
+  // visualViewport es más preciso en Android con el teclado
+  if (window.visualViewport) {
+    window.visualViewport.addEventListener('resize', setVh);
+    window.visualViewport.addEventListener('scroll', setVh);
+  }
 }
 fixAndroidViewportHeight();
 

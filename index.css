@@ -878,35 +878,50 @@ span, p, div, label, li, td, th, button {
 }
 
 /* ── Android WebView: fix chat layout ─────────────────────────────────────
-   El teclado virtual en Android redimensiona el WebView y rompe los
-   contenedores con position:fixed. Estos estilos garantizan que el chat
-   ocupe todo el espacio disponible correctamente. */
+   Con adjustResize el teclado redimensiona el WebView.
+   Estos estilos garantizan que el chat se adapte correctamente
+   en TODOS los Android (5.0+) y que el input siempre sea visible. */
 
 /* Contenedor principal del chat */
 .chat-view-container {
   position: fixed !important;
   top: 0 !important;
   right: 0 !important;
-  bottom: 0 !important;
-  height: var(--real-vh, 100vh) !important;
+  /* bottom: 0 se gestiona via JS con --real-vh para compatibilidad */
+  height: var(--real-vh, 100dvh) !important;
   display: flex !important;
   flex-direction: column !important;
   overflow: hidden !important;
+  /* Forzar GPU layer para evitar parpadeos en Android */
+  -webkit-transform: translateZ(0) !important;
+  transform: translateZ(0) !important;
+  will-change: height !important;
 }
 
-/* En móvil sí forzamos left: 0 */
+/* En móvil forzamos left: 0 */
 @media (max-width: 767px) {
   .chat-view-container {
     left: 0 !important;
   }
 }
 
-/* Área de mensajes — debe ocupar todo el espacio entre header e input */
+/* Área de mensajes — ocupa todo el espacio entre header e input */
 .chat-messages-scroll {
   flex: 1 !important;
   min-height: 0 !important;
   overflow-y: scroll !important;
   -webkit-overflow-scrolling: touch !important;
+  /* Evitar que el scroll rebote fuera del contenedor */
+  overscroll-behavior-y: contain !important;
+}
+
+/* Barra de input — siempre visible sobre el teclado */
+#chat-input-bar {
+  flex-shrink: 0 !important;
+  position: relative !important;
+  /* NO usar position:fixed — con adjustResize el fixed se mueve con el teclado */
+  z-index: 10 !important;
+  background: #f0f2f5 !important;
 }
 
 /* Contenedor de scroll general */
