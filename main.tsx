@@ -8,6 +8,7 @@ import { initSyncManager } from './src/sync-manager';
 import { initOfflineUI } from './src/offline-ui';
 import { setupSplashSafetyTimeout, hideSplashWhenReady } from './splash-screen';
 import { initDeepLinks } from './deep-links';
+import { initHaptics } from './haptics-manager';
 
 initSelectionErrorHandler();
 
@@ -47,7 +48,8 @@ if (storedVersion !== APP_VERSION) {
     initOfflineUI();
     initSyncManager();
     await initDeepLinks();
-    console.log('[EGCHAT] Sistema offline + deep links inicializado');
+    await initHaptics();
+    console.log('[EGCHAT] Sistema offline + deep links + hápticos inicializado');
   } catch (err) {
     console.warn('[EGCHAT] Error inicializando sistema offline:', err);
     // No bloquear el arranque de la app si falla

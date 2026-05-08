@@ -31,6 +31,11 @@ import { initCallManager, cleanupCallManager, showIncomingCall, rejectCall as re
 import { startVoipService, stopVoipService } from './voip-service';
 import { initDeepLinks, removeDeepLinkListeners, processPendingDeepLink, handleDeepLinkRoute, parseDeepLink } from './deep-links';
 import { initShortcuts, removeShortcutListeners, SHORTCUT_EVENTS } from './shortcuts-manager';
+import {
+  initHaptics, hapticsOnSendMessage, hapticsOnLongPress,
+  hapticsOnIncomingCall, hapticsOnMessageReceived, hapticsOnError,
+  hapticsOnSwipeDelete, impactLight,
+} from './haptics-manager';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -372,6 +377,8 @@ const App: React.FC = () => {
     if (document.hidden && chatId) {
       scheduleMessageReminder(chatId, senderName, 5 * 60 * 1000).catch(() => {});
     }
+    // Háptico al recibir mensaje nuevo
+    hapticsOnMessageReceived().catch(() => {});
   }, []);
   // Helper: navegar a una vista siempre cierra el men radial
   const navigateTo = (view: string) => { setIsMenuOpen(false); setCurrentView(view); };
@@ -5106,6 +5113,7 @@ const App: React.FC = () => {
             (document.activeElement as HTMLElement)?.blur();
 
             playMessageSent(); vibrate(30);
+            hapticsOnSendMessage().catch(() => {}); // háptico suave al enviar
             const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time: makeTime(), status: 'pending' as const };
             addMsg(newMsg);
             setCurrentChatInput('');
@@ -9230,6 +9238,7 @@ const App: React.FC = () => {
         incomingCallIdRef.current = call.callId;
         setIncomingCall(call);
         startRingtone(); vibrate([500, 200, 500, 200, 500]);
+        hapticsOnIncomingCall().catch(() => {}); // háptico fuerte al recibir llamada
         // Mostrar pantalla nativa de llamada entrante (call-screen plugin)
         const callerContact = realChatsRef.current
           .flatMap((c: any) => c.participants || [])
@@ -9823,6 +9832,8 @@ const App: React.FC = () => {
     processPendingDeepLink();
     // App Shortcuts — registrar accesos directos del icono
     initShortcuts().catch(e => console.warn('[Shortcuts] init error:', e));
+    // Hápticos — verificar soporte y cargar configuración del usuario
+    initHaptics().catch(e => console.warn('[Haptics] init error:', e));
   }} />;
 
   return (
