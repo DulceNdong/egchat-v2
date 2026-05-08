@@ -34,7 +34,7 @@ import { initShortcuts, removeShortcutListeners, SHORTCUT_EVENTS } from './short
 import {
   initHaptics, hapticsOnSendMessage, hapticsOnLongPress,
   hapticsOnIncomingCall, hapticsOnMessageReceived, hapticsOnError,
-  hapticsOnSwipeDelete, impactLight,
+  hapticsOnSwipeDelete, impactLight, hapticsEnabled, toggleHaptics,
 } from './haptics-manager';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
@@ -3377,6 +3377,19 @@ const App: React.FC = () => {
                   </button>
                 </div>
               ))}
+              {/* Toggle hápticos */}
+              {(() => {
+                const [hapticsOn, setHapticsOn] = React.useState(hapticsEnabled());
+                return (
+                  <div style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.07)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span style={{ fontSize: '12px', color: '#1f2937' }}>📳 Vibración háptica</span>
+                    <button onClick={() => { const next = toggleHaptics(); setHapticsOn(next); impactLight().catch(()=>{}); }}
+                      style={{ width: '40px', height: '22px', borderRadius: '11px', background: hapticsOn ? 'rgba(0,200,160,0.25)' : '#f3f4f6', border: `1px solid ${hapticsOn ? '#00c8a0' : '#e5e7eb'}`, cursor: 'pointer', outline: 'none', position: 'relative', transition: 'all 0.2s' }}>
+                      <div style={{ position: 'absolute', top: '2px', left: hapticsOn ? '20px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: hapticsOn ? '#00c8a0' : '#d1d5db', transition: 'left 0.2s' }} />
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Actualizar app / limpiar caché */}
@@ -5324,7 +5337,10 @@ const App: React.FC = () => {
                       onTouchStart={e => {
                         if (selectionMode) return;
                         const touch = e.touches[0];
-                        const timer = setTimeout(() => setMsgContextMenu({ msg, x: touch.clientX, y: touch.clientY }), 500);
+                        const timer = setTimeout(() => {
+                          hapticsOnLongPress().catch(() => {}); // háptico medio al mantener pulsado
+                          setMsgContextMenu({ msg, x: touch.clientX, y: touch.clientY });
+                        }, 500);
                         const cancel = () => clearTimeout(timer);
                         e.currentTarget.addEventListener('touchend', cancel, { once: true });
                         e.currentTarget.addEventListener('touchmove', cancel, { once: true });
