@@ -4713,8 +4713,8 @@ const App: React.FC = () => {
               </button>
             ))}
           </div>
-          {/* Zona safe-area — rellena el espacio del home indicator en iPhone */}
-          <div style={{ height: 'env(safe-area-inset-bottom, 0px)', background: 'transparent' }} />
+          {/* Zona safe-area — rellena el espacio del home indicator en iPhone y Android gesture bar */}
+          <div style={{ height: 'max(env(safe-area-inset-bottom, 8px), 8px)', background: 'transparent' }} />
         </div>
       </>
     );
