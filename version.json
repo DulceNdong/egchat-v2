@@ -1,5 +1,5 @@
 {
-  "version": "2.5.0",
+  "version": "20260515-142116",
   "buildDate": "2026-04-09T12:00:00Z",
   "releaseType": "production",
   "deploymentStatus": "ready-for-all-users",
@@ -90,13 +90,13 @@
       "status": "ready",
       "platform": "Render",
       "url": "https://egchat-api.onrender.com",
-      "version": "2.0.0"
+      "version": "20260515-142116"
     },
     "frontend": {
       "status": "ready",
       "platform": "Vercel",
       "url": "https://egchat-app.vercel.app",
-      "version": "2.0.0"
+      "version": "20260515-142116"
     }
   },
   "totalEndpoints": 85,
