@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ImageViewerModal from './ImageViewerModal';
 import './index.css';
-import { chatAPI, authAPI, contactsAPI } from './api';
+import { chatAPI, authAPI, contactsAPI, storiesAPI } from './api';
 import AuthScreen from './AuthScreen';
 import { ContactImportModal } from './ContactImportModal';
 import { EstadosView } from './EstadosView';
@@ -592,6 +592,8 @@ const App: React.FC = () => {
   const [expandFavoriteContacts, setExpandFavoriteContacts] = useState<boolean>(false);
   const [expandFavoriteGroups, setExpandFavoriteGroups] = useState<boolean>(false);
   const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
+  // IDs de usuarios que tienen stories activos (para mostrar anillo en avatares)
+  const [activeStoryUserIds, setActiveStoryUserIds] = useState<Set<string>>(new Set());
   const [bankAccounts, setBankAccounts] = useState<Array<{ id: string; bank: string; type: string; balance: number; icon: string }>>([
     { id: '1', bank: 'BANGE', type: 'Corriente', balance: 45200, icon: 'banking' },
     { id: '2', bank: 'CCEI Bank', type: 'Ahorros', balance: 80000, icon: 'banking' }
@@ -922,6 +924,25 @@ const App: React.FC = () => {
     updateTime();
     const interval = setInterval(updateTime, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Refrescar stories activos cada 2 minutos para mantener los anillos actualizados
+  React.useEffect(() => {
+    const loadActiveStories = () => {
+      storiesAPI.getAll().then((data: any[]) => {
+        if (Array.isArray(data)) {
+          const ids = new Set(
+            data
+              .filter((s: any) => !s.isMe && Array.isArray(s.media) && s.media.length > 0)
+              .map((s: any) => s.userId?.toString())
+              .filter(Boolean)
+          );
+          setActiveStoryUserIds(ids);
+        }
+      }).catch(() => { /* silencioso */ });
+    };
+    const storyInterval = setInterval(loadActiveStories, 2 * 60 * 1000);
+    return () => clearInterval(storyInterval);
   }, []);
 
   // Scroll al fondo al ABRIR un chat
@@ -6617,9 +6638,12 @@ const App: React.FC = () => {
                         <div style={{ position: 'relative' }}>
                           <Avatar name={contact.name || contact.user?.name || '?'} size={56} showStatus={true} status={contact.status || 'offline'} photo={contact.avatar_url || contact.user?.avatar_url} />
                           {/* Anillo de estado si tiene estado publicado */}
-                          {contact.hasStory && (
-                            <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', border: '2px solid #00c8a0', pointerEvents: 'none' }} />
-                          )}
+                          {(() => {
+                            const uid = (contact.contact_user_id || contact.user_id || contact.id)?.toString();
+                            return uid && activeStoryUserIds.has(uid) ? (
+                              <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', border: '2px solid #00c8a0', pointerEvents: 'none' }} />
+                            ) : null;
+                          })()}
                         </div>
                         <span style={{ 
                           fontSize: '13px', 
@@ -7981,12 +8005,20 @@ const App: React.FC = () => {
                 >
                   {/* Avatar con foto editable */}
                   <div style={{ position: 'relative', flexShrink: 0 }}>
+                    {/* Anillo de story si tiene estado publicado */}
+                    {(() => {
+                      const uid = (contact.contact_user_id || contact.user_id || contact.id)?.toString();
+                      return uid && activeStoryUserIds.has(uid) ? (
+                        <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', zIndex: 0 }} />
+                      ) : null;
+                    })()}
                     <div style={{
                       width: '44px', height: '44px', borderRadius: '50%',
                       background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
                       overflow: 'hidden', display: 'flex', alignItems: 'center',
                       justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff',
-                      border: `2px solid ${contact.status === 'online' ? '#00c8a0' : contact.status === 'away' ? '#f59e0b' : '#9ca3af'}`
+                      border: `2px solid ${contact.status === 'online' ? '#00c8a0' : contact.status === 'away' ? '#f59e0b' : '#9ca3af'}`,
+                      position: 'relative', zIndex: 1,
                     }}>
                       {contact.avatarUrl
                         ? <img src={contact.avatarUrl} alt={contact.name} style={{ width:'100%', height:'100%', objectFit:'cover' }} />
@@ -9647,6 +9679,18 @@ const App: React.FC = () => {
     loadContacts();
     // Cargar contactos favoritos reales
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
+    // Cargar stories activos para mostrar anillo en avatares
+    storiesAPI.getAll().then((data: any[]) => {
+      if (Array.isArray(data)) {
+        const ids = new Set(
+          data
+            .filter((s: any) => !s.isMe && Array.isArray(s.media) && s.media.length > 0)
+            .map((s: any) => s.userId?.toString())
+            .filter(Boolean)
+        );
+        setActiveStoryUserIds(ids);
+      }
+    }).catch(() => { /* silencioso */ });
     // Cargar grupos favoritos — con fallback a localStorage si el backend no lo soporta
     chatAPI.getFavoriteChats?.().then((data: any[]) => {
       if (Array.isArray(data) && data.length > 0) {
@@ -10745,13 +10789,12 @@ const App: React.FC = () => {
                     <div style={{ position: 'relative', flexShrink: 0 }}>
                       {(() => {
                         // Detectar si este contacto tiene estado publicado
-                        const otherId = !isGrp && chat.participants
-                          ? chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())?.user_id?.toString()
+                        const otherParticipant = !isGrp && chat.participants
+                          ? chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())
                           : null;
-                        const hasStory = false; // se puede conectar a stories cuando estén disponibles
-                        const contactStatus = !isGrp && chat.participants
-                          ? (chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())?.status || 'offline')
-                          : 'offline';
+                        const otherUserId = otherParticipant?.user_id?.toString();
+                        const hasStory = otherUserId ? activeStoryUserIds.has(otherUserId) : false;
+                        const contactStatus = otherParticipant?.status || 'offline';
                         return (
                           <>
                             {hasStory && (
