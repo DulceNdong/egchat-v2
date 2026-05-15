@@ -6567,15 +6567,34 @@ const App: React.FC = () => {
                         key={contact.id}
                         onClick={async () => {
                           try {
-                            const chat = await chatAPI.createPrivate(contact.id);
+                            // Buscar primero si ya existe un chat con este contacto
+                            const contactUserId = contact.contact_user_id || contact.user_id || contact.id;
+                            const existingChat = (realChats as any[]).find((c: any) => {
+                              if (c.type === 'group') return false;
+                              return c.participants?.some((p: any) =>
+                                p.user_id?.toString() === contactUserId?.toString() &&
+                                p.user_id?.toString() !== currentUserId.current?.toString()
+                              );
+                            });
+                            if (existingChat) {
+                              const name = contact.name || contact.user?.name || 'Usuario';
+                              const initials = name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
+                              setSelectedChat({ id: existingChat.id, type: 'individual', title: name, subtitle: '', time: '', status: 'online', initials, color: '#00c8a0', avatarUrl: contact.avatar_url || contact.user?.avatar_url || '', user_id: contactUserId });
+                              setCurrentView('Mensajería');
+                              return;
+                            }
+                            // Si no existe, crear el chat
+                            const chat = await chatAPI.createPrivate(contactUserId);
                             if (chat?.id) {
                               const name = contact.name || contact.user?.name || 'Usuario';
                               const initials = name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
-                              setSelectedChat({ id: chat.id, type: 'individual', title: name, subtitle: '', time: '', status: 'online', initials, color: '#00c8a0', avatarUrl: contact.avatar_url || contact.user?.avatar_url || '', user_id: contact.id });
+                              setSelectedChat({ id: chat.id, type: 'individual', title: name, subtitle: '', time: '', status: 'online', initials, color: '#00c8a0', avatarUrl: contact.avatar_url || contact.user?.avatar_url || '', user_id: contactUserId });
                               setCurrentView('Mensajería');
                               loadChats();
+                            } else {
+                              showToast('No se pudo abrir el chat', 'error');
                             }
-                          } catch { showToast('No se pudo abrir el chat', 'error'); }
+                          } catch (_e) { showToast('No se pudo abrir el chat', 'error'); }
                         }}
                         style={{
                           background: 'transparent',
@@ -9637,7 +9656,19 @@ const App: React.FC = () => {
       // Fallback: leer de localStorage
       try {
         const saved = JSON.parse(localStorage.getItem('egchat_fav_groups') || '[]');
-        if (Array.isArray(saved)) setFavoriteGroupIds(saved);
+        if (Array.isArray(saved) && saved.length > 0) {
+          setFavoriteGroupIds(saved);
+        } else {
+          // Auto-favorito: marcar el primer grupo disponible para que el usuario pueda probar
+          setTimeout(() => {
+            const groups = (realChatsRef.current || []).filter((c: any) => c.type === 'group');
+            if (groups.length > 0) {
+              const firstId = groups[0].id?.toString();
+              setFavoriteGroupIds([firstId]);
+              try { localStorage.setItem('egchat_fav_groups', JSON.stringify([firstId])); } catch (_e) { /* silencioso */ }
+            }
+          }, 2000);
+        }
       } catch (_e) { /* silencioso */ }
     });
     // Inicializar gesto de atrás predictivo (Android 14+ y anteriores)
