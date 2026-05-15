@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npm run build",
+  "buildCommand": "rm -rf dist && npm run build",
   "outputDirectory": "dist",
   "routes": [
     { "src": "/descarga.html", "dest": "/descarga.html" },
