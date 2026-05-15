@@ -17,7 +17,7 @@ setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260505-typing-bar-fix-v4';
+const APP_VERSION = 'v20260515-keyboard-fix-v1';
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
   // Nueva versión detectada — limpiar todos los caches del SW
@@ -58,8 +58,7 @@ if (storedVersion !== APP_VERSION) {
 
 // ── Fix viewport height para Android WebView / Capacitor ─────────────────
 // Con adjustNothing el teclado aparece ENCIMA del contenido sin mover nada.
-// Usamos visualViewport para detectar el espacio real disponible y
-// movemos el input bar hacia arriba con CSS transform.
+// Usamos visualViewport para exponer la altura real como variable CSS.
 function fixAndroidViewportHeight() {
   const setVh = () => {
     const h = window.visualViewport?.height || window.innerHeight;
@@ -67,33 +66,8 @@ function fixAndroidViewportHeight() {
   };
   setVh();
   window.addEventListener('resize', setVh);
-
   if (window.visualViewport) {
-    window.visualViewport.addEventListener('resize', () => {
-      setVh();
-      const viewportHeight = window.visualViewport!.height;
-      const windowHeight   = window.innerHeight;
-      const offsetTop      = window.visualViewport!.offsetTop || 0;
-      const keyboardHeight = Math.max(0, windowHeight - viewportHeight - offsetTop);
-
-      const inputBar = document.getElementById('chat-input-bar');
-      if (inputBar) {
-        if (keyboardHeight > 100) {
-          // Teclado visible — subir el input bar
-          inputBar.style.bottom = `${keyboardHeight}px`;
-          inputBar.style.transition = 'bottom 0.15s ease';
-          // Scroll al último mensaje
-          setTimeout(() => {
-            const scroll = document.querySelector('.chat-messages-scroll');
-            if (scroll) scroll.scrollTop = scroll.scrollHeight;
-          }, 100);
-        } else {
-          // Teclado oculto — restaurar posición
-          inputBar.style.bottom = '0px';
-          inputBar.style.transition = 'bottom 0.15s ease';
-        }
-      }
-    });
+    window.visualViewport.addEventListener('resize', setVh);
   }
 }
 fixAndroidViewportHeight();

@@ -101,15 +101,18 @@ export const ChatConversation: React.FC<Props> = ({
   const isNearBottomRef = useRef(true);
 
   // Detectar teclado virtual en móvil usando visualViewport API
-  // Esto evita que el header desaparezca cuando el teclado sube
+  // Usamos paddingBottom en el contenedor en lugar de cambiar `bottom`,
+  // así el header siempre queda visible y no hay espacio blanco.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
 
     const onResize = () => {
-      // Diferencia entre el viewport completo y el viewport visual (área visible)
-      const offset = window.innerHeight - vv.height - vv.offsetTop;
-      setKeyboardOffset(Math.max(0, offset));
+      // En iOS el viewport se encoge cuando aparece el teclado.
+      // Calculamos cuánto espacio ocupa el teclado como la diferencia
+      // entre el innerHeight y la altura visual actual.
+      const kbHeight = Math.max(0, window.innerHeight - vv.height);
+      setKeyboardOffset(kbHeight);
       // Scroll al fondo cuando aparece el teclado
       requestAnimationFrame(() => {
         if (scrollRef.current) {
@@ -287,12 +290,19 @@ export const ChatConversation: React.FC<Props> = ({
   return (
     <div style={{
       position: 'fixed',
-      inset: 0,
-      bottom: keyboardOffset,
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
       display: 'flex',
       flexDirection: 'column',
       background: '#fff',
       zIndex: 1100,
+      // Cuando el teclado sube, reducimos la altura visible del chat
+      // usando paddingBottom para empujar el input hacia arriba sin
+      // dejar espacio blanco ni ocultar el header.
+      paddingBottom: keyboardOffset > 0 ? `${keyboardOffset}px` : undefined,
+      transition: 'padding-bottom 0.15s ease',
     }}>
 
       {/* Header */}
@@ -300,8 +310,7 @@ export const ChatConversation: React.FC<Props> = ({
         background: '#fff',
         borderBottom: 'none',
         flexShrink: 0, zIndex: 10,
-        paddingTop: 'env(safe-area-inset-top, 0px)',
-        marginTop: 0,
+        paddingTop: 'env(safe-area-inset-top, 44px)',
       }}>
       <div style={{
         display: 'flex', alignItems: 'center', gap: '6px',

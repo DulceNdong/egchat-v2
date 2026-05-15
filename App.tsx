@@ -10459,11 +10459,26 @@ const App: React.FC = () => {
         <ImageViewerModal
           url={chatImageViewer}
           onClose={() => setChatImageViewer(null)}
-          chats={(realChats as any[]).map((c: any) => ({
-            id: c.id?.toString() || '',
-            title: c.title || c.name || '',
-            avatarUrl: c.avatar_url || c.avatarUrl || '',
-          }))}
+          chats={(realChats as any[]).map((c: any) => {
+            const isGroup = c.type === 'group' || (Array.isArray(c.participants) && c.participants.length > 2);
+            let name = c.name || c.title || '';
+            let avatarUrl = c.avatar_url || c.avatarUrl || '';
+            if (!isGroup && c.participants) {
+              const other = c.participants.find((p: any) =>
+                p.user_id?.toString() !== currentUserId.current?.toString()
+              );
+              if (other) {
+                name = other.full_name || other.users?.full_name || name;
+                avatarUrl = other.avatar_url || other.users?.avatar_url || avatarUrl;
+              }
+            }
+            if (!name) name = isGroup ? 'Grupo' : 'Chat';
+            return {
+              id: c.id?.toString() || '',
+              title: name,
+              avatarUrl,
+            };
+          })}
           onForward={async (chatId: string, imageUrl: string) => {
             const msgId = Date.now().toString();
             const tm = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
