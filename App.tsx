@@ -6595,7 +6595,13 @@ const App: React.FC = () => {
                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                       >
-                        <Avatar name={contact.name || contact.user?.name || '?'} size={56} showStatus={false} photo={contact.avatar_url || contact.user?.avatar_url} />
+                        <div style={{ position: 'relative' }}>
+                          <Avatar name={contact.name || contact.user?.name || '?'} size={56} showStatus={true} status={contact.status || 'offline'} photo={contact.avatar_url || contact.user?.avatar_url} />
+                          {/* Anillo de estado si tiene estado publicado */}
+                          {contact.hasStory && (
+                            <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', border: '2px solid #00c8a0', pointerEvents: 'none' }} />
+                          )}
+                        </div>
                         <span style={{ 
                           fontSize: '13px', 
                           fontWeight: '600',
@@ -6675,7 +6681,22 @@ const App: React.FC = () => {
                     ) : realChats.filter((c: any) => c.type === 'group' && favoriteGroupIds.includes(c.id?.toString())).slice(0, 6).map((group: any) => (
                       <button
                         key={group.id}
-                        onClick={() => setSelectedChat(group)}
+                        onClick={() => {
+                          const grp = group;
+                          setSelectedChat({
+                            id: grp.id,
+                            type: 'group',
+                            title: grp.name || grp.title || 'Grupo',
+                            subtitle: grp.last_message?.text || grp.subtitle || '',
+                            time: '',
+                            status: 'online',
+                            initials: (grp.name || grp.title || 'G').slice(0,2).toUpperCase(),
+                            color: '#a855f7',
+                            avatarUrl: grp.avatar_url || grp.avatarUrl || '',
+                            isGroup: true,
+                          });
+                          setCurrentView('Mensajería');
+                        }}
                         style={{
                           background: 'transparent',
                           border: 'none',
@@ -6694,7 +6715,13 @@ const App: React.FC = () => {
                         onMouseEnter={(e) => { e.currentTarget.style.transform = 'scale(1.1)'; }}
                         onMouseLeave={(e) => { e.currentTarget.style.transform = 'scale(1)'; }}
                       >
-                        <Avatar name={group.name || 'Grupo'} size={56} showStatus={false} />
+                        <div style={{ position: 'relative' }}>
+                          <Avatar name={group.name || 'Grupo'} size={56} showStatus={false} photo={group.avatar_url || group.avatarUrl} />
+                          {/* Anillo verde si el grupo tiene estado publicado */}
+                          {group.hasStory && (
+                            <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', border: '2px solid #a855f7', pointerEvents: 'none' }} />
+                          )}
+                        </div>
                         <span style={{ 
                           fontSize: '13px', 
                           fontWeight: '600',
@@ -8210,19 +8237,24 @@ const App: React.FC = () => {
                       e.stopPropagation();
                       const gid = group.id?.toString();
                       const isFav = favoriteGroupIds.includes(gid);
+                      const updateFavGroups = (ids: string[]) => {
+                        setFavoriteGroupIds(ids);
+                        try { localStorage.setItem('egchat_fav_groups', JSON.stringify(ids)); } catch (_e) { /* silencioso */ }
+                      };
                       try {
                         if (isFav) {
                           await chatAPI.unfavoriteChat(gid);
-                          setFavoriteGroupIds(prev => prev.filter(x => x !== gid));
+                          updateFavGroups(favoriteGroupIds.filter(x => x !== gid));
                         } else {
                           await chatAPI.favoriteChat(gid);
-                          setFavoriteGroupIds(prev => [...prev, gid]);
+                          updateFavGroups([...favoriteGroupIds, gid]);
                         }
-                      } catch {
+                      } catch (_e) {
                         // fallback local si falla la API
-                        setFavoriteGroupIds(prev =>
-                          prev.includes(gid) ? prev.filter(x => x !== gid) : [...prev, gid]
-                        );
+                        const next = favoriteGroupIds.includes(gid)
+                          ? favoriteGroupIds.filter(x => x !== gid)
+                          : [...favoriteGroupIds, gid];
+                        updateFavGroups(next);
                       }
                     }}
                     style={{
@@ -9596,8 +9628,18 @@ const App: React.FC = () => {
     loadContacts();
     // Cargar contactos favoritos reales
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
-    // Cargar grupos favoritos reales - endpoint deshabilitado hasta que el backend lo implemente
-    // chatAPI.getFavoriteChats().then(...)
+    // Cargar grupos favoritos — con fallback a localStorage si el backend no lo soporta
+    chatAPI.getFavoriteChats?.().then((data: any[]) => {
+      if (Array.isArray(data) && data.length > 0) {
+        setFavoriteGroupIds(data.map((c: any) => c.id?.toString()));
+      }
+    }).catch(() => {
+      // Fallback: leer de localStorage
+      try {
+        const saved = JSON.parse(localStorage.getItem('egchat_fav_groups') || '[]');
+        if (Array.isArray(saved)) setFavoriteGroupIds(saved);
+      } catch (_e) { /* silencioso */ }
+    });
     // Inicializar gesto de atrás predictivo (Android 14+ y anteriores)
     initPredictiveBack((view: string) => setCurrentView(view));
     // Registrar Web Push (con peque?o delay para que el SW est listo)
@@ -10512,7 +10554,7 @@ const App: React.FC = () => {
       {/* Vistas secundarias - fuera del stacking context del wallpaper */}
       {(currentView === 'estados' || currentView === 'apuestas' || currentView === 'cemac' || currentView === 'mitaxi') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 600 }}>
-          {currentView === 'estados' && <EstadosView onBack={() => setCurrentView(previousView || 'home')} currentUser={{ id: userProfile.id, name: userProfile.name, avatar: userProfile.avatar, avatarUrl: userProfile.avatarUrl, color: '#00c8a0' }} />}
+          {currentView === 'estados' && <EstadosView onBack={() => setCurrentView(previousView || 'home')} currentUser={{ id: userProfile.id, name: userProfile.name, avatar: userProfile.avatar, avatarUrl: userProfile.avatarUrl, color: '#00c8a0' }} groups={(allGroups as any[]).map((g: any) => ({ id: g.id?.toString(), name: g.name || 'Grupo', avatarUrl: g.avatarUrl || g.avatar_url || '', isAdmin: true }))} />}
           {currentView === 'apuestas' && <ApuestasView onBack={() => setCurrentView(previousView || 'home')} userBalance={userBalance} onDebit={(a: number) => setUserBalance(prev => prev - a)} />}
           {currentView === 'cemac' && <CemacView onBack={() => setCurrentView(previousView || 'home')} />}
           {currentView === 'mitaxi' && <MiTaxiView onBack={() => setCurrentView(previousView || 'home')} userBalance={userBalance} onDebit={(a: number) => setUserBalance(prev => prev - a)} userName={userProfile.name} userPhone={userProfile.phone} />}
@@ -10668,8 +10710,36 @@ const App: React.FC = () => {
                     setSelectedChat({ id: chat.id, type: chat.type||'individual', title: name, subtitle: lastMsg, time: time2, status: 'online', initials: initials2, color: isGrp ? '#a855f7' : '#00c8a0', avatarUrl, isGroup: isGrp });
                     setCurrentView('Mensajería');
                   }} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 8px', borderRadius: '10px', cursor: 'pointer', background: isActive ? 'rgba(0,200,160,0.08)' : 'transparent', marginBottom: '2px', borderLeft: isActive ? '3px solid #00c8a0' : '3px solid transparent' }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '50%', background: isGrp ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
-                      {avatarUrl ? <img src={avatarUrl} alt={name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span>{initials2}</span>}
+                    {/* Avatar con indicador de estado online y anillo si tiene estado publicado */}
+                    <div style={{ position: 'relative', flexShrink: 0 }}>
+                      {(() => {
+                        // Detectar si este contacto tiene estado publicado
+                        const otherId = !isGrp && chat.participants
+                          ? chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())?.user_id?.toString()
+                          : null;
+                        const hasStory = false; // se puede conectar a stories cuando estén disponibles
+                        const contactStatus = !isGrp && chat.participants
+                          ? (chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())?.status || 'offline')
+                          : 'offline';
+                        return (
+                          <>
+                            {hasStory && (
+                              <div style={{
+                                position: 'absolute', inset: -2, borderRadius: '50%',
+                                border: `2px solid ${isGrp ? '#a855f7' : '#00c8a0'}`,
+                                zIndex: 1, pointerEvents: 'none',
+                              }} />
+                            )}
+                            <Avatar
+                              name={name}
+                              size={48}
+                              photo={avatarUrl}
+                              status={isGrp ? undefined : (contactStatus as any)}
+                              showStatus={!isGrp}
+                            />
+                          </>
+                        );
+                      })()}
                     </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '14px', fontWeight: isActive ? '700' : '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>

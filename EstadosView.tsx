@@ -17,6 +17,7 @@ interface Espacio { id: string; name: string; cover: string; emoji: string; desc
 interface Props {
   onBack: () => void;
   currentUser?: { id?: string; name?: string; avatar?: string; avatarUrl?: string; color?: string };
+  groups?: { id: string; name: string; avatarUrl?: string; isAdmin?: boolean }[];
 }
 type CreateMode = 'text' | 'video' | 'clip' | 'live' | 'gallery' | null;
 
@@ -326,7 +327,7 @@ const VideoEditor: React.FC<VideoEditorProps> = ({
 };
 // ─────────────────────────────────────────────────────────────────────────────
 
-export const EstadosView: React.FC<Props> = ({ onBack, currentUser }) => {
+export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] }) => {
   // Inicializar el story "me" con datos reales del usuario si están disponibles
   const myAvatar = currentUser?.avatarUrl ? '' : (currentUser?.name ? currentUser.name.split(' ').map(w => w[0]).join('').slice(0, 2).toUpperCase() : 'JP');
   const myColor = currentUser?.color || '#00c8a0';
@@ -1246,7 +1247,7 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser }) => {
             </div>
           </div>
         ) : (
-          <>
+          <div>
             {/* Mi estado — solo en pestaña Recientes */}
             {activeTab === 'recientes' && (
               <div style={{ padding: '12px 16px', borderBottom: '1px solid #f5f5f5' }}>
@@ -1265,18 +1266,16 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser }) => {
                     <div style={{ fontSize: '15px', fontWeight: '600', color: '#111' }}>Mi estado</div>
                     <div style={{ fontSize: '12px', color: '#888', marginTop: '1px' }}>{me.media.length ? `${me.media.length} publicacion${me.media.length > 1 ? 'es' : ''}  -  ${timeLeft(me.publishedAt)}` : 'Toca para anadir estado'}</div>
                   </div>
-                  {/* Botones acción */}
                   <div style={{ display: 'flex', gap: '2px', alignItems: 'center' }}>
                     {([{ mode: 'gallery' as CreateMode, icon: <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>, color: '#a855f7' }, { mode: 'clip' as CreateMode, icon: Icon.clip, color: '#f59e0b' }, { mode: 'video' as CreateMode, icon: Icon.video, color: '#06b6d4' }, { mode: 'live' as CreateMode, icon: Icon.live, color: '#ef4444' }]).map(b => (
                       <button key={b.mode} onClick={() => openCreate(b.mode)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: b.color, padding: '6px', display: 'flex', borderRadius: '50%' }}>{b.icon}</button>
                     ))}
-                    {/* Menú opciones */}
                     <div style={{ position: 'relative' }}>
                       <button onClick={() => setMyStoryMenu(v => !v)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#aaa', padding: '6px', display: 'flex', borderRadius: '50%' }}>
                         <svg width="20" height="20" viewBox="0 0 24 24" fill="currentColor"><circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/></svg>
                       </button>
                       {myStoryMenu && (
-                        <>
+                        <div>
                           <div onClick={() => setMyStoryMenu(false)} style={{ position: 'fixed', inset: 0, zIndex: 99 }} />
                           <div style={{ position: 'absolute', right: 0, top: '36px', background: '#fff', borderRadius: '12px', boxShadow: '0 4px 20px rgba(0,0,0,0.12)', border: '1px solid #f0f0f0', zIndex: 100, minWidth: '180px', overflow: 'hidden' }}>
                             <button onClick={() => { openCreate('gallery'); setMyStoryMenu(false); }} style={{ width: '100%', padding: '13px 16px', background: 'none', border: 'none', cursor: 'pointer', fontSize: '14px', color: '#111', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px', borderBottom: '1px solid #f5f5f5' }}>
@@ -1298,10 +1297,37 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser }) => {
                               </button>
                             )}
                           </div>
-                        </>
+                        </div>
                       )}
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+            {/* Estados de Grupos — solo en pestaña Recientes */}
+            {activeTab === 'recientes' && groups.length > 0 && (
+              <div style={{ padding: '10px 16px 4px', borderBottom: '1px solid #f0f0f0' }}>
+                <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
+                  Estados de Grupos
+                </div>
+                <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
+                  {groups.map(grp => (
+                    <div key={grp.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', minWidth: '60px', cursor: 'pointer' }}>
+                      <div style={{ padding: '2.5px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)' }}>
+                        <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', border: '2px solid #fff', overflow: 'hidden' }}>
+                          {grp.avatarUrl
+                            ? <img src={grp.avatarUrl} alt={grp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                            : (grp.name || 'G').slice(0, 2).toUpperCase()}
+                        </div>
+                      </div>
+                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#374151', textAlign: 'center', maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {grp.name}
+                      </span>
+                      {grp.isAdmin && (
+                        <span style={{ fontSize: '9px', color: '#a855f7', fontWeight: '700', background: 'rgba(168,85,247,0.1)', borderRadius: '4px', padding: '1px 4px' }}>Admin</span>
+                      )}
+                    </div>
+                  ))}
                 </div>
               </div>
             )}
@@ -1309,32 +1335,30 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser }) => {
               <div style={{ padding: '40px 16px', textAlign: 'center', color: '#bbb', fontSize: '13px' }}>
                 {activeTab === 'recientes' ? 'No hay estados nuevos' : 'No has visto ningun estado aun'}
               </div>
-            ) : (
-              displayed.map(s => (
-                <div key={s.id} onClick={() => openStory(s)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f9f9f9' }}>
-                  <div style={{ padding: '2.5px', borderRadius: '50%', background: s.seen ? '#e5e7eb' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', flexShrink: 0 }}>
-                    <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', border: '2px solid #fff', overflow: 'hidden' }}>
-                      {s.userId === 'me-contact' && currentUser?.avatarUrl
-                        ? <img src={currentUser.avatarUrl} alt={s.userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                        : s.avatar}
-                    </div>
+            ) : displayed.map(s => (
+              <div key={s.id} onClick={() => openStory(s)} style={{ display: 'flex', alignItems: 'center', gap: '14px', padding: '10px 16px', cursor: 'pointer', borderBottom: '1px solid #f9f9f9' }}>
+                <div style={{ padding: '2.5px', borderRadius: '50%', background: s.seen ? '#e5e7eb' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', flexShrink: 0 }}>
+                  <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: s.color, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', border: '2px solid #fff', overflow: 'hidden' }}>
+                    {s.userId === 'me-contact' && currentUser?.avatarUrl
+                      ? <img src={currentUser.avatarUrl} alt={s.userName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                      : s.avatar}
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: '15px', fontWeight: s.seen ? '400' : '600', color: s.seen ? '#555' : '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {s.userId === 'me-contact' ? `${s.userName} (tú)` : s.userName}
-                    </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
-                      <span style={{ fontSize: '12px', color: '#aaa' }}>hace {timeAgo(s.publishedAt)}</span>
-                      <span style={{ color: '#ccc' }}> - </span>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '12px', color: '#aaa' }}>{Icon.eye} {s.views}</span>
-                      {s.media[0]?.music && <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#aaa' }}>{Icon.music}</span>}
-                    </div>
-                  </div>
-                  {s.trending && <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: '700', background: '#fef2f2', padding: '2px 7px', borderRadius: '10px', flexShrink: 0 }}>TOP</span>}
                 </div>
-              ))
-            )}
-          </>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: '15px', fontWeight: s.seen ? '400' : '600', color: s.seen ? '#555' : '#111', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                    {s.userId === 'me-contact' ? `${s.userName} (tú)` : s.userName}
+                  </div>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginTop: '2px' }}>
+                    <span style={{ fontSize: '12px', color: '#aaa' }}>hace {timeAgo(s.publishedAt)}</span>
+                    <span style={{ color: '#ccc' }}> - </span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '3px', fontSize: '12px', color: '#aaa' }}>{Icon.eye} {s.views}</span>
+                    {s.media[0]?.music && <span style={{ display: 'flex', alignItems: 'center', gap: '2px', color: '#aaa' }}>{Icon.music}</span>}
+                  </div>
+                </div>
+                {s.trending && <span style={{ fontSize: '10px', color: '#ef4444', fontWeight: '700', background: '#fef2f2', padding: '2px 7px', borderRadius: '10px', flexShrink: 0 }}>TOP</span>}
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
