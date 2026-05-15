@@ -6339,136 +6339,91 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Barra de input — position:fixed con bottom=altura del teclado */}
-              <div id="chat-input-bar" style={{
-                position: 'fixed',
-                bottom: inputBottom,
-                left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
-                right: 0,
-                background: '#f0f2f5',
-                borderTop: '1px solid rgba(0,0,0,0.06)',
-                padding: '8px 8px',
-                paddingBottom: inputBottom > 0 ? '8px' : (device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px'),
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                zIndex: 1102,
-              }}>
-                {/* DEBUG — quitar después */}
-                {device.isMobile && <div style={{ fontSize: '9px', color: '#999', textAlign: 'center', lineHeight: 1 }}>{_vvDebug} | bot:{inputBottom}</div>}
-                {/* Botón + */}
-                <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
-                  style={{ background: 'none', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0 }}>
-                  <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-                </button>
-
-                {/* Input */}
-                <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#ffffff', border: `1.5px solid ${editingMsgId ? '#6B5BD6' : '#E5E7EB'}`, borderRadius: '24px', minHeight: '44px', padding: '0 8px 0 16px', gap: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
-                  {editingMsgId && <span style={{ fontSize: '11px', color: '#6B5BD6', fontWeight: '700', flexShrink: 0 }}>✏️</span>}
-                  <input
-                    type="text"
-                    value={currentChatInput}
-                    onChange={e => { setCurrentChatInput(e.target.value); if (!e.target.value && editingMsgId) setEditingMsgId(null); }}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendChatMessage(); } }}
-                    placeholder="Escribe un mensaje..."
-                    autoFocus
-                    autoComplete="off"
-                    autoCorrect="off"
-                    autoCapitalize="sentences"
-                    spellCheck={false}
-                    inputMode="text"
-                    ref={el => { if (el && document.activeElement !== el) el.focus(); }}
-                    style={{ flex: 1, background: 'none', border: 'none', color: '#111827', fontSize: '15px', outline: 'none', fontFamily: 'inherit', lineHeight: '1.4' }}
-                  />
-                  {currentChatInput.trim() && (
-                    <button onClick={sendChatMessage}
-                      style={{ background: 'none', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: '#00c8a0', flexShrink: 0 }}>
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-                    </button>
-                  )}
-                </div>
-
-                {/* Emoji */}
-                <button onClick={() => { setShowChatEmojis(p => !p); setShowChatAttach(false); setChatEmojiCategory('stickers'); }}
-                  style={{ background: 'none', border: 'none', borderRadius: '50%', color: showChatEmojis ? '#f59e0b' : '#9ca3af', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0 }}>
-                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                    <circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
-                  </svg>
-                </button>
-
-                {/* Micrófono — toca para grabar, toca de nuevo para enviar */}
-                <button
-                  onClick={async () => {
-                    if (isRecordingAudio) {
-                      chatRecorderRef.current?.stop();
-                      chatRecorderRef.current = null;
-                      setIsRecordingAudio(false);
-                      if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
-                      return;
-                    }
-                    try {
-                      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                      chatAudioChunksRef.current = [];
-                      const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus'
-                        : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm'
-                        : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
-                      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
-                      recorder.ondataavailable = e => { if (e.data.size > 0) chatAudioChunksRef.current.push(e.data); };
-                      let audioSent = false;
-                      recorder.onstop = async () => {
-                        if (audioSent) return; audioSent = true;
-                        stream.getTracks().forEach(t => t.stop());
-                        if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
-                        setChatRecordingTime(0);
-                        if (chatAudioChunksRef.current.length === 0) return;
-                        const finalMime = mimeType || 'audio/webm';
-                        const ext = finalMime.includes('mp4') ? 'm4a' : 'webm';
-                        const blob = new Blob(chatAudioChunksRef.current, { type: finalMime });
-                        if (blob.size < 100) return;
-                        const now = new Date();
-                        const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
-                        const msgId = Date.now().toString();
-                        const localUrl = URL.createObjectURL(blob);
-                        const newMsg = { id: msgId, from: 'me' as const, text: `🎤 Mensaje de voz`, time, timestamp: new Date().toISOString(), created_at: new Date().toISOString(), status: 'pending' as const, type: 'audio' as const, audioUrl: localUrl };
-                        addMsg(newMsg);
-                        // Subir al servidor para que persista
-                        const chatId = sc?.id?.toString() || '';
-                        if (chatId && chatId.length > 10) {
-                          try {
-                            const audioFile = new File([blob], `audio_${msgId}.${ext}`, { type: mimeType });
-                            const result = await chatAPI.uploadFile(chatId, audioFile);
-                            if (result.file_url) {
-                              const sent = await chatAPI.sendMessage(chatId, { text: '🎤 Mensaje de voz', type: 'audio', file_url: result.file_url });
-                              // Reemplazar ID local con ID del servidor para evitar duplicados en el polling
-                              const serverId = sent?.id || msgId;
-                              const key = sc?.id?.toString() || sc?.title;
-                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, audioUrl: result.file_url, status: 'delivered' } : m) }));
-                            }
-                          } catch {}
-                        }
-                      };
-                      recorder.start(100);
-                      chatRecorderRef.current = recorder;
-                      setIsRecordingAudio(true);
-                      setChatRecordingTime(0);
-                      chatRecordTimerRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
-                    } catch { showToast('No se pudo acceder al micrófono', 'error'); }
-                  }}
-                  style={{ background: isRecordingAudio ? '#ef4444' : 'none', border: 'none', borderRadius: '50%', color: isRecordingAudio ? '#fff' : '#9ca3af', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0, position: 'relative' }}>
-                  {isRecordingAudio && (
-                    <span style={{ position: 'absolute', top: '-20px', left: '50%', transform: 'translateX(-50%)', fontSize: '11px', color: '#ef4444', fontWeight: '700', whiteSpace: 'nowrap', background: '#fff', padding: '2px 6px', borderRadius: '6px', boxShadow: '0 1px 4px rgba(0,0,0,0.15)', border: '1px solid rgba(239,68,68,0.2)' }}>
-                      🔴 {String(Math.floor(chatRecordingTime/60)).padStart(2,'0')}:{String(chatRecordingTime%60).padStart(2,'0')}
-                    </span>
-                  )}
-                  {isRecordingAudio ? (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="#fff" stroke="#fff" strokeWidth="1.5" strokeLinecap="round"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
-                  ) : (
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                  )}
-                </button>
+            </div>
+            {/* Input bar — FUERA del chat-view-container para que position:fixed
+                funcione relativo a la pantalla, no al contenedor padre */}
+            <div id="chat-input-bar" style={{
+              position: 'fixed',
+              bottom: inputBottom,
+              left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
+              right: 0,
+              background: '#f0f2f5',
+              borderTop: '1px solid rgba(0,0,0,0.06)',
+              padding: '8px 8px',
+              paddingBottom: inputBottom > 0 ? '8px' : (device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px'),
+              display: 'flex',
+              alignItems: 'center',
+              gap: '6px',
+              zIndex: 1103,
+            }}>
+              {/* Botón + */}
+              <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
+                style={{ background: 'none', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0 }}>
+                <svg width="18" height="18" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+              </button>
+              {/* Input */}
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', background: '#ffffff', border: `1.5px solid ${editingMsgId ? '#6B5BD6' : '#E5E7EB'}`, borderRadius: '24px', minHeight: '44px', padding: '0 8px 0 16px', gap: '4px', boxShadow: '0 1px 4px rgba(0,0,0,0.07)' }}>
+                {editingMsgId && <span style={{ fontSize: '11px', color: '#6B5BD6', fontWeight: '700', flexShrink: 0 }}>✏️</span>}
+                <input
+                  type="text"
+                  value={currentChatInput}
+                  onChange={e => { setCurrentChatInput(e.target.value); if (!e.target.value && editingMsgId) setEditingMsgId(null); }}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); sendChatMessage(); } }}
+                  placeholder="Escribe un mensaje..."
+                  autoComplete="off"
+                  autoCorrect="off"
+                  autoCapitalize="sentences"
+                  spellCheck={false}
+                  inputMode="text"
+                  style={{ flex: 1, background: 'none', border: 'none', color: '#111827', fontSize: '15px', outline: 'none', fontFamily: 'inherit', lineHeight: '1.4' }}
+                />
+                {currentChatInput.trim() && (
+                  <button onClick={sendChatMessage}
+                    style={{ background: 'none', border: 'none', borderRadius: '50%', width: '36px', height: '36px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: '#00c8a0', flexShrink: 0 }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
+                  </button>
+                )}
               </div>
+              {/* Emoji */}
+              <button onClick={() => { setShowChatEmojis(p => !p); setShowChatAttach(false); setChatEmojiCategory('stickers'); }}
+                style={{ background: 'none', border: 'none', borderRadius: '50%', color: showChatEmojis ? '#f59e0b' : '#9ca3af', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"/><path d="M8 13s1.5 2 4 2 4-2 4-2"/><line x1="9" y1="9" x2="9.01" y2="9"/><line x1="15" y1="9" x2="15.01" y2="9"/>
+                </svg>
+              </button>
+              {/* Micrófono */}
+              <button
+                onClick={async () => {
+                  if (isRecordingAudio) {
+                    chatRecorderRef.current?.stop();
+                    chatRecorderRef.current = null;
+                    setIsRecordingAudio(false);
+                    if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
+                    return;
+                  }
+                  try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    chatAudioChunksRef.current = [];
+                    const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : MediaRecorder.isTypeSupported('audio/mp4') ? 'audio/mp4' : '';
+                    const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : {});
+                    recorder.ondataavailable = e => { if (e.data.size > 0) chatAudioChunksRef.current.push(e.data); };
+                    recorder.onstop = async () => {
+                      stream.getTracks().forEach(t => t.stop());
+                      if (chatRecordTimerRef.current) { clearInterval(chatRecordTimerRef.current); chatRecordTimerRef.current = null; }
+                      setChatRecordingTime(0);
+                    };
+                    recorder.start(100);
+                    chatRecorderRef.current = recorder;
+                    setIsRecordingAudio(true);
+                    setChatRecordingTime(0);
+                    chatRecordTimerRef.current = setInterval(() => setChatRecordingTime(t => t + 1), 1000);
+                  } catch { showToast('No se pudo acceder al micrófono', 'error'); }
+                }}
+                style={{ background: isRecordingAudio ? '#ef4444' : 'none', border: 'none', borderRadius: '50%', color: isRecordingAudio ? '#fff' : '#9ca3af', cursor: 'pointer', outline: 'none', padding: '8px', display: 'flex', flexShrink: 0 }}>
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
+                </svg>
+              </button>
             </div>
           </>
           );
