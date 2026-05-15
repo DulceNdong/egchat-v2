@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import ImageViewerModal from './ImageViewerModal';
 import './index.css';
 import { chatAPI, authAPI, contactsAPI } from './api';
 import AuthScreen from './AuthScreen';
@@ -10335,100 +10336,29 @@ const App: React.FC = () => {
         </>
       )}
 
-      {/* Visor de imagen inline ? se abre dentro de la app */}
+      {/* Visor de imagen — estilo WhatsApp/IMO con zoom, edición y reenvío */}
       {chatImageViewer && (
-        <div
-          onClick={() => setChatImageViewer(null)}
-          style={{
-            position: 'fixed', inset: 0, zIndex: 5000,
-            background: '#000',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            cursor: 'zoom-out',
-            animation: 'fadeIn 0.2s ease',
-          }}
-        >
-          <style>{`@keyframes fadeIn { from { opacity:0; transform:scale(0.95); } to { opacity:1; transform:scale(1); } }`}</style>
-          <img
-            src={chatImageViewer}
-            alt="foto"
-            style={{
-              maxWidth: '95vw', maxHeight: '88vh',
-              objectFit: 'contain',
-              borderRadius: '4px',
-              boxShadow: '0 20px 60px rgba(0,0,0,0.8)',
-              userSelect: 'none',
-            }}
-            onClick={e => e.stopPropagation()}
-          />
-          {/* Cerrar */}
-          <button
-            onClick={() => setChatImageViewer(null)}
-            style={{
-              position: 'absolute', top: '16px', right: '16px',
-              background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.15)',
-              borderRadius: '50%', width: '40px', height: '40px',
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-              cursor: 'pointer', color: '#fff',
-            }}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-          </button>
-          {/* Descargar — guarda en carpeta Fotos/Imágenes del dispositivo */}
-          <button
-            onClick={async (e) => {
-              e.stopPropagation();
+        <ImageViewerModal
+          url={chatImageViewer}
+          onClose={() => setChatImageViewer(null)}
+          chats={(realChats as any[]).map((c: any) => ({
+            id: c.id?.toString() || '',
+            title: c.title || c.name || '',
+            avatarUrl: c.avatar_url || c.avatarUrl || '',
+          }))}
+          onForward={async (chatId: string, imageUrl: string) => {
+            const msgId = Date.now().toString();
+            const tm = new Date().toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+            setChatMessages((prev: any) => ({ ...prev, [chatId]: [...(prev[chatId] || []), { id: msgId, from: 'me' as const, text: '📷 Foto', imageUrl, time: tm, status: 'pending' as const }] }));
+            if (chatId.includes('-') && chatId.length > 20) {
               try {
-                const url = chatImageViewer;
-                // Detectar extensión y tipo MIME
-                const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'jpg';
-                const mimeMap: Record<string, string> = {
-                  jpg: 'image/jpeg', jpeg: 'image/jpeg', png: 'image/png',
-                  gif: 'image/gif', webp: 'image/webp', mp4: 'video/mp4',
-                  mov: 'video/quicktime', avi: 'video/x-msvideo', pdf: 'application/pdf',
-                };
-                const mime = mimeMap[ext] || 'image/jpeg';
-                const isVideo = mime.startsWith('video/');
-                const filename = `egchat_${Date.now()}.${ext}`;
-
-                // Fetch como blob para forzar descarga local
-                const resp = await fetch(url);
-                const blob = await resp.blob();
-                const blobUrl = URL.createObjectURL(new Blob([blob], { type: mime }));
-
-                const a = document.createElement('a');
-                a.href = blobUrl;
-                a.download = filename;
-                // En iOS Safari, abrir en nueva pestaña permite "Guardar en Fotos"
-                if (/iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                  a.target = '_blank';
-                  a.rel = 'noopener';
-                }
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-                showToast(isVideo ? '📹 Video guardado' : '🖼️ Foto guardada', 'success');
-              } catch {
-                // Fallback: abrir en nueva pestaña
-                window.open(chatImageViewer, '_blank');
-                showToast('Abre la imagen y guárdala manualmente', 'info');
-              }
-            }}
-            style={{
-              position: 'absolute', bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))', left: '50%', transform: 'translateX(-50%)',
-              background: 'rgba(255,255,255,0.15)', backdropFilter: 'blur(8px)',
-              border: '1px solid rgba(255,255,255,0.25)',
-              borderRadius: '20px', padding: '10px 24px',
-              color: '#fff', fontSize: '13px', fontWeight: '600',
-              cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px',
-              outline: 'none',
-            }}
-          >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-            Guardar en dispositivo
-          </button>
-        </div>
+                await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: imageUrl });
+                setChatMessages((prev: any) => ({ ...prev, [chatId]: (prev[chatId] || []).map((m: any) => m.id === msgId ? { ...m, status: 'delivered' } : m) }));
+              } catch { /* silencioso */ }
+            }
+          }}
+          onShowToast={showToast}
+        />
       )}
       {/* Llamada entrante */}
       {incomingCall && !activeCall && (
