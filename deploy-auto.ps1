@@ -1,13 +1,27 @@
-# deploy-auto.ps1 — Deploy a Vercel con fallback a Netlify
+# deploy-auto.ps1 — Deploy a Vercel via GitHub Actions
 # Uso: powershell -ExecutionPolicy Bypass -File deploy-auto.ps1
 
 $ErrorActionPreference = "Continue"
 
-# 1. Verificar si hay cambios
+# 1. Verificar si hay cambios sin commitear
 git add -A
 $diff = git diff --cached --quiet 2>&1
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "Sin cambios, no se hace deploy"
+    # No hay cambios staged — verificar si hay commits sin pushear
+    $unpushed = git log origin/master..HEAD --oneline 2>&1
+    if (-not $unpushed) {
+        Write-Host "Sin cambios, no se hace deploy"
+        exit 0
+    }
+    # Hay commits sin pushear — hacer push directamente
+    Write-Host "Hay commits sin pushear, haciendo push..."
+    git push
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Error en git push"
+        exit 1
+    }
+    Write-Host "Deploy completado. GitHub Actions ejecutara el build en Vercel en ~2-3 minutos."
+    Write-Host "Ver progreso en: https://github.com/DulceNdong/egchat-v2/actions"
     exit 0
 }
 
@@ -19,27 +33,5 @@ if ($LASTEXITCODE -ne 0) {
     exit 1
 }
 
-# 3. Intentar asignar alias en Vercel (sin espera — Vercel despliega por webhook al recibir el push)
-$vercelOutput = npx vercel ls --scope dulcendongs-projects 2>&1
-$vercelUrl = ($vercelOutput | Select-String -Pattern 'egchat-v2-[a-z0-9]+-dulcendongs-projects\.vercel\.app' | Select-Object -First 1).Matches.Value
-
-if ($vercelUrl) {
-    npx vercel alias set $vercelUrl egchat-v2.vercel.app --scope dulcendongs-projects
-    Write-Host "Vercel alias asignado: $vercelUrl"
-    Write-Host "Deploy completado. Vercel procesara el build en ~1-2 minutos."
-    exit 0
-}
-
-# 5. Fallback a Netlify si Vercel no tiene nuevo deployment
-Write-Host "Vercel sin nuevo deployment (limite alcanzado?) - desplegando en Netlify..."
-
-if (-not $env:NETLIFY_AUTH_TOKEN -or -not $env:NETLIFY_SITE_ID) {
-    Write-Host "NETLIFY_AUTH_TOKEN o NETLIFY_SITE_ID no configurados. Configuralos con:"
-    Write-Host "  setx NETLIFY_AUTH_TOKEN 'tu-token'"
-    Write-Host "  setx NETLIFY_SITE_ID 'tu-site-id'"
-    exit 1
-}
-
-npm run build
-netlify deploy --prod --dir=dist --auth=$env:NETLIFY_AUTH_TOKEN --site=$env:NETLIFY_SITE_ID
-Write-Host "Deploy en Netlify completado"
+Write-Host "Deploy completado. GitHub Actions ejecutara el build en Vercel en ~2-3 minutos."
+Write-Host "Ver progreso en: https://github.com/DulceNdong/egchat-v2/actions"
