@@ -6339,23 +6339,18 @@ const App: React.FC = () => {
                 </div>
               )}
 
-            </div>
-            {/* Input bar — FUERA del chat-view-container para que position:fixed
-                funcione relativo a la pantalla, no al contenedor padre */}
-            <div id="chat-input-bar" style={{
-              position: 'fixed',
-              bottom: inputBottom,
-              left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
-              right: 0,
-              background: '#f0f2f5',
-              borderTop: '1px solid rgba(0,0,0,0.06)',
-              padding: '8px 8px',
-              paddingBottom: inputBottom > 0 ? '8px' : (device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px'),
-              display: 'flex',
-              alignItems: 'center',
-              gap: '6px',
-              zIndex: 1103,
-            }}>
+              {/* Input bar — dentro del contenedor, flexShrink:0 al fondo del flex */}
+              <div id="chat-input-bar" style={{
+                flexShrink: 0,
+                background: '#f0f2f5',
+                borderTop: '1px solid rgba(0,0,0,0.06)',
+                padding: '8px 8px',
+                paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '6px',
+                zIndex: 10,
+              }}>
               {/* Botón + */}
               <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
                 style={{ background: 'none', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0 }}>
@@ -6425,6 +6420,7 @@ const App: React.FC = () => {
                 </svg>
               </button>
             </div>
+          </div>
           </>
           );
         }
