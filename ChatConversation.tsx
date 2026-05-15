@@ -94,58 +94,32 @@ export const ChatConversation: React.FC<Props> = ({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [contextMenu, setContextMenu] = useState<{ msg: Msg; x: number; y: number } | null>(null);
   const [showMenu, setShowMenu] = useState(false);
-  const [keyboardOffset, setKeyboardOffset] = useState(0);
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const isNearBottomRef = useRef(true);
 
-  // Detectar teclado virtual en móvil usando visualViewport API
-  useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-
-    const onResize = () => {
-      // En iOS, cuando el teclado sube:
-      // - vv.height se reduce (altura visible)
-      // - vv.offsetTop puede ser > 0 (el viewport se desplaza)
-      // La altura del teclado = innerHeight - vv.height - vv.offsetTop
-      // Usamos Math.max(0, ...) para evitar valores negativos
-      const kbHeight = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
-      setKeyboardOffset(kbHeight);
-      // Scroll al fondo cuando aparece el teclado
-      requestAnimationFrame(() => {
-        if (scrollRef.current) {
-          scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-        }
-      });
-    };
-
-    vv.addEventListener('resize', onResize);
-    vv.addEventListener('scroll', onResize);
-    return () => {
-      vv.removeEventListener('resize', onResize);
-      vv.removeEventListener('scroll', onResize);
-    };
-  }, []);
-
-  // Ordenar mensajes ASC (antiguo arriba, nuevo abajo)
-  const sorted = [...messages].sort((a, b) => getMsgTs(a) - getMsgTs(b));
-
-  // Scroll al fondo al montar y cuando llegan mensajes nuevos — SIEMPRE
+  // Scroll al fondo cuando llegan mensajes nuevos
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     requestAnimationFrame(() => {
       el.scrollTo({ top: el.scrollHeight, behavior: 'smooth' });
     });
-  }, [sorted.length]);
+  }, [messages.length]);
 
-  // Scroll al fondo al abrir el chat
+  // Scroll al fondo al abrir el chat y cuando el teclado sube
   useEffect(() => {
-    setTimeout(() => {
+    const scrollToBottom = () => {
       if (scrollRef.current) scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }, 100);
+    };
+    setTimeout(scrollToBottom, 100);
+    // Scroll cuando el teclado sube (visualViewport resize)
+    const vv = window.visualViewport;
+    if (vv) {
+      vv.addEventListener('resize', scrollToBottom);
+      return () => vv.removeEventListener('resize', scrollToBottom);
+    }
   }, [chat.id]);
 
   // Detectar si el usuario está cerca del fondo
@@ -287,25 +261,30 @@ export const ChatConversation: React.FC<Props> = ({
   };
 
   // ─── Render ──────────────────────────────────────────────────────────────────
+  const sorted = [...messages].sort((a, b) => getMsgTs(a) - getMsgTs(b));
+
   return (
+    // Contenedor principal: flex column, altura = viewport visible.
+    // En iOS Safari, cuando el teclado sube, el viewport se encoge
+    // automáticamente y este contenedor se reduce con él.
+    // NO usamos JS para mover nada — CSS lo maneja solo.
     <div style={{
       position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
+      top: 0, left: 0, right: 0, bottom: 0,
+      display: 'flex',
+      flexDirection: 'column',
       background: '#fff',
       zIndex: 1100,
+      // 100dvh respeta el viewport dinámico de iOS (sin la barra del navegador)
+      height: '100dvh',
+      overflow: 'hidden',
     }}>
 
-      {/* Header — fijo en la parte superior, nunca se mueve */}
+      {/* Header — parte del flex, siempre visible arriba */}
       <div style={{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
         background: '#fff',
-        zIndex: 1110,
+        flexShrink: 0,
+        zIndex: 10,
         paddingTop: 'env(safe-area-inset-top, 44px)',
       }}>
       <div style={{
@@ -351,23 +330,16 @@ export const ChatConversation: React.FC<Props> = ({
       </div>
       </div>
 
-      {/* Área de mensajes — ocupa el espacio entre header e input */}
-      {/* paddingTop = altura del header, paddingBottom = altura del input + teclado */}
+      {/* Área de mensajes — flex:1 ocupa todo el espacio entre header e input */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
         style={{
-          position: 'fixed',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          // Espacio para el header arriba y el input abajo
-          paddingTop: `calc(env(safe-area-inset-top, 44px) + 56px)`,
-          paddingBottom: `calc(${keyboardOffset > 0 ? keyboardOffset : 0}px + 64px + ${keyboardOffset > 0 ? '0px' : 'env(safe-area-inset-bottom, 0px)'})`,
+          flex: 1,
           overflowY: 'scroll',
           overflowX: 'hidden',
           WebkitOverflowScrolling: 'touch',
+          position: 'relative',
           ...(wallpaperStyle || { background: '#f0f2f5' }),
         }}
       >
@@ -394,32 +366,29 @@ export const ChatConversation: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Indicador de edición — justo encima del input */}
+      {/* Indicador de edición */}
       {editingId && (
         <div style={{
-          position: 'fixed',
-          left: 0, right: 0,
-          bottom: keyboardOffset + 60, // 60 = altura aprox del input bar
+          flexShrink: 0,
           background: '#fff7ed', borderTop: '2px solid #f59e0b',
           padding: '6px 16px', display: 'flex', alignItems: 'center',
-          justifyContent: 'space-between', zIndex: 1115,
+          justifyContent: 'space-between',
         }}>
           <span style={{ fontSize: '13px', color: '#92400e', fontWeight: '600' }}>✏️ Editando mensaje</span>
           <button onClick={() => { setEditingId(null); setInput(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '18px' }}>×</button>
         </div>
       )}
 
-      {/* Input bar — siempre fijo justo encima del teclado */}
+      {/* Input bar — flexShrink:0, siempre al fondo del flex.
+          Cuando iOS encoge el viewport por el teclado, este div
+          queda automáticamente justo encima del teclado. */}
       <div style={{
-        position: 'fixed',
-        left: 0, right: 0,
-        bottom: keyboardOffset,
+        flexShrink: 0,
         background: '#fff',
         borderTop: '1px solid rgba(0,0,0,0.07)',
         padding: '8px 10px',
-        paddingBottom: keyboardOffset > 0 ? '8px' : 'max(8px, env(safe-area-inset-bottom, 8px))',
+        paddingBottom: 'max(8px, env(safe-area-inset-bottom, 8px))',
         display: 'flex', alignItems: 'center', gap: '8px',
-        zIndex: 1115,
       }}>
         <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f && onSendFile) onSendFile(f); e.target.value = ''; }} />
