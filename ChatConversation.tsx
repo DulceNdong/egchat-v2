@@ -293,16 +293,17 @@ export const ChatConversation: React.FC<Props> = ({
       top: 0,
       left: 0,
       right: 0,
-      bottom: 0,
+      // La altura del contenedor = altura real del viewport visual
+      // Cuando el teclado sube, visualViewport.height se reduce y
+      // el contenedor se encoge exactamente lo que ocupa el teclado.
+      height: keyboardOffset > 0
+        ? `${(window.visualViewport?.height || window.innerHeight)}px`
+        : '100dvh',
       display: 'flex',
       flexDirection: 'column',
       background: '#fff',
       zIndex: 1100,
-      // Cuando el teclado sube, reducimos la altura visible del chat
-      // usando paddingBottom para empujar el input hacia arriba sin
-      // dejar espacio blanco ni ocultar el header.
-      paddingBottom: keyboardOffset > 0 ? `${keyboardOffset}px` : undefined,
-      transition: 'padding-bottom 0.15s ease',
+      transition: 'height 0.15s ease',
     }}>
 
       {/* Header */}
@@ -396,7 +397,9 @@ export const ChatConversation: React.FC<Props> = ({
       <div style={{
         flexShrink: 0, background: '#fff', borderTop: '1px solid rgba(0,0,0,0.07)',
         padding: '8px 10px',
-        paddingBottom: 'max(8px, env(safe-area-inset-bottom))',
+        // Cuando el teclado está visible (keyboardOffset > 0), no añadir
+        // safe-area-inset-bottom — el teclado ya ocupa ese espacio.
+        paddingBottom: keyboardOffset > 0 ? '8px' : 'max(8px, env(safe-area-inset-bottom))',
         display: 'flex', alignItems: 'center', gap: '8px',
       }}>
         <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{ display: 'none' }}
