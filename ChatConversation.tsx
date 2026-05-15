@@ -101,17 +101,17 @@ export const ChatConversation: React.FC<Props> = ({
   const isNearBottomRef = useRef(true);
 
   // Detectar teclado virtual en móvil usando visualViewport API
-  // Usamos paddingBottom en el contenedor en lugar de cambiar `bottom`,
-  // así el header siempre queda visible y no hay espacio blanco.
   useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
 
     const onResize = () => {
-      // En iOS el viewport se encoge cuando aparece el teclado.
-      // Calculamos cuánto espacio ocupa el teclado como la diferencia
-      // entre el innerHeight y la altura visual actual.
-      const kbHeight = Math.max(0, window.innerHeight - vv.height);
+      // En iOS, cuando el teclado sube:
+      // - vv.height se reduce (altura visible)
+      // - vv.offsetTop puede ser > 0 (el viewport se desplaza)
+      // La altura del teclado = innerHeight - vv.height - vv.offsetTop
+      // Usamos Math.max(0, ...) para evitar valores negativos
+      const kbHeight = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
       setKeyboardOffset(kbHeight);
       // Scroll al fondo cuando aparece el teclado
       requestAnimationFrame(() => {
@@ -420,7 +420,6 @@ export const ChatConversation: React.FC<Props> = ({
         paddingBottom: keyboardOffset > 0 ? '8px' : 'max(8px, env(safe-area-inset-bottom, 8px))',
         display: 'flex', alignItems: 'center', gap: '8px',
         zIndex: 1115,
-        transition: 'bottom 0.15s ease',
       }}>
         <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f && onSendFile) onSendFile(f); e.target.value = ''; }} />
