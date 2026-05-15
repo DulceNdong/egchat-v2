@@ -6350,13 +6350,12 @@ const App: React.FC = () => {
                 padding: '8px 8px',
                 paddingBottom: inputBottom > 0 ? '8px' : (device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px'),
                 display: 'flex',
-                flexDirection: 'column',
+                alignItems: 'center',
                 gap: '6px',
                 zIndex: 1102,
               }}>
                 {/* DEBUG — quitar después */}
                 {device.isMobile && <div style={{ fontSize: '9px', color: '#999', textAlign: 'center', lineHeight: 1 }}>{_vvDebug} | bot:{inputBottom}</div>}
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
                 {/* Botón + */}
                 <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
                   style={{ background: 'none', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0 }}>
