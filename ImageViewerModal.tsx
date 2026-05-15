@@ -116,16 +116,9 @@ export default function ImageViewerModal({ url, onClose, chats, onForward, onSho
     }
   };
 
-  // Compartir nativo
-  const handleShare = async () => {
-    try {
-      if (navigator.share) {
-        await navigator.share({ url, title: 'Foto de EGCHAT' });
-      } else {
-        await navigator.clipboard.writeText(url);
-        onShowToast('🔗 Enlace copiado', 'success');
-      }
-    } catch { onShowToast('No se pudo compartir', 'error'); }
+  // Compartir: abre el picker de contactos de EGCHAT
+  const handleShare = () => {
+    setShowForward(true);
   };
 
   // Reenviar a contactos seleccionados
