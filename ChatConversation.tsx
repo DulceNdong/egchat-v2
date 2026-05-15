@@ -293,24 +293,19 @@ export const ChatConversation: React.FC<Props> = ({
       top: 0,
       left: 0,
       right: 0,
-      // La altura del contenedor = altura real del viewport visual
-      // Cuando el teclado sube, visualViewport.height se reduce y
-      // el contenedor se encoge exactamente lo que ocupa el teclado.
-      height: keyboardOffset > 0
-        ? `${(window.visualViewport?.height || window.innerHeight)}px`
-        : '100dvh',
-      display: 'flex',
-      flexDirection: 'column',
+      bottom: 0,
       background: '#fff',
       zIndex: 1100,
-      transition: 'height 0.15s ease',
     }}>
 
-      {/* Header */}
+      {/* Header — fijo en la parte superior, nunca se mueve */}
       <div style={{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
         background: '#fff',
-        borderBottom: 'none',
-        flexShrink: 0, zIndex: 10,
+        zIndex: 1110,
         paddingTop: 'env(safe-area-inset-top, 44px)',
       }}>
       <div style={{
@@ -356,11 +351,25 @@ export const ChatConversation: React.FC<Props> = ({
       </div>
       </div>
 
-      {/* Área de mensajes — patrón EGCHAT */}
+      {/* Área de mensajes — ocupa el espacio entre header e input */}
+      {/* paddingTop = altura del header, paddingBottom = altura del input + teclado */}
       <div
         ref={scrollRef}
         onScroll={handleScroll}
-        style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch', position: 'relative', ...(wallpaperStyle || { background: '#f0f2f5' }) }}
+        style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          // Espacio para el header arriba y el input abajo
+          paddingTop: `calc(env(safe-area-inset-top, 44px) + 56px)`,
+          paddingBottom: `calc(${keyboardOffset > 0 ? keyboardOffset : 0}px + 64px + ${keyboardOffset > 0 ? '0px' : 'env(safe-area-inset-bottom, 0px)'})`,
+          overflowY: 'scroll',
+          overflowX: 'hidden',
+          WebkitOverflowScrolling: 'touch',
+          ...(wallpaperStyle || { background: '#f0f2f5' }),
+        }}
       >
         {wallpaperContent}
         {/* Contenedor interior con flex-end — mensajes pegados al fondo */}
@@ -385,22 +394,33 @@ export const ChatConversation: React.FC<Props> = ({
         </div>
       </div>
 
-      {/* Indicador de edición */}
+      {/* Indicador de edición — justo encima del input */}
       {editingId && (
-        <div style={{ background: '#fff7ed', borderTop: '2px solid #f59e0b', padding: '6px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
+        <div style={{
+          position: 'fixed',
+          left: 0, right: 0,
+          bottom: keyboardOffset + 60, // 60 = altura aprox del input bar
+          background: '#fff7ed', borderTop: '2px solid #f59e0b',
+          padding: '6px 16px', display: 'flex', alignItems: 'center',
+          justifyContent: 'space-between', zIndex: 1115,
+        }}>
           <span style={{ fontSize: '13px', color: '#92400e', fontWeight: '600' }}>✏️ Editando mensaje</span>
           <button onClick={() => { setEditingId(null); setInput(''); }} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#92400e', fontSize: '18px' }}>×</button>
         </div>
       )}
 
-      {/* Input */}
+      {/* Input bar — siempre fijo justo encima del teclado */}
       <div style={{
-        flexShrink: 0, background: '#fff', borderTop: '1px solid rgba(0,0,0,0.07)',
+        position: 'fixed',
+        left: 0, right: 0,
+        bottom: keyboardOffset,
+        background: '#fff',
+        borderTop: '1px solid rgba(0,0,0,0.07)',
         padding: '8px 10px',
-        // Cuando el teclado está visible (keyboardOffset > 0), no añadir
-        // safe-area-inset-bottom — el teclado ya ocupa ese espacio.
-        paddingBottom: keyboardOffset > 0 ? '8px' : 'max(8px, env(safe-area-inset-bottom))',
+        paddingBottom: keyboardOffset > 0 ? '8px' : 'max(8px, env(safe-area-inset-bottom, 8px))',
         display: 'flex', alignItems: 'center', gap: '8px',
+        zIndex: 1115,
+        transition: 'bottom 0.15s ease',
       }}>
         <input ref={fileInputRef} type="file" accept="image/*,video/*,audio/*,.pdf,.doc,.docx" style={{ display: 'none' }}
           onChange={e => { const f = e.target.files?.[0]; if (f && onSendFile) onSendFile(f); e.target.value = ''; }} />
