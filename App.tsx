@@ -230,7 +230,8 @@ const App: React.FC = () => {
         // Sincronizar badge con total de mensajes no leídos del servidor
         const totalUnread = d.reduce((sum: number, c: any) => sum + (c.unread_count || 0), 0);
         syncBadgeWithUnread(totalUnread).catch(() => {});
-    } catch {}
+      }
+    } catch (_e) { /* silencioso */ }
   }, []);
 
   const loadMessages = useCallback(async (chatId: string) => {

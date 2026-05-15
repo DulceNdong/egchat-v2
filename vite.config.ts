@@ -53,7 +53,7 @@ export default defineConfig({
     },
     chunkSizeWarningLimit: 1600,
     sourcemap: false,
-    target: 'es2020',
+    target: 'es2022',
     cssCodeSplit: true,
   },
   optimizeDeps: {
