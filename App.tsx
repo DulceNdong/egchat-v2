@@ -462,19 +462,24 @@ const App: React.FC = () => {
   const [currentChatInput, setCurrentChatInput] = useState<string>('');
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
   const [showChatEmojis, setShowChatEmojis] = useState<boolean>(false);
-  // inputBottom: distancia desde el fondo de la pantalla al input bar.
-  // Se actualiza con visualViewport para que el input quede siempre
-  // justo encima del teclado en iOS Safari.
   const [inputBottom, setInputBottom] = React.useState(0);
+  const [_vvDebug, setVvDebug] = React.useState('');
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      // En iOS, cuando el teclado sube:
-      // window.innerHeight - vv.height - vv.offsetTop = altura del teclado
-      const kb = Math.max(0, window.innerHeight - vv.height - (vv.offsetTop || 0));
+      const screenH = window.screen.height;
+      const innerH = window.innerHeight;
+      const vvH = vv.height;
+      const vvOffTop = vv.offsetTop || 0;
+      const vvPageTop = (vv as any).pageTop || 0;
+      // Mostrar todos los valores para diagnóstico
+      setVvDebug(`screen:${screenH} inner:${innerH} vv:${Math.round(vvH)} offTop:${Math.round(vvOffTop)} pageTop:${Math.round(vvPageTop)}`);
+      // Cálculo: el teclado ocupa innerHeight - vv.height cuando offsetTop=0
+      const kb = Math.max(0, innerH - vvH - vvOffTop);
       setInputBottom(kb);
     };
+    update();
     vv.addEventListener('resize', update);
     vv.addEventListener('scroll', update);
     return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
@@ -6345,10 +6350,13 @@ const App: React.FC = () => {
                 padding: '8px 8px',
                 paddingBottom: inputBottom > 0 ? '8px' : (device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px'),
                 display: 'flex',
-                alignItems: 'center',
+                flexDirection: 'column',
                 gap: '6px',
                 zIndex: 1102,
               }}>
+                {/* DEBUG — quitar después */}
+                {device.isMobile && <div style={{ fontSize: '9px', color: '#999', textAlign: 'center', lineHeight: 1 }}>{_vvDebug} | bot:{inputBottom}</div>}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
                 {/* Botón + */}
                 <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
                   style={{ background: 'none', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0 }}>
