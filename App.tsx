@@ -1959,6 +1959,13 @@ const App: React.FC = () => {
     };
 
     switch (iconType) {
+      case 'home':
+        return (
+          <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+            <polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        );
       case 'mensajes':
         return (
           <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
@@ -4722,6 +4729,7 @@ const App: React.FC = () => {
     const navItems = [
       { id: 'Mensajería', label: 'Mensajería', icon: 'mensajes' },
       { id: 'monedero',   label: 'Cartera',    icon: 'wallet'   },
+      { id: 'home',       label: 'Inicio',     icon: 'home'     },
       { id: 'servicios',  label: 'Servicios',  icon: 'services' },
       { id: 'ajustes',    label: 'Ajustes',    icon: 'ajustes'  },
     ];
@@ -4748,13 +4756,25 @@ const App: React.FC = () => {
                   if (currentView === 'servicios') { setCurrentView(previousView); }
                   else { setPreviousView(currentView); setCurrentView('servicios'); }
                 } else { setCurrentView(item.id); }
-              }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '0 4px', outline: 'none', flex: 1, height: '100%', WebkitTapHighlightColor: 'transparent' }}>
+              }} style={{
+                background: item.id === 'home' ? 'rgba(255,255,255,0.25)' : 'none',
+                border: item.id === 'home' ? '2px solid rgba(255,255,255,0.5)' : 'none',
+                borderRadius: item.id === 'home' ? '50%' : '0',
+                cursor: 'pointer', display: 'flex', flexDirection: 'column',
+                alignItems: 'center', justifyContent: 'center',
+                gap: '3px', padding: '0 4px', outline: 'none', flex: 1, height: '100%',
+                WebkitTapHighlightColor: 'transparent',
+                transform: item.id === 'home' ? 'translateY(-10px)' : 'none',
+                boxShadow: item.id === 'home' ? '0 4px 14px rgba(0,0,0,0.25)' : 'none',
+              }}>
                 <div style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flexShrink: 0 }}>
-                  {renderIcon(item.icon, 22)}
+                  {renderIcon(item.icon, item.id === 'home' ? 24 : 22)}
                 </div>
-                <span style={{ fontSize: '10px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0 }}>
-                  {item.label}
-                </span>
+                {item.id !== 'home' && (
+                  <span style={{ fontSize: '10px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                    {item.label}
+                  </span>
+                )}
               </button>
             ))}
           </div>
