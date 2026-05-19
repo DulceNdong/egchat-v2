@@ -8318,7 +8318,10 @@ const App: React.FC = () => {
       case 'ajustes':
         return (
           <div style={{
-            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? '90px' : '24px'}`,
+            paddingTop: viewPadding.top,
+            paddingLeft: '12px',
+            paddingRight: '12px',
+            paddingBottom: device.isMobile ? '90px' : '24px',
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
