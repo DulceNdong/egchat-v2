@@ -338,9 +338,6 @@ const App: React.FC = () => {
     } catch {}
   }, []);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
-  // FAB Home — botón flotante draggable para volver a inicio
-  const [homeFabPos, setHomeFabPos] = React.useState({ x: window.innerWidth - 72, y: window.innerHeight - 160 });
-  const homeFabDrag = React.useRef({ dragging: false, startX: 0, startY: 0, origX: 0, origY: 0, moved: false });
   // -- Notificaciones de mensajes --
   const [msgNotif, setMsgNotif] = useState<{id:string; sender:string; text:string; chatId:string; avatar?:string} | null>(null);
   const msgNotifTimer = React.useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -10900,49 +10897,6 @@ const App: React.FC = () => {
       
       {/* NAVEGACION inferior - solo en vistas principales */}
       {!isMenuOpen && ['home','Mensajería','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
-
-      {/* FAB Home — botón flotante draggable, visible en todas las vistas excepto home */}
-      {device.isMobile && currentView !== 'home' && !selectedChat && (
-        <div
-          onTouchStart={e => {
-            const t = e.touches[0];
-            homeFabDrag.current = { dragging: true, startX: t.clientX, startY: t.clientY, origX: homeFabPos.x, origY: homeFabPos.y, moved: false };
-          }}
-          onTouchMove={e => {
-            if (!homeFabDrag.current.dragging) return;
-            const t = e.touches[0];
-            const dx = t.clientX - homeFabDrag.current.startX;
-            const dy = t.clientY - homeFabDrag.current.startY;
-            if (Math.abs(dx) > 5 || Math.abs(dy) > 5) homeFabDrag.current.moved = true;
-            const newX = Math.max(8, Math.min(window.innerWidth - 60, homeFabDrag.current.origX + dx));
-            const newY = Math.max(80, Math.min(window.innerHeight - 140, homeFabDrag.current.origY + dy));
-            setHomeFabPos({ x: newX, y: newY });
-          }}
-          onTouchEnd={() => {
-            if (!homeFabDrag.current.moved) setCurrentView('home');
-            homeFabDrag.current.dragging = false;
-          }}
-          style={{
-            position: 'fixed',
-            left: homeFabPos.x,
-            top: homeFabPos.y,
-            width: '52px', height: '52px',
-            borderRadius: '50%',
-            background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
-            boxShadow: '0 4px 16px rgba(0,200,160,0.5)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            zIndex: 1200,
-            cursor: 'pointer',
-            touchAction: 'none',
-            userSelect: 'none',
-          }}
-        >
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-            <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-            <polyline points="9 22 9 12 15 12 15 22"/>
-          </svg>
-        </div>
-      )}
       
       {/* Botón catlogo wallpaper  dentro del men radial, no aqu */}
 
