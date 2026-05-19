@@ -8493,44 +8493,39 @@ const App: React.FC = () => {
               ><svg width='16' height='16' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></button>
             </div>
 
-            {/* Tabs — scrollables horizontalmente en móvil */}
+            {/* Tabs — 2 filas, todos visibles y centrados */}
             <div style={{
-              display: 'flex',
+              display: 'grid',
+              gridTemplateColumns: 'repeat(3, 1fr)',
               gap: '6px',
               marginBottom: '12px',
-              borderBottom: '1px solid rgba(0,0,0,0.08)',
               paddingBottom: '8px',
-              overflowX: 'auto',
-              overflowY: 'hidden',
-              scrollbarWidth: 'none',
-              msOverflowStyle: 'none' as any,
-              WebkitOverflowScrolling: 'touch' as any,
+              borderBottom: '1px solid rgba(0,0,0,0.08)',
               flexShrink: 0,
             }}>
               {[
-                { id: 'perfil',     label: 'Perfil',      color: '#00c8a0', activeColor: 'rgba(0,200,160,0.15)', activeBorder: 'rgba(0,200,160,0.5)',   icon: <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
-                { id: 'sonidos',    label: 'Sonidos',     color: '#f59e0b', activeColor: 'rgba(245,158,11,0.15)', activeBorder: 'rgba(245,158,11,0.5)',  icon: <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> },
-                { id: 'ayuda',      label: 'Ayuda',       color: '#00b4e6', activeColor: 'rgba(0,180,230,0.15)', activeBorder: 'rgba(0,180,230,0.5)',   icon: <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> },
-                { id: 'actividad',  label: 'Actividad',   color: '#a855f7', activeColor: 'rgba(168,85,247,0.15)', activeBorder: 'rgba(168,85,247,0.5)', icon: <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
-                { id: 'apariencia', label: 'Apariencia',  color: '#00b4e6', activeColor: 'rgba(0,180,230,0.15)', activeBorder: 'rgba(0,180,230,0.5)',   icon: <svg width="12" height="12" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg> },
+                { id: 'perfil',     label: 'Perfil',     color: '#00c8a0', activeColor: 'rgba(0,200,160,0.12)', activeBorder: 'rgba(0,200,160,0.5)',   icon: <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg> },
+                { id: 'sonidos',    label: 'Sonidos',    color: '#f59e0b', activeColor: 'rgba(245,158,11,0.12)', activeBorder: 'rgba(245,158,11,0.5)',  icon: <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/><path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></svg> },
+                { id: 'ayuda',      label: 'Ayuda',      color: '#00b4e6', activeColor: 'rgba(0,180,230,0.12)', activeBorder: 'rgba(0,180,230,0.5)',   icon: <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><path d="M12 17h.01"/></svg> },
+                { id: 'actividad',  label: 'Actividad',  color: '#a855f7', activeColor: 'rgba(168,85,247,0.12)', activeBorder: 'rgba(168,85,247,0.5)', icon: <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg> },
+                { id: 'apariencia', label: 'Apariencia', color: '#0ea5e9', activeColor: 'rgba(14,165,233,0.12)', activeBorder: 'rgba(14,165,233,0.5)',  icon: <svg width="13" height="13" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4"/></svg> },
               ].map(tab => (
                 <button key={tab.id}
                   onClick={() => setCurrentSettingsTab(tab.id as any)}
                   style={{
-                    padding: '7px 12px',
+                    padding: '8px 4px',
                     background: currentSettingsTab === tab.id ? tab.activeColor : '#f3f4f6',
                     border: currentSettingsTab === tab.id ? `1.5px solid ${tab.activeBorder}` : '1px solid rgba(0,0,0,0.08)',
-                    borderRadius: '8px',
+                    borderRadius: '10px',
                     color: currentSettingsTab === tab.id ? tab.color : '#374151',
                     fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none',
-                    display: 'flex', alignItems: 'center', gap: '4px',
-                    flexShrink: 0, whiteSpace: 'nowrap',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
+                    width: '100%',
                   }}>
                   {tab.icon}
                   {tab.label}
                 </button>
               ))}
-              <style>{`.settings-tabs::-webkit-scrollbar{display:none}`}</style>
             </div>
 
             {/* Contenido */}
