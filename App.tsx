@@ -5364,24 +5364,33 @@ const App: React.FC = () => {
 
               {/* Panel lateral del chat — desliza desde la derecha */}
               {showChatMenu && (
-                <div style={{position:'fixed',inset:0,zIndex:2000,display:'flex'}} onClick={()=>setShowChatMenu(false)}>
-                  <div style={{flex:1,background:'rgba(0,0,0,0.4)'}}/>
-                  <div style={{width:'280px',height:'100%',background:'#fff',display:'flex',flexDirection:'column',boxShadow:'-4px 0 24px rgba(0,0,0,0.2)',overflowY:'auto',animation:'slideInRight 0.22s ease'}}
-                    onClick={e=>e.stopPropagation()}>
-                    <style>{`@keyframes slideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
-                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',padding:'16px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0}}>
+                <div style={{position:'fixed',inset:0,zIndex:2000,background:'rgba(0,0,0,0.15)',backdropFilter:'blur(2px)'}} onClick={()=>setShowChatMenu(false)}>
+                  <div style={{
+                    position:'absolute',
+                    top: device.isMobile ? 'calc(max(env(safe-area-inset-top,44px),44px) + 44px + 8px)' : '64px',
+                    right:'8px',
+                    width: device.isMobile ? 'calc(100vw - 60px)' : '280px',
+                    maxWidth:'320px',
+                    background:'#fff',
+                    borderRadius:'20px',
+                    boxShadow:'0 12px 40px rgba(0,0,0,0.18)',
+                    overflow:'hidden',
+                    animation:'chatMenuIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+                    maxHeight:'80vh',
+                    display:'flex',
+                    flexDirection:'column',
+                  }} onClick={e=>e.stopPropagation()}>
+                    <style>{`@keyframes chatMenuIn{from{opacity:0;transform:scale(0.92) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
+                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',padding:'14px 16px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0}}>
                       <div style={{width:'44px',height:'44px',borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                         {sc.avatarUrl?<img src={sc.avatarUrl} alt={sc.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:'16px',fontWeight:'700',color:'#fff'}}>{sc.initials||sc.title?.slice(0,2).toUpperCase()}</span>}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:'15px',fontWeight:'700',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
-                        <div style={{fontSize:'11px',color:'rgba(255,255,255,0.75)'}}>{sc.isGroup?'👥 Grupo':sc.status==='online'?'● En línea':'○ Desconectado'}</div>
+                        <div style={{fontSize:'15px',fontWeight:'800',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
+                        <div style={{fontSize:'11px',color:'rgba(255,255,255,0.85)',fontWeight:'600'}}>{sc.isGroup?'👥 Grupo':sc.status==='online'?'● En línea':'○ Desconectado'}</div>
                       </div>
-                      <button onClick={()=>setShowChatMenu(false)} style={{background:'rgba(255,255,255,0.2)',border:'none',borderRadius:'50%',width:'32px',height:'32px',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#fff',flexShrink:0}}>
-                        <svg width="16" height="16" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-                      </button>
                     </div>
-                    <div style={{flex:1}}>
+                    <div style={{overflowY:'auto',flex:1}}>
                     <div style={{padding:'4px 0',borderBottom:'1px solid #f0f2f5'}}>
                     {/* Seccin principal */}
                     {[
