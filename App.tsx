@@ -13,6 +13,7 @@ import { SupermercadosModal } from './SupermercadosModule';
 import { RecargaMonederoModal, RetiroMonederoModal } from './WalletSystem';
 import { useWallet } from './WalletSystem';
 import { ContactProfileModal } from './ContactProfileModal';
+import { SetupPINModal, VerifyPINModal, walletPIN } from './WalletPIN';
 import { CameraModal } from './CameraModal';
 import { useDevice } from './useDevice';
 import { EGChatDesktopWelcome } from './EGChatDesktopWelcome';
@@ -539,6 +540,10 @@ const App: React.FC = () => {
   };
   const [transferError, setTransferError] = useState<string>('');
   const [showTransferModal, setShowTransferModal] = useState<boolean>(false);
+  // PIN de pago
+  const [showSetupPIN, setShowSetupPIN] = React.useState(false);
+  const [showVerifyPIN, setShowVerifyPIN] = React.useState(false);
+  const [pendingTransferAction, setPendingTransferAction] = React.useState<(() => void) | null>(null);
 
   // Recarga telefnica
   const [showRechargeModal, setShowRechargeModal] = useState<boolean>(false);
@@ -8992,6 +8997,23 @@ const App: React.FC = () => {
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
 
+                    {/* PIN de pago */}
+                    <button
+                      onClick={() => setShowSetupPIN(true)}
+                      style={{ width: '100%', background: '#fff', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '14px', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: '14px', cursor: 'pointer', outline: 'none', transition: 'background 0.15s', marginBottom: '8px' }}
+                      onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
+                      onMouseLeave={e => e.currentTarget.style.background = '#fff'}
+                    >
+                      <div style={{ width: '38px', height: '38px', borderRadius: '10px', background: '#eff6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#1a73e8" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                      </div>
+                      <div style={{ flex: 1, textAlign: 'left' }}>
+                        <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827' }}>PIN de pagos</div>
+                        <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '1px' }}>{walletPIN.isSet() ? '✅ PIN configurado — toca para cambiar' : '⚠️ Sin PIN — configura uno para pagar'}</div>
+                      </div>
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                    </button>
+
                     {/* Cerrar sesión */}
                     <button
                       onClick={async () => {
@@ -10918,6 +10940,34 @@ const App: React.FC = () => {
       
       {/* NAVEGACION inferior - solo en vistas principales */}
       {!isMenuOpen && ['home','Mensajería','monedero','servicios','ajustes'].includes(currentView) && renderBottomNavigation()}
+
+      {/* Modal Setup PIN — primera vez que se usa el monedero */}
+      {showSetupPIN && (
+        <SetupPINModal
+          onDone={() => {
+            setShowSetupPIN(false);
+            // PIN configurado — ahora ejecutar la transferencia
+            if (pendingTransferAction) { pendingTransferAction(); setPendingTransferAction(null); }
+          }}
+          onCancel={() => { setShowSetupPIN(false); setPendingTransferAction(null); }}
+        />
+      )}
+
+      {/* Modal Verify PIN — antes de cada transferencia */}
+      {showVerifyPIN && (
+        <VerifyPINModal
+          amount={(() => {
+            const el = document.getElementById('transfer-amount-input') as HTMLInputElement;
+            return parseInt((el?.value||'0').replace(/[^0-9]/g,'')) || 0;
+          })()}
+          recipient={quickTransferData.contactName || ''}
+          onSuccess={() => {
+            setShowVerifyPIN(false);
+            if (pendingTransferAction) { pendingTransferAction(); setPendingTransferAction(null); }
+          }}
+          onCancel={() => { setShowVerifyPIN(false); setPendingTransferAction(null); }}
+        />
+      )}
       
       {/* Botón catlogo wallpaper  dentro del men radial, no aqu */}
 
@@ -11301,10 +11351,20 @@ const App: React.FC = () => {
                     setQuickTransferData({ contactId:'', contactName:'', amount:'', accountId:'' });
                     showToast(`✅ ${amount.toLocaleString()} XAF enviados a ${quickTransferData.contactName}`, 'success');
                   };
-                  if (userBalance >= amount) { setUserBalance(userBalance - amount); setPendingTransfers(p => [...p, { id: Date.now().toString(), from:'Monedero EGChat', to: quickTransferData.contactName, amount, status:'pending' as const, createdAt: new Date(), expiresAt: new Date(Date.now()+5*60*1000) }]); sendMoneyMsg('Monedero EGChat'); return; }
-                  const src = bankAccounts.find(a => a.id === quickTransferData.accountId);
-                  if (src && amount <= src.balance) { setBankAccounts(bankAccounts.map(a => a.id===quickTransferData.accountId ? { ...a, balance: a.balance-amount } : a)); setPendingTransfers(p => [...p, { id: Date.now().toString(), from: src.bank, to: quickTransferData.contactName, amount, status:'pending' as const, createdAt: new Date(), expiresAt: new Date(Date.now()+5*60*1000) }]); sendMoneyMsg(src.bank); return; }
-                  setTransferError('Saldo insuficiente');
+                  // Función que ejecuta la transferencia real (después del PIN)
+                  const doTransfer = () => {
+                    if (userBalance >= amount) { setUserBalance(userBalance - amount); setPendingTransfers(p => [...p, { id: Date.now().toString(), from:'Monedero EGChat', to: quickTransferData.contactName, amount, status:'pending' as const, createdAt: new Date(), expiresAt: new Date(Date.now()+5*60*1000) }]); sendMoneyMsg('Monedero EGChat'); return; }
+                    const src = bankAccounts.find(a => a.id === quickTransferData.accountId);
+                    if (src && amount <= src.balance) { setBankAccounts(bankAccounts.map(a => a.id===quickTransferData.accountId ? { ...a, balance: a.balance-amount } : a)); setPendingTransfers(p => [...p, { id: Date.now().toString(), from: src.bank, to: quickTransferData.contactName, amount, status:'pending' as const, createdAt: new Date(), expiresAt: new Date(Date.now()+5*60*1000) }]); sendMoneyMsg(src.bank); return; }
+                    setTransferError('Saldo insuficiente');
+                  };
+                  // Verificar saldo antes de pedir PIN
+                  const hasFunds = userBalance >= amount || bankAccounts.some(a => a.id === quickTransferData.accountId && amount <= a.balance);
+                  if (!hasFunds) { setTransferError('Saldo insuficiente'); return; }
+                  // Pedir PIN (o configurarlo si no existe)
+                  setPendingTransferAction(() => doTransfer);
+                  if (!walletPIN.isSet()) { setShowSetupPIN(true); }
+                  else { setShowVerifyPIN(true); }
                 }}
                 style={{ width:'100%', background:'linear-gradient(135deg,#1a73e8,#0d47a1)', border:'none', borderRadius:'14px', padding:'15px', fontSize:'16px', fontWeight:'700', color:'#fff', cursor:'pointer', outline:'none', boxShadow:'0 4px 16px rgba(26,115,232,0.35)', marginBottom:'10px' }}>
                 Enviar {quickTransferData.contactName ? `a ${quickTransferData.contactName}` : 'dinero'}
