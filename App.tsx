@@ -466,24 +466,40 @@ const App: React.FC = () => {
   const [_vvDebug, setVvDebug] = React.useState('');
   const [chatContainerHeight, setChatContainerHeight] = React.useState<string>('100dvh');
   const [chatContainerTop, setChatContainerTop] = React.useState<number>(0);
+  // Enfoque LinkedIn: cuando el teclado sube, scroll al top y ajustar bottom del contenedor
+  const chatContainerRef = React.useRef<HTMLDivElement | null>(null);
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    let viewportHeight = window.innerHeight;
+    let offset = 0;
     const update = () => {
-      const innerH = window.innerHeight;
-      const vvH = vv.height;
-      const vvOffTop = vv.offsetTop || 0;
-      const kb = Math.max(0, innerH - vvH - vvOffTop);
-      setVvDebug(`inner:${innerH} vv:${Math.round(vvH)} offTop:${Math.round(vvOffTop)} kb:${Math.round(kb)}`);
-      setInputBottom(kb);
-      // Mover el contenedor para que siga al viewport visual
-      setChatContainerTop(vvOffTop);
-      setChatContainerHeight(`${Math.round(vvH)}px`);
+      // Siempre volver al top para evitar que Safari desplace la página
+      window.scrollTo(0, 0);
+      const currentH = vv.height;
+      const diff = viewportHeight - currentH;
+      if (diff > 150) {
+        // Teclado visible — ajustar el contenedor
+        const adjustment = viewportHeight - currentH - offset;
+        if (chatContainerRef.current) {
+          chatContainerRef.current.style.bottom = `${adjustment}px`;
+          chatContainerRef.current.style.top = '0px';
+        }
+      } else {
+        // Teclado oculto — restaurar
+        offset = viewportHeight - currentH;
+        if (chatContainerRef.current) {
+          chatContainerRef.current.style.bottom = '0px';
+          chatContainerRef.current.style.top = '0px';
+        }
+      }
     };
-    update();
     vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    return () => { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); };
+    document.addEventListener('touchend', () => window.scrollTo(0, 0));
+    return () => {
+      vv.removeEventListener('resize', update);
+      document.removeEventListener('touchend', () => window.scrollTo(0, 0));
+    };
   }, []);
   const [showChatAttach, setShowChatAttach] = useState<boolean>(false);
   const [showNewChatModal, setShowNewChatModal] = useState<boolean>(false);
@@ -5212,17 +5228,17 @@ const App: React.FC = () => {
 
           return (
             <>
-            <div className="chat-view-container" style={{ 
+            <div className="chat-view-container" ref={chatContainerRef} style={{ 
               position: 'fixed', 
-              top: chatContainerTop,
+              top: 0,
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
-              right: 0, 
+              right: 0,
+              bottom: 0,
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
               background: '#f0f2f5',
               zIndex: 1100,
-              height: chatContainerHeight,
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Wallpaper del chat — individual por chat, no afecta a otros */}
               {(() => {
