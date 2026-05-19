@@ -74,7 +74,7 @@ const App: React.FC = () => {
   // tablet/desktop: sin bottom nav, sin safe area top (la sidebar lo gestiona)
   const viewPadding = {
     top: device.isMobile
-      ? 'calc(44px + max(36px, env(safe-area-inset-top, 36px)) + 8px)'
+      ? 'calc(44px + max(44px, env(safe-area-inset-top, 44px)) + 8px)'
       : '60px',
     bottom: device.isMobile
       ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
@@ -2571,7 +2571,7 @@ const App: React.FC = () => {
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
       // En tablet/desktop no hay status bar — solo en móvil
-      paddingTop: device.isMobile ? 'max(28px, env(safe-area-inset-top, 28px))' : '0',
+      paddingTop: device.isMobile ? 'max(44px, env(safe-area-inset-top, 44px))' : '0',
       // Compositing layer propio para evitar repaints en iOS
       willChange: 'transform',
       transform: 'translateZ(0)',
