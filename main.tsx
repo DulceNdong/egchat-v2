@@ -17,7 +17,7 @@ setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260515-keyboard-fix-v3';
+const APP_VERSION = 'v20260519-chat-keyboard-fix-v1';
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
   // Nueva versión detectada — limpiar todos los caches del SW
