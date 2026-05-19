@@ -464,20 +464,22 @@ const App: React.FC = () => {
   const [showChatEmojis, setShowChatEmojis] = useState<boolean>(false);
   const [inputBottom, setInputBottom] = React.useState(0);
   const [_vvDebug, setVvDebug] = React.useState('');
+  // chatContainerHeight: altura real del contenedor del chat.
+  // En iOS, visualViewport.height se encoge cuando sube el teclado.
+  // Usamos esto para que el contenedor se encoja y el input quede al fondo.
+  const [chatContainerHeight, setChatContainerHeight] = React.useState<string>('100dvh');
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
     const update = () => {
-      const screenH = window.screen.height;
       const innerH = window.innerHeight;
       const vvH = vv.height;
       const vvOffTop = vv.offsetTop || 0;
-      const vvPageTop = (vv as any).pageTop || 0;
-      // Mostrar todos los valores para diagnóstico
-      setVvDebug(`screen:${screenH} inner:${innerH} vv:${Math.round(vvH)} offTop:${Math.round(vvOffTop)} pageTop:${Math.round(vvPageTop)}`);
-      // Cálculo: el teclado ocupa innerHeight - vv.height cuando offsetTop=0
       const kb = Math.max(0, innerH - vvH - vvOffTop);
+      setVvDebug(`inner:${innerH} vv:${Math.round(vvH)} offTop:${Math.round(vvOffTop)} kb:${Math.round(kb)}`);
       setInputBottom(kb);
+      // Actualizar altura del contenedor del chat
+      setChatContainerHeight(`${Math.round(vvH)}px`);
     };
     update();
     vv.addEventListener('resize', update);
@@ -5221,6 +5223,7 @@ const App: React.FC = () => {
               overflow: 'hidden',
               background: '#f0f2f5',
               zIndex: 1100,
+              height: chatContainerHeight,
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Wallpaper del chat — individual por chat, no afecta a otros */}
               {(() => {
