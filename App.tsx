@@ -3568,36 +3568,37 @@ const App: React.FC = () => {
     return (
       <>
         {/* Overlay para cerrar al tocar fuera */}
-        <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.15)', backdropFilter:'blur(2px)' }} onClick={() => setShowMenu(false)} />
+        <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.3)' }} onClick={() => setShowMenu(false)} />
         <div style={{
           position:'fixed',
-          top: device.isMobile ? 'calc(max(env(safe-area-inset-top,44px),44px) + 44px + 8px)' : '64px',
-          right:'8px',
-          width: device.isMobile ? 'calc(100vw - 80px)' : '280px',
-          maxWidth:'320px',
+          top:0, right:0, bottom:0,
+          width: device.isMobile ? '85vw' : '320px',
+          maxWidth:'360px',
           background:'#fff',
-          borderRadius:'20px',
-          boxShadow:'0 12px 40px rgba(0,0,0,0.18)',
+          boxShadow:'-4px 0 32px rgba(0,0,0,0.18)',
           zIndex:1001,
-          overflow:'hidden',
-          animation:'menuSlideIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
+          display:'flex',
+          flexDirection:'column',
+          animation:'menuSlideInRight 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
+          paddingTop:'env(safe-area-inset-top,0px)',
+          paddingBottom:'env(safe-area-inset-bottom,0px)',
         }}>
-        <style>{`@keyframes menuSlideIn{from{opacity:0;transform:scale(0.92) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-        {/* Header — avatar + nombre + estado */}
-        <div style={{ padding:'16px 16px 14px', background:'linear-gradient(135deg,#00c8a0 0%,#00b4e6 100%)', display:'flex', alignItems:'center', gap:'12px' }}>
-          <div style={{ width:'48px', height:'48px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', border:'2px solid rgba(255,255,255,0.6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'16px', fontWeight:'800', color:'#fff', flexShrink:0, overflow:'hidden' }}>
+        <style>{`@keyframes menuSlideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+        {/* Header degradado con avatar */}
+        <div style={{ background:'linear-gradient(160deg,#00c8a0 0%,#00b4e6 100%)', padding:'24px 20px 20px', display:'flex', alignItems:'center', gap:'14px', flexShrink:0 }}>
+          <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', border:'2.5px solid rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'800', color:'#fff', flexShrink:0, overflow:'hidden' }}>
             {userProfile.avatarUrl
               ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
               : userProfile.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase()
             }
           </div>
           <div style={{ flex:1, minWidth:0 }}>
-            <div style={{ fontSize:'15px', fontWeight:'800', color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userProfile.name}</div>
-            <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.85)', fontWeight:'600', marginTop:'2px' }}>● En línea</div>
+            <div style={{ fontSize:'17px', fontWeight:'800', color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userProfile.name}</div>
+            <div style={{ fontSize:'12px', color:'rgba(255,255,255,0.9)', fontWeight:'600', marginTop:'3px' }}>● En línea</div>
           </div>
         </div>
-        {/* Items */}
-        <div style={{ overflowY:'auto', maxHeight:'70vh' }}>
+        {/* Lista de opciones */}
+        <div style={{ overflowY:'auto', flex:1 }}>
         {menuItems.map((item, i) => (
           <button key={item.id} onClick={() => {
             if (item.id==='perfil') { setShowProfileView(true); }
@@ -3622,15 +3623,13 @@ const App: React.FC = () => {
             }
             setShowMenu(false);
           }}
-            style={{ width:'100%', padding:'12px 16px', background:'none', border:'none', borderBottom: i<menuItems.length-1?'1px solid #f3f4f6':'none', cursor:'pointer', display:'flex', alignItems:'center', gap:'14px', textAlign:'left', outline:'none' }}
+            style={{ width:'100%', padding:'14px 20px', background:'none', border:'none', borderBottom:'1px solid #f3f4f6', cursor:'pointer', display:'flex', alignItems:'center', gap:'16px', textAlign:'left', outline:'none' }}
             onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
             onMouseLeave={e=>{e.currentTarget.style.background='none';}}>
-            <div style={{ width:'36px', height:'36px', borderRadius:'10px', background: item.id==='salir' ? '#fff1f2' : '#f3f4f6', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-              <span style={{ color: item.id==='salir' ? '#ef4444' : '#374151', display:'flex' }}>{item.icon}</span>
-            </div>
+            <span style={{ color: item.id==='salir' ? '#ef4444' : '#374151', display:'flex', flexShrink:0 }}>{item.icon}</span>
             <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:'14px', fontWeight:'600', color:item.id==='salir'?'#EF4444':'#111827', lineHeight:1.2 }}>{item.label}</div>
-              <div style={{ fontSize:'11px', color:'#9CA3AF', marginTop:'1px' }}>{item.sub}</div>
+              <div style={{ fontSize:'15px', fontWeight:'600', color:item.id==='salir'?'#EF4444':'#111827' }}>{item.label}</div>
+              <div style={{ fontSize:'12px', color:'#9CA3AF', marginTop:'2px' }}>{item.sub}</div>
             </div>
           </button>
         ))}
