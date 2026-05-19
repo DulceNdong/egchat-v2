@@ -8493,14 +8493,18 @@ const App: React.FC = () => {
               ><svg width='16' height='16' viewBox='0 0 24 24' stroke='currentColor' strokeWidth='2.5' strokeLinecap='round'><line x1='18' y1='6' x2='6' y2='18'/><line x1='6' y1='6' x2='18' y2='18'/></svg></button>
             </div>
 
-            {/* Tabs — 2 filas, todos visibles y centrados */}
+            {/* Tabs — scrollables horizontalmente en móvil */}
             <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
+              display: 'flex',
               gap: '6px',
               marginBottom: '12px',
-              paddingBottom: '8px',
               borderBottom: '1px solid rgba(0,0,0,0.08)',
+              paddingBottom: '8px',
+              overflowX: 'auto',
+              overflowY: 'hidden',
+              scrollbarWidth: 'none',
+              msOverflowStyle: 'none' as any,
+              WebkitOverflowScrolling: 'touch' as any,
               flexShrink: 0,
             }}>
               {[
@@ -8513,14 +8517,14 @@ const App: React.FC = () => {
                 <button key={tab.id}
                   onClick={() => setCurrentSettingsTab(tab.id as any)}
                   style={{
-                    padding: '8px 4px',
+                    padding: '7px 12px',
                     background: currentSettingsTab === tab.id ? tab.activeColor : '#f3f4f6',
                     border: currentSettingsTab === tab.id ? `1.5px solid ${tab.activeBorder}` : '1px solid rgba(0,0,0,0.08)',
-                    borderRadius: '10px',
+                    borderRadius: '8px',
                     color: currentSettingsTab === tab.id ? tab.color : '#374151',
                     fontSize: '12px', fontWeight: '600', cursor: 'pointer', outline: 'none',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px',
-                    width: '100%',
+                    display: 'flex', alignItems: 'center', gap: '4px',
+                    flexShrink: 0, whiteSpace: 'nowrap',
                   }}>
                   {tab.icon}
                   {tab.label}
