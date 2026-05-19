@@ -592,10 +592,18 @@ const App: React.FC = () => {
   const [liveCameraChatId, setLiveCameraChatId] = useState('');
   const [chatSearchQuery, setChatSearchQuery] = useState('');
   const [showChatSearch, setShowChatSearch] = useState(false);
-  const [chatImageViewer, setChatImageViewer] = useState<string | null>(null); // visor de imagen inline
-  const [msgContextMenu, setMsgContextMenu] = useState<{msg: any; x: number; y: number} | null>(null); // men contextual de mensaje
+  const [chatImageViewer, setChatImageViewer] = useState<string | null>(null);
+  const [msgContextMenu, setMsgContextMenu] = useState<{msg: any; x: number; y: number} | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedMsgIds, setSelectedMsgIds] = useState<string[]>([]);
+  // Nuevas funcionalidades WhatsApp-like
+  const [replyToMsg, setReplyToMsg] = useState<any>(null); // mensaje al que se responde
+  const [msgReactions, setMsgReactions] = useState<Record<string, string[]>>({}); // reacciones por msgId
+  const [showReactionPicker, setShowReactionPicker] = useState<string | null>(null); // msgId
+  const [isContactTyping, setIsContactTyping] = useState(false); // indicador "escribiendo..."
+  const [unreadCount, setUnreadCount] = useState(0); // mensajes no leídos
+  const [showScrollBottom, setShowScrollBottom] = useState(false); // botón bajar al fondo
+  const messagesScrollRef = React.useRef<HTMLDivElement | null>(null);
   const [saludInitTab, setSaludInitTab] = useState<'hospitales'|'farmacias'|'cita'|'urgencias'>('hospitales');
   const [showSvcModal, setShowSvcModal] = useState<string | null>(null); // servicios publicos + diarios + herramientas
   const [svcStep, setSvcStep] = useState<string>('main');
@@ -1008,17 +1016,43 @@ const App: React.FC = () => {
     const msgs = chatMessages[chatId] || [];
     if (msgs.length === 0) return;
     const lastMsg = msgs[msgs.length - 1];
-    // Evitar scroll si el último mensaje ya lo procesamos
     if (lastMsg.id === lastScrollMsgId.current) return;
     lastScrollMsgId.current = lastMsg.id;
-    // Scroll si es mensaje mío, o si estaba al fondo
     if (lastMsg.from === 'me' || isAtBottomRef.current) {
       requestAnimationFrame(() => {
         const el = document.querySelector('.chat-messages-scroll') as HTMLElement;
         if (el) el.scrollTop = el.scrollHeight;
       });
+    } else {
+      // Mensaje nuevo de ellos y no estamos al fondo — mostrar botón y contar
+      setUnreadCount(p => p + 1);
+      setShowScrollBottom(true);
     }
   }, [chatMessages]);
+
+  // Indicador "escribiendo..." — simula actividad cuando el contacto está online
+  React.useEffect(() => {
+    if (!selectedChat) { setIsContactTyping(false); return; }
+    // Solo mostrar si el contacto está "online"
+    if (selectedChat.status !== 'online') return;
+    // Simular typing aleatorio cada 20-60s
+    const scheduleTyping = () => {
+      const delay = 20000 + Math.random() * 40000;
+      return setTimeout(() => {
+        setIsContactTyping(true);
+        setTimeout(() => setIsContactTyping(false), 2000 + Math.random() * 2000);
+        scheduleTyping();
+      }, delay);
+    };
+    const t = scheduleTyping();
+    return () => clearTimeout(t);
+  }, [selectedChat?.id, selectedChat?.status]);
+
+  // Reset unread count al abrir chat
+  React.useEffect(() => {
+    setUnreadCount(0);
+    setShowScrollBottom(false);
+  }, [selectedChat?.id]);
 
   // Geolocalizacin automática + clima real (Open-Meteo, sin API key)
   // watchPosition detecta cambios de ubicación  actualiza ciudad y temperatura
@@ -5208,11 +5242,17 @@ const App: React.FC = () => {
             (document.activeElement as HTMLElement)?.blur();
 
             playMessageSent(); vibrate(30);
-            hapticsOnSendMessage().catch(() => {}); // háptico suave al enviar
-            const newMsg = { id: Date.now().toString(), from: 'me' as const, text: messageText, time: makeTime(), status: 'pending' as const };
+            hapticsOnSendMessage().catch(() => {});
+            const newMsg: any = {
+              id: Date.now().toString(), from: 'me' as const, text: messageText,
+              time: makeTime(), status: 'pending' as const,
+              // Incluir reply si hay mensaje seleccionado
+              ...(replyToMsg ? { replyTo: { id: replyToMsg.id, text: replyToMsg.text?.slice(0, 80), from: replyToMsg.from } } : {}),
+            };
             addMsg(newMsg);
             setCurrentChatInput('');
             setShowChatEmojis(false);
+            setReplyToMsg(null); // limpiar reply
 
             // Scroll al último mensaje
             setTimeout(() => messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }), 50);
@@ -5395,19 +5435,47 @@ const App: React.FC = () => {
               {/* Mensajes */}
               <div
                 className="scroll-container chat-messages-scroll"
-                ref={(el) => { if (el) { el.onscroll = () => { const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80; isAtBottomRef.current = atBottom; }; } }}
+                ref={(el) => {
+                  messagesScrollRef.current = el;
+                  if (el) { el.onscroll = () => {
+                    const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+                    isAtBottomRef.current = atBottom;
+                    if (atBottom) { setShowScrollBottom(false); setUnreadCount(0); }
+                    else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
+                  }; }
+                }}
                 style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 44px), 44px) + 54px)' : '70px', paddingBottom: device.isMobile ? '70px' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
               >
-                {[...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);}).map((msg) => (
-                  <div key={msg.id} onClick={() => { if (selectionMode) { setSelectedMsgIds(prev => prev.includes(msg.id) ? prev.filter(x => x !== msg.id) : [...prev, msg.id]); } }} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px', alignItems: 'center', gap: '8px', padding: selectionMode ? '2px 8px' : '0', background: selectionMode && selectedMsgIds.includes(msg.id) ? 'rgba(0,180,230,0.10)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s', cursor: selectionMode ? 'pointer' : 'default' }}>
-                    {selectionMode && (
-                      <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${selectedMsgIds.includes(msg.id) ? '#00b4e6' : '#ccc'}`, background: selectedMsgIds.includes(msg.id) ? '#00b4e6' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, order: msg.from === 'me' ? 1 : 0, transition: 'all 0.15s' }}>
-                        {selectedMsgIds.includes(msg.id) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
-                      </div>
-                    )}
-                    <div
-                      style={{
-                        maxWidth: '72%',
+                {(() => {
+                  const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
+                  const getDateLabel = (msg: any) => {
+                    const ts = (() => { if(msg.created_at){const d=new Date(msg.created_at);if(!isNaN(d.getTime()))return d;} if(msg.timestamp){const d=new Date(msg.timestamp);if(!isNaN(d.getTime()))return d;} return null; })();
+                    if (!ts) return null;
+                    const today = new Date(); const yesterday = new Date(today); yesterday.setDate(today.getDate()-1);
+                    if (ts.toDateString()===today.toDateString()) return 'Hoy';
+                    if (ts.toDateString()===yesterday.toDateString()) return 'Ayer';
+                    return ts.toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'});
+                  };
+                  let lastDateLabel = '';
+                  return sorted.map((msg) => {
+                    const dateLabel = getDateLabel(msg);
+                    const showDate = dateLabel && dateLabel !== lastDateLabel;
+                    if (showDate) lastDateLabel = dateLabel!;
+                    return (
+                      <React.Fragment key={msg.id}>
+                        {showDate && (
+                          <div style={{ display:'flex', alignItems:'center', justifyContent:'center', margin:'8px 0 4px' }}>
+                            <span style={{ background:'rgba(0,0,0,0.18)', color:'#fff', fontSize:'11px', fontWeight:'600', padding:'3px 12px', borderRadius:'10px', backdropFilter:'blur(4px)' }}>{dateLabel}</span>
+                          </div>
+                        )}
+                        <div onClick={() => { if (selectionMode) { setSelectedMsgIds(prev => prev.includes(msg.id) ? prev.filter(x => x !== msg.id) : [...prev, msg.id]); } }} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px', alignItems: 'center', gap: '8px', padding: selectionMode ? '2px 8px' : '0', background: selectionMode && selectedMsgIds.includes(msg.id) ? 'rgba(0,180,230,0.10)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s', cursor: selectionMode ? 'pointer' : 'default' }}>
+                          {selectionMode && (
+                            <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${selectedMsgIds.includes(msg.id) ? '#00b4e6' : '#ccc'}`, background: selectedMsgIds.includes(msg.id) ? '#00b4e6' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, order: msg.from === 'me' ? 1 : 0, transition: 'all 0.15s' }}>
+                              {selectedMsgIds.includes(msg.id) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
+                            </div>
+                          )}
+                          <div
+                            style={{
                         background: msg.from === 'me' ? '#d9fdd3' : '#ffffff',
                         borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
                         padding: ((msg as any).type === 'image' || (msg as any).imageUrl) && ((msg as any).imageUrl || (msg as any).file_url) ? '4px 4px 7px' : (msg.text?.startsWith('💸') || (msg as any).type === 'money') ? '0' : '9px 12px 7px',
@@ -5967,7 +6035,34 @@ const App: React.FC = () => {
                       </div>
                     </div>
                   </div>
-                ))}
+                      </React.Fragment>
+                    );
+                  });
+                })()}
+
+              {/* Indicador "escribiendo..." */}
+              {isContactTyping && (
+                <div style={{ display:'flex', justifyContent:'flex-start', padding:'4px 0 8px' }}>
+                  <div style={{ background:'#fff', borderRadius:'16px 16px 16px 4px', padding:'10px 14px', boxShadow:'0 1px 2px rgba(0,0,0,0.1)', display:'flex', alignItems:'center', gap:'4px' }}>
+                    {[0,1,2].map(i => (
+                      <div key={i} style={{ width:'7px', height:'7px', borderRadius:'50%', background:'#9ca3af', animation:`typingDot 1.2s ease-in-out ${i*0.2}s infinite` }}/>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <style>{`@keyframes typingDot{0%,60%,100%{transform:translateY(0);opacity:0.4}30%{transform:translateY(-6px);opacity:1}}`}</style>
+
+              {/* Botón scroll to bottom */}
+              {showScrollBottom && (
+                <button
+                  onClick={() => { const el = messagesScrollRef.current; if(el){el.scrollTop=el.scrollHeight;} setShowScrollBottom(false); setUnreadCount(0); }}
+                  style={{ position:'sticky', bottom:'16px', alignSelf:'flex-end', marginRight:'8px', width:'40px', height:'40px', borderRadius:'50%', background:'#fff', border:'none', boxShadow:'0 2px 12px rgba(0,0,0,0.2)', cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', zIndex:10 }}>
+                  {unreadCount > 0 && (
+                    <span style={{ position:'absolute', top:'-6px', right:'-6px', background:'#00c8a0', color:'#fff', fontSize:'10px', fontWeight:'800', borderRadius:'10px', padding:'1px 5px', minWidth:'18px', textAlign:'center' }}>{unreadCount}</span>
+                  )}
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="2.5" strokeLinecap="round"><polyline points="6 9 12 15 18 9"/></svg>
+                </button>
+              )}
               </div>
 
               {/* Panel adjuntar */}
@@ -6374,13 +6469,22 @@ const App: React.FC = () => {
                 flexShrink: 0,
                 background: '#f0f2f5',
                 borderTop: '1px solid rgba(0,0,0,0.06)',
-                padding: '8px 8px',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
                 zIndex: 10,
               }}>
+              {/* Reply preview */}
+              {replyToMsg && (
+                <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(0,180,230,0.08)', borderLeft:'3px solid #00b4e6', margin:'6px 8px 0', padding:'6px 10px', borderRadius:'0 8px 8px 0' }}>
+                  <div style={{ flex:1, minWidth:0 }}>
+                    <div style={{ fontSize:'11px', fontWeight:'700', color:'#00b4e6', marginBottom:'2px' }}>{replyToMsg.from === 'me' ? 'Tú' : sc.title}</div>
+                    <div style={{ fontSize:'12px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{replyToMsg.text}</div>
+                  </div>
+                  <button onClick={() => setReplyToMsg(null)} style={{ background:'none', border:'none', cursor:'pointer', color:'#9ca3af', padding:'2px', flexShrink:0 }}>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                  </button>
+                </div>
+              )}
+              <div style={{ display:'flex', alignItems:'center', gap:'6px', padding:'8px 8px' }}>
               {/* Botón + */}
               <button onClick={() => { setShowChatAttach(p => !p); setShowChatEmojis(false); }}
                 style={{ background: 'none', border: 'none', borderRadius: '50%', width: '40px', height: '40px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none', color: showChatAttach ? '#00b4e6' : '#9ca3af', flexShrink: 0 }}>
@@ -6449,6 +6553,7 @@ const App: React.FC = () => {
                   <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
                 </svg>
               </button>
+            </div>
             </div>
           </div>
           </>
@@ -10352,7 +10457,7 @@ const App: React.FC = () => {
                 {
                   color:'#1485EE', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><polyline points="9 17 4 12 9 7"/><path d="M20 18v-2a4 4 0 0 0-4-4H4"/></svg>,
                   label:'Responder', sub:'Citar y responder este mensaje',
-                  action:() => { setCurrentChatInput(`> ${msgContextMenu.msg.text?.slice(0,50) || ''}...\n`); setMsgContextMenu(null); }
+                  action:() => { setReplyToMsg(msgContextMenu.msg); setMsgContextMenu(null); setTimeout(() => { const el = document.querySelector('#chat-input-bar input') as HTMLInputElement; el?.focus(); }, 100); }
                 },
                 ...(msgContextMenu.msg.from === 'me' ? [{
                   color:'#6B5BD6', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>,
