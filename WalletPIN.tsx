@@ -12,7 +12,7 @@ export const walletPIN = {
 };
 
 // ── Teclado numérico ────────────────────────────────────────────────────────
-const PinDots: React.FC<{ value: string; length?: number }> = ({ value, length = 4 }) => (
+const PinDots: React.FC<{ value: string; length?: number }> = ({ value, length = 6 }) => (
   <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', margin: '24px 0 8px' }}>
     {Array.from({ length }).map((_, i) => (
       <div key={i} style={{
@@ -58,7 +58,7 @@ export const SetupPINModal: React.FC<SetupPINProps> = ({ onDone, onCancel }) => 
   const [pin1, setPin1] = React.useState('');
   const [pin2, setPin2] = React.useState('');
   const [error, setError] = React.useState('');
-  const PIN_LEN = 4;
+  const PIN_LEN = 6;
 
   const handlePress = (k: string) => {
     setError('');
@@ -130,7 +130,7 @@ export const VerifyPINModal: React.FC<VerifyPINProps> = ({ amount, recipient, on
   const [pin, setPin] = React.useState('');
   const [error, setError] = React.useState('');
   const [attempts, setAttempts] = React.useState(0);
-  const PIN_LEN = 4;
+  const PIN_LEN = 6;
 
   const handlePress = (k: string) => {
     setError('');
