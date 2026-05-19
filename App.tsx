@@ -464,10 +464,8 @@ const App: React.FC = () => {
   const [showChatEmojis, setShowChatEmojis] = useState<boolean>(false);
   const [inputBottom, setInputBottom] = React.useState(0);
   const [_vvDebug, setVvDebug] = React.useState('');
-  // chatContainerHeight: altura real del contenedor del chat.
-  // En iOS, visualViewport.height se encoge cuando sube el teclado.
-  // Usamos esto para que el contenedor se encoja y el input quede al fondo.
   const [chatContainerHeight, setChatContainerHeight] = React.useState<string>('100dvh');
+  const [chatContainerTop, setChatContainerTop] = React.useState<number>(0);
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
@@ -478,7 +476,8 @@ const App: React.FC = () => {
       const kb = Math.max(0, innerH - vvH - vvOffTop);
       setVvDebug(`inner:${innerH} vv:${Math.round(vvH)} offTop:${Math.round(vvOffTop)} kb:${Math.round(kb)}`);
       setInputBottom(kb);
-      // Actualizar altura del contenedor del chat
+      // Mover el contenedor para que siga al viewport visual
+      setChatContainerTop(vvOffTop);
       setChatContainerHeight(`${Math.round(vvH)}px`);
     };
     update();
@@ -5215,7 +5214,7 @@ const App: React.FC = () => {
             <>
             <div className="chat-view-container" style={{ 
               position: 'fixed', 
-              top: 0,
+              top: chatContainerTop,
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0, 
               display: 'flex', 
