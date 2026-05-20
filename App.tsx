@@ -4967,8 +4967,11 @@ const App: React.FC = () => {
     <div style={{
       paddingTop: viewPadding.top, paddingLeft: viewPadding.left, paddingRight: viewPadding.right, paddingBottom: viewPadding.bottom,
       height: '100vh',
-      overflow: 'hidden',
-      background: 'transparent'
+      overflowY: 'auto',
+      overflowX: 'hidden',
+      background: 'transparent',
+      display: 'flex',
+      flexDirection: 'column',
     }}>
       {/* Tarjeta de balance principal - Minimalista */}
       <div style={{
@@ -5073,8 +5076,8 @@ const App: React.FC = () => {
         </button>
       </div>
 
-      {/* Accesos rapidos ? 4 apps */}
-      <div style={{ marginTop: '12px' }}>
+      {/* Accesos rapidos — 4 apps */}
+      <div style={{ marginTop: '12px', flex: 1 }}>
         <div style={{ fontSize: '12px', fontWeight: '600', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', justifyItems: 'center' }}>
           {[
