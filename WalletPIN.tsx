@@ -1,14 +1,37 @@
 import React from 'react';
 
-// ── Helpers ────────────────────────────────────────────────────────────────
-const PIN_KEY = 'egchat_wallet_pin';
+// ── Helpers — PIN cifrado con SHA-256 ──────────────────────────────────────
+const PIN_KEY = 'egchat_wallet_pin_hash'; // hash, no texto plano
 const PIN_SET_KEY = 'egchat_wallet_pin_set';
+const PIN_SALT = 'egchat_pin_salt_v1'; // salt fijo para derivación
+
+async function hashPIN(pin: string): Promise<string> {
+  const data = new TextEncoder().encode(PIN_SALT + pin);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+}
 
 export const walletPIN = {
   isSet: () => localStorage.getItem(PIN_SET_KEY) === '1',
-  verify: (pin: string) => localStorage.getItem(PIN_KEY) === pin,
-  save: (pin: string) => { localStorage.setItem(PIN_KEY, pin); localStorage.setItem(PIN_SET_KEY, '1'); },
-  clear: () => { localStorage.removeItem(PIN_KEY); localStorage.removeItem(PIN_SET_KEY); },
+  verify: async (pin: string): Promise<boolean> => {
+    const stored = localStorage.getItem(PIN_KEY);
+    if (!stored) return false;
+    const hash = await hashPIN(pin);
+    return hash === stored;
+  },
+  save: async (pin: string): Promise<void> => {
+    const hash = await hashPIN(pin);
+    localStorage.setItem(PIN_KEY, hash);
+    localStorage.setItem(PIN_SET_KEY, '1');
+    // Limpiar cualquier PIN en texto plano anterior
+    localStorage.removeItem('egchat_wallet_pin');
+  },
+  clear: () => {
+    localStorage.removeItem(PIN_KEY);
+    localStorage.removeItem(PIN_SET_KEY);
+    localStorage.removeItem('egchat_wallet_pin');
+  },
 };
 
 // ── Teclado numérico ────────────────────────────────────────────────────────
@@ -74,8 +97,8 @@ export const SetupPINModal: React.FC<SetupPINProps> = ({ onDone, onCancel }) => 
       const next = pin2 + k;
       setPin2(next);
       if (next.length === PIN_LEN) {
-        setTimeout(() => {
-          if (next === pin1) { walletPIN.save(pin1); onDone(); }
+        setTimeout(async () => {
+          if (next === pin1) { await walletPIN.save(pin1); onDone(); }
           else { setError('Los PINs no coinciden. Inténtalo de nuevo.'); setPin1(''); setPin2(''); setStep('create'); }
         }, 200);
       }
@@ -139,8 +162,9 @@ export const VerifyPINModal: React.FC<VerifyPINProps> = ({ amount, recipient, on
     const next = pin + k;
     setPin(next);
     if (next.length === PIN_LEN) {
-      setTimeout(() => {
-        if (walletPIN.verify(next)) {
+      setTimeout(async () => {
+        const ok = await walletPIN.verify(next);
+        if (ok) {
           onSuccess();
         } else {
           const att = attempts + 1;

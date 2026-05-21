@@ -3536,6 +3536,7 @@ const App: React.FC = () => {
                 clearHistory();
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
+                localStorage.removeItem('egchat_contacts_cache');
                 setShowProfileView(false);
                 setIsAuthenticated(false);
                 setCurrentView('home');
@@ -3617,6 +3618,7 @@ const App: React.FC = () => {
                 cleanupCallManager().catch(()=>{});
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
+                localStorage.removeItem('egchat_contacts_cache');
                 setIsAuthenticated(false);
                 setCurrentView('home');
               }
@@ -9150,11 +9152,13 @@ const App: React.FC = () => {
                             await removePushListeners().catch(()=>{});
                             await cleanupCallManager().catch(()=>{});
                             localStorage.removeItem('user_avatar');
+                            localStorage.removeItem('egchat_contacts_cache');
                             setIsAuthenticated(false);
                             setUserProfile({ id:'', name:'Usuario', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
                             setRealChats([]); setSelectedChat(null); setCurrentView('home');
                           } catch {
                             localStorage.removeItem('user_avatar');
+                            localStorage.removeItem('egchat_contacts_cache');
                             setIsAuthenticated(false);
                           }
                         }
@@ -9695,6 +9699,18 @@ const App: React.FC = () => {
 
   // -- Cargar contactos ? funci?n reutilizable (debe estar ANTES del useEffect que la usa) --
   const loadContacts = React.useCallback(async () => {
+    // 1. Mostrar inmediatamente desde caché local (sin esperar red)
+    try {
+      const cached = localStorage.getItem('egchat_contacts_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setAllContacts(parsed);
+        }
+      }
+    } catch {}
+
+    // 2. Actualizar en background desde la API
     try {
       const data = await contactsAPI.getAll();
       if (Array.isArray(data)) {
@@ -9734,7 +9750,10 @@ const App: React.FC = () => {
           }
         });
 
-        setAllContacts([...backendContacts, ...extraContacts].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' })));
+        const sorted = [...backendContacts, ...extraContacts].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
+        setAllContacts(sorted);
+        // 3. Guardar en caché para la próxima apertura
+        try { localStorage.setItem('egchat_contacts_cache', JSON.stringify(sorted)); } catch {}
       }
     } catch {}
   }, []);
