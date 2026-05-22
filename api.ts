@@ -366,6 +366,8 @@ export const userAPI = {
     });
     return res.json();
   },
+  // Obtener perfiles actualizados de múltiples usuarios (para sincronizar avatares)
+  getBatch: (ids: string[]) => post<any[]>('/users/batch', { ids }),
 };
 
 // ══════════════════════════════════════════════════════════════════

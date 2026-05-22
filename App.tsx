@@ -1,7 +1,7 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
 import ImageViewerModal from './ImageViewerModal';
 import './index.css';
-import { chatAPI, authAPI, contactsAPI, storiesAPI } from './api';
+import { chatAPI, authAPI, contactsAPI, storiesAPI, userAPI } from './api';
 import AuthScreen from './AuthScreen';
 import { ContactImportModal } from './ContactImportModal';
 import { EstadosView } from './EstadosView';
@@ -9780,6 +9780,68 @@ const App: React.FC = () => {
     } catch {}
   }, []);
 
+  // -- Sincronizar avatares y nombres de usuarios desde el servidor --------
+  // Resuelve el problema de fotos de perfil que no aparecen en los chats
+  const syncUserAvatars = React.useCallback(async () => {
+    try {
+      const chats = realChatsRef.current || [];
+      // Recopilar todos los user_ids únicos de participantes de chats privados
+      const myId = currentUserId.current?.toString();
+      const userIds = new Set<string>();
+      chats.forEach((chat: any) => {
+        if (chat.type === 'group') return;
+        (chat.participants || []).forEach((p: any) => {
+          const uid = p.user_id?.toString() || p.id?.toString() || '';
+          if (uid && uid !== myId) userIds.add(uid);
+        });
+      });
+      if (userIds.size === 0) return;
+
+      // Pedir perfiles frescos al servidor
+      const freshUsers = await userAPI.getBatch(Array.from(userIds));
+      if (!Array.isArray(freshUsers) || freshUsers.length === 0) return;
+
+      // Construir mapa userId → { full_name, avatar_url }
+      const profileMap: Record<string, { full_name: string; avatar_url: string }> = {};
+      freshUsers.forEach((u: any) => {
+        if (u.id) profileMap[u.id.toString()] = { full_name: u.full_name || '', avatar_url: u.avatar_url || '' };
+      });
+
+      // Actualizar realChats con avatares frescos
+      setRealChats((prev: any[]) => {
+        const updated = prev.map((chat: any) => {
+          if (chat.type === 'group') return chat;
+          const participants = (chat.participants || []).map((p: any) => {
+            const uid = p.user_id?.toString() || '';
+            const fresh = profileMap[uid];
+            if (!fresh) return p;
+            return {
+              ...p,
+              full_name: fresh.full_name || p.full_name,
+              avatar_url: fresh.avatar_url || p.avatar_url,
+              users: { ...(p.users || {}), full_name: fresh.full_name || p.users?.full_name, avatar_url: fresh.avatar_url || p.users?.avatar_url },
+            };
+          });
+          return { ...chat, participants };
+        });
+        // Actualizar caché
+        try { localStorage.setItem('egchat_chats_cache', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+
+      // Actualizar allContacts con avatares frescos
+      setAllContacts((prev: any[]) => {
+        const updated = prev.map((c: any) => {
+          const fresh = profileMap[c.id?.toString() || ''];
+          if (!fresh || !fresh.avatar_url) return c;
+          return { ...c, avatarUrl: fresh.avatar_url, name: fresh.full_name || c.name };
+        });
+        try { localStorage.setItem('egchat_contacts_cache', JSON.stringify(updated)); } catch {}
+        return updated;
+      });
+    } catch {}
+  }, []);
+
   // -- useEffects mensajeria -------------------------------------
   useEffect(() => {
     if (!isAuthenticated) return;
@@ -9863,6 +9925,8 @@ const App: React.FC = () => {
     loadChats();
     // Cargar todos los contactos reales
     loadContacts();
+    // Sincronizar avatares frescos tras cargar chats (pequeño delay para que loadChats termine)
+    setTimeout(() => syncUserAvatars(), 2000);
     // Cargar contactos favoritos reales
     contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
     // Cargar stories activos para mostrar anillo en avatares
@@ -10084,9 +10148,10 @@ const App: React.FC = () => {
         loadChats();
       }
       loadContacts();
+      syncUserAvatars();
     }, 30000);
     return () => clearInterval(iv);
-  }, [isAuthenticated, loadChats, loadContacts]);
+  }, [isAuthenticated, loadChats, loadContacts, syncUserAvatars]);
 
   // -- Reconexión automática al volver al primer plano (evita pantalla en blanco) --
   useEffect(() => {
@@ -10097,6 +10162,7 @@ const App: React.FC = () => {
       if (!selectedChat?.isGroup) {
         loadChats();
       }
+      syncUserAvatars();
       if (selectedChat) {
         const chatId = selectedChat.id?.toString() || '';
         if (chatId && chatId.includes('-') && chatId.length >= 20) {
