@@ -1,4 +1,4 @@
-// ── useWebRTC — señalización via HTTP polling ────────────────────────────────
+// ── useWebRTC — señalización via SSE (instantánea) + HTTP polling (fallback) ──
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { authAPI } from './api';
 
@@ -223,6 +223,8 @@ export function useWebRTC() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const iceSentRef = useRef<Set<string>>(new Set());
   const endedRef = useRef<boolean>(false);
+  // SSE stream para señalización instantánea
+  const sseRef = useRef<EventSource | null>(null);
 
   const [callState, setCallState] = useState<CallState>('idle');
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null);
@@ -235,9 +237,14 @@ export function useWebRTC() {
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
   }, []);
 
+  const stopSSE = useCallback(() => {
+    if (sseRef.current) { sseRef.current.close(); sseRef.current = null; }
+  }, []);
+
   // Libera recursos sin tocar callState
   const cleanupResources = useCallback(() => {
     stopPolling();
+    stopSSE();
     if (pc.current) {
       pc.current.ontrack = null;
       pc.current.onicecandidate = null;
@@ -252,7 +259,7 @@ export function useWebRTC() {
     iceSentRef.current.clear();
     setRemoteStream(null);
     setLocalStream(null);
-  }, [stopPolling]);
+  }, [stopPolling, stopSSE]);
 
   // Limpieza completa (al desmontar)
   const cleanup = useCallback(() => {
@@ -513,8 +520,34 @@ export function useWebRTC() {
 
      setCallState('calling');
 
-     let pollCount = 0;
+     // ── SSE: escuchar answer e ICE del callee en tiempo real ─────────────────
      let answerSet = false;
+     const token = authAPI.getToken();
+     const sseUrl = `${BASE}/chat/stream${token ? '?_t=' + encodeURIComponent(token) : ''}`;
+     const sse = new EventSource(sseUrl);
+     sseRef.current = sse;
+
+     sse.onmessage = async (ev) => {
+       if (endedRef.current) return;
+       try {
+         const msg = JSON.parse(ev.data);
+         if (msg.callId !== callId) return;
+
+         if (msg.type === 'call_answer' && !answerSet && p.signalingState === 'have-local-offer') {
+           await p.setRemoteDescription(new RTCSessionDescription(msg.answer));
+           answerSet = true;
+           console.log('✅ [SSE] Answer recibido instantáneamente');
+         }
+         if (msg.type === 'call_ice' && msg.role === 'callee' && answerSet) {
+           try { await p.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
+         }
+         if (msg.type === 'call_ended') { triggerEnded(); }
+       } catch {}
+     };
+     sse.onerror = () => { /* SSE caído — el polling de fallback lo cubre */ };
+
+     // ── POLLING FALLBACK (reducido a 3s — solo para recuperación) ────────────
+     let pollCount = 0;
      let calleeCandidatesApplied = 0;
      let consecutiveErrors = 0;
 
@@ -523,12 +556,14 @@ export function useWebRTC() {
        try {
          pollCount++;
          const session = await sigFetch(`/call/${callId}`);
-         consecutiveErrors = 0; // reset on success
+         consecutiveErrors = 0;
          if (!session || session.ended) { triggerEnded(); return; }
 
+         // Fallback: si SSE no entregó el answer, el polling lo recoge
          if (!answerSet && session.answer && p.signalingState === 'have-local-offer') {
            await p.setRemoteDescription(new RTCSessionDescription(session.answer));
            answerSet = true;
+           console.log('✅ [Polling fallback] Answer recibido');
          }
          if (answerSet) {
            const cands = session.calleeCandidates || [];
@@ -537,18 +572,15 @@ export function useWebRTC() {
            }
            calleeCandidatesApplied = cands.length;
          }
-         // Timeout 120s sin respuesta (el receptor puede estar desbloqueando el teléfono)
-         if (pollCount > 80 && !answerSet) triggerEnded();
+         // Timeout 120s sin respuesta
+         if (pollCount > 40 && !answerSet) triggerEnded();
        } catch (err: any) {
          consecutiveErrors++;
-         // Solo cortar si hay 10+ errores consecutivos Y la conexión WebRTC está definitivamente caída
          const rtcState = p.connectionState || p.iceConnectionState;
          const rtcFailed = rtcState === 'failed' || rtcState === 'closed';
-         if (consecutiveErrors >= 5 && rtcFailed) {
-           triggerEnded();
-         }
+         if (consecutiveErrors >= 5 && rtcFailed) triggerEnded();
        }
-     }, 1000);
+     }, 3000); // 3s en lugar de 1s — SSE cubre los casos rápidos
    }, [cleanup, createPC, sendIceCandidate, triggerEnded]);
 
    // ── CALLEE ──────────────────────────────────────────────────────────────────
@@ -631,6 +663,26 @@ export function useWebRTC() {
      // onconnectionstatechange lo hará cuando p.connectionState === 'connected'
      setCallState('ringing'); // estado intermedio: answer enviado, esperando WebRTC
 
+     // ── SSE: escuchar ICE del caller en tiempo real ───────────────────────────
+     const token = authAPI.getToken();
+     const sseUrl = `${BASE}/chat/stream${token ? '?_t=' + encodeURIComponent(token) : ''}`;
+     const sse = new EventSource(sseUrl);
+     sseRef.current = sse;
+
+     sse.onmessage = async (ev) => {
+       if (endedRef.current) return;
+       try {
+         const msg = JSON.parse(ev.data);
+         if (msg.callId !== callId) return;
+         if (msg.type === 'call_ice' && msg.role === 'caller') {
+           try { await p.addIceCandidate(new RTCIceCandidate(msg.candidate)); } catch {}
+           console.log('✅ [SSE] ICE del caller recibido instantáneamente');
+         }
+         if (msg.type === 'call_ended') { clearTimeout(connectTimeout); triggerEnded(); }
+       } catch {}
+     };
+     sse.onerror = () => { /* SSE caído — el polling de fallback lo cubre */ };
+
      // Timeout de seguridad: si en 30s no conecta, reintentar ICE
      const connectTimeout = setTimeout(() => {
        if (p.connectionState !== 'connected' && !endedRef.current) {
@@ -640,6 +692,7 @@ export function useWebRTC() {
      }, 30000);
 
      let calleeConsecutiveErrors = 0;
+     // Polling fallback reducido a 3s
      pollingRef.current = setInterval(async () => {
        if (endedRef.current) { clearTimeout(connectTimeout); return; }
        try {
@@ -657,7 +710,7 @@ export function useWebRTC() {
          const rtcFailed = rtcState === 'failed' || rtcState === 'closed';
          if (calleeConsecutiveErrors >= 5 && rtcFailed) { clearTimeout(connectTimeout); triggerEnded(); }
        }
-     }, 1000);
+     }, 3000); // 3s en lugar de 1s
    }, [cleanup, createPC, sendIceCandidate, triggerEnded]);
 
   const endCall = useCallback(async () => {
@@ -679,10 +732,32 @@ export function useWebRTC() {
     setIsCamOff(p => !p);
   }, []);
 
-  // Polling llamadas entrantes
+  // Polling llamadas entrantes — SSE primero, polling como fallback
   const pollIncoming = useCallback((myUserId: string, onIncoming: (call: any) => void, onCancelled?: () => void) => {
     if (!myUserId) return () => {};
     let lastCallId: string | null = null;
+
+    // SSE: escuchar llamadas entrantes en tiempo real
+    const token = authAPI.getToken();
+    const sseUrl = `${BASE}/chat/stream${token ? '?_t=' + encodeURIComponent(token) : ''}`;
+    const sse = new EventSource(sseUrl);
+
+    sse.onmessage = (ev) => {
+      try {
+        const msg = JSON.parse(ev.data);
+        if (msg.type === 'incoming_call' && msg.callId !== lastCallId) {
+          lastCallId = msg.callId;
+          onIncoming({ callId: msg.callId, callerId: msg.callerId, type: msg.callType, offer: msg.offer });
+          console.log('📞 [SSE] Llamada entrante instantánea:', msg.callId);
+        }
+        if (msg.type === 'call_ended' && msg.callId === lastCallId) {
+          lastCallId = null;
+          onCancelled?.();
+        }
+      } catch {}
+    };
+
+    // Polling fallback cada 3s (en caso de que SSE no esté disponible)
     const check = async () => {
       try {
         const calls = await sigFetch(`/call/incoming/${myUserId}`);
@@ -690,17 +765,14 @@ export function useWebRTC() {
           const call = calls[0];
           if (call.callId !== lastCallId) { lastCallId = call.callId; onIncoming(call); }
         } else {
-          // Si había una llamada activa y ya no aparece → el caller canceló
-          if (lastCallId !== null) {
-            lastCallId = null;
-            onCancelled?.();
-          }
+          if (lastCallId !== null) { lastCallId = null; onCancelled?.(); }
         }
       } catch {}
     };
     check();
-    const id = setInterval(check, 2000);
-    return () => clearInterval(id);
+    const id = setInterval(check, 3000); // 3s en lugar de 2s — SSE cubre los casos rápidos
+
+    return () => { clearInterval(id); sse.close(); };
   }, []);
 
   useEffect(() => { return () => { cleanup(); }; }, [cleanup]);
