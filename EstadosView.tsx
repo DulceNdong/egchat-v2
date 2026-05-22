@@ -1134,6 +1134,127 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
   const displayed = activeTab === 'recientes' ? recent : seen;
   const maxSec = createMode === 'clip' ? 15 : 60;
 
+  // ── Estados de grupos: generar contenido simulado por grupo ──────────────
+  const GROUP_STORY_CONTENTS: StoryMedia[][] = [
+    [
+      { type: 'text', content: '📢 Reunion del grupo mañana a las 18:00', bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', emoji: '📅' },
+      { type: 'text', content: 'Confirmar asistencia en el chat', bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', emoji: '✅' },
+    ],
+    [
+      { type: 'text', content: '🎉 Felicitamos a todos los miembros del grupo', bg: 'linear-gradient(135deg,#f59e0b,#ef4444)', emoji: '🎊' },
+      { type: 'text', content: 'Gracias por ser parte de esta comunidad', bg: 'linear-gradient(135deg,#ec4899,#f43f5e)', emoji: '❤️' },
+      { type: 'text', content: 'Seguimos creciendo juntos 💪', bg: 'linear-gradient(135deg,#10b981,#059669)', emoji: '🚀' },
+    ],
+    [
+      { type: 'text', content: '📸 Fotos del evento de ayer disponibles', bg: 'linear-gradient(135deg,#0ea5e9,#2563eb)', emoji: '🖼️' },
+      { type: 'text', content: 'Revisa el album compartido en el chat', bg: 'linear-gradient(135deg,#06b6d4,#0891b2)', emoji: '📁' },
+    ],
+    [
+      { type: 'text', content: '⚽ Partido del grupo este sabado', bg: 'linear-gradient(135deg,#16a34a,#15803d)', emoji: '🏆' },
+      { type: 'text', content: 'Lugar: Campo Municipal de Malabo', bg: 'linear-gradient(135deg,#059669,#047857)', emoji: '📍' },
+      { type: 'text', content: 'Hora: 10:00 AM. No faltes!', bg: 'linear-gradient(135deg,#f59e0b,#d97706)', emoji: '⏰' },
+    ],
+    [
+      { type: 'text', content: '🆕 Nuevo miembro en el grupo', bg: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', emoji: '👋' },
+      { type: 'text', content: 'Bienvenido/a a la familia', bg: 'linear-gradient(135deg,#a855f7,#9333ea)', emoji: '🎉' },
+    ],
+  ];
+
+  const [groupStories, setGroupStories] = useState<Array<{
+    id: string; name: string; avatarUrl: string; media: StoryMedia[];
+    seen: boolean; publishedAt: number; views: number;
+  }>>(() =>
+    groups.slice(0, 8).map((grp, i) => ({
+      id: grp.id,
+      name: grp.name,
+      avatarUrl: grp.avatarUrl || '',
+      media: GROUP_STORY_CONTENTS[i % GROUP_STORY_CONTENTS.length],
+      seen: false,
+      publishedAt: Date.now() - (i * 18 + 5) * 60000, // escalonados en el tiempo
+      views: Math.floor(Math.random() * 40) + 5,
+    }))
+  );
+
+  // Actualizar groupStories cuando cambian los grupos
+  React.useEffect(() => {
+    if (groups.length === 0) return;
+    setGroupStories(prev => {
+      const existingIds = new Set(prev.map(g => g.id));
+      const newGroups = groups.filter(g => !existingIds.has(g.id)).slice(0, 8 - prev.length);
+      if (newGroups.length === 0) return prev;
+      return [
+        ...prev,
+        ...newGroups.map((grp, i) => ({
+          id: grp.id,
+          name: grp.name,
+          avatarUrl: grp.avatarUrl || '',
+          media: GROUP_STORY_CONTENTS[(prev.length + i) % GROUP_STORY_CONTENTS.length],
+          seen: false,
+          publishedAt: Date.now() - (i * 12 + 3) * 60000,
+          views: Math.floor(Math.random() * 30) + 3,
+        })),
+      ];
+    });
+  }, [groups.length]);
+
+  const [viewingGroup, setViewingGroup] = useState<typeof groupStories[0] | null>(null);
+  const [groupSlideIdx, setGroupSlideIdx] = useState(0);
+  const [groupProgress, setGroupProgress] = useState(0);
+  const groupProgressTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const openGroupStory = (grp: typeof groupStories[0]) => {
+    setViewingGroup(grp);
+    setGroupSlideIdx(0);
+    setGroupProgress(0);
+    setGroupStories(prev => prev.map(g => g.id === grp.id ? { ...g, seen: true, views: g.views + 1 } : g));
+    startGroupProgress();
+  };
+
+  const startGroupProgress = () => {
+    if (groupProgressTimer.current) clearInterval(groupProgressTimer.current);
+    setGroupProgress(0);
+    groupProgressTimer.current = setInterval(() => {
+      setGroupProgress(p => {
+        if (p >= 100) {
+          clearInterval(groupProgressTimer.current!);
+          setViewingGroup(prev => {
+            if (!prev) return null;
+            const nextIdx = groupSlideIdx + 1;
+            if (nextIdx < prev.media.length) {
+              setGroupSlideIdx(nextIdx);
+              setGroupProgress(0);
+              startGroupProgress();
+              return prev;
+            }
+            return null; // cerrar
+          });
+          return 100;
+        }
+        return p + 2;
+      });
+    }, 100);
+  };
+
+  const goGroupSlide = (dir: 'prev' | 'next') => {
+    if (!viewingGroup) return;
+    if (dir === 'prev' && groupSlideIdx > 0) {
+      setGroupSlideIdx(i => i - 1);
+      setGroupProgress(0);
+      startGroupProgress();
+    } else if (dir === 'next') {
+      if (groupSlideIdx < viewingGroup.media.length - 1) {
+        setGroupSlideIdx(i => i + 1);
+        setGroupProgress(0);
+        startGroupProgress();
+      } else {
+        setViewingGroup(null);
+        if (groupProgressTimer.current) clearInterval(groupProgressTimer.current);
+      }
+    }
+  };
+
+  React.useEffect(() => () => { if (groupProgressTimer.current) clearInterval(groupProgressTimer.current); }, []);
+
   return (
     <div style={{ height: '100vh', background: '#fff', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif' }}>
 
@@ -1305,27 +1426,32 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
               </div>
             )}
             {/* Estados de Grupos — solo en pestaña Recientes */}
-            {activeTab === 'recientes' && groups.length > 0 && (
+            {activeTab === 'recientes' && groupStories.length > 0 && (
               <div style={{ padding: '10px 16px 4px', borderBottom: '1px solid #f0f0f0' }}>
-                <div style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '10px' }}>
-                  Estados de Grupos
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+                  <span style={{ fontSize: '11px', fontWeight: '700', color: '#9ca3af', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+                    Estados de Grupos
+                  </span>
+                  <span style={{ fontSize: '10px', color: '#a855f7', fontWeight: '700' }}>
+                    {groupStories.filter(g => !g.seen).length} nuevos
+                  </span>
                 </div>
-                <div style={{ display: 'flex', gap: '12px', overflowX: 'auto', paddingBottom: '8px' }}>
-                  {groups.map(grp => (
-                    <div key={grp.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', minWidth: '60px', cursor: 'pointer' }}>
-                      <div style={{ padding: '2.5px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)' }}>
-                        <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', border: '2px solid #fff', overflow: 'hidden' }}>
+                <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '10px' }}>
+                  {groupStories.map(grp => (
+                    <div key={grp.id} onClick={() => openGroupStory(grp)}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', minWidth: '62px', cursor: 'pointer' }}>
+                      {/* Anillo de color si tiene estado nuevo */}
+                      <div style={{ padding: '2.5px', borderRadius: '50%', background: grp.seen ? '#e5e7eb' : 'linear-gradient(135deg,#a855f7,#6366f1)' }}>
+                        <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', border: '2.5px solid #fff', overflow: 'hidden' }}>
                           {grp.avatarUrl
                             ? <img src={grp.avatarUrl} alt={grp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                             : (grp.name || 'G').slice(0, 2).toUpperCase()}
                         </div>
                       </div>
-                      <span style={{ fontSize: '11px', fontWeight: '600', color: '#374151', textAlign: 'center', maxWidth: '60px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                      <span style={{ fontSize: '11px', fontWeight: grp.seen ? '500' : '700', color: grp.seen ? '#9ca3af' : '#374151', textAlign: 'center', maxWidth: '62px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {grp.name}
                       </span>
-                      {grp.isAdmin && (
-                        <span style={{ fontSize: '9px', color: '#a855f7', fontWeight: '700', background: 'rgba(168,85,247,0.1)', borderRadius: '4px', padding: '1px 4px' }}>Admin</span>
-                      )}
+                      <span style={{ fontSize: '10px', color: '#aaa' }}>{timeAgo(grp.publishedAt)}</span>
                     </div>
                   ))}
                 </div>
@@ -1361,6 +1487,62 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
           </div>
         )}
       </div>
+
+      {/* VISOR DE ESTADO DE GRUPO */}
+      {viewingGroup && (
+        <div style={{ position: 'fixed', inset: 0, zIndex: 3100, background: '#000', display: 'flex', flexDirection: 'column', fontFamily: '-apple-system, sans-serif' }}>
+          <div style={{ position: 'absolute', inset: 0, background: viewingGroup.media[groupSlideIdx]?.bg || '#111', opacity: 0.2, filter: 'blur(50px)' }} />
+          <div style={{ position: 'relative', zIndex: 2, display: 'flex', flexDirection: 'column', height: '100%' }}>
+            {/* Zonas tap */}
+            <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: '40%', zIndex: 1 }} onClick={() => goGroupSlide('prev')} />
+            <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '40%', zIndex: 1 }} onClick={() => goGroupSlide('next')} />
+            {/* Barras progreso */}
+            <div style={{ display: 'flex', gap: '3px', paddingTop: 'max(48px, env(safe-area-inset-top))', paddingLeft: '12px', paddingRight: '12px', paddingBottom: '8px', position: 'relative', zIndex: 2 }}>
+              {viewingGroup.media.map((_, i) => (
+                <div key={i} style={{ flex: 1, height: '2px', borderRadius: '2px', background: 'rgba(255,255,255,0.3)', overflow: 'hidden' }}>
+                  <div style={{ height: '100%', background: '#fff', width: i < groupSlideIdx ? '100%' : i === groupSlideIdx ? `${groupProgress}%` : '0%', transition: 'width 0.1s linear' }} />
+                </div>
+              ))}
+            </div>
+            {/* Header grupo */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '0 16px 12px', position: 'relative', zIndex: 2 }}>
+              <div style={{ width: '38px', height: '38px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#fff', overflow: 'hidden', border: '2px solid rgba(255,255,255,0.4)' }}>
+                {viewingGroup.avatarUrl
+                  ? <img src={viewingGroup.avatarUrl} alt={viewingGroup.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : (viewingGroup.name || 'G').slice(0, 2).toUpperCase()}
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: '14px', fontWeight: '700', color: '#fff' }}>{viewingGroup.name}</div>
+                <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.65)' }}>hace {timeAgo(viewingGroup.publishedAt)}  ·  {viewingGroup.views} vistas</div>
+              </div>
+              <button onClick={() => { setViewingGroup(null); if (groupProgressTimer.current) clearInterval(groupProgressTimer.current); }}
+                style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff', zIndex: 2 }}>
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
+            </div>
+            {/* Contenido del slide */}
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '0 24px', position: 'relative', zIndex: 2 }}>
+              <div style={{ width: '100%', maxWidth: '340px', borderRadius: '20px', background: viewingGroup.media[groupSlideIdx]?.bg || '#222', padding: '40px 28px', textAlign: 'center', boxShadow: '0 8px 40px rgba(0,0,0,0.5)' }}>
+                {viewingGroup.media[groupSlideIdx]?.emoji && (
+                  <div style={{ fontSize: '52px', marginBottom: '16px', filter: 'drop-shadow(0 2px 8px rgba(0,0,0,0.3))' }}>
+                    {viewingGroup.media[groupSlideIdx].emoji}
+                  </div>
+                )}
+                <div style={{ fontSize: '20px', fontWeight: '700', color: '#fff', lineHeight: 1.4, textShadow: '0 1px 4px rgba(0,0,0,0.4)' }}>
+                  {viewingGroup.media[groupSlideIdx]?.content}
+                </div>
+              </div>
+            </div>
+            {/* Badge grupo */}
+            <div style={{ padding: '16px 20px 32px', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 2 }}>
+              <div style={{ background: 'rgba(168,85,247,0.25)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '20px', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                <span style={{ fontSize: '12px', color: '#c084fc', fontWeight: '700' }}>Estado del grupo</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* VISOR DE ESTADO */}
       {viewing && (
