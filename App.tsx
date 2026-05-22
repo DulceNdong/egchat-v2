@@ -109,8 +109,17 @@ const App: React.FC = () => {
   const chatRecordTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef<boolean>(true);
-  // -- Mensajería real -------------------------------------------
-  const [realChats, setRealChats] = useState<any[]>([]);
+  // -- Mensajería real — inicializar desde caché para aparición instantánea --
+  const [realChats, setRealChats] = useState<any[]>(() => {
+    try {
+      const cached = localStorage.getItem('egchat_chats_cache');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch {}
+    return [];
+  });
   const [newChatSearching, setNewChatSearching] = useState(false);
   const currentUserId = useRef<string>('');
   const pollingRef = useRef<ReturnType<typeof setInterval>|null>(null);
@@ -156,6 +165,8 @@ const App: React.FC = () => {
             };
           })];
           realChatsRef.current = merged;
+          // Guardar en caché para aparición instantánea en próxima apertura
+          try { localStorage.setItem('egchat_chats_cache', JSON.stringify(merged)); } catch {}
           return merged;
         });
         // Sincronizar allGroups con los grupos del backend (reemplazar completamente)
@@ -458,7 +469,24 @@ const App: React.FC = () => {
   })() : null;
   const setSelectedChat = _setSelectedChat;
   const [chatMessages, setChatMessages] = useState<Record<string, Array<{id: string; from: 'me'|'them'; text: string; time: string; type?: 'text'|'audio'|'image'; status?: 'pending'|'delivered'|'read'; audioUrl?: string; imageUrl?: string; fileUrl?: string; fileName?: string; fileSize?: string; fileExt?: string}>>>(() => {
-    try { const s = localStorage.getItem('egchat_messages'); return s ? JSON.parse(s) : {}; } catch { return {}; }
+    try {
+      // Nuevo formato: un key por chat
+      const index = localStorage.getItem('egchat_msgs_index');
+      if (index) {
+        const keys: string[] = JSON.parse(index);
+        const result: Record<string, any[]> = {};
+        for (const k of keys) {
+          try {
+            const raw = localStorage.getItem(`egchat_msgs_${k}`);
+            if (raw) result[k] = JSON.parse(raw);
+          } catch {}
+        }
+        if (Object.keys(result).length > 0) return result;
+      }
+      // Fallback: formato antiguo
+      const s = localStorage.getItem('egchat_messages');
+      return s ? JSON.parse(s) : {};
+    } catch { return {}; }
   });
   const [currentChatInput, setCurrentChatInput] = useState<string>('');
   const [editingMsgId, setEditingMsgId] = useState<string | null>(null);
@@ -916,45 +944,31 @@ const App: React.FC = () => {
   }>>([]);
   const [loadingGroupMembers, setLoadingGroupMembers] = useState<boolean>(false);
 
-  // Persistir mensajes en localStorage  incluye imágenes comprimidas
+  // Persistir mensajes en localStorage — por chat individual, máx 50 msgs, sin blobs
   useEffect(() => {
     try {
-      const toSave: Record<string, any[]> = {};
+      // Guardar cada chat por separado: egchat_msgs_{chatId}
+      // Esto evita un único JSON enorme que bloquea el hilo principal
       for (const [k, msgs] of Object.entries(chatMessages)) {
-        toSave[k] = msgs.map(m => {
-          const saved: any = { ...(m as any) };
-          // Excluir blob: URLs de audio que expiran
-          if (saved.audioUrl && saved.audioUrl.startsWith('blob:')) {
-            delete saved.audioUrl;
-          }
-          // Comprimir imágenes base64 grandes a thumbnail para localStorage
-          if (saved.imageUrl && saved.imageUrl.startsWith('data:image') && saved.imageUrl.length > 50000) {
-            // Guardar versión comprimida como thumbnail
-            try {
-              const canvas = document.createElement('canvas');
-              const img = new Image();
-              img.src = saved.imageUrl;
-              canvas.width = 200; canvas.height = 160;
-              const ctx = canvas.getContext('2d');
-              if (ctx && img.complete) {
-                ctx.drawImage(img, 0, 0, 200, 160);
-                saved.imageUrl = canvas.toDataURL('image/jpeg', 0.4);
-              }
-            } catch {}
-          }
-          return saved;
-        });
+        try {
+          // Solo los últimos 50 mensajes por chat
+          const recent = (msgs as any[]).slice(-50).map((m: any) => {
+            const saved: any = { ...m };
+            // Excluir blob: URLs que expiran
+            if (saved.audioUrl?.startsWith('blob:')) delete saved.audioUrl;
+            // Excluir imágenes base64 grandes — solo guardar URL del servidor
+            if (saved.imageUrl?.startsWith('data:image') && saved.imageUrl.length > 10000) {
+              delete saved.imageUrl; // se recargará del servidor
+            }
+            return saved;
+          });
+          localStorage.setItem(`egchat_msgs_${k}`, JSON.stringify(recent));
+        } catch {}
       }
+      // Guardar índice de chats con mensajes cacheados
       try {
-        localStorage.setItem('egchat_messages', JSON.stringify(toSave));
-      } catch {
-        // Si aún falla, guardar solo mensajes de texto (sin imágenes)
-        const toSaveLite: Record<string, any[]> = {};
-        for (const [k, msgs] of Object.entries(toSave)) {
-          toSaveLite[k] = msgs.filter((m: any) => !m.imageUrl || !m.imageUrl.startsWith('data:'));
-        }
-        try { localStorage.setItem('egchat_messages', JSON.stringify(toSaveLite)); } catch {}
-      }
+        localStorage.setItem('egchat_msgs_index', JSON.stringify(Object.keys(chatMessages)));
+      } catch {}
     } catch {}
   }, [chatMessages]);
 
@@ -3537,6 +3551,8 @@ const App: React.FC = () => {
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 localStorage.removeItem('egchat_contacts_cache');
+                localStorage.removeItem('egchat_chats_cache');
+                localStorage.removeItem('egchat_msgs_index');
                 setShowProfileView(false);
                 setIsAuthenticated(false);
                 setCurrentView('home');
@@ -3619,6 +3635,8 @@ const App: React.FC = () => {
                 localStorage.removeItem('token');
                 localStorage.removeItem('egchat_token_backup');
                 localStorage.removeItem('egchat_contacts_cache');
+                localStorage.removeItem('egchat_chats_cache');
+                localStorage.removeItem('egchat_msgs_index');
                 setIsAuthenticated(false);
                 setCurrentView('home');
               }
@@ -9153,12 +9171,16 @@ const App: React.FC = () => {
                             await cleanupCallManager().catch(()=>{});
                             localStorage.removeItem('user_avatar');
                             localStorage.removeItem('egchat_contacts_cache');
+                            localStorage.removeItem('egchat_chats_cache');
+                            localStorage.removeItem('egchat_msgs_index');
                             setIsAuthenticated(false);
                             setUserProfile({ id:'', name:'Usuario', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
                             setRealChats([]); setSelectedChat(null); setCurrentView('home');
                           } catch {
                             localStorage.removeItem('user_avatar');
                             localStorage.removeItem('egchat_contacts_cache');
+                            localStorage.removeItem('egchat_chats_cache');
+                            localStorage.removeItem('egchat_msgs_index');
                             setIsAuthenticated(false);
                           }
                         }
