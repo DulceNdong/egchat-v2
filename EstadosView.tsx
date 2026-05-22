@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { storiesAPI, spacesAPI, noticiasGobAPI } from './api';
+import { storiesAPI, spacesAPI, noticiasGobAPI, groupStoriesAPI } from './api';
 
 interface Reaction { emoji: string; count: number; reacted: boolean; }
 interface Reply { id: string; user: string; text: string; time: string; }
@@ -786,7 +786,20 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
   const publishText = () => {
     if (!newText.trim()) return;
     const newMedia: StoryMedia = { type: 'text' as const, content: newText, bg: newBg, emoji: newEmoji, music: newMusic !== 'Sin musica' ? newMusic : undefined };
-    // Publicar en servidor
+
+    // Si hay un grupo pendiente, publicar en el grupo
+    const pendingGroupId = (window as any).__pendingGroupStoryId;
+    if (pendingGroupId) {
+      delete (window as any).__pendingGroupStoryId;
+      groupStoriesAPI.publish(pendingGroupId, [newMedia]).then(() => {
+        loadGroupStories();
+      }).catch(() => {});
+      setCreateMode(null);
+      setNewText(''); setNewEmoji(''); setNewMusic('Sin musica');
+      return;
+    }
+
+    // Publicar en servidor (estado personal)
     storiesAPI.publish([newMedia]).then(res => {
       if (res?.id) setMyStoryId(res.id);
       loadStories();
@@ -1134,68 +1147,33 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
   const displayed = activeTab === 'recientes' ? recent : seen;
   const maxSec = createMode === 'clip' ? 15 : 60;
 
-  // ── Estados de grupos: generar contenido simulado por grupo ──────────────
-  const GROUP_STORY_CONTENTS: StoryMedia[][] = [
-    [
-      { type: 'text', content: '📢 Reunion del grupo mañana a las 18:00', bg: 'linear-gradient(135deg,#7c3aed,#a855f7)', emoji: '📅' },
-      { type: 'text', content: 'Confirmar asistencia en el chat', bg: 'linear-gradient(135deg,#6366f1,#4f46e5)', emoji: '✅' },
-    ],
-    [
-      { type: 'text', content: '🎉 Felicitamos a todos los miembros del grupo', bg: 'linear-gradient(135deg,#f59e0b,#ef4444)', emoji: '🎊' },
-      { type: 'text', content: 'Gracias por ser parte de esta comunidad', bg: 'linear-gradient(135deg,#ec4899,#f43f5e)', emoji: '❤️' },
-      { type: 'text', content: 'Seguimos creciendo juntos 💪', bg: 'linear-gradient(135deg,#10b981,#059669)', emoji: '🚀' },
-    ],
-    [
-      { type: 'text', content: '📸 Fotos del evento de ayer disponibles', bg: 'linear-gradient(135deg,#0ea5e9,#2563eb)', emoji: '🖼️' },
-      { type: 'text', content: 'Revisa el album compartido en el chat', bg: 'linear-gradient(135deg,#06b6d4,#0891b2)', emoji: '📁' },
-    ],
-    [
-      { type: 'text', content: '⚽ Partido del grupo este sabado', bg: 'linear-gradient(135deg,#16a34a,#15803d)', emoji: '🏆' },
-      { type: 'text', content: 'Lugar: Campo Municipal de Malabo', bg: 'linear-gradient(135deg,#059669,#047857)', emoji: '📍' },
-      { type: 'text', content: 'Hora: 10:00 AM. No faltes!', bg: 'linear-gradient(135deg,#f59e0b,#d97706)', emoji: '⏰' },
-    ],
-    [
-      { type: 'text', content: '🆕 Nuevo miembro en el grupo', bg: 'linear-gradient(135deg,#8b5cf6,#7c3aed)', emoji: '👋' },
-      { type: 'text', content: 'Bienvenido/a a la familia', bg: 'linear-gradient(135deg,#a855f7,#9333ea)', emoji: '🎉' },
-    ],
-  ];
-
+  // ── Estados de grupos: cargar desde el servidor ─────────────────────────────
   const [groupStories, setGroupStories] = useState<Array<{
     id: string; name: string; avatarUrl: string; media: StoryMedia[];
     seen: boolean; publishedAt: number; views: number;
-  }>>(() =>
-    groups.slice(0, 8).map((grp, i) => ({
-      id: grp.id,
-      name: grp.name,
-      avatarUrl: grp.avatarUrl || '',
-      media: GROUP_STORY_CONTENTS[i % GROUP_STORY_CONTENTS.length],
-      seen: false,
-      publishedAt: Date.now() - (i * 18 + 5) * 60000, // escalonados en el tiempo
-      views: Math.floor(Math.random() * 40) + 5,
-    }))
-  );
+  }>>([]);
 
-  // Actualizar groupStories cuando cambian los grupos
-  React.useEffect(() => {
-    if (groups.length === 0) return;
-    setGroupStories(prev => {
-      const existingIds = new Set(prev.map(g => g.id));
-      const newGroups = groups.filter(g => !existingIds.has(g.id)).slice(0, 8 - prev.length);
-      if (newGroups.length === 0) return prev;
-      return [
-        ...prev,
-        ...newGroups.map((grp, i) => ({
-          id: grp.id,
-          name: grp.name,
-          avatarUrl: grp.avatarUrl || '',
-          media: GROUP_STORY_CONTENTS[(prev.length + i) % GROUP_STORY_CONTENTS.length],
-          seen: false,
-          publishedAt: Date.now() - (i * 12 + 3) * 60000,
-          views: Math.floor(Math.random() * 30) + 3,
-        })),
-      ];
-    });
-  }, [groups.length]);
+  const loadGroupStories = useCallback(async () => {
+    try {
+      const data = await groupStoriesAPI.getAll();
+      if (!Array.isArray(data)) return;
+      setGroupStories(data.map((g: any) => ({
+        id: g.groupId,
+        name: g.groupName || 'Grupo',
+        avatarUrl: g.groupAvatarUrl || '',
+        media: Array.isArray(g.media) ? g.media : [],
+        seen: false,
+        publishedAt: g.publishedAt || Date.now(),
+        views: g.views || 0,
+      })));
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    loadGroupStories();
+    const iv = setInterval(loadGroupStories, 30000);
+    return () => clearInterval(iv);
+  }, [loadGroupStories]);
 
   const [viewingGroup, setViewingGroup] = useState<typeof groupStories[0] | null>(null);
   const [groupSlideIdx, setGroupSlideIdx] = useState(0);
@@ -1207,6 +1185,8 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
     setGroupSlideIdx(0);
     setGroupProgress(0);
     setGroupStories(prev => prev.map(g => g.id === grp.id ? { ...g, seen: true, views: g.views + 1 } : g));
+    // Registrar vista real en el servidor
+    groupStoriesAPI.registerView(grp.id).catch(() => {});
     startGroupProgress();
   };
 
@@ -1438,10 +1418,10 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
                 </div>
                 <div style={{ display: 'flex', gap: '14px', overflowX: 'auto', paddingBottom: '10px' }}>
                   {groupStories.map(grp => (
-                    <div key={grp.id} onClick={() => openGroupStory(grp)}
-                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', minWidth: '62px', cursor: 'pointer' }}>
+                    <div key={grp.id} onClick={() => grp.media.length > 0 ? openGroupStory(grp) : undefined}
+                      style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', minWidth: '62px', cursor: grp.media.length > 0 ? 'pointer' : 'default', opacity: grp.media.length > 0 ? 1 : 0.5 }}>
                       {/* Anillo de color si tiene estado nuevo */}
-                      <div style={{ padding: '2.5px', borderRadius: '50%', background: grp.seen ? '#e5e7eb' : 'linear-gradient(135deg,#a855f7,#6366f1)' }}>
+                      <div style={{ padding: '2.5px', borderRadius: '50%', background: grp.seen || grp.media.length === 0 ? '#e5e7eb' : 'linear-gradient(135deg,#a855f7,#6366f1)' }}>
                         <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: 'linear-gradient(135deg,#a855f7,#6366f1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '15px', fontWeight: '700', color: '#fff', border: '2.5px solid #fff', overflow: 'hidden' }}>
                           {grp.avatarUrl
                             ? <img src={grp.avatarUrl} alt={grp.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
@@ -1451,7 +1431,10 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
                       <span style={{ fontSize: '11px', fontWeight: grp.seen ? '500' : '700', color: grp.seen ? '#9ca3af' : '#374151', textAlign: 'center', maxWidth: '62px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
                         {grp.name}
                       </span>
-                      <span style={{ fontSize: '10px', color: '#aaa' }}>{timeAgo(grp.publishedAt)}</span>
+                      {grp.media.length > 0
+                        ? <span style={{ fontSize: '10px', color: '#aaa' }}>{timeAgo(grp.publishedAt)}</span>
+                        : <span style={{ fontSize: '9px', color: '#c084fc', fontWeight: '600' }}>Sin estados</span>
+                      }
                     </div>
                   ))}
                 </div>
@@ -1533,12 +1516,24 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
                 </div>
               </div>
             </div>
-            {/* Badge grupo */}
-            <div style={{ padding: '16px 20px 32px', display: 'flex', justifyContent: 'center', position: 'relative', zIndex: 2 }}>
+            {/* Badge grupo + botón publicar */}
+            <div style={{ padding: '16px 20px 32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', position: 'relative', zIndex: 2 }}>
               <div style={{ background: 'rgba(168,85,247,0.25)', border: '1px solid rgba(168,85,247,0.4)', borderRadius: '20px', padding: '6px 16px', display: 'flex', alignItems: 'center', gap: '6px' }}>
                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#a855f7" strokeWidth="2.5" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
                 <span style={{ fontSize: '12px', color: '#c084fc', fontWeight: '700' }}>Estado del grupo</span>
               </div>
+              <button
+                onClick={() => {
+                  setViewingGroup(null);
+                  if (groupProgressTimer.current) clearInterval(groupProgressTimer.current);
+                  openCreate('text');
+                  // Guardar el groupId para publicar al confirmar
+                  (window as any).__pendingGroupStoryId = viewingGroup?.id;
+                }}
+                style={{ background: 'rgba(168,85,247,0.3)', border: '1px solid rgba(168,85,247,0.5)', borderRadius: '20px', padding: '6px 14px', color: '#e9d5ff', fontSize: '12px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                Añadir estado
+              </button>
             </div>
           </div>
         </div>

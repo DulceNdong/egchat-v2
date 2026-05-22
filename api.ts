@@ -405,6 +405,19 @@ export const storiesAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// GROUP STORIES / ESTADOS DE GRUPOS
+// ══════════════════════════════════════════════════════════════════
+export const groupStoriesAPI = {
+  // Obtener estados de todos los grupos del usuario
+  getAll: () => get<any[]>('/stories/groups'),
+  // Publicar estado en un grupo
+  publish: (groupId: string, media: { type: string; content: string; bg: string; emoji?: string; music?: string }[]) =>
+    post<any>(`/stories/groups/${groupId}`, { media }),
+  // Registrar vista de los estados de un grupo
+  registerView: (groupId: string) => post<void>(`/stories/groups/${groupId}/view`, {}),
+};
+
+// ══════════════════════════════════════════════════════════════════
 // KEEP-ALIVE — ping cada 4 min para que Render no duerma
 // ══════════════════════════════════════════════════════════════════
 const keepAlive = () => {
@@ -431,6 +444,7 @@ export default {
   noticias: noticiasAPI,
   user:     userAPI,
   stories:  storiesAPI,
+  groupStories: groupStoriesAPI,
   spaces:   spacesAPI,
   BASE,
 };
