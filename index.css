@@ -12,6 +12,10 @@ html {
   background-color: #f0f2f5;
   /* Evitar el flash blanco en iOS al hacer scroll bounce */
   overscroll-behavior: none;
+  /* Inicializar variables de teclado virtual */
+  --keyboard-offset: 0px;
+  --vv-height: 100vh;
+  --vv-offset-top: 0px;
 }
 
 body {

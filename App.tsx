@@ -873,6 +873,7 @@ const App: React.FC = () => {
   // El parpadeo era causado por mover el container con JS en cada keypress
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
 
     const update = () => {
       const winH = window.innerHeight;
@@ -880,7 +881,16 @@ const App: React.FC = () => {
       const vvTop = vv ? vv.offsetTop : 0;
       document.documentElement.style.setProperty('--vv-height', `${Math.min(winH, vvH)}px`);
       document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
-      document.documentElement.style.setProperty('--keyboard-offset', `${Math.max(0, winH - Math.min(winH,vvH) - vvTop)}px`);
+      const keyboardH = Math.max(0, winH - Math.min(winH, vvH) - vvTop);
+      document.documentElement.style.setProperty('--keyboard-offset', `${keyboardH}px`);
+
+      // iOS: también hacer scroll al fondo del chat cuando sube el teclado
+      if (isIOS && keyboardH > 100) {
+        requestAnimationFrame(() => {
+          const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+          if (scroll) scroll.scrollTop = scroll.scrollHeight;
+        });
+      }
     };
 
     if (vv) {
@@ -6519,6 +6529,9 @@ const App: React.FC = () => {
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
+                // iOS fix: translate up by keyboard height using CSS var set by visualViewport listener
+                transform: 'translateY(calc(-1 * var(--keyboard-offset, 0px)))',
+                transition: 'transform 0.0s', // sin animación para que siga al teclado instantáneamente
               }}>
               {/* Reply preview */}
               {replyToMsg && (
