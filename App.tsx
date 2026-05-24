@@ -7331,7 +7331,6 @@ const App: React.FC = () => {
                 );
               })()}
             </div>
-            } {/* fin messageFilter !== 'archived' */}
 
             {/* ── MODALES CONTRASEÑA ARCHIVADOS ── */}
             {(showArchiveUnlock || showArchiveSetup) && (
