@@ -153,6 +153,22 @@ public class MainActivity extends BridgeActivity {
     private void setupWebViewCameraPermissions() {
         try {
             WebView webView = getBridge().getWebView();
+
+            // ── Optimizaciones para sensación nativa ─────────────────────────
+            // 1. Desactivar el overscroll azul/verde que delata que es WebView
+            webView.setOverScrollMode(WebView.OVER_SCROLL_NEVER);
+
+            // 2. Hardware acceleration — rendering más fluido
+            webView.setLayerType(WebView.LAYER_TYPE_HARDWARE, null);
+
+            // 3. Desactivar el scroll horizontal (evita deslizamientos accidentales)
+            webView.setHorizontalScrollBarEnabled(false);
+            webView.setVerticalScrollBarEnabled(false);
+
+            // 4. Fondo transparente para que el splash no deje flash blanco
+            webView.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+
+            // 5. Permisos de cámara/micrófono para WebRTC
             webView.setWebChromeClient(new WebChromeClient() {
                 @Override
                 public void onPermissionRequest(final PermissionRequest request) {
