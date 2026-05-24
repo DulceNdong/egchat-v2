@@ -44,6 +44,105 @@ import { initPredictiveBack, pushView, clearHistory } from './predictive-back-ma
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
 
+// ── SwipeChatItem — swipe izquierda para Archivar / Eliminar ─────────────────
+const SwipeChatItem: React.FC<{
+  chatId: string;
+  onOpen: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+  children: React.ReactNode;
+}> = ({ chatId, onOpen, onArchive, onDelete, children }) => {
+  const [offset, setOffset] = React.useState(0);
+  const [isDragging, setIsDragging] = React.useState(false);
+  const startX = React.useRef(0);
+  const startY = React.useRef(0);
+  const isHoriz = React.useRef<boolean | null>(null);
+  const THRESHOLD = 60; // px para mostrar acciones
+  const MAX = 140;      // px máximo de swipe
+
+  const onTouchStart = (e: React.TouchEvent) => {
+    startX.current = e.touches[0].clientX;
+    startY.current = e.touches[0].clientY;
+    isHoriz.current = null;
+    setIsDragging(true);
+  };
+
+  const onTouchMove = (e: React.TouchEvent) => {
+    const dx = e.touches[0].clientX - startX.current;
+    const dy = e.touches[0].clientY - startY.current;
+    if (isHoriz.current === null) {
+      isHoriz.current = Math.abs(dx) > Math.abs(dy);
+    }
+    if (!isHoriz.current) return;
+    e.preventDefault();
+    const newOffset = Math.max(-MAX, Math.min(0, dx));
+    setOffset(newOffset);
+  };
+
+  const onTouchEnd = () => {
+    setIsDragging(false);
+    if (offset < -THRESHOLD) {
+      setOffset(-MAX); // snap abierto
+    } else {
+      setOffset(0); // snap cerrado
+    }
+    isHoriz.current = null;
+  };
+
+  const close = () => setOffset(0);
+
+  return (
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: '6px' }}>
+      {/* Acciones detrás — Archivar + Eliminar */}
+      <div style={{
+        position: 'absolute', right: 0, top: 0, bottom: 0,
+        display: 'flex', alignItems: 'stretch',
+        width: `${MAX}px`,
+      }}>
+        {/* Archivar */}
+        <button onClick={() => { close(); onArchive(); }}
+          style={{ flex: 1, background: '#f59e0b', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Archivar</span>
+        </button>
+        {/* Eliminar */}
+        <button onClick={() => { close(); onDelete(); }}
+          style={{ flex: 1, background: '#ef4444', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+          <span style={{ fontSize: '11px', fontWeight: '700' }}>Eliminar</span>
+        </button>
+      </div>
+
+      {/* Contenido del chat — se desliza */}
+      <div
+        onClick={() => { if (offset < -10) { close(); return; } onOpen(); }}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        style={{
+          background: '#fff',
+          borderRadius: '12px',
+          padding: '12px 10px',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '12px',
+          transform: `translateX(${offset}px)`,
+          transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
+          position: 'relative',
+          zIndex: 1,
+          boxShadow: offset < -10 ? '0 2px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+          willChange: 'transform',
+        }}
+        onMouseEnter={e => { if (offset === 0) e.currentTarget.style.background = '#f9fafb'; }}
+        onMouseLeave={e => { e.currentTarget.style.background = '#fff'; }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+};
+
 interface Bank {
   id: string;
   name: string;
@@ -5502,7 +5601,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 44px), 44px) + 54px)' : '70px', paddingBottom: device.isMobile ? 'calc(70px + var(--keyboard-offset, 0px))' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 44px), 44px) + 54px)' : '70px', paddingBottom: device.isMobile ? 'calc(70px + var(--keyboard-offset, 0px))' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
@@ -5534,14 +5633,15 @@ const App: React.FC = () => {
                           )}
                           <div
                             style={{
-                        background: msg.from === 'me' ? '#d9fdd3' : '#ffffff',
-                        borderRadius: msg.from === 'me' ? '16px 16px 4px 16px' : '16px 16px 16px 4px',
+                        background: msg.from === 'me' ? 'linear-gradient(135deg,#e8f5e9,#f0fdf4)' : '#ffffff',
+                        borderRadius: msg.from === 'me' ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                         padding: ((msg as any).type === 'image' || (msg as any).imageUrl) && ((msg as any).imageUrl || (msg as any).file_url) ? '4px 4px 7px' : (msg.text?.startsWith('💸') || (msg as any).type === 'money') ? '0' : '9px 12px 7px',
-                        boxShadow: '0 1px 2px rgba(0,0,0,0.13)',
+                        boxShadow: msg.from === 'me' ? '0 1px 4px rgba(0,200,160,0.15)' : '0 1px 4px rgba(0,0,0,0.08)',
                         position: 'relative',
                         overflow: 'hidden',
                         cursor: selectionMode ? 'pointer' : 'pointer',
                         userSelect: 'none',
+                        border: msg.from === 'me' ? '1px solid rgba(0,200,160,0.12)' : '1px solid rgba(0,0,0,0.04)',
                       }}
                       onContextMenu={e => { if (selectionMode) return; e.preventDefault(); setMsgContextMenu({ msg, x: e.clientX, y: e.clientY }); }}
                       onTouchStart={e => {
@@ -5920,7 +6020,7 @@ const App: React.FC = () => {
                                 />
                               </div>
                               {/* Footer */}
-                              <div style={{ background: msg.from === 'me' ? '#d9fdd3' : '#fff', padding:'8px 12px', display:'flex', alignItems:'center', gap:'8px', borderTop:'1px solid rgba(0,0,0,0.06)' }}>
+                              <div style={{ background: msg.from === 'me' ? 'linear-gradient(135deg,#e8f5e9,#f0fdf4)' : '#fff', padding:'8px 12px', display:'flex', alignItems:'center', gap:'8px', borderTop:'1px solid rgba(0,0,0,0.06)' }}>
                                 <svg width="16" height="16" viewBox="0 0 24 24" fill="#ef4444"><path d="M12 2C8.13 2 5 5.13 5 9c0 5.25 7 13 7 13s7-7.75 7-13c0-3.87-3.13-7-7-7zm0 9.5c-1.38 0-2.5-1.12-2.5-2.5s1.12-2.5 2.5-2.5 2.5 1.12 2.5 2.5-1.12 2.5-2.5 2.5z"/></svg>
                                 <div style={{ flex:1, minWidth:0 }}>
                                   <div style={{ fontSize:'13px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{label}</div>
@@ -7070,21 +7170,20 @@ const App: React.FC = () => {
                     : null;
                   const otherUserId = otherParticipant?.user_id?.toString() || '';
                   return (
-                    <div key={chat.id}
-                      onClick={async () => {
+                    <SwipeChatItem
+                      key={chat.id}
+                      chatId={chat.id?.toString()}
+                      onOpen={async () => {
                         setSelectedChat({
                           id: chat.id, type: chat.type||'individual',
                           title: name, subtitle: lastMsg, time,
                           status: 'online', initials, color: isGroup ? '#a855f7' : '#00c8a0',
                           avatarUrl: avatarUrl,
                           isGroup,
-                          user_id: otherUserId, // para WebRTC
+                          user_id: otherUserId,
                         });
-                        // Cancelar alarma de recordatorio al abrir el chat
                         cancelMessageReminder(chat.id?.toString() || '').catch(() => {});
-                        // Badge — decrementar al abrir chat
                         decreaseBadge().catch(() => {});
-                        // Auto-registrar contacto si es chat individual y no est en la lista
                         if (!isGroup && otherParticipant) {
                           const alreadyInContacts = allContacts.some(
                             (c: any) => c.id?.toString() === otherUserId || c.user_id?.toString() === otherUserId
@@ -7098,13 +7197,24 @@ const App: React.FC = () => {
                           }
                         }
                       }}
-                      style={{ background:'#fff', borderRadius:'8px', padding:'12px 10px', marginBottom:'6px', border:'1px solid #F0F2F5', cursor:'pointer', display:'flex', alignItems:'center', gap:'12px' }}
-                      onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
-                      onMouseLeave={e=>{e.currentTarget.style.background='#fff';}}
+                      onArchive={() => {
+                        chatAPI.archiveChat(chat.id?.toString()).catch(() => {});
+                        setRealChats((prev: any[]) => prev.filter((c: any) => c.id !== chat.id));
+                        showToast('Chat archivado', 'info');
+                      }}
+                      onDelete={() => {
+                        if (window.confirm(`¿Eliminar conversación con ${name}?`)) {
+                          chatAPI.deleteChat(chat.id?.toString()).catch(() => {});
+                          setRealChats((prev: any[]) => prev.filter((c: any) => c.id !== chat.id));
+                          showToast('Conversación eliminada', 'info');
+                        }
+                      }}
                     >
+                      {/* Avatar */}
                       <div style={{ width:'50px', height:'50px', borderRadius:'50%', background: isGroup ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'700', color:'#fff', flexShrink:0, overflow:'hidden' }}>
                         {avatarUrl ? <img src={avatarUrl} alt={name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span>{initials}</span>}
                       </div>
+                      {/* Info */}
                       <div style={{ flex:1, minWidth:0 }}>
                         <div style={{ fontSize:'15px', fontWeight:'600', color:'#111827', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{name}</div>
                         <div style={{ fontSize:'13px', color:'#6b7280', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap', marginTop:'2px', display:'flex', alignItems:'center', gap:'4px' }}>
@@ -7121,6 +7231,7 @@ const App: React.FC = () => {
                           })()}
                         </div>
                       </div>
+                      {/* Meta */}
                       <div style={{ display:'flex', flexDirection:'column', alignItems:'flex-end', gap:'4px', flexShrink:0 }}>
                         {time && <span style={{ fontSize:'11px', color:'#9ca3af' }}>{time}</span>}
                         {(chat.unread_count||0) > 0 && (
@@ -7129,7 +7240,7 @@ const App: React.FC = () => {
                           </div>
                         )}
                       </div>
-                    </div>
+                    </SwipeChatItem>
                   );
                 })
               }
