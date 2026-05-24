@@ -5502,7 +5502,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 44px), 44px) + 54px)' : '70px', paddingBottom: device.isMobile ? '70px' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 44px), 44px) + 54px)' : '70px', paddingBottom: device.isMobile ? 'calc(70px + var(--keyboard-offset, 0px))' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? '#efeae2' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
@@ -6522,16 +6522,19 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Input bar — dentro del contenedor, flexShrink:0 al fondo del flex */}
+              {/* Input bar — sticky al fondo, sube con el teclado en iOS via visualViewport */}
               <div id="chat-input-bar" style={{
                 flexShrink: 0,
                 background: '#f0f2f5',
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
-                // iOS fix: translate up by keyboard height using CSS var set by visualViewport listener
+                // iOS fix: posición sticky al fondo del scroll container
+                // El translateY sube el bar exactamente la altura del teclado
                 transform: 'translateY(calc(-1 * var(--keyboard-offset, 0px)))',
-                transition: 'transform 0.0s', // sin animación para que siga al teclado instantáneamente
+                // marginBottom negativo compensa el espacio que deja el transform
+                // para que el contenedor no quede con hueco debajo
+                marginBottom: 'calc(-1 * var(--keyboard-offset, 0px))',
               }}>
               {/* Reply preview */}
               {replyToMsg && (
