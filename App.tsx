@@ -6223,191 +6223,6 @@ const App: React.FC = () => {
               )}
               </div>
 
-              {/* Panel adjuntar */}
-              {showChatAttach && (
-                <div style={{ background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.07)', padding: '14px 16px', flexShrink: 0 }}>
-                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
-                    {[
-                      {
-                        label: 'Foto', color: '#00b4e6', bg: '#E0F7FF',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00b4e6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          const key = sc.id?.toString() || sc.title;
-                          const chatId = sc.id?.toString() || '';
-                          // Android WebView fix: input must be in viewport with real size
-                          const inp = document.createElement('input');
-                          inp.type='file'; inp.accept='image/*,image/heic,image/heif';
-                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
-                          document.body.appendChild(inp);
-                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
-                          inp.addEventListener('change', async () => {
-                            const file = inp.files?.[0];
-                            cleanup();
-                            if (!file) return;
-                            const t = new Date();
-                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                            const msgId = Date.now().toString();
-                            const localUrl = URL.createObjectURL(file);
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: '📷 Foto', time: tm, timestamp: new Date().toISOString(), created_at: new Date().toISOString(), status: 'pending' as const, type: 'image', imageUrl: localUrl } as any] }));
-                            try {
-                              const result = await chatAPI.uploadFile(chatId, file);
-                              const serverUrl = result.file_url;
-                              const sent = await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: serverUrl });
-                              const serverId = sent?.id || msgId;
-                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, imageUrl: serverUrl, status: 'delivered' } : m) }));
-                            } catch {
-                              try {
-                                const sent = await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: localUrl });
-                                const serverId = sent?.id || msgId;
-                                setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, imageUrl: localUrl, status: 'delivered' } : m) }));
-                              } catch {
-                                setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, imageUrl: localUrl, status: 'delivered' } : m) }));
-                                showToast('Foto guardada localmente', 'info');
-                              }
-                            }
-                          });
-                          inp.addEventListener('cancel', cleanup);
-                          // Small delay so DOM is ready, then click
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
-                        }
-                      },
-                      {
-                        label: 'Video', color: '#f59e0b', bg: '#FEF3C7',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          const key = sc.id?.toString() || sc.title;
-                          const chatId = sc.id?.toString() || '';
-                          const inp = document.createElement('input');
-                          inp.type='file'; inp.accept='video/*';
-                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
-                          document.body.appendChild(inp);
-                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
-                          inp.addEventListener('change', async () => {
-                            const file = inp.files?.[0];
-                            cleanup();
-                            if (!file) return;
-                            const t = new Date();
-                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                            const size = (file.size/1024/1024).toFixed(1);
-                            const msgId = Date.now().toString();
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, timestamp: new Date().toISOString(), created_at: new Date().toISOString(), status: 'pending' as const } as any] }));
-                            try {
-                              const result = await chatAPI.uploadFile(chatId, file);
-                              const sent = await chatAPI.sendMessage(chatId, { text: `🎥 ${file.name} (${size} MB)`, type: 'video', file_url: result.file_url });
-                              const serverId = sent?.id || msgId;
-                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, fileUrl: result.file_url, fileName: file.name, fileSize: size + ' MB', fileExt: 'mp4', status: 'delivered' } : m) }));
-                            } catch { showToast('Error al subir video', 'error'); }
-                          });
-                          inp.addEventListener('cancel', cleanup);
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
-                        }
-                      },
-                      {
-                        label: 'Archivo', color: '#06b6d4', bg: '#CFFAFE',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          const key = sc.id?.toString() || sc.title;
-                          const chatId = sc.id?.toString() || '';
-                          const inp = document.createElement('input');
-                          inp.type='file';
-                          inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
-                          document.body.appendChild(inp);
-                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
-                          inp.addEventListener('change', async () => {
-                            const file = inp.files?.[0];
-                            cleanup();
-                            if (!file) return;
-                            const t = new Date();
-                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                            const size = file.size >= 1024*1024 ? (file.size/1024/1024).toFixed(1)+' MB' : (file.size/1024).toFixed(1)+' KB';
-                            const ext = file.name.split('.').pop()?.toLowerCase() || '';
-                            const msgId = Date.now().toString();
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `📄 ${file.name} (${size})`, time: tm, status: 'pending' as const, fileName: file.name, fileSize: size, fileExt: ext } as any] }));
-                            try {
-                              const result = await chatAPI.uploadFile(chatId, file);
-                              const sent = await chatAPI.sendMessage(chatId, { text: `📄 ${file.name} (${size})`, type: 'file', file_url: result.file_url });
-                              const serverId = sent?.id || msgId;
-                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, fileUrl: result.file_url, status: 'delivered' } : m) }));
-                            } catch { showToast('Error al subir archivo', 'error'); }
-                          });
-                          inp.addEventListener('cancel', cleanup);
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
-                        }
-                      },
-                      {
-                        label: 'Contacto', color: '#ec4899', bg: '#FCE7F3',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          // Abrir picker de contactos
-                          setContactPickerChatKey(sc.id?.toString() || sc.title);
-                          setShowContactPickerForChat(true);
-                        }
-                      },
-                      {
-                        label: 'Ubicación', color: '#ef4444', bg: '#FEE2E2',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          const key = sc.id?.toString() || sc.title;
-                          const chatId = sc.id?.toString() || '';
-                          const t = new Date();
-                          const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
-                          const sendLocation = (lat: string, lng: string, label: string) => {
-                            // URL de "Cómo llegar" — abre Google Maps con ruta hasta la ubicación
-                            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-                            const msgText = `📍 ${label}\n${directionsUrl}`;
-                            const msgId = Date.now().toString();
-                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: msgText, time: tm, status: 'pending' as const } as any] }));
-                            chatAPI.sendMessage(chatId, { text: msgText, type: 'text' })
-                              .then((sent: any) => { const sid = sent?.id || msgId; setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map((m: any) => m.id === msgId ? { ...m, id: sid, status: 'delivered' } : m) })); })
-                              .catch(() => {});
-                          };
-                          if (!navigator.geolocation) {
-                            sendLocation('3.7520', '8.7735', 'Malabo, Guinea Ecuatorial');
-                            return;
-                          }
-                          showToast('Obteniendo ubicación GPS...', 'info');
-                          navigator.geolocation.getCurrentPosition(
-                            pos => {
-                              const lat = pos.coords.latitude.toFixed(6);
-                              const lng = pos.coords.longitude.toFixed(6);
-                              sendLocation(lat, lng, 'Mi ubicación actual');
-                            },
-                            () => { sendLocation('3.7520', '8.7735', 'Malabo, Guinea Ecuatorial'); },
-                            { timeout: 10000, enableHighAccuracy: true, maximumAge: 30000 }
-                          );
-                        }
-                      },
-                      {
-                        label: 'Enviar dinero', color: '#00c8a0', bg: '#D1FAE5',
-                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="2"/></svg>,
-                        action: () => {
-                          setShowChatAttach(false);
-                          // Abrir el modal real de transferencia con el contacto del chat
-                          setQuickTransferData({ contactId: sc.id?.toString() || '', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id || '', avatarUrl: sc.avatarUrl || '' });
-                          setShowQuickTransferModal(true);
-                        }
-                      },
-                    ].map((item, i) => (
-                      <button key={i} onClick={() => item.action()}
-                        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '4px' }}>
-                        <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s' }}
-                          onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.transform='scale(1.08)';}}
-                          onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.transform='scale(1)';}}>
-                          {item.icon}
-                        </div>
-                        <span style={{ fontSize: '13px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.2 }}>{item.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-
               {/* Panel emojis a estilo EGCHAT */}
               {showChatEmojis && (() => {
                 const emojiCats: Record<string, {icon:string; emojis:string[]}> = {
@@ -6629,13 +6444,188 @@ const App: React.FC = () => {
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
-                // iOS fix: posición sticky al fondo del scroll container
-                // El translateY sube el bar exactamente la altura del teclado
                 transform: 'translateY(calc(-1 * var(--keyboard-offset, 0px)))',
-                // marginBottom negativo compensa el espacio que deja el transform
-                // para que el contenedor no quede con hueco debajo
                 marginBottom: 'calc(-1 * var(--keyboard-offset, 0px))',
               }}>
+              {/* Panel adjuntar — encima del input para que sea visible en móvil */}
+              {showChatAttach && (
+                <div style={{ background: '#FFFFFF', borderTop: '1px solid rgba(0,0,0,0.07)', padding: '14px 16px', flexShrink: 0 }}>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '12px' }}>
+                    {[
+                      {
+                        label: 'Foto', color: '#00b4e6', bg: '#E0F7FF',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00b4e6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="3"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
+                          const inp = document.createElement('input');
+                          inp.type='file'; inp.accept='image/*,image/heic,image/heif';
+                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          document.body.appendChild(inp);
+                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
+                          inp.addEventListener('change', async () => {
+                            const file = inp.files?.[0];
+                            cleanup();
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const msgId = Date.now().toString();
+                            const localUrl = URL.createObjectURL(file);
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: '📷 Foto', time: tm, timestamp: new Date().toISOString(), created_at: new Date().toISOString(), status: 'pending' as const, type: 'image', imageUrl: localUrl } as any] }));
+                            try {
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              const serverUrl = result.file_url;
+                              const sent = await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: serverUrl });
+                              const serverId = sent?.id || msgId;
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, imageUrl: serverUrl, status: 'delivered' } : m) }));
+                            } catch {
+                              try {
+                                const sent = await chatAPI.sendMessage(chatId, { text: '📷 Foto', type: 'image', file_url: localUrl });
+                                const serverId = sent?.id || msgId;
+                                setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, imageUrl: localUrl, status: 'delivered' } : m) }));
+                              } catch {
+                                setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, imageUrl: localUrl, status: 'delivered' } : m) }));
+                                showToast('Foto guardada localmente', 'info');
+                              }
+                            }
+                          });
+                          inp.addEventListener('cancel', cleanup);
+                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                        }
+                      },
+                      {
+                        label: 'Video', color: '#f59e0b', bg: '#FEF3C7',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
+                          const inp = document.createElement('input');
+                          inp.type='file'; inp.accept='video/*';
+                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          document.body.appendChild(inp);
+                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
+                          inp.addEventListener('change', async () => {
+                            const file = inp.files?.[0];
+                            cleanup();
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const size = (file.size/1024/1024).toFixed(1);
+                            const msgId = Date.now().toString();
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎥 ${file.name} (${size} MB)`, time: tm, timestamp: new Date().toISOString(), created_at: new Date().toISOString(), status: 'pending' as const } as any] }));
+                            try {
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              const sent = await chatAPI.sendMessage(chatId, { text: `🎥 ${file.name} (${size} MB)`, type: 'video', file_url: result.file_url });
+                              const serverId = sent?.id || msgId;
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, fileUrl: result.file_url, fileName: file.name, fileSize: size + ' MB', fileExt: 'mp4', status: 'delivered' } : m) }));
+                            } catch { showToast('Error al subir video', 'error'); }
+                          });
+                          inp.addEventListener('cancel', cleanup);
+                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                        }
+                      },
+                      {
+                        label: 'Archivo', color: '#06b6d4', bg: '#CFFAFE',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#06b6d4" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
+                          const inp = document.createElement('input');
+                          inp.type='file';
+                          inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          document.body.appendChild(inp);
+                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
+                          inp.addEventListener('change', async () => {
+                            const file = inp.files?.[0];
+                            cleanup();
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const size = file.size >= 1024*1024 ? (file.size/1024/1024).toFixed(1)+' MB' : (file.size/1024).toFixed(1)+' KB';
+                            const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                            const msgId = Date.now().toString();
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `📄 ${file.name} (${size})`, time: tm, status: 'pending' as const, fileName: file.name, fileSize: size, fileExt: ext } as any] }));
+                            try {
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              const sent = await chatAPI.sendMessage(chatId, { text: `📄 ${file.name} (${size})`, type: 'file', file_url: result.file_url });
+                              const serverId = sent?.id || msgId;
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, fileUrl: result.file_url, status: 'delivered' } : m) }));
+                            } catch { showToast('Error al subir archivo', 'error'); }
+                          });
+                          inp.addEventListener('cancel', cleanup);
+                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                        }
+                      },
+                      {
+                        label: 'Contacto', color: '#ec4899', bg: '#FCE7F3',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ec4899" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          setContactPickerChatKey(sc.id?.toString() || sc.title);
+                          setShowContactPickerForChat(true);
+                        }
+                      },
+                      {
+                        label: 'Ubicación', color: '#ef4444', bg: '#FEE2E2',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
+                          const t = new Date();
+                          const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                          const sendLocation = (lat: string, lng: string, label: string) => {
+                            const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+                            const msgText = `📍 ${label}\n${directionsUrl}`;
+                            const msgId = Date.now().toString();
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: msgText, time: tm, status: 'pending' as const } as any] }));
+                            chatAPI.sendMessage(chatId, { text: msgText, type: 'text' })
+                              .then((sent: any) => { const sid = sent?.id || msgId; setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map((m: any) => m.id === msgId ? { ...m, id: sid, status: 'delivered' } : m) })); })
+                              .catch(() => {});
+                          };
+                          if (!navigator.geolocation) {
+                            sendLocation('3.7520', '8.7735', 'Malabo, Guinea Ecuatorial');
+                            return;
+                          }
+                          showToast('Obteniendo ubicación GPS...', 'info');
+                          navigator.geolocation.getCurrentPosition(
+                            pos => {
+                              const lat = pos.coords.latitude.toFixed(6);
+                              const lng = pos.coords.longitude.toFixed(6);
+                              sendLocation(lat, lng, 'Mi ubicación actual');
+                            },
+                            () => { sendLocation('3.7520', '8.7735', 'Malabo, Guinea Ecuatorial'); },
+                            { timeout: 10000, enableHighAccuracy: true, maximumAge: 30000 }
+                          );
+                        }
+                      },
+                      {
+                        label: 'Enviar dinero', color: '#00c8a0', bg: '#D1FAE5',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="2"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          setQuickTransferData({ contactId: sc.id?.toString() || '', contactName: sc.title, amount: '', accountId: bankAccounts[0]?.id || '', avatarUrl: sc.avatarUrl || '' });
+                          setShowQuickTransferModal(true);
+                        }
+                      },
+                    ].map((item, i) => (
+                      <button key={i} onClick={() => item.action()}
+                        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '4px' }}>
+                        <div style={{ width: '52px', height: '52px', borderRadius: '16px', background: item.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'transform 0.15s' }}
+                          onMouseEnter={e=>{(e.currentTarget as HTMLDivElement).style.transform='scale(1.08)';}}
+                          onMouseLeave={e=>{(e.currentTarget as HTMLDivElement).style.transform='scale(1)';}}>
+                          {item.icon}
+                        </div>
+                        <span style={{ fontSize: '13px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.2 }}>{item.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
               {/* Reply preview */}
               {replyToMsg && (
                 <div style={{ display:'flex', alignItems:'center', gap:'8px', background:'rgba(0,180,230,0.08)', borderLeft:'3px solid #00b4e6', margin:'6px 8px 0', padding:'6px 10px', borderRadius:'0 8px 8px 0' }}>

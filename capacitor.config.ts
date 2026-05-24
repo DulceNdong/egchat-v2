@@ -5,34 +5,28 @@ const config: CapacitorConfig = {
   appName: 'EGCHAT',
   webDir: 'dist',
   server: {
-    // OTA gratuito: la app siempre carga desde Vercel
-    // Cada deploy actualiza la app automáticamente sin reinstalar
-    url: 'https://egchat-v2.vercel.app',
-    cleartext: false,
+    // Modo local: carga los assets del APK (funciona sin red)
+    // La app se actualiza via Service Worker cuando hay conexión
     androidScheme: 'https',
-    hostname: 'egchat-v2.vercel.app',
-    allowNavigation: ['egchat-v2.vercel.app', '*.vercel.app', '*.supabase.co']
+    cleartext: false,
+    allowNavigation: ['egchat-v2.vercel.app', '*.vercel.app', '*.supabase.co', 'egchat-api.onrender.com']
   },
   android: {
     allowMixedContent: true,
     backgroundColor: '#00c8a0',
     captureInput: true,
     webContentsDebuggingEnabled: false,
-    // Barra de navegación transparente — el modo inmersivo la oculta completamente
-    // pero cuando reaparece temporalmente (gesture hint) se ve transparente
     navigationBarColor: '#00000000',
   },
   plugins: {
     SplashScreen: {
-      // launchAutoHide: true — se oculta automáticamente tras launchShowDuration
-      // El control manual causaba que la splash se quedara bloqueada en OTA
       launchAutoHide: true,
-      launchShowDuration: 3000,
+      launchShowDuration: 2000,
       backgroundColor: '#00c8a0',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
       fadeInDuration: 200,
-      fadeOutDuration: 400,
+      fadeOutDuration: 300,
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
