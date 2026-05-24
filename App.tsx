@@ -549,6 +549,24 @@ const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [messageFilter, setMessageFilter] = useState<string>('individual');
+
+  // ── Archivados con contraseña ─────────────────────────────────────────────
+  const [archivedChats, setArchivedChats] = useState<any[]>(() => {
+    try { const s = localStorage.getItem('egchat_archived_chats'); return s ? JSON.parse(s) : []; } catch { return []; }
+  });
+  const saveArchivedChats = (chats: any[]) => {
+    setArchivedChats(chats);
+    try { localStorage.setItem('egchat_archived_chats', JSON.stringify(chats)); } catch {}
+  };
+  const [archivePassword, setArchivePassword] = useState<string>(() =>
+    localStorage.getItem('egchat_archive_pwd') || ''
+  );
+  const [showArchiveUnlock, setShowArchiveUnlock] = useState(false);
+  const [showArchiveSetup, setShowArchiveSetup] = useState(false);
+  const [archivePwdInput, setArchivePwdInput] = useState('');
+  const [archivePwdError, setArchivePwdError] = useState('');
+  const [archiveUnlocked, setArchiveUnlocked] = useState(false);
+  const [archiveSubFilter, setArchiveSubFilter] = useState<'individual' | 'group'>('individual');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [_selectedChat, _setSelectedChat] = useState<any>(null);
   // selectedChat siempre tiene los overrides aplicados
@@ -6604,6 +6622,44 @@ const App: React.FC = () => {
                         }
                       },
                       {
+                        label: 'Música', color: '#8b5cf6', bg: '#EDE9FE',
+                        icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>,
+                        action: () => {
+                          setShowChatAttach(false);
+                          const key = sc.id?.toString() || sc.title;
+                          const chatId = sc.id?.toString() || '';
+                          const inp = document.createElement('input');
+                          inp.type = 'file';
+                          inp.accept = '.mp3,.mp4,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac,.wma,.aiff,.aif,.amr,.3gp,.webm,audio/*';
+                          inp.style.cssText = 'position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          document.body.appendChild(inp);
+                          const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
+                          inp.addEventListener('change', async () => {
+                            const file = inp.files?.[0];
+                            cleanup();
+                            if (!file) return;
+                            const t = new Date();
+                            const tm = `${t.getHours().toString().padStart(2,'0')}:${t.getMinutes().toString().padStart(2,'0')}`;
+                            const size = file.size >= 1024*1024 ? (file.size/1024/1024).toFixed(1)+' MB' : (file.size/1024).toFixed(1)+' KB';
+                            const ext = file.name.split('.').pop()?.toLowerCase() || '';
+                            const msgId = Date.now().toString();
+                            const localUrl = URL.createObjectURL(file);
+                            setChatMessages(prev => ({ ...prev, [key]: [...(prev[key]||[]), { id: msgId, from: 'me' as const, text: `🎵 ${file.name} (${size})`, time: tm, status: 'pending' as const, type: 'audio', audioUrl: localUrl, fileName: file.name, fileSize: size, fileExt: ext } as any] }));
+                            try {
+                              const result = await chatAPI.uploadFile(chatId, file);
+                              const sent = await chatAPI.sendMessage(chatId, { text: `🎵 ${file.name} (${size})`, type: 'audio', file_url: result.file_url });
+                              const serverId = sent?.id || msgId;
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, id: serverId, audioUrl: result.file_url, status: 'delivered' } : m) }));
+                            } catch {
+                              setChatMessages(prev => ({ ...prev, [key]: (prev[key]||[]).map(m => m.id === msgId ? { ...m, audioUrl: localUrl, status: 'delivered' } : m) }));
+                              showToast('Música guardada localmente', 'info');
+                            }
+                          });
+                          inp.addEventListener('cancel', cleanup);
+                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                        }
+                      },
+                      {
                         label: 'Enviar dinero', color: '#00c8a0', bg: '#D1FAE5',
                         icon: <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><circle cx="12" cy="15" r="2"/></svg>,
                         action: () => {
@@ -7189,8 +7245,11 @@ const App: React.FC = () => {
                       }}
                       onArchive={() => {
                         chatAPI.archiveChat(chat.id?.toString()).catch(() => {});
+                        const chatToArchive = { ...chat, name, avatarUrl, isGroup };
+                        const newArchived = [...archivedChats.filter((c: any) => c.id !== chat.id), chatToArchive];
+                        saveArchivedChats(newArchived);
                         setRealChats((prev: any[]) => prev.filter((c: any) => c.id !== chat.id));
-                        showToast('Chat archivado', 'info');
+                        showToast('Chat archivado 🔒', 'info');
                       }}
                       onDelete={() => {
                         if (window.confirm(`¿Eliminar conversación con ${name}?`)) {
@@ -7272,9 +7331,67 @@ const App: React.FC = () => {
                 );
               })()}
             </div>
+            } {/* fin messageFilter !== 'archived' */}
+
+            {/* ── MODALES CONTRASEÑA ARCHIVADOS ── */}
+            {(showArchiveUnlock || showArchiveSetup) && (
+              <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
+                onClick={() => { setShowArchiveUnlock(false); setShowArchiveSetup(false); setArchivePwdInput(''); setArchivePwdError(''); }}>
+                <div style={{ background: '#fff', borderRadius: '20px', padding: '28px 24px', width: '100%', maxWidth: '320px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
+                  onClick={e => e.stopPropagation()}>
+                  <div style={{ textAlign: 'center', marginBottom: '20px' }}>
+                    <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔒</div>
+                    <div style={{ fontSize: '17px', fontWeight: '700', color: '#111' }}>
+                      {showArchiveSetup ? (archivePassword ? 'Cambiar contraseña' : 'Crear contraseña') : 'Desbloquear archivados'}
+                    </div>
+                    <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>
+                      {showArchiveSetup ? 'Esta contraseña protege tus chats archivados' : 'Introduce tu contraseña para acceder'}
+                    </div>
+                  </div>
+                  <input
+                    type="password"
+                    value={archivePwdInput}
+                    onChange={e => { setArchivePwdInput(e.target.value); setArchivePwdError(''); }}
+                    onKeyDown={e => { if (e.key === 'Enter') { /* submit */ } }}
+                    placeholder={showArchiveSetup ? 'Nueva contraseña (mín. 4 caracteres)' : 'Contraseña'}
+                    autoFocus
+                    style={{ width: '100%', padding: '12px 16px', borderRadius: '12px', border: `1.5px solid ${archivePwdError ? '#ef4444' : '#e5e7eb'}`, fontSize: '15px', outline: 'none', boxSizing: 'border-box', fontFamily: 'inherit', marginBottom: '8px' }}
+                  />
+                  {archivePwdError && <div style={{ color: '#ef4444', fontSize: '12px', marginBottom: '8px' }}>{archivePwdError}</div>}
+                  <button
+                    onClick={() => {
+                      if (showArchiveSetup) {
+                        if (archivePwdInput.length < 4) { setArchivePwdError('Mínimo 4 caracteres'); return; }
+                        localStorage.setItem('egchat_archive_pwd', archivePwdInput);
+                        setArchivePassword(archivePwdInput);
+                        setArchiveUnlocked(true);
+                        setMessageFilter('archived');
+                        setShowArchiveSetup(false);
+                        setArchivePwdInput('');
+                        showToast('Contraseña guardada 🔒', 'success');
+                      } else {
+                        if (archivePwdInput === archivePassword) {
+                          setArchiveUnlocked(true);
+                          setMessageFilter('archived');
+                          setShowArchiveUnlock(false);
+                          setArchivePwdInput('');
+                        } else {
+                          setArchivePwdError('Contraseña incorrecta');
+                        }
+                      }
+                    }}
+                    style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
+                    {showArchiveSetup ? (archivePassword ? 'Cambiar' : 'Crear contraseña') : 'Desbloquear'}
+                  </button>
+                  <button onClick={() => { setShowArchiveUnlock(false); setShowArchiveSetup(false); setArchivePwdInput(''); setArchivePwdError(''); }}
+                    style={{ width: '100%', padding: '10px', background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}>
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         );
-      case 'news':
         return (
           <div style={{
             paddingTop: viewPadding.top, paddingLeft: viewPadding.left, paddingRight: viewPadding.right, paddingBottom: viewPadding.bottom,
@@ -11111,9 +11228,23 @@ const App: React.FC = () => {
                 { id: 'individual', label: 'Individual' },
                 { id: 'group', label: 'Grupos' },
                 { id: 'money', label: 'Dinero' },
+                { id: 'archived', label: `🔒 ${archivedChats.length > 0 ? archivedChats.length : ''}` },
               ].map(tab => (
-                <button key={tab.id} onClick={() => setMessageFilter(tab.id)}
-                  style={{ flex: 1, padding: '5px 4px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: messageFilter === tab.id ? '700' : '500', background: messageFilter === tab.id ? 'rgba(0,200,160,0.12)' : 'transparent', color: messageFilter === tab.id ? '#00c8a0' : '#9ca3af', outline: 'none' }}>
+                <button key={tab.id} onClick={() => {
+                  if (tab.id === 'archived') {
+                    if (!archivePassword) {
+                      setShowArchiveSetup(true);
+                    } else if (!archiveUnlocked) {
+                      setShowArchiveUnlock(true);
+                    } else {
+                      setMessageFilter('archived');
+                    }
+                  } else {
+                    setMessageFilter(tab.id);
+                    setArchiveUnlocked(false);
+                  }
+                }}
+                  style={{ flex: 1, padding: '5px 4px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: messageFilter === tab.id ? '700' : '500', background: messageFilter === tab.id ? (tab.id === 'archived' ? 'rgba(107,91,214,0.12)' : 'rgba(0,200,160,0.12)') : 'transparent', color: messageFilter === tab.id ? (tab.id === 'archived' ? '#6B5BD6' : '#00c8a0') : '#9ca3af', outline: 'none' }}>
                   {tab.label}
                 </button>
               ))}
@@ -11121,7 +11252,80 @@ const App: React.FC = () => {
           </div>
           {/* Lista */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
-            {realChats
+
+            {/* ── VISTA ARCHIVADOS ── */}
+            {messageFilter === 'archived' && (
+              <div>
+                {/* Sub-tabs: Individual / Grupos */}
+                <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', background: 'rgba(107,91,214,0.06)', borderRadius: '10px', padding: '4px' }}>
+                  {(['individual', 'group'] as const).map(sub => (
+                    <button key={sub} onClick={() => setArchiveSubFilter(sub)}
+                      style={{ flex: 1, padding: '6px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '12px', fontWeight: archiveSubFilter === sub ? '700' : '500', background: archiveSubFilter === sub ? '#6B5BD6' : 'transparent', color: archiveSubFilter === sub ? '#fff' : '#9ca3af', outline: 'none', transition: 'all 0.15s' }}>
+                      {sub === 'individual' ? '👤 Individuales' : '👥 Grupos'}
+                    </button>
+                  ))}
+                </div>
+
+                {/* Botón cambiar contraseña */}
+                <button onClick={() => { setArchivePwdInput(''); setArchivePwdError(''); setShowArchiveSetup(true); }}
+                  style={{ width: '100%', background: 'rgba(107,91,214,0.08)', border: '1px dashed rgba(107,91,214,0.3)', borderRadius: '10px', padding: '8px', color: '#6B5BD6', fontSize: '11px', fontWeight: '600', cursor: 'pointer', marginBottom: '10px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+                  Cambiar contraseña
+                </button>
+
+                {/* Lista de archivados filtrada */}
+                {archivedChats
+                  .filter((c: any) => {
+                    const isGrp = c.isGroup || c.type === 'group';
+                    return archiveSubFilter === 'group' ? isGrp : !isGrp;
+                  })
+                  .map((chat: any) => {
+                    const name = chat.name || chat.title || 'Chat';
+                    const initials = name.slice(0, 2).toUpperCase();
+                    const avatarUrl = chat.avatarUrl || chat.avatar_url || '';
+                    const isGrp = chat.isGroup || chat.type === 'group';
+                    return (
+                      <div key={chat.id} style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: '6px' }}>
+                        {/* Acción: Desarchivar */}
+                        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '90px', display: 'flex', alignItems: 'stretch' }}>
+                          <button onClick={() => {
+                            const newArchived = archivedChats.filter((c: any) => c.id !== chat.id);
+                            saveArchivedChats(newArchived);
+                            setRealChats((prev: any[]) => [chat, ...prev]);
+                            showToast('Chat desarchivado', 'info');
+                          }} style={{ flex: 1, background: '#10b981', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
+                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+                            <span style={{ fontSize: '10px', fontWeight: '700' }}>Desarchivar</span>
+                          </button>
+                        </div>
+                        <div onClick={() => {
+                          setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials, color: isGrp ? '#a855f7' : '#00c8a0', avatarUrl, isGroup: isGrp });
+                          setCurrentView('Mensajería');
+                        }} style={{ background: '#fff', borderRadius: '12px', padding: '12px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', position: 'relative', zIndex: 1 }}>
+                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: isGrp ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+                            {avatarUrl ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>🔒 Archivado</div>
+                          </div>
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                {archivedChats.filter((c: any) => archiveSubFilter === 'group' ? (c.isGroup || c.type === 'group') : !(c.isGroup || c.type === 'group')).length === 0 && (
+                  <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+                    <div style={{ fontSize: '32px', marginBottom: '10px' }}>🔒</div>
+                    <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>Sin {archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados</div>
+                    <div style={{ fontSize: '12px', marginTop: '4px' }}>Desliza un chat a la izquierda para archivarlo</div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {messageFilter !== 'archived' && realChats
               .filter(chat => {
                 const isGrp = chat.type === 'group' || (Array.isArray(chat.participants) && chat.participants.length > 2);
                 if (messageFilter === 'group') return isGrp;
