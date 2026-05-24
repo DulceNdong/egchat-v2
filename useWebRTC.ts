@@ -770,7 +770,7 @@ export function useWebRTC() {
       } catch {}
     };
     check();
-    const id = setInterval(check, 3000); // 3s en lugar de 2s — SSE cubre los casos rápidos
+    const id = setInterval(check, 5000); // EGRESS FIX: increased from 3s to 5s — SSE covers fast cases
 
     return () => { clearInterval(id); sse.close(); };
   }, []);

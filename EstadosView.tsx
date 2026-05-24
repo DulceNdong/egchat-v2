@@ -481,10 +481,10 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
     }
   }, []);
 
-  // Cargar al montar y refrescar cada 30s
+  // Cargar al montar y refrescar cada 60s (EGRESS FIX: reduced from 30s)
   useEffect(() => {
     loadStories();
-    const interval = setInterval(loadStories, 30000);
+    const interval = setInterval(loadStories, 60000);
     return () => clearInterval(interval);
   }, [loadStories]);
 
@@ -1171,7 +1171,7 @@ export const EstadosView: React.FC<Props> = ({ onBack, currentUser, groups = [] 
 
   useEffect(() => {
     loadGroupStories();
-    const iv = setInterval(loadGroupStories, 30000);
+    const iv = setInterval(loadGroupStories, 60000); // EGRESS FIX: reduced from 30s
     return () => clearInterval(iv);
   }, [loadGroupStories]);
 

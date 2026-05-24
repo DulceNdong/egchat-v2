@@ -10406,7 +10406,7 @@ const App: React.FC = () => {
     if (currentView === 'Mensajería' && !selectedChat?.isGroup) loadChats();
   }, [currentView, loadChats]);
 
-  // -- Polling: actualizar mensajes del chat abierto cada 1.5s ---
+  // -- Polling: actualizar mensajes del chat abierto cada 8s (reducido para bajar egress) ---
   useEffect(() => {
     if (!selectedChat) {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
@@ -10422,7 +10422,7 @@ const App: React.FC = () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
       pollingRef.current = setInterval(() => {
         if (document.visibilityState === 'visible') loadMessages(chatId);
-      }, 3000);
+      }, 8000); // EGRESS FIX: increased from 3s to 8s to reduce API calls
     };
 
     startInterval();
