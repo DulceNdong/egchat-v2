@@ -2904,19 +2904,22 @@ const App: React.FC = () => {
           <button
             onClick={() => setShowMenu(!showMenu)}
             style={{
-              background: showMenu ? 'rgba(0,180,230,0.30)' : 'transparent',
-              border: 'none',
+              background: showMenu ? 'rgba(0,180,230,0.30)' : 'rgba(8,18,36,0.88)',
+              border: `1px solid ${showMenu ? 'rgba(0,180,230,0.45)' : 'rgba(255,255,255,0.13)'}`,
+              boxShadow: showMenu
+                ? '0 2px 12px rgba(0,180,230,0.25), inset 0 1px 0 rgba(255,255,255,0.08)'
+                : '0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
               cursor: 'pointer',
-              padding: '6px 8px',
-              borderRadius: '50%',
+              padding: '5px 10px',
+              borderRadius: '50px',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               outline: 'none',
             }}
           >
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
-              <circle cx="12" cy="5" r="2"/>
-              <circle cx="12" cy="12" r="2"/>
-              <circle cx="12" cy="19" r="2"/>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <line x1="3" y1="12" x2="21" y2="12"/>
+              <line x1="3" y1="18" x2="21" y2="18"/>
             </svg>
           </button>
         </div>
@@ -3712,19 +3715,22 @@ const App: React.FC = () => {
         <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.3)' }} onClick={() => setShowMenu(false)} />
         <div style={{
           position:'fixed',
-          top:0, right:0, bottom:0,
-          width: device.isMobile ? '85vw' : '320px',
-          maxWidth:'360px',
+          top:'56px',
+          right:'8px',
+          width:'300px',
+          maxWidth:'92vw',
+          maxHeight:'80vh',
           background:'#fff',
-          boxShadow:'-4px 0 32px rgba(0,0,0,0.18)',
+          borderRadius:'16px',
+          boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
           zIndex:1001,
           display:'flex',
           flexDirection:'column',
-          animation:'menuSlideInRight 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
-          paddingTop:'env(safe-area-inset-top,0px)',
-          paddingBottom:'env(safe-area-inset-bottom,0px)',
+          overflow:'hidden',
+          animation:'menuDropDown 0.18s cubic-bezier(0.25,0.46,0.45,0.94)',
+          transformOrigin:'top right',
         }}>
-        <style>{`@keyframes menuSlideInRight{from{transform:translateX(100%)}to{transform:translateX(0)}}`}</style>
+        <style>{`@keyframes menuDropDown{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}`}</style>
         {/* Header degradado con avatar */}
         <div style={{ background:'linear-gradient(160deg,#00c8a0 0%,#00b4e6 100%)', padding:'24px 20px 20px', display:'flex', alignItems:'center', gap:'14px', flexShrink:0 }}>
           <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', border:'2.5px solid rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'800', color:'#fff', flexShrink:0, overflow:'hidden' }}>
