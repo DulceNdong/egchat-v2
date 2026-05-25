@@ -1,4 +1,5 @@
 ﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+import '@maptiler/sdk/dist/maptiler-sdk.css';
 
 interface Props {
   onBack: () => void;

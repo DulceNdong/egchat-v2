@@ -566,7 +566,27 @@ const App: React.FC = () => {
   const [archivePwdInput, setArchivePwdInput] = useState('');
   const [archivePwdError, setArchivePwdError] = useState('');
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
+  const [pendingMessageFilter, setPendingMessageFilter] = useState<string | null>(null);
   const [archiveSubFilter, setArchiveSubFilter] = useState<'individual' | 'group'>('individual');
+
+  const handleMessageFilterClick = (filterId: string) => {
+    if (filterId === 'archived') {
+      setMessageFilter('archived');
+      if (!archivePassword) {
+        setPendingMessageFilter('archived');
+        setShowArchiveSetup(true);
+      } else if (!archiveUnlocked) {
+        setPendingMessageFilter('archived');
+        setShowArchiveUnlock(true);
+      } else {
+        setPendingMessageFilter(null);
+      }
+      return;
+    }
+    setArchiveUnlocked(false);
+    setPendingMessageFilter(null);
+    setMessageFilter(filterId);
+  };
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [_selectedChat, _setSelectedChat] = useState<any>(null);
   // selectedChat siempre tiene los overrides aplicados
@@ -2515,6 +2535,12 @@ const App: React.FC = () => {
         return (
           <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
             <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+          </svg>
+        );
+      case 'archive':
+        return (
+          <svg style={iconStyle} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/><path d="M12 7V4"/><path d="M8 15h8"/>
           </svg>
         );
       case 'building':
@@ -7185,17 +7211,18 @@ const App: React.FC = () => {
                 {[
                   { id: 'individual', label: 'Individual', icon: 'user-plus' },
                   { id: 'group', label: 'Grupos', icon: 'users-group' },
-                  { id: 'money', label: 'Dinero', icon: 'money' }
+                  { id: 'money', label: 'Dinero', icon: 'money' },
+                  { id: 'archived', label: 'Archivar', icon: 'archive' },
                 ].map((filter) => (
                   <button 
                     key={filter.id}
-                    onClick={() => setMessageFilter(filter.id)}
+                    onClick={() => handleMessageFilterClick(filter.id)}
                     style={{
                       background: messageFilter === filter.id 
-                        ? 'linear-gradient(135deg, #00c8a0, #00b4e6)'
+                        ? (filter.id === 'archived' ? 'linear-gradient(135deg, #6B5BD6, #8B5CF6)' : 'linear-gradient(135deg, #00c8a0, #00b4e6)')
                         : '#ffffff',
                       border: messageFilter === filter.id 
-                        ? '1.5px solid #00c8a0'
+                        ? (filter.id === 'archived' ? '1.5px solid #6B5BD6' : '1.5px solid #00c8a0')
                         : '1.5px solid #d1d5db',
                       borderRadius: '20px',
                       padding: '6px 14px',
@@ -7237,8 +7264,82 @@ const App: React.FC = () => {
               className="scroll-container"
               style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: '100px' }}
             >
+              {/* Archivados bloqueados */}
+              {messageFilter === 'archived' && !archiveUnlocked && (
+                <div style={{ textAlign: 'center', padding: '48px 24px', color: '#9ca3af' }}>
+                  <div style={{ fontSize: '40px', marginBottom: '12px' }}>🔒</div>
+                  <div style={{ fontSize: '16px', fontWeight: '700', color: '#374151', marginBottom: '8px' }}>Archivo protegido</div>
+                  <div style={{ fontSize: '13px', marginBottom: '20px' }}>Introduce tu contraseña para ver chats archivados</div>
+                  <button
+                    onClick={() => {
+                      if (!archivePassword) { setPendingMessageFilter('archived'); setShowArchiveSetup(true); }
+                      else { setPendingMessageFilter('archived'); setShowArchiveUnlock(true); }
+                    }}
+                    style={{ padding: '12px 28px', background: 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+                  >
+                    {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+                  </button>
+                </div>
+              )}
+
+              {/* Vista archivados */}
+              {messageFilter === 'archived' && archiveUnlocked && (
+                <div>
+                  <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', background: 'rgba(107,91,214,0.06)', borderRadius: '10px', padding: '4px' }}>
+                    {(['individual', 'group'] as const).map(sub => (
+                      <button key={sub} onClick={() => setArchiveSubFilter(sub)}
+                        style={{ flex: 1, padding: '8px', borderRadius: '8px', border: 'none', cursor: 'pointer', fontSize: '13px', fontWeight: archiveSubFilter === sub ? '700' : '500', background: archiveSubFilter === sub ? '#6B5BD6' : 'transparent', color: archiveSubFilter === sub ? '#fff' : '#9ca3af', outline: 'none' }}>
+                        {sub === 'individual' ? 'Individuales' : 'Grupos'}
+                      </button>
+                    ))}
+                  </div>
+                  {archivedChats
+                    .filter((c: any) => {
+                      const isGrp = c.isGroup || c.type === 'group';
+                      return archiveSubFilter === 'group' ? isGrp : !isGrp;
+                    })
+                    .map((chat: any) => {
+                      const name = chat.name || chat.title || 'Chat';
+                      const initials = name.slice(0, 2).toUpperCase();
+                      const avatarUrl = chat.avatarUrl || chat.avatar_url || '';
+                      const isGrp = chat.isGroup || chat.type === 'group';
+                      return (
+                        <div key={chat.id} style={{ background: '#fff', borderRadius: '12px', padding: '12px 10px', marginBottom: '6px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)' }}
+                          onClick={() => {
+                            setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials, color: isGrp ? '#a855f7' : '#00c8a0', avatarUrl, isGroup: isGrp });
+                            setCurrentView('Mensajería');
+                          }}>
+                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: isGrp ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+                            {avatarUrl ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : initials}
+                          </div>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>Archivado</div>
+                          </div>
+                          <button onClick={(e) => {
+                            e.stopPropagation();
+                            const newArchived = archivedChats.filter((c: any) => c.id !== chat.id);
+                            saveArchivedChats(newArchived);
+                            setRealChats((prev: any[]) => [chat, ...prev]);
+                            showToast('Chat desarchivado', 'info');
+                          }} style={{ background: '#10b981', border: 'none', borderRadius: '8px', padding: '6px 10px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+                            Restaurar
+                          </button>
+                        </div>
+                      );
+                    })}
+                  {archivedChats.filter((c: any) => archiveSubFilter === 'group' ? (c.isGroup || c.type === 'group') : !(c.isGroup || c.type === 'group')).length === 0 && (
+                    <div style={{ textAlign: 'center', padding: '40px 20px', color: '#9ca3af' }}>
+                      <div style={{ fontSize: '32px', marginBottom: '10px' }}>📦</div>
+                      <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151' }}>Sin {archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados</div>
+                      <div style={{ fontSize: '12px', marginTop: '4px' }}>Desliza un chat a la izquierda para archivarlo</div>
+                    </div>
+                  )}
+                </div>
+              )}
+
               {/* Chats reales del backend */}
-              {realChats.length > 0 && realChats
+              {messageFilter !== 'archived' && realChats.length > 0 && realChats
                 .filter(chat => {
                   // Usar solo chat.type para determinar si es grupo
                   const isGrp = chat.type === 'group';
@@ -7381,7 +7482,7 @@ const App: React.FC = () => {
                 </div>
               )}
               {/* Estado vacío cuando el filtro no devuelve resultados */}
-              {realChats.length > 0 && messageFilter !== 'all' && (() => {
+              {realChats.length > 0 && messageFilter !== 'all' && messageFilter !== 'archived' && (() => {
                 const filtered = realChats.filter(chat => {
                   const isGrp = chat.type === 'group';
                   if (messageFilter === 'group') return isGrp;
@@ -7413,16 +7514,20 @@ const App: React.FC = () => {
             {/* ── MODALES CONTRASEÑA ARCHIVADOS ── */}
             {(showArchiveUnlock || showArchiveSetup) && (
               <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 9000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}
-                onClick={() => { setShowArchiveUnlock(false); setShowArchiveSetup(false); setArchivePwdInput(''); setArchivePwdError(''); }}>
+                onClick={() => { setShowArchiveUnlock(false); setShowArchiveSetup(false); setArchivePwdInput(''); setArchivePwdError(''); setPendingMessageFilter(null); }}>
                 <div style={{ background: '#fff', borderRadius: '20px', padding: '28px 24px', width: '100%', maxWidth: '320px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}
                   onClick={e => e.stopPropagation()}>
                   <div style={{ textAlign: 'center', marginBottom: '20px' }}>
                     <div style={{ fontSize: '40px', marginBottom: '8px' }}>🔒</div>
                     <div style={{ fontSize: '17px', fontWeight: '700', color: '#111' }}>
-                      {showArchiveSetup ? (archivePassword ? 'Cambiar contraseña' : 'Crear contraseña') : 'Desbloquear archivados'}
+                      {showArchiveSetup
+                        ? (archivePassword ? 'Cambiar contraseña' : 'Crear contraseña')
+                        : 'Desbloquear archivados'}
                     </div>
                     <div style={{ fontSize: '13px', color: '#9ca3af', marginTop: '4px' }}>
-                      {showArchiveSetup ? 'Esta contraseña protege tus chats archivados' : 'Introduce tu contraseña para acceder'}
+                      {showArchiveSetup
+                        ? 'Solo protege la carpeta Archivar (chats individuales y grupos archivados)'
+                        : 'Introduce tu contraseña para ver chats archivados'}
                     </div>
                   </div>
                   <input
@@ -7443,13 +7548,15 @@ const App: React.FC = () => {
                         setArchivePassword(archivePwdInput);
                         setArchiveUnlocked(true);
                         setMessageFilter('archived');
+                        setPendingMessageFilter(null);
                         setShowArchiveSetup(false);
                         setArchivePwdInput('');
-                        showToast('Contraseña guardada 🔒', 'success');
+                        showToast('Contraseña guardada', 'success');
                       } else {
                         if (archivePwdInput === archivePassword) {
                           setArchiveUnlocked(true);
                           setMessageFilter('archived');
+                          setPendingMessageFilter(null);
                           setShowArchiveUnlock(false);
                           setArchivePwdInput('');
                         } else {
@@ -7460,7 +7567,7 @@ const App: React.FC = () => {
                     style={{ width: '100%', padding: '13px', background: 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', border: 'none', borderRadius: '12px', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer' }}>
                     {showArchiveSetup ? (archivePassword ? 'Cambiar' : 'Crear contraseña') : 'Desbloquear'}
                   </button>
-                  <button onClick={() => { setShowArchiveUnlock(false); setShowArchiveSetup(false); setArchivePwdInput(''); setArchivePwdError(''); }}
+                  <button onClick={() => { setShowArchiveUnlock(false); setShowArchiveSetup(false); setArchivePwdInput(''); setArchivePwdError(''); setPendingMessageFilter(null); }}
                     style={{ width: '100%', padding: '10px', background: 'none', border: 'none', color: '#9ca3af', fontSize: '13px', cursor: 'pointer', marginTop: '6px' }}>
                     Cancelar
                   </button>
@@ -9777,7 +9884,15 @@ const App: React.FC = () => {
       case 'cemac':
         return null;
       case 'mitaxi':
-        return null;
+        return (
+          <MiTaxiView
+            onBack={() => setCurrentView(previousView || 'home')}
+            userBalance={userBalance}
+            onDebit={(a: number) => setUserBalance(prev => prev - a)}
+            userName={userProfile.name}
+            userPhone={userProfile.phone}
+          />
+        );
       default:
         return renderHomeView();
     }
@@ -11205,12 +11320,11 @@ const App: React.FC = () => {
       )}
       
       {/* Vistas secundarias - fuera del stacking context del wallpaper */}
-      {(currentView === 'estados' || currentView === 'apuestas' || currentView === 'cemac' || currentView === 'mitaxi') && (
+      {(currentView === 'estados' || currentView === 'apuestas' || currentView === 'cemac') && (
         <div style={{ position: 'fixed', inset: 0, zIndex: 600 }}>
           {currentView === 'estados' && <EstadosView onBack={() => setCurrentView(previousView || 'home')} currentUser={{ id: userProfile.id, name: userProfile.name, avatar: userProfile.avatar, avatarUrl: userProfile.avatarUrl, color: '#00c8a0' }} groups={(allGroups as any[]).map((g: any) => ({ id: g.id?.toString(), name: g.name || 'Grupo', avatarUrl: g.avatarUrl || g.avatar_url || '', isAdmin: true }))} />}
           {currentView === 'apuestas' && <ApuestasView onBack={() => setCurrentView(previousView || 'home')} userBalance={userBalance} onDebit={(a: number) => setUserBalance(prev => prev - a)} />}
           {currentView === 'cemac' && <CemacView onBack={() => setCurrentView(previousView || 'home')} />}
-          {currentView === 'mitaxi' && <MiTaxiView onBack={() => setCurrentView(previousView || 'home')} userBalance={userBalance} onDebit={(a: number) => setUserBalance(prev => prev - a)} userName={userProfile.name} userPhone={userProfile.phone} />}
         </div>
       )}
 
@@ -11305,22 +11419,9 @@ const App: React.FC = () => {
                 { id: 'individual', label: 'Individual' },
                 { id: 'group', label: 'Grupos' },
                 { id: 'money', label: 'Dinero' },
-                { id: 'archived', label: `🔒 ${archivedChats.length > 0 ? archivedChats.length : ''}` },
+                { id: 'archived', label: `Archivar${archivedChats.length > 0 ? ` (${archivedChats.length})` : ''}` },
               ].map(tab => (
-                <button key={tab.id} onClick={() => {
-                  if (tab.id === 'archived') {
-                    if (!archivePassword) {
-                      setShowArchiveSetup(true);
-                    } else if (!archiveUnlocked) {
-                      setShowArchiveUnlock(true);
-                    } else {
-                      setMessageFilter('archived');
-                    }
-                  } else {
-                    setMessageFilter(tab.id);
-                    setArchiveUnlocked(false);
-                  }
-                }}
+                <button key={tab.id} onClick={() => handleMessageFilterClick(tab.id)}
                   style={{ flex: 1, padding: '5px 4px', borderRadius: '6px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: messageFilter === tab.id ? '700' : '500', background: messageFilter === tab.id ? (tab.id === 'archived' ? 'rgba(107,91,214,0.12)' : 'rgba(0,200,160,0.12)') : 'transparent', color: messageFilter === tab.id ? (tab.id === 'archived' ? '#6B5BD6' : '#00c8a0') : '#9ca3af', outline: 'none' }}>
                   {tab.label}
                 </button>
@@ -11330,8 +11431,24 @@ const App: React.FC = () => {
           {/* Lista */}
           <div style={{ flex: 1, overflowY: 'auto', padding: '6px' }}>
 
+            {messageFilter === 'archived' && !archiveUnlocked && (
+              <div style={{ textAlign: 'center', padding: '32px 16px', color: '#9ca3af' }}>
+                <div style={{ fontSize: '28px', marginBottom: '8px' }}>🔒</div>
+                <div style={{ fontSize: '13px', fontWeight: '700', color: '#374151', marginBottom: '12px' }}>Archivo protegido</div>
+                <button
+                  onClick={() => {
+                    if (!archivePassword) { setPendingMessageFilter('archived'); setShowArchiveSetup(true); }
+                    else { setPendingMessageFilter('archived'); setShowArchiveUnlock(true); }
+                  }}
+                  style={{ padding: '8px 20px', background: '#6B5BD6', border: 'none', borderRadius: '8px', color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}
+                >
+                  {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+                </button>
+              </div>
+            )}
+
             {/* ── VISTA ARCHIVADOS ── */}
-            {messageFilter === 'archived' && (
+            {messageFilter === 'archived' && archiveUnlocked && (
               <div>
                 {/* Sub-tabs: Individual / Grupos */}
                 <div style={{ display: 'flex', gap: '6px', marginBottom: '10px', background: 'rgba(107,91,214,0.06)', borderRadius: '10px', padding: '4px' }}>
