@@ -15,12 +15,13 @@
 
     <!-- iOS / Safari PWA -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <meta name="apple-mobile-web-app-title" content="EGCHAT" />
-    <link rel="apple-touch-icon" href="/logo-transparent.png" />
-    <link rel="apple-touch-icon" sizes="120x120" href="/logo-transparent.png" />
-    <link rel="apple-touch-icon" sizes="152x152" href="/logo-transparent.png" />
-    <link rel="apple-touch-icon" sizes="180x180" href="/logo-transparent.png" />
+    <link rel="apple-touch-icon" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo-192.png" />
 
     <!-- Theme color -->
     <meta name="theme-color" content="#f0f2f5" />
@@ -37,32 +38,45 @@
         top: 0px;
         height: 100dvh;
       }
+      html.pwa-standalone body {
+        padding-top: env(safe-area-inset-top, 0px);
+        padding-bottom: env(safe-area-inset-bottom, 0px);
+      }
     </style>
-  </head>
-  <body style="background:#f0f2f5">
-    <div id="root" style="background:#f0f2f5"></div>
     <script>
       (function() {
-        var isAndroid = /android/i.test(navigator.userAgent);
-        var isCapacitor = typeof window !== 'undefined' && !!(window.Capacitor);
-        if (isAndroid || isCapacitor) {
+        var ua = navigator.userAgent;
+        var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var isAndroid = /android/i.test(ua);
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isStandalone) document.documentElement.classList.add('pwa-standalone');
+        if (isAndroid) {
           document.documentElement.style.setProperty('--status-bar-height', '28px');
           document.documentElement.style.setProperty('--header-top-padding', '28px');
+        } else if (isIOS && isStandalone) {
+          document.documentElement.style.setProperty('--status-bar-height', 'env(safe-area-inset-top, 47px)');
+          document.documentElement.style.setProperty('--header-top-padding', 'env(safe-area-inset-top, 47px)');
         } else {
           document.documentElement.style.setProperty('--status-bar-height', '0px');
           document.documentElement.style.setProperty('--header-top-padding', '0px');
         }
-        var isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
-        if (isPWA) document.documentElement.classList.add('pwa-standalone');
+        if (isIOS && isStandalone && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
         setTimeout(function() {
           var root = document.getElementById('root');
-          if (root && !root.innerHTML.trim() && !sessionStorage.getItem('egchat_recovery_tried')) {
-            sessionStorage.setItem('egchat_recovery_tried', '1');
-            window.location.replace('/clear.html');
+          if (root && !root.innerHTML.trim() && !localStorage.getItem('egchat_recovery_tried')) {
+            localStorage.setItem('egchat_recovery_tried', '1');
+            window.location.replace(window.location.origin + '/clear.html');
           }
-        }, 15000);
+        }, isIOS ? 8000 : 15000);
       })();
     </script>
+  </head>
+  <body style="background:#f0f2f5">
+    <div id="root" style="background:#f0f2f5"></div>
     <script type="module" src="/main.tsx"></script>
   </body>
 </html>

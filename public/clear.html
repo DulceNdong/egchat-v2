@@ -30,9 +30,9 @@
       }
       // 3. Limpiar localStorage de versión para forzar reload en main.tsx
       localStorage.removeItem('egchat_app_version');
-      sessionStorage.removeItem('egchat_recovery_tried');
-      // 4. Redirigir a la app con cache-bust
-      window.location.replace('/?v=' + Date.now() + '&recovered=1');
+      localStorage.removeItem('egchat_recovery_tried');
+      var base = window.location.origin || 'https://egchat-v2.vercel.app';
+      window.location.replace(base + '/?v=' + Date.now() + '&recovered=1');
     })();
   </script>
 </body>

@@ -9,6 +9,7 @@ import { initOfflineUI } from './src/offline-ui';
 import { setupSplashSafetyTimeout, hideSplashWhenReady } from './splash-screen';
 import { initDeepLinks } from './deep-links';
 import { initHaptics } from './haptics-manager';
+import { isIOS, isIOSPWA } from './platform';
 
 initSelectionErrorHandler();
 
@@ -17,21 +18,29 @@ setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260525-pwa-fix-v2';
+const APP_VERSION = 'v20260525-ios-pwa-v1';
 const storedVersion = localStorage.getItem('egchat_app_version');
-  if (storedVersion !== APP_VERSION) {
+if (storedVersion !== APP_VERSION) {
   if ('caches' in window) {
-    caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
   }
   if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.getRegistrations().then(regs => {
-      regs.forEach(reg => reg.unregister());
+    navigator.serviceWorker.getRegistrations().then((regs) => {
+      regs.forEach((reg) => reg.unregister());
     });
   }
   localStorage.setItem('egchat_app_version', APP_VERSION);
-  if (storedVersion) {
+  // iOS PWA: reload rompe el arranque en standalone — solo limpiar caché sin recargar
+  if (storedVersion && !isIOS()) {
     window.location.reload();
   }
+}
+
+// iOS standalone: eliminar SW heredados antes de cargar React (evita pantalla blanca)
+if (isIOSPWA() && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
+  });
 }
 
 // Registrar tiempo de carga para evitar reload del SW en páginas ya abiertas
@@ -259,7 +268,10 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 // ── Ocultar splash cuando React esté montado y la web lista ──────────────────
 hideSplashWhenReady();
 
-// Registrar SW solo tras montar React (no bloquea la primera carga en PWA)
-setTimeout(() => {
-  registerServiceWorkerForPush();
-}, 2500);
+// iPhone: sin Service Worker en arranque (iOS PWA + SW = pantalla blanca frecuente)
+// Android/desktop: SW solo para push, tras montar React
+if (!isIOS()) {
+  setTimeout(() => {
+    registerServiceWorkerForPush();
+  }, 2500);
+}

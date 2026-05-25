@@ -189,13 +189,23 @@ const App: React.FC = () => {
   // isHydrating: true durante el primer frame para evitar flash en iOS Safari.
   // El token se lee síncronamente de localStorage, pero en iOS hay un frame
   // donde el DOM está vacío antes de que React pinte — esto lo previene.
-  const [isHydrating, setIsHydrating] = useState<boolean>(true);
+  const [isHydrating, setIsHydrating] = useState<boolean>(() => {
+    try {
+      const ios = /iPad|iPhone|iPod/.test(navigator.userAgent);
+      const standalone = window.matchMedia('(display-mode: standalone)').matches || (navigator as any).standalone;
+      return !(ios && standalone);
+    } catch {
+      return true;
+    }
+  });
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('token'));
   useEffect(() => {
-    // Marcar hydration completa en el siguiente frame de pintura
-    const raf = requestAnimationFrame(() => setIsHydrating(false));
-    return () => cancelAnimationFrame(raf);
-  }, []);
+    if (!isHydrating) return;
+    const done = () => setIsHydrating(false);
+    const raf = requestAnimationFrame(done);
+    const t = setTimeout(done, 100);
+    return () => { cancelAnimationFrame(raf); clearTimeout(t); };
+  }, [isHydrating]);
   // -- WebRTC real -----------------------------------------------
   const webrtc = useWebRTC();
   // -- Llamada entrante ------------------------------------------
