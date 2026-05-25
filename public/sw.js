@@ -3,13 +3,11 @@ const CACHE = 'egchat-v20260504-v4';
 const API_BASE = 'https://egchat-api.onrender.com';
 const VAPID_PUBLIC_KEY = 'BNeDJFYqIX59vgqEKxWfrI263knyPGHafMEK_WrMPeYaIm8bn62vcOah7hDlgIek4R4utB82g-cT9CwAtGn0wUs';
 
-// Assets que se cachean en la instalación (app shell — críticos para arranque)
+// No precachear index.html: tras cada deploy los hashes de /assets/ cambian y un index viejo deja pantalla en blanco
 const PRECACHE_ASSETS = [
-  '/',
-  '/index.html',
   '/favicon.svg',
+  '/egchat-icon.svg',
   '/logo-transparent.png',
-  '/img.jpg',
   '/manifest.json',
 ];
 
@@ -57,8 +55,7 @@ self.addEventListener('fetch', e => {
     e.request.method !== 'GET'
   ) return;
 
-  // Estrategia para assets JS/CSS/imágenes: Network First con fallback a caché
-  // Garantiza que siempre se cargue la versión más reciente si hay conexión
+  // JS/CSS: red primero; nunca devolver respuesta vacía (provoca pantalla blanca en móviles)
   if (
     url.pathname.match(/\.(js|css|woff2?|ttf|otf|eot)$/) ||
     url.pathname.startsWith('/assets/')
@@ -66,13 +63,13 @@ self.addEventListener('fetch', e => {
     e.respondWith(
       caches.open(CACHE).then(async cache => {
         try {
-          const response = await fetch(e.request);
+          const response = await fetch(e.request, { cache: 'no-cache' });
           if (response.ok) cache.put(e.request, response.clone());
           return response;
         } catch {
-          // Sin red → usar caché
           const cached = await cache.match(e.request);
-          return cached || new Response('', { status: 408 });
+          if (cached) return cached;
+          return fetch(e.request);
         }
       })
     );
@@ -98,23 +95,16 @@ self.addEventListener('fetch', e => {
     return;
   }
 
-  // Estrategia para HTML (navegación): Network First con fallback a caché
+  // HTML: siempre red (evita index.html antiguo con bundles JS que ya no existen)
   if (e.request.mode === 'navigate' || url.pathname === '/' || url.pathname.endsWith('.html')) {
     e.respondWith(
-      fetch(e.request)
-        .then(response => {
-          if (response.ok) {
-            // Clonar ANTES de devolver para evitar "body already used"
-            const cloned = response.clone();
-            caches.open(CACHE).then(cache => cache.put(e.request, cloned));
-          }
-          return response;
-        })
-        .catch(async () => {
-          // Sin red → servir desde caché (modo offline)
-          const cached = await caches.match('/index.html') || await caches.match('/');
-          return cached || new Response('Sin conexión', { status: 503 });
-        })
+      fetch(e.request, { cache: 'no-store' }).catch(async () => {
+        const cached = await caches.match(e.request) || await caches.match('/index.html');
+        return cached || new Response(
+          '<!DOCTYPE html><html><body style="font-family:sans-serif;padding:24px;text-align:center"><h2>Sin conexión</h2><p>Abre EGCHAT cuando tengas internet.</p></body></html>',
+          { status: 503, headers: { 'Content-Type': 'text/html; charset=utf-8' } }
+        );
+      })
     );
     return;
   }
