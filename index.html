@@ -41,8 +41,6 @@
   </head>
   <body style="background:#f0f2f5">
     <div id="root" style="background:#f0f2f5"></div>
-    <script type="module" src="/main.tsx"></script>
-    
     <script>
       (function() {
         var isAndroid = /android/i.test(navigator.userAgent);
@@ -54,7 +52,17 @@
           document.documentElement.style.setProperty('--status-bar-height', '0px');
           document.documentElement.style.setProperty('--header-top-padding', '0px');
         }
+        var isPWA = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isPWA) document.documentElement.classList.add('pwa-standalone');
+        setTimeout(function() {
+          var root = document.getElementById('root');
+          if (root && !root.innerHTML.trim() && !sessionStorage.getItem('egchat_recovery_tried')) {
+            sessionStorage.setItem('egchat_recovery_tried', '1');
+            window.location.replace('/clear.html');
+          }
+        }, 15000);
       })();
     </script>
+    <script type="module" src="/main.tsx"></script>
   </body>
 </html>

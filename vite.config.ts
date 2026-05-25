@@ -12,7 +12,7 @@ const swVersionPlugin = () => ({
     if (!fs.existsSync(swPath)) return;
     const version = `egchat-v${new Date().toISOString().slice(0,10).replace(/-/g,'')}-${Date.now().toString(36)}`;
     let content = fs.readFileSync(swPath, 'utf-8');
-    content = content.replace(/const CACHE = 'egchat-v[^']+';/, `const CACHE = '${version}';`);
+    content = content.replace(/const SW_VERSION = 'egchat-push-v[^']+';/, `const SW_VERSION = 'egchat-push-${Date.now().toString(36)}';`);
     fs.writeFileSync(swPath, content);
     console.log(`[sw-version] Cache version updated to: ${version}`);
   },
@@ -20,7 +20,7 @@ const swVersionPlugin = () => ({
 
 export default defineConfig({
   plugins: [react(), tailwindcss(), swVersionPlugin()],
-  base: './',
+  base: '/',
   server: {
     host: '0.0.0.0',
     port: 3001,

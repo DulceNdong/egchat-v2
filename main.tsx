@@ -17,7 +17,7 @@ setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260525-device-open-fix-v1';
+const APP_VERSION = 'v20260525-pwa-fix-v2';
 const storedVersion = localStorage.getItem('egchat_app_version');
   if (storedVersion !== APP_VERSION) {
   if ('caches' in window) {
@@ -168,29 +168,19 @@ async function registerPush(registration: ServiceWorkerRegistration) {
   }
 }
 
-if ('serviceWorker' in navigator) {
-  window.addEventListener('load', async () => {
-    try {
-      // Desregistrar SWs viejos — solo conservar el que apunta exactamente a /sw.js
-      const registrations = await navigator.serviceWorker.getRegistrations();
-      for (const reg of registrations) {
-        const scriptURL = reg.active?.scriptURL || reg.installing?.scriptURL || reg.waiting?.scriptURL || '';
-        const isOurSW = scriptURL.endsWith('/sw.js');
-        if (!isOurSW) {
-          console.log('[SW] Desregistrando SW viejo:', scriptURL);
-          await reg.unregister();
-        }
-      }
-      // Limpiar caches de SWs viejos (updateServiceWorker, etc.)
+async function registerServiceWorkerForPush() {
+  if (!('serviceWorker' in navigator)) return;
+  try {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    for (const reg of registrations) {
+      await reg.unregister();
+    }
+    if ('caches' in window) {
       const cacheKeys = await caches.keys();
-      for (const key of cacheKeys) {
-        if (!key.startsWith('egchat-v')) {
-          await caches.delete(key);
-        }
-      }
+      await Promise.all(cacheKeys.map((k) => caches.delete(k)));
+    }
 
-      // Registrar nuestro SW
-      const registration = await navigator.serviceWorker.register('/sw.js', { scope: '/' });
+    const registration = await navigator.serviceWorker.register(`/sw.js?v=${APP_VERSION}`, { scope: '/' });
 
       // NO recargar automáticamente cuando el SW toma control
       // Esto evita el parpadeo en iOS Safari al abrir la app
@@ -248,10 +238,9 @@ if ('serviceWorker' in navigator) {
         }
       });
 
-    } catch (e) {
-      console.warn('SW registration failed:', e);
-    }
-  });
+  } catch (e) {
+    console.warn('SW registration failed:', e);
+  }
 }
 
 // Exportar función para que App.tsx pueda re-suscribir tras login
@@ -268,5 +257,9 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
 );
 
 // ── Ocultar splash cuando React esté montado y la web lista ──────────────────
-// Se ejecuta después del primer render — la app ya es visible para el usuario
 hideSplashWhenReady();
+
+// Registrar SW solo tras montar React (no bloquea la primera carga en PWA)
+setTimeout(() => {
+  registerServiceWorkerForPush();
+}, 2500);
