@@ -5,9 +5,8 @@ const config: CapacitorConfig = {
   appName: 'EGCHAT',
   webDir: 'dist',
   server: {
-    // Modo local: carga los assets del APK (funciona sin red)
-    // La app se actualiza via Service Worker cuando hay conexión
     androidScheme: 'https',
+    iosScheme: 'https',
     cleartext: false,
     allowNavigation: ['egchat-v2.vercel.app', '*.vercel.app', '*.supabase.co', 'egchat-api.onrender.com']
   },
@@ -18,6 +17,14 @@ const config: CapacitorConfig = {
     webContentsDebuggingEnabled: false,
     navigationBarColor: '#00000000',
   },
+  ios: {
+    contentInset: 'automatic',
+    backgroundColor: '#00c8a0',
+    preferredContentMode: 'mobile',
+    scrollEnabled: true,
+    limitsNavigationsToAppBoundDomains: true,
+    allowsLinkPreview: false,
+  },
   plugins: {
     SplashScreen: {
       launchAutoHide: true,
@@ -25,6 +32,7 @@ const config: CapacitorConfig = {
       backgroundColor: '#00c8a0',
       androidSplashResourceName: 'splash',
       androidScaleType: 'CENTER_CROP',
+      iosSpinnerStyle: 'small',
       fadeInDuration: 200,
       fadeOutDuration: 300,
       showSpinner: false,
