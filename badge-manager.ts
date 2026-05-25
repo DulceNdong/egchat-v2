@@ -1,28 +1,24 @@
 /**
  * badge-manager.ts
  * Gestión del badge (contador) en el icono de la app EGCHAT.
- * Usa @capawesome/capacitor-badge — funciona en Android e iOS.
- *
- * Android: requiere que el launcher soporte badges (Samsung, Xiaomi, etc.)
- *          y que las notificaciones estén habilitadas.
- * iOS:     requiere permiso de notificaciones (ya solicitado por push-notifications).
- *
- * Uso:
- *   import { setBadge, increaseBadge, clearBadge } from './badge-manager';
- *   increaseBadge();   // nuevo mensaje
- *   clearBadge();      // leer todos
+ * Usa @capawesome/capacitor-badge cuando está disponible.
  */
 
-import { Badge } from '@capawesome/capacitor-badge';
 import { Capacitor } from '@capacitor/core';
 
-// ── Clave de estado local ─────────────────────────────────────────────────────
+// Import dinámico para evitar error si el paquete no está instalado
+let Badge: any = null;
+try {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  Badge = require('@capawesome/capacitor-badge').Badge;
+} catch {
+  // Paquete no disponible — funciones serán no-op
+}
+
 const BADGE_KEY = 'egchat_badge_count';
 
-// ── Guard ─────────────────────────────────────────────────────────────────────
-
 function canUseBadge(): boolean {
-  return Capacitor.isNativePlatform();
+  return Capacitor.isNativePlatform() && Badge !== null;
 }
 
 // ── Funciones principales ─────────────────────────────────────────────────────
