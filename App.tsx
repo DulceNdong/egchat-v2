@@ -2904,22 +2904,19 @@ const App: React.FC = () => {
           <button
             onClick={() => setShowMenu(!showMenu)}
             style={{
-              background: showMenu ? 'rgba(0,180,230,0.30)' : 'rgba(8,18,36,0.88)',
-              border: `1px solid ${showMenu ? 'rgba(0,180,230,0.45)' : 'rgba(255,255,255,0.13)'}`,
-              boxShadow: showMenu
-                ? '0 2px 12px rgba(0,180,230,0.25), inset 0 1px 0 rgba(255,255,255,0.08)'
-                : '0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
+              background: showMenu ? 'rgba(0,180,230,0.30)' : 'transparent',
+              border: 'none',
               cursor: 'pointer',
-              padding: '5px 10px',
-              borderRadius: '50px',
+              padding: '6px 8px',
+              borderRadius: '50%',
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               outline: 'none',
             }}
           >
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <line x1="3" y1="12" x2="21" y2="12"/>
-              <line x1="3" y1="18" x2="21" y2="18"/>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="#ffffff" stroke="none">
+              <circle cx="12" cy="5" r="2"/>
+              <circle cx="12" cy="12" r="2"/>
+              <circle cx="12" cy="19" r="2"/>
             </svg>
           </button>
         </div>
