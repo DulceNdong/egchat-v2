@@ -13,11 +13,21 @@ export interface DeviceInfo {
 }
 
 // Breakpoints
-// mobile:  < 768px
-// tablet:  768px – 1023px
+// mobile:  < 768px  (o cualquier dispositivo táctil iOS/Android)
+// tablet:  768px – 1023px  (solo si NO es teléfono táctil)
 // desktop: >= 1024px
 
+function isTouchPhone(): boolean {
+  // iPhone, iPad mini en portrait, Android phones
+  const ua = navigator.userAgent;
+  const isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isAndroid = /android/i.test(ua);
+  return isIOS || isAndroid;
+}
+
 function getDeviceType(width: number): DeviceType {
+  // Siempre tratar iOS/Android como móvil independientemente del ancho
+  if (isTouchPhone()) return 'mobile';
   if (width < 768) return 'mobile';
   if (width < 1024) return 'tablet';
   return 'desktop';
