@@ -170,11 +170,12 @@ const App: React.FC = () => {
   const device = useDevice();
 
   // Helper: padding de contenido según dispositivo
-  // móvil: header fijo (44px) + safe area top + bottom nav (58px)
-  // tablet/desktop: sin bottom nav, sin safe area top (la sidebar lo gestiona)
+  // móvil: header fijo (44px) + safe area top real + bottom nav (58px)
+  // En Safari browser: safe-area-inset-top = 0 (la barra de Safari está fuera del viewport)
+  // En PWA standalone: safe-area-inset-top = altura del notch (47px en iPhone X+)
   const viewPadding = {
     top: device.isMobile
-      ? 'calc(44px + max(44px, env(safe-area-inset-top, 44px)) + 8px)'
+      ? 'calc(44px + env(safe-area-inset-top, 0px) + 8px)'
       : '60px',
     bottom: device.isMobile
       ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
@@ -2803,8 +2804,9 @@ const App: React.FC = () => {
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
-      // En tablet/desktop no hay status bar — solo en móvil
-      paddingTop: device.isMobile ? 'max(44px, env(safe-area-inset-top, 44px))' : '0',
+      // En PWA standalone: safe-area-inset-top cubre el notch
+      // En Safari browser: safe-area-inset-top = 0 (la barra de Safari ya ocupa ese espacio)
+      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 0px)' : '0',
       // Compositing layer propio para evitar repaints en iOS
       willChange: 'transform',
       transform: 'translateZ(0)',

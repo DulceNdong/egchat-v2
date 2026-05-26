@@ -32,16 +32,23 @@
       html, body, #root {
         background-color: #f0f2f5 !important;
         margin: 0;
+        padding: 0;
+        /* Sin scrollbar lateral */
+        overflow-x: hidden;
+      }
+      body {
+        /* Sin padding extra en body — el header de App.tsx gestiona el safe area */
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
       }
       /* Chat container — JS actualiza height con visualViewport para iOS keyboard */
       .chat-view-container {
         top: 0px;
         height: 100dvh;
       }
-      html.pwa-standalone body {
-        padding-top: env(safe-area-inset-top, 0px);
-        padding-bottom: env(safe-area-inset-bottom, 0px);
-      }
+      /* Ocultar scrollbar en toda la app */
+      ::-webkit-scrollbar { display: none; }
+      * { scrollbar-width: none; }
     </style>
     <script>
       (function() {
