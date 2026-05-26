@@ -175,7 +175,7 @@ const App: React.FC = () => {
   // En PWA standalone: safe-area-inset-top = altura del notch (47px en iPhone X+)
   const viewPadding = {
     top: device.isMobile
-      ? 'calc(44px + env(safe-area-inset-top, 0px) + 8px)'
+      ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)'
       : '60px',
     bottom: device.isMobile
       ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
@@ -2804,9 +2804,9 @@ const App: React.FC = () => {
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
-      // En PWA standalone: safe-area-inset-top cubre el notch (47px en iPhone X+)
-      // En Safari browser: el viewport ya empieza debajo de la status bar, no necesita padding
-      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 0px)' : '0',
+      // black-translucent: viewport empieza desde top absoluto (detrás del notch)
+      // paddingTop cubre el notch en PWA y la status bar en Safari browser
+      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 44px)' : '0',
       // Compositing layer propio para evitar repaints en iOS
       willChange: 'transform',
       transform: 'translateZ(0)',
