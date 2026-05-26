@@ -170,12 +170,11 @@ const App: React.FC = () => {
   const device = useDevice();
 
   // Helper: padding de contenido según dispositivo
-  // móvil PWA: header fijo (44px) + safe area top + bottom nav (58px)
-  // móvil Safari browser: safe-area-inset-top es 0, solo header (44px)
+  // móvil: header fijo (44px) + safe area top + bottom nav (58px)
   // tablet/desktop: sin bottom nav, sin safe area top (la sidebar lo gestiona)
   const viewPadding = {
     top: device.isMobile
-      ? 'calc(44px + env(safe-area-inset-top, 0px) + 8px)'
+      ? 'calc(44px + max(44px, env(safe-area-inset-top, 44px)) + 8px)'
       : '60px',
     bottom: device.isMobile
       ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
@@ -2804,9 +2803,8 @@ const App: React.FC = () => {
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
-      // En PWA standalone: necesita padding para la status bar del sistema
-      // En Safari browser: la barra de Safari ya ocupa el espacio, no añadir padding
-      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 0px)' : '0',
+      // En tablet/desktop no hay status bar — solo en móvil
+      paddingTop: device.isMobile ? 'max(44px, env(safe-area-inset-top, 44px))' : '0',
       // Compositing layer propio para evitar repaints en iOS
       willChange: 'transform',
       transform: 'translateZ(0)',
