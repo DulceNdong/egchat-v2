@@ -31,10 +31,10 @@
     <style>
       *, *::before, *::after { box-sizing: border-box; }
       html {
-        background-color: #f0f2f5 !important;
+        /* Color del header — la status bar con black-translucent muestra este color */
+        background-color: #00c8a0 !important;
         margin: 0; padding: 0;
         overflow-x: hidden;
-        /* Forzar que el contenido empiece desde top:0 absoluto */
         height: 100%;
       }
       body {
@@ -43,7 +43,6 @@
         padding: 0 !important;
         overflow-x: hidden;
         min-height: 100%;
-        /* Anular cualquier padding de safe-area que iOS pueda inyectar */
         padding-top: 0 !important;
         padding-bottom: 0 !important;
         padding-left: 0 !important;
