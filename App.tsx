@@ -5004,10 +5004,10 @@ const App: React.FC = () => {
           willChange: 'transform',
           transform: 'translateZ(0)',
         }}>
-          {/* Zona de iconos + labels — altura fija 56px */}
+          {/* Zona de iconos + labels — altura fija 58px */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-            height: '56px',
+            height: '58px',
           }}>
             {navItems.map((item) => (
               <button key={item.id} onClick={() => {

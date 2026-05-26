@@ -29,17 +29,30 @@
 
     <!-- Anti-flash inline: fondo del body antes de que cargue el CSS -->
     <style>
-      html, body, #root {
+      *, *::before, *::after { box-sizing: border-box; }
+      html {
         background-color: #f0f2f5 !important;
-        margin: 0;
-        padding: 0;
-        /* Sin scrollbar lateral */
+        margin: 0; padding: 0;
         overflow-x: hidden;
+        /* Forzar que el contenido empiece desde top:0 absoluto */
+        height: 100%;
       }
       body {
-        /* Sin padding extra en body — el header de App.tsx gestiona el safe area */
+        background-color: #f0f2f5 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden;
+        min-height: 100%;
+        /* Anular cualquier padding de safe-area que iOS pueda inyectar */
         padding-top: 0 !important;
         padding-bottom: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+      #root {
+        background-color: #f0f2f5 !important;
+        margin: 0; padding: 0;
+        overflow-x: hidden;
       }
       /* Chat container — JS actualiza height con visualViewport para iOS keyboard */
       .chat-view-container {
