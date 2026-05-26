@@ -175,7 +175,7 @@ const App: React.FC = () => {
   // En PWA standalone: safe-area-inset-top = altura del notch (47px en iPhone X+)
   const viewPadding = {
     top: device.isMobile
-      ? 'calc(44px + env(safe-area-inset-top, 0px) + 8px)'
+      ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)'
       : '60px',
     bottom: device.isMobile
       ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
@@ -2804,9 +2804,8 @@ const App: React.FC = () => {
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
-      // En PWA standalone: safe-area-inset-top cubre el notch
-      // En Safari browser: safe-area-inset-top = 0 (la barra de Safari ya ocupa ese espacio)
-      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 0px)' : '0',
+      // safe-area-inset-top cubre tanto el notch en PWA como la status bar en Safari browser
+      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 44px)' : '0',
       // Compositing layer propio para evitar repaints en iOS
       willChange: 'transform',
       transform: 'translateZ(0)',
@@ -5004,10 +5003,10 @@ const App: React.FC = () => {
           willChange: 'transform',
           transform: 'translateZ(0)',
         }}>
-          {/* Zona de iconos + labels — altura fija 58px */}
+          {/* Zona de iconos + labels — altura fija 64px */}
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-around',
-            height: '58px',
+            height: '64px',
           }}>
             {navItems.map((item) => (
               <button key={item.id} onClick={() => {
@@ -5019,7 +5018,7 @@ const App: React.FC = () => {
                 <div style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flexShrink: 0 }}>
                   {renderIcon(item.icon, 22)}
                 </div>
-                <span style={{ fontSize: '10px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ fontSize: '11px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0 }}>
                   {item.label}
                 </span>
               </button>
