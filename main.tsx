@@ -18,7 +18,7 @@ setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260525-ios-pwa-v1';
+const APP_VERSION = 'v20260526-layout-fix-v3';
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
   if ('caches' in window) {
