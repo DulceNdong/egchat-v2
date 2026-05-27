@@ -69,17 +69,29 @@ export default function AuthScreen({onAuth}:Props) {
   const [recoverOk, setRecoverOk] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
-  // Despertar Render al cargar la pantalla
+  // Despertar Render al cargar la pantalla — con reintentos para APK nativa
   React.useEffect(() => {
+    let cancelled = false;
     const wake = async () => {
-      try {
-        await fetch(`${BASE.replace('/api','')}/health`);
-        setServerReady(true);
-      } catch {
-        setServerReady(true); // continuar aunque falle
+      // Intentar hasta 5 veces con 8s entre intentos (Render tarda ~30s en despertar)
+      for (let i = 0; i < 5; i++) {
+        if (cancelled) return;
+        try {
+          const res = await fetch(`${BASE.replace('/api', '')}/health`, {
+            signal: AbortSignal.timeout(12000),
+          });
+          if (res.ok) {
+            if (!cancelled) setServerReady(true);
+            return;
+          }
+        } catch {}
+        if (i < 4) await new Promise(r => setTimeout(r, 8000));
       }
+      // Después de todos los intentos, dejar continuar igual
+      if (!cancelled) setServerReady(true);
     };
     wake();
+    return () => { cancelled = true; };
   }, []);
 
   const selCountry = COUNTRIES.find(c=>c.phone===countryCode) || COUNTRIES[0];
@@ -90,17 +102,25 @@ export default function AuthScreen({onAuth}:Props) {
     if(!phone||!pass){setErr('Rellena todos los campos');return;}
     setLoading(true);setErr('');
 
-    // Debug: mostrar qué datos se están enviando
-    console.log('🔍 Intentando login con:', {
-      phone: fullPhone,
-      password: pass ? '***' : '',
-      countryCode,
-      phoneRaw: phone
-    });
+    // Intentar login con reintento automático si el servidor está despertando
+    const attempt = async (retries = 2): Promise<any> => {
+      try {
+        return await authAPI.login(fullPhone, pass);
+      } catch(e: any) {
+        const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed');
+        if (isNetworkError && retries > 0) {
+          // Esperar 8s y reintentar — Render puede estar despertando
+          setErr('Conectando con el servidor... espera un momento');
+          await new Promise(r => setTimeout(r, 8000));
+          setErr('');
+          return attempt(retries - 1);
+        }
+        throw e;
+      }
+    };
 
     try{
-      const r=await authAPI.login(fullPhone,pass);
-      console.log('✅ Login exitoso:', r);
+      const r = await attempt();
       onAuth(r.user);
     }
     catch(e:any){
