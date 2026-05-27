@@ -19,6 +19,7 @@ import { useDevice } from './useDevice';
 import { EGChatDesktopWelcome } from './EGChatDesktopWelcome';
 import { UpdateBanner } from './UpdateBanner';
 import { AppUpdateChecker } from './AppUpdateChecker';
+import { EducacionModule } from './EducacionModule';
 import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
 import { Lia25View } from './Lia25View';
@@ -12574,58 +12575,8 @@ const App: React.FC = () => {
               </div>
             )}
             {/* EDUCACION */}
-            {showSvcModal === 'edu' && svcStep === 'main' && (
-              <div style={{ padding:'0 0 24px' }}>
-                <div style={{ background:'linear-gradient(135deg,#4C1D95,#6B5BD6)', padding:'20px 16px', marginBottom:'0' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'14px', marginBottom:'8px' }}>
-                    <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>
-                    </div>
-                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Educación</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Pagos educativos  -  Guinea Ecuatorial</div></div>
-                  </div>
-                </div>
-                <div style={{ padding:'14px 16px 0' }}>
-                  {[
-                    {id:'matricula',label:'Matrcula Escolar',sub:'Colegios pblicos y privados',price:'25,000',color:'#6B5BD6',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/></svg>},
-                    {id:'universidad',label:'Universidad',sub:'UNGE, UNIGE y otras',price:'150,000',color:'#1485EE',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>},
-                    {id:'cursos',label:'Cursos y Formacin',sub:'Formacin profesional online',price:'50,000',color:'#00c8a0',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>},
-                    {id:'libros',label:'Material Escolar',sub:'Libros y tiles escolares',price:'15,000',color:'#F59E0B',icon:<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg>},
-                  ].map((e) => (
-                    <button key={e.id} onClick={() => { setSvcStep('form-edu'); setSvcData({type:e.id,typeLabel:e.label,price:e.price}); }}
-                      style={{ width:'100%', background:'#fff', border:'1px solid #F0F2F5', borderRadius:'12px', padding:'13px 14px', cursor:'pointer', outline:'none', display:'flex', alignItems:'center', gap:'12px', marginBottom:'8px', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}
-                      onMouseEnter={(e2)=>{e2.currentTarget.style.background='#F9FAFB';}} onMouseLeave={(e2)=>{e2.currentTarget.style.background='#fff';}}>
-                      <div style={{ width:'44px', height:'44px', borderRadius:'12px', background:e.color+'15', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0, color:e.color }}>{e.icon}</div>
-                      <div style={{ flex:1, textAlign:'left' }}><div style={{ fontSize:'14px', fontWeight:'600', color:'#111827' }}>{e.label}</div><div style={{ fontSize:'11px', color:'#9CA3AF', marginTop:'2px' }}>{e.sub}</div></div>
-                      <div style={{ textAlign:'right' }}><div style={{ fontSize:'12px', fontWeight:'700', color:e.color }}>{e.price} XAF</div><svg width="14" height="14" viewBox="0 0 24 24" stroke="#D1D5DB" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg></div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-            )}
-            {showSvcModal === 'edu' && svcStep === 'form-edu' && (
-              <div style={{ padding:'14px 16px 24px' }}>
-                <div style={{ background:'linear-gradient(135deg,#4C1D95,#6B5BD6)', borderRadius:'12px', padding:'14px', marginBottom:'14px', display:'flex', alignItems:'center', gap:'12px' }}>
-                  <div style={{ flex:1 }}><div style={{ fontSize:'14px', fontWeight:'700', color:'#fff' }}>{svcData.typeLabel}</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)', marginTop:'2px' }}>Precio referencia: {svcData.price} XAF</div></div>
-                </div>
-                {[{key:'student',placeholder:'Nombre del estudiante',type:'text',icon:'👤'},{key:'institution',placeholder:'Centro educativo',type:'text',icon:'📋'},{key:'ref',placeholder:'Nmero de referencia / matrcula',type:'text',icon:'📋'},{key:'amount',placeholder:'Importe a pagar (XAF)',type:'number',icon:'📋'}].map((f) => (
-                  <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
-                    <span style={{ fontSize:'16px' }}>{f.icon}</span>
-                    <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
-                  </div>
-                ))}
-                <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Metodo de pago</div>
-                <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                  {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
-                    <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EDE9FE':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#6B5BD6':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#6B5BD6':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
-                      <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
-                    </button>
-                  ))}
-                </div>
-                <button onClick={() => { if(svcData.student && svcData.amount && svcData.payMethod){ setUserBalance(b=>b-parseInt(svcData.amount||'0')); setSvcStep('success'); setSvcData(p=>({...p,action:`Pago de ${svcData.typeLabel} por ${parseInt(svcData.amount||'0').toLocaleString()} XAF`})); } }}
-                  style={{ width:'100%', background:svcData.student&&svcData.amount&&svcData.payMethod?'linear-gradient(135deg,#4C1D95,#6B5BD6)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.student&&svcData.amount&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.student&&svcData.amount&&svcData.payMethod?'pointer':'default', outline:'none' }}>
-                  Pagar {svcData.amount?`${parseInt(svcData.amount).toLocaleString()} XAF`:''}
-                </button>
-              </div>
+            {showSvcModal === 'edu' && (
+              <EducacionModule onClose={() => setShowSvcModal(null)} />
             )}
 
             {/* TRANSPORTE */}
