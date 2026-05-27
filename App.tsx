@@ -20,6 +20,8 @@ import { EGChatDesktopWelcome } from './EGChatDesktopWelcome';
 import { UpdateBanner } from './UpdateBanner';
 import { AppUpdateChecker } from './AppUpdateChecker';
 import { EducacionModule } from './EducacionModule';
+import { HotelesModule } from './HotelesModule';
+import { TiendasModule } from './TiendasModule';
 import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
 import { Lia25View } from './Lia25View';
@@ -12752,8 +12754,13 @@ const App: React.FC = () => {
               </div>
             )}
 
-            {/* SERVICIOS DIARIOS - formulario generico para: super, comida, tienda, lavanderia, belleza */}
-            {(['super','comida','tienda','lavanderia','belleza'] as string[]).includes(showSvcModal!) && svcStep === 'main' && (
+            {/* TIENDA — módulo completo */}
+            {showSvcModal === 'tienda' && (
+              <TiendasModule onClose={() => setShowSvcModal(null)} />
+            )}
+
+            {/* SERVICIOS DIARIOS - formulario generico para: super, comida, lavanderia, belleza */}
+            {(['super','comida','lavanderia','belleza'] as string[]).includes(showSvcModal!) && svcStep === 'main' && (
               <div style={{ padding:'0 0 24px' }}>
                 {/* Header din?mico por servicio */}
                 {(() => {
@@ -12799,7 +12806,7 @@ const App: React.FC = () => {
                 })()}
               </div>
             )}
-            {(['super','comida','tienda','lavanderia','belleza'] as string[]).includes(showSvcModal!) && svcStep === 'form-daily' && (
+            {(['super','comida','lavanderia','belleza'] as string[]).includes(showSvcModal!) && svcStep === 'form-daily' && (
               <div style={{ padding:'14px 16px 24px' }}>
                 <div style={{ background:'#fff', borderRadius:'12px', padding:'13px 14px', marginBottom:'14px', border:'1px solid #F0F2F5', display:'flex', justifyContent:'space-between', alignItems:'center' }}>
                   <div style={{ fontSize:'14px', fontWeight:'700', color:'#111827' }}>{svcData.typeLabel}</div>
@@ -12883,51 +12890,8 @@ const App: React.FC = () => {
               </div>
             )}
             {/* HOTEL */}
-            {showSvcModal === 'hotel' && svcStep === 'main' && (
-              <div style={{ padding:'0 0 24px' }}>
-                <div style={{ background:'linear-gradient(135deg,#0A4A8A,#00b4e6)', padding:'20px 16px' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:'14px' }}>
-                    <div style={{ width:'52px', height:'52px', borderRadius:'14px', background:'rgba(255,255,255,0.2)', display:'flex', alignItems:'center', justifyContent:'center', flexShrink:0 }}>
-                      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-                    </div>
-                    <div><div style={{ fontSize:'18px', fontWeight:'800', color:'#fff' }}>Hoteles</div><div style={{ fontSize:'11px', color:'rgba(255,255,255,0.75)' }}>Reservas en Guinea Ecuatorial</div></div>
-                  </div>
-                </div>
-                <div style={{ padding:'14px 16px 0' }}>
-                  <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr', gap:'8px', marginBottom:'14px' }}>
-                    {[
-                      {id:'h1',label:'Hotel Baha',sub:'Malabo - 4*',price:'45,000 XAF/noche',color:'#00b4e6'},
-                      {id:'h2',label:'Hotel Impala',sub:'Malabo - 3*',price:'28,000 XAF/noche',color:'#1485EE'},
-                      {id:'h3',label:'Hotel Bata',sub:'Bata - 3*',price:'25,000 XAF/noche',color:'#00c8a0'},
-                      {id:'h4',label:'Aparthotel GQ',sub:'Malabo - Apartamentos',price:'35,000 XAF/noche',color:'#6B5BD6'},
-                    ].map(h=>(
-                      <button key={h.id} onClick={()=>setSvcData(p=>({...p,hotelId:h.id,hotelLabel:h.label,hotelPrice:h.price}))} style={{ background:svcData.hotelId===h.id?h.color+'15':'#fff', border:`1.5px solid ${svcData.hotelId===h.id?h.color:'#F0F2F5'}`, borderRadius:'12px', padding:'12px', cursor:'pointer', outline:'none', textAlign:'left', boxShadow:'0 1px 3px rgba(0,0,0,0.05)' }}>
-                        <div style={{ fontSize:'12px', fontWeight:'700', color:'#111827', marginBottom:'3px' }}>{h.label}</div>
-                        <div style={{ fontSize:'10px', color:'#9CA3AF', marginBottom:'5px' }}>{h.sub}</div>
-                        <div style={{ fontSize:'11px', fontWeight:'700', color:h.color }}>{h.price}</div>
-                      </button>
-                    ))}
-                  </div>
-                  {[{key:'checkin',placeholder:'Fecha entrada (DD/MM/AAAA)',type:'text',icon:'📋'},{key:'checkout',placeholder:'Fecha salida (DD/MM/AAAA)',type:'text',icon:'📋'},{key:'guests',placeholder:'Nmero de hu?spedes',type:'number',icon:'📋'},{key:'name',placeholder:'Nombre del titular',type:'text',icon:'📋'}].map((f) => (
-                    <div key={f.key} style={{ background:'#fff', borderRadius:'10px', padding:'0 14px', marginBottom:'8px', display:'flex', alignItems:'center', height:'50px', border:'1px solid #F0F2F5', gap:'10px' }}>
-                      <span style={{ fontSize:'16px' }}>{f.icon}</span>
-                      <input type={f.type} placeholder={f.placeholder} value={svcData[f.key]||''} onChange={(e) => setSvcData((p:Record<string,string>) => ({...p,[f.key]:e.target.value}))} style={{ flex:1, background:'none', border:'none', outline:'none', fontSize:'13px', color:'#111827', fontFamily:'inherit' }} />
-                    </div>
-                  ))}
-                  <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Metodo de pago</div>
-                  <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
-                    {[{id:'wallet',label:'EGCHAT',icon:'💳'},{id:'bank',label:'Banco',icon:'🏦'},{id:'cash',label:'Efectivo',icon:'💵'}].map(m=>(
-                      <button key={m.id} onClick={()=>setSvcData((p:Record<string,string>)=>({...p,payMethod:m.id}))} style={{ flex:1, background:svcData.payMethod===m.id?'#EFF5FD':'#F9FAFB', border:`1.5px solid ${svcData.payMethod===m.id?'#00b4e6':'#E5E7EB'}`, borderRadius:'10px', padding:'10px 4px', fontSize:'10px', fontWeight:'700', color:svcData.payMethod===m.id?'#0A4A8A':'#6B7280', cursor:'pointer', display:'flex', flexDirection:'column', alignItems:'center', gap:'4px' }}>
-                        <span style={{ fontSize:'18px' }}>{m.icon}</span>{m.label}
-                      </button>
-                    ))}
-                  </div>
-                  <button onClick={() => { if(svcData.hotelId && svcData.checkin && svcData.checkout && svcData.name && svcData.payMethod){ setSvcStep('success'); setSvcData(p=>({...p,action:`Reserva ${svcData.hotelLabel} ? ${svcData.checkin} ? ${svcData.checkout} ? ${svcData.guests||1} hu?sped(es)`})); } }}
-                    style={{ width:'100%', background:svcData.hotelId&&svcData.checkin&&svcData.checkout&&svcData.name&&svcData.payMethod?'linear-gradient(135deg,#0A4A8A,#00b4e6)':'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:svcData.hotelId&&svcData.checkin&&svcData.checkout&&svcData.name&&svcData.payMethod?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:svcData.hotelId&&svcData.checkin&&svcData.checkout&&svcData.name&&svcData.payMethod?'pointer':'default', outline:'none' }}>
-                    Reservar {svcData.hotelLabel||'hotel'}
-                  </button>
-                </div>
-              </div>
+            {showSvcModal === 'hotel' && (
+              <HotelesModule onClose={() => setShowSvcModal(null)} />
             )}
             {/* VUELOS */}
             {showSvcModal === 'vuelos' && svcStep === 'main' && (

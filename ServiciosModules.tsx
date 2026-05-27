@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { useGPS, distanceKm } from './useGPS';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
@@ -1516,13 +1516,19 @@ export const SegurosModal: React.FC<{ onClose:()=>void; userBalance:number; onDe
               </div>
             ))}
             <div style={{fontSize:'12px',fontWeight:'700',color:'#8A9BB5',textTransform:'uppercase',letterSpacing:'1px',margin:'16px 0 10px'}}>Aseguradoras</div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'10px'}}>
             {INS_COS.map(c=>(
-              <div key={c.id} onClick={()=>{setCo(c);setScreen('company');}} style={{background:'#fff',borderRadius:'14px',padding:'14px',marginBottom:'8px',cursor:'pointer',display:'flex',alignItems:'center',gap:'12px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)',transition:'transform 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.transform='translateX(4px)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateX(0)';}}>
-                <div style={{width:'46px',height:'46px',borderRadius:'12px',background:`linear-gradient(135deg,${c.color},${c.color2})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'14px',fontWeight:'900',flexShrink:0}}>{c.initials}</div>
-                <div style={{flex:1}}><div style={{fontSize:'14px',fontWeight:'800',color:'#1A2B4A'}}>{c.name}</div><div style={{fontSize:'11px',color:'#8A9BB5',marginTop:'2px'}}>{c.products.length} productos  -  {c.phone}</div></div>
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+              <div key={c.id} onClick={()=>{setCo(c);setScreen('company');}} style={{background:'#fff',borderRadius:'16px',padding:'14px',cursor:'pointer',boxShadow:'0 2px 8px rgba(0,0,0,0.08)',border:'1px solid #F0F2F5',transition:'transform 0.15s'}} onMouseEnter={e=>{e.currentTarget.style.transform='translateY(-2px)';}} onMouseLeave={e=>{e.currentTarget.style.transform='translateY(0)';}}>
+                <div style={{width:'48px',height:'48px',borderRadius:'14px',background:`linear-gradient(135deg,${c.color},${c.color2})`,display:'flex',alignItems:'center',justifyContent:'center',color:'#fff',fontSize:'16px',fontWeight:'900',marginBottom:'10px'}}>{c.initials}</div>
+                <div style={{fontSize:'12px',fontWeight:'800',color:'#1A2B4A',marginBottom:'2px',lineHeight:'1.3'}}>{c.name}</div>
+                <div style={{fontSize:'10px',color:'#8A9BB5',marginBottom:'8px'}}>{c.products.length} productos</div>
+                <div style={{display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+                  <span style={{background:`${c.color}15`,color:c.color,borderRadius:'6px',padding:'2px 8px',fontSize:'10px',fontWeight:'700'}}>{c.products.map((p:any)=>p.type).filter((v:string,i:number,a:string[])=>a.indexOf(v)===i).length} tipos</span>
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#CBD5E1" strokeWidth="2.5"><path d="M9 18l6-6-6-6"/></svg>
+                </div>
               </div>
             ))}
+            </div>
           </div>}
           {screen==='company'&&co&&<div>
             <div style={{background:'#fff',borderRadius:'16px',padding:'18px',marginBottom:'12px',boxShadow:'0 2px 8px rgba(0,0,0,0.06)'}}>
