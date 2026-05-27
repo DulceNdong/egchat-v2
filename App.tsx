@@ -18,6 +18,7 @@ import { CameraModal } from './CameraModal';
 import { useDevice } from './useDevice';
 import { EGChatDesktopWelcome } from './EGChatDesktopWelcome';
 import { UpdateBanner } from './UpdateBanner';
+import { AppUpdateChecker } from './AppUpdateChecker';
 import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
 import { Lia25View } from './Lia25View';
@@ -10842,6 +10843,9 @@ const App: React.FC = () => {
 
       {/* Banner de actualización automática */}
       <UpdateBanner />
+
+      {/* Verificador de actualizaciones de APK — solo en app nativa Android */}
+      <AppUpdateChecker />
 
       {/* Toast global */}
       {toast && (
