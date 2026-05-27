@@ -1,5 +1,6 @@
 ﻿import React, { useState } from 'react';
 import { useGPS, distanceKm } from './useGPS';
+import { DocUploader, DocFile } from './DocUploader';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -1581,60 +1582,15 @@ export const SegurosModal: React.FC<{ onClose:()=>void; userBalance:number; onDe
             <button onClick={()=>{if(formOk)setScreen('success');}} style={{width:'100%',background:formOk?'linear-gradient(135deg,#2E9E6B,#1B7A52)':'#E5E7EB',border:'none',borderRadius:'12px',padding:'14px',color:formOk?'#fff':'#9CA3AF',fontSize:'14px',fontWeight:'700',cursor:formOk?'pointer':'default',marginTop:'8px'}}>✅ Enviar solicitud</button>
           </div>}
           {screen==='docs'&&prod&&<div>
-            <div style={{background:'#EFF6FF',borderRadius:'12px',padding:'12px 14px',marginBottom:'14px'}}>
-              <div style={{fontSize:'13px',fontWeight:'700',color:'#1D4ED8',marginBottom:'4px'}}>📎 Documentos requeridos</div>
-              <div style={{fontSize:'11px',color:'#3B82F6'}}>{doneCount}/{reqDocs.length} documentos subidos</div>
-              <div style={{background:'#DBEAFE',borderRadius:'4px',height:'4px',marginTop:'8px'}}><div style={{background:'#3B82F6',borderRadius:'4px',height:'4px',width:`${reqDocs.length>0?(doneCount/reqDocs.length)*100:0}%`,transition:'width 0.3s'}}/></div>
-            </div>
-            {reqDocs.map((doc:string,i:number)=>(
-              <div key={i} style={{background:'#fff',borderRadius:'12px',padding:'14px',marginBottom:'8px',boxShadow:'0 1px 4px rgba(0,0,0,0.06)'}}>
-                <div style={{display:'flex',alignItems:'center',gap:'12px',marginBottom: docs[doc] ? '0' : '10px'}}>
-                  <div style={{width:'40px',height:'40px',borderRadius:'10px',background:docs[doc]?'#F0FAF5':'#F8FAFC',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                    {docs[doc]
-                      ? <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2E9E6B" strokeWidth="2.5" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>
-                      : <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#8A9BB5" strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                    }
-                  </div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:'13px',fontWeight:'600',color:'#1A2B4A'}}>{doc}</div>
-                    <div style={{fontSize:'11px',color:docs[doc]?'#2E9E6B':'#8A9BB5',marginTop:'2px'}}>{docs[doc]?`✓ ${docs[doc]}`:'Pendiente de subir'}</div>
-                  </div>
-                </div>
-                {!docs[doc] && (
-                  <div style={{display:'flex',gap:'8px'}}>
-                    {/* Subir archivo */}
-                    <label style={{flex:1,background:'#EFF5FD',border:'1.5px solid #3B7DD8',borderRadius:'10px',padding:'10px',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',cursor:'pointer',fontSize:'12px',fontWeight:'700',color:'#3B7DD8'}}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                      Subir archivo
-                      <input
-                        type="file"
-                        accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
-                        style={{display:'none'}}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setDocs(p => ({...p, [doc]: file.name}));
-                        }}
-                      />
-                    </label>
-                    {/* Tomar foto */}
-                    <label style={{flex:1,background:'#F0FAF5',border:'1.5px solid #2E9E6B',borderRadius:'10px',padding:'10px',display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',cursor:'pointer',fontSize:'12px',fontWeight:'700',color:'#2E9E6B'}}>
-                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
-                      Tomar foto
-                      <input
-                        type="file"
-                        accept="image/*"
-                        capture="environment"
-                        style={{display:'none'}}
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) setDocs(p => ({...p, [doc]: file.name}));
-                        }}
-                      />
-                    </label>
-                  </div>
-                )}
-              </div>
-            ))}
+            <DocUploader
+              docs={reqDocs}
+              onChange={(files) => {
+                const allUploaded = reqDocs.length > 0 && reqDocs.every((d:string) => files[d]?.uploaded);
+                setDocs(Object.fromEntries(Object.entries(files).map(([k,v]) => [k, v?.name || ''])));
+              }}
+              accentColor="#3B7DD8"
+              doneColor="#2E9E6B"
+            />
             <button onClick={()=>{if(allDone)setScreen('apply');}} style={{width:'100%',background:allDone?'linear-gradient(135deg,#2E9E6B,#1B7A52)':'#E5E7EB',border:'none',borderRadius:'12px',padding:'14px',color:allDone?'#fff':'#9CA3AF',fontSize:'14px',fontWeight:'700',cursor:allDone?'pointer':'default',marginTop:'8px'}}>{allDone?'Continuar → Datos personales':'Sube todos los documentos para continuar'}</button>
           </div>}
           {screen==='success'&&<div style={{textAlign:'center',padding:'40px 0'}}>

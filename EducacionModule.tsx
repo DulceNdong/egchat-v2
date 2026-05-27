@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DocUploader, DocFile } from './DocUploader';
 
 // ─── DATOS ────────────────────────────────────────────────────────────────────
 
@@ -46,7 +47,11 @@ export const EducacionModule: React.FC<{ onClose?: () => void }> = ({ onClose })
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>('todos');
   const [selected, setSelected] = useState<any>(null);
   const [form, setForm] = useState({ nombre:'', dni:'', telefono:'', email:'', modalidad:'', curso:'', notas:'' });
+  const [docFiles, setDocFiles] = useState<Record<string, DocFile | null>>({});
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const reqDocs = selected?.requisitos || [];
+  const allDocsDone = reqDocs.length === 0 || reqDocs.every((d: string) => docFiles[d]?.uploaded);
 
   const escuelasFiltradas = ESCUELAS.filter(e =>
     e.ciudad === ciudad &&
@@ -92,16 +97,13 @@ export const EducacionModule: React.FC<{ onClose?: () => void }> = ({ onClose })
       </div>
 
       {/* Documentos requeridos */}
-      {selected.requisitos && (
-        <div style={{ background: '#EFF6FF', borderRadius: '12px', padding: '12px 14px', marginBottom: '14px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#1D4ED8', marginBottom: '8px' }}>📎 Documentos requeridos</div>
-          {selected.requisitos.map((r: string, i: number) => (
-            <div key={i} style={{ display: 'flex', gap: '8px', marginBottom: '4px' }}>
-              <span style={{ color: '#3B82F6', flexShrink: 0 }}>•</span>
-              <span style={{ fontSize: '12px', color: '#1E40AF' }}>{r}</span>
-            </div>
-          ))}
-        </div>
+      {selected.requisitos && selected.requisitos.length > 0 && (
+        <DocUploader
+          docs={selected.requisitos}
+          onChange={setDocFiles}
+          accentColor="#6B5BD6"
+          doneColor="#4C1D95"
+        />
       )}
 
       {/* Formulario */}
@@ -134,9 +136,9 @@ export const EducacionModule: React.FC<{ onClose?: () => void }> = ({ onClose })
         </>
       )}
 
-      <button onClick={() => { if (form.nombre && form.dni && form.telefono) setScreen('ok'); }}
-        style={{ width: '100%', background: form.nombre && form.dni && form.telefono ? 'linear-gradient(135deg,#4C1D95,#6B5BD6)' : '#E5E7EB', border: 'none', borderRadius: '12px', padding: '14px', color: form.nombre && form.dni && form.telefono ? '#fff' : '#9CA3AF', fontSize: '14px', fontWeight: '700', cursor: form.nombre && form.dni && form.telefono ? 'pointer' : 'default' }}>
-        Enviar solicitud de plaza
+      <button onClick={() => { if (form.nombre && form.dni && form.telefono && allDocsDone) setScreen('ok'); }}
+        style={{ width: '100%', background: form.nombre && form.dni && form.telefono && allDocsDone ? 'linear-gradient(135deg,#4C1D95,#6B5BD6)' : '#E5E7EB', border: 'none', borderRadius: '12px', padding: '14px', color: form.nombre && form.dni && form.telefono && allDocsDone ? '#fff' : '#9CA3AF', fontSize: '14px', fontWeight: '700', cursor: form.nombre && form.dni && form.telefono && allDocsDone ? 'pointer' : 'default' }}>
+        {!allDocsDone && reqDocs.length > 0 ? 'Sube todos los documentos para continuar' : 'Enviar solicitud de plaza'}
       </button>
     </div>
   );

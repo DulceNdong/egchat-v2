@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DocUploader, DocFile } from './DocUploader';
 
 // ─── DATOS ────────────────────────────────────────────────────────────────────
 

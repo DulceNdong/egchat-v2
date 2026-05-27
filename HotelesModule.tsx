@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { DocUploader, DocFile } from './DocUploader';
 
 // ─── DATOS ────────────────────────────────────────────────────────────────────
 
@@ -97,7 +98,12 @@ export const HotelesModule: React.FC<{ onClose?: () => void }> = ({ onClose }) =
   const [hotel, setHotel] = useState<any>(null);
   const [hab, setHab] = useState<any>(null);
   const [form, setForm] = useState({ nombre:'', dni:'', telefono:'', email:'', checkin:'', checkout:'', huespedes:'1', notas:'', pago:'' });
+  const [docFiles, setDocFiles] = useState<Record<string, DocFile | null>>({});
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  // Documentos requeridos para reserva de hotel
+  const HOTEL_DOCS = ['DNI / Pasaporte (foto)'];
+  const allDocsDone = HOTEL_DOCS.every(d => docFiles[d]?.uploaded);
 
   const hotelesFiltrados = HOTELES.filter(h => h.ciudad === ciudad);
   const noches = (() => {
@@ -165,6 +171,13 @@ export const HotelesModule: React.FC<{ onClose?: () => void }> = ({ onClose }) =
           <div style={{ fontSize:'10px', color:'#6B7280' }}>{noches} noche{noches>1?'s':''} × {hab.precio.toLocaleString()} XAF</div>
         </div>
       )}
+      {/* Documentos de identidad */}
+      <DocUploader
+        docs={HOTEL_DOCS}
+        onChange={setDocFiles}
+        accentColor="#0A4A8A"
+        doneColor="#065F46"
+      />
       <div style={{ fontSize:'12px', fontWeight:'600', color:'#9CA3AF', margin:'12px 0 8px' }}>Método de pago</div>
       <div style={{ display:'flex', gap:'8px', marginBottom:'14px' }}>
         {[{id:'wallet',l:'EGCHAT'},{id:'bank',l:'Banco'},{id:'card',l:'Tarjeta'},{id:'cash',l:'Efectivo'}].map(m=>(
@@ -174,9 +187,9 @@ export const HotelesModule: React.FC<{ onClose?: () => void }> = ({ onClose }) =
           </button>
         ))}
       </div>
-      <button onClick={()=>{ if(form.nombre&&form.dni&&form.telefono&&form.checkin&&form.checkout&&form.pago) setScreen('ok'); }}
-        style={{ width:'100%', background:form.nombre&&form.dni&&form.telefono&&form.checkin&&form.checkout&&form.pago?`linear-gradient(135deg,${hotel.color},${hotel.color2})`:'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:form.nombre&&form.dni&&form.telefono&&form.checkin&&form.checkout&&form.pago?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:'pointer' }}>
-        Confirmar reserva{total>0?` · ${total.toLocaleString()} XAF`:''}
+      <button onClick={()=>{ if(form.nombre&&form.dni&&form.telefono&&form.checkin&&form.checkout&&form.pago&&allDocsDone) setScreen('ok'); }}
+        style={{ width:'100%', background:form.nombre&&form.dni&&form.telefono&&form.checkin&&form.checkout&&form.pago&&allDocsDone?`linear-gradient(135deg,${hotel.color},${hotel.color2})`:'#E5E7EB', border:'none', borderRadius:'12px', padding:'14px', color:form.nombre&&form.dni&&form.telefono&&form.checkin&&form.checkout&&form.pago&&allDocsDone?'#fff':'#9CA3AF', fontSize:'14px', fontWeight:'700', cursor:'pointer' }}>
+        {!allDocsDone ? 'Sube tu documento de identidad' : `Confirmar reserva${total>0?` · ${total.toLocaleString()} XAF`:''}`}
       </button>
     </div>
   );
