@@ -28,10 +28,10 @@ jobs:
       - name: Deploy to Vercel
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: team_HkTg1iNCyLOOmGGmyd4jD5uL
+          VERCEL_PROJECT_ID: prj_9qzYAHpFlidijZq8ijsWbpVf7lmY
         run: |
-          DEPLOYMENT_URL=$(npx vercel --prod --token $VERCEL_TOKEN --confirm 2>&1 | grep -oP 'https://egchat-v2-[^\s]+\.vercel\.app' | tail -1)
-          echo "Deployed to: $DEPLOYMENT_URL"
-          if [ -n "$DEPLOYMENT_URL" ]; then
-            npx vercel alias set "$DEPLOYMENT_URL" egchat-v2.vercel.app --token $VERCEL_TOKEN
-            echo "Alias egchat-v2.vercel.app → $DEPLOYMENT_URL"
-          fi
+          npm install -g vercel@latest
+          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
+          vercel build --prod --token=$VERCEL_TOKEN
+          vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
