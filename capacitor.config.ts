@@ -8,13 +8,21 @@ const config: CapacitorConfig = {
     androidScheme: 'https',
     iosScheme: 'https',
     cleartext: false,
-    allowNavigation: ['egchat-v2.vercel.app', '*.vercel.app', '*.supabase.co', 'egchat-api.onrender.com']
+    allowNavigation: [
+      'egchat-v2.vercel.app',
+      '*.vercel.app',
+      '*.supabase.co',
+      'egchat-api.onrender.com',
+      '*.onrender.com',
+    ]
   },
   android: {
-    allowMixedContent: true,
+    allowMixedContent: false,
     backgroundColor: '#00c8a0',
     captureInput: true,
-    webContentsDebuggingEnabled: false,
+    // true en desarrollo para poder inspeccionar con Chrome DevTools (chrome://inspect)
+    // Cambiar a false antes de publicar en producción
+    webContentsDebuggingEnabled: true,
     navigationBarColor: '#00000000',
   },
   ios: {
@@ -38,6 +46,15 @@ const config: CapacitorConfig = {
       showSpinner: false,
       splashFullScreen: true,
       splashImmersive: true,
+    },
+    // StatusBar: overlaysWebView: false → la status bar del sistema queda FUERA del WebView.
+    // El color de la status bar (#00c8a0) se iguala al color del header para que
+    // visualmente parezca un bloque continuo — igual que en iPhone.
+    // Funciona en TODOS los Android sin depender de safe-area-inset-top ni paddingTop.
+    StatusBar: {
+      style: 'LIGHT',
+      backgroundColor: '#00c8a0',
+      overlaysWebView: false,
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']

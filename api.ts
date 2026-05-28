@@ -2,11 +2,49 @@
 // API CLIENT — Conecta todo el proyecto a VITE_API_URL
 // ══════════════════════════════════════════════════════════════════
 
+// __API_URL__ se inyecta por Vite en tiempo de build (vite.config.ts → define)
+// Esto garantiza que funcione en Android WebView donde import.meta.env puede ser undefined
+declare const __API_URL__: string;
+
+// Detecta si estamos corriendo dentro del emulador de Android Studio.
+// En el emulador, el host de la máquina es accesible en 10.0.2.2.
+// Señales: protocolo file: (Capacitor APK) + userAgent con Android.
+const _isAndroidEmulator = (() => {
+  try {
+    const ua = navigator.userAgent || '';
+    const isAndroid = /Android/i.test(ua);
+    // En Capacitor la app corre en https://localhost o capacitor://localhost
+    const isCapacitor = window.location.hostname === 'localhost' ||
+                        window.location.protocol === 'capacitor:';
+    return isAndroid && isCapacitor;
+  } catch { return false; }
+})();
+
 const BASE = (() => {
+  // 1. Si estamos en el emulador de Android Studio y la URL inyectada apunta a localhost
+  //    o a 10.0.2.2, usar 10.0.2.2 directamente (el emulador no puede resolver "localhost"
+  //    del host — necesita la IP especial 10.0.2.2).
+  try {
+    if (typeof __API_URL__ !== 'undefined' && __API_URL__) {
+      let u = __API_URL__.replace(/\/$/, '');
+      // Si la URL apunta a localhost y estamos en el emulador, redirigir a 10.0.2.2
+      if (_isAndroidEmulator && (u.includes('localhost') || u.includes('127.0.0.1'))) {
+        u = u.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2');
+      }
+      return u.endsWith('/api') ? u : u + '/api';
+    }
+  } catch {}
+  // 2. Variable de entorno Vite (funciona en web/dev)
   const url = ((import.meta as any).env?.VITE_API_URL || '').trim();
-  if (!url || url.startsWith('/')) return 'https://egchat-api.onrender.com/api';
-  if (url.endsWith('/api')) return url;
-  return url.replace(/\/$/, '') + '/api';
+  if (url && !url.startsWith('/')) {
+    let u = url.replace(/\/$/, '');
+    if (_isAndroidEmulator && (u.includes('localhost') || u.includes('127.0.0.1'))) {
+      u = u.replace(/localhost|127\.0\.0\.1/g, '10.0.2.2');
+    }
+    return u.endsWith('/api') ? u : u + '/api';
+  }
+  // 3. Fallback: producción en Render
+  return 'https://egchat-api.onrender.com/api';
 })();
 
 // ── Token JWT — usa la misma clave que el backend espera ──────────
@@ -44,19 +82,16 @@ const getHeaders = (): Record<string, string> => {
 
 // ── Helper base con timeout y reintento para redes lentas (2G/3G) ────────────
 async function request<T>(path: string, options: RequestInit = {}, retries = 2): Promise<T> {
-  const token = getToken();
   const method = (options.method || 'GET').toUpperCase();
   
-  let url = `${BASE}${path}`;
-  if (token) {
-    const sep = path.includes('?') ? '&' : '?';
-    url = `${BASE}${path}${sep}_t=${encodeURIComponent(token)}`;
-  }
+  // En Android WebView el token va SOLO en el header Authorization, nunca en la URL
+  // (el query string con JWT causa "Failed to fetch" en algunos WebViews de Android)
+  const url = `${BASE}${path}`;
   
   const headers = { ...getHeaders(), ...(options.headers as Record<string,string> || {}) };
 
-  // Timeout adaptativo: GET = 15s, POST = 20s (redes 2G pueden ser muy lentas)
-  const timeoutMs = method === 'GET' ? 15000 : 20000;
+  // Timeout adaptativo: GET = 20s, POST = 25s — redes móviles africanas pueden ser lentas
+  const timeoutMs = method === 'GET' ? 20000 : 25000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -71,7 +106,8 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
     if (res.status === 401) {
       const err = await res.json().catch(() => ({ message: '' }));
       const message = err.message || 'No autorizado';
-      if (!getToken()) window.dispatchEvent(new CustomEvent('auth:expired'));
+      // No cerrar sesión automáticamente aquí: en Android WebView algunos 401
+      // transitorios provocan rebote inmediato al login.
       throw new Error(message);
     }
     if (!res.ok) {
@@ -82,10 +118,10 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
   } catch (err: any) {
     clearTimeout(timeoutId);
     // Reintentar en caso de timeout o error de red (no en errores 4xx)
-    const isNetworkError = err.name === 'AbortError' || err.name === 'TypeError' || err.message?.includes('fetch');
+    const isNetworkError = err.name === 'AbortError' || err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('network') || err.message?.includes('Failed');
     if (isNetworkError && retries > 0) {
-      // Esperar un poco antes de reintentar (backoff exponencial)
-      await new Promise(r => setTimeout(r, (3 - retries) * 1500));
+      // Backoff: 2s, 4s entre reintentos
+      await new Promise(r => setTimeout(r, (3 - retries) * 2000));
       return request<T>(path, options, retries - 1);
     }
     throw err;

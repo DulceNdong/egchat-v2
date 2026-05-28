@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<network-security-config>
+
+    <!-- ══════════════════════════════════════════════════════════
+         DESARROLLO LOCAL — Android Emulator usa 10.0.2.2 para
+         acceder al host (localhost de la máquina de desarrollo).
+         Cleartext permitido SOLO para estas IPs locales.
+         ══════════════════════════════════════════════════════════ -->
+    <domain-config cleartextTrafficPermitted="true">
+        <!-- IP del host desde el emulador de Android Studio -->
+        <domain includeSubdomains="false">10.0.2.2</domain>
+        <!-- IP del host desde Genymotion -->
+        <domain includeSubdomains="false">10.0.3.2</domain>
+        <!-- localhost directo (por si se usa con adb reverse) -->
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+    </domain-config>
+
+    <!-- Permitir conexiones al backend principal (Render) — solo HTTPS -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">egchat-api.onrender.com</domain>
+        <domain includeSubdomains="true">onrender.com</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Permitir conexiones a Vercel (web app) — solo HTTPS -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">egchat-v2.vercel.app</domain>
+        <domain includeSubdomains="true">vercel.app</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Permitir conexiones a Supabase — solo HTTPS -->
+    <domain-config cleartextTrafficPermitted="false">
+        <domain includeSubdomains="true">supabase.co</domain>
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </domain-config>
+
+    <!-- Configuración base: solo HTTPS, confiar en CAs del sistema -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+</network-security-config>

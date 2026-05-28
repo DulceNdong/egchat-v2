@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet, SafeAreaView, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
 import { router } from 'expo-router';
+import * as ImagePicker from 'expo-image-picker';
 import { authAPI, userAPI } from '../../src/api';
 import { runPushDiagnostic } from '../../src/pushDiagnostic';
 import { checkAllPermissions, requestAllPermissions, permissionEmoji, permissionLabel, type AppPermissions, type PermissionStatus } from '../../src/permissions';
@@ -9,6 +10,7 @@ export default function AjustesScreen() {
   const [user, setUser] = useState<any>(null);
   const [permissions, setPermissions] = useState<AppPermissions | null>(null);
   const [requesting, setRequesting] = useState(false);
+  const [savingPhoto, setSavingPhoto] = useState(false);
 
   useEffect(() => {
     userAPI.getProfile().then(setUser).catch(() => {});
@@ -39,6 +41,46 @@ export default function AjustesScreen() {
     ]);
   };
 
+  const handlePickProfilePhoto = async () => {
+    try {
+      const libraryPermission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (libraryPermission.status !== 'granted') {
+        Alert.alert(
+          'Permiso requerido',
+          'Debes permitir el acceso a fotos para cambiar tu imagen de perfil.'
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ['images'],
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.6,
+        base64: true,
+      });
+
+      if (result.canceled || !result.assets?.[0]) return;
+      const asset = result.assets[0];
+      if (!asset.base64) {
+        Alert.alert('Error', 'No se pudo procesar la imagen seleccionada.');
+        return;
+      }
+
+      const mimeType = asset.mimeType || 'image/jpeg';
+      const avatarUrl = `data:${mimeType};base64,${asset.base64}`;
+
+      setSavingPhoto(true);
+      const updatedUser = await userAPI.updateProfile({ avatar_url: avatarUrl });
+      setUser(updatedUser || { ...user, avatar_url: avatarUrl });
+      Alert.alert('Foto actualizada', 'Tu foto de perfil se guardó correctamente.');
+    } catch (error: any) {
+      Alert.alert('Error', error?.message || 'No se pudo actualizar la foto.');
+    } finally {
+      setSavingPhoto(false);
+    }
+  };
+
   const ITEMS = [
     { icon: '👤', label: 'Mi Perfil', sub: user?.full_name || 'Cargando...', action: () => {} },
     { icon: '🔔', label: 'Notificaciones', sub: 'Gestionar alertas', action: () => {} },
@@ -56,8 +98,15 @@ export default function AjustesScreen() {
         {/* Perfil */}
         <View style={styles.profileCard}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>{user?.full_name?.slice(0, 2).toUpperCase() || 'EG'}</Text>
+            {user?.avatar_url ? (
+              <Image source={{ uri: user.avatar_url }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>{user?.full_name?.slice(0, 2).toUpperCase() || 'EG'}</Text>
+            )}
           </View>
+          <TouchableOpacity style={[styles.photoBtn, savingPhoto && styles.photoBtnDisabled]} onPress={handlePickProfilePhoto} disabled={savingPhoto}>
+            <Text style={styles.photoBtnText}>{savingPhoto ? 'Guardando foto...' : 'Cambiar foto de perfil'}</Text>
+          </TouchableOpacity>
           <Text style={styles.name}>{user?.full_name || 'Usuario EGCHAT'}</Text>
           <Text style={styles.phone}>{user?.phone || ''}</Text>
         </View>
@@ -138,7 +187,11 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F7F8FA' },
   profileCard: { alignItems: 'center', padding: 28, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
   avatar: { width: 72, height: 72, borderRadius: 36, backgroundColor: '#F0FDF9', alignItems: 'center', justifyContent: 'center', marginBottom: 12, borderWidth: 3, borderColor: '#00c8a0' },
+  avatarImage: { width: '100%', height: '100%', borderRadius: 36 },
   avatarText: { fontSize: 24, fontWeight: '800', color: '#00c8a0' },
+  photoBtn: { backgroundColor: '#ECFDF5', borderColor: '#A7F3D0', borderWidth: 1, borderRadius: 10, paddingHorizontal: 12, paddingVertical: 8, marginBottom: 10 },
+  photoBtnDisabled: { opacity: 0.7 },
+  photoBtnText: { color: '#047857', fontSize: 12, fontWeight: '700' },
   name: { fontSize: 18, fontWeight: '800', color: '#111827', marginBottom: 4 },
   phone: { fontSize: 13, color: '#9CA3AF' },
   section: { backgroundColor: '#fff', margin: 16, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: '#F0F2F5' },

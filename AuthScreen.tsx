@@ -3,9 +3,13 @@ import { authAPI } from './api';
 import { MessageCircle, CreditCard, Bot, UserPlus, LogIn } from 'lucide-react';
 import { AvatarCropModal } from './AvatarCropModal';
 
-// Usar la misma base URL que el authAPI
-const _apiUrl = (import.meta as any).env?.VITE_API_URL || '';
-const BASE = (!_apiUrl || _apiUrl.startsWith('/')) ? 'https://egchat-api.onrender.com/api' : _apiUrl;
+// Usar la misma base URL que el authAPI — con fallback robusto para Android WebView
+declare const __API_URL__: string;
+const _apiUrl = (() => {
+  try { if (typeof __API_URL__ !== 'undefined' && __API_URL__) return __API_URL__; } catch {}
+  return (import.meta as any).env?.VITE_API_URL || '';
+})();
+const BASE = (!_apiUrl || _apiUrl.startsWith('/')) ? 'https://egchat-api.onrender.com/api' : (_apiUrl.endsWith('/api') ? _apiUrl : _apiUrl.replace(/\/$/, '') + '/api');
 
 const COUNTRIES = [
   {code:'GQ',name:'Guinea Ecuatorial',phone:'+240'},
@@ -70,24 +74,31 @@ export default function AuthScreen({onAuth}:Props) {
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
   // Despertar Render al cargar la pantalla — con reintentos para APK nativa
+  // Render.com tiene un cold start de ~30-50s cuando el servidor está dormido.
+  // Hacemos ping cada 6s hasta 8 intentos (máx ~48s de espera).
   React.useEffect(() => {
     let cancelled = false;
     const wake = async () => {
-      // Intentar hasta 5 veces con 8s entre intentos (Render tarda ~30s en despertar)
-      for (let i = 0; i < 5; i++) {
+      const MAX_ATTEMPTS = 8;
+      for (let i = 0; i < MAX_ATTEMPTS; i++) {
         if (cancelled) return;
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 10000);
           const res = await fetch(`${BASE.replace('/api', '')}/health`, {
-            signal: AbortSignal.timeout(12000),
+            signal: controller.signal,
           });
+          clearTimeout(timeoutId);
           if (res.ok) {
             if (!cancelled) setServerReady(true);
             return;
           }
         } catch {}
-        if (i < 4) await new Promise(r => setTimeout(r, 8000));
+        // Esperar 6s entre intentos — Render suele despertar en 30-40s
+        if (i < MAX_ATTEMPTS - 1) await new Promise(r => setTimeout(r, 6000));
       }
-      // Después de todos los intentos, dejar continuar igual
+      // Tras todos los intentos, permitir continuar de todas formas
+      // (el login hará sus propios reintentos)
       if (!cancelled) setServerReady(true);
     };
     wake();
@@ -96,22 +107,40 @@ export default function AuthScreen({onAuth}:Props) {
 
   const selCountry = COUNTRIES.find(c=>c.phone===countryCode) || COUNTRIES[0];
   const initials = name.trim().split(' ').filter(Boolean).map((w:string)=>w[0].toUpperCase()).slice(0,2).join('');
-  const fullPhone = countryCode + phone.replace(/\s/g,'');
+  const fullPhone = React.useMemo(() => {
+    const raw = phone.replace(/[\s()-]/g, '');
+    if (!raw) return '';
+    if (raw.startsWith('+')) return raw;
+    const countryDigits = countryCode.replace('+', '');
+    if (raw.startsWith(countryDigits)) return `+${raw}`;
+    return `${countryCode}${raw}`;
+  }, [countryCode, phone]);
 
   const doLogin = async()=>{
     if(!phone||!pass){setErr('Rellena todos los campos');return;}
+
+    // Verificar conexión antes de intentar
+    if(!navigator.onLine){
+      setErr('Sin conexión a internet. Activa el WiFi o los datos móviles e intenta de nuevo.');
+      return;
+    }
+
     setLoading(true);setErr('');
 
     // Intentar login con reintento automático si el servidor está despertando
-    const attempt = async (retries = 2): Promise<any> => {
+    const attempt = async (retries = 4): Promise<any> => {
       try {
         return await authAPI.login(fullPhone, pass);
       } catch(e: any) {
-        const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') || e.message?.includes('Failed');
-        if (isNetworkError && retries > 0) {
-          // Esperar 8s y reintentar — Render puede estar despertando
-          setErr('Conectando con el servidor... espera un momento');
-          await new Promise(r => setTimeout(r, 8000));
+        const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') ||
+          e.message?.includes('Failed') || e.name === 'AbortError' || e.name === 'TypeError';
+        // No reintentar errores de credenciales (401) ni del servidor (500)
+        const isCredentialError = e.message?.includes('401') || e.message?.includes('Credenciales') ||
+          e.message?.includes('credenciales') || e.message?.includes('password');
+        if (isNetworkError && !isCredentialError && retries > 0) {
+          const waitSec = 6; // 6s entre reintentos — Render tarda ~30s en despertar
+          setErr(`Conectando con el servidor... (intento ${5 - retries}/4)`);
+          await new Promise(r => setTimeout(r, waitSec * 1000));
           setErr('');
           return attempt(retries - 1);
         }
@@ -121,22 +150,28 @@ export default function AuthScreen({onAuth}:Props) {
 
     try{
       const r = await attempt();
+      // Garantizar que el token queda guardado ANTES de notificar a App.tsx.
+      // authAPI.login() ya llama setToken internamente, pero en Android WebView
+      // hay un race condition donde localStorage.setItem no se refleja de forma
+      // síncrona si el WebView está bajo presión de memoria. Lo forzamos aquí.
+      if (r?.token) {
+        localStorage.setItem('token', r.token);
+        localStorage.setItem('egchat_token_backup', r.token);
+      }
       onAuth(r.user);
     }
     catch(e:any){
       console.error('❌ Error en login:', e);
-
-      // Mejorar mensajes de error para el usuario
-      if(e.message?.includes('credenciales') || e.message?.includes('password') || e.message?.includes('usuario') || e.message?.includes('invalid')) {
-        setErr('Usuario o contraseña incorrectos. Verifica que tus datos sean correctos.');
-      } else if(e.message?.includes('network') || e.message?.includes('fetch') || e.message?.includes('Failed to fetch')) {
-        setErr('Error de conexión. Verifica tu conexión a internet e intenta de nuevo.');
-      } else if(e.message?.includes('401') || e.message?.includes('Unauthorized')) {
-        setErr('Credenciales inválidas. El usuario no existe o la contraseña es incorrecta.');
-      } else if(e.message?.includes('500') || e.message?.includes('Internal Server Error')) {
+      if(e.message?.includes('credenciales') || e.message?.includes('password') || e.message?.includes('usuario') || e.message?.includes('invalid') || e.message?.includes('Credenciales')) {
+        setErr('Usuario o contraseña incorrectos.');
+      } else if(!navigator.onLine || e.name === 'TypeError' || e.name === 'AbortError' || e.message?.includes('fetch') || e.message?.includes('Failed')) {
+        setErr('Sin conexión a internet. Verifica tu WiFi o datos móviles e intenta de nuevo.');
+      } else if(e.message?.includes('401')) {
+        setErr('Credenciales inválidas. Verifica tu número y contraseña.');
+      } else if(e.message?.includes('500')) {
         setErr('Error del servidor. Intenta de nuevo en unos minutos.');
       } else {
-        setErr(e.message || 'Error al iniciar sesión. Revisa la consola para más detalles.');
+        setErr(e.message || 'Error al iniciar sesión. Intenta de nuevo.');
       }
     }
     finally{setLoading(false);}
@@ -148,6 +183,11 @@ export default function AuthScreen({onAuth}:Props) {
       // Registrar sin avatar primero (evita payload grande)
       const r=await authAPI.register({full_name:name,phone:fullPhone,password:pass,avatar_url:undefined});
       localStorage.setItem('user_name',name);
+      // Garantizar token guardado antes de notificar (mismo fix que doLogin)
+      if (r?.token) {
+        localStorage.setItem('token', r.token);
+        localStorage.setItem('egchat_token_backup', r.token);
+      }
       // Subir avatar después del registro si existe
       if(avatar){
         try{

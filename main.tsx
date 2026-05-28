@@ -10,6 +10,7 @@ import { setupSplashSafetyTimeout, hideSplashWhenReady } from './splash-screen';
 import { initDeepLinks } from './deep-links';
 import { initHaptics } from './haptics-manager';
 import { isIOS, isIOSPWA } from './platform';
+import { Capacitor } from '@capacitor/core';
 
 initSelectionErrorHandler();
 
@@ -19,6 +20,7 @@ setupSplashSafetyTimeout();
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
 const APP_VERSION = 'v20260526-layout-fix-v3';
+const isNativeApp = Capacitor.isNativePlatform();
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
   if ('caches' in window) {
@@ -31,8 +33,18 @@ if (storedVersion !== APP_VERSION) {
   }
   localStorage.setItem('egchat_app_version', APP_VERSION);
   // iOS PWA: reload rompe el arranque en standalone — solo limpiar caché sin recargar
-  if (storedVersion && !isIOS()) {
+  if (storedVersion && !isIOS() && !isNativeApp) {
     window.location.reload();
+  }
+}
+
+// App nativa (Capacitor): desactivar Service Worker para evitar bundles viejos y bucles de login.
+if (isNativeApp && 'serviceWorker' in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((reg) => reg.unregister());
+  });
+  if ('caches' in window) {
+    caches.keys().then((keys) => keys.forEach((k) => caches.delete(k)));
   }
 }
 
@@ -270,7 +282,7 @@ hideSplashWhenReady();
 
 // iPhone: sin Service Worker en arranque (iOS PWA + SW = pantalla blanca frecuente)
 // Android/desktop: SW solo para push, tras montar React
-if (!isIOS()) {
+if (!isIOS() && !isNativeApp) {
   setTimeout(() => {
     registerServiceWorkerForPush();
   }, 2500);

@@ -48,21 +48,25 @@ import { initPredictiveBack, pushView, clearHistory } from './predictive-back-ma
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
 
-// ── SwipeChatItem — swipe izquierda para Archivar / Eliminar ─────────────────
+// ── SwipeChatItem — swipe derecha: No leído / Desarchivar | swipe izquierda: Archivar / Eliminar ──
 const SwipeChatItem: React.FC<{
   chatId: string;
   onOpen: () => void;
   onArchive: () => void;
   onDelete: () => void;
+  onMarkUnread?: () => void;
+  onUnarchive?: () => void;
+  isArchived?: boolean;
   children: React.ReactNode;
-}> = ({ chatId, onOpen, onArchive, onDelete, children }) => {
+}> = ({ chatId, onOpen, onArchive, onDelete, onMarkUnread, onUnarchive, isArchived, children }) => {
   const [offset, setOffset] = React.useState(0);
   const [isDragging, setIsDragging] = React.useState(false);
   const startX = React.useRef(0);
   const startY = React.useRef(0);
   const isHoriz = React.useRef<boolean | null>(null);
-  const THRESHOLD = 60; // px para mostrar acciones
-  const MAX = 140;      // px máximo de swipe
+  const THRESHOLD = 60;
+  const MAX_LEFT = 140;   // swipe izquierda (archivar/eliminar)
+  const MAX_RIGHT = 130;  // swipe derecha (no leído / desarchivar)
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -79,16 +83,18 @@ const SwipeChatItem: React.FC<{
     }
     if (!isHoriz.current) return;
     e.preventDefault();
-    const newOffset = Math.max(-MAX, Math.min(0, dx));
+    const newOffset = Math.max(-MAX_LEFT, Math.min(MAX_RIGHT, dx));
     setOffset(newOffset);
   };
 
   const onTouchEnd = () => {
     setIsDragging(false);
     if (offset < -THRESHOLD) {
-      setOffset(-MAX); // snap abierto
+      setOffset(-MAX_LEFT);
+    } else if (offset > THRESHOLD) {
+      setOffset(MAX_RIGHT);
     } else {
-      setOffset(0); // snap cerrado
+      setOffset(0);
     }
     isHoriz.current = null;
   };
@@ -97,11 +103,35 @@ const SwipeChatItem: React.FC<{
 
   return (
     <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: '6px' }}>
-      {/* Acciones detrás — Archivar + Eliminar */}
+      {/* Acciones DERECHA — No leído / Desarchivar (swipe derecha) */}
+      <div style={{
+        position: 'absolute', left: 0, top: 0, bottom: 0,
+        display: 'flex', alignItems: 'stretch',
+        width: `${MAX_RIGHT}px`,
+      }}>
+        {/* No leído */}
+        {!isArchived && (
+          <button onClick={() => { close(); onMarkUnread?.(); }}
+            style={{ flex: 1, background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="12" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>
+            <span style={{ fontSize: '11px', fontWeight: '700' }}>No leído</span>
+          </button>
+        )}
+        {/* Desarchivar */}
+        {isArchived && (
+          <button onClick={() => { close(); onUnarchive?.(); }}
+            style={{ flex: 1, background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="10 12 12 14 14 12"/><line x1="12" y1="14" x2="12" y2="9"/></svg>
+            <span style={{ fontSize: '11px', fontWeight: '700' }}>Desarchivar</span>
+          </button>
+        )}
+      </div>
+
+      {/* Acciones IZQUIERDA — Archivar + Eliminar (swipe izquierda) */}
       <div style={{
         position: 'absolute', right: 0, top: 0, bottom: 0,
         display: 'flex', alignItems: 'stretch',
-        width: `${MAX}px`,
+        width: `${MAX_LEFT}px`,
       }}>
         {/* Archivar */}
         <button onClick={() => { close(); onArchive(); }}
@@ -117,9 +147,9 @@ const SwipeChatItem: React.FC<{
         </button>
       </div>
 
-      {/* Contenido del chat — se desliza */}
+      {/* Contenido del chat — se desliza en ambas direcciones */}
       <div
-        onClick={() => { if (offset < -10) { close(); return; } onOpen(); }}
+        onClick={() => { if (Math.abs(offset) > 10) { close(); return; } onOpen(); }}
         onTouchStart={onTouchStart}
         onTouchMove={onTouchMove}
         onTouchEnd={onTouchEnd}
@@ -135,7 +165,7 @@ const SwipeChatItem: React.FC<{
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
           position: 'relative',
           zIndex: 1,
-          boxShadow: offset < -10 ? '0 2px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+          boxShadow: Math.abs(offset) > 10 ? '0 2px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
           willChange: 'transform',
         }}
         onMouseEnter={e => { if (offset === 0) e.currentTarget.style.background = '#f9fafb'; }}
@@ -174,13 +204,11 @@ const App: React.FC = () => {
   const device = useDevice();
 
   // Helper: padding de contenido según dispositivo
-  // móvil: header fijo (44px) + safe area top real + bottom nav (58px)
-  // En Safari browser: safe-area-inset-top = 0 (la barra de Safari está fuera del viewport)
-  // En PWA standalone: safe-area-inset-top = altura del notch (47px en iPhone X+)
+  // Con overlaysWebView:false el WebView empieza DEBAJO de la status bar del sistema.
+  // El padding top del contenido solo necesita la altura del header (44px) + margen.
+  // Igual que en iPhone — sin sumar la status bar porque ya está fuera del WebView.
   const viewPadding = {
-    top: device.isMobile
-      ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)'
-      : '60px',
+    top: device.isMobile ? 'calc(44px + 8px)' : '60px',
     bottom: device.isMobile
       ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
       : '24px',
@@ -203,7 +231,28 @@ const App: React.FC = () => {
       return true;
     }
   });
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(!!localStorage.getItem('token'));
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(() => {
+    // Verificar token y que no esté expirado antes de marcar como autenticado
+    try {
+      const token = localStorage.getItem('token') || localStorage.getItem('egchat_token_backup') || '';
+      if (!token) return false;
+      // Decodificar JWT y verificar expiración
+      const payload = JSON.parse(atob(token.split('.')[1]));
+      const now = Date.now() / 1000;
+      if (payload.exp && payload.exp <= now) {
+        // Token expirado — limpiar y pedir login
+        localStorage.removeItem('token');
+        localStorage.removeItem('egchat_token_backup');
+        return false;
+      }
+      return true;
+    } catch {
+      // Si el token es inválido/corrupto, limpiar
+      localStorage.removeItem('token');
+      localStorage.removeItem('egchat_token_backup');
+      return false;
+    }
+  });
   useEffect(() => {
     if (!isHydrating) return;
     const done = () => setIsHydrating(false);
@@ -211,7 +260,43 @@ const App: React.FC = () => {
     const t = setTimeout(done, 100);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
   }, [isHydrating]);
+
+  // Rescate de sesión: si solo queda el backup, restaurar token principal
+  // Solo si el token backup no está expirado
+  useEffect(() => {
+    if (isAuthenticated) return;
+    const backup = localStorage.getItem('egchat_token_backup') || '';
+    if (!backup) return;
+    try {
+      const payload = JSON.parse(atob(backup.split('.')[1]));
+      const now = Date.now() / 1000;
+      if (payload.exp && payload.exp <= now) {
+        // Backup también expirado — limpiar todo
+        localStorage.removeItem('egchat_token_backup');
+        return;
+      }
+      localStorage.setItem('token', backup);
+      setIsAuthenticated(true);
+    } catch {
+      localStorage.removeItem('egchat_token_backup');
+    }
+  }, [isAuthenticated]);
   // -- WebRTC real -----------------------------------------------
+  // -- StatusBar: overlaysWebView:false en Android e iOS.
+  // La status bar queda FUERA del WebView. Su color (#00c8a0) es igual al header,
+  // creando el efecto visual continuo que se ve en iPhone.
+  // El header NO necesita paddingTop — empieza en top:0 del WebView.
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    try {
+      const { StatusBar, Style } = (window as any).Capacitor?.Plugins || {};
+      if (StatusBar) {
+        StatusBar.setOverlaysWebView({ overlay: false });
+        StatusBar.setBackgroundColor({ color: '#00c8a0' });
+        if (Style) StatusBar.setStyle({ style: Style.Light || 'LIGHT' });
+      }
+    } catch {}
+  }, [isAuthenticated]);
   const webrtc = useWebRTC();
   // -- Llamada entrante ------------------------------------------
   const [incomingCall, setIncomingCall] = useState<{callId:string; callerId:string; type:'audio'|'video'; offer:any} | null>(null);
@@ -255,7 +340,7 @@ const App: React.FC = () => {
   }, []);
 
   const loadChats = useCallback(async () => {
-    if (!localStorage.getItem('token')) return;
+    if (!authAPI.getToken()) return;
     try {
       const d = await chatAPI.getChats();
       if (Array.isArray(d)) {
@@ -996,26 +1081,17 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Detectar Android y establecer altura de status bar
-  // También detectar iOS safe area inset top
+  // Con overlaysWebView:false la status bar queda fuera del WebView en Android e iOS.
+  // No necesitamos calcular su altura — el sistema la gestiona automáticamente.
+  // Solo necesitamos leer safe-area-inset-top en iOS para el home indicator.
   React.useEffect(() => {
-    const isAndroid = /android/i.test(navigator.userAgent);
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
-    const isCapacitor = !!(window as any).Capacitor;
-    if (isAndroid || isCapacitor) {
-      document.documentElement.style.setProperty('--status-bar-height', '28px');
-      document.documentElement.style.setProperty('--header-top-padding', '28px');
-    }
     if (isIOS) {
-      // Leer el safe-area-inset-top real usando un elemento temporal
-      // Esto funciona incluso con body { position: fixed }
       const el = document.createElement('div');
       el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;';
       document.body.appendChild(el);
       const safeTop = el.getBoundingClientRect().top;
       document.body.removeChild(el);
-      // safeTop es la distancia desde el top de la pantalla al área segura
-      // En iPhone con notch: ~44-59px. Sin notch: ~20px
       const safeAreaTop = Math.max(safeTop, 20);
       document.documentElement.style.setProperty('--ios-safe-top', `${safeAreaTop}px`);
     }
@@ -1317,6 +1393,10 @@ const App: React.FC = () => {
           50% { text-shadow: 0 0 12px #fff, 0 0 30px #fff, 0 0 55px rgba(255,255,255,0.7); }
         }
         #neon-eg, #neon-chat { animation: neonPulse 1.6s ease-in-out infinite; }
+        @keyframes neonStoryRing {
+          0%   { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
       `;
       document.head.appendChild(style);
     }
@@ -2801,27 +2881,27 @@ const App: React.FC = () => {
       top: 0,
       left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
       right: 0,
-      background: 'linear-gradient(90deg, #00c8a0 0%, #00b4e6 100%)',
+      background: '#00c8a0',
       borderBottom: 'none',
       display: 'flex',
       flexDirection: 'column',
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
-      // black-translucent: viewport empieza desde top absoluto (detrás del notch)
-      // paddingTop cubre el notch en PWA y la status bar en Safari browser
-      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 44px)' : '0',
-      // Compositing layer propio para evitar repaints en iOS
+      // Con overlaysWebView:false la status bar queda FUERA del WebView.
+      // El header empieza justo donde termina la status bar — sin paddingTop necesario.
+      // El color de la status bar (#00c8a0) hace que visualmente sea un bloque continuo.
+      paddingTop: '0px',
       willChange: 'transform',
       transform: 'translateZ(0)',
     }}>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '44px', padding: '0 10px', boxSizing: 'border-box' }}>
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%', height: '44px', padding: '0 10px', boxSizing: 'border-box', position: 'relative' }}>
       
 
-      {/* Logo y texto / Botan de regreso */}
+      {/* Logo y texto / Botón de regreso */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0px' }}>
         {['news','banking','historial-completo','id-digital'].includes(currentView) ? (
-          // Botan de regreso para vistas secundarias
+          // Botón de regreso para vistas secundarias
           <button
             onClick={() => setCurrentView('home')}
             onMouseEnter={(e) => {
@@ -2857,8 +2937,8 @@ const App: React.FC = () => {
           // Logo normal
           <>
             <div style={{
-              width: '44px',
-              height: '44px',
+              width: '36px',
+              height: '36px',
               borderRadius: '50%',
               background: 'radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, rgba(59, 130, 246, 0.3) 100%)',
               display: 'flex',
@@ -2871,16 +2951,43 @@ const App: React.FC = () => {
               <img 
                 src="/logo-transparent.png" 
                 alt="EGCHAT Logo" 
-                style={{ width: '44px', height: '44px', borderRadius: '50%', objectFit: 'cover', animation: 'spin 6s linear infinite', willChange: 'transform', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+                style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', animation: 'spin 6s linear infinite', willChange: 'transform', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '1px', marginLeft: '4px' }}>
-              <span id="neon-eg" style={{ fontSize: '20px', fontWeight: '800', color: 'white', letterSpacing: '-0.5px' }}>EG</span>
-              <span id="neon-chat" style={{ fontSize: '14px', fontWeight: '800', color: 'white', letterSpacing: '-0.5px' }}>CHAT</span>
+              <span id="neon-eg" style={{ fontSize: '18px', fontWeight: '800', color: 'white', letterSpacing: '-0.5px' }}>EG</span>
+              <span id="neon-chat" style={{ fontSize: '13px', fontWeight: '800', color: 'white', letterSpacing: '-0.5px' }}>CHAT</span>
             </div>
           </>
         )}
       </div>
+
+      {/* Título de la vista activa — centro del header, alineado con la fila de iconos */}
+      {currentView !== 'home' && (
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
+          pointerEvents: 'none',
+          whiteSpace: 'nowrap',
+          maxWidth: 'calc(100% - 220px)',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis',
+          zIndex: 1,
+        }}>
+          <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '-0.3px', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
+            {currentView === 'monedero' ? 'Mi Cartera'
+            : currentView === 'servicios' ? 'Servicios'
+            : currentView === 'ajustes' ? 'Ajustes'
+            : currentView === 'Mensajería' ? 'Mensajería'
+            : currentView === 'news' ? 'Noticias'
+            : currentView === 'banking' ? 'Banca'
+            : currentView === 'id-digital' ? 'ID Digital'
+            : ''}
+          </span>
+        </div>
+      )}
 
       {/* Hora, clima y controles */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
@@ -3320,7 +3427,7 @@ const App: React.FC = () => {
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: type === 'video' ? '#000' : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
         {/* Botón minimizar — bajar la llamada y seguir chateando */}
-        <button onClick={() => setCallMinimized(true)} style={{ position: 'absolute', top: 'calc(16px + env(safe-area-inset-top, 44px))', left: '16px', zIndex: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '20px', padding: '8px 14px', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', backdropFilter: 'blur(10px)' }}>
+        <button onClick={() => setCallMinimized(true)} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '20px', padding: '8px 14px', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', backdropFilter: 'blur(10px)' }}>
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
           Minimizar
         </button>
@@ -3773,8 +3880,8 @@ const App: React.FC = () => {
           transformOrigin:'top right',
         }}>
         <style>{`@keyframes menuDropDown{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}`}</style>
-        {/* Header degradado con avatar */}
-        <div style={{ background:'linear-gradient(160deg,#00c8a0 0%,#00b4e6 100%)', padding:'24px 20px 20px', display:'flex', alignItems:'center', gap:'14px', flexShrink:0 }}>
+        {/* Header con avatar */}
+        <div style={{ background:'#00c8a0', padding:'24px 20px 20px', display:'flex', alignItems:'center', gap:'14px', flexShrink:0 }}>
           <div style={{ width:'52px', height:'52px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', border:'2.5px solid rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'800', color:'#fff', flexShrink:0, overflow:'hidden' }}>
             {userProfile.avatarUrl
               ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
@@ -5019,11 +5126,11 @@ const App: React.FC = () => {
                   if (currentView === 'servicios') { setCurrentView(previousView); }
                   else { setPreviousView(currentView); setCurrentView('servicios'); }
                 } else { setCurrentView(item.id); }
-              }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '3px', padding: '0 4px', outline: 'none', flex: 1, height: '100%', WebkitTapHighlightColor: 'transparent' }}>
-                <div style={{ color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '24px', height: '24px', flexShrink: 0 }}>
+              }} style={{ background: 'none', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '2px', padding: '0 4px', outline: 'none', flex: 1, height: '100%', WebkitTapHighlightColor: 'transparent' }}>
+                <div style={{ color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.75)', display: 'flex', alignItems: 'center', justifyContent: 'center', width: '26px', height: '26px', flexShrink: 0, filter: currentView === item.id ? 'drop-shadow(0 0 6px rgba(255,255,255,0.8))' : 'none' }}>
                   {renderIcon(item.icon, 22)}
                 </div>
-                <span style={{ fontSize: '11px', fontWeight: currentView === item.id ? '700' : '500', color: '#fff', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0 }}>
+                <span style={{ fontSize: '12px', fontWeight: currentView === item.id ? '800' : '500', color: currentView === item.id ? '#fff' : 'rgba(255,255,255,0.8)', lineHeight: '1', whiteSpace: 'nowrap', flexShrink: 0, letterSpacing: '-0.2px' }}>
                   {item.label}
                 </span>
               </button>
@@ -5273,40 +5380,87 @@ const App: React.FC = () => {
         <div style={{ fontSize: '12px', fontWeight: '600', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Apps</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', justifyItems: 'center' }}>
           {[
-            { id: 'estados',  label: 'Estados',  img: asset('/assets/apps/estados.png') },
-            { id: 'apuestas', label: 'Juegos',   img: asset('/assets/apps/apuestas.png') },
-            { id: 'cemac',    label: 'Cemac',    img: asset('/assets/apps/cemac.png') },
-            { id: 'mitaxi',   label: 'MiTaxi',   img: asset('/assets/apps/mitaxi.png') },
+            {
+              id: 'estados', label: 'Estados',
+              gradient: 'linear-gradient(135deg,#f472b6 0%,#ec4899 50%,#db2777 100%)',
+              shadow: '0 4px 16px rgba(236,72,153,0.45)',
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="3.5" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.95)"/>
+                  <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeWidth="1.8"/>
+                  <circle cx="12" cy="12" r="8" strokeDasharray="3 2.5" strokeWidth="1.2" stroke="rgba(255,255,255,0.6)"/>
+                </svg>
+              ),
+            },
+            {
+              id: 'apuestas', label: 'Juegos',
+              gradient: 'linear-gradient(135deg,#a78bfa 0%,#7c3aed 50%,#5b21b6 100%)',
+              shadow: '0 4px 16px rgba(124,58,237,0.45)',
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="2" y="2" width="20" height="20" rx="5" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5"/>
+                  <circle cx="8" cy="8" r="1.5" fill="rgba(255,255,255,0.95)"/>
+                  <circle cx="16" cy="8" r="1.5" fill="rgba(255,255,255,0.95)"/>
+                  <circle cx="8" cy="16" r="1.5" fill="rgba(255,255,255,0.95)"/>
+                  <circle cx="16" cy="16" r="1.5" fill="rgba(255,255,255,0.95)"/>
+                  <circle cx="12" cy="12" r="1.5" fill="rgba(255,255,255,0.95)"/>
+                  <path d="M10 12h4" stroke="rgba(255,255,255,0.5)" strokeWidth="1"/>
+                </svg>
+              ),
+            },
+            {
+              id: 'cemac', label: 'Cemac',
+              gradient: 'linear-gradient(135deg,#34d399 0%,#059669 50%,#065f46 100%)',
+              shadow: '0 4px 16px rgba(5,150,105,0.45)',
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M12 2L2 8v13h20V8L12 2z" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5"/>
+                  <path d="M9 21V12h6v9" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5"/>
+                  <path d="M8 8h8" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2"/>
+                  <circle cx="12" cy="5.5" r="1.2" fill="rgba(255,255,255,0.9)"/>
+                </svg>
+              ),
+            },
+            {
+              id: 'mitaxi', label: 'MiTaxi',
+              gradient: 'linear-gradient(135deg,#fbbf24 0%,#f59e0b 50%,#d97706 100%)',
+              shadow: '0 4px 16px rgba(245,158,11,0.45)',
+              icon: (
+                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5"/>
+                  <circle cx="7.5" cy="17" r="2.5" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5"/>
+                  <circle cx="16.5" cy="17" r="2.5" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5"/>
+                  <path d="M7 9h10" stroke="rgba(255,255,255,0.7)" strokeWidth="1.2"/>
+                  <path d="M12 6v3" stroke="rgba(255,255,255,0.5)" strokeWidth="1"/>
+                </svg>
+              ),
+            },
           ].map(item => (
             <button
               key={item.id}
               onClick={() => { setPreviousView(currentView); setCurrentView(item.id); }}
               style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '4px 0', width: '100%', transition: 'all 0.25s ease', WebkitTapHighlightColor: 'transparent' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'; const icon = e.currentTarget.querySelector('div[style*="rgba(255,255,255,0.18)"]') as HTMLElement; if (icon) icon.style.boxShadow = '0 8px 24px rgba(0,0,0,0.18), inset 0 1px 0 rgba(255,255,255,0.6), 0 0 12px rgba(0,174,255,0.2)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; const icon = e.currentTarget.querySelector('div[style*="rgba(255,255,255,0.18)"]') as HTMLElement; if (icon) icon.style.boxShadow = '0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.06)'; }}
-              onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.95)'; }}
-              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.05)'; }}
+              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.06)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.93)'; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.06)'; }}
             >
-              {/* App icon container — estilo cristalino */}
+              {/* App icon — gradiente profesional */}
               <div style={{
-                position: 'relative',
                 width: 'clamp(52px, 14vw, 72px)',
                 height: 'clamp(52px, 14vw, 72px)',
-                borderRadius: 'clamp(13px, 3.5vw, 18px)',
-                overflow: 'hidden',
-                background: 'rgba(255,255,255,0.18)',
-                backdropFilter: 'blur(12px)',
-                WebkitBackdropFilter: 'blur(12px)',
-                boxShadow: '0 4px 16px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.5), inset 0 -1px 0 rgba(0,0,0,0.06)',
-                border: '1px solid rgba(255,255,255,0.35)',
+                borderRadius: 'clamp(14px, 3.8vw, 20px)',
+                background: item.gradient,
+                boxShadow: item.shadow,
+                border: '1px solid rgba(255,255,255,0.25)',
                 flexShrink: 0,
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
+                position: 'relative',
+                overflow: 'hidden',
               }}>
-                <img
-                  src={item.img}
-                  alt={item.label}
-                  style={{ width: '70%', height: '70%', objectFit: 'contain', display: 'block', filter: 'drop-shadow(0 2px 4px rgba(0,0,0,0.2))' }}
-                />
+                {/* Brillo superior */}
+                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)', borderRadius: 'inherit', pointerEvents: 'none' }} />
+                {item.icon}
               </div>
               <span style={{ fontSize: 'clamp(10px, 2.8vw, 13px)', color: '#1a1a1a', fontWeight: '700', textAlign: 'center', lineHeight: '1.2', maxWidth: 'clamp(52px, 14vw, 72px)', letterSpacing: '0.1px' }}>{item.label}</span>
             </button>
@@ -5350,7 +5504,7 @@ const App: React.FC = () => {
     );
 
     return (
-      <div style={{ padding: `${device.isMobile ? '56px' : '60px'} 0 0`, height: '100vh', display: 'flex', flexDirection: 'column', background: '#F7F8FA', }}>
+      <div style={{ paddingTop: viewPadding.top, height: '100vh', display: 'flex', flexDirection: 'column', background: '#F7F8FA', }}>
         <div style={{ padding: '10px 16px 8px', background: '#FFFFFF', borderBottom: '1px solid #F0F2F5', flexShrink: 0 }}>
           <span style={{ fontSize: '17px', fontWeight: '700', color: '#111827' }}>Servicios</span>
         </div>
@@ -5561,7 +5715,7 @@ const App: React.FC = () => {
                 <div style={{position:'fixed',inset:0,zIndex:2000,background:'rgba(0,0,0,0.15)',backdropFilter:'blur(2px)'}} onClick={()=>setShowChatMenu(false)}>
                   <div style={{
                     position:'absolute',
-                    top: device.isMobile ? 'calc(max(env(safe-area-inset-top,44px),44px) + 44px + 8px)' : '64px',
+                    top: device.isMobile ? 'calc(44px + 8px + 8px)' : '64px',
                     right:'8px',
                     width: device.isMobile ? 'calc(100vw - 60px)' : '280px',
                     maxWidth:'320px',
@@ -5664,7 +5818,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? 'calc(max(env(safe-area-inset-top, 44px), 44px) + 54px)' : '70px', paddingBottom: device.isMobile ? 'calc(70px + var(--keyboard-offset, 0px))' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '54px' : '70px', paddingBottom: device.isMobile ? 'calc(70px + var(--keyboard-offset, 0px))' : '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
@@ -5688,12 +5842,30 @@ const App: React.FC = () => {
                             <span style={{ background:'rgba(0,0,0,0.18)', color:'#fff', fontSize:'11px', fontWeight:'600', padding:'3px 12px', borderRadius:'10px', backdropFilter:'blur(4px)' }}>{dateLabel}</span>
                           </div>
                         )}
-                        <div onClick={() => { if (selectionMode) { setSelectedMsgIds(prev => prev.includes(msg.id) ? prev.filter(x => x !== msg.id) : [...prev, msg.id]); } }} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px', alignItems: 'center', gap: '8px', padding: selectionMode ? '2px 8px' : '0', background: selectionMode && selectedMsgIds.includes(msg.id) ? 'rgba(0,180,230,0.10)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s', cursor: selectionMode ? 'pointer' : 'default' }}>
+                        <div onClick={() => { if (selectionMode) { setSelectedMsgIds(prev => prev.includes(msg.id) ? prev.filter(x => x !== msg.id) : [...prev, msg.id]); } }} style={{ display: 'flex', justifyContent: msg.from === 'me' ? 'flex-end' : 'flex-start', position: 'relative', zIndex: 1, marginBottom: '2px', alignItems: 'flex-end', gap: '6px', padding: selectionMode ? '2px 8px' : '0', background: selectionMode && selectedMsgIds.includes(msg.id) ? 'rgba(0,180,230,0.10)' : 'transparent', borderRadius: '8px', transition: 'background 0.15s', cursor: selectionMode ? 'pointer' : 'default' }}>
                           {selectionMode && (
                             <div style={{ width: 22, height: 22, borderRadius: '50%', border: `2px solid ${selectedMsgIds.includes(msg.id) ? '#00b4e6' : '#ccc'}`, background: selectedMsgIds.includes(msg.id) ? '#00b4e6' : '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, order: msg.from === 'me' ? 1 : 0, transition: 'all 0.15s' }}>
                               {selectedMsgIds.includes(msg.id) && <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="3" strokeLinecap="round"><polyline points="20 6 9 17 4 12"/></svg>}
                             </div>
                           )}
+
+                          {/* Avatar izquierda — mensajes recibidos */}
+                          {msg.from !== 'me' && (() => {
+                            const senderAvatar = msg.senderAvatar || selectedChat?.avatarUrl || '';
+                            const senderName = msg.senderName || selectedChat?.title || '?';
+                            const initials = senderName.slice(0, 2).toUpperCase();
+                            const isGroup = selectedChat?.isGroup;
+                            // En grupos mostrar siempre; en privado mostrar solo si hay foto
+                            return (
+                              <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: isGroup ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#fff', alignSelf: 'flex-end', marginBottom: '2px' }}>
+                                {senderAvatar
+                                  ? <img src={senderAvatar} alt={senderName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  : <span>{initials}</span>
+                                }
+                              </div>
+                            );
+                          })()}
+
                           <div
                             style={{
                         background: msg.from === 'me' ? 'linear-gradient(135deg,#e8f5e9,#f0fdf4)' : '#ffffff',
@@ -5705,6 +5877,7 @@ const App: React.FC = () => {
                         cursor: selectionMode ? 'pointer' : 'pointer',
                         userSelect: 'none',
                         border: msg.from === 'me' ? '1px solid rgba(0,200,160,0.12)' : '1px solid rgba(0,0,0,0.04)',
+                        maxWidth: 'calc(100% - 52px)',
                       }}
                       onContextMenu={e => { if (selectionMode) return; e.preventDefault(); setMsgContextMenu({ msg, x: e.clientX, y: e.clientY }); }}
                       onTouchStart={e => {
@@ -5957,10 +6130,25 @@ const App: React.FC = () => {
                         (() => {
                           const imgUrl = (msg as any).imageUrl || (msg as any).file_url || '';
                           return imgUrl ? (
-                            <div style={{ cursor: 'zoom-in', borderRadius: '12px 12px 0 0', overflow: 'hidden' }} onClick={(e) => { e.stopPropagation(); setChatImageViewer(imgUrl); }}>
+                            <div
+                              style={{ cursor: 'zoom-in', borderRadius: '12px 12px 0 0', overflow: 'hidden', position: 'relative' }}
+                              onClick={(e) => { e.stopPropagation(); setChatImageViewer(imgUrl); }}
+                              onContextMenu={e => { e.preventDefault(); setMsgContextMenu({ msg, x: e.clientX, y: e.clientY }); }}
+                              onTouchStart={e => {
+                                const t = e.touches[0];
+                                const timer = setTimeout(() => setMsgContextMenu({ msg, x: t.clientX, y: t.clientY }), 500);
+                                const cancel = () => clearTimeout(timer);
+                                e.currentTarget.addEventListener('touchend', cancel, { once: true });
+                                e.currentTarget.addEventListener('touchmove', cancel, { once: true });
+                              }}
+                            >
                               <img src={imgUrl} alt="foto"
                                 style={{ width: '240px', height: '200px', objectFit: 'cover', display: 'block' }}
                                 onError={e => { (e.target as HTMLImageElement).style.display='none'; }} />
+                              {/* Indicador de zoom */}
+                              <div style={{ position: 'absolute', bottom: '6px', right: '6px', background: 'rgba(0,0,0,0.45)', borderRadius: '6px', padding: '3px 6px', display: 'flex', alignItems: 'center', gap: '3px' }}>
+                                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+                              </div>
                             </div>
                           ) : (
                             <div style={{ width: '220px', height: '120px', background: '#f3f4f6', borderRadius: '12px 12px 0 0', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '6px' }}>
@@ -5992,16 +6180,27 @@ const App: React.FC = () => {
                           const extColors: Record<string,string> = { pdf:'#ef4444', doc:'#2563eb', docx:'#2563eb', xls:'#16a34a', xlsx:'#16a34a', ppt:'#ea580c', pptx:'#ea580c', txt:'#6b7280', csv:'#16a34a', zip:'#7c3aed', rar:'#7c3aed' };
                           const extColor = extColors[ext] || '#6b7280';
                           const fileUrl = (msg as any).fileUrl;
+                          const handleLongPressFile = (e: React.TouchEvent) => {
+                            const t = e.touches[0];
+                            const timer = setTimeout(() => setMsgContextMenu({ msg, x: t.clientX, y: t.clientY }), 500);
+                            const cancel = () => clearTimeout(timer);
+                            e.currentTarget.addEventListener('touchend', cancel, { once: true });
+                            e.currentTarget.addEventListener('touchmove', cancel, { once: true });
+                          };
                           return (
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', padding: '4px 0', cursor: fileUrl ? 'pointer' : 'default' }}
-                              onClick={() => { if (fileUrl) { const a = document.createElement('a'); a.href = fileUrl; a.download = fileName; a.click(); } }}>
+                            <div
+                              style={{ display: 'flex', alignItems: 'center', gap: '12px', minWidth: '220px', padding: '4px 0', cursor: fileUrl ? 'pointer' : 'default' }}
+                              onClick={() => { if (fileUrl) { const a = document.createElement('a'); a.href = fileUrl; a.download = fileName; a.click(); } }}
+                              onContextMenu={e => { e.preventDefault(); setMsgContextMenu({ msg, x: e.clientX, y: e.clientY }); }}
+                              onTouchStart={handleLongPressFile}
+                            >
                               <div style={{ width: '44px', height: '52px', borderRadius: '8px', background: extColor + '18', border: `1.5px solid ${extColor}40`, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
                                 <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={extColor} strokeWidth="1.8" strokeLinecap="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                                 <span style={{ fontSize: '7px', fontWeight: '800', color: extColor, textTransform: 'uppercase', letterSpacing: '0.3px' }}>{ext}</span>
                               </div>
                               <div style={{ flex: 1, minWidth: 0 }}>
                                 <div style={{ fontSize: '13px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '160px' }}>{fileName}</div>
-                                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{fileSize}{fileSize ? ' ? ' : ''}{ext.toUpperCase()}</div>
+                                <div style={{ fontSize: '11px', color: '#9ca3af', marginTop: '2px' }}>{fileSize}{fileSize ? ' · ' : ''}{ext.toUpperCase()}</div>
                                 <div style={{ fontSize: '11px', color: extColor, marginTop: '3px', fontWeight: '600' }}>{fileUrl ? '↓ Descargar' : 'Archivo'}</div>
                               </div>
                             </div>
@@ -6330,6 +6529,22 @@ const App: React.FC = () => {
                         )}
                       </div>
                     </div>
+
+                          {/* Avatar derecha — mensajes propios */}
+                          {msg.from === 'me' && (() => {
+                            const myAvatar = userProfile?.avatarUrl || userProfile?.avatar_url || '';
+                            const myName = userProfile?.name || userProfile?.full_name || 'Yo';
+                            const initials = myName.slice(0, 2).toUpperCase();
+                            return (
+                              <div style={{ width: 36, height: 36, borderRadius: '50%', flexShrink: 0, overflow: 'hidden', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', fontWeight: '700', color: '#fff', alignSelf: 'flex-end', marginBottom: '2px' }}>
+                                {myAvatar
+                                  ? <img src={myAvatar} alt={myName} style={{ width: '100%', height: '100%', objectFit: 'cover' }} onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                                  : <span>{initials}</span>
+                                }
+                              </div>
+                            );
+                          })()}
+
                   </div>
                       </React.Fragment>
                     );
@@ -6892,7 +7107,7 @@ const App: React.FC = () => {
         return (
           <div style={{
             padding: '0 8px 0px',
-            paddingTop: device.isMobile ? 'calc(max(28px, env(safe-area-inset-top, 28px)) + 44px + 6px)' : '8px',
+            paddingTop: device.isMobile ? viewPadding.top : '8px',
             height: device.isMobile ? '100vh' : 'calc(100vh - 44px)',
             marginTop: device.isMobile ? '0' : '44px',
             width: device.isMobile ? '100%' : (device.isTablet ? '280px' : '300px'),
@@ -6911,45 +7126,55 @@ const App: React.FC = () => {
                 <div style={{ position: 'relative', flex: 1 }}>
                   <input
                     type="text"
-                    placeholder="Buscar..."
+                    placeholder="🔍  Buscar chat o contacto..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
                       width: '100%',
-                      padding: '6px 12px 6px 32px',
-                      background: 'rgba(255,255,255,0.85)',
-                      border: 'none',
-                      borderRadius: '8px',
-                      color: '#0d0d0d',
-                      fontSize: '12px',
-                      outline: 'none'
+                      padding: '9px 14px 9px 36px',
+                      background: '#fff',
+                      border: searchQuery ? '1.5px solid #00c8a0' : '1.5px solid #e5e7eb',
+                      borderRadius: '12px',
+                      color: '#111827',
+                      fontSize: '13px',
+                      outline: 'none',
+                      boxShadow: searchQuery ? '0 0 0 3px rgba(0,200,160,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
+                      transition: 'border 0.2s, box-shadow 0.2s',
+                      boxSizing: 'border-box',
                     }}
                   />
                   <div style={{
                     position: 'absolute',
-                    left: '10px',
+                    left: '11px',
                     top: '50%',
                     transform: 'translateY(-50%)',
-                    color: '#9ca3af'
+                    color: searchQuery ? '#00c8a0' : '#9ca3af',
+                    pointerEvents: 'none',
                   }}>
-                    {renderIcon('search', 14)}
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                   </div>
+                  {searchQuery && (
+                    <button onClick={() => setSearchQuery('')} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: '#e5e7eb', border: 'none', borderRadius: '50%', width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', padding: 0 }}>
+                      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#6b7280" strokeWidth="3" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  )}
                 </div>
                 <button
                   onClick={() => setShowNewChatModal(true)}
                   style={{
                     background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
                     border: 'none',
-                    borderRadius: '8px',
-                    width: '36px',
-                    height: '36px',
+                    borderRadius: '10px',
+                    width: '38px',
+                    height: '38px',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     cursor: 'pointer',
                     outline: 'none',
                     color: '#fff',
-                    flexShrink: 0
+                    flexShrink: 0,
+                    boxShadow: '0 2px 8px rgba(0,200,160,0.35)',
                   }}
                 >
                   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -7193,9 +7418,14 @@ const App: React.FC = () => {
                       >
                         <div style={{ position: 'relative' }}>
                           <Avatar name={group.name || 'Grupo'} size={56} showStatus={false} photo={group.avatar_url || group.avatarUrl} />
-                          {/* Anillo verde si el grupo tiene estado publicado */}
+                          {/* Anillo neon si el grupo tiene estado publicado */}
                           {group.hasStory && (
-                            <div style={{ position: 'absolute', inset: -2, borderRadius: '50%', border: '2px solid #a855f7', pointerEvents: 'none' }} />
+                            <>
+                              <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: 'conic-gradient(from 0deg, #a855f7, #ec4899, #f472b6, #a855f7)', padding: '2.5px', pointerEvents: 'none', animation: 'neonStoryRing 2s linear infinite' }}>
+                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#fff' }} />
+                              </div>
+                              <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', boxShadow: '0 0 8px 3px rgba(168,85,247,0.7), 0 0 16px 6px rgba(236,72,153,0.4)', pointerEvents: 'none' }} />
+                            </>
                           )}
                         </div>
                         <span style={{ 
@@ -7410,11 +7640,19 @@ const App: React.FC = () => {
                     ? chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString())
                     : null;
                   const otherUserId = otherParticipant?.user_id?.toString() || '';
+                  const hasStoryInList = otherUserId ? activeStoryUserIds.has(otherUserId) : false;
                   return (
                     <SwipeChatItem
                       key={chat.id}
                       chatId={chat.id?.toString()}
                       onOpen={async () => {
+                        // Registrar interacción para auto-favoritos
+                        try {
+                          const freq: Record<string, number> = JSON.parse(localStorage.getItem('egchat_chat_freq') || '{}');
+                          const cid = chat.id?.toString();
+                          freq[cid] = (freq[cid] || 0) + 1;
+                          localStorage.setItem('egchat_chat_freq', JSON.stringify(freq));
+                        } catch (_e) { /* silencioso */ }
                         setSelectedChat({
                           id: chat.id, type: chat.type||'individual',
                           title: name, subtitle: lastMsg, time,
@@ -7453,10 +7691,26 @@ const App: React.FC = () => {
                           showToast('Conversación eliminada', 'info');
                         }
                       }}
+                      onMarkUnread={() => {
+                        setRealChats((prev: any[]) => prev.map((c: any) =>
+                          c.id === chat.id ? { ...c, unread_count: (c.unread_count || 0) + 1 } : c
+                        ));
+                        showToast('Marcado como no leído', 'info');
+                      }}
                     >
-                      {/* Avatar */}
-                      <div style={{ width:'50px', height:'50px', borderRadius:'50%', background: isGroup ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'18px', fontWeight:'700', color:'#fff', flexShrink:0, overflow:'hidden' }}>
-                        {avatarUrl ? <img src={avatarUrl} alt={name} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : <span>{initials}</span>}
+                      {/* Avatar con anillo neon si tiene estado activo */}
+                      <div style={{ position: 'relative', flexShrink: 0 }}>
+                        {hasStoryInList && (
+                          <>
+                            <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', background: isGroup ? 'conic-gradient(from 0deg, #a855f7, #ec4899, #f472b6, #a855f7)' : 'conic-gradient(from 0deg, #00c8a0, #00b4e6, #06d6a0, #00c8a0)', padding: '2.5px', zIndex: 2, pointerEvents: 'none', animation: 'neonStoryRing 2s linear infinite' }}>
+                              <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#fff' }} />
+                            </div>
+                            <div style={{ position: 'absolute', inset: -3, borderRadius: '50%', boxShadow: isGroup ? '0 0 8px 3px rgba(168,85,247,0.7), 0 0 16px 6px rgba(236,72,153,0.4)' : '0 0 8px 3px rgba(0,200,160,0.7), 0 0 16px 6px rgba(0,180,230,0.4)', zIndex: 1, pointerEvents: 'none' }} />
+                          </>
+                        )}
+                        <div style={{ width: '50px', height: '50px', borderRadius: '50%', background: isGroup ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px', fontWeight: '700', color: '#fff', overflow: 'hidden', position: 'relative', zIndex: 3 }}>
+                          {avatarUrl ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
+                        </div>
                       </div>
                       {/* Info */}
                       <div style={{ flex:1, minWidth:0 }}>
@@ -7679,30 +7933,13 @@ const App: React.FC = () => {
       case 'monedero':
         return (
           <div style={{
-            padding: `${device.isMobile ? '66px' : '60px'} 0 0`,
+            paddingTop: viewPadding.top,
             height: '100vh',
             display: 'flex',
             flexDirection: 'column',
             background: '#EEF2F7',
             }}>
-            {/* Header */}
-            <div style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              marginBottom: '12px',
-              flexShrink: 0,
-              padding: '0 14px'
-            }}>
-              <h2 style={{
-                fontSize: '16px',
-                fontWeight: '700',
-                color: '#1A2B4A',
-                margin: 0
-              }}>
-                Mi Cartera
-              </h2>
-            </div>
+            {/* "Mi Cartera" ya aparece en el header principal — no duplicar aquí */}
 
           {/* Tarjeta de Balance Principal - ESTÁTICA */}
             <div style={{ padding: '0 14px', flexShrink: 0 }}>
@@ -10287,6 +10524,7 @@ const App: React.FC = () => {
   // -- useEffects mensajeria -------------------------------------
   useEffect(() => {
     if (!isAuthenticated) return;
+    let cancelled = false;
     // Cargar perfil desde localStorage primero (evita pantalla en blanco)
     const cachedProfile = localStorage.getItem('egchat_user_profile');
     if (cachedProfile) {
@@ -10346,10 +10584,12 @@ const App: React.FC = () => {
       };
       setTimeout(() => fetchCallSession(0), 800);
     }
-    authAPI.me().then((u: any) => {
+    const boot = () => {
+      if (cancelled) return;
+      authAPI.me().then((u: any) => {
       if (u?.id) {
         currentUserId.current = u.id;
-        const savedAvatar = u.avatar_url || localStorage.getItem('user_avatar') || '';
+        const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
         const profile = {
           id: u.id,
           name: u.full_name || 'Usuario',
@@ -10364,25 +10604,28 @@ const App: React.FC = () => {
     }).catch((_e: any) => {
       // Ignorar errores de /me ? puede ser Render durmiendo
     });
-    loadChats();
-    // Cargar todos los contactos reales
-    loadContacts();
-    // Sincronizar avatares frescos tras cargar chats (pequeño delay para que loadChats termine)
-    setTimeout(() => syncUserAvatars(), 2000);
-    // Cargar contactos favoritos reales
-    contactsAPI.getFavorites().then((data: any[]) => setFavoriteContacts(data || [])).catch(() => {});
-    // Cargar stories activos para mostrar anillo en avatares
-    storiesAPI.getAll().then((data: any[]) => {
-      if (Array.isArray(data)) {
-        const ids = new Set(
-          data
-            .filter((s: any) => !s.isMe && Array.isArray(s.media) && s.media.length > 0)
-            .map((s: any) => s.userId?.toString())
-            .filter(Boolean)
-        );
-        setActiveStoryUserIds(ids);
-      }
-    }).catch(() => { /* silencioso */ });
+      loadChats();
+      // Cargar todos los contactos reales
+      loadContacts();
+      // Sincronizar avatares frescos tras cargar chats (pequeño delay para que loadChats termine)
+      setTimeout(() => { if (!cancelled) syncUserAvatars(); }, 2000);
+      // Cargar contactos favoritos reales
+      contactsAPI.getFavorites().then((data: any[]) => { if (!cancelled) setFavoriteContacts(data || []); }).catch(() => {});
+      // Cargar stories activos para mostrar anillo en avatares
+      storiesAPI.getAll().then((data: any[]) => {
+        if (cancelled) return;
+        if (Array.isArray(data)) {
+          const ids = new Set(
+            data
+              .filter((s: any) => !s.isMe && Array.isArray(s.media) && s.media.length > 0)
+              .map((s: any) => s.userId?.toString())
+              .filter(Boolean)
+          );
+          setActiveStoryUserIds(ids);
+        }
+      }).catch(() => { /* silencioso */ });
+    };
+    const bootDelay = setTimeout(boot, 350);
     // Cargar grupos favoritos — con fallback a localStorage si el backend no lo soporta
     chatAPI.getFavoriteChats?.().then((data: any[]) => {
       if (Array.isArray(data) && data.length > 0) {
@@ -10407,6 +10650,50 @@ const App: React.FC = () => {
         }
       } catch (_e) { /* silencioso */ }
     });
+
+    // ── Auto-favoritos por frecuencia de interacción ──────────────────────────
+    // Cada vez que se abre un chat se incrementa su contador en localStorage.
+    // Los 3 grupos y 3 contactos con más interacciones se añaden automáticamente
+    // a favoritos si el usuario no los ha marcado/desmarcado manualmente.
+    setTimeout(() => {
+      try {
+        const freq: Record<string, number> = JSON.parse(localStorage.getItem('egchat_chat_freq') || '{}');
+        const allC = realChatsRef.current || [];
+        // Grupos más frecuentes
+        const freqGroups = allC
+          .filter((c: any) => c.type === 'group')
+          .sort((a: any, b: any) => (freq[b.id?.toString()] || 0) - (freq[a.id?.toString()] || 0))
+          .slice(0, 3)
+          .map((c: any) => c.id?.toString());
+        if (freqGroups.length > 0) {
+          setFavoriteGroupIds(prev => {
+            const merged = Array.from(new Set([...prev, ...freqGroups]));
+            try { localStorage.setItem('egchat_fav_groups', JSON.stringify(merged)); } catch (_e) { /* silencioso */ }
+            return merged;
+          });
+        }
+        // Contactos más frecuentes → favoriteContacts
+        const freqContacts = allC
+          .filter((c: any) => c.type !== 'group')
+          .sort((a: any, b: any) => (freq[b.id?.toString()] || 0) - (freq[a.id?.toString()] || 0))
+          .slice(0, 3);
+        if (freqContacts.length > 0) {
+          contactsAPI.getFavorites().then((existing: any[]) => {
+            const existingIds = new Set((existing || []).map((f: any) => f.id?.toString()));
+            freqContacts.forEach((c: any) => {
+              const other = c.participants?.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString());
+              const uid = other?.user_id?.toString();
+              if (uid && !existingIds.has(uid)) {
+                contactsAPI.favorite(uid).catch(() => {});
+              }
+            });
+            contactsAPI.getFavorites().then((updated: any[]) => {
+              if (!cancelled) setFavoriteContacts(updated || []);
+            }).catch(() => {});
+          }).catch(() => {});
+        }
+      } catch (_e) { /* silencioso */ }
+    }, 3000);
     // Inicializar gesto de atrás predictivo (Android 14+ y anteriores)
     initPredictiveBack((view: string) => setCurrentView(view));
     // Registrar Web Push (con peque?o delay para que el SW est listo)
@@ -10415,6 +10702,10 @@ const App: React.FC = () => {
         (window as any).__egchat_registerPush();
       }
     }, 2000);
+    return () => {
+      cancelled = true;
+      clearTimeout(bootDelay);
+    };
   }, [isAuthenticated, loadChats, loadContacts]);
 
   // Escuchar evento de token expirado desde api.ts
@@ -10631,8 +10922,24 @@ const App: React.FC = () => {
   );
 
   if (!isAuthenticated) return <AuthScreen onAuth={(user) => {
+    // ── Garantizar token en localStorage ANTES de cambiar estado ──────────────
+    // AuthScreen ya guarda el token, pero en Android WebView hay un frame donde
+    // el estado de React se inicializa antes de que localStorage se actualice.
+    // Forzamos la escritura aquí para que isAuthenticated arranque en true.
+    const t = localStorage.getItem('token') || '';
+    const b = localStorage.getItem('egchat_token_backup') || '';
+    if (!t && b) {
+      localStorage.setItem('token', b);
+    }
+    // Si por algún motivo no hay token (respuesta del servidor sin token), abortar
+    if (!localStorage.getItem('token')) {
+      console.error('[Auth] onAuth llamado sin token en localStorage — abortando');
+      return;
+    }
     if (user) {
       const savedAvatar = localStorage.getItem('user_avatar') || user.avatar_url || '';
+      // Guardar datos del usuario para restauración rápida en próxima apertura
+      try { localStorage.setItem('egchat_user_profile', JSON.stringify(user)); } catch {}
       setUserProfile((prev: any) => ({
         ...prev, id: user.id||prev.id, name: user.full_name||prev.name, phone: user.phone||prev.phone,
         avatar: (user.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
@@ -10644,6 +10951,7 @@ const App: React.FC = () => {
         setTimeout(() => setShowContactImportModal(true), 800);
       }
     }
+    // Cambiar estado — esto desmonta AuthScreen y monta la app principal
     setIsAuthenticated(true);
     // Pedir permiso push — en iOS solo funciona desde un gesto del usuario
     // En Android/desktop se puede pedir directamente
@@ -10665,18 +10973,31 @@ const App: React.FC = () => {
         (window as any).__egchat_registerPush();
       }
     }, 1500);
-    // Push nativo Capacitor (FCM) — solo activo en Android/iOS compilado
-    initPushNotifications().catch(e => console.warn('[Push] initPushNotifications error:', e));
-    // Pantalla de llamada nativa (call-screen plugin)
-    initCallManager().catch(e => console.warn('[CallManager] init error:', e));
-    // Procesar deep link pendiente (si el usuario llegó via link antes de autenticarse)
-    processPendingDeepLink();
-    // App Shortcuts — registrar accesos directos del icono
-    initShortcuts().catch(e => console.warn('[Shortcuts] init error:', e));
-    // Hápticos — verificar soporte y cargar configuración del usuario
-    initHaptics().catch(e => console.warn('[Haptics] init error:', e));
-    // Badge — solicitar permiso (iOS) y limpiar al iniciar sesión
-    requestBadgePermission().catch(() => {});
+    // Evita ANR al entrar: diferir inicializaciones nativas pesadas
+    setTimeout(() => {
+      // Push nativo Capacitor (FCM) — solo activo en Android/iOS compilado
+      initPushNotifications().catch(e => console.warn('[Push] initPushNotifications error:', e));
+      // StatusBar: overlaysWebView:false — igual que iPhone.
+      // La status bar queda fuera del WebView con color #00c8a0 (mismo que el header).
+      try {
+        const { StatusBar, Style } = (window as any).Capacitor?.Plugins || {};
+        if (StatusBar) {
+          StatusBar.setOverlaysWebView({ overlay: false });
+          StatusBar.setBackgroundColor({ color: '#00c8a0' });
+          if (Style) StatusBar.setStyle({ style: Style.Light || 'LIGHT' });
+        }
+      } catch {}
+      // Pantalla de llamada nativa (call-screen plugin)
+      initCallManager().catch(e => console.warn('[CallManager] init error:', e));
+      // Procesar deep link pendiente (si el usuario llegó via link antes de autenticarse)
+      processPendingDeepLink();
+      // App Shortcuts — registrar accesos directos del icono
+      initShortcuts().catch(e => console.warn('[Shortcuts] init error:', e));
+      // Hápticos — verificar soporte y cargar configuración del usuario
+      initHaptics().catch(e => console.warn('[Haptics] init error:', e));
+      // Badge — solicitar permiso (iOS) y limpiar al iniciar sesión
+      requestBadgePermission().catch(() => {});
+    }, 1200);
   }} />;
 
   return (
@@ -11046,8 +11367,49 @@ const App: React.FC = () => {
                 {
                   color:'#0EA5E9', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
                   label:'Reenviar', sub:'Compartir con otro contacto',
-                  action:() => { showToast('Proximamente disponible', 'info'); setMsgContextMenu(null); }
+                  action:() => {
+                    const imgUrl = (msgContextMenu.msg as any).imageUrl;
+                    if (imgUrl) { setChatImageViewer(imgUrl); setMsgContextMenu(null); }
+                    else { showToast('Próximamente disponible', 'info'); setMsgContextMenu(null); }
+                  }
                 },
+                // Guardar — solo para imágenes y archivos
+                ...((msgContextMenu.msg as any).imageUrl || (msgContextMenu.msg as any).fileUrl || (msgContextMenu.msg as any).audioUrl ? [{
+                  color:'#10b981', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,
+                  label:'Guardar', sub:'Guardar en el dispositivo',
+                  action: async () => {
+                    const url = (msgContextMenu.msg as any).imageUrl || (msgContextMenu.msg as any).fileUrl || (msgContextMenu.msg as any).audioUrl || '';
+                    if (!url) { showToast('No hay archivo para guardar', 'error'); setMsgContextMenu(null); return; }
+                    try {
+                      const resp = await fetch(url);
+                      const blob = await resp.blob();
+                      const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'bin';
+                      const blobUrl = URL.createObjectURL(blob);
+                      const a = document.createElement('a');
+                      a.href = blobUrl;
+                      a.download = `egchat_${Date.now()}.${ext}`;
+                      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                      setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+                      showToast('✅ Guardado correctamente', 'success');
+                    } catch { window.open(url, '_blank'); showToast('Abre el archivo y guárdalo manualmente', 'info'); }
+                    setMsgContextMenu(null);
+                  }
+                }] : []),
+                // Compartir — solo para imágenes y archivos
+                ...((msgContextMenu.msg as any).imageUrl || (msgContextMenu.msg as any).fileUrl ? [{
+                  color:'#6366f1', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>,
+                  label:'Compartir', sub:'Compartir con otras apps',
+                  action: async () => {
+                    const url = (msgContextMenu.msg as any).imageUrl || (msgContextMenu.msg as any).fileUrl || '';
+                    if (navigator.share) {
+                      try { await navigator.share({ url, title: 'Compartir desde EGCHAT' }); } catch {}
+                    } else {
+                      navigator.clipboard?.writeText(url);
+                      showToast('Enlace copiado al portapapeles', 'success');
+                    }
+                    setMsgContextMenu(null);
+                  }
+                }] : []),
                 {
                   color:'#8B5CF6', icon: <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>,
                   label:'Seleccionar', sub:'Seleccionar varios mensajes',
@@ -11498,33 +11860,39 @@ const App: React.FC = () => {
                     const avatarUrl = chat.avatarUrl || chat.avatar_url || '';
                     const isGrp = chat.isGroup || chat.type === 'group';
                     return (
-                      <div key={chat.id} style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: '6px' }}>
-                        {/* Acción: Desarchivar */}
-                        <div style={{ position: 'absolute', right: 0, top: 0, bottom: 0, width: '90px', display: 'flex', alignItems: 'stretch' }}>
-                          <button onClick={() => {
-                            const newArchived = archivedChats.filter((c: any) => c.id !== chat.id);
-                            saveArchivedChats(newArchived);
-                            setRealChats((prev: any[]) => [chat, ...prev]);
-                            showToast('Chat desarchivado', 'info');
-                          }} style={{ flex: 1, background: '#10b981', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
-                            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
-                            <span style={{ fontSize: '10px', fontWeight: '700' }}>Desarchivar</span>
-                          </button>
-                        </div>
-                        <div onClick={() => {
+                      <SwipeChatItem
+                        key={chat.id}
+                        chatId={chat.id?.toString()}
+                        isArchived={true}
+                        onOpen={() => {
                           setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials, color: isGrp ? '#a855f7' : '#00c8a0', avatarUrl, isGroup: isGrp });
                           setCurrentView('Mensajería');
-                        }} style={{ background: '#fff', borderRadius: '12px', padding: '12px 10px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '12px', boxShadow: '0 1px 3px rgba(0,0,0,0.06)', position: 'relative', zIndex: 1 }}>
-                          <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: isGrp ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
-                            {avatarUrl ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
-                          </div>
-                          <div style={{ flex: 1, minWidth: 0 }}>
-                            <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
-                            <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>🔒 Archivado</div>
-                          </div>
-                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                        }}
+                        onUnarchive={() => {
+                          const newArchived = archivedChats.filter((c: any) => c.id !== chat.id);
+                          saveArchivedChats(newArchived);
+                          setRealChats((prev: any[]) => [chat, ...prev]);
+                          showToast('Chat desarchivado ✅', 'success');
+                        }}
+                        onArchive={() => {}}
+                        onDelete={() => {
+                          if (window.confirm(`¿Eliminar conversación con ${name}?`)) {
+                            chatAPI.deleteChat(chat.id?.toString()).catch(() => {});
+                            const newArchived = archivedChats.filter((c: any) => c.id !== chat.id);
+                            saveArchivedChats(newArchived);
+                            showToast('Conversación eliminada', 'info');
+                          }
+                        }}
+                      >
+                        <div style={{ width: '46px', height: '46px', borderRadius: '50%', background: isGrp ? 'linear-gradient(135deg,#a855f7,#6366f1)' : 'linear-gradient(135deg,#6B5BD6,#8B5CF6)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '700', color: '#fff', flexShrink: 0, overflow: 'hidden' }}>
+                          {avatarUrl ? <img src={avatarUrl} alt={name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} /> : <span>{initials}</span>}
                         </div>
-                      </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: '15px', fontWeight: '600', color: '#111827', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{name}</div>
+                          <div style={{ fontSize: '12px', color: '#9ca3af', marginTop: '2px' }}>🔒 Archivado</div>
+                        </div>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2.5" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
+                      </SwipeChatItem>
                     );
                   })}
 
@@ -11600,8 +11968,23 @@ const App: React.FC = () => {
                           <>
                             {hasStory && (
                               <div style={{
-                                position: 'absolute', inset: -2, borderRadius: '50%',
-                                border: `2px solid ${isGrp ? '#a855f7' : '#00c8a0'}`,
+                                position: 'absolute', inset: -3, borderRadius: '50%',
+                                background: isGrp
+                                  ? 'conic-gradient(from 0deg, #a855f7, #ec4899, #f472b6, #a855f7)'
+                                  : 'conic-gradient(from 0deg, #00c8a0, #00b4e6, #06d6a0, #00c8a0)',
+                                padding: '2.5px',
+                                zIndex: 1, pointerEvents: 'none',
+                                animation: 'neonStoryRing 2s linear infinite',
+                              }}>
+                                <div style={{ width: '100%', height: '100%', borderRadius: '50%', background: '#fff' }} />
+                              </div>
+                            )}
+                            {hasStory && (
+                              <div style={{
+                                position: 'absolute', inset: -3, borderRadius: '50%',
+                                boxShadow: isGrp
+                                  ? '0 0 8px 3px rgba(168,85,247,0.7), 0 0 16px 6px rgba(236,72,153,0.4)'
+                                  : '0 0 8px 3px rgba(0,200,160,0.7), 0 0 16px 6px rgba(0,180,230,0.4)',
                                 zIndex: 1, pointerEvents: 'none',
                               }} />
                             )}
@@ -11647,7 +12030,7 @@ const App: React.FC = () => {
             left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
             right: 0,
             display: 'flex', alignItems: 'center',
-            paddingTop: device.isMobile ? 'max(env(safe-area-inset-top, 44px), 44px)' : '8px', 
+            paddingTop: device.isMobile ? '44px' : '8px', 
             paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
             background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
             boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
@@ -11658,7 +12041,18 @@ const App: React.FC = () => {
               <svg width="20" height="20" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>
             <div style={{ cursor: 'pointer', flexShrink: 0, marginLeft: '4px' }} onClick={async () => { setShowContactProfile(withGroupOverrides(sc)); if (sc.isGroup) await loadGroupMembers(sc.id?.toString() || ''); }}>
-              <Avatar name={sc.title} size={50} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
+              {sc.avatarUrl ? (
+                <div style={{ position: 'relative' }}>
+                  <div
+                    onClick={e => { e.stopPropagation(); setChatImageViewer(sc.avatarUrl!); }}
+                    style={{ cursor: 'zoom-in', position: 'absolute', inset: 0, zIndex: 2, borderRadius: '50%' }}
+                    title="Ver foto de perfil"
+                  />
+                  <Avatar name={sc.title} size={50} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
+                </div>
+              ) : (
+                <Avatar name={sc.title} size={50} status={sc.status as any} showStatus={!sc.isGroup} photo={sc.avatarUrl} />
+              )}
             </div>
             <div style={{ flex: 1, cursor: 'pointer', minWidth: 0, marginLeft: '10px' }} onClick={async () => { setShowContactProfile(withGroupOverrides(sc)); if (sc.isGroup) await loadGroupMembers(sc.id?.toString() || ''); }}>
               <div style={{ fontSize: '15px', fontWeight: '700', color: '#ffffff', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>{sc.title}</div>
@@ -11776,9 +12170,14 @@ const App: React.FC = () => {
         <AvatarCropModal
           imageUrl={avatarCropUrl}
           onClose={() => setAvatarCropUrl(null)}
-          onSave={(croppedUrl) => {
+          onSave={async (croppedUrl) => {
             localStorage.setItem('user_avatar', croppedUrl);
             setUserProfile((p: any) => ({ ...p, avatarUrl: croppedUrl }));
+            try {
+              await authAPI.updateProfile({ avatar_url: croppedUrl });
+            } catch (e) {
+              console.warn('No se pudo guardar avatar en backend:', e);
+            }
             setAvatarCropUrl(null);
           }}
         />
@@ -13539,7 +13938,7 @@ const App: React.FC = () => {
       {showGroupMembersPanel && selectedChat?.isGroup && (
         <div style={{ position: 'fixed', inset: 0, background: '#F0F2F5', zIndex: 4500, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
           {/* Header */}
-          <div style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', padding: '10px 16px', paddingTop: 'calc(10px + env(safe-area-inset-top, 44px))', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, boxShadow: '0 2px 12px rgba(168,85,247,0.3)' }}>
+          <div style={{ background: 'linear-gradient(135deg, #a855f7 0%, #6366f1 100%)', padding: '10px 16px', display: 'flex', alignItems: 'center', gap: '12px', flexShrink: 0, boxShadow: '0 2px 12px rgba(168,85,247,0.3)' }}>
             <button onClick={() => setShowGroupMembersPanel(false)} style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#fff', padding: '4px', display: 'flex' }}>
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="15 18 9 12 15 6"/></svg>
             </button>

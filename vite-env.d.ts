@@ -12,3 +12,6 @@ interface ImportMetaEnv {
 interface ImportMeta {
   readonly env: ImportMetaEnv
 }
+
+// Constante inyectada por Vite define — garantiza URL del API en Android WebView
+declare const __API_URL__: string;

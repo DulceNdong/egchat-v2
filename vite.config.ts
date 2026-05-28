@@ -1,4 +1,4 @@
-import { defineConfig } from 'vite';
+import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import fs from 'fs';
@@ -18,9 +18,24 @@ const swVersionPlugin = () => ({
   },
 });
 
-export default defineConfig({
+export default defineConfig(({ mode }) => {
+  // Cargar variables de entorno del archivo .env correspondiente al modo
+  const env = loadEnv(mode, process.cwd(), '');
+
+  // URL del API: prioridad → variable de entorno → fallback producción
+  const apiUrl = env.VITE_API_URL || 'https://egchat-api.onrender.com';
+
+  console.log(`[vite] mode=${mode} | API_URL=${apiUrl}`);
+
+  return {
   plugins: [react(), tailwindcss(), swVersionPlugin()],
   base: '/',
+  // Inyectar la URL del API directamente en el bundle.
+  // En modo 'development' usa VITE_API_URL de .env.development (localhost:5000).
+  // En modo 'production' usa VITE_API_URL de .env.production o el fallback de Render.
+  define: {
+    '__API_URL__': JSON.stringify(apiUrl),
+  },
   server: {
     host: '0.0.0.0',
     port: 3001,
@@ -60,4 +75,5 @@ export default defineConfig({
     include: ['react', 'react-dom'],
     exclude: ['@maptiler/sdk', 'tesseract.js'],
   },
+  };
 });
