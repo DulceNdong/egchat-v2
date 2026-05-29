@@ -6989,8 +6989,10 @@ const App: React.FC = () => {
         }
         return (
           <div style={{
-            padding: '0 8px 0px',
-            paddingTop: device.isMobile ? viewPadding.top : '8px',
+            paddingTop: device.isMobile ? 'calc(44px + 12px)' : '8px',
+            paddingLeft: '8px',
+            paddingRight: '8px',
+            paddingBottom: '0px',
             height: device.isMobile ? '100vh' : 'calc(100vh - 44px)',
             marginTop: device.isMobile ? '0' : '44px',
             width: device.isMobile ? '100%' : (device.isTablet ? '280px' : '300px'),
