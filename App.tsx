@@ -205,10 +205,11 @@ const App: React.FC = () => {
 
   // Helper: padding de contenido según dispositivo
   // Con overlaysWebView:false el WebView empieza DEBAJO de la status bar del sistema.
-  // El padding top del contenido necesita: safe-area-inset-top + 44px (header) + margen
-  // Bottom padding: 64px (tab bar height) + safe-area + 16px extra spacing
+  // La status bar está FUERA del WebView — safe-area-inset-top es 0 en Android.
+  // El paddingTop solo necesita la altura del header (44px) + margen.
+  // En iPhone con notch: safe-area-inset-top cubre el notch (ya incluido en el header via paddingTop del header).
   const viewPadding = {
-    top: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px',
+    top: device.isMobile ? 'calc(44px + 8px)' : '60px',
     bottom: device.isMobile
       ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)'
       : '24px',
@@ -8350,7 +8351,7 @@ const App: React.FC = () => {
       case 'historial-completo':
         return (
           <div style={{
-            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8535,7 +8536,7 @@ const App: React.FC = () => {
         // La carga se hace via useEffect cuando currentView === 'contactos'
         return (
           <div style={{
-            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8812,7 +8813,7 @@ const App: React.FC = () => {
       case 'grupos':
         return (
           <div style={{
-            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
