@@ -10414,7 +10414,11 @@ const App: React.FC = () => {
     if (cachedProfile) {
       try {
         const p = JSON.parse(cachedProfile);
-        setUserProfile((prev: any) => ({ ...prev, ...p }));
+        // Si el nombre guardado es genérico, no usarlo — esperar al fetch real
+        const isGeneric = !p.name || p.name.trim().toLowerCase() === 'usuario';
+        if (!isGeneric) {
+          setUserProfile((prev: any) => ({ ...prev, ...p }));
+        }
         if (p.id) currentUserId.current = p.id;
       } catch {}
     }
@@ -10474,11 +10478,15 @@ const App: React.FC = () => {
       if (u?.id) {
         currentUserId.current = u.id;
         const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
+        // Si el nombre es vacío, "Usuario" o genérico, usar el número de teléfono
+        const rawName = u.full_name || '';
+        const isGenericName = !rawName || rawName.trim() === '' || rawName.trim().toLowerCase() === 'usuario';
+        const displayName = isGenericName ? (u.phone || 'Usuario') : rawName;
         const profile = {
           id: u.id,
-          name: u.full_name || 'Usuario',
+          name: displayName,
           phone: u.phone || '',
-          avatar: (u.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
+          avatar: displayName.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
           avatarUrl: savedAvatar,
         };
         setUserProfile((prev: any) => ({ ...prev, ...profile }));
@@ -10486,7 +10494,7 @@ const App: React.FC = () => {
         localStorage.setItem('egchat_user_profile', JSON.stringify(profile));
       }
     }).catch((_e: any) => {
-      // Ignorar errores de /me ? puede ser Render durmiendo
+      // Ignorar errores de /me — puede ser Render durmiendo
     });
       loadChats();
       // Cargar todos los contactos reales
