@@ -205,11 +205,10 @@ const App: React.FC = () => {
 
   // Helper: padding de contenido según dispositivo
   // Con overlaysWebView:false el WebView empieza DEBAJO de la status bar del sistema.
-  // El padding top del contenido solo necesita la altura del header (44px) + margen.
-  // Igual que en iPhone — sin sumar la status bar porque ya está fuera del WebView.
+  // El padding top del contenido necesita: safe-area-inset-top + 44px (header) + margen
   // Bottom padding: 64px (tab bar height) + safe-area + 16px extra spacing
   const viewPadding = {
-    top: device.isMobile ? 'calc(44px + 8px)' : '60px',
+    top: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px',
     bottom: device.isMobile
       ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)'
       : '24px',
@@ -646,7 +645,7 @@ const App: React.FC = () => {
     city: 'Malabo',
     condition: 'sunny'
   });
-  const [homeButtonPos, setHomeButtonPos] = useState<{ x: number; y: number }>({ x: window.innerWidth - 70, y: window.innerHeight - 200 });
+  const [homeButtonPos, setHomeButtonPos] = useState<{ x: number; y: number }>({ x: window.innerWidth - 70, y: window.innerHeight - 180 });
   const [isDragging, setIsDragging] = useState<boolean>(false);
   const [dragOffset, setDragOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [messageFilter, setMessageFilter] = useState<string>('individual');
@@ -2970,7 +2969,7 @@ const App: React.FC = () => {
           transform: 'translate(-50%, -50%)',
           pointerEvents: 'none',
           whiteSpace: 'nowrap',
-          maxWidth: 'calc(100% - 220px)',
+          maxWidth: 'calc(100% - 260px)',
           overflow: 'hidden',
           textOverflow: 'ellipsis',
           zIndex: 1,
@@ -2991,14 +2990,14 @@ const App: React.FC = () => {
       {/* Hora, clima y controles */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
 
-        {/* Clima */}
-        <div style={{ position: 'relative' }}>
+        {/* Clima — compacto cuando hay título de vista */}
+          <div style={{ position: 'relative' }}>
           <div
             onClick={() => setShowWeatherModal(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               background: 'rgba(8,18,36,0.88)',
-              padding: '5px 10px',
+              padding: '5px 8px',
               borderRadius: '50px',
               border: '1px solid rgba(255,255,255,0.13)',
               boxShadow: '0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
@@ -3007,7 +3006,7 @@ const App: React.FC = () => {
           >
             <div style={{ color: '#fbbf24' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 12)}</div>
             <span style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
-            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
+            {currentView === 'home' && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>}
           </div>
         </div>
 
@@ -5057,7 +5056,7 @@ const App: React.FC = () => {
         }}
         style={{
           position: 'fixed',
-          bottom: 'calc(58px + env(safe-area-inset-bottom, 0px) + 24px)',
+          bottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 24px)',
           left: '50%',
           transform: 'translateX(-50%)',
           width: '65px',
@@ -8378,7 +8377,7 @@ const App: React.FC = () => {
       case 'historial-completo':
         return (
           <div style={{
-            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8563,7 +8562,7 @@ const App: React.FC = () => {
         // La carga se hace via useEffect cuando currentView === 'contactos'
         return (
           <div style={{
-            padding: '66px 12px 100px',
+            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8840,7 +8839,7 @@ const App: React.FC = () => {
       case 'grupos':
         return (
           <div style={{
-            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',

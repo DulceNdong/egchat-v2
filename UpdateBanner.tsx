@@ -58,7 +58,7 @@ export const UpdateBanner: React.FC = () => {
       {/* Botón flotante SIEMPRE visible — esquina inferior derecha */}
       <button onClick={forceUpdate} title="Limpiar caché y actualizar app"
         style={{
-          position: 'fixed', bottom: '90px', right: '12px', zIndex: 9998,
+          position: 'fixed', bottom: 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)', right: '12px', zIndex: 9998,
           background: 'rgba(0,200,160,0.9)', border: 'none', borderRadius: '50%',
           width: '40px', height: '40px',
           display: 'flex', alignItems: 'center', justifyContent: 'center',
