@@ -2888,10 +2888,8 @@ const App: React.FC = () => {
       zIndex: 1000,
       boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
       overflow: 'hidden',
-      // Con overlaysWebView:false la status bar queda FUERA del WebView.
-      // El header empieza justo donde termina la status bar — sin paddingTop necesario.
-      // El color de la status bar (#00c8a0) hace que visualmente sea un bloque continuo.
-      paddingTop: '0px',
+      // paddingTop dinámico: respeta la safe area del iPhone (notch/Dynamic Island)
+      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 44px)' : '0px',
       willChange: 'transform',
       transform: 'translateZ(0)',
     }}>
