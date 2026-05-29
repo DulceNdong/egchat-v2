@@ -5271,197 +5271,113 @@ const App: React.FC = () => {
       display: 'flex',
       flexDirection: 'column',
     }}>
-      {/* Tarjeta de balance principal - Minimalista */}
+      {/* Tarjeta de balance principal */}
       <div style={{
-        background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)',
-        borderRadius: '20px',
-        padding: '18px 18px 16px',
+        background: 'linear-gradient(160deg, #0d3b6e 0%, #0a5a8a 55%, #0a7a8a 100%)',
+        borderRadius: '18px',
+        padding: '20px 18px 18px',
         marginBottom: '12px',
-        boxShadow: '0 6px 24px rgba(14,95,138,0.25)'
+        boxShadow: '0 8px 28px rgba(10,90,138,0.30)'
       }}>
-        <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>
+        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
           Saldo disponible
         </div>
-        <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '16px', letterSpacing: '-1px', lineHeight: 1, cursor: 'pointer', userSelect: 'none' }}
+        {/* Saldo oculto con puntos */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px', cursor: 'pointer', userSelect: 'none' }}
           onClick={() => toggleBalanceVisible('home-default')}>
-          {isBalanceVisible('home-default')
-            ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></>
-            : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>● ● ● ●</span>
-          }
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-default') ? (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>) : (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>)}</span>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            {isBalanceVisible('home-default')
+              ? <span style={{ fontSize: '30px', fontWeight: '800', color: '#fff', letterSpacing: '-1px', lineHeight: 1 }}>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.55)' }}>XAF</span></span>
+              : <>
+                  {[0,1,2,3].map(i => <div key={i} style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)' }} />)}
+                </>
+            }
+          </div>
+          <div style={{ marginLeft: 'auto', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round">
+              {isBalanceVisible('home-default')
+                ? <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
+                : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
+              }
+            </svg>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '8px' }}>
-          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-            <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-            </div>
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: '#fff', border: 'none', color: '#1A2B4A', padding: '11px 8px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C47D2A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
             RECARGAR
           </button>
-          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 8px', borderRadius: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '5px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-            <div style={{ width: '20px', height: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            </div>
+          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: '#fff', border: 'none', color: '#1A2B4A', padding: '11px 8px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
             ENVIAR
           </button>
         </div>
       </div>
 
-      {/* Tarjetas pequeaas - Minimalista */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
-        <button
-          onClick={() => setCurrentView('id-digital')}
-          style={{
-            background: 'rgba(243,244,246,0.85)',
-            borderRadius: '10px',
-            padding: '12px',
-            border: '1px solid rgba(0,0,0,0.07)',
-            color: '#0d0d0d',
-            cursor: 'pointer',
-            textAlign: 'left',
-            outline: 'none',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px', 
-            marginBottom: '6px',
-            color: '#0d0d0d'
-          }}>
-            {renderIcon('id-card', 14)}
-            <span style={{ fontSize: '14px', fontWeight: '600' }}>ID Digital</span>
+      {/* Tarjetas ID Digital + Noticias */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+        <button onClick={() => setCurrentView('id-digital')} style={{ background: '#fff', borderRadius: '12px', padding: '14px', border: '1px solid #EAECF0', color: '#0d0d0d', cursor: 'pointer', textAlign: 'left', outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '5px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>ID Digital</span>
           </div>
-          <div style={{ 
-            fontSize: '12px', 
-            color: '#6b7280'
-          }}>
-            Verificado
-          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>Verificado</div>
         </button>
-
-        <button
-          onClick={() => setCurrentView('news')}
-          style={{
-            background: 'rgba(243,244,246,0.85)',
-            borderRadius: '10px',
-            padding: '12px',
-            border: '1px solid rgba(0,0,0,0.07)',
-            color: '#0d0d0d',
-            cursor: 'pointer',
-            textAlign: 'left',
-            outline: 'none',
-            transition: 'all 0.2s ease'
-          }}
-        >
-          <div style={{ 
-            display: 'flex', 
-            alignItems: 'center', 
-            gap: '6px', 
-            marginBottom: '6px',
-            color: '#0d0d0d'
-          }}>
-            {renderIcon('noticias', 14)}
-            <span style={{ fontSize: '14px', fontWeight: '600' }}>Noticias</span>
+        <button onClick={() => setCurrentView('news')} style={{ background: '#fff', borderRadius: '12px', padding: '14px', border: '1px solid #EAECF0', color: '#0d0d0d', cursor: 'pointer', textAlign: 'left', outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '5px' }}>
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><line x1="18" y1="2" x2="18" y2="22"/><line x1="14" y1="7" x2="14" y2="7"/><line x1="10" y1="7" x2="10" y2="7"/></svg>
+            <span style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>Noticias</span>
           </div>
-          <div style={{ 
-            fontSize: '12px', 
-            color: '#6b7280'
-          }}>
-            8 nuevas
-          </div>
+          <div style={{ fontSize: '12px', color: '#6b7280' }}>8 nuevas</div>
         </button>
       </div>
 
       {/* Accesos rapidos — 4 apps */}
-      <div style={{ marginTop: '12px', flex: 1 }}>
-        <div style={{ fontSize: '12px', fontWeight: '600', color: '#1a1a1a', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '10px' }}>Apps</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '4px', justifyItems: 'center' }}>
+      <div style={{ flex: 1 }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Apps</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', justifyItems: 'center' }}>
           {[
             {
               id: 'estados', label: 'Estados',
-              gradient: 'linear-gradient(135deg,#f472b6 0%,#ec4899 50%,#db2777 100%)',
-              shadow: '0 4px 16px rgba(236,72,153,0.45)',
-              icon: (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.95)" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
-                  <circle cx="12" cy="12" r="3.5" fill="rgba(255,255,255,0.25)" stroke="rgba(255,255,255,0.95)"/>
-                  <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" strokeWidth="1.8"/>
-                  <circle cx="12" cy="12" r="8" strokeDasharray="3 2.5" strokeWidth="1.2" stroke="rgba(255,255,255,0.6)"/>
-                </svg>
-              ),
+              bg: '#FFF0F7', border: '#FECDD3',
+              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#DB2777" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>,
             },
             {
               id: 'apuestas', label: 'Juegos',
-              gradient: 'linear-gradient(135deg,#a78bfa 0%,#7c3aed 50%,#5b21b6 100%)',
-              shadow: '0 4px 16px rgba(124,58,237,0.45)',
-              icon: (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  <rect x="2" y="2" width="20" height="20" rx="5" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5"/>
-                  <circle cx="8" cy="8" r="1.5" fill="rgba(255,255,255,0.95)"/>
-                  <circle cx="16" cy="8" r="1.5" fill="rgba(255,255,255,0.95)"/>
-                  <circle cx="8" cy="16" r="1.5" fill="rgba(255,255,255,0.95)"/>
-                  <circle cx="16" cy="16" r="1.5" fill="rgba(255,255,255,0.95)"/>
-                  <circle cx="12" cy="12" r="1.5" fill="rgba(255,255,255,0.95)"/>
-                  <path d="M10 12h4" stroke="rgba(255,255,255,0.5)" strokeWidth="1"/>
-                </svg>
-              ),
+              bg: '#F5F0FF', border: '#DDD6FE',
+              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="8" cy="8" r="1.5" fill="#7C3AED"/><circle cx="16" cy="8" r="1.5" fill="#7C3AED"/><circle cx="8" cy="16" r="1.5" fill="#7C3AED"/><circle cx="16" cy="16" r="1.5" fill="#7C3AED"/><circle cx="12" cy="12" r="1.5" fill="#7C3AED"/></svg>,
             },
             {
               id: 'cemac', label: 'Cemac',
-              gradient: 'linear-gradient(135deg,#34d399 0%,#059669 50%,#065f46 100%)',
-              shadow: '0 4px 16px rgba(5,150,105,0.45)',
-              icon: (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M12 2L2 8v13h20V8L12 2z" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5"/>
-                  <path d="M9 21V12h6v9" stroke="rgba(255,255,255,0.9)" strokeWidth="1.5"/>
-                  <path d="M8 8h8" stroke="rgba(255,255,255,0.6)" strokeWidth="1.2"/>
-                  <circle cx="12" cy="5.5" r="1.2" fill="rgba(255,255,255,0.9)"/>
-                </svg>
-              ),
+              bg: '#F0FDF4', border: '#BBF7D0',
+              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 8v13h20V8L12 2z"/><path d="M9 21V12h6v9"/></svg>,
             },
             {
               id: 'mitaxi', label: 'MiTaxi',
-              gradient: 'linear-gradient(135deg,#fbbf24 0%,#f59e0b 50%,#d97706 100%)',
-              shadow: '0 4px 16px rgba(245,158,11,0.45)',
-              icon: (
-                <svg width="30" height="30" viewBox="0 0 24 24" fill="none" strokeLinecap="round" strokeLinejoin="round">
-                  <path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" fill="rgba(255,255,255,0.18)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5"/>
-                  <circle cx="7.5" cy="17" r="2.5" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5"/>
-                  <circle cx="16.5" cy="17" r="2.5" fill="rgba(255,255,255,0.3)" stroke="rgba(255,255,255,0.95)" strokeWidth="1.5"/>
-                  <path d="M7 9h10" stroke="rgba(255,255,255,0.7)" strokeWidth="1.2"/>
-                  <path d="M12 6v3" stroke="rgba(255,255,255,0.5)" strokeWidth="1"/>
-                </svg>
-              ),
+              bg: '#FFFBEB', border: '#FDE68A',
+              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>,
             },
           ].map(item => (
             <button
               key={item.id}
               onClick={() => { setPreviousView(currentView); setCurrentView(item.id); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '4px 0', width: '100%', transition: 'all 0.25s ease', WebkitTapHighlightColor: 'transparent' }}
-              onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.06)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '4px 0', width: '100%', WebkitTapHighlightColor: 'transparent' }}
               onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.93)'; }}
-              onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-4px) scale(1.06)'; }}
+              onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
             >
-              {/* App icon — gradiente profesional */}
               <div style={{
-                width: 'clamp(52px, 14vw, 72px)',
-                height: 'clamp(52px, 14vw, 72px)',
-                borderRadius: 'clamp(14px, 3.8vw, 20px)',
-                background: item.gradient,
-                boxShadow: item.shadow,
-                border: '1px solid rgba(255,255,255,0.25)',
-                flexShrink: 0,
+                width: '62px', height: '62px',
+                borderRadius: '16px',
+                background: item.bg,
+                border: `1.5px solid ${item.border}`,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
-                position: 'relative',
-                overflow: 'hidden',
               }}>
-                {/* Brillo superior */}
-                <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '45%', background: 'linear-gradient(to bottom, rgba(255,255,255,0.28), transparent)', borderRadius: 'inherit', pointerEvents: 'none' }} />
                 {item.icon}
               </div>
-              <span style={{ fontSize: 'clamp(10px, 2.8vw, 13px)', color: '#1a1a1a', fontWeight: '700', textAlign: 'center', lineHeight: '1.2', maxWidth: 'clamp(52px, 14vw, 72px)', letterSpacing: '0.1px' }}>{item.label}</span>
+              <span style={{ fontSize: '12px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2' }}>{item.label}</span>
             </button>
           ))}
         </div>
@@ -5470,53 +5386,48 @@ const App: React.FC = () => {
   );
   };
 
-  // Renderizar vista de servicios ? estilo EGCHAT
+  // Renderizar vista de servicios — estilo EGCHAT
   const renderServicesView = () => {
     const Btn = ({ label, icon, color, onClick }: { label: string; icon: string; color: string; onClick: () => void }) => (
       <button
         onClick={onClick}
         className="svc-btn"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px', padding: '10px 6px 8px', transition: 'transform 0.15s ease' }}
-        onMouseEnter={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'translateY(0) scale(1)'; }}
-        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.93)'; }}
-        onMouseUp={e => { e.currentTarget.style.transform = 'translateY(-2px) scale(1.05)'; }}
+        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 4px 8px', transition: 'transform 0.15s ease', WebkitTapHighlightColor: 'transparent' }}
+        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)'; }}
+        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
+        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
       >
-        {/* Contenedor icono sin fondo, icono 28px */}
-        <div style={{ width: '48px', height: '48px', borderRadius: '12px', background: 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
-          {renderIcon(icon, 28)}
+        {/* Icono con fondo blanco y borde de color suave */}
+        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: '#fff', border: `1.5px solid ${color}30`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
+          {renderIcon(icon, 26)}
         </div>
-        <span style={{ fontSize: '12px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '60px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
+        <span style={{ fontSize: '11px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '58px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
       </button>
     );
 
     const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-      <div style={{ background: '#FFFFFF', borderRadius: '14px', marginBottom: '10px', overflow: 'hidden', boxShadow: '0 1px 4px rgba(0,0,0,0.06)', border: '1px solid #F0F2F5' }}>
-        <div style={{ padding: '10px 14px 6px', borderBottom: '1px solid #F3F4F6' }}>
-          <span style={{ fontSize: '12px', fontWeight: '600', color: '#9CA3AF' }}>{title}</span>
+      <div style={{ background: '#FFFFFF', borderRadius: '0', marginBottom: '0', overflow: 'hidden' }}>
+        <div style={{ padding: '12px 16px 4px' }}>
+          <span style={{ fontSize: '13px', fontWeight: '500', color: '#9CA3AF' }}>{title}</span>
         </div>
-        {/* 4 columnas */}
-        <div style={{ display: 'grid', gridTemplateColumns: device.isDesktop ? 'repeat(6, 1fr)' : device.isTablet ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)', gap: '0', padding: '6px 4px 8px' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: device.isDesktop ? 'repeat(6, 1fr)' : device.isTablet ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)', gap: '0', padding: '4px 8px 8px' }}>
           {children}
         </div>
+        <div style={{ height: '8px', background: '#F7F8FA' }} />
       </div>
     );
 
     return (
-      <div style={{ paddingTop: viewPadding.top, height: '100vh', display: 'flex', flexDirection: 'column', background: '#F7F8FA', }}>
-        <div style={{ padding: '10px 16px 8px', background: '#FFFFFF', borderBottom: '1px solid #F0F2F5', flexShrink: 0 }}>
-          <span style={{ fontSize: '17px', fontWeight: '700', color: '#111827' }}>Servicios</span>
-        </div>
-
+      <div style={{ paddingTop: viewPadding.top, height: '100vh', display: 'flex', flexDirection: 'column', background: '#F7F8FA' }}>
         <div className="scroll-container" style={{ flex: 1, overflowY: 'scroll', paddingBottom: device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px' }}>
-          <div style={{ height: '8px', background: '#F7F8FA' }} />
 
           {/* BÁSICOS */}
           <Section title="Básicos">
-            <Btn label="Recarga Tel." icon="recharge" color="#07C160" onClick={() => { setShowRechargeModal(true); }} />
+            <Btn label="Recarga..." icon="recharge" color="#07C160" onClick={() => { setShowRechargeModal(true); }} />
             <Btn label="Internet" icon="world" color="#1485EE" onClick={() => { setShowInternetModal(true); }} />
             <Btn label="Canales" icon="services" color="#8B5CF6" onClick={() => { setCanalesScreen('home'); setShowCanalesModal(true); }} />
           </Section>
+
           <Section title="Servicios Financieros">
             <Btn label="Bancos" icon="banking" color="#1485EE" onClick={() => setShowBancosModal(true)} />
             <Btn label="Seguros" icon="seguros" color="#2E9E6B" onClick={() => setShowSegurosModal(true)} />
@@ -5528,12 +5439,12 @@ const App: React.FC = () => {
 
           {/* SERVICIOS PÚBLICOS */}
           <Section title="Servicios Públicos">
-            <Btn label="Electricidad" icon="electricidad" color="#C47D2A" onClick={() => { setShowSvcModal('elec'); setSvcStep('main'); setSvcData({}); }} />
+            <Btn label="Electrici..." icon="electricidad" color="#C47D2A" onClick={() => { setShowSvcModal('elec'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Agua" icon="rain" color="#1485EE" onClick={() => { setShowSvcModal('agua'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Salud" icon="salud" color="#C0392B" onClick={() => setShowSaludModal(true)} />
             <Btn label="Educación" icon="edu" color="#6B5BD6" onClick={() => { setShowSvcModal('edu'); setSvcStep('main'); setSvcData({}); }} />
             <Btn label="Correos" icon="mensajes" color="#C47D2A" onClick={() => { setShowSvcModal('correos'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Impuestos" icon="gobierno" color="#C0392B" onClick={() => { setShowSvcModal('impuestos'); setSvcStep('main'); setSvcData({}); }} />
+            <Btn label="Impuest..." icon="gobierno" color="#C0392B" onClick={() => { setShowSvcModal('impuestos'); setSvcStep('main'); setSvcData({}); }} />
           </Section>
 
           {/* SERVICIOS DIARIOS */}
