@@ -2898,7 +2898,7 @@ const App: React.FC = () => {
 
       {/* Logo y texto / Botón de regreso */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '0px' }}>
-        {['news','banking','historial-completo','id-digital'].includes(currentView) ? (
+        {['news','banking','historial-completo','id-digital','contactos','grupos','Lia-25','estados','apuestas','cemac','mitaxi'].includes(currentView) ? (
           // Botón de regreso para vistas secundarias
           <button
             onClick={() => setCurrentView('home')}
@@ -2960,44 +2960,17 @@ const App: React.FC = () => {
         )}
       </div>
 
-      {/* Título de la vista activa — centro del header, alineado con la fila de iconos */}
-      {currentView !== 'home' && (
-        <div style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          transform: 'translate(-50%, -50%)',
-          pointerEvents: 'none',
-          whiteSpace: 'nowrap',
-          maxWidth: 'calc(100% - 260px)',
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          zIndex: 1,
-        }}>
-          <span style={{ fontSize: '16px', fontWeight: '700', color: '#fff', letterSpacing: '-0.3px', textShadow: '0 1px 3px rgba(0,0,0,0.2)' }}>
-            {currentView === 'monedero' ? 'Mi Cartera'
-            : currentView === 'servicios' ? 'Servicios'
-            : currentView === 'ajustes' ? 'Ajustes'
-            : currentView === 'Mensajería' ? 'Mensajería'
-            : currentView === 'news' ? 'Noticias'
-            : currentView === 'banking' ? 'Banca'
-            : currentView === 'id-digital' ? 'ID Digital'
-            : ''}
-          </span>
-        </div>
-      )}
-
       {/* Hora, clima y controles */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '3px' }}>
 
-        {/* Clima — compacto cuando hay título de vista */}
-          <div style={{ position: 'relative' }}>
+        {/* Clima — siempre igual en todas las vistas */}
+        <div style={{ position: 'relative' }}>
           <div
             onClick={() => setShowWeatherModal(true)}
             style={{
               display: 'flex', alignItems: 'center', gap: '4px',
               background: 'rgba(8,18,36,0.88)',
-              padding: '5px 8px',
+              padding: '5px 10px',
               borderRadius: '50px',
               border: '1px solid rgba(255,255,255,0.13)',
               boxShadow: '0 2px 12px rgba(0,0,0,0.35), inset 0 1px 0 rgba(255,255,255,0.08)',
@@ -3006,7 +2979,7 @@ const App: React.FC = () => {
           >
             <div style={{ color: '#fbbf24' }}>{renderIcon(weather.condition === 'sunny' ? 'sun' : weather.condition === 'cloudy' ? 'cloud' : 'rain', 12)}</div>
             <span style={{ fontSize: '12px', fontWeight: '700', color: '#ffffff' }}>{weather.temp}°</span>
-            {currentView === 'home' && <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>}
+            <span style={{ fontSize: '11px', color: 'rgba(255,255,255,0.85)' }}>{weather.city}</span>
           </div>
         </div>
 
