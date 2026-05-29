@@ -32,6 +32,4 @@ jobs:
           VERCEL_PROJECT_ID: prj_9qzYAHpFlidijZq8ijsWbpVf7lmY
         run: |
           npm install -g vercel@latest
-          vercel pull --yes --environment=production --token=$VERCEL_TOKEN
-          vercel build --prod --token=$VERCEL_TOKEN
           vercel deploy --prebuilt --prod --token=$VERCEL_TOKEN
