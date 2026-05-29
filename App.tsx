@@ -207,10 +207,11 @@ const App: React.FC = () => {
   // Con overlaysWebView:false el WebView empieza DEBAJO de la status bar del sistema.
   // El padding top del contenido solo necesita la altura del header (44px) + margen.
   // Igual que en iPhone — sin sumar la status bar porque ya está fuera del WebView.
+  // Bottom padding: 64px (tab bar height) + safe-area + 16px extra spacing
   const viewPadding = {
     top: device.isMobile ? 'calc(44px + 8px)' : '60px',
     bottom: device.isMobile
-      ? 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)'
+      ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)'
       : '24px',
     left: device.isDesktop ? '24px' : '16px',
     right: device.isDesktop ? '24px' : '16px',
@@ -5147,7 +5148,7 @@ const App: React.FC = () => {
       paddingTop: viewPadding.top,
       paddingLeft: '16px',
       paddingRight: '16px',
-      paddingBottom: 'calc(58px + env(safe-area-inset-bottom, 0px) + 8px)',
+      paddingBottom: viewPadding.bottom,
       height: '100vh',
       overflowY: 'auto',
       background: 'transparent'
@@ -5507,7 +5508,7 @@ const App: React.FC = () => {
           <span style={{ fontSize: '17px', fontWeight: '700', color: '#111827' }}>Servicios</span>
         </div>
 
-        <div className="scroll-container" style={{ flex: 1, overflowY: 'scroll', paddingBottom: '100px' }}>
+        <div className="scroll-container" style={{ flex: 1, overflowY: 'scroll', paddingBottom: device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px' }}>
           <div style={{ height: '8px', background: '#F7F8FA' }} />
 
           {/* BÁSICOS */}
@@ -7506,7 +7507,7 @@ const App: React.FC = () => {
             {/* Lista de conversacines ? datos reales del backend */}
             <div
               className="scroll-container"
-              style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: '100px' }}
+              style={{ flex: 1, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, paddingBottom: device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px' }}
             >
               {/* Archivados bloqueados */}
               {messageFilter === 'archived' && !archiveUnlocked && (
@@ -8466,7 +8467,7 @@ const App: React.FC = () => {
       case 'historial-completo':
         return (
           <div style={{
-            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? '90px' : '24px'}`,
+            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8928,7 +8929,7 @@ const App: React.FC = () => {
       case 'grupos':
         return (
           <div style={{
-            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? '90px' : '24px'}`,
+            padding: `${device.isMobile ? '66px' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -9166,7 +9167,7 @@ const App: React.FC = () => {
             paddingTop: viewPadding.top,
             paddingLeft: '12px',
             paddingRight: '12px',
-            paddingBottom: device.isMobile ? '90px' : '24px',
+            paddingBottom: device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px',
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
