@@ -204,11 +204,11 @@ const App: React.FC = () => {
   const device = useDevice();
 
   // Helper: padding de contenido según dispositivo
-  // El header tiene: paddingTop: env(safe-area-inset-top, 44px) + height: 44px
-  // Total header = env(safe-area-inset-top, 44px) + 44px
-  // En Android con overlaysWebView:false, safe-area-inset-top fallback = 44px → header = 88px
+  // iPhone con overlaysWebView:false:
+  //   Header = env(safe-area-inset-top) + 44px (barra de iconos)
+  //   Contenido debe empezar en: safe-area-inset-top + 44px + 8px margen
   const viewPadding = {
-    top: device.isMobile ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)' : '60px',
+    top: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px',
     bottom: device.isMobile
       ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)'
       : '24px',
@@ -6988,8 +6988,9 @@ const App: React.FC = () => {
         }
         return (
           <div style={{
-            padding: '0 8px 0px',
-            paddingTop: device.isMobile ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)' : '8px',
+            paddingTop: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '8px',
+            paddingLeft: '8px',
+            paddingRight: '8px',
             height: device.isMobile ? '100vh' : 'calc(100vh - 44px)',
             marginTop: device.isMobile ? '0' : '44px',
             width: device.isMobile ? '100%' : (device.isTablet ? '280px' : '300px'),
@@ -7000,6 +7001,7 @@ const App: React.FC = () => {
             position: 'relative',
             zIndex: 1002,
             borderRight: device.isMobile ? 'none' : '1px solid #e5e7eb',
+            boxSizing: 'border-box',
           }}>
             {/* Header - Ultra minimalista */}
             <div style={{ marginBottom: '8px', flexShrink: 0 }}>
@@ -8350,7 +8352,7 @@ const App: React.FC = () => {
       case 'historial-completo':
         return (
           <div style={{
-            padding: `${device.isMobile ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8535,7 +8537,7 @@ const App: React.FC = () => {
         // La carga se hace via useEffect cuando currentView === 'contactos'
         return (
           <div style={{
-            padding: `${device.isMobile ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
@@ -8812,7 +8814,7 @@ const App: React.FC = () => {
       case 'grupos':
         return (
           <div style={{
-            padding: `${device.isMobile ? 'calc(44px + env(safe-area-inset-top, 44px) + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
+            padding: `${device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px'} 12px ${device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px'}`,
             height: '100vh',
             overflow: 'hidden',
             display: 'flex',
