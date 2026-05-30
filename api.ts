@@ -106,8 +106,11 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
     if (res.status === 401) {
       const err = await res.json().catch(() => ({ message: '' }));
       const message = err.message || 'No autorizado';
-      // Disparar evento para que App.tsx limpie la sesión
-      window.dispatchEvent(new CustomEvent('auth:expired'));
+      // Solo disparar auth:expired si hay un token activo (no durante login)
+      const hasToken = !!localStorage.getItem('token') || !!localStorage.getItem('egchat_token_backup');
+      if (hasToken && !path.includes('/auth/login') && !path.includes('/auth/register')) {
+        window.dispatchEvent(new CustomEvent('auth:expired'));
+      }
       throw new Error(message);
     }
     if (!res.ok) {
