@@ -9729,7 +9729,7 @@ const App: React.FC = () => {
                             localStorage.removeItem('egchat_chats_cache');
                             localStorage.removeItem('egchat_msgs_index');
                             setIsAuthenticated(false);
-                            setUserProfile({ id:'', name:'Usuario', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
+                            setUserProfile({ id:'', name:'', phone:'', email:'', address:'', city:'', country:'Guinea Ecuatorial', avatar:'U', avatarUrl:'', joinDate: new Date().toLocaleDateString('es-ES'), verificationStatus:'pending', twoFactorEnabled:false, notificationsEnabled:true });
                             setRealChats([]); setSelectedChat(null); setCurrentView('home');
                           } catch {
                             localStorage.removeItem('user_avatar');
@@ -10603,13 +10603,14 @@ const App: React.FC = () => {
   // Escuchar evento de token expirado desde api.ts
   useEffect(() => {
     const handleExpired = () => {
-      // Solo cerrar sesión si realmente no hay token
-      const token = localStorage.getItem('token') || localStorage.getItem('egchat_token_backup');
-      if (!token) {
-        setIsAuthenticated(false);
-        setSelectedChat(null);
-        setCurrentView('home');
-      }
+      // Limpiar tokens y forzar re-login
+      localStorage.removeItem('token');
+      localStorage.removeItem('egchat_token_backup');
+      localStorage.removeItem('egchat_user_profile');
+      setIsAuthenticated(false);
+      setSelectedChat(null);
+      setCurrentView('home');
+      showToast('Sesión expirada — inicia sesión de nuevo', 'error');
     };
     window.addEventListener('auth:expired', handleExpired);
     return () => window.removeEventListener('auth:expired', handleExpired);

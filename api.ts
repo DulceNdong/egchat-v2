@@ -106,8 +106,8 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
     if (res.status === 401) {
       const err = await res.json().catch(() => ({ message: '' }));
       const message = err.message || 'No autorizado';
-      // No cerrar sesión automáticamente aquí: en Android WebView algunos 401
-      // transitorios provocan rebote inmediato al login.
+      // Disparar evento para que App.tsx limpie la sesión
+      window.dispatchEvent(new CustomEvent('auth:expired'));
       throw new Error(message);
     }
     if (!res.ok) {
