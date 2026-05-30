@@ -3639,7 +3639,18 @@ const App: React.FC = () => {
                     style={{ background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.08)', borderRadius: '8px', padding: '6px 10px', color: '#374151', fontSize: '14px', cursor: 'pointer', outline: 'none' }}>
                     Cancelar
                   </button>
-                  <button onClick={() => { setUserProfile({ ...editedProfile }); setIsEditingProfile(false); setEditedProfile(null); }}
+                  <button onClick={async () => {
+                    try {
+                      await authAPI.updateProfile({ full_name: editedProfile.name, avatar_url: editedProfile.avatarUrl });
+                      const updatedProfile = { ...editedProfile };
+                      setUserProfile(updatedProfile);
+                      localStorage.setItem('egchat_user_profile', JSON.stringify(updatedProfile));
+                      showToast('Perfil actualizado', 'success');
+                    } catch (e: any) {
+                      showToast(e?.message || 'Error al guardar', 'error');
+                    }
+                    setIsEditingProfile(false); setEditedProfile(null);
+                  }}
                     style={{ background: 'rgba(0,200,160,0.2)', border: '1px solid rgba(0,200,160,0.4)', borderRadius: '8px', padding: '6px 10px', color: '#00c8a0', fontSize: '14px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
                     Guardar
                   </button>
@@ -9698,6 +9709,49 @@ const App: React.FC = () => {
                       </div>
                       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
+
+                    {/* Formulario de edición inline */}
+                    {isEditingProfile && editedProfile && (
+                      <div style={{ background: '#f9fafb', border: '1px solid #e5e7eb', borderRadius: '14px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                        {[
+                          { label: 'Nombre', key: 'name', type: 'text' },
+                          { label: 'Email', key: 'email', type: 'email' },
+                          { label: 'Ciudad', key: 'city', type: 'text' },
+                          { label: 'Dirección', key: 'address', type: 'text' },
+                        ].map(f => (
+                          <div key={f.key}>
+                            <div style={{ fontSize: '12px', color: '#6b7280', marginBottom: '4px', fontWeight: '600' }}>{f.label}</div>
+                            <input
+                              type={f.type}
+                              value={editedProfile[f.key] || ''}
+                              onChange={e => setEditedProfile((p: any) => ({ ...p, [f.key]: e.target.value }))}
+                              style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #e5e7eb', borderRadius: '10px', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: '#fff' }}
+                            />
+                          </div>
+                        ))}
+                        <div style={{ display: 'flex', gap: '8px', marginTop: '4px' }}>
+                          <button onClick={() => { setIsEditingProfile(false); setEditedProfile(null); }}
+                            style={{ flex: 1, padding: '11px', background: '#f3f4f6', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '600', color: '#374151', cursor: 'pointer' }}>
+                            Cancelar
+                          </button>
+                          <button onClick={async () => {
+                            try {
+                              await authAPI.updateProfile({ full_name: editedProfile.name, avatar_url: editedProfile.avatarUrl });
+                              const updated = { ...editedProfile };
+                              setUserProfile(updated);
+                              localStorage.setItem('egchat_user_profile', JSON.stringify(updated));
+                              showToast('✓ Perfil actualizado', 'success');
+                            } catch (e: any) {
+                              showToast(e?.message || 'Error al guardar', 'error');
+                            }
+                            setIsEditingProfile(false); setEditedProfile(null);
+                          }}
+                            style={{ flex: 1, padding: '11px', background: 'linear-gradient(135deg,#00c8a0,#00b4e6)', border: 'none', borderRadius: '10px', fontSize: '14px', fontWeight: '700', color: '#fff', cursor: 'pointer' }}>
+                            Guardar
+                          </button>
+                        </div>
+                      </div>
+                    )}
 
                     {/* PIN de pago */}
                     <button
