@@ -1,6 +1,6 @@
 // EGCHAT Service Worker — notificaciones push + cache offline de assets
-// Versión: egchat-push-v20260602
-const SW_VERSION = 'egchat-push-v20260602';
+// Versión: egchat-push-v20260603
+const SW_VERSION = 'egchat-push-v20260603';
 
 // Cache para assets estáticos (JS, CSS, imágenes, fuentes)
 // Estrategia: cache-first con fallback a red — funciona offline
