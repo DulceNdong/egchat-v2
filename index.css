@@ -1044,3 +1044,70 @@ span, p, div, label, li, td, th, button {
     display: none !important;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ANDROID PERFORMANCE — GPU compositing + scroll fluido
+   Aplicado solo en Android para no afectar iOS ni desktop
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* Forzar GPU layer en los contenedores que más se mueven */
+.chat-view-container,
+.chat-messages-scroll,
+#chat-input-bar,
+.eg-sheet,
+.radial-menu-item,
+.bottom-nav-button {
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+/* Scroll nativo fluido en Android WebView */
+.chat-messages-scroll,
+.scroll-container,
+[style*="overflow-y: auto"],
+[style*="overflowY: auto"],
+[style*="overflow-y: scroll"],
+[style*="overflowY: scroll"] {
+  -webkit-overflow-scrolling: touch;
+  scroll-behavior: auto; /* auto es más rápido que smooth en Android */
+}
+
+/* Tap response instantáneo — eliminar el delay de 300ms en Android */
+* {
+  touch-action: manipulation;
+}
+
+/* Inputs y botones: área táctil mínima de 44px para evitar misclicks */
+button,
+input[type="submit"],
+input[type="button"],
+[role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+}
+
+/* Reducir repaints en listas de chats — contener el layout de cada item */
+.swipe-chat-item,
+[data-chat-item] {
+  contain: layout style;
+  will-change: transform;
+}
+
+/* Animaciones: usar solo transform y opacity (propiedades GPU) */
+/* Evitar animar width, height, top, left, margin, padding */
+@media (max-width: 767px) {
+  /* En móvil, desactivar box-shadow en hover para evitar repaints */
+  .eg-card:hover {
+    box-shadow: var(--shadow-sm) !important;
+    transform: none !important;
+  }
+
+  /* Reducir blur en móvil — muy costoso en Android */
+  .glass-effect {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: rgba(255, 255, 255, 0.92);
+  }
+}

@@ -1,5 +1,23 @@
 ﻿import ReactDOM from 'react-dom/client';
+import React, { Suspense } from 'react';
 import App from './App';
+
+// ErrorBoundary para lazy imports — evita que un chunk fallido cuelgue la app
+class AppErrorBoundary extends React.Component<{children: React.ReactNode}, {hasError: boolean}> {
+  constructor(props: any) { super(props); this.state = { hasError: false }; }
+  static getDerivedStateFromError() { return { hasError: true }; }
+  render() {
+    if (this.state.hasError) {
+      // Recargar la página limpiando caches — soluciona chunks obsoletos
+      if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+      setTimeout(() => window.location.reload(), 500);
+      return <div style={{ position: 'fixed', inset: 0, background: '#f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>Actualizando...</div>
+      </div>;
+    }
+    return this.props.children;
+  }
+}
 import './index.css';
 import initSelectionErrorHandler from './selectionErrorHandler';
 import { WalletProvider } from './WalletSystem';
@@ -19,7 +37,7 @@ setupSplashSafetyTimeout();
 
 // ── Forzar limpieza de SW y caches viejos ────────────────────────────────
 // Versión de la app — cambiar esto fuerza que todos los usuarios recarguen
-const APP_VERSION = 'v20260526-layout-fix-v3';
+const APP_VERSION = 'v20260601-perf-fixes';
 const isNativeApp = Capacitor.isNativePlatform();
 const storedVersion = localStorage.getItem('egchat_app_version');
 if (storedVersion !== APP_VERSION) {
@@ -32,8 +50,10 @@ if (storedVersion !== APP_VERSION) {
     });
   }
   localStorage.setItem('egchat_app_version', APP_VERSION);
-  // iOS PWA: reload rompe el arranque en standalone — solo limpiar caché sin recargar
-  if (storedVersion && !isIOS() && !isNativeApp) {
+  // iOS (PWA o Safari) y app nativa: NUNCA recargar — causa bucle infinito
+  // Solo recargar en web desktop/Android browser cuando hay versión previa
+  const iosDevice = isIOS();
+  if (storedVersion && !iosDevice && !isNativeApp) {
     window.location.reload();
   }
 }
@@ -272,9 +292,13 @@ async function registerServiceWorkerForPush() {
 };
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <WalletProvider>
-    <App />
-  </WalletProvider>
+  <AppErrorBoundary>
+    <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: '#f0f2f5' }} />}>
+      <WalletProvider>
+        <App />
+      </WalletProvider>
+    </Suspense>
+  </AppErrorBoundary>
 );
 
 // ── Ocultar splash cuando React esté montado y la web lista ──────────────────

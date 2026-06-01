@@ -20,9 +20,8 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     backgroundColor: '#00c8a0',
     captureInput: true,
-    // true en desarrollo para poder inspeccionar con Chrome DevTools (chrome://inspect)
-    // Cambiar a false antes de publicar en producción
-    webContentsDebuggingEnabled: true,
+    // false en producción — solo activar para depuración con Chrome DevTools
+    webContentsDebuggingEnabled: false,
     navigationBarColor: '#00000000',
   },
   ios: {

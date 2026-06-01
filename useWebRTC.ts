@@ -256,6 +256,17 @@ export function useWebRTC() {
       localStreamRef.current.getTracks().forEach(t => t.stop());
       localStreamRef.current = null;
     }
+    // Limpiar elemento de audio del DOM para liberar recursos
+    if (remoteAudioRef.current) {
+      try {
+        remoteAudioRef.current.pause();
+        remoteAudioRef.current.srcObject = null;
+        if (document.body.contains(remoteAudioRef.current)) {
+          document.body.removeChild(remoteAudioRef.current);
+        }
+      } catch {}
+      remoteAudioRef.current = null;
+    }
     iceSentRef.current.clear();
     setRemoteStream(null);
     setLocalStream(null);
@@ -288,23 +299,37 @@ export function useWebRTC() {
     p.ontrack = (e) => {
       const stream = e.streams[0] || new MediaStream([e.track]);
       setRemoteStream(stream);
-      // Forzar reproducción del audio con múltiples intentos
+
+      if (e.track.kind !== 'audio') {
+        console.log('📥 Track recibido:', e.track.kind);
+        return;
+      }
+
+      // ── Audio remoto: adjuntar a un elemento <audio> en el DOM ──────────
+      // Android WebView bloquea Audio() creado fuera del DOM con srcObject.
+      // La solución es insertar un <audio> real en el DOM y asignarlo.
       const playAudio = (attempt = 0) => {
-        if (!remoteAudioRef.current) {
-          remoteAudioRef.current = new Audio();
-          remoteAudioRef.current.autoplay = true;
-          (remoteAudioRef.current as any).playsInline = true;
+        // Reusar el elemento existente o crear uno nuevo en el DOM
+        let audio = remoteAudioRef.current;
+        if (!audio || !document.body.contains(audio)) {
+          audio = document.createElement('audio');
+          audio.autoplay = true;
+          audio.setAttribute('playsinline', '');
+          audio.setAttribute('webkit-playsinline', '');
+          audio.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
+          document.body.appendChild(audio);
+          remoteAudioRef.current = audio;
         }
-        const audio = remoteAudioRef.current;
-        if (e.track.kind === 'audio') {
-          audio.srcObject = stream;
-          audio.play().catch((err) => {
-            console.warn(`Audio play attempt ${attempt + 1} failed:`, err);
-            if (attempt < 5) setTimeout(() => playAudio(attempt + 1), 500 * (attempt + 1));
-          });
-        }
+        audio.srcObject = stream;
+        const tryPlay = () => audio!.play().catch((err) => {
+          console.warn(`Audio play attempt ${attempt + 1} failed:`, err);
+          if (attempt < 8) setTimeout(() => playAudio(attempt + 1), 400 * (attempt + 1));
+        });
+        // En Android, el play() debe ocurrir después de un pequeño delay
+        // para que el WebView procese el srcObject correctamente
+        if (attempt === 0) setTimeout(tryPlay, 100); else tryPlay();
       };
-      if (e.track.kind === 'audio') playAudio();
+      playAudio();
       console.log('📥 Track recibido:', e.track.kind);
     };
 
@@ -716,7 +741,17 @@ export function useWebRTC() {
   const endCall = useCallback(async () => {
     endedRef.current = true;
     if (callIdRef.current) {
-      try { await sigFetch(`/call/${callIdRef.current}`, 'DELETE'); } catch {}
+      // Reintentar el DELETE hasta 3 veces para garantizar que el backend
+      // marque la llamada como terminada y el otro lado la reciba
+      const callId = callIdRef.current;
+      const tryDelete = async (attempt: number) => {
+        try {
+          await sigFetch(`/call/${callId}`, 'DELETE');
+        } catch {
+          if (attempt < 3) setTimeout(() => tryDelete(attempt + 1), 800);
+        }
+      };
+      tryDelete(0);
     }
     cleanupResources();
     setCallState('idle');

@@ -275,7 +275,8 @@ const App: React.FC = () => {
     if (!isHydrating) return;
     const done = () => setIsHydrating(false);
     const raf = requestAnimationFrame(done);
-    const t = setTimeout(done, 100);
+    // 500ms de seguridad — 100ms era demasiado corto en iOS PWA con bfcache
+    const t = setTimeout(done, 500);
     return () => { cancelAnimationFrame(raf); clearTimeout(t); };
   }, [isHydrating]);
 
@@ -6771,7 +6772,9 @@ const App: React.FC = () => {
                           const chatId = sc.id?.toString() || '';
                           const inp = document.createElement('input');
                           inp.type='file'; inp.accept='image/*,image/heic,image/heif';
-                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          // Android WebView: NO usar pointer-events:none ni z-index:-1
+                          // El input debe ser accesible para que el gesto del usuario sea válido
+                          inp.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;';
                           document.body.appendChild(inp);
                           const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
                           inp.addEventListener('change', async () => {
@@ -6801,7 +6804,8 @@ const App: React.FC = () => {
                             }
                           });
                           inp.addEventListener('cancel', cleanup);
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                          // Android: click directo sin rAF — el doble rAF rompe la cadena de gesto
+                          inp.click();
                         }
                       },
                       {
@@ -6813,7 +6817,7 @@ const App: React.FC = () => {
                           const chatId = sc.id?.toString() || '';
                           const inp = document.createElement('input');
                           inp.type='file'; inp.accept='video/*';
-                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          inp.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;';
                           document.body.appendChild(inp);
                           const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
                           inp.addEventListener('change', async () => {
@@ -6833,7 +6837,7 @@ const App: React.FC = () => {
                             } catch { showToast('Error al subir video', 'error'); }
                           });
                           inp.addEventListener('cancel', cleanup);
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                          inp.click();
                         }
                       },
                       {
@@ -6846,7 +6850,7 @@ const App: React.FC = () => {
                           const inp = document.createElement('input');
                           inp.type='file';
                           inp.accept='.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.csv,.zip,.rar,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                          inp.style.cssText='position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          inp.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;';
                           document.body.appendChild(inp);
                           const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
                           inp.addEventListener('change', async () => {
@@ -6867,7 +6871,7 @@ const App: React.FC = () => {
                             } catch { showToast('Error al subir archivo', 'error'); }
                           });
                           inp.addEventListener('cancel', cleanup);
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                          inp.click();
                         }
                       },
                       {
@@ -6923,7 +6927,7 @@ const App: React.FC = () => {
                           const inp = document.createElement('input');
                           inp.type = 'file';
                           inp.accept = '.mp3,.mp4,.m4a,.aac,.ogg,.oga,.opus,.wav,.flac,.wma,.aiff,.aif,.amr,.3gp,.webm,audio/*';
-                          inp.style.cssText = 'position:fixed;bottom:0;left:0;width:100%;height:1px;opacity:0;z-index:-1;pointer-events:none;';
+                          inp.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;';
                           document.body.appendChild(inp);
                           const cleanup = () => { try { if (document.body.contains(inp)) document.body.removeChild(inp); } catch {} };
                           inp.addEventListener('change', async () => {
@@ -6948,7 +6952,7 @@ const App: React.FC = () => {
                             }
                           });
                           inp.addEventListener('cancel', cleanup);
-                          requestAnimationFrame(() => { requestAnimationFrame(() => { inp.click(); }); });
+                          inp.click();
                         }
                       },
                       {
@@ -12191,7 +12195,23 @@ const App: React.FC = () => {
             localStorage.setItem('user_avatar', croppedUrl);
             setUserProfile((p: any) => ({ ...p, avatarUrl: croppedUrl }));
             try {
-              await authAPI.updateProfile({ avatar_url: croppedUrl });
+              // Subir como multipart (más fiable en Android que base64 JSON)
+              let uploaded = false;
+              try {
+                const res = await fetch(croppedUrl);
+                const blob = await res.blob();
+                const file = new File([blob], 'avatar.jpg', { type: blob.type || 'image/jpeg' });
+                const result = await userAPI.uploadAvatar(file);
+                if (result?.avatar_url) {
+                  localStorage.setItem('user_avatar', result.avatar_url);
+                  setUserProfile((p: any) => ({ ...p, avatarUrl: result.avatar_url }));
+                  uploaded = true;
+                }
+              } catch {}
+              // Fallback: base64 si el upload multipart falla
+              if (!uploaded) {
+                await authAPI.updateProfile({ avatar_url: croppedUrl });
+              }
             } catch (e) {
               console.warn('No se pudo guardar avatar en backend:', e);
             }
