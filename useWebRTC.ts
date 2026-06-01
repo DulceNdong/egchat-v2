@@ -403,9 +403,13 @@ export function useWebRTC() {
       }
     };
 
-    // ── INTERCEPTAR SDP EN ANDROID ──────────────────────────────────────────────
-    if (isAndroid) {
-      console.log('🤖 Android detectado → Aplicando optimizaciones H.264/Opus');
+    // ── INTERCEPTAR SDP EN MÓVIL (Android + iOS) ────────────────────────────────
+    // iOS solo soporta H.264. Android anuncia VP8 por defecto.
+    // Forzar H.264 en ambos lados garantiza compatibilidad cruzada PWA ↔ Web.
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const needsSdpFix = isAndroid || isIOS;
+    if (needsSdpFix) {
+      console.log(`📱 ${isIOS ? 'iOS' : 'Android'} detectado → Aplicando optimizaciones H.264/Opus`);
 
       const originalCreateOffer = p.createOffer.bind(p);
       p.createOffer = async (options?: RTCOfferOptions): Promise<RTCSessionDescriptionInit> => {
@@ -414,7 +418,7 @@ export function useWebRTC() {
           let modifiedSDP = offer.sdp;
           modifiedSDP = forceH264InSDP(modifiedSDP);
           modifiedSDP = forceOpusInSDP(modifiedSDP);
-          console.log('📤 SDP Offer (H.264 forzado):', modifiedSDP.substring(0, 500));
+          console.log('📤 SDP Offer (H.264 forzado):', modifiedSDP.substring(0, 200));
           return { type: 'offer', sdp: modifiedSDP };
         }
         return offer;
@@ -427,7 +431,7 @@ export function useWebRTC() {
           let modifiedSDP = answer.sdp;
           modifiedSDP = forceH264InSDP(modifiedSDP);
           modifiedSDP = forceOpusInSDP(modifiedSDP);
-          console.log('📥 SDP Answer (H.264 forzado):', modifiedSDP.substring(0, 500));
+          console.log('📥 SDP Answer (H.264 forzado):', modifiedSDP.substring(0, 200));
           return { type: 'answer', sdp: modifiedSDP };
         }
         return answer;
@@ -739,11 +743,14 @@ export function useWebRTC() {
    }, [cleanup, createPC, sendIceCandidate, triggerEnded]);
 
   const endCall = useCallback(async () => {
+    if (endedRef.current) return; // evitar doble llamada
     endedRef.current = true;
-    if (callIdRef.current) {
-      // Reintentar el DELETE hasta 3 veces para garantizar que el backend
-      // marque la llamada como terminada y el otro lado la reciba
-      const callId = callIdRef.current;
+    const callId = callIdRef.current;
+    // Limpiar recursos inmediatamente para que la UI responda al instante
+    cleanupResources();
+    setCallState('idle');
+    // Notificar al servidor en background (con reintentos)
+    if (callId) {
       const tryDelete = async (attempt: number) => {
         try {
           await sigFetch(`/call/${callId}`, 'DELETE');
@@ -753,8 +760,6 @@ export function useWebRTC() {
       };
       tryDelete(0);
     }
-    cleanupResources();
-    setCallState('idle');
   }, [cleanupResources]);
 
   const toggleMute = useCallback(() => {
