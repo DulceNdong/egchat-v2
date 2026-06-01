@@ -204,13 +204,13 @@ const App: React.FC = () => {
   const device = useDevice();
 
   // Helper: padding de contenido según dispositivo
-  // iPhone con overlaysWebView:false:
-  //   Header = env(safe-area-inset-top) + 44px (barra de iconos)
-  //   Contenido debe empezar en: safe-area-inset-top + 44px + 8px margen
+  // Header nativo visual:
+  //   Android dibuja el WebView bajo la status bar para que no parezcan dos headers.
+  //   --app-statusbar-top rellena solo el espacio de iconos del sistema.
   const viewPadding = {
-    top: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '60px',
-    bottom: device.isMobile
-      ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)'
+    top: device.isMobile ? 'calc(var(--app-statusbar-top, 0px) + 44px + 8px)' : '60px',
+    bottom: device.isMobile 
+      ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' 
       : '24px',
     left: device.isDesktop ? '24px' : '16px',
     right: device.isDesktop ? '24px' : '16px',
@@ -282,17 +282,14 @@ const App: React.FC = () => {
     }
   }, [isAuthenticated]);
   // -- WebRTC real -----------------------------------------------
-  // -- StatusBar: overlaysWebView:false en Android e iOS.
-  // La status bar queda FUERA del WebView. Su color (#00c8a0) es igual al header,
-  // creando el efecto visual continuo que se ve en iPhone.
-  // El header NO necesita paddingTop — empieza en top:0 del WebView.
+  // -- StatusBar integrada: una sola cabecera visual en Android.
   useEffect(() => {
     if (!isAuthenticated) return;
     try {
       const { StatusBar, Style } = (window as any).Capacitor?.Plugins || {};
       if (StatusBar) {
-        StatusBar.setOverlaysWebView({ overlay: false });
-        StatusBar.setBackgroundColor({ color: '#00c8a0' });
+        StatusBar.setOverlaysWebView({ overlay: true });
+        StatusBar.setBackgroundColor({ color: '#00000000' });
         if (Style) StatusBar.setStyle({ style: Style.Light || 'LIGHT' });
       }
     } catch {}
@@ -1081,11 +1078,10 @@ const App: React.FC = () => {
     };
   }, []);
 
-  // Con overlaysWebView:false la status bar queda fuera del WebView en Android e iOS.
-  // No necesitamos calcular su altura — el sistema la gestiona automáticamente.
-  // Solo necesitamos leer safe-area-inset-top en iOS para el home indicator.
+  // Altura visual de status bar para que el header sea una sola pieza.
   React.useEffect(() => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+    const isAndroid = /android/i.test(navigator.userAgent);
     if (isIOS) {
       const el = document.createElement('div');
       el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;';
@@ -1094,6 +1090,11 @@ const App: React.FC = () => {
       document.body.removeChild(el);
       const safeAreaTop = Math.max(safeTop, 20);
       document.documentElement.style.setProperty('--ios-safe-top', `${safeAreaTop}px`);
+      document.documentElement.style.setProperty('--app-statusbar-top', `${safeAreaTop}px`);
+    } else if (isAndroid) {
+      document.documentElement.style.setProperty('--app-statusbar-top', '24px');
+    } else {
+      document.documentElement.style.setProperty('--app-statusbar-top', '0px');
     }
   }, []);
 
@@ -2886,10 +2887,9 @@ const App: React.FC = () => {
       display: 'flex',
       flexDirection: 'column',
       zIndex: 1000,
-      boxShadow: '0 2px 8px rgba(0,200,160,0.3)',
+      boxShadow: 'none',
       overflow: 'hidden',
-      // paddingTop dinámico: respeta la safe area del iPhone (notch/Dynamic Island)
-      paddingTop: device.isMobile ? 'env(safe-area-inset-top, 44px)' : '0px',
+      paddingTop: device.isMobile ? 'var(--app-statusbar-top, 0px)' : '0px',
       willChange: 'transform',
       transform: 'translateZ(0)',
     }}>
@@ -4008,6 +4008,11 @@ const App: React.FC = () => {
       setRepertorioLoading(false);
     }
   }, [allContacts, userProfile.id]);
+
+  React.useEffect(() => {
+    if (!showNewChatModal || repertorioUsers.length > 0 || repertorioLoading) return;
+    loadRepertorioUsers();
+  }, [showNewChatModal, repertorioUsers.length, repertorioLoading, loadRepertorioUsers]);
 
   const renderAddContactModal = () => {
     if (!showAddContact) return null;
@@ -10657,6 +10662,19 @@ const App: React.FC = () => {
   // Escuchar evento de token expirado desde api.ts
   useEffect(() => {
     const handleExpired = () => {
+      const activeToken = localStorage.getItem('token') || localStorage.getItem('egchat_token_backup') || '';
+      if (activeToken) {
+        try {
+          const payload = JSON.parse(atob(activeToken.split('.')[1]));
+          const now = Date.now() / 1000;
+          if (!payload.exp || payload.exp > now) {
+            console.warn('[Auth] 401 recibido con token vigente; se mantiene la sesion activa.');
+            return;
+          }
+        } catch {
+          // Token corrupto: continuar con limpieza de sesion.
+        }
+      }
       // Limpiar tokens y forzar re-login
       localStorage.removeItem('token');
       localStorage.removeItem('egchat_token_backup');
@@ -10924,13 +10942,12 @@ const App: React.FC = () => {
     setTimeout(() => {
       // Push nativo Capacitor (FCM) — solo activo en Android/iOS compilado
       initPushNotifications().catch(e => console.warn('[Push] initPushNotifications error:', e));
-      // StatusBar: overlaysWebView:false — igual que iPhone.
-      // La status bar queda fuera del WebView con color #00c8a0 (mismo que el header).
+      // StatusBar integrada: una sola cabecera visual.
       try {
         const { StatusBar, Style } = (window as any).Capacitor?.Plugins || {};
         if (StatusBar) {
-          StatusBar.setOverlaysWebView({ overlay: false });
-          StatusBar.setBackgroundColor({ color: '#00c8a0' });
+          StatusBar.setOverlaysWebView({ overlay: true });
+          StatusBar.setBackgroundColor({ color: '#00000000' });
           if (Style) StatusBar.setStyle({ style: Style.Light || 'LIGHT' });
         }
       } catch {}
@@ -11074,14 +11091,8 @@ const App: React.FC = () => {
       {/* Wallpaper solo se aplica dentro del chat, no aquí */}
       {renderWallpaperCatalog()}
       {renderLayoutPanel()}
-      {/* Bandas decorativas — en todos los dispositivos */}
-      {device.isMobile ? <>
-        {/* Móvil: bordes en los 4 lados — sin boxShadow para evitar repaints en iOS */}
-        <div style={{ position:'fixed', left:0, top:0, bottom:0, width:'2px', zIndex:2000, pointerEvents:'none', background:'linear-gradient(180deg, #00c8a0 0%, #ffffff 20%, #00c8a0 40%, #ffffff 60%, #00c8a0 80%, #00c8a0 100%)', transform:'translateZ(0)', willChange:'transform' }} />
-        <div style={{ position:'fixed', right:0, top:0, bottom:0, width:'2px', zIndex:2000, pointerEvents:'none', background:'linear-gradient(180deg, #00b4e6 0%, #ffffff 20%, #00b4e6 40%, #ffffff 60%, #00b4e6 80%, #00b4e6 100%)', transform:'translateZ(0)', willChange:'transform' }} />
-        <div style={{ position:'fixed', left:0, right:0, top:0, height:'2px', zIndex:2000, pointerEvents:'none', background:'linear-gradient(90deg, #00c8a0, #ffffff 20%, #00b4e6 35%, #ffffff 50%, #00c8a0 65%, #ffffff 80%, #00b4e6)', transform:'translateZ(0)', willChange:'transform' }} />
-        <div style={{ position:'fixed', left:0, right:0, bottom:0, height:'2px', zIndex:2000, pointerEvents:'none', background:'linear-gradient(90deg, #00c8a0, #ffffff 20%, #00b4e6 35%, #ffffff 50%, #00c8a0 65%, #ffffff 80%, #00b4e6)', transform:'translateZ(0)', willChange:'transform' }} />
-      </> : <>
+      {/* Bandas decorativas: solo escritorio/tablet. En móvil se quitan para sensación nativa. */}
+      {!device.isMobile && <>
         {/* Tablet/Desktop: bordes top, right y bottom (left lo tiene la sidebar) */}
         <div style={{ position:'fixed', right:0, top:0, bottom:0, width:'3px', zIndex:2000, pointerEvents:'none', background:'linear-gradient(180deg, #00b4e6 0%, #ffffff 20%, #00b4e6 40%, #ffffff 60%, #00b4e6 80%, #00b4e6 100%)', transform:'translateZ(0)', willChange:'transform' }} />
         <div style={{ position:'fixed', left:0, right:0, top:0, height:'3px', zIndex:2000, pointerEvents:'none', background:'linear-gradient(90deg, #00c8a0, #ffffff 20%, #00b4e6 35%, #ffffff 50%, #00c8a0 65%, #ffffff 80%, #00b4e6)', transform:'translateZ(0)', willChange:'transform' }} />
@@ -11113,7 +11124,7 @@ const App: React.FC = () => {
       {renderActiveCall()}
 
       {/* Banner de actualización automática */}
-      <UpdateBanner />
+      <UpdateBanner isAuthenticated={isAuthenticated} />
 
       {/* Verificador de actualizaciones de APK — solo en app nativa Android */}
       <AppUpdateChecker />
@@ -14261,6 +14272,44 @@ const App: React.FC = () => {
                       <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth="2" strokeLinecap="round"><polyline points="9 18 15 12 9 6"/></svg>
                     </button>
                   ))}
+                </div>
+                <div style={{height:'1px',background:'#f0f0f0',margin:'12px 0'}}/>
+              </div>
+            )}
+
+            {repertorioUsers.length > 0 && (
+              <div style={{marginBottom:'12px'}}>
+                <div style={{fontSize:'11px',color:'#9ca3af',fontWeight:'600',textTransform:'uppercase',letterSpacing:'0.5px',marginBottom:'8px'}}>Usuarios registrados en EGCHAT</div>
+                <div style={{display:'flex',flexDirection:'column',gap:'4px',maxHeight:'180px',overflowY:'auto'}}>
+                  {repertorioUsers
+                    .filter((u: any) => !newChatPhone || u.full_name.toLowerCase().includes(newChatPhone.toLowerCase()) || u.phone.includes(newChatPhone))
+                    .slice(0, 8)
+                    .map((u: any) => {
+                      const initials = (u.full_name || u.phone || 'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase();
+                      return (
+                        <button key={u.id} onClick={async () => {
+                          setNewChatSearching(true);
+                          try {
+                            const chat = await chatAPI.createPrivate(u.id);
+                            contactsAPI.add(u.id, u.phone, u.full_name).then(loadContacts).catch(() => {});
+                            if (chat?.id) {
+                              setSelectedChat({ id: chat.id, type: 'individual', title: u.full_name || u.phone, subtitle: 'Chat', time: '', status: 'online', initials, color: '#00c8a0', avatarUrl: u.avatar_url || '', user_id: u.id });
+                              setCurrentView('Mensajería'); setShowNewChatModal(false); setNewChatPhone(''); loadChats();
+                            }
+                          } catch(err: any) { showToast(err?.message || 'Error al crear chat', 'error'); }
+                          finally { setNewChatSearching(false); }
+                        }} style={{display:'flex',alignItems:'center',gap:'10px',padding:'8px 10px',background:'#f9fafb',border:'1px solid #f0f0f0',borderRadius:'10px',cursor:'pointer',outline:'none',textAlign:'left',fontFamily:'inherit'}}>
+                          <div style={{width:'36px',height:'36px',borderRadius:'50%',background:'linear-gradient(135deg,#00c8a0,#00b4e6)',display:'flex',alignItems:'center',justifyContent:'center',fontSize:'13px',fontWeight:'700',color:'#fff',flexShrink:0,overflow:'hidden'}}>
+                            {u.avatar_url ? <img src={u.avatar_url} alt={u.full_name || u.phone} style={{width:'100%',height:'100%',objectFit:'cover'}}/> : initials}
+                          </div>
+                          <div style={{flex:1,minWidth:0}}>
+                            <div style={{fontSize:'14px',fontWeight:'600',color:'#111827',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{u.full_name || 'Usuario'}</div>
+                            <div style={{fontSize:'12px',color:'#9ca3af'}}>{u.phone}</div>
+                          </div>
+                          <span style={{fontSize:'11px',fontWeight:'700',color:'#00c8a0'}}>Chat</span>
+                        </button>
+                      );
+                    })}
                 </div>
                 <div style={{height:'1px',background:'#f0f0f0',margin:'12px 0'}}/>
               </div>

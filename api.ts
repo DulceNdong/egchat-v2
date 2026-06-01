@@ -50,14 +50,17 @@ const BASE = (() => {
 // ── Token JWT — usa la misma clave que el backend espera ──────────
 const TOKEN_KEY = 'token';
 const TOKEN_BACKUP_KEY = 'egchat_token_backup';
+const LEGACY_TOKEN_KEY = 'egchat_token';
 
 const getToken = () => {
-  const primary = localStorage.getItem(TOKEN_KEY) || '';
+  const primary = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || '';
   if (primary) return primary;
-  const backup = localStorage.getItem(TOKEN_BACKUP_KEY) || '';
+  const backup = localStorage.getItem(TOKEN_BACKUP_KEY) || sessionStorage.getItem(TOKEN_BACKUP_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || '';
   if (backup) {
     // Restaurar automáticamente sesión si el token principal desaparece tras actualización.
     localStorage.setItem(TOKEN_KEY, backup);
+    sessionStorage.setItem(TOKEN_KEY, backup);
+    localStorage.setItem(TOKEN_BACKUP_KEY, backup);
     return backup;
   }
   return '';
@@ -65,10 +68,16 @@ const getToken = () => {
 const setToken = (t: string) => {
   localStorage.setItem(TOKEN_KEY, t);
   localStorage.setItem(TOKEN_BACKUP_KEY, t);
+  localStorage.setItem(LEGACY_TOKEN_KEY, t);
+  sessionStorage.setItem(TOKEN_KEY, t);
+  sessionStorage.setItem(TOKEN_BACKUP_KEY, t);
 };
 const clearToken = () => {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(TOKEN_BACKUP_KEY);
+  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_KEY);
+  sessionStorage.removeItem(TOKEN_BACKUP_KEY);
 };
 
 // ── Headers con token ─────────────────────────────────────────────
@@ -84,9 +93,16 @@ const getHeaders = (): Record<string, string> => {
 async function request<T>(path: string, options: RequestInit = {}, retries = 2): Promise<T> {
   const method = (options.method || 'GET').toUpperCase();
   
-  // En Android WebView el token va SOLO en el header Authorization, nunca en la URL
-  // (el query string con JWT causa "Failed to fetch" en algunos WebViews de Android)
-  const url = `${BASE}${path}`;
+  const tokenForFallback = getToken();
+  const isAuthEndpoint = path.includes('/auth/login')
+    || path.includes('/auth/register')
+    || path.includes('/auth/send-verification')
+    || path.includes('/auth/verify-code')
+    || path.includes('/auth/reset-password');
+  const queryToken = tokenForFallback && !isAuthEndpoint
+    ? `${path.includes('?') ? '&' : '?'}_t=${encodeURIComponent(tokenForFallback)}`
+    : '';
+  const url = `${BASE}${path}${queryToken}`;
   
   const headers = { ...getHeaders(), ...(options.headers as Record<string,string> || {}) };
 
@@ -106,9 +122,12 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
     if (res.status === 401) {
       const err = await res.json().catch(() => ({ message: '' }));
       const message = err.message || 'No autorizado';
-      // Solo disparar auth:expired si hay un token activo (no durante login)
+      // Solo disparar auth:expired si hay un token activo Y no es login/register/verify
       const hasToken = !!localStorage.getItem('token') || !!localStorage.getItem('egchat_token_backup');
-      if (hasToken && !path.includes('/auth/login') && !path.includes('/auth/register')) {
+      const isAuthPath = path.includes('/auth/login') || path.includes('/auth/register') || 
+                         path.includes('/auth/verify') || path.includes('/auth/send-verification') ||
+                         path.includes('/auth/reset-password') || path.includes('/health');
+      if (hasToken && !isAuthPath) {
         window.dispatchEvent(new CustomEvent('auth:expired'));
       }
       throw new Error(message);

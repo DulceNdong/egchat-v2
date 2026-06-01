@@ -15,7 +15,7 @@ const forceUpdate = async () => {
   window.location.reload();
 };
 
-export const UpdateBanner: React.FC = () => {
+export const UpdateBanner: React.FC<{ isAuthenticated?: boolean }> = ({ isAuthenticated = true }) => {
   const [hasUpdate, setHasUpdate] = useState(false);
 
   useEffect(() => {
@@ -30,12 +30,10 @@ export const UpdateBanner: React.FC = () => {
         });
       });
     });
-
-    // ELIMINADO: controllerchange → reload() automático
-    // Esto causaba que el SW disparara un reload completo de la página en iOS
-    // cada vez que se activaba (skipWaiting + clients.claim), causando el parpadeo.
-    // Ahora el reload solo ocurre cuando el usuario toca el banner manualmente.
   }, []);
+
+  // No mostrar nada en la pantalla de login/registro
+  if (!isAuthenticated) return null;
 
   return (
     <>
