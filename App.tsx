@@ -775,22 +775,22 @@ const App: React.FC = () => {
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    // En iPhone PWA usamos dvh CSS — no mover el contenedor con JS
+    if (isIOS) return;
     let viewportHeight = window.innerHeight;
     let offset = 0;
     const update = () => {
-      // Siempre volver al top para evitar que Safari desplace la página
       window.scrollTo(0, 0);
       const currentH = vv.height;
       const diff = viewportHeight - currentH;
       if (diff > 150) {
-        // Teclado visible — ajustar el contenedor
         const adjustment = viewportHeight - currentH - offset;
         if (chatContainerRef.current) {
           chatContainerRef.current.style.bottom = `${adjustment}px`;
           chatContainerRef.current.style.top = '0px';
         }
       } else {
-        // Teclado oculto — restaurar
         offset = viewportHeight - currentH;
         if (chatContainerRef.current) {
           chatContainerRef.current.style.bottom = '0px';
@@ -5602,6 +5602,7 @@ const App: React.FC = () => {
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0,
               bottom: 0,
+              height: device.isMobile ? '100dvh' : undefined,
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
