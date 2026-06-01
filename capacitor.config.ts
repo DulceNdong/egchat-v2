@@ -47,14 +47,11 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
-    // StatusBar: overlaysWebView: false → la status bar del sistema queda FUERA del WebView.
-    // El color de la status bar (#00c8a0) se iguala al color del header para que
-    // visualmente parezca un bloque continuo — igual que en iPhone.
-    // Funciona en TODOS los Android sin depender de safe-area-inset-top ni paddingTop.
+    // StatusBar transparente: login y app pintan debajo con su propio fondo.
     StatusBar: {
       style: 'LIGHT',
-      backgroundColor: '#00c8a0',
-      overlaysWebView: false,
+      backgroundColor: '#00000000',
+      overlaysWebView: true,
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']

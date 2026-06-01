@@ -73,6 +73,17 @@ export default function AuthScreen({onAuth}:Props) {
   const [recoverOk, setRecoverOk] = useState(false);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  React.useEffect(() => {
+    try {
+      const { StatusBar, Style } = (window as any).Capacitor?.Plugins || {};
+      if (StatusBar) {
+        StatusBar.setOverlaysWebView({ overlay: true });
+        StatusBar.setBackgroundColor({ color: '#00000000' });
+        if (Style) StatusBar.setStyle({ style: Style.Dark || 'DARK' });
+      }
+    } catch {}
+  }, []);
+
   // Despertar Render al cargar la pantalla — con reintentos para APK nativa
   // Render.com tiene un cold start de ~30-50s cuando el servidor está dormido.
   // Hacemos ping cada 6s hasta 8 intentos (máx ~48s de espera).

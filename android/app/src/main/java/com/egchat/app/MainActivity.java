@@ -34,13 +34,16 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(VoipServicePlugin.class);
         super.onCreate(savedInstanceState);
 
-        // Hacer que la barra de estado sea transparente y el contenido se extienda debajo
+        // Status bar transparente: cada pantalla dibuja su propio fondo debajo.
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             Window window = getWindow();
             window.clearFlags(WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS);
+            window.clearFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN);
             window.addFlags(WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS);
-            window.setStatusBarColor(Color.parseColor("#00c8a0")); // mismo color que el header
-            window.getDecorView().setSystemUiVisibility(0); // iconos blancos
+            window.setStatusBarColor(Color.TRANSPARENT);
+            window.getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            );
         }
 
         // Ocultar barra de navegación inferior (modo inmersivo)
@@ -81,11 +84,10 @@ public class MainActivity extends BridgeActivity {
         } else {
             // Android 10 y anteriores — ocultar solo navegación, mantener status bar
             int flags = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY;
-            // NO incluir SYSTEM_UI_FLAG_FULLSCREEN ni SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-            // para que la barra de estado siga visible y el header no quede tapado
             getWindow().getDecorView().setSystemUiVisibility(flags);
         }
     }

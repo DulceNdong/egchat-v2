@@ -13,12 +13,10 @@
         <item name="windowActionBar">false</item>
         <item name="windowNoTitle">true</item>
         <item name="android:background">@null</item>
-        <!-- Status bar color = mismo verde del header EGCHAT -->
-        <!-- Con overlaysWebView:false, la status bar queda fuera del WebView -->
-        <!-- Su color nativo debe coincidir con el header para efecto visual continuo -->
+        <!-- Status bar transparente: el WebView pinta la zona superior -->
         <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-        <item name="android:statusBarColor">@color/colorPrimary</item>
-        <item name="android:windowTranslucentStatus">false</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:windowTranslucentStatus">true</item>
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
     </style>
 

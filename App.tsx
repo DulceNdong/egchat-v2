@@ -291,6 +291,28 @@ const App: React.FC = () => {
         StatusBar.setOverlaysWebView({ overlay: true });
         StatusBar.setBackgroundColor({ color: '#00000000' });
         if (Style) StatusBar.setStyle({ style: Style.Light || 'LIGHT' });
+
+        // Tras activar overlaysWebView en Android, Capacitor expone
+        // env(safe-area-inset-top) con el valor real de la status bar.
+        // Re-leer para que --app-statusbar-top sea exacto y no haya doble header.
+        const isAndroid = /android/i.test(navigator.userAgent);
+        if (isAndroid) {
+          const readAndSet = (attempt: number) => {
+            requestAnimationFrame(() => {
+              const el = document.createElement('div');
+              el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;';
+              document.body.appendChild(el);
+              const safeTop = el.getBoundingClientRect().top;
+              document.body.removeChild(el);
+              if (safeTop > 0) {
+                document.documentElement.style.setProperty('--app-statusbar-top', `${safeTop}px`);
+              } else if (attempt < 5) {
+                setTimeout(() => readAndSet(attempt + 1), 80);
+              }
+            });
+          };
+          readAndSet(0);
+        }
       }
     } catch {}
   }, [isAuthenticated]);
@@ -1034,6 +1056,7 @@ const App: React.FC = () => {
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showProfileView, setShowProfileView] = useState<boolean>(false);
   const [showProfileQR, setShowProfileQR] = useState<boolean>(false);
+  const [hapticsOn, setHapticsOn] = useState<boolean>(() => hapticsEnabled());
   const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
   const [showQRScannerCamera, setShowQRScannerCamera] = useState<boolean>(false);
   // Wallet balance reveal animation
@@ -1079,20 +1102,42 @@ const App: React.FC = () => {
   }, []);
 
   // Altura visual de status bar para que el header sea una sola pieza.
+  // Android: con overlaysWebView:true Capacitor expone env(safe-area-inset-top)
+  // igual que iOS, así que leemos el valor real en lugar de hardcodear 24px.
   React.useEffect(() => {
     const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
     const isAndroid = /android/i.test(navigator.userAgent);
-    if (isIOS) {
+
+    const readSafeTop = () => {
       const el = document.createElement('div');
-      el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;';
+      el.style.cssText = 'position:fixed;top:env(safe-area-inset-top,0px);left:0;width:1px;height:1px;pointer-events:none;visibility:hidden;';
       document.body.appendChild(el);
       const safeTop = el.getBoundingClientRect().top;
       document.body.removeChild(el);
-      const safeAreaTop = Math.max(safeTop, 20);
+      return safeTop;
+    };
+
+    if (isIOS) {
+      const safeAreaTop = Math.max(readSafeTop(), 20);
       document.documentElement.style.setProperty('--ios-safe-top', `${safeAreaTop}px`);
       document.documentElement.style.setProperty('--app-statusbar-top', `${safeAreaTop}px`);
     } else if (isAndroid) {
-      document.documentElement.style.setProperty('--app-statusbar-top', '24px');
+      // Leer el valor real de safe-area-inset-top que Capacitor expone
+      // cuando overlaysWebView:true está activo. Si aún no está listo (0),
+      // reintentamos tras un frame para evitar el doble-header visual.
+      const tryRead = (attempt: number) => {
+        const safeTop = readSafeTop();
+        if (safeTop > 0) {
+          document.documentElement.style.setProperty('--app-statusbar-top', `${safeTop}px`);
+        } else if (attempt < 5) {
+          // overlaysWebView puede no estar activo aún — reintentar
+          setTimeout(() => tryRead(attempt + 1), 80);
+        } else {
+          // Fallback conservador si Capacitor no expone el valor
+          document.documentElement.style.setProperty('--app-statusbar-top', '24px');
+        }
+      };
+      tryRead(0);
     } else {
       document.documentElement.style.setProperty('--app-statusbar-top', '0px');
     }
@@ -3764,18 +3809,13 @@ const App: React.FC = () => {
                 </div>
               ))}
               {/* Toggle hápticos */}
-              {(() => {
-                const [hapticsOn, setHapticsOn] = React.useState(hapticsEnabled());
-                return (
-                  <div style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.07)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <span style={{ fontSize: '12px', color: '#1f2937' }}>📳 Vibración háptica</span>
-                    <button onClick={() => { const next = toggleHaptics(); setHapticsOn(next); impactLight().catch(()=>{}); }}
-                      style={{ width: '40px', height: '22px', borderRadius: '11px', background: hapticsOn ? 'rgba(0,200,160,0.25)' : '#f3f4f6', border: `1px solid ${hapticsOn ? '#00c8a0' : '#e5e7eb'}`, cursor: 'pointer', outline: 'none', position: 'relative', transition: 'all 0.2s' }}>
-                      <div style={{ position: 'absolute', top: '2px', left: hapticsOn ? '20px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: hapticsOn ? '#00c8a0' : '#d1d5db', transition: 'left 0.2s' }} />
-                    </button>
-                  </div>
-                );
-              })()}
+              <div style={{ background: 'rgba(250,250,250,0.88)', borderRadius: '10px', border: '1px solid rgba(0,0,0,0.07)', padding: '10px 12px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <span style={{ fontSize: '12px', color: '#1f2937' }}>📳 Vibración háptica</span>
+                <button onClick={() => { const next = toggleHaptics(); setHapticsOn(next); impactLight().catch(()=>{}); }}
+                  style={{ width: '40px', height: '22px', borderRadius: '11px', background: hapticsOn ? 'rgba(0,200,160,0.25)' : '#f3f4f6', border: `1px solid ${hapticsOn ? '#00c8a0' : '#e5e7eb'}`, cursor: 'pointer', outline: 'none', position: 'relative', transition: 'all 0.2s' }}>
+                  <div style={{ position: 'absolute', top: '2px', left: hapticsOn ? '20px' : '2px', width: '16px', height: '16px', borderRadius: '50%', background: hapticsOn ? '#00c8a0' : '#d1d5db', transition: 'left 0.2s' }} />
+                </button>
+              </div>
             </div>
 
             {/* Actualizar app / limpiar caché */}
@@ -4010,9 +4050,10 @@ const App: React.FC = () => {
   }, [allContacts, userProfile.id]);
 
   React.useEffect(() => {
-    if (!showNewChatModal || repertorioUsers.length > 0 || repertorioLoading) return;
+    if (!showNewChatModal) return;
+    // Recargar siempre al abrir el modal para tener datos frescos
     loadRepertorioUsers();
-  }, [showNewChatModal, repertorioUsers.length, repertorioLoading, loadRepertorioUsers]);
+  }, [showNewChatModal, loadRepertorioUsers]);
 
   const renderAddContactModal = () => {
     if (!showAddContact) return null;
