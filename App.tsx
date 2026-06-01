@@ -6748,15 +6748,15 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Input bar — sticky al fondo, sube con el teclado en iOS via visualViewport */}
+              {/* Input bar — fixed al fondo del viewport visible en iOS PWA */}
               <div id="chat-input-bar" style={{
                 flexShrink: 0,
                 background: '#f0f2f5',
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
-                transform: 'translateY(calc(-1 * var(--keyboard-offset, 0px)))',
-                marginBottom: 'calc(-1 * var(--keyboard-offset, 0px))',
+                position: device.isMobile ? 'sticky' : 'relative',
+                bottom: 0,
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (
