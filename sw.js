@@ -1,20 +1,86 @@
-// EGCHAT Service Worker — solo notificaciones push (sin interceptar fetch)
-// Evita pantalla en blanco en PWA por caché de index.html o JS antiguos
-const SW_VERSION = 'egchat-push-v20260525';
+// EGCHAT Service Worker — notificaciones push + cache offline de assets
+// Versión: egchat-push-v20260602
+const SW_VERSION = 'egchat-push-v20260602';
+
+// Cache para assets estáticos (JS, CSS, imágenes, fuentes)
+// Estrategia: cache-first con fallback a red — funciona offline
+const STATIC_CACHE = `egchat-static-${SW_VERSION}`;
+
+// Extensiones que se cachean para uso offline
+const CACHEABLE_EXTENSIONS = ['.js', '.css', '.png', '.svg', '.jpg', '.jpeg', '.webp', '.woff', '.woff2', '.ico'];
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
+  // Limpiar caches viejos en install
   e.waitUntil(
-    caches.keys().then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+    caches.keys().then((keys) =>
+      Promise.all(
+        keys.filter(k => k !== STATIC_CACHE).map((k) => caches.delete(k))
+      )
+    )
   );
 });
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
     caches.keys()
-      .then((keys) => Promise.all(keys.map((k) => caches.delete(k))))
+      .then((keys) =>
+        Promise.all(
+          keys.filter(k => k !== STATIC_CACHE).map((k) => caches.delete(k))
+        )
+      )
       .then(() => self.clients.claim())
   );
+});
+
+// ── Fetch: cache-first para assets estáticos, network-only para API ──────────
+self.addEventListener('fetch', (e) => {
+  const url = new URL(e.request.url);
+
+  // Solo cachear GET del mismo origen (assets del bundle)
+  if (e.request.method !== 'GET') return;
+
+  // Nunca cachear llamadas a la API ni al SW mismo
+  if (
+    url.hostname.includes('onrender.com') ||
+    url.hostname.includes('supabase.co') ||
+    url.pathname === '/sw.js' ||
+    url.pathname.startsWith('/api/')
+  ) return;
+
+  // Cache-first para assets estáticos (JS, CSS, imágenes, fuentes, SVGs)
+  const ext = url.pathname.split('.').pop()?.toLowerCase() || '';
+  const isCacheable = CACHEABLE_EXTENSIONS.some(e => url.pathname.endsWith(e));
+
+  if (isCacheable) {
+    e.respondWith(
+      caches.open(STATIC_CACHE).then(async (cache) => {
+        const cached = await cache.match(e.request);
+        if (cached) return cached;
+        try {
+          const response = await fetch(e.request);
+          if (response.ok) {
+            cache.put(e.request, response.clone());
+          }
+          return response;
+        } catch {
+          // Sin red y sin caché — devolver respuesta vacía para no bloquear
+          return new Response('', { status: 503 });
+        }
+      })
+    );
+    return;
+  }
+
+  // Network-first para index.html y rutas de la SPA
+  if (url.pathname === '/' || url.pathname.endsWith('.html')) {
+    e.respondWith(
+      fetch(e.request).catch(async () => {
+        const cache = await caches.open(STATIC_CACHE);
+        return cache.match('/index.html') || new Response('Offline', { status: 503 });
+      })
+    );
+  }
 });
 
 self.addEventListener('message', (e) => {

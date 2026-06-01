@@ -1,34 +1,50 @@
-﻿import React, { useState, useEffect, useRef, useCallback } from 'react';
+﻿import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import ImageViewerModal from './ImageViewerModal';
 import './index.css';
 import { chatAPI, authAPI, contactsAPI, storiesAPI, userAPI } from './api';
 import AuthScreen from './AuthScreen';
 import { ContactImportModal } from './ContactImportModal';
-import { EstadosView } from './EstadosView';
-import { ApuestasView } from './ApuestasView';
-import { CemacView } from './CemacView';
-import { MiTaxiView } from './MiTaxiView';
-import { InternetModal, RecargaModal, CanalesModal, BancosModal, SegurosModal, FacturasModal, ActividadModal, SaludModal } from './ServiciosModules';
-import { SupermercadosModal } from './SupermercadosModule';
-import { RecargaMonederoModal, RetiroMonederoModal } from './WalletSystem';
 import { useWallet } from './WalletSystem';
 import { ContactProfileModal } from './ContactProfileModal';
 import { SetupPINModal, VerifyPINModal, walletPIN } from './WalletPIN';
-import { CameraModal } from './CameraModal';
 import { useDevice } from './useDevice';
-import { EGChatDesktopWelcome } from './EGChatDesktopWelcome';
 import { UpdateBanner } from './UpdateBanner';
 import { AppUpdateChecker } from './AppUpdateChecker';
-import { EducacionModule } from './EducacionModule';
-import { HotelesModule } from './HotelesModule';
-import { TiendasModule } from './TiendasModule';
-import { PhotoEditorModal } from './PhotoEditorModal';
 import { Avatar } from './Avatar';
-import { Lia25View } from './Lia25View';
-import { AvatarCropModal } from './AvatarCropModal';
-import { QRScanner } from './QRScanner';
 import { QRCodeSVG } from 'qrcode.react';
-import { RestaurantesModule, VuelosModule, GasolinerasModule } from './ServiciosDiarios';
+
+// ── Lazy imports — vistas y módulos pesados se cargan solo cuando se necesitan ──
+// Esto reduce el bundle inicial y acelera el primer render en Android
+const EstadosView       = lazy(() => import('./EstadosView').then(m => ({ default: m.EstadosView })));
+const ApuestasView      = lazy(() => import('./ApuestasView').then(m => ({ default: m.ApuestasView })));
+const CemacView         = lazy(() => import('./CemacView').then(m => ({ default: m.CemacView })));
+const MiTaxiView        = lazy(() => import('./MiTaxiView').then(m => ({ default: m.MiTaxiView })));
+const Lia25View         = lazy(() => import('./Lia25View').then(m => ({ default: m.Lia25View })));
+const EducacionModule   = lazy(() => import('./EducacionModule').then(m => ({ default: m.EducacionModule })));
+const HotelesModule     = lazy(() => import('./HotelesModule').then(m => ({ default: m.HotelesModule })));
+const TiendasModule     = lazy(() => import('./TiendasModule').then(m => ({ default: m.TiendasModule })));
+const EGChatDesktopWelcome = lazy(() => import('./EGChatDesktopWelcome').then(m => ({ default: m.EGChatDesktopWelcome })));
+const PhotoEditorModal  = lazy(() => import('./PhotoEditorModal').then(m => ({ default: m.PhotoEditorModal })));
+const AvatarCropModal   = lazy(() => import('./AvatarCropModal').then(m => ({ default: m.AvatarCropModal })));
+const QRScanner         = lazy(() => import('./QRScanner').then(m => ({ default: m.QRScanner })));
+const CameraModal       = lazy(() => import('./CameraModal').then(m => ({ default: m.CameraModal })));
+const InternetModal     = lazy(() => import('./ServiciosModules').then(m => ({ default: m.InternetModal })));
+const RecargaModal      = lazy(() => import('./ServiciosModules').then(m => ({ default: m.RecargaModal })));
+const CanalesModal      = lazy(() => import('./ServiciosModules').then(m => ({ default: m.CanalesModal })));
+const BancosModal       = lazy(() => import('./ServiciosModules').then(m => ({ default: m.BancosModal })));
+const SegurosModal      = lazy(() => import('./ServiciosModules').then(m => ({ default: m.SegurosModal })));
+const FacturasModal     = lazy(() => import('./ServiciosModules').then(m => ({ default: m.FacturasModal })));
+const ActividadModal    = lazy(() => import('./ServiciosModules').then(m => ({ default: m.ActividadModal })));
+const SaludModal        = lazy(() => import('./ServiciosModules').then(m => ({ default: m.SaludModal })));
+const SupermercadosModal = lazy(() => import('./SupermercadosModule').then(m => ({ default: m.SupermercadosModal })));
+const RecargaMonederoModal = lazy(() => import('./WalletSystem').then(m => ({ default: m.RecargaMonederoModal })));
+const RetiroMonederoModal  = lazy(() => import('./WalletSystem').then(m => ({ default: m.RetiroMonederoModal })));
+const RestaurantesModule = lazy(() => import('./ServiciosDiarios').then(m => ({ default: m.RestaurantesModule })));
+const VuelosModule       = lazy(() => import('./ServiciosDiarios').then(m => ({ default: m.VuelosModule })));
+const GasolinerasModule  = lazy(() => import('./ServiciosDiarios').then(m => ({ default: m.GasolinerasModule })));
+
+// Fallback minimalista para Suspense — sin spinner visible para no interrumpir el flujo
+const LazyFallback = () => <div style={{ flex: 1, background: '#f5f5f5' }} />;
 import { useWebRTC } from './useWebRTC';
 import { playMessageReceived, playMessageSent, playNotification, startRingtone, stopRingtone, startDialingTone, stopDialingTone, playCallConnected, playCallEnded, playError, playSuccess, vibrate, unlockAudio, getSoundSettings, saveSoundSettings, MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES, type SoundSettings } from './useSounds';
 import { initPushNotifications, removePushListeners } from './push-config';
@@ -49,7 +65,8 @@ import { initPredictiveBack, pushView, clearHistory } from './predictive-back-ma
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
 
 // ── SwipeChatItem — swipe derecha: No leído / Desarchivar | swipe izquierda: Archivar / Eliminar ──
-const SwipeChatItem: React.FC<{
+// React.memo evita re-renders cuando el padre actualiza estado no relacionado (toast, polling, etc.)
+const SwipeChatItem = React.memo<{
   chatId: string;
   onOpen: () => void;
   onArchive: () => void;
@@ -58,7 +75,7 @@ const SwipeChatItem: React.FC<{
   onUnarchive?: () => void;
   isArchived?: boolean;
   children: React.ReactNode;
-}> = ({ chatId, onOpen, onArchive, onDelete, onMarkUnread, onUnarchive, isArchived, children }) => {
+}>(({ chatId, onOpen, onArchive, onDelete, onMarkUnread, onUnarchive, isArchived, children }) => {
   const [offset, setOffset] = React.useState(0);
   const [isDragging, setIsDragging] = React.useState(false);
   const startX = React.useRef(0);
@@ -175,7 +192,8 @@ const SwipeChatItem: React.FC<{
       </div>
     </div>
   );
-};
+});
+SwipeChatItem.displayName = 'SwipeChatItem';
 
 interface Bank {
   id: string;
