@@ -12,5 +12,99 @@
 	<string>2.5.4</string>
 	<key>CFBundleVersion</key>
 	<string>7</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleExecutable</key>
+	<string>App</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+
+	<!-- Permisos — mismo set que Android -->
+	<key>NSCameraUsageDescription</key>
+	<string>EGCHAT necesita acceso a la cámara para videollamadas y enviar fotos en el chat.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>EGCHAT necesita acceso al micrófono para llamadas de voz y mensajes de audio.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>EGCHAT necesita acceso a tus fotos para enviarlas en el chat.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>EGCHAT necesita permiso para guardar fotos en tu galería.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>EGCHAT necesita acceso a tus contactos para facilitar la comunicación.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>EGCHAT necesita tu ubicación para compartirla en el chat.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>EGCHAT puede usar Face ID para autenticar pagos.</string>
+
+	<!-- Push Notifications -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>voip</string>
+	</array>
+
+	<!-- URL Schemes para deep links -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>com.egchat.app</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>egchat</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- Status bar -->
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleLightContent</string>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<false/>
+
+	<!-- Orientaciones soportadas -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- Seguridad de red -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>egchat-v2.vercel.app</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+			<key>egchat-api.onrender.com</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- Teclado: ajustar layout cuando aparece el teclado -->
+	<key>UIScrollViewContentInsetAdjustmentBehavior</key>
+	<integer>2</integer>
 </dict>
 </plist>
