@@ -1297,7 +1297,7 @@ const App: React.FC = () => {
     return () => clearInterval(interval);
   }, []);
 
-  // Refrescar stories activos cada 2 minutos para mantener los anillos actualizados
+  // Refrescar stories activos cada 10 minutos — EGRESS FIX: reducido de 2min a 10min
   React.useEffect(() => {
     const loadActiveStories = () => {
       storiesAPI.getAll().then((data: any[]) => {
@@ -1312,7 +1312,7 @@ const App: React.FC = () => {
         }
       }).catch(() => { /* silencioso */ });
     };
-    const storyInterval = setInterval(loadActiveStories, 2 * 60 * 1000);
+    const storyInterval = setInterval(loadActiveStories, 10 * 60 * 1000); // EGRESS FIX: 10min en lugar de 2min
     return () => clearInterval(storyInterval);
   }, []);
 
@@ -10861,7 +10861,9 @@ const App: React.FC = () => {
     if (currentView === 'Mensajería' && !selectedChat?.isGroup) loadChats();
   }, [currentView, loadChats]);
 
-  // -- Polling: actualizar mensajes del chat abierto cada 8s (reducido para bajar egress) ---
+  // -- Polling: actualizar mensajes del chat abierto cada 30s (EGRESS FIX: reducido de 8s a 30s) ---
+  // El SSE (/api/chat/stream) es el canal principal para mensajes en tiempo real.
+  // Este intervalo solo actúa como respaldo cuando SSE no está disponible.
   useEffect(() => {
     if (!selectedChat) {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
@@ -10876,13 +10878,14 @@ const App: React.FC = () => {
     const startInterval = () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
       pollingRef.current = setInterval(() => {
+        // Solo hacer polling si la página está visible Y el SSE no está activo
         if (document.visibilityState === 'visible') loadMessages(chatId);
-      }, 8000); // EGRESS FIX: increased from 3s to 8s to reduce API calls
+      }, 30000); // EGRESS FIX: 30s en lugar de 8s — el SSE cubre el tiempo real
     };
 
     startInterval();
 
-    // Reiniciar el intervalo al volver al primer plano (el setInterval se congela en background)
+    // Reiniciar el intervalo al volver al primer plano
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         loadMessages(chatId);
@@ -10902,7 +10905,9 @@ const App: React.FC = () => {
     loadContacts();
   }, [currentView, loadContacts]);
 
-  // -- Polling de chats cada 30s — solo cuando NO hay chat de grupo abierto --
+  // -- Polling de chats cada 3min — EGRESS FIX: reducido de 30s a 3min --
+  // La lista de chats se actualiza via SSE cuando llega un mensaje nuevo.
+  // Este intervalo solo sirve de sincronización periódica de respaldo.
   useEffect(() => {
     if (!isAuthenticated) return;
     const iv = setInterval(() => {
@@ -10910,11 +10915,10 @@ const App: React.FC = () => {
       if (!selectedChat?.isGroup) {
         loadChats();
       }
-      loadContacts();
-      syncUserAvatars();
-    }, 30000);
+      // syncUserAvatars se elimina del intervalo — solo al abrir la app
+    }, 3 * 60 * 1000); // EGRESS FIX: 3 minutos en lugar de 30 segundos
     return () => clearInterval(iv);
-  }, [isAuthenticated, loadChats, loadContacts, syncUserAvatars]);
+  }, [isAuthenticated, loadChats, selectedChat]);
 
   // -- Reconexión automática al volver al primer plano (evita pantalla en blanco) --
   useEffect(() => {

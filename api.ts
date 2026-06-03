@@ -478,12 +478,14 @@ export const groupStoriesAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════
-// KEEP-ALIVE — ping cada 4 min para que Render no duerma
+// KEEP-ALIVE — ping cada 14 min para que Render no duerma (FREE tier duerme tras 15min)
+// EGRESS FIX: usa /api/app/version en vez de /health — no hace query a Supabase
 // ══════════════════════════════════════════════════════════════════
 const keepAlive = () => {
-  fetch(`${BASE.replace('/api', '')}/health`).catch(() => {});
+  // /api/app/version es estático (no toca Supabase) — reduce egress vs /health
+  fetch(`${BASE}/app/version`).catch(() => {});
 };
-setInterval(keepAlive, 4 * 60 * 1000); // cada 4 minutos
+setInterval(keepAlive, 14 * 60 * 1000); // cada 14 minutos (Render free duerme a los 15)
 keepAlive(); // ping inmediato al cargar
 
 // ══════════════════════════════════════════════════════════════════

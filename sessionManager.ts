@@ -254,51 +254,29 @@ class SessionManager {
     window.addEventListener('storage', (e) => {
       if (e.key === this.config.storageKey || e.key === this.config.backupStorageKey) {
         if (e.newValue === null) {
-          // Sesión eliminada en otro tab
           this.emit('session:cleared');
         } else {
-          // Sesión actualizada en otro tab
           this.emit('session:updated');
         }
       }
     });
 
-    // Escuchar eventos de visibilidad de la página
+    // EGRESS FIX: eliminado visibilitychange + online que llamaban /api/auth/me
+    // en cada foco de ventana. La validación del token se hace localmente (JWT decode).
+    // Solo verificar si el token expiró — sin red.
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) {
-        // La página se hizo visible, verificar sesión
-        this.verifySessionOnFocus();
+        const session = this.getSession(); // getSession ya valida expiración localmente
+        if (!session) this.emit('session:invalid');
       }
-    });
-
-    // Escuchar eventos online/offline
-    window.addEventListener('online', () => {
-      console.log('🌐 Conexión restaurada, verificando sesión...');
-      this.verifySessionOnFocus();
     });
   }
 
-  // Verificar sesión cuando la página gana foco
+  // Verificar sesión cuando la página gana foco — EGRESS FIX: deshabilitado
+  // La validación se hace localmente via JWT decode en getSession().
+  // Llamar a /api/auth/me en cada foco generaba queries innecesarias a Supabase.
   private async verifySessionOnFocus(): Promise<void> {
-    try {
-      const session = this.getSession();
-      if (!session) return;
-
-      // Verificar que el token siga siendo válido
-      const response = await fetch('/api/auth/me', {
-        headers: {
-          'Authorization': `Bearer ${session.token}`,
-        },
-      });
-
-      if (!response.ok) {
-        console.log('❌ Sesión inválida al recuperar foco');
-        this.clearSession();
-        this.emit('session:invalid');
-      }
-    } catch (error) {
-      console.error('Error verificando sesión al recuperar foco:', error);
-    }
+    // No-op: validación local en getSession() es suficiente para detectar tokens expirados.
   }
 
   // Sistema de eventos simple
