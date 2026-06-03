@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es" style="background:#f0f2f5">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/egchat-icon.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>EGCHAT v2.5.2</title>
+    <meta name="description" content="EGCHAT v2.5.1 - Super App Guinea Ecuatorial" />
+    <meta name="cache-control" content="no-cache, no-store, must-revalidate" />
+    <meta name="pragma" content="no-cache" />
+    <meta name="expires" content="0" />
+
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="/manifest.json" />
+
+    <!-- iOS / Safari PWA -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="theme-color" content="#00c8a0" />
+    <meta name="apple-mobile-web-app-title" content="EGCHAT" />
+    <link rel="apple-touch-icon" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="120x120" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="152x152" href="/logo-192.png" />
+    <link rel="apple-touch-icon" sizes="180x180" href="/logo-192.png" />
+
+    <meta name="theme-color" content="#00c8a0" />
+    <meta name="msapplication-TileColor" content="#00c8a0" />
+
+    <!-- Anti-flash inline: fondo del body antes de que cargue el CSS -->
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      html {
+        /* Color del header — la status bar con black-translucent muestra este color */
+        background-color: #00c8a0 !important;
+        margin: 0; padding: 0;
+        overflow-x: hidden;
+        height: 100%;
+      }
+      body {
+        background-color: #f0f2f5 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow-x: hidden;
+        min-height: 100%;
+        padding-top: 0 !important;
+        padding-bottom: 0 !important;
+        padding-left: 0 !important;
+        padding-right: 0 !important;
+      }
+      #root {
+        background-color: #f0f2f5 !important;
+        margin: 0; padding: 0;
+        overflow-x: hidden;
+      }
+      /* Chat container — JS actualiza height con visualViewport para iOS keyboard */
+      .chat-view-container {
+        top: 0px;
+        height: 100dvh;
+      }
+      /* Ocultar scrollbar en toda la app */
+      ::-webkit-scrollbar { display: none; }
+      * { scrollbar-width: none; }
+    </style>
+    <script>
+      (function() {
+        var ua = navigator.userAgent;
+        var isIOS = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        var isAndroid = /android/i.test(ua);
+        var isCapacitor = !!(window.Capacitor);
+        var isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        if (isStandalone || isCapacitor) document.documentElement.classList.add('pwa-standalone');
+        if (isAndroid) {
+          // Con overlaysWebView:false la status bar queda fuera del WebView.
+          // No necesitamos padding extra — el WebView empieza debajo de la status bar.
+          document.documentElement.style.setProperty('--status-bar-height', '0px');
+          document.documentElement.style.setProperty('--header-top-padding', '0px');
+        } else if (isIOS && isStandalone) {
+          document.documentElement.style.setProperty('--status-bar-height', 'env(safe-area-inset-top, 47px)');
+          document.documentElement.style.setProperty('--header-top-padding', 'env(safe-area-inset-top, 47px)');
+        } else {
+          document.documentElement.style.setProperty('--status-bar-height', '0px');
+          document.documentElement.style.setProperty('--header-top-padding', '0px');
+        }
+        if (isIOS && isStandalone && 'serviceWorker' in navigator) {
+          navigator.serviceWorker.getRegistrations().then(function(regs) {
+            regs.forEach(function(r) { r.unregister(); });
+          });
+        }
+        // En Capacitor (IPA nativa), no hacer recovery — el WebView
+        // puede tardar más en cargar el JS y no es un error.
+        var isCapacitor = !!(window.Capacitor) || window.location.protocol === 'capacitor:';
+        if (!isCapacitor) {
+          setTimeout(function() {
+            var root = document.getElementById('root');
+            if (root && !root.innerHTML.trim() && !localStorage.getItem('egchat_recovery_tried')) {
+              localStorage.setItem('egchat_recovery_tried', '1');
+              window.location.replace(window.location.origin + '/clear.html');
+            }
+          }, isIOS ? 8000 : 15000);
+        }
+      })();
+    </script>
+    <script type="module" crossorigin src="/assets/index-CGLRabrz.js"></script>
+    <link rel="modulepreload" crossorigin href="/assets/react-core-B1rSPtcn.js">
+    <link rel="modulepreload" crossorigin href="/assets/icons-Be6fsX7F.js">
+    <link rel="modulepreload" crossorigin href="/assets/qr-D7_rpNIe.js">
+    <link rel="stylesheet" crossorigin href="/assets/index-DheqJcIW.css">
+  </head>
+  <body style="background:#f0f2f5">
+    <div id="root" style="background:#f0f2f5"></div>
+  </body>
+</html>

@@ -143,14 +143,17 @@ export default function AuthScreen({onAuth}:Props) {
       try {
         return await authAPI.login(fullPhone, pass);
       } catch(e: any) {
-        const isNetworkError = e.message?.includes('fetch') || e.message?.includes('network') ||
-          e.message?.includes('Failed') || e.name === 'AbortError' || e.name === 'TypeError';
+        const msg: string = e?.message || '';
+        const isNetworkError = msg.includes('fetch') || msg.includes('network') ||
+          msg.includes('Failed') || msg.includes('Load failed') || // iOS Safari
+          msg.includes('NetworkError') || msg === '' || // iOS TypeError vacío
+          e.name === 'AbortError' || e.name === 'TypeError';
         // No reintentar errores de credenciales (401) ni del servidor (500)
-        const isCredentialError = e.message?.includes('401') || e.message?.includes('Credenciales') ||
-          e.message?.includes('credenciales') || e.message?.includes('password');
+        const isCredentialError = msg.includes('401') || msg.includes('Credenciales') ||
+          msg.includes('credenciales') || msg.includes('password');
         if (isNetworkError && !isCredentialError && retries > 0) {
           const waitSec = 6; // 6s entre reintentos — Render tarda ~30s en despertar
-          setErr(`Conectando con el servidor... (intento ${5 - retries}/4)`);
+          setErr(`⏳ Iniciando servicio... espera unos segundos (${5 - retries}/4)`);
           await new Promise(r => setTimeout(r, waitSec * 1000));
           setErr('');
           return attempt(retries - 1);
@@ -172,17 +175,30 @@ export default function AuthScreen({onAuth}:Props) {
       onAuth(r.user);
     }
     catch(e:any){
-      console.error('❌ Error en login:', e);
-      if(e.message?.includes('credenciales') || e.message?.includes('password') || e.message?.includes('usuario') || e.message?.includes('invalid') || e.message?.includes('Credenciales')) {
+      // iOS WKWebView serializa Error como {} en console.error — log explícito para depurar
+      console.error('❌ Error en login — name:', e?.name, '| message:', e?.message, '| status:', e?.status, '| stack:', e?.stack);
+      const msg: string = e?.message || '';
+      const name: string = e?.name || '';
+      if(msg.includes('credenciales') || msg.includes('password') || msg.includes('usuario') || msg.includes('invalid') || msg.includes('Credenciales') || msg.includes('401') || msg.includes('nvalid')) {
         setErr('Usuario o contraseña incorrectos.');
-      } else if(!navigator.onLine || e.name === 'TypeError' || e.name === 'AbortError' || e.message?.includes('fetch') || e.message?.includes('Failed')) {
-        setErr('Sin conexión a internet. Verifica tu WiFi o datos móviles e intenta de nuevo.');
-      } else if(e.message?.includes('401')) {
+      } else if(msg.includes('401')) {
         setErr('Credenciales inválidas. Verifica tu número y contraseña.');
-      } else if(e.message?.includes('500')) {
+      } else if(msg.includes('500')) {
         setErr('Error del servidor. Intenta de nuevo en unos minutos.');
+      } else if(
+        !navigator.onLine ||
+        name === 'TypeError' ||
+        name === 'AbortError' ||
+        msg.includes('fetch') ||
+        msg.includes('Failed') ||
+        msg.includes('Load failed') ||  // iOS Safari
+        msg.includes('network') ||
+        msg.includes('NetworkError') ||
+        msg === ''  // iOS a veces lanza TypeError con mensaje vacío en fallos de red
+      ) {
+        setErr('No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.');
       } else {
-        setErr(e.message || 'Error al iniciar sesión. Intenta de nuevo.');
+        setErr(msg || 'Error al iniciar sesión. Intenta de nuevo.');
       }
     }
     finally{setLoading(false);}

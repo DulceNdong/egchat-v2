@@ -1,0 +1,72 @@
+{
+	"appId": "com.egchat.app",
+	"appName": "EGCHAT",
+	"webDir": "dist",
+	"server": {
+		"androidScheme": "https",
+		"iosScheme": "https",
+		"cleartext": false,
+		"allowNavigation": [
+			"egchat-v2.vercel.app",
+			"*.vercel.app",
+			"*.supabase.co",
+			"egchat-api.onrender.com",
+			"*.onrender.com"
+		]
+	},
+	"android": {
+		"allowMixedContent": false,
+		"backgroundColor": "#00c8a0",
+		"captureInput": true,
+		"webContentsDebuggingEnabled": false,
+		"navigationBarColor": "#00000000"
+	},
+	"ios": {
+		"contentInset": "never",
+		"backgroundColor": "#00c8a0",
+		"preferredContentMode": "mobile",
+		"scrollEnabled": false,
+		"limitsNavigationsToAppBoundDomains": false,
+		"allowsLinkPreview": false
+	},
+	"plugins": {
+		"SplashScreen": {
+			"launchAutoHide": false,
+			"launchShowDuration": 3000,
+			"backgroundColor": "#00c8a0",
+			"androidSplashResourceName": "splash",
+			"androidScaleType": "CENTER_CROP",
+			"iosSpinnerStyle": "small",
+			"fadeInDuration": 200,
+			"fadeOutDuration": 300,
+			"showSpinner": false,
+			"splashFullScreen": true,
+			"splashImmersive": true
+		},
+		"StatusBar": {
+			"style": "LIGHT",
+			"backgroundColor": "#00c8a0",
+			"overlaysWebView": true
+		},
+		"Keyboard": {
+			"resize": "body",
+			"style": "dark",
+			"resizeOnFullScreen": true
+		},
+		"PushNotifications": {
+			"presentationOptions": [
+				"badge",
+				"sound",
+				"alert"
+			]
+		}
+	},
+	"packageClassList": [
+		"AppPlugin",
+		"HapticsPlugin",
+		"KeyboardPlugin",
+		"PushNotificationsPlugin",
+		"SplashScreenPlugin",
+		"CallScreenPlugin"
+	]
+}

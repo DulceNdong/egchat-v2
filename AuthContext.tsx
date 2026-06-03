@@ -124,7 +124,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         return { success: false, error: 'Respuesta inválida del servidor' };
       }
     } catch (error: any) {
-      console.error('Error en login:', error);
+      // iOS WKWebView serializa Error como {} en console.error — log explícito
+      console.error('Error en login — name:', error?.name, '| message:', error?.message, '| stack:', error?.stack);
       
       // Manejo específico de errores
       if (error.message?.includes('401')) {
