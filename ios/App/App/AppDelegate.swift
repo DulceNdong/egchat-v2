@@ -7,13 +7,15 @@ class AppDelegate: UIResponder, UIApplicationDelegate {
     var window: UIWindow?
 
     func application(_ application: UIApplication, didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]?) -> Bool {
-        // Deshabilitar scroll en body — solo los contenedores específicos pueden hacer scroll
-        // Esto elimina el "doble scroll" y la sensación de WebView
-        if let window = window {
-            window.rootViewController?.view.backgroundColor = UIColor(red: 0, green: 0.784, blue: 0.627, alpha: 1)
-        }
         return true
     }
+
+    // UIScene lifecycle — evita el warning "CLIENT OF UIKIT REQUIRES UPDATE"
+    func application(_ application: UIApplication, configurationForConnecting connectingSceneSession: UISceneSession, options: UIScene.ConnectionOptions) -> UISceneConfiguration {
+        return UISceneConfiguration(name: "Default Configuration", sessionRole: connectingSceneSession.role)
+    }
+
+    func application(_ application: UIApplication, didDiscardSceneSessions sceneSessions: Set<UISceneSession>) {}
 
     func applicationWillResignActive(_ application: UIApplication) {}
     func applicationDidEnterBackground(_ application: UIApplication) {}

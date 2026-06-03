@@ -8,11 +8,14 @@ class AppErrorBoundary extends React.Component<{children: React.ReactNode}, {has
   static getDerivedStateFromError() { return { hasError: true }; }
   render() {
     if (this.state.hasError) {
-      // Recargar la página limpiando caches — soluciona chunks obsoletos
-      if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
-      setTimeout(() => window.location.reload(), 500);
+      // En app nativa (Capacitor) NO recargar — causa loop infinito
+      const isNative = !!(window as any).Capacitor?.isNativePlatform?.();
+      if (!isNative) {
+        if ('caches' in window) caches.keys().then(keys => keys.forEach(k => caches.delete(k)));
+        setTimeout(() => window.location.reload(), 500);
+      }
       return <div style={{ position: 'fixed', inset: 0, background: '#f0f2f5', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-        <div style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>Actualizando...</div>
+        <div style={{ textAlign: 'center', color: '#6b7280', fontSize: '14px' }}>Cargando...</div>
       </div>;
     }
     return this.props.children;
