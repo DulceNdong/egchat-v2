@@ -775,9 +775,6 @@ const App: React.FC = () => {
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    // En iPhone PWA usamos dvh CSS — no mover el contenedor con JS
-    if (isIOS) return;
     let viewportHeight = window.innerHeight;
     let offset = 0;
     const update = () => {
@@ -790,6 +787,11 @@ const App: React.FC = () => {
           chatContainerRef.current.style.bottom = `${adjustment}px`;
           chatContainerRef.current.style.top = '0px';
         }
+        // Scroll al fondo para que el último mensaje sea visible
+        requestAnimationFrame(() => {
+          const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+          if (scroll) scroll.scrollTop = scroll.scrollHeight;
+        });
       } else {
         offset = viewportHeight - currentH;
         if (chatContainerRef.current) {
@@ -6756,8 +6758,7 @@ const App: React.FC = () => {
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
-                position: device.isMobile ? 'sticky' : 'relative',
-                bottom: 0,
+                position: 'relative',
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (
