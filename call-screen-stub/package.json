@@ -1,0 +1,16 @@
+{
+  "name": "call-screen",
+  "version": "1.0.0",
+  "description": "EGCHAT call screen stub - iOS compatibility",
+  "main": "dist/plugin.cjs.js",
+  "module": "dist/plugin.esm.js",
+  "types": "dist/definitions.d.ts",
+  "capacitor": {
+    "ios": {
+      "src": "ios"
+    }
+  },
+  "peerDependencies": {
+    "@capacitor/core": ">=4.0.0"
+  }
+}
