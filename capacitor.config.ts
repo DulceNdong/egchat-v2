@@ -20,15 +20,17 @@ const config: CapacitorConfig = {
     allowMixedContent: false,
     backgroundColor: '#00c8a0',
     captureInput: true,
-    // false en producción — solo activar para depuración con Chrome DevTools
     webContentsDebuggingEnabled: false,
     navigationBarColor: '#00000000',
   },
   ios: {
-    contentInset: 'automatic',
+    // overlaysWebView: true — el WebView ocupa TODA la pantalla incluyendo la status bar.
+    // La app controla todo el espacio con env(safe-area-inset-*).
+    // Esto elimina el doble header y el doble tab bar.
+    contentInset: 'never',
     backgroundColor: '#00c8a0',
     preferredContentMode: 'mobile',
-    scrollEnabled: true,
+    scrollEnabled: false,      // evita scroll en body — solo el contenedor de mensajes scrollea
     limitsNavigationsToAppBoundDomains: true,
     allowsLinkPreview: false,
   },
@@ -46,11 +48,17 @@ const config: CapacitorConfig = {
       splashFullScreen: true,
       splashImmersive: true,
     },
-    // StatusBar transparente: login y app pintan debajo con su propio fondo.
     StatusBar: {
       style: 'LIGHT',
-      backgroundColor: '#00000000',
+      backgroundColor: '#00c8a0',
+      // overlaysWebView: true — el WebView se extiende bajo la status bar
+      // La app dibuja su propio header encima con paddingTop = safe-area-inset-top
       overlaysWebView: true,
+    },
+    Keyboard: {
+      resize: 'body',
+      style: 'dark',
+      resizeOnFullScreen: true,
     },
     PushNotifications: {
       presentationOptions: ['badge', 'sound', 'alert']

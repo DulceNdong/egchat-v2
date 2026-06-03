@@ -18,7 +18,7 @@ const INTERNET_PROVIDERS = [
   { id:'ip9', name:'ORTEL GE',  full:'ORTEL GE Supervisión Sectorial',               logo:asset('assets/internet/ortelge.svg'),   color:'#DC2626', cat:'Telecom / Supervisión',     cov:'Nacional', type:'Telecom / Soporte Sectorial' },
 ];
 
-const INTERNET_SERVICES: Record<string, Array<{id:string;name:string;type:string;desc:string;price:string;speed:string}>> = {
+const INTERNET_SERVICES: ecord<string, Array<{id:string;name:string;type:string;desc:string;price:string;speed:string}>> = {
   ip1:[
     { id:'s1', name:'Internet Hogar Básico',    type:'Hogar',    desc:'Conexión ADSL residencial',         price:'15,000 XAF/mes', speed:'10 Mbps' },
     { id:'s2', name:'Fibra Óptica Hogar',       type:'Hogar',    desc:'Fibra óptica de alta velocidad',    price:'30,000 XAF/mes', speed:'100 Mbps' },
