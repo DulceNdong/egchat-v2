@@ -1139,9 +1139,11 @@ const App: React.FC = () => {
     };
 
     if (isIOS) {
-      const safeAreaTop = Math.max(readSafeTop(), 20);
-      document.documentElement.style.setProperty('--ios-safe-top', `${safeAreaTop}px`);
-      document.documentElement.style.setProperty('--app-statusbar-top', `${safeAreaTop}px`);
+      // En IPA nativa con overlaysWebView:true, env(safe-area-inset-top) 
+      // da el valor correcto del notch/Dynamic Island directamente.
+      // Usamos CSS puro en lugar del truco del div para mayor precisión.
+      document.documentElement.style.setProperty('--app-statusbar-top', 'env(safe-area-inset-top, 44px)');
+      document.documentElement.style.setProperty('--ios-safe-top', 'env(safe-area-inset-top, 44px)');
     } else if (isAndroid) {
       // Leer el valor real de safe-area-inset-top que Capacitor expone
       // cuando overlaysWebView:true está activo. Si aún no está listo (0),
@@ -5185,8 +5187,8 @@ const App: React.FC = () => {
               </button>
             ))}
           </div>
-          {/* Zona safe-area — rellena el espacio del home indicator en iPhone y Android gesture bar */}
-          <div style={{ height: 'max(env(safe-area-inset-bottom, 8px), 8px)', background: 'transparent' }} />
+          {/* Zona safe-area — rellena el espacio del home indicator en iPhone */}
+          <div style={{ height: 'max(env(safe-area-inset-bottom, 8px), 8px)', background: 'linear-gradient(90deg, #00d4aa 0%, #00bcd4 50%, #0099cc 100%)' }} />
         </div>
       </>
     );

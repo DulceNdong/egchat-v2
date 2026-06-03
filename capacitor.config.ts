@@ -4,10 +4,17 @@ const config: CapacitorConfig = {
   appId: 'com.egchat.app',
   appName: 'EGCHAT',
   webDir: 'dist',
-  // Cargar la PWA en vivo — misma experiencia que Safari PWA
   server: {
-    url: 'https://egchat-v2.vercel.app',
+    androidScheme: 'https',
+    iosScheme: 'https',
     cleartext: false,
+    allowNavigation: [
+      'egchat-v2.vercel.app',
+      '*.vercel.app',
+      '*.supabase.co',
+      'egchat-api.onrender.com',
+      '*.onrender.com',
+    ]
   },
   android: {
     allowMixedContent: false,

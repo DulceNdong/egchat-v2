@@ -87,13 +87,18 @@
             regs.forEach(function(r) { r.unregister(); });
           });
         }
-        setTimeout(function() {
-          var root = document.getElementById('root');
-          if (root && !root.innerHTML.trim() && !localStorage.getItem('egchat_recovery_tried')) {
-            localStorage.setItem('egchat_recovery_tried', '1');
-            window.location.replace(window.location.origin + '/clear.html');
-          }
-        }, isIOS ? 8000 : 15000);
+        // En Capacitor (IPA nativa), no hacer recovery — el WebView
+        // puede tardar más en cargar el JS y no es un error.
+        var isCapacitor = !!(window.Capacitor) || window.location.protocol === 'capacitor:';
+        if (!isCapacitor) {
+          setTimeout(function() {
+            var root = document.getElementById('root');
+            if (root && !root.innerHTML.trim() && !localStorage.getItem('egchat_recovery_tried')) {
+              localStorage.setItem('egchat_recovery_tried', '1');
+              window.location.replace(window.location.origin + '/clear.html');
+            }
+          }, isIOS ? 8000 : 15000);
+        }
       })();
     </script>
   </head>
