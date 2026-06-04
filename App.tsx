@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import ImageViewerModal from './ImageViewerModal';
 import './index.css';
 import { chatAPI, authAPI, contactsAPI, storiesAPI, userAPI } from './api';
@@ -10,8 +10,12 @@ import { SetupPINModal, VerifyPINModal, walletPIN } from './WalletPIN';
 import { useDevice } from './useDevice';
 import { UpdateBanner } from './UpdateBanner';
 import { AppUpdateChecker } from './AppUpdateChecker';
+import { SyncIndicator } from './src/sync/SyncIndicator';
 import { Avatar } from './Avatar';
 import { QRCodeSVG } from 'qrcode.react';
+import { HomeView }           from './HomeView';
+import { ServicesView }       from './ServicesView';
+import { NotificationsPanel } from './NotificationsPanel';
 
 // ── Lazy imports — vistas y módulos pesados se cargan solo cuando se necesitan ──
 // Esto reduce el bundle inicial y acelera el primer render en Android
@@ -3119,134 +3123,37 @@ const App: React.FC = () => {
   };
 
   // Panel de notificaciones
+  // Panel de notificaciones — extraído como NotificationsPanel.tsx
   const renderNotificationsPanel = () => {
     if (!showNotifications) return null;
-
-    const iconForType = (type: string) => {
-      if (type === 'message') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>;
-      if (type === 'payment') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>;
-      if (type === 'taxi') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="1" y="3" width="15" height="13" rx="2"/><path d="M16 8h4l3 3v5h-7V8z"/><circle cx="5.5" cy="18.5" r="2.5"/><circle cx="18.5" cy="18.5" r="2.5"/></svg>;
-      if (type === 'security') return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>;
-      return <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>;
-    };
-    const colorForType = (type: string) => {
-      if (type === 'message') return '#00b4e6';
-      if (type === 'payment') return '#00c8a0';
-      if (type === 'taxi') return '#f59e0b';
-      if (type === 'security') return '#ef4444';
-      if (type === 'bet') return '#a855f7';
-      return '#6b7280';
-    };
-
-    const unreadCount = appNotifications.filter(n => !n.read).length;
-
     return (
-      <div onClick={() => setShowNotifications(false)}
-        style={{ position: 'fixed', inset: 0, zIndex: 1001 }}>
-        <div onClick={e => e.stopPropagation()} style={{
-          position: 'absolute', top: '58px', right: '8px',
-          width: '320px', maxWidth: 'calc(100vw - 16px)',
-          background: '#fff', borderRadius: '16px',
-          boxShadow: '0 8px 32px rgba(0,0,0,0.18)',
-          border: '1px solid rgba(0,0,0,0.07)',
-          overflow: 'hidden',
-        }}>
-          {/* Header */}
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '12px 14px 10px', borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <span style={{ fontSize: '14px', fontWeight: '700', color: '#0d0d0d' }}>Notificaciones</span>
-              {unreadCount > 0 && (
-                <span style={{ fontSize: '11px', fontWeight: '700', background: '#ef4444', color: '#fff', borderRadius: '10px', padding: '1px 7px' }}>{unreadCount}</span>
-              )}
-            </div>
-            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-              {appNotifications.length > 0 && (
-                <button onClick={() => setAppNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-                  style={{ background: 'none', border: 'none', color: '#00c8a0', fontSize: '11px', fontWeight: '600', cursor: 'pointer', outline: 'none' }}>
-                  Marcar todas
-                </button>
-              )}
-              <button onClick={() => setShowNotifications(false)} style={{ background: 'none', border: 'none', color: '#6b7280', cursor: 'pointer', outline: 'none', padding: '0', fontSize: '18px', lineHeight: 1 }}>&#x2715;</button>
-            </div>
-          </div>
-
-          {/* Lista */}
-          <div style={{ maxHeight: '360px', overflowY: 'auto' }}>
-            {appNotifications.length === 0 ? (
-              <div style={{ padding: '32px 16px', textAlign: 'center' }}>
-                <div style={{ fontSize: '32px', marginBottom: '8px' }}>🔔</div>
-                <div style={{ fontSize: '14px', fontWeight: '600', color: '#374151', marginBottom: '4px' }}>Sin notificaciones</div>
-                <div style={{ fontSize: '12px', color: '#9ca3af' }}>Las notificaciones de mensajes, pagos y más aparecerán aquí</div>
-              </div>
-            ) : appNotifications.map((n, i) => (
-              <div key={n.id}
-                onClick={async () => {
-                  // Eliminar notificación vista inmediatamente
-                  setAppNotifications(prev => prev.filter(x => x.id !== n.id));
-                  setShowNotifications(false);
-                  // Si es de chat, navegar directamente al chat
-                  if (n.chatId) {
-                    // Buscar el chat en la lista
-                    const chat = realChats.find((c: any) => c.id === n.chatId);
-                    if (chat) {
-                      const isGroup = chat.type === 'group';
-                      let name = chat.name || chat.title || '';
-                      let avatarUrl = chat.avatar_url || '';
-                      if (!isGroup && chat.participants) {
-                        const other = chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString());
-                        if (other) { name = other.full_name || other.users?.full_name || name; avatarUrl = other.avatar_url || other.users?.avatar_url || avatarUrl; }
-                      }
-                      setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials: name.slice(0,2).toUpperCase(), color: isGroup ? '#a855f7' : '#00c8a0', avatarUrl, isGroup });
-                    }
-                    setCurrentView('Mensajería');
-                  }
-                  if (n.action) n.action();
-                }}
-                style={{
-                  display: 'flex', alignItems: 'flex-start', gap: '10px',
-                  padding: '10px 14px',
-                  borderBottom: i < appNotifications.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none',
-                  cursor: 'pointer', background: n.read ? 'transparent' : 'rgba(0,180,230,0.04)',
-                  transition: 'background 0.15s',
-                }}
-                onMouseEnter={e => e.currentTarget.style.background = '#f9fafb'}
-                onMouseLeave={e => e.currentTarget.style.background = n.read ? 'transparent' : 'rgba(0,180,230,0.04)'}
-              >
-                <div style={{
-                  width: '34px', height: '34px', borderRadius: '50%', flexShrink: 0,
-                  background: colorForType(n.type) + '18',
-                  border: `1.5px solid ${colorForType(n.type)}30`,
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  color: colorForType(n.type),
-                }}>
-                  {iconForType(n.type)}
-                </div>
-                <div style={{ flex: 1, minWidth: 0 }}>
-                  <div style={{ fontSize: '13px', fontWeight: n.read ? '500' : '700', color: '#111827', marginBottom: '2px' }}>{n.title}</div>
-                  <div style={{ fontSize: '12px', color: '#6b7280', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{n.body}</div>
-                </div>
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', flexShrink: 0 }}>
-                  <span style={{ fontSize: '10px', color: '#9ca3af' }}>{n.time}</span>
-                  {!n.read && <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: colorForType(n.type) }}/>}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Footer */}
-          {appNotifications.length > 0 && (
-            <div style={{ padding: '8px 14px', borderTop: '1px solid rgba(0,0,0,0.07)', display: 'flex', justifyContent: 'center' }}>
-              <button onClick={() => setAppNotifications([])}
-                style={{ background: 'none', border: 'none', color: '#9ca3af', fontSize: '12px', cursor: 'pointer', outline: 'none' }}>
-                Limpiar todo
-              </button>
-            </div>
-          )}
-        </div>
-      </div>
+      <NotificationsPanel
+        notifications={appNotifications}
+        onClose={() => setShowNotifications(false)}
+        onMarkAllRead={() => setAppNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+        onClearAll={() => setAppNotifications([])}
+        onClickNotif={async (n) => {
+          setAppNotifications(prev => prev.filter(x => x.id !== n.id));
+          setShowNotifications(false);
+          if (n.chatId) {
+            const chat = realChats.find((c: any) => c.id === n.chatId);
+            if (chat) {
+              const isGroup = chat.type === 'group';
+              let name = chat.name || chat.title || '';
+              let avatarUrl = chat.avatar_url || '';
+              if (!isGroup && chat.participants) {
+                const other = chat.participants.find((p: any) => p.user_id?.toString() !== currentUserId.current?.toString());
+                if (other) { name = other.full_name || other.users?.full_name || name; avatarUrl = other.avatar_url || other.users?.avatar_url || avatarUrl; }
+              }
+              setSelectedChat({ id: chat.id, type: chat.type || 'individual', title: name, subtitle: '', time: '', status: 'online', initials: name.slice(0,2).toUpperCase(), color: isGroup ? '#a855f7' : '#00c8a0', avatarUrl, isGroup });
+            }
+            setCurrentView('Mensajería');
+          }
+          if (n.action) n.action();
+        }}
+      />
     );
   };
-
   // Iniciar llamada con acceso a camara/microfono
 
   const startCall = async (type: 'audio' | 'video', contact: any) => {
@@ -5199,338 +5106,50 @@ const App: React.FC = () => {
     );
   };
 
-  // Renderizar vista principal - PÁGINA DE INICIO CON SOPORTE DE LAYOUTS
-  const renderHomeView = () => {
-    const containerStyle: React.CSSProperties = {
-      paddingTop: viewPadding.top,
-      paddingLeft: '16px',
-      paddingRight: '16px',
-      paddingBottom: viewPadding.bottom,
-      height: '100vh',
-      overflowY: 'auto',
-      background: 'transparent'
-    };
-
-    // Layout: Minimal ? solo saldo y botones
-    if (homeLayout === 'minimal') return (
-      <div style={containerStyle}>
-        <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '20px', padding: '20px 18px 18px', border: 'none', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
-          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '6px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo disponible</div>
-          <div style={{ fontSize: '32px', fontWeight: '800', color: '#fff', marginBottom: '18px', letterSpacing: '-1px', cursor: 'pointer' }} onClick={() => toggleBalanceVisible('home-minimal')}>
-          {isBalanceVisible('home-minimal') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>● ● ● ●</span>}
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-minimal') ? '🙈' : '👁'}</span>
-        </div>
-          <div style={{ display: 'flex', gap: '10px' }}>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-              <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-              </div>
-              RECARGAR
-            </button>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '11px', borderRadius: '12px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>
-              <div style={{ width: '22px', height: '22px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              </div>
-              ENVIAR
-            </button>
-          </div>
-        </div>
-      </div>
-    );
-
-    // Layout: Compacto - accesos rpidos en grid
-    if (homeLayout === 'compact') return (
-      <div style={containerStyle}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
-          {[
-            { label: 'Mensajes', icon: 'mensajes', view: 'Mensajería', color: '#00b4e6' },
-            { label: 'Cartera', icon: 'wallet', view: 'monedero', color: '#00c8a0' },
-            { label: 'Servicios', icon: 'services', view: 'servicios', color: '#8b5cf6' },
-            { label: 'Noticias', icon: 'noticias', view: 'news', color: '#ef4444' },
-            { label: 'ID Digital', icon: 'id-card', view: 'id-digital', color: '#f59e0b' },
-            { label: 'Ajustes', icon: 'ajustes', view: 'ajustes', color: '#6b7280' },
-          ].map(item => (
-            <button key={item.view} onClick={() => setCurrentView(item.view)}
-              style={{ background: 'rgba(243,244,246,0.85)', border: `1.5px solid ${item.color}30`, borderRadius: '12px', padding: '16px 8px', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <div style={{ color: item.color }}>{renderIcon(item.icon, 22)}</div>
-              <span style={{ fontSize: '13px', fontWeight: '600', color: '#0d0d0d' }}>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    );
-
-    // Layout: Noticias - noticias en portada
-    if (homeLayout === 'news') return (
-      <div style={containerStyle}>
-        <div style={{ background: 'rgba(243,244,246,0.85)', borderRadius: '12px', padding: '14px', marginBottom: '12px', border: '1px solid rgba(0,0,0,0.07)' }}>
-          <div style={{ fontSize: '14px', color: '#6b7280', marginBottom: '4px' }}>SALDO</div>
-          <div style={{ fontSize: '22px', fontWeight: 'bold', color: '#0d0d0d' }}>45.200 XAF</div>
-        </div>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#0d0d0d', marginBottom: '10px' }}>LTIMAS NOTICIAS</div>
-        {['Nuevas inversiones en Malabo', 'Actualización del sistema bancario', 'Festival cultural de Bata'].map((n, i) => (
-          <button key={i} onClick={() => setCurrentView('news')}
-            style={{ width: '100%', background: 'rgba(243,244,246,0.85)', border: '1px solid rgba(0,0,0,0.07)', borderRadius: '10px', padding: '12px', marginBottom: '8px', cursor: 'pointer', outline: 'none', textAlign: 'left', display: 'flex', alignItems: 'center', gap: '10px' }}>
-            <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', flexShrink: 0 }} />
-            <span style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{n}</span>
-          </button>
-        ))}
-      </div>
-    );
-
-    // Layout: Finanzas - enfocado en cartera
-    if (homeLayout === 'finance') return (
-      <div style={containerStyle}>
-        <div style={{ background: 'linear-gradient(135deg,#1A3A6B,#0E5F8A,#0A7A8A)', borderRadius: '16px', padding: '16px', marginBottom: '12px', boxShadow: '0 6px 24px rgba(14,95,138,0.25)' }}>
-          <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.65)', marginBottom: '4px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase' }}>Saldo Total</div>
-          <div style={{ fontSize: '28px', fontWeight: '800', color: '#fff', marginBottom: '14px', letterSpacing: '-1px', cursor: 'pointer' }} onClick={() => toggleBalanceVisible('home-finance')}>
-          {isBalanceVisible('home-finance') ? <>{userBalance.toLocaleString()} <span style={{ fontSize: '13px', fontWeight: '600', color: 'rgba(255,255,255,0.6)' }}>XAF</span></> : <span style={{ letterSpacing: '4px', color: 'rgba(255,255,255,0.4)' }}>● ● ● ●</span>}
-          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)', marginLeft: '8px' }}>{isBalanceVisible('home-finance') ? (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></svg>) : (<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth="2" strokeLinecap="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>)}</span>
-        </div>
-          <div style={{ display: 'flex', gap: '8px' }}>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-              <div style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#92400E" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-              </div>
-              RECARGAR
-            </button>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-              <div style={{ width: '18px', height: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-              </div>
-              ENVIAR
-            </button>
-            <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: 'rgba(255,255,255,0.92)', border: 'none', color: '#1A2B4A', padding: '9px 6px', borderRadius: '10px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '4px', boxShadow: '0 2px 6px rgba(0,0,0,0.1)' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '5px', background: '#F3F0FD', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="#4C1D95" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="8 17 12 21 16 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-              </div>
-              HISTORIAL
-            </button>
-          </div>
-        </div>
-        {[{ label: 'Cuenta Principal', amount: '45.200 XAF', color: '#00c8a0' }, { label: 'Ahorros', amount: '12.000 XAF', color: '#00b4e6' }].map((acc, i) => (
-          <div key={i} style={{ background: 'rgba(243,244,246,0.85)', borderRadius: '10px', padding: '12px 14px', marginBottom: '8px', border: '1px solid rgba(0,0,0,0.07)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '12px', color: '#0d0d0d', fontWeight: '500' }}>{acc.label}</span>
-            <span style={{ fontSize: '13px', fontWeight: '700', color: acc.color }}>{acc.amount}</span>
-          </div>
-        ))}
-      </div>
-    );
-
-    // Layout por defecto y 'cards'
-    return (
-    <div style={{
-      paddingTop: viewPadding.top, paddingLeft: viewPadding.left, paddingRight: viewPadding.right, paddingBottom: viewPadding.bottom,
-      height: '100vh',
-      overflowY: 'auto',
-      overflowX: 'hidden',
-      background: 'transparent',
-      display: 'flex',
-      flexDirection: 'column',
-    }}>
-      {/* Tarjeta de balance principal */}
-      <div style={{
-        background: 'linear-gradient(160deg, #0d3b6e 0%, #0a5a8a 55%, #0a7a8a 100%)',
-        borderRadius: '18px',
-        padding: '20px 18px 18px',
-        marginBottom: '12px',
-        boxShadow: '0 8px 28px rgba(10,90,138,0.30)'
-      }}>
-        <div style={{ fontSize: '11px', color: 'rgba(255,255,255,0.6)', marginBottom: '8px', fontWeight: '700', letterSpacing: '1.5px', textTransform: 'uppercase' }}>
-          Saldo disponible
-        </div>
-        {/* Saldo oculto con puntos */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginBottom: '18px', cursor: 'pointer', userSelect: 'none' }}
-          onClick={() => toggleBalanceVisible('home-default')}>
-          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-            {isBalanceVisible('home-default')
-              ? <span style={{ fontSize: '30px', fontWeight: '800', color: '#fff', letterSpacing: '-1px', lineHeight: 1 }}>{userBalance.toLocaleString()} <span style={{ fontSize: '14px', fontWeight: '600', color: 'rgba(255,255,255,0.55)' }}>XAF</span></span>
-              : <>
-                  {[0,1,2,3].map(i => <div key={i} style={{ width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.25)' }} />)}
-                </>
-            }
-          </div>
-          <div style={{ marginLeft: 'auto', width: '28px', height: '28px', borderRadius: '50%', background: 'rgba(255,255,255,0.12)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth="2" strokeLinecap="round">
-              {isBalanceVisible('home-default')
-                ? <><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/><path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/><line x1="1" y1="1" x2="23" y2="23"/></>
-                : <><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></>
-              }
-            </svg>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: '#fff', border: 'none', color: '#1A2B4A', padding: '11px 8px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#C47D2A" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 17 12 21 8 17"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/></svg>
-            RECARGAR
-          </button>
-          <button onClick={() => setCurrentView('monedero')} style={{ flex: 1, background: '#fff', border: 'none', color: '#1A2B4A', padding: '11px 8px', borderRadius: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', outline: 'none', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px', boxShadow: '0 2px 8px rgba(0,0,0,0.10)' }}>
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#065F46" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>
-            ENVIAR
-          </button>
-        </div>
-      </div>
-
-      {/* Tarjetas ID Digital + Noticias */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
-        <button onClick={() => setCurrentView('id-digital')} style={{ background: '#fff', borderRadius: '12px', padding: '14px', border: '1px solid #EAECF0', color: '#0d0d0d', cursor: 'pointer', textAlign: 'left', outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '5px' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/><line x1="6" y1="15" x2="10" y2="15"/></svg>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>ID Digital</span>
-          </div>
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>Verificado</div>
-        </button>
-        <button onClick={() => setCurrentView('news')} style={{ background: '#fff', borderRadius: '12px', padding: '14px', border: '1px solid #EAECF0', color: '#0d0d0d', cursor: 'pointer', textAlign: 'left', outline: 'none', boxShadow: '0 1px 4px rgba(0,0,0,0.05)' }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '7px', marginBottom: '5px' }}>
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth="1.8" strokeLinecap="round"><path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/><line x1="18" y1="2" x2="18" y2="22"/><line x1="14" y1="7" x2="14" y2="7"/><line x1="10" y1="7" x2="10" y2="7"/></svg>
-            <span style={{ fontSize: '14px', fontWeight: '700', color: '#111827' }}>Noticias</span>
-          </div>
-          <div style={{ fontSize: '12px', color: '#6b7280' }}>8 nuevas</div>
-        </button>
-      </div>
-
-      {/* Accesos rapidos — 4 apps */}
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#374151', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '12px' }}>Apps</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '8px', justifyItems: 'center' }}>
-          {[
-            {
-              id: 'estados', label: 'Estados',
-              bg: '#FFF0F7', border: '#FECDD3',
-              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#DB2777" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/></svg>,
-            },
-            {
-              id: 'apuestas', label: 'Juegos',
-              bg: '#F5F0FF', border: '#DDD6FE',
-              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#7C3AED" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="8" cy="8" r="1.5" fill="#7C3AED"/><circle cx="16" cy="8" r="1.5" fill="#7C3AED"/><circle cx="8" cy="16" r="1.5" fill="#7C3AED"/><circle cx="16" cy="16" r="1.5" fill="#7C3AED"/><circle cx="12" cy="12" r="1.5" fill="#7C3AED"/></svg>,
-            },
-            {
-              id: 'cemac', label: 'Cemac',
-              bg: '#F0FDF4', border: '#BBF7D0',
-              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#059669" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2L2 8v13h20V8L12 2z"/><path d="M9 21V12h6v9"/></svg>,
-            },
-            {
-              id: 'mitaxi', label: 'MiTaxi',
-              bg: '#FFFBEB', border: '#FDE68A',
-              icon: <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#D97706" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/><circle cx="7.5" cy="17" r="2.5"/><circle cx="16.5" cy="17" r="2.5"/></svg>,
-            },
-          ].map(item => (
-            <button
-              key={item.id}
-              onClick={() => { setPreviousView(currentView); setCurrentView(item.id); }}
-              style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '7px', padding: '4px 0', width: '100%', WebkitTapHighlightColor: 'transparent' }}
-              onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.93)'; }}
-              onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-              onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-            >
-              <div style={{
-                width: '62px', height: '62px',
-                borderRadius: '16px',
-                background: item.bg,
-                border: `1.5px solid ${item.border}`,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.07)',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-              }}>
-                {item.icon}
-              </div>
-              <span style={{ fontSize: '12px', color: '#374151', fontWeight: '600', textAlign: 'center', lineHeight: '1.2' }}>{item.label}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
+  // renderHomeView → extraído como componente HomeView.tsx (ver ese archivo)
+  const renderHomeView = () => (
+    <HomeView
+      viewPadding={viewPadding}
+      homeLayout={homeLayout}
+      userBalance={userBalance}
+      isBalanceVisible={isBalanceVisible}
+      toggleBalanceVisible={toggleBalanceVisible}
+      setCurrentView={setCurrentView}
+      setPreviousView={setPreviousView}
+      currentView={currentView}
+      renderIcon={renderIcon}
+    />
   );
-  };
 
   // Renderizar vista de servicios — estilo EGCHAT
-  const renderServicesView = () => {
-    const Btn = ({ label, icon, color, onClick }: { label: string; icon: string; color: string; onClick: () => void }) => (
-      <button
-        onClick={onClick}
-        className="svc-btn"
-        style={{ background: 'none', border: 'none', cursor: 'pointer', outline: 'none', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '5px', padding: '10px 4px 8px', transition: 'transform 0.15s ease', WebkitTapHighlightColor: 'transparent' }}
-        onMouseDown={e => { e.currentTarget.style.transform = 'scale(0.92)'; }}
-        onMouseUp={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-        onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)'; }}
-      >
-        {/* Icono con fondo blanco y borde de color suave */}
-        <div style={{ width: '52px', height: '52px', borderRadius: '14px', background: '#fff', border: `1.5px solid ${color}30`, boxShadow: '0 1px 4px rgba(0,0,0,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: color }}>
-          {renderIcon(icon, 26)}
-        </div>
-        <span style={{ fontSize: '11px', color: '#374151', fontWeight: '500', textAlign: 'center', lineHeight: 1.3, maxWidth: '58px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{label}</span>
-      </button>
-    );
-
-    const Section = ({ title, children }: { title: string; children: React.ReactNode }) => (
-      <div style={{ background: '#FFFFFF', borderRadius: '0', marginBottom: '0', overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px 4px' }}>
-          <span style={{ fontSize: '13px', fontWeight: '500', color: '#9CA3AF' }}>{title}</span>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: device.isDesktop ? 'repeat(6, 1fr)' : device.isTablet ? 'repeat(5, 1fr)' : 'repeat(4, 1fr)', gap: '0', padding: '4px 8px 8px' }}>
-          {children}
-        </div>
-        <div style={{ height: '8px', background: '#F7F8FA' }} />
-      </div>
-    );
-
-    return (
-      <div style={{ paddingTop: viewPadding.top, height: '100vh', display: 'flex', flexDirection: 'column', background: '#F7F8FA' }}>
-        <div className="scroll-container" style={{ flex: 1, overflowY: 'scroll', paddingBottom: device.isMobile ? 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)' : '24px' }}>
-
-          {/* BÁSICOS */}
-          <Section title="Básicos">
-            <Btn label="Recarga..." icon="recharge" color="#07C160" onClick={() => { setShowRechargeModal(true); }} />
-            <Btn label="Internet" icon="world" color="#1485EE" onClick={() => { setShowInternetModal(true); }} />
-            <Btn label="Canales" icon="services" color="#8B5CF6" onClick={() => { setCanalesScreen('home'); setShowCanalesModal(true); }} />
-          </Section>
-
-          <Section title="Servicios Financieros">
-            <Btn label="Bancos" icon="banking" color="#1485EE" onClick={() => setShowBancosModal(true)} />
-            <Btn label="Seguros" icon="seguros" color="#2E9E6B" onClick={() => setShowSegurosModal(true)} />
-            <Btn label="Facturas" icon="factura" color="#C47D2A" onClick={() => setShowFacturasModal(true)} />
-            <Btn label="Inversión" icon="invest" color="#6B5BD6" onClick={() => { setShowFinModal('invest'); setFinStep('main'); setFinData({}); }} />
-            <Btn label="Tarjetas" icon="tarjeta" color="#C0392B" onClick={() => { setBancosInitScreen('cards'); setShowBancosModal(true); }} />
-            <Btn label="Historial" icon="historial" color="#5A7090" onClick={() => setCurrentView('historial-completo')} />
-          </Section>
-
-          {/* SERVICIOS PÚBLICOS */}
-          <Section title="Servicios Públicos">
-            <Btn label="Electrici..." icon="electricidad" color="#C47D2A" onClick={() => { setShowSvcModal('elec'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Agua" icon="rain" color="#1485EE" onClick={() => { setShowSvcModal('agua'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Salud" icon="salud" color="#C0392B" onClick={() => setShowSaludModal(true)} />
-            <Btn label="Educación" icon="edu" color="#6B5BD6" onClick={() => { setShowSvcModal('edu'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Correos" icon="mensajes" color="#C47D2A" onClick={() => { setShowSvcModal('correos'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Impuest..." icon="gobierno" color="#C0392B" onClick={() => { setShowSvcModal('impuestos'); setSvcStep('main'); setSvcData({}); }} />
-          </Section>
-
-          {/* SERVICIOS DIARIOS */}
-          <Section title="Servicios Diarios">
-            <Btn label="Supermercado" icon="comercio" color="#2E9E6B" onClick={() => setShowSuperModal(true)} />
-            <Btn label="Comida" icon="money" color="#C0392B" onClick={() => { setShowSvcModal('comida'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Restaurante" icon="restaurante" color="#C47D2A" onClick={() => { setShowSvcModal('restaurante'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Hotel" icon="hotel" color="#1485EE" onClick={() => { setShowSvcModal('hotel'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Vuelos" icon="vuelos" color="#6B5BD6" onClick={() => { setShowSvcModal('vuelos'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Gasolinera" icon="gasolinera" color="#C47D2A" onClick={() => { setShowSvcModal('gasolinera'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Tienda" icon="tienda" color="#2E9E6B" onClick={() => { setShowSvcModal('tienda'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Lavandería" icon="lavanderia" color="#1485EE" onClick={() => { setShowSvcModal('lavanderia'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Belleza" icon="belleza" color="#C0392B" onClick={() => { setShowSvcModal('belleza'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Noticias" icon="noticias" color="#6B5BD6" onClick={() => { setShowSvcModal('noticias'); setSvcStep('main'); setSvcData({}); }} />
-          </Section>
-
-          {/* HERRAMIENTAS */}
-          <Section title="Herramientas">
-            <Btn label="ID Digital" icon="id-card" color="#6B5BD6" onClick={() => { setShowSvcModal('id'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Lia-25" icon="ai" color="#1485EE" onClick={() => setCurrentView('Lia-25')} />
-            <Btn label="Actividad" icon="historial" color="#0E7FA8" onClick={() => setShowActividadModal(true)} />
-            <Btn label="Emergencia" icon="emergencia" color="#C0392B" onClick={() => { setShowSvcModal('emergencia'); setSvcStep('main'); setSvcData({}); }} />
-            <Btn label="Ajustes" icon="ajustes" color="#5A7090" onClick={() => setCurrentView('ajustes')} />
-          </Section>
-
-        </div>
-      </div>
-    );
-  };
+  // Renderizar vista de servicios — estilo EGCHAT
+  // Renderizar vista de servicios — extraída como ServicesView.tsx
+  // Renderizar vista de servicios — estilo EGCHAT
+  const renderServicesView = () => (
+    <ServicesView
+      viewPadding={viewPadding}
+      device={device}
+      renderIcon={renderIcon}
+      setCurrentView={setCurrentView}
+      setShowRechargeModal={setShowRechargeModal}
+      setShowInternetModal={setShowInternetModal}
+      setShowCanalesModal={setShowCanalesModal}
+      setCanalesScreen={setCanalesScreen}
+      setShowBancosModal={setShowBancosModal}
+      setShowSegurosModal={setShowSegurosModal}
+      setShowFacturasModal={setShowFacturasModal}
+      setShowSaludModal={setShowSaludModal}
+      setShowSuperModal={setShowSuperModal}
+      setShowActividadModal={setShowActividadModal}
+      setShowFinModal={setShowFinModal}
+      setFinStep={setFinStep}
+      setFinData={setFinData}
+      setBancosInitScreen={setBancosInitScreen}
+      setShowSvcModal={setShowSvcModal}
+      setSvcStep={setSvcStep}
+      setSvcData={setSvcData}
+    />
+  );
   // Funcian principal de renderizado
   const renderCurrentView = () => {
     switch (currentView) {
@@ -10998,6 +10617,11 @@ const App: React.FC = () => {
     }
     // Cambiar estado — esto desmonta AuthScreen y monta la app principal
     setIsAuthenticated(true);
+    // Activar WebSocket real-time tras login (import dinámico para no bloquear)
+    import('./src/AppInit').then(({ onLoginSuccess }) => {
+      const tok = localStorage.getItem('token') || localStorage.getItem('egchat_token_backup') || '';
+      if (tok) onLoginSuccess(tok);
+    }).catch(() => {});
     // Pedir permiso push — en iOS solo funciona desde un gesto del usuario
     // En Android/desktop se puede pedir directamente
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -11202,6 +10826,9 @@ const App: React.FC = () => {
       {renderMenuPanel()}
       {renderTimeModal()}
       {renderActiveCall()}
+
+      {/* Indicador de sincronización Offline-First */}
+      <SyncIndicator />
 
       {/* Banner de actualización automática */}
       <UpdateBanner isAuthenticated={isAuthenticated} />

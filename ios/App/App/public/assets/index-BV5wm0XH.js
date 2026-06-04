@@ -1,4 +1,4 @@
-const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-BS6Zci2E.js","assets/react-core-B1rSPtcn.js","assets/icons-Be6fsX7F.js","assets/qr-D7_rpNIe.js","assets/web-SkTF6e0l.js","assets/EstadosView-BzY1EYO-.js","assets/ApuestasView-KYZEy5jB.js","assets/CemacView-BFvXL36d.js","assets/useGPS-DjzmjKYl.js","assets/MiTaxiView-eFPCsiiz.js","assets/maptiler-CuqeBaum.js","assets/maptiler-ES1W_SdS.css","assets/Lia25View-CbeYT-bo.js","assets/EducacionModule-L26JxLgX.js","assets/DocUploader-DqUv4Md2.js","assets/HotelesModule-ACxCChN5.js","assets/TiendasModule-CWnnc9x1.js","assets/EGChatDesktopWelcome-8m_zKCgB.js","assets/PhotoEditorModal-BaQ3NkXV.js","assets/QRScanner-B2lkFFbn.js","assets/CameraModal-BcZoacyD.js","assets/ServiciosModules-Btjbmhx-.js","assets/SupermercadosModule-BaqVM_71.js","assets/ServiciosDiarios-BvfEX-dm.js","assets/web-fIf01BB6.js"])))=>i.map(i=>d[i]);
+const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/web-B9AdntMi.js","assets/react-core-B1rSPtcn.js","assets/icons-Be6fsX7F.js","assets/qr-D7_rpNIe.js","assets/web-khKW1Yqc.js","assets/web-uhpJ4us-.js","assets/EstadosView-C_vWV-Es.js","assets/ApuestasView-KYZEy5jB.js","assets/CemacView-BFvXL36d.js","assets/useGPS-DjzmjKYl.js","assets/MiTaxiView-D5OQU4KN.js","assets/maptiler-CuqeBaum.js","assets/maptiler-ES1W_SdS.css","assets/Lia25View-C31ilg0a.js","assets/EducacionModule-L26JxLgX.js","assets/DocUploader-DqUv4Md2.js","assets/HotelesModule-ACxCChN5.js","assets/TiendasModule-CWnnc9x1.js","assets/EGChatDesktopWelcome-8m_zKCgB.js","assets/PhotoEditorModal-BaQ3NkXV.js","assets/QRScanner-B2lkFFbn.js","assets/CameraModal-BcZoacyD.js","assets/ServiciosModules-73WsLyP7.js","assets/SupermercadosModule-BaqVM_71.js","assets/ServiciosDiarios-BvfEX-dm.js","assets/web-D_NtMz9W.js","assets/web-mPEeMF-D.js"])))=>i.map(i=>d[i]);
 import { r as reactExports, j as jsxRuntimeExports, R as React, a as ReactDOM } from "./react-core-B1rSPtcn.js";
 import { M as MessageCircle, C as CreditCard, B as Bot, U as UserPlus, L as LogIn, X, a as Users, P as Phone, S as Search, b as Check } from "./icons-Be6fsX7F.js";
 import { Q as QRCodeSVG } from "./qr-D7_rpNIe.js";
@@ -570,7 +570,7 @@ const BASE$2 = (() => {
 const TOKEN_KEY = "token";
 const TOKEN_BACKUP_KEY = "egchat_token_backup";
 const LEGACY_TOKEN_KEY = "egchat_token";
-const getToken = () => {
+const getToken$1 = () => {
   const primary = localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY) || "";
   if (primary) return primary;
   const backup = localStorage.getItem(TOKEN_BACKUP_KEY) || sessionStorage.getItem(TOKEN_BACKUP_KEY) || localStorage.getItem(LEGACY_TOKEN_KEY) || "";
@@ -597,7 +597,7 @@ const clearToken = () => {
   sessionStorage.removeItem(TOKEN_BACKUP_KEY);
 };
 const getHeaders = () => {
-  const token = getToken();
+  const token = getToken$1();
   return {
     "Content-Type": "application/json",
     ...token ? { "Authorization": `Bearer ${token}` } : {}
@@ -605,7 +605,7 @@ const getHeaders = () => {
 };
 async function request(path, options = {}, retries = 2) {
   const method = (options.method || "GET").toUpperCase();
-  const tokenForFallback = getToken();
+  const tokenForFallback = getToken$1();
   const isAuthEndpoint = path.includes("/auth/login") || path.includes("/auth/register") || path.includes("/auth/send-verification") || path.includes("/auth/verify-code") || path.includes("/auth/reset-password");
   const queryToken = tokenForFallback && !isAuthEndpoint ? `${path.includes("?") ? "&" : "?"}_t=${encodeURIComponent(tokenForFallback)}` : "";
   const url = `${BASE$2}${path}${queryToken}`;
@@ -676,10 +676,10 @@ const authAPI = {
   registerSocial: (data) => post("/auth/register-social", data),
   sendSMS: (phone, message) => post("/auth/send-notification", { phone, message }),
   resetPassword: (phone, code, newPassword) => post("/auth/reset-password", { phone, code, newPassword }),
-  getToken,
+  getToken: getToken$1,
   setToken,
   clearToken,
-  isAuthenticated: () => !!getToken()
+  isAuthenticated: () => !!getToken$1()
 };
 const walletAPI = {
   getBalance: () => get("/wallet/balance"),
@@ -717,7 +717,7 @@ const chatAPI = {
   markAsRead: (chatId, message_id) => post(`/chats/${chatId}/read`, { message_id }),
   // Subir archivo — usa FormData para máxima compatibilidad con Android/iOS
   uploadFile: async (chatId, file) => {
-    const token = getToken();
+    const token = getToken$1();
     const formData = new FormData();
     formData.append("file", file, file.name);
     const res = await fetch(`${BASE$2}/chats/${chatId}/upload`, {
@@ -736,7 +736,7 @@ const chatAPI = {
   // Eliminar mensaje solo para mí
   deleteMessageForMe: (messageId) => del(`/messages/${messageId}/for-me`),
   // Buscar usuarios para chat
-  searchUsers: (query) => get(`/contacts/search?q=${encodeURIComponent(query)}`),
+  searchUsers: (query2) => get(`/contacts/search?q=${encodeURIComponent(query2)}`),
   // Archivar chat
   archiveChat: (chatId) => put(`/chats/${chatId}/archive`, {}),
   // Eliminar chat
@@ -794,7 +794,7 @@ const saludAPI = {
   getHospitals: (city) => get(`/salud/hospitales${city ? `?city=${city}` : ""}`),
   getPharmacies: (city) => get(`/salud/farmacias${city ? `?city=${city}` : ""}`),
   requestCita: (data) => post("/salud/citas", data),
-  getMedicamentos: (query) => get(`/salud/medicamentos?q=${encodeURIComponent(query)}`),
+  getMedicamentos: (query2) => get(`/salud/medicamentos?q=${encodeURIComponent(query2)}`),
   orderMeds: (order) => post("/salud/medicamentos/pedido", order)
 };
 const taxiAPI = {
@@ -835,7 +835,7 @@ const userAPI = {
     const res = await fetch(`${BASE$2}/user/avatar`, {
       method: "POST",
       body: fd,
-      headers: getToken() ? { Authorization: `Bearer ${getToken()}` } : {}
+      headers: getToken$1() ? { Authorization: `Bearer ${getToken$1()}` } : {}
     });
     return res.json();
   },
@@ -3835,6 +3835,2680 @@ const AppUpdateChecker = () => {
     ] })
   ] });
 };
+/*! Capacitor: https://capacitorjs.com/ - MIT License */
+const createCapacitorPlatforms = (win) => {
+  const defaultPlatformMap = /* @__PURE__ */ new Map();
+  defaultPlatformMap.set("web", { name: "web" });
+  const capPlatforms = win.CapacitorPlatforms || {
+    currentPlatform: { name: "web" },
+    platforms: defaultPlatformMap
+  };
+  const addPlatform = (name, platform) => {
+    capPlatforms.platforms.set(name, platform);
+  };
+  const setPlatform = (name) => {
+    if (capPlatforms.platforms.has(name)) {
+      capPlatforms.currentPlatform = capPlatforms.platforms.get(name);
+    }
+  };
+  capPlatforms.addPlatform = addPlatform;
+  capPlatforms.setPlatform = setPlatform;
+  return capPlatforms;
+};
+const initPlatforms = (win) => win.CapacitorPlatforms = createCapacitorPlatforms(win);
+const CapacitorPlatforms = /* @__PURE__ */ initPlatforms(typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : {});
+CapacitorPlatforms.addPlatform;
+CapacitorPlatforms.setPlatform;
+var ExceptionCode;
+(function(ExceptionCode2) {
+  ExceptionCode2["Unimplemented"] = "UNIMPLEMENTED";
+  ExceptionCode2["Unavailable"] = "UNAVAILABLE";
+})(ExceptionCode || (ExceptionCode = {}));
+class CapacitorException extends Error {
+  constructor(message, code, data) {
+    super(message);
+    this.message = message;
+    this.code = code;
+    this.data = data;
+  }
+}
+const getPlatformId = (win) => {
+  var _a, _b;
+  if (win === null || win === void 0 ? void 0 : win.androidBridge) {
+    return "android";
+  } else if ((_b = (_a = win === null || win === void 0 ? void 0 : win.webkit) === null || _a === void 0 ? void 0 : _a.messageHandlers) === null || _b === void 0 ? void 0 : _b.bridge) {
+    return "ios";
+  } else {
+    return "web";
+  }
+};
+const createCapacitor = (win) => {
+  var _a, _b, _c, _d, _e;
+  const capCustomPlatform = win.CapacitorCustomPlatform || null;
+  const cap = win.Capacitor || {};
+  const Plugins = cap.Plugins = cap.Plugins || {};
+  const capPlatforms = win.CapacitorPlatforms;
+  const defaultGetPlatform = () => {
+    return capCustomPlatform !== null ? capCustomPlatform.name : getPlatformId(win);
+  };
+  const getPlatform = ((_a = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _a === void 0 ? void 0 : _a.getPlatform) || defaultGetPlatform;
+  const defaultIsNativePlatform = () => getPlatform() !== "web";
+  const isNativePlatform = ((_b = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _b === void 0 ? void 0 : _b.isNativePlatform) || defaultIsNativePlatform;
+  const defaultIsPluginAvailable = (pluginName) => {
+    const plugin = registeredPlugins.get(pluginName);
+    if (plugin === null || plugin === void 0 ? void 0 : plugin.platforms.has(getPlatform())) {
+      return true;
+    }
+    if (getPluginHeader(pluginName)) {
+      return true;
+    }
+    return false;
+  };
+  const isPluginAvailable = ((_c = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _c === void 0 ? void 0 : _c.isPluginAvailable) || defaultIsPluginAvailable;
+  const defaultGetPluginHeader = (pluginName) => {
+    var _a2;
+    return (_a2 = cap.PluginHeaders) === null || _a2 === void 0 ? void 0 : _a2.find((h) => h.name === pluginName);
+  };
+  const getPluginHeader = ((_d = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _d === void 0 ? void 0 : _d.getPluginHeader) || defaultGetPluginHeader;
+  const handleError = (err) => win.console.error(err);
+  const pluginMethodNoop = (_target, prop, pluginName) => {
+    return Promise.reject(`${pluginName} does not have an implementation of "${prop}".`);
+  };
+  const registeredPlugins = /* @__PURE__ */ new Map();
+  const defaultRegisterPlugin = (pluginName, jsImplementations = {}) => {
+    const registeredPlugin = registeredPlugins.get(pluginName);
+    if (registeredPlugin) {
+      console.warn(`Capacitor plugin "${pluginName}" already registered. Cannot register plugins twice.`);
+      return registeredPlugin.proxy;
+    }
+    const platform = getPlatform();
+    const pluginHeader = getPluginHeader(pluginName);
+    let jsImplementation;
+    const loadPluginImplementation = async () => {
+      if (!jsImplementation && platform in jsImplementations) {
+        jsImplementation = typeof jsImplementations[platform] === "function" ? jsImplementation = await jsImplementations[platform]() : jsImplementation = jsImplementations[platform];
+      } else if (capCustomPlatform !== null && !jsImplementation && "web" in jsImplementations) {
+        jsImplementation = typeof jsImplementations["web"] === "function" ? jsImplementation = await jsImplementations["web"]() : jsImplementation = jsImplementations["web"];
+      }
+      return jsImplementation;
+    };
+    const createPluginMethod = (impl, prop) => {
+      var _a2, _b2;
+      if (pluginHeader) {
+        const methodHeader = pluginHeader === null || pluginHeader === void 0 ? void 0 : pluginHeader.methods.find((m) => prop === m.name);
+        if (methodHeader) {
+          if (methodHeader.rtype === "promise") {
+            return (options) => cap.nativePromise(pluginName, prop.toString(), options);
+          } else {
+            return (options, callback) => cap.nativeCallback(pluginName, prop.toString(), options, callback);
+          }
+        } else if (impl) {
+          return (_a2 = impl[prop]) === null || _a2 === void 0 ? void 0 : _a2.bind(impl);
+        }
+      } else if (impl) {
+        return (_b2 = impl[prop]) === null || _b2 === void 0 ? void 0 : _b2.bind(impl);
+      } else {
+        throw new CapacitorException(`"${pluginName}" plugin is not implemented on ${platform}`, ExceptionCode.Unimplemented);
+      }
+    };
+    const createPluginMethodWrapper = (prop) => {
+      let remove;
+      const wrapper = (...args) => {
+        const p = loadPluginImplementation().then((impl) => {
+          const fn = createPluginMethod(impl, prop);
+          if (fn) {
+            const p2 = fn(...args);
+            remove = p2 === null || p2 === void 0 ? void 0 : p2.remove;
+            return p2;
+          } else {
+            throw new CapacitorException(`"${pluginName}.${prop}()" is not implemented on ${platform}`, ExceptionCode.Unimplemented);
+          }
+        });
+        if (prop === "addListener") {
+          p.remove = async () => remove();
+        }
+        return p;
+      };
+      wrapper.toString = () => `${prop.toString()}() { [capacitor code] }`;
+      Object.defineProperty(wrapper, "name", {
+        value: prop,
+        writable: false,
+        configurable: false
+      });
+      return wrapper;
+    };
+    const addListener = createPluginMethodWrapper("addListener");
+    const removeListener = createPluginMethodWrapper("removeListener");
+    const addListenerNative = (eventName, callback) => {
+      const call = addListener({ eventName }, callback);
+      const remove = async () => {
+        const callbackId = await call;
+        removeListener({
+          eventName,
+          callbackId
+        }, callback);
+      };
+      const p = new Promise((resolve) => call.then(() => resolve({ remove })));
+      p.remove = async () => {
+        console.warn(`Using addListener() without 'await' is deprecated.`);
+        await remove();
+      };
+      return p;
+    };
+    const proxy = new Proxy({}, {
+      get(_, prop) {
+        switch (prop) {
+          // https://github.com/facebook/react/issues/20030
+          case "$$typeof":
+            return void 0;
+          case "toJSON":
+            return () => ({});
+          case "addListener":
+            return pluginHeader ? addListenerNative : addListener;
+          case "removeListener":
+            return removeListener;
+          default:
+            return createPluginMethodWrapper(prop);
+        }
+      }
+    });
+    Plugins[pluginName] = proxy;
+    registeredPlugins.set(pluginName, {
+      name: pluginName,
+      proxy,
+      platforms: /* @__PURE__ */ new Set([
+        ...Object.keys(jsImplementations),
+        ...pluginHeader ? [platform] : []
+      ])
+    });
+    return proxy;
+  };
+  const registerPlugin2 = ((_e = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _e === void 0 ? void 0 : _e.registerPlugin) || defaultRegisterPlugin;
+  if (!cap.convertFileSrc) {
+    cap.convertFileSrc = (filePath) => filePath;
+  }
+  cap.getPlatform = getPlatform;
+  cap.handleError = handleError;
+  cap.isNativePlatform = isNativePlatform;
+  cap.isPluginAvailable = isPluginAvailable;
+  cap.pluginMethodNoop = pluginMethodNoop;
+  cap.registerPlugin = registerPlugin2;
+  cap.Exception = CapacitorException;
+  cap.DEBUG = !!cap.DEBUG;
+  cap.isLoggingEnabled = !!cap.isLoggingEnabled;
+  cap.platform = cap.getPlatform();
+  cap.isNative = cap.isNativePlatform();
+  return cap;
+};
+const initCapacitorGlobal = (win) => win.Capacitor = createCapacitor(win);
+const Capacitor = /* @__PURE__ */ initCapacitorGlobal(typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : {});
+const registerPlugin = Capacitor.registerPlugin;
+Capacitor.Plugins;
+class WebPlugin {
+  constructor(config) {
+    this.listeners = {};
+    this.retainedEventArguments = {};
+    this.windowListeners = {};
+    if (config) {
+      console.warn(`Capacitor WebPlugin "${config.name}" config object was deprecated in v3 and will be removed in v4.`);
+      this.config = config;
+    }
+  }
+  addListener(eventName, listenerFunc) {
+    let firstListener = false;
+    const listeners2 = this.listeners[eventName];
+    if (!listeners2) {
+      this.listeners[eventName] = [];
+      firstListener = true;
+    }
+    this.listeners[eventName].push(listenerFunc);
+    const windowListener = this.windowListeners[eventName];
+    if (windowListener && !windowListener.registered) {
+      this.addWindowListener(windowListener);
+    }
+    if (firstListener) {
+      this.sendRetainedArgumentsForEvent(eventName);
+    }
+    const remove = async () => this.removeListener(eventName, listenerFunc);
+    const p = Promise.resolve({ remove });
+    return p;
+  }
+  async removeAllListeners() {
+    this.listeners = {};
+    for (const listener in this.windowListeners) {
+      this.removeWindowListener(this.windowListeners[listener]);
+    }
+    this.windowListeners = {};
+  }
+  notifyListeners(eventName, data, retainUntilConsumed) {
+    const listeners2 = this.listeners[eventName];
+    if (!listeners2) {
+      if (retainUntilConsumed) {
+        let args = this.retainedEventArguments[eventName];
+        if (!args) {
+          args = [];
+        }
+        args.push(data);
+        this.retainedEventArguments[eventName] = args;
+      }
+      return;
+    }
+    listeners2.forEach((listener) => listener(data));
+  }
+  hasListeners(eventName) {
+    return !!this.listeners[eventName].length;
+  }
+  registerWindowListener(windowEventName, pluginEventName) {
+    this.windowListeners[pluginEventName] = {
+      registered: false,
+      windowEventName,
+      pluginEventName,
+      handler: (event) => {
+        this.notifyListeners(pluginEventName, event);
+      }
+    };
+  }
+  unimplemented(msg = "not implemented") {
+    return new Capacitor.Exception(msg, ExceptionCode.Unimplemented);
+  }
+  unavailable(msg = "not available") {
+    return new Capacitor.Exception(msg, ExceptionCode.Unavailable);
+  }
+  async removeListener(eventName, listenerFunc) {
+    const listeners2 = this.listeners[eventName];
+    if (!listeners2) {
+      return;
+    }
+    const index = listeners2.indexOf(listenerFunc);
+    this.listeners[eventName].splice(index, 1);
+    if (!this.listeners[eventName].length) {
+      this.removeWindowListener(this.windowListeners[eventName]);
+    }
+  }
+  addWindowListener(handle) {
+    window.addEventListener(handle.windowEventName, handle.handler);
+    handle.registered = true;
+  }
+  removeWindowListener(handle) {
+    if (!handle) {
+      return;
+    }
+    window.removeEventListener(handle.windowEventName, handle.handler);
+    handle.registered = false;
+  }
+  sendRetainedArgumentsForEvent(eventName) {
+    const args = this.retainedEventArguments[eventName];
+    if (!args) {
+      return;
+    }
+    delete this.retainedEventArguments[eventName];
+    args.forEach((arg) => {
+      this.notifyListeners(eventName, arg);
+    });
+  }
+}
+const encode = (str) => encodeURIComponent(str).replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent).replace(/[()]/g, escape);
+const decode = (str) => str.replace(/(%[\dA-F]{2})+/gi, decodeURIComponent);
+class CapacitorCookiesPluginWeb extends WebPlugin {
+  async getCookies() {
+    const cookies = document.cookie;
+    const cookieMap = {};
+    cookies.split(";").forEach((cookie) => {
+      if (cookie.length <= 0)
+        return;
+      let [key, value] = cookie.replace(/=/, "CAP_COOKIE").split("CAP_COOKIE");
+      key = decode(key).trim();
+      value = decode(value).trim();
+      cookieMap[key] = value;
+    });
+    return cookieMap;
+  }
+  async setCookie(options) {
+    try {
+      const encodedKey = encode(options.key);
+      const encodedValue = encode(options.value);
+      const expires = `; expires=${(options.expires || "").replace("expires=", "")}`;
+      const path = (options.path || "/").replace("path=", "");
+      const domain = options.url != null && options.url.length > 0 ? `domain=${options.url}` : "";
+      document.cookie = `${encodedKey}=${encodedValue || ""}${expires}; path=${path}; ${domain};`;
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+  async deleteCookie(options) {
+    try {
+      document.cookie = `${options.key}=; Max-Age=0`;
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+  async clearCookies() {
+    try {
+      const cookies = document.cookie.split(";") || [];
+      for (const cookie of cookies) {
+        document.cookie = cookie.replace(/^ +/, "").replace(/=.*/, `=;expires=${(/* @__PURE__ */ new Date()).toUTCString()};path=/`);
+      }
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+  async clearAllCookies() {
+    try {
+      await this.clearCookies();
+    } catch (error) {
+      return Promise.reject(error);
+    }
+  }
+}
+registerPlugin("CapacitorCookies", {
+  web: () => new CapacitorCookiesPluginWeb()
+});
+const readBlobAsBase64 = async (blob) => new Promise((resolve, reject) => {
+  const reader = new FileReader();
+  reader.onload = () => {
+    const base64String = reader.result;
+    resolve(base64String.indexOf(",") >= 0 ? base64String.split(",")[1] : base64String);
+  };
+  reader.onerror = (error) => reject(error);
+  reader.readAsDataURL(blob);
+});
+const normalizeHttpHeaders = (headers = {}) => {
+  const originalKeys = Object.keys(headers);
+  const loweredKeys = Object.keys(headers).map((k) => k.toLocaleLowerCase());
+  const normalized = loweredKeys.reduce((acc, key, index) => {
+    acc[key] = headers[originalKeys[index]];
+    return acc;
+  }, {});
+  return normalized;
+};
+const buildUrlParams = (params, shouldEncode = true) => {
+  if (!params)
+    return null;
+  const output = Object.entries(params).reduce((accumulator, entry) => {
+    const [key, value] = entry;
+    let encodedValue;
+    let item;
+    if (Array.isArray(value)) {
+      item = "";
+      value.forEach((str) => {
+        encodedValue = shouldEncode ? encodeURIComponent(str) : str;
+        item += `${key}=${encodedValue}&`;
+      });
+      item.slice(0, -1);
+    } else {
+      encodedValue = shouldEncode ? encodeURIComponent(value) : value;
+      item = `${key}=${encodedValue}`;
+    }
+    return `${accumulator}&${item}`;
+  }, "");
+  return output.substr(1);
+};
+const buildRequestInit = (options, extra = {}) => {
+  const output = Object.assign({ method: options.method || "GET", headers: options.headers }, extra);
+  const headers = normalizeHttpHeaders(options.headers);
+  const type = headers["content-type"] || "";
+  if (typeof options.data === "string") {
+    output.body = options.data;
+  } else if (type.includes("application/x-www-form-urlencoded")) {
+    const params = new URLSearchParams();
+    for (const [key, value] of Object.entries(options.data || {})) {
+      params.set(key, value);
+    }
+    output.body = params.toString();
+  } else if (type.includes("multipart/form-data") || options.data instanceof FormData) {
+    const form = new FormData();
+    if (options.data instanceof FormData) {
+      options.data.forEach((value, key) => {
+        form.append(key, value);
+      });
+    } else {
+      for (const key of Object.keys(options.data)) {
+        form.append(key, options.data[key]);
+      }
+    }
+    output.body = form;
+    const headers2 = new Headers(output.headers);
+    headers2.delete("content-type");
+    output.headers = headers2;
+  } else if (type.includes("application/json") || typeof options.data === "object") {
+    output.body = JSON.stringify(options.data);
+  }
+  return output;
+};
+class CapacitorHttpPluginWeb extends WebPlugin {
+  /**
+   * Perform an Http request given a set of options
+   * @param options Options to build the HTTP request
+   */
+  async request(options) {
+    const requestInit = buildRequestInit(options, options.webFetchExtra);
+    const urlParams = buildUrlParams(options.params, options.shouldEncodeUrlParams);
+    const url = urlParams ? `${options.url}?${urlParams}` : options.url;
+    const response = await fetch(url, requestInit);
+    const contentType = response.headers.get("content-type") || "";
+    let { responseType = "text" } = response.ok ? options : {};
+    if (contentType.includes("application/json")) {
+      responseType = "json";
+    }
+    let data;
+    let blob;
+    switch (responseType) {
+      case "arraybuffer":
+      case "blob":
+        blob = await response.blob();
+        data = await readBlobAsBase64(blob);
+        break;
+      case "json":
+        data = await response.json();
+        break;
+      case "document":
+      case "text":
+      default:
+        data = await response.text();
+    }
+    const headers = {};
+    response.headers.forEach((value, key) => {
+      headers[key] = value;
+    });
+    return {
+      data,
+      headers,
+      status: response.status,
+      url: response.url
+    };
+  }
+  /**
+   * Perform an Http GET request given a set of options
+   * @param options Options to build the HTTP request
+   */
+  async get(options) {
+    return this.request(Object.assign(Object.assign({}, options), { method: "GET" }));
+  }
+  /**
+   * Perform an Http POST request given a set of options
+   * @param options Options to build the HTTP request
+   */
+  async post(options) {
+    return this.request(Object.assign(Object.assign({}, options), { method: "POST" }));
+  }
+  /**
+   * Perform an Http PUT request given a set of options
+   * @param options Options to build the HTTP request
+   */
+  async put(options) {
+    return this.request(Object.assign(Object.assign({}, options), { method: "PUT" }));
+  }
+  /**
+   * Perform an Http PATCH request given a set of options
+   * @param options Options to build the HTTP request
+   */
+  async patch(options) {
+    return this.request(Object.assign(Object.assign({}, options), { method: "PATCH" }));
+  }
+  /**
+   * Perform an Http DELETE request given a set of options
+   * @param options Options to build the HTTP request
+   */
+  async delete(options) {
+    return this.request(Object.assign(Object.assign({}, options), { method: "DELETE" }));
+  }
+}
+registerPlugin("CapacitorHttp", {
+  web: () => new CapacitorHttpPluginWeb()
+});
+class SQLiteConnection {
+  constructor(sqlite) {
+    this.sqlite = sqlite;
+    this._connectionDict = /* @__PURE__ */ new Map();
+  }
+  async initWebStore() {
+    try {
+      await this.sqlite.initWebStore();
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async saveToStore(database) {
+    try {
+      await this.sqlite.saveToStore({ database });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async saveToLocalDisk(database) {
+    try {
+      await this.sqlite.saveToLocalDisk({ database });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getFromLocalDiskToStore(overwrite) {
+    const mOverwrite = overwrite != null ? overwrite : true;
+    try {
+      await this.sqlite.getFromLocalDiskToStore({ overwrite: mOverwrite });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async echo(value) {
+    try {
+      const res = await this.sqlite.echo({ value });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isSecretStored() {
+    try {
+      const res = await this.sqlite.isSecretStored();
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async setEncryptionSecret(passphrase) {
+    try {
+      await this.sqlite.setEncryptionSecret({ passphrase });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async changeEncryptionSecret(passphrase, oldpassphrase) {
+    try {
+      await this.sqlite.changeEncryptionSecret({
+        passphrase,
+        oldpassphrase
+      });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async clearEncryptionSecret() {
+    try {
+      await this.sqlite.clearEncryptionSecret();
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async checkEncryptionSecret(passphrase) {
+    try {
+      const res = await this.sqlite.checkEncryptionSecret({
+        passphrase
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async addUpgradeStatement(database, upgrade) {
+    try {
+      if (database.endsWith(".db"))
+        database = database.slice(0, -3);
+      await this.sqlite.addUpgradeStatement({
+        database,
+        upgrade
+      });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async createConnection(database, encrypted, mode, version, readonly) {
+    try {
+      if (database.endsWith(".db"))
+        database = database.slice(0, -3);
+      await this.sqlite.createConnection({
+        database,
+        encrypted,
+        mode,
+        version,
+        readonly
+      });
+      const conn = new SQLiteDBConnection(database, readonly, this.sqlite);
+      const connName = readonly ? `RO_${database}` : `RW_${database}`;
+      this._connectionDict.set(connName, conn);
+      return Promise.resolve(conn);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async closeConnection(database, readonly) {
+    try {
+      if (database.endsWith(".db"))
+        database = database.slice(0, -3);
+      await this.sqlite.closeConnection({ database, readonly });
+      const connName = readonly ? `RO_${database}` : `RW_${database}`;
+      this._connectionDict.delete(connName);
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isConnection(database, readonly) {
+    const res = {};
+    if (database.endsWith(".db"))
+      database = database.slice(0, -3);
+    const connName = readonly ? `RO_${database}` : `RW_${database}`;
+    res.result = this._connectionDict.has(connName);
+    return Promise.resolve(res);
+  }
+  async retrieveConnection(database, readonly) {
+    if (database.endsWith(".db"))
+      database = database.slice(0, -3);
+    const connName = readonly ? `RO_${database}` : `RW_${database}`;
+    if (this._connectionDict.has(connName)) {
+      const conn = this._connectionDict.get(connName);
+      if (typeof conn != "undefined")
+        return Promise.resolve(conn);
+      else {
+        return Promise.reject(`Connection ${database} is undefined`);
+      }
+    } else {
+      return Promise.reject(`Connection ${database} does not exist`);
+    }
+  }
+  async getNCDatabasePath(path, database) {
+    try {
+      const databasePath = await this.sqlite.getNCDatabasePath({
+        path,
+        database
+      });
+      return Promise.resolve(databasePath);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async createNCConnection(databasePath, version) {
+    try {
+      await this.sqlite.createNCConnection({
+        databasePath,
+        version
+      });
+      const conn = new SQLiteDBConnection(databasePath, true, this.sqlite);
+      const connName = `RO_${databasePath})`;
+      this._connectionDict.set(connName, conn);
+      return Promise.resolve(conn);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async closeNCConnection(databasePath) {
+    try {
+      await this.sqlite.closeNCConnection({ databasePath });
+      const connName = `RO_${databasePath})`;
+      this._connectionDict.delete(connName);
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isNCConnection(databasePath) {
+    const res = {};
+    const connName = `RO_${databasePath})`;
+    res.result = this._connectionDict.has(connName);
+    return Promise.resolve(res);
+  }
+  async retrieveNCConnection(databasePath) {
+    if (this._connectionDict.has(databasePath)) {
+      const connName = `RO_${databasePath})`;
+      const conn = this._connectionDict.get(connName);
+      if (typeof conn != "undefined")
+        return Promise.resolve(conn);
+      else {
+        return Promise.reject(`Connection ${databasePath} is undefined`);
+      }
+    } else {
+      return Promise.reject(`Connection ${databasePath} does not exist`);
+    }
+  }
+  async isNCDatabase(databasePath) {
+    try {
+      const res = await this.sqlite.isNCDatabase({ databasePath });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async retrieveAllConnections() {
+    return this._connectionDict;
+  }
+  async closeAllConnections() {
+    const delDict = /* @__PURE__ */ new Map();
+    try {
+      for (const key of this._connectionDict.keys()) {
+        const database = key.substring(3);
+        const readonly = key.substring(0, 3) === "RO_" ? true : false;
+        await this.sqlite.closeConnection({ database, readonly });
+        delDict.set(key, null);
+      }
+      for (const key of delDict.keys()) {
+        this._connectionDict.delete(key);
+      }
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async checkConnectionsConsistency() {
+    try {
+      const keys = [...this._connectionDict.keys()];
+      const openModes = [];
+      const dbNames = [];
+      for (const key of keys) {
+        openModes.push(key.substring(0, 2));
+        dbNames.push(key.substring(3));
+      }
+      const res = await this.sqlite.checkConnectionsConsistency({
+        dbNames,
+        openModes
+      });
+      if (!res.result)
+        this._connectionDict = /* @__PURE__ */ new Map();
+      return Promise.resolve(res);
+    } catch (err) {
+      this._connectionDict = /* @__PURE__ */ new Map();
+      return Promise.reject(err);
+    }
+  }
+  async importFromJson(jsonstring) {
+    try {
+      const ret = await this.sqlite.importFromJson({ jsonstring });
+      return Promise.resolve(ret);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isJsonValid(jsonstring) {
+    try {
+      const ret = await this.sqlite.isJsonValid({ jsonstring });
+      return Promise.resolve(ret);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async copyFromAssets(overwrite) {
+    const mOverwrite = overwrite != null ? overwrite : true;
+    try {
+      await this.sqlite.copyFromAssets({ overwrite: mOverwrite });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getFromHTTPRequest(url, overwrite) {
+    const mOverwrite = overwrite != null ? overwrite : true;
+    try {
+      await this.sqlite.getFromHTTPRequest({ url, overwrite: mOverwrite });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isDatabaseEncrypted(database) {
+    if (database.endsWith(".db"))
+      database = database.slice(0, -3);
+    try {
+      const res = await this.sqlite.isDatabaseEncrypted({ database });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isInConfigEncryption() {
+    try {
+      const res = await this.sqlite.isInConfigEncryption();
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isInConfigBiometricAuth() {
+    try {
+      const res = await this.sqlite.isInConfigBiometricAuth();
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isDatabase(database) {
+    if (database.endsWith(".db"))
+      database = database.slice(0, -3);
+    try {
+      const res = await this.sqlite.isDatabase({ database });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getDatabaseList() {
+    try {
+      const res = await this.sqlite.getDatabaseList();
+      const values = res.values;
+      values.sort();
+      const ret = { values };
+      return Promise.resolve(ret);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getMigratableDbList(folderPath) {
+    const path = folderPath ? folderPath : "default";
+    try {
+      const res = await this.sqlite.getMigratableDbList({
+        folderPath: path
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async addSQLiteSuffix(folderPath, dbNameList) {
+    const path = folderPath ? folderPath : "default";
+    const dbList = dbNameList ? dbNameList : [];
+    try {
+      const res = await this.sqlite.addSQLiteSuffix({
+        folderPath: path,
+        dbNameList: dbList
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async deleteOldDatabases(folderPath, dbNameList) {
+    const path = folderPath ? folderPath : "default";
+    const dbList = dbNameList ? dbNameList : [];
+    try {
+      const res = await this.sqlite.deleteOldDatabases({
+        folderPath: path,
+        dbNameList: dbList
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async moveDatabasesAndAddSuffix(folderPath, dbNameList) {
+    const path = folderPath ? folderPath : "default";
+    const dbList = dbNameList ? dbNameList : [];
+    return this.sqlite.moveDatabasesAndAddSuffix({
+      folderPath: path,
+      dbNameList: dbList
+    });
+  }
+}
+class SQLiteDBConnection {
+  constructor(dbName, readonly, sqlite) {
+    this.dbName = dbName;
+    this.readonly = readonly;
+    this.sqlite = sqlite;
+  }
+  getConnectionDBName() {
+    return this.dbName;
+  }
+  getConnectionReadOnly() {
+    return this.readonly;
+  }
+  async open() {
+    try {
+      await this.sqlite.open({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async close() {
+    try {
+      await this.sqlite.close({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async beginTransaction() {
+    try {
+      const changes = await this.sqlite.beginTransaction({
+        database: this.dbName
+      });
+      return Promise.resolve(changes);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async commitTransaction() {
+    try {
+      const changes = await this.sqlite.commitTransaction({
+        database: this.dbName
+      });
+      return Promise.resolve(changes);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async rollbackTransaction() {
+    try {
+      const changes = await this.sqlite.rollbackTransaction({
+        database: this.dbName
+      });
+      return Promise.resolve(changes);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isTransactionActive() {
+    try {
+      const result = await this.sqlite.isTransactionActive({
+        database: this.dbName
+      });
+      return Promise.resolve(result);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async loadExtension(path) {
+    try {
+      await this.sqlite.loadExtension({
+        database: this.dbName,
+        path,
+        readonly: this.readonly
+      });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async enableLoadExtension(toggle) {
+    try {
+      await this.sqlite.enableLoadExtension({
+        database: this.dbName,
+        toggle,
+        readonly: this.readonly
+      });
+      return Promise.resolve();
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getUrl() {
+    try {
+      const res = await this.sqlite.getUrl({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getVersion() {
+    try {
+      const version = await this.sqlite.getVersion({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve(version);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getTableList() {
+    try {
+      const res = await this.sqlite.getTableList({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async execute(statements, transaction = true, isSQL92 = true) {
+    try {
+      if (!this.readonly) {
+        const res = await this.sqlite.execute({
+          database: this.dbName,
+          statements,
+          transaction,
+          readonly: false,
+          isSQL92
+        });
+        return Promise.resolve(res);
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async query(statement, values, isSQL92 = true) {
+    let res;
+    try {
+      if (values && values.length > 0) {
+        res = await this.sqlite.query({
+          database: this.dbName,
+          statement,
+          values,
+          readonly: this.readonly,
+          isSQL92: true
+        });
+      } else {
+        res = await this.sqlite.query({
+          database: this.dbName,
+          statement,
+          values: [],
+          readonly: this.readonly,
+          isSQL92
+        });
+      }
+      res = await this.reorderRows(res);
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async run(statement, values, transaction = true, returnMode = "no", isSQL92 = true) {
+    let res;
+    try {
+      if (!this.readonly) {
+        if (values && values.length > 0) {
+          res = await this.sqlite.run({
+            database: this.dbName,
+            statement,
+            values,
+            transaction,
+            readonly: false,
+            returnMode,
+            isSQL92: true
+          });
+        } else {
+          res = await this.sqlite.run({
+            database: this.dbName,
+            statement,
+            values: [],
+            transaction,
+            readonly: false,
+            returnMode,
+            isSQL92
+          });
+        }
+        res.changes = await this.reorderRows(res.changes);
+        return Promise.resolve(res);
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async executeSet(set, transaction = true, returnMode = "no", isSQL92 = true) {
+    let res;
+    try {
+      if (!this.readonly) {
+        res = await this.sqlite.executeSet({
+          database: this.dbName,
+          set,
+          transaction,
+          readonly: false,
+          returnMode,
+          isSQL92
+        });
+        res.changes = await this.reorderRows(res.changes);
+        return Promise.resolve(res);
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isExists() {
+    try {
+      const res = await this.sqlite.isDBExists({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isTable(table) {
+    try {
+      const res = await this.sqlite.isTableExists({
+        database: this.dbName,
+        table,
+        readonly: this.readonly
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async isDBOpen() {
+    try {
+      const res = await this.sqlite.isDBOpen({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async delete() {
+    try {
+      if (!this.readonly) {
+        await this.sqlite.deleteDatabase({
+          database: this.dbName,
+          readonly: false
+        });
+        return Promise.resolve();
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async createSyncTable() {
+    try {
+      if (!this.readonly) {
+        const res = await this.sqlite.createSyncTable({
+          database: this.dbName,
+          readonly: false
+        });
+        return Promise.resolve(res);
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async setSyncDate(syncdate) {
+    try {
+      if (!this.readonly) {
+        await this.sqlite.setSyncDate({
+          database: this.dbName,
+          syncdate,
+          readonly: false
+        });
+        return Promise.resolve();
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async getSyncDate() {
+    try {
+      const res = await this.sqlite.getSyncDate({
+        database: this.dbName,
+        readonly: this.readonly
+      });
+      let retDate = "";
+      if (res.syncDate > 0)
+        retDate = new Date(res.syncDate * 1e3).toISOString();
+      return Promise.resolve(retDate);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async exportToJson(mode, encrypted = false) {
+    try {
+      const res = await this.sqlite.exportToJson({
+        database: this.dbName,
+        jsonexportmode: mode,
+        readonly: this.readonly,
+        encrypted
+      });
+      return Promise.resolve(res);
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async deleteExportedRows() {
+    try {
+      if (!this.readonly) {
+        await this.sqlite.deleteExportedRows({
+          database: this.dbName,
+          readonly: false
+        });
+        return Promise.resolve();
+      } else {
+        return Promise.reject("not allowed in read-only mode");
+      }
+    } catch (err) {
+      return Promise.reject(err);
+    }
+  }
+  async executeTransaction(txn, isSQL92 = true) {
+    let changes = 0;
+    let isActive = false;
+    if (!this.readonly) {
+      await this.sqlite.beginTransaction({
+        database: this.dbName
+      });
+      isActive = await this.sqlite.isTransactionActive({
+        database: this.dbName
+      });
+      if (!isActive) {
+        return Promise.reject("After Begin Transaction, no transaction active");
+      }
+      try {
+        for (const task of txn) {
+          if (typeof task !== "object" || !("statement" in task)) {
+            throw new Error("Error a task.statement must be provided");
+          }
+          if ("values" in task && task.values && task.values.length > 0) {
+            const retMode = task.statement.toUpperCase().includes("RETURNING") ? "all" : "no";
+            const ret = await this.sqlite.run({
+              database: this.dbName,
+              statement: task.statement,
+              values: task.values,
+              transaction: false,
+              readonly: false,
+              returnMode: retMode,
+              isSQL92
+            });
+            if (ret.changes.changes < 0) {
+              throw new Error("Error in transaction method run ");
+            }
+            changes += ret.changes.changes;
+          } else {
+            const ret = await this.sqlite.execute({
+              database: this.dbName,
+              statements: task.statement,
+              transaction: false,
+              readonly: false
+            });
+            if (ret.changes.changes < 0) {
+              throw new Error("Error in transaction method execute ");
+            }
+            changes += ret.changes.changes;
+          }
+        }
+        const retC = await this.sqlite.commitTransaction({
+          database: this.dbName
+        });
+        changes += retC.changes.changes;
+        const retChanges = { changes: { changes } };
+        return Promise.resolve(retChanges);
+      } catch (err) {
+        const msg = err.message ? err.message : err;
+        await this.sqlite.rollbackTransaction({
+          database: this.dbName
+        });
+        return Promise.reject(msg);
+      }
+    } else {
+      return Promise.reject("not allowed in read-only mode");
+    }
+  }
+  async reorderRows(res) {
+    const retRes = res;
+    if (res?.values && typeof res.values[0] === "object") {
+      if (Object.keys(res.values[0]).includes("ios_columns")) {
+        const columnList = res.values[0]["ios_columns"];
+        const iosRes = [];
+        for (let i = 1; i < res.values.length; i++) {
+          const rowJson = res.values[i];
+          const resRowJson = {};
+          for (const item of columnList) {
+            resRowJson[item] = rowJson[item];
+          }
+          iosRes.push(resRowJson);
+        }
+        retRes["values"] = iosRes;
+      }
+    }
+    return Promise.resolve(retRes);
+  }
+}
+const CapacitorSQLite = registerPlugin("CapacitorSQLite", {
+  web: () => __vitePreload(() => import("./web-B9AdntMi.js"), true ? __vite__mapDeps([0,1,2,3]) : void 0).then((m) => new m.CapacitorSQLiteWeb()),
+  electron: () => window.CapacitorCustomPlatform.plugins.CapacitorSQLite
+});
+const DB_NAME = "egchat_offline_v1";
+const DB_VERSION = 1;
+const CREATE_TABLES = [
+  // ── USUARIOS ──────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS users (
+    id           TEXT PRIMARY KEY,
+    phone        TEXT UNIQUE NOT NULL,
+    full_name    TEXT,
+    avatar_url   TEXT,
+    email        TEXT,
+    bio          TEXT,
+    region       TEXT,
+    created_at   INTEGER,
+    updated_at   INTEGER,
+    synced       INTEGER NOT NULL DEFAULT 0
+  )`,
+  // ── CONTACTOS ─────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS contacts (
+    id                TEXT PRIMARY KEY,
+    user_id           TEXT NOT NULL,
+    contact_user_id   TEXT NOT NULL,
+    nickname          TEXT,
+    blocked           INTEGER NOT NULL DEFAULT 0,
+    favorite          INTEGER NOT NULL DEFAULT 0,
+    created_at        INTEGER,
+    updated_at        INTEGER,
+    synced            INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_contacts_user ON contacts(user_id)`,
+  `CREATE INDEX IF NOT EXISTS idx_contacts_fav  ON contacts(user_id, favorite)`,
+  // ── CONVERSACIONES ────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS conversations (
+    id              TEXT PRIMARY KEY,
+    type            TEXT NOT NULL DEFAULT 'individual',
+    title           TEXT,
+    avatar_url      TEXT,
+    last_message    TEXT,
+    last_message_at INTEGER,
+    unread_count    INTEGER NOT NULL DEFAULT 0,
+    archived        INTEGER NOT NULL DEFAULT 0,
+    favorite        INTEGER NOT NULL DEFAULT 0,
+    created_at      INTEGER,
+    updated_at      INTEGER,
+    synced          INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_conv_updated ON conversations(last_message_at DESC)`,
+  // ── PARTICIPANTES ─────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS conversation_participants (
+    id              TEXT PRIMARY KEY,
+    conversation_id TEXT NOT NULL,
+    user_id         TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'member',
+    joined_at       INTEGER,
+    UNIQUE(conversation_id, user_id)
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_part_conv ON conversation_participants(conversation_id)`,
+  // ── MENSAJES ──────────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS messages (
+    id              TEXT PRIMARY KEY,
+    server_id       TEXT,
+    conversation_id TEXT NOT NULL,
+    sender_id       TEXT NOT NULL,
+    text            TEXT,
+    type            TEXT NOT NULL DEFAULT 'text',
+    file_url        TEXT,
+    file_name       TEXT,
+    file_size       INTEGER,
+    thumbnail_url   TEXT,
+    image_url       TEXT,
+    audio_url       TEXT,
+    video_url       TEXT,
+    call_type       TEXT,
+    call_status     TEXT,
+    call_duration   INTEGER,
+    reply_to        TEXT,
+    status          TEXT NOT NULL DEFAULT 'pending',
+    created_at      INTEGER NOT NULL,
+    synced          INTEGER NOT NULL DEFAULT 0,
+    retries         INTEGER NOT NULL DEFAULT 0,
+    deleted_for_me  INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_msg_conv   ON messages(conversation_id, created_at DESC)`,
+  `CREATE INDEX IF NOT EXISTS idx_msg_synced ON messages(synced, status)`,
+  `CREATE INDEX IF NOT EXISTS idx_msg_server ON messages(server_id)`,
+  // ── WALLET BALANCE ────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS wallet_balance (
+    user_id      TEXT PRIMARY KEY,
+    balance      REAL NOT NULL DEFAULT 0,
+    currency     TEXT NOT NULL DEFAULT 'XAF',
+    last_updated INTEGER,
+    synced       INTEGER NOT NULL DEFAULT 0
+  )`,
+  // ── WALLET TRANSACTIONS ───────────────────────────
+  `CREATE TABLE IF NOT EXISTS wallet_transactions (
+    id            TEXT PRIMARY KEY,
+    server_id     TEXT,
+    user_id       TEXT NOT NULL,
+    type          TEXT NOT NULL,
+    amount        REAL NOT NULL,
+    balance_after REAL,
+    description   TEXT,
+    reference     TEXT,
+    status        TEXT NOT NULL DEFAULT 'pending',
+    method        TEXT,
+    destination   TEXT,
+    created_at    INTEGER NOT NULL,
+    synced        INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_wallet_tx_user ON wallet_transactions(user_id, created_at DESC)`,
+  // ── NOTIFICACIONES ────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS notifications (
+    id         TEXT PRIMARY KEY,
+    server_id  TEXT,
+    user_id    TEXT NOT NULL,
+    type       TEXT NOT NULL,
+    title      TEXT,
+    body       TEXT,
+    data       TEXT,
+    read       INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL,
+    synced     INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_notif_user ON notifications(user_id, read, created_at DESC)`,
+  // ── CONFIGURACIÓN ─────────────────────────────────
+  `CREATE TABLE IF NOT EXISTS settings (
+    key        TEXT PRIMARY KEY,
+    value      TEXT NOT NULL,
+    updated_at INTEGER
+  )`,
+  // ── CACHÉ DE ARCHIVOS ─────────────────────────────
+  `CREATE TABLE IF NOT EXISTS file_cache (
+    url           TEXT PRIMARY KEY,
+    local_path    TEXT NOT NULL,
+    size          INTEGER,
+    mime_type     TEXT,
+    downloaded_at INTEGER,
+    last_accessed INTEGER,
+    access_count  INTEGER NOT NULL DEFAULT 0
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_file_accessed ON file_cache(last_accessed)`,
+  // ── COLA DE SINCRONIZACIÓN ────────────────────────
+  `CREATE TABLE IF NOT EXISTS sync_queue (
+    id           TEXT PRIMARY KEY,
+    entity_type  TEXT NOT NULL,
+    entity_id    TEXT NOT NULL,
+    action       TEXT NOT NULL,
+    payload      TEXT,
+    priority     INTEGER NOT NULL DEFAULT 0,
+    retries      INTEGER NOT NULL DEFAULT 0,
+    created_at   INTEGER NOT NULL,
+    last_attempt INTEGER
+  )`,
+  `CREATE INDEX IF NOT EXISTS idx_sync_priority ON sync_queue(priority DESC, created_at)`
+];
+let sqliteConn = null;
+let db = null;
+let isInitialized = false;
+let initPromise = null;
+async function initDatabase() {
+  if (isInitialized) return;
+  if (initPromise) return initPromise;
+  initPromise = _doInit();
+  return initPromise;
+}
+async function _doInit() {
+  try {
+    const platform = Capacitor.getPlatform();
+    if (platform === "web") {
+      await _initWebShim();
+    } else {
+      await _initNative();
+    }
+    await _runMigrations();
+    isInitialized = true;
+    console.log("[DB] Inicializada correctamente. Plataforma:", platform);
+  } catch (err) {
+    console.error("[DB] Error de inicialización:", err);
+    initPromise = null;
+    throw err;
+  }
+}
+async function _initNative() {
+  sqliteConn = new SQLiteConnection(CapacitorSQLite);
+  const consistency = await sqliteConn.checkConnectionsConsistency();
+  const isConn = (await sqliteConn.isConnection(DB_NAME, false)).result;
+  if (consistency.result && isConn) {
+    db = await sqliteConn.retrieveConnection(DB_NAME, false);
+  } else {
+    db = await sqliteConn.createConnection(
+      DB_NAME,
+      false,
+      // no encryption
+      "no-encryption",
+      DB_VERSION,
+      false
+      // read-only: false
+    );
+  }
+  await db.open();
+}
+async function _initWebShim() {
+  sqliteConn = new SQLiteConnection(CapacitorSQLite);
+  try {
+    await customElements.whenDefined("jeep-sqlite");
+    const jeepSqliteEl = document.querySelector("jeep-sqlite");
+    if (jeepSqliteEl) {
+      await sqliteConn.initWebStore();
+    }
+  } catch {
+    console.warn("[DB] Web: jeep-sqlite no disponible, usando modo degradado");
+  }
+  db = await sqliteConn.createConnection(
+    DB_NAME,
+    false,
+    "no-encryption",
+    DB_VERSION,
+    false
+  );
+  await db.open();
+}
+async function _runMigrations() {
+  if (!db) throw new Error("[DB] Sin conexión activa");
+  for (const sql of CREATE_TABLES) {
+    await db.execute(sql);
+  }
+}
+async function query(sql, params = []) {
+  await _ensureReady();
+  try {
+    const result = await db.query(sql, params);
+    return result.values ?? [];
+  } catch (err) {
+    console.error("[DB] Error query:", sql, err);
+    throw err;
+  }
+}
+async function run(sql, params = []) {
+  await _ensureReady();
+  try {
+    const result = await db.run(sql, params);
+    return {
+      changes: result.changes?.changes ?? 0,
+      lastId: result.changes?.lastId
+    };
+  } catch (err) {
+    console.error("[DB] Error run:", sql, err);
+    throw err;
+  }
+}
+async function executeBatch(statements) {
+  await _ensureReady();
+  try {
+    const set = statements.map((s) => ({
+      statement: s.sql,
+      values: s.params ?? []
+    }));
+    await db.executeSet(set);
+  } catch (err) {
+    console.error("[DB] Error executeBatch:", err);
+    throw err;
+  }
+}
+async function _ensureReady() {
+  if (!isInitialized) await initDatabase();
+  if (!db) throw new Error("[DB] Base de datos no disponible");
+}
+const ConversationRepository = {
+  /** Obtener todas las conversaciones, ordenadas por más reciente */
+  async getAll(includeArchived = false) {
+    const sql = includeArchived ? `SELECT * FROM conversations ORDER BY last_message_at DESC` : `SELECT * FROM conversations WHERE archived = 0 ORDER BY last_message_at DESC`;
+    return query(sql);
+  },
+  /** Obtener conversaciones archivadas */
+  async getArchived() {
+    return query(
+      `SELECT * FROM conversations WHERE archived = 1 ORDER BY last_message_at DESC`
+    );
+  },
+  /** Obtener una conversación por ID */
+  async getById(id) {
+    const rows = await query(
+      `SELECT * FROM conversations WHERE id = ? LIMIT 1`,
+      [id]
+    );
+    return rows[0] ?? null;
+  },
+  /** Guardar o actualizar una conversación */
+  async upsert(conv) {
+    const now = Date.now();
+    await run(
+      `INSERT INTO conversations
+        (id, type, title, avatar_url, last_message, last_message_at,
+         unread_count, archived, favorite, created_at, updated_at, synced)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET
+         type            = excluded.type,
+         title           = excluded.title,
+         avatar_url      = excluded.avatar_url,
+         last_message    = excluded.last_message,
+         last_message_at = excluded.last_message_at,
+         unread_count    = excluded.unread_count,
+         archived        = excluded.archived,
+         favorite        = excluded.favorite,
+         updated_at      = excluded.updated_at,
+         synced          = excluded.synced`,
+      [
+        conv.id,
+        conv.type ?? "individual",
+        conv.title ?? "",
+        conv.avatar_url ?? "",
+        conv.last_message ?? "",
+        conv.last_message_at ?? now,
+        conv.unread_count ?? 0,
+        conv.archived ?? 0,
+        conv.favorite ?? 0,
+        conv.created_at ?? now,
+        now,
+        conv.synced ?? 1
+      ]
+    );
+  },
+  /** Insertar múltiples conversaciones en batch (para sync inicial) */
+  async upsertBatch(conversations) {
+    if (conversations.length === 0) return;
+    const now = Date.now();
+    const statements = conversations.map((conv) => ({
+      sql: `INSERT INTO conversations
+              (id, type, title, avatar_url, last_message, last_message_at,
+               unread_count, archived, favorite, created_at, updated_at, synced)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET
+              type = excluded.type, title = excluded.title,
+              avatar_url = excluded.avatar_url,
+              last_message = excluded.last_message,
+              last_message_at = excluded.last_message_at,
+              unread_count = excluded.unread_count,
+              archived = excluded.archived,
+              favorite = excluded.favorite,
+              updated_at = excluded.updated_at,
+              synced = excluded.synced`,
+      params: [
+        conv.id,
+        conv.type ?? "individual",
+        conv.title ?? "",
+        conv.avatar_url ?? "",
+        conv.last_message ?? "",
+        conv.last_message_at ?? now,
+        conv.unread_count ?? 0,
+        conv.archived ?? 0,
+        conv.favorite ?? 0,
+        conv.created_at ?? now,
+        now,
+        conv.synced ?? 1
+      ]
+    }));
+    await executeBatch(statements);
+  },
+  /** Actualizar el último mensaje de una conversación */
+  async updateLastMessage(id, text, at) {
+    await run(
+      `UPDATE conversations SET last_message = ?, last_message_at = ?, updated_at = ? WHERE id = ?`,
+      [text, at, Date.now(), id]
+    );
+  },
+  /** Incrementar/resetear contador de no leídos */
+  async setUnreadCount(id, count) {
+    await run(
+      `UPDATE conversations SET unread_count = ?, updated_at = ? WHERE id = ?`,
+      [count, Date.now(), id]
+    );
+  },
+  /** Archivar o desarchivar */
+  async setArchived(id, archived) {
+    await run(
+      `UPDATE conversations SET archived = ?, updated_at = ? WHERE id = ?`,
+      [archived ? 1 : 0, Date.now(), id]
+    );
+  },
+  /** Marcar / desmarcar favorito */
+  async setFavorite(id, favorite) {
+    await run(
+      `UPDATE conversations SET favorite = ?, updated_at = ? WHERE id = ?`,
+      [favorite ? 1 : 0, Date.now(), id]
+    );
+  },
+  /** Eliminar una conversación y sus mensajes */
+  async delete(id) {
+    await run(`DELETE FROM messages       WHERE conversation_id = ?`, [id]);
+    await run(`DELETE FROM conversations WHERE id = ?`, [id]);
+  },
+  /** Buscar conversaciones por título */
+  async search(term) {
+    const like = `%${term}%`;
+    return query(
+      `SELECT * FROM conversations
+       WHERE title LIKE ? AND archived = 0
+       ORDER BY last_message_at DESC`,
+      [like]
+    );
+  }
+};
+const PAGE_SIZE = 50;
+const MessageRepository = {
+  /** Obtener mensajes de una conversación (paginados) */
+  async getByConversation(conversationId, page = 1, pageSize = PAGE_SIZE) {
+    const offset = (page - 1) * pageSize;
+    const rows = await query(
+      `SELECT * FROM messages
+       WHERE conversation_id = ? AND deleted_for_me = 0
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [conversationId, pageSize, offset]
+    );
+    return rows.reverse();
+  },
+  /** Obtener mensajes pendientes de sincronizar (para offline queue) */
+  async getPending() {
+    return query(
+      `SELECT * FROM messages
+       WHERE synced = 0 AND status IN ('pending','error')
+       ORDER BY created_at ASC`,
+      []
+    );
+  },
+  /** Insertar o actualizar un mensaje */
+  async upsert(msg) {
+    const now = Date.now();
+    await run(
+      `INSERT INTO messages
+        (id, server_id, conversation_id, sender_id, text, type,
+         file_url, file_name, file_size, thumbnail_url,
+         image_url, audio_url, video_url,
+         call_type, call_status, call_duration,
+         reply_to, status, created_at, synced, retries, deleted_for_me)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET
+         server_id     = excluded.server_id,
+         status        = excluded.status,
+         synced        = excluded.synced,
+         retries       = excluded.retries,
+         deleted_for_me = excluded.deleted_for_me`,
+      [
+        msg.id,
+        msg.server_id ?? null,
+        msg.conversation_id,
+        msg.sender_id,
+        msg.text ?? null,
+        msg.type ?? "text",
+        msg.file_url ?? null,
+        msg.file_name ?? null,
+        msg.file_size ?? null,
+        msg.thumbnail_url ?? null,
+        msg.image_url ?? null,
+        msg.audio_url ?? null,
+        msg.video_url ?? null,
+        msg.call_type ?? null,
+        msg.call_status ?? null,
+        msg.call_duration ?? null,
+        msg.reply_to ?? null,
+        msg.status ?? "pending",
+        msg.created_at ?? now,
+        msg.synced ?? 0,
+        msg.retries ?? 0,
+        msg.deleted_for_me ?? 0
+      ]
+    );
+  },
+  /** Batch upsert eficiente para sincronización masiva */
+  async upsertBatch(messages) {
+    if (messages.length === 0) return;
+    const now = Date.now();
+    const statements = messages.map((msg) => ({
+      sql: `INSERT INTO messages
+              (id, server_id, conversation_id, sender_id, text, type,
+               file_url, file_name, file_size, thumbnail_url,
+               image_url, audio_url, video_url,
+               call_type, call_status, call_duration,
+               reply_to, status, created_at, synced, retries, deleted_for_me)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET
+              status = CASE WHEN messages.status = 'pending' THEN excluded.status ELSE messages.status END,
+              synced = excluded.synced,
+              server_id = COALESCE(excluded.server_id, messages.server_id)`,
+      params: [
+        msg.id,
+        msg.server_id ?? null,
+        msg.conversation_id,
+        msg.sender_id,
+        msg.text ?? null,
+        msg.type ?? "text",
+        msg.file_url ?? null,
+        msg.file_name ?? null,
+        msg.file_size ?? null,
+        msg.thumbnail_url ?? null,
+        msg.image_url ?? null,
+        msg.audio_url ?? null,
+        msg.video_url ?? null,
+        msg.call_type ?? null,
+        msg.call_status ?? null,
+        msg.call_duration ?? null,
+        msg.reply_to ?? null,
+        msg.status ?? "delivered",
+        msg.created_at ?? now,
+        msg.synced ?? 1,
+        msg.retries ?? 0,
+        msg.deleted_for_me ?? 0
+      ]
+    }));
+    await executeBatch(statements);
+  },
+  /** Marcar como sincronizado tras confirmar con el servidor */
+  async markSynced(localId, serverId) {
+    await run(
+      `UPDATE messages SET synced = 1, server_id = ?, status = 'sent' WHERE id = ?`,
+      [serverId, localId]
+    );
+  },
+  /** Actualizar estado de un mensaje */
+  async updateStatus(id, status, retries) {
+    if (retries !== void 0) {
+      await run(
+        `UPDATE messages SET status = ?, retries = ? WHERE id = ?`,
+        [status, retries, id]
+      );
+    } else {
+      await run(`UPDATE messages SET status = ? WHERE id = ?`, [status, id]);
+    }
+  },
+  /** Marcar todos los mensajes de una conversación como leídos */
+  async markAllRead(conversationId) {
+    await run(
+      `UPDATE messages SET status = 'read'
+       WHERE conversation_id = ? AND status != 'read' AND synced = 1`,
+      [conversationId]
+    );
+  },
+  /** Borrar mensaje solo para mí */
+  async deleteForMe(id) {
+    await run(`UPDATE messages SET deleted_for_me = 1 WHERE id = ?`, [id]);
+  },
+  /** Borrar mensaje para todos */
+  async deleteForAll(id) {
+    await run(`DELETE FROM messages WHERE id = ?`, [id]);
+  },
+  /** Búsqueda de mensajes por texto */
+  async search(term, conversationId) {
+    const like = `%${term}%`;
+    if (conversationId) {
+      return query(
+        `SELECT * FROM messages
+         WHERE conversation_id = ? AND text LIKE ? AND deleted_for_me = 0
+         ORDER BY created_at DESC LIMIT 100`,
+        [conversationId, like]
+      );
+    }
+    return query(
+      `SELECT * FROM messages
+       WHERE text LIKE ? AND deleted_for_me = 0
+       ORDER BY created_at DESC LIMIT 100`,
+      [like]
+    );
+  },
+  /** Limpiar mensajes antiguos ya sincronizados (más de 7 días) */
+  async pruneOld(daysOld = 7) {
+    const cutoff = Date.now() - daysOld * 864e5;
+    const result = await run(
+      `DELETE FROM messages WHERE synced = 1 AND created_at < ? AND deleted_for_me = 0`,
+      [cutoff]
+    );
+    return result.changes;
+  }
+};
+const WalletRepository = {
+  // ── Saldo ────────────────────────────────────────────────────────
+  /** Guardar balance del usuario */
+  async saveBalance(userId, balance, currency = "XAF") {
+    await run(
+      `INSERT INTO wallet_balance (user_id, balance, currency, last_updated, synced)
+       VALUES (?, ?, ?, ?, 1)
+       ON CONFLICT(user_id) DO UPDATE SET
+         balance = excluded.balance,
+         currency = excluded.currency,
+         last_updated = excluded.last_updated,
+         synced = 1`,
+      [userId, balance, currency, Date.now()]
+    );
+  },
+  /** Obtener balance cacheado del usuario */
+  async getBalance(userId) {
+    const rows = await query(
+      `SELECT * FROM wallet_balance WHERE user_id = ? LIMIT 1`,
+      [userId]
+    );
+    return rows[0] ?? null;
+  },
+  // ── Transacciones ─────────────────────────────────────────────────
+  /** Obtener historial de transacciones (paginado) */
+  async getTransactions(userId, page = 1, pageSize = 20) {
+    const offset = (page - 1) * pageSize;
+    return query(
+      `SELECT * FROM wallet_transactions
+       WHERE user_id = ?
+       ORDER BY created_at DESC
+       LIMIT ? OFFSET ?`,
+      [userId, pageSize, offset]
+    );
+  },
+  /** Guardar o actualizar una transacción */
+  async upsertTransaction(tx) {
+    const now = Date.now();
+    await run(
+      `INSERT INTO wallet_transactions
+        (id, server_id, user_id, type, amount, balance_after,
+         description, reference, status, method, destination, created_at, synced)
+       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET
+         status        = excluded.status,
+         balance_after = excluded.balance_after,
+         synced        = excluded.synced,
+         server_id     = COALESCE(excluded.server_id, wallet_transactions.server_id)`,
+      [
+        tx.id,
+        tx.server_id ?? null,
+        tx.user_id,
+        tx.type ?? "payment",
+        tx.amount ?? 0,
+        tx.balance_after ?? null,
+        tx.description ?? null,
+        tx.reference ?? null,
+        tx.status ?? "pending",
+        tx.method ?? null,
+        tx.destination ?? null,
+        tx.created_at ?? now,
+        tx.synced ?? 0
+      ]
+    );
+  },
+  /** Batch upsert de transacciones (para sync inicial) */
+  async upsertBatch(transactions) {
+    if (transactions.length === 0) return;
+    const statements = transactions.map((tx) => ({
+      sql: `INSERT INTO wallet_transactions
+              (id, server_id, user_id, type, amount, balance_after,
+               description, reference, status, method, destination, created_at, synced)
+            VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET
+              status = excluded.status,
+              balance_after = excluded.balance_after,
+              synced = 1`,
+      params: [
+        tx.id,
+        tx.server_id ?? null,
+        tx.user_id,
+        tx.type ?? "payment",
+        tx.amount ?? 0,
+        tx.balance_after ?? null,
+        tx.description ?? null,
+        tx.reference ?? null,
+        tx.status ?? "completed",
+        tx.method ?? null,
+        tx.destination ?? null,
+        tx.created_at,
+        tx.synced ?? 1
+      ]
+    }));
+    await executeBatch(statements);
+  },
+  /** Transacciones pendientes de sincronizar */
+  async getPending(userId) {
+    return query(
+      `SELECT * FROM wallet_transactions
+       WHERE user_id = ? AND synced = 0
+       ORDER BY created_at ASC`,
+      [userId]
+    );
+  },
+  /** Obtener total de transacciones */
+  async getCount(userId) {
+    const rows = await query(
+      `SELECT COUNT(*) as cnt FROM wallet_transactions WHERE user_id = ?`,
+      [userId]
+    );
+    return rows[0]?.cnt ?? 0;
+  }
+};
+const ContactRepository = {
+  async getAll(userId) {
+    return query(
+      `SELECT c.*, u.full_name, u.phone, u.avatar_url
+       FROM contacts c
+       LEFT JOIN users u ON u.id = c.contact_user_id
+       WHERE c.user_id = ? AND c.blocked = 0
+       ORDER BY COALESCE(c.nickname, u.full_name) ASC`,
+      [userId]
+    );
+  },
+  async getFavorites(userId) {
+    return query(
+      `SELECT c.*, u.full_name, u.phone, u.avatar_url
+       FROM contacts c
+       LEFT JOIN users u ON u.id = c.contact_user_id
+       WHERE c.user_id = ? AND c.favorite = 1 AND c.blocked = 0
+       ORDER BY COALESCE(c.nickname, u.full_name) ASC`,
+      [userId]
+    );
+  },
+  async search(userId, term) {
+    const like = `%${term}%`;
+    return query(
+      `SELECT c.*, u.full_name, u.phone, u.avatar_url
+       FROM contacts c
+       LEFT JOIN users u ON u.id = c.contact_user_id
+       WHERE c.user_id = ?
+         AND c.blocked = 0
+         AND (
+           u.full_name LIKE ? OR
+           c.nickname  LIKE ? OR
+           u.phone     LIKE ?
+         )
+       ORDER BY COALESCE(c.nickname, u.full_name) ASC
+       LIMIT 50`,
+      [userId, like, like, like]
+    );
+  },
+  async upsert(contact) {
+    const now = Date.now();
+    await run(
+      `INSERT INTO contacts
+         (id, user_id, contact_user_id, nickname, blocked, favorite, created_at, updated_at, synced)
+       VALUES (?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET
+         nickname   = excluded.nickname,
+         blocked    = excluded.blocked,
+         favorite   = excluded.favorite,
+         updated_at = excluded.updated_at,
+         synced     = excluded.synced`,
+      [
+        contact.id,
+        contact.user_id,
+        contact.contact_user_id,
+        contact.nickname ?? null,
+        contact.blocked ?? 0,
+        contact.favorite ?? 0,
+        contact.created_at ?? now,
+        now,
+        contact.synced ?? 1
+      ]
+    );
+  },
+  async upsertBatch(contacts) {
+    if (!contacts.length) return;
+    const now = Date.now();
+    await executeBatch(contacts.map((c) => ({
+      sql: `INSERT INTO contacts
+              (id, user_id, contact_user_id, nickname, blocked, favorite, created_at, updated_at, synced)
+            VALUES (?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET
+              nickname = excluded.nickname,
+              blocked  = excluded.blocked,
+              favorite = excluded.favorite,
+              updated_at = excluded.updated_at,
+              synced = 1`,
+      params: [
+        c.id,
+        c.user_id,
+        c.contact_user_id,
+        c.nickname ?? null,
+        c.blocked ?? 0,
+        c.favorite ?? 0,
+        c.created_at ?? now,
+        now,
+        c.synced ?? 1
+      ]
+    })));
+  },
+  async setFavorite(id, favorite) {
+    await run(
+      `UPDATE contacts SET favorite = ?, updated_at = ? WHERE id = ?`,
+      [favorite ? 1 : 0, Date.now(), id]
+    );
+  },
+  async setBlocked(id, blocked) {
+    await run(
+      `UPDATE contacts SET blocked = ?, updated_at = ? WHERE id = ?`,
+      [blocked ? 1 : 0, Date.now(), id]
+    );
+  },
+  async delete(id) {
+    await run(`DELETE FROM contacts WHERE id = ?`, [id]);
+  }
+};
+const UserRepository = {
+  async getById(id) {
+    const rows = await query(`SELECT * FROM users WHERE id = ? LIMIT 1`, [id]);
+    return rows[0] ?? null;
+  },
+  async getByPhone(phone) {
+    const rows = await query(`SELECT * FROM users WHERE phone = ? LIMIT 1`, [phone]);
+    return rows[0] ?? null;
+  },
+  async upsert(user) {
+    const now = Date.now();
+    await run(
+      `INSERT INTO users (id, phone, full_name, avatar_url, email, bio, region, created_at, updated_at, synced)
+       VALUES (?,?,?,?,?,?,?,?,?,?)
+       ON CONFLICT(id) DO UPDATE SET
+         phone      = excluded.phone,
+         full_name  = excluded.full_name,
+         avatar_url = excluded.avatar_url,
+         email      = excluded.email,
+         bio        = excluded.bio,
+         region     = excluded.region,
+         updated_at = excluded.updated_at,
+         synced     = excluded.synced`,
+      [
+        user.id,
+        user.phone,
+        user.full_name ?? null,
+        user.avatar_url ?? null,
+        user.email ?? null,
+        user.bio ?? null,
+        user.region ?? null,
+        user.created_at ?? now,
+        now,
+        user.synced ?? 1
+      ]
+    );
+  },
+  async upsertBatch(users) {
+    if (!users.length) return;
+    const now = Date.now();
+    await executeBatch(users.map((u) => ({
+      sql: `INSERT INTO users (id, phone, full_name, avatar_url, email, bio, region, created_at, updated_at, synced)
+            VALUES (?,?,?,?,?,?,?,?,?,?)
+            ON CONFLICT(id) DO UPDATE SET
+              full_name = excluded.full_name,
+              avatar_url = excluded.avatar_url,
+              updated_at = excluded.updated_at,
+              synced = 1`,
+      params: [
+        u.id,
+        u.phone,
+        u.full_name ?? null,
+        u.avatar_url ?? null,
+        u.email ?? null,
+        u.bio ?? null,
+        u.region ?? null,
+        u.created_at ?? now,
+        now,
+        u.synced ?? 1
+      ]
+    })));
+  },
+  async delete(id) {
+    await run(`DELETE FROM users WHERE id = ?`, [id]);
+  }
+};
+const SyncQueueRepository = {
+  /** Añadir una operación a la cola */
+  async enqueue(entityType, entityId, action, payload, priority = 0) {
+    const id = `sq_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`;
+    const now = Date.now();
+    await run(
+      `INSERT INTO sync_queue (id, entity_type, entity_id, action, payload, priority, retries, created_at, last_attempt)
+       VALUES (?,?,?,?,?,?,0,?,NULL)`,
+      [id, entityType, entityId, action, JSON.stringify(payload), priority, now]
+    );
+    return id;
+  },
+  /** Obtener los próximos N items para procesar (orden prioridad + antigüedad) */
+  async dequeue(limit = 20) {
+    return query(
+      `SELECT * FROM sync_queue
+       ORDER BY priority DESC, created_at ASC
+       LIMIT ?`,
+      [limit]
+    );
+  },
+  /** Marcar como completado y eliminar */
+  async complete(id) {
+    await run(`DELETE FROM sync_queue WHERE id = ?`, [id]);
+  },
+  /** Registrar intento fallido con incremento de reintentos */
+  async fail(id) {
+    await run(
+      `UPDATE sync_queue SET retries = retries + 1, last_attempt = ? WHERE id = ?`,
+      [Date.now(), id]
+    );
+  },
+  /** Eliminar items que excedieron el máximo de reintentos */
+  async pruneExhausted(maxRetries = 5) {
+    const result = await run(
+      `DELETE FROM sync_queue WHERE retries >= ?`,
+      [maxRetries]
+    );
+    return result.changes;
+  },
+  /** Contar items pendientes */
+  async count() {
+    const rows = await query(`SELECT COUNT(*) as cnt FROM sync_queue`);
+    return rows[0]?.cnt ?? 0;
+  },
+  /** Limpiar toda la cola (solo en logout) */
+  async clear() {
+    await run(`DELETE FROM sync_queue`);
+  }
+};
+const API_BASE$2 = "https://egchat-api.onrender.com";
+const BATCH_SIZE = 20;
+const MAX_RETRIES = 5;
+const RETRY_MS = [5e3, 15e3, 3e4, 6e4, 12e4];
+const POLL_MS = 3e4;
+let state = {
+  isOnline: navigator.onLine,
+  isSyncing: false,
+  pendingCount: 0,
+  lastSyncAt: null,
+  error: null
+};
+const listeners = /* @__PURE__ */ new Set();
+let syncTimer = null;
+let isSyncing = false;
+function setState(patch2) {
+  state = { ...state, ...patch2 };
+  listeners.forEach((fn) => fn(state));
+}
+function getToken() {
+  return localStorage.getItem("token") || localStorage.getItem("egchat_token_backup") || "";
+}
+async function apiFetch(path, options = {}) {
+  const token = getToken();
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 2e4);
+  try {
+    const res = await fetch(`${API_BASE$2}/api${path}`, {
+      ...options,
+      signal: ctrl.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...token ? { Authorization: `Bearer ${token}` } : {},
+        ...options.headers ?? {}
+      }
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return res.json();
+  } finally {
+    clearTimeout(tid);
+  }
+}
+async function syncConversations() {
+  try {
+    const data = await apiFetch("/chats");
+    if (!Array.isArray(data)) return;
+    const convs = data.map((c) => ({
+      id: c.id?.toString(),
+      type: c.type === "group" ? "group" : "individual",
+      title: c.name || c.title || "",
+      avatar_url: c.avatar_url || "",
+      last_message: c.last_message?.text || "",
+      last_message_at: c.last_message?.created_at ? new Date(c.last_message.created_at).getTime() : Date.now(),
+      unread_count: c.unread_count || 0,
+      archived: c.archived ? 1 : 0,
+      favorite: c.is_favorite ? 1 : 0,
+      created_at: c.created_at ? new Date(c.created_at).getTime() : Date.now(),
+      updated_at: Date.now(),
+      synced: 1
+    }));
+    await ConversationRepository.upsertBatch(convs);
+    window.dispatchEvent(new CustomEvent("egchat:conversations-updated"));
+  } catch (err) {
+    console.warn("[Sync] Error sincronizando chats:", err.message);
+  }
+}
+async function syncWallet(userId) {
+  try {
+    const balRes = await apiFetch("/wallet/balance");
+    if (typeof balRes.balance === "number") {
+      await WalletRepository.saveBalance(userId, balRes.balance);
+      window.dispatchEvent(
+        new CustomEvent("egchat:wallet-updated", { detail: { balance: balRes.balance } })
+      );
+    }
+    const txRes = await apiFetch("/wallet/transactions?page=1&limit=50");
+    if (Array.isArray(txRes.transactions)) {
+      await WalletRepository.upsertBatch(
+        txRes.transactions.map((t) => ({
+          id: t.id?.toString(),
+          server_id: t.id?.toString(),
+          user_id: userId,
+          type: t.type || "payment",
+          amount: t.amount || 0,
+          balance_after: t.balance_after ?? null,
+          description: t.description || null,
+          reference: t.reference || null,
+          status: t.status || "completed",
+          method: t.method || null,
+          destination: t.destination || null,
+          created_at: new Date(t.created_at || t.date).getTime(),
+          synced: 1
+        }))
+      );
+    }
+  } catch (err) {
+    console.warn("[Sync] Error sincronizando wallet:", err.message);
+  }
+}
+async function syncContacts(userId) {
+  try {
+    const data = await apiFetch("/contacts");
+    if (!Array.isArray(data)) return;
+    const users = data.filter((c) => c.user).map((c) => ({
+      id: c.user.id?.toString(),
+      phone: c.user.phone || "",
+      full_name: c.user.full_name || null,
+      avatar_url: c.user.avatar_url || null,
+      created_at: Date.now(),
+      updated_at: Date.now(),
+      synced: 1
+    }));
+    if (users.length) await UserRepository.upsertBatch(users);
+    await ContactRepository.upsertBatch(
+      data.map((c) => ({
+        id: c.id?.toString(),
+        user_id: userId,
+        contact_user_id: c.contact_user_id?.toString() || c.user?.id?.toString(),
+        nickname: c.nickname || null,
+        blocked: c.blocked ? 1 : 0,
+        favorite: c.is_favorite ? 1 : 0,
+        created_at: new Date(c.created_at).getTime(),
+        updated_at: Date.now(),
+        synced: 1
+      }))
+    );
+    window.dispatchEvent(new CustomEvent("egchat:contacts-updated"));
+  } catch (err) {
+    console.warn("[Sync] Error sincronizando contactos:", err.message);
+  }
+}
+async function flushQueue() {
+  if (isSyncing || !state.isOnline) return;
+  isSyncing = true;
+  setState({ isSyncing: true, error: null });
+  try {
+    const pending = await MessageRepository.getPending();
+    setState({ pendingCount: pending.length });
+    const batch = pending.slice(0, BATCH_SIZE);
+    for (const msg of batch) {
+      if (!state.isOnline) break;
+      try {
+        const res = await apiFetch(
+          `/chats/${msg.conversation_id}/messages`,
+          {
+            method: "POST",
+            body: JSON.stringify({
+              text: msg.text,
+              type: msg.type,
+              file_url: msg.file_url || msg.image_url || msg.audio_url || msg.video_url,
+              reply_to: msg.reply_to
+            })
+          }
+        );
+        const serverId = res?.id?.toString() ?? res?.message_id?.toString();
+        if (serverId) {
+          await MessageRepository.markSynced(msg.id, serverId);
+        }
+      } catch {
+        const retries = (msg.retries || 0) + 1;
+        if (retries >= MAX_RETRIES) {
+          await MessageRepository.updateStatus(msg.id, "error", retries);
+        } else {
+          await MessageRepository.updateStatus(msg.id, "pending", retries);
+          const delay = RETRY_MS[Math.min(retries - 1, RETRY_MS.length - 1)];
+          setTimeout(flushQueue, delay);
+        }
+      }
+    }
+    const queueItems = await SyncQueueRepository.dequeue(BATCH_SIZE);
+    for (const item of queueItems) {
+      if (!state.isOnline) break;
+      try {
+        const payload = JSON.parse(item.payload);
+        await _processQueueItem(item.entity_type, item.action, payload);
+        await SyncQueueRepository.complete(item.id);
+      } catch {
+        await SyncQueueRepository.fail(item.id);
+      }
+    }
+    await SyncQueueRepository.pruneExhausted(MAX_RETRIES);
+    const remaining = await MessageRepository.getPending();
+    setState({
+      isSyncing: false,
+      pendingCount: remaining.length,
+      lastSyncAt: Date.now()
+    });
+    if (remaining.length > 0 && state.isOnline) {
+      syncTimer = setTimeout(flushQueue, 2e3);
+    }
+  } catch (err) {
+    setState({ isSyncing: false, error: err.message });
+  } finally {
+    isSyncing = false;
+  }
+}
+async function _processQueueItem(entityType, action, payload) {
+  switch (entityType) {
+    case "contact":
+      if (action === "delete") {
+        await apiFetch(`/contacts/${payload.id}`, { method: "DELETE" });
+      }
+      break;
+    case "conversation":
+      if (action === "update" && payload.archived !== void 0) {
+        await apiFetch(`/chats/${payload.id}/archive`, { method: "PUT", body: "{}" });
+      }
+      break;
+    case "profile":
+      if (action === "update") {
+        await apiFetch("/user/profile", { method: "PUT", body: JSON.stringify(payload) });
+      }
+      break;
+  }
+}
+async function fullSync(userId) {
+  if (!state.isOnline || !userId) return;
+  try {
+    await Promise.allSettled([
+      syncConversations(),
+      syncWallet(userId),
+      syncContacts(userId)
+    ]);
+    await flushQueue();
+    await MessageRepository.pruneOld(7);
+    setState({ lastSyncAt: Date.now(), error: null });
+    console.log("[SyncManager] Sync completo OK");
+  } catch (err) {
+    setState({ error: err.message });
+  }
+}
+function handleOnline() {
+  setState({ isOnline: true, error: null });
+  window.dispatchEvent(new CustomEvent("egchat-online"));
+  setTimeout(() => {
+    const uid = _currentUserId();
+    if (uid) fullSync(uid);
+  }, 1500);
+}
+function handleOffline() {
+  setState({ isOnline: false });
+  if (syncTimer) {
+    clearTimeout(syncTimer);
+    syncTimer = null;
+  }
+  window.dispatchEvent(new CustomEvent("egchat-offline"));
+}
+function _currentUserId() {
+  try {
+    const token = getToken();
+    if (!token) return "";
+    const payload = JSON.parse(atob(token.split(".")[1]));
+    return payload.id?.toString() || payload.sub?.toString() || "";
+  } catch {
+    return "";
+  }
+}
+function initSyncManager() {
+  window.addEventListener("online", handleOnline);
+  window.addEventListener("offline", handleOffline);
+  setState({ isOnline: navigator.onLine });
+  if (navigator.onLine) {
+    setTimeout(() => {
+      const uid = _currentUserId();
+      if (uid) fullSync(uid);
+    }, 3e3);
+  }
+  setInterval(() => {
+    if (state.isOnline && !isSyncing) {
+      const uid = _currentUserId();
+      if (uid) syncConversations();
+    }
+  }, POLL_MS);
+  console.log("[SyncManager] Inicializado. Online:", navigator.onLine);
+}
+async function forceSync() {
+  const uid = _currentUserId();
+  if (!uid || !state.isOnline) return;
+  await fullSync(uid);
+}
+function getSyncState() {
+  return state;
+}
+function onSyncStateChange(fn) {
+  listeners.add(fn);
+  fn(state);
+  return () => listeners.delete(fn);
+}
+function useSync() {
+  const [syncState, setSyncState] = reactExports.useState(getSyncState);
+  reactExports.useEffect(() => {
+    return onSyncStateChange(setSyncState);
+  }, []);
+  const handleForceSync = reactExports.useCallback(() => forceSync(), []);
+  return {
+    isOnline: syncState.isOnline,
+    isSyncing: syncState.isSyncing,
+    pendingCount: syncState.pendingCount,
+    lastSyncAt: syncState.lastSyncAt,
+    error: syncState.error,
+    forceSync: handleForceSync
+  };
+}
+const SyncIndicator = () => {
+  const { isOnline, isSyncing: isSyncing2, pendingCount, error, forceSync: forceSync2 } = useSync();
+  const [visible, setVisible] = reactExports.useState(false);
+  const [justReconnected, setJustReconnected] = reactExports.useState(false);
+  reactExports.useEffect(() => {
+    if (isOnline && visible) {
+      setJustReconnected(true);
+      const t = setTimeout(() => {
+        setJustReconnected(false);
+        setVisible(false);
+      }, 2500);
+      return () => clearTimeout(t);
+    }
+  }, [isOnline]);
+  reactExports.useEffect(() => {
+    const shouldShow = !isOnline || isSyncing2 || pendingCount > 0 || !!error;
+    if (shouldShow) setVisible(true);
+  }, [isOnline, isSyncing2, pendingCount, error]);
+  if (!visible) return null;
+  const barStyle = {
+    position: "fixed",
+    top: 0,
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    display: "flex",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: "8px",
+    padding: "6px 16px",
+    fontSize: "12px",
+    fontWeight: 600,
+    letterSpacing: "0.3px",
+    transition: "background 0.3s ease",
+    ...justReconnected ? { background: "#10b981", color: "#fff" } : !isOnline ? { background: "#ef4444", color: "#fff" } : error ? { background: "#f97316", color: "#fff" } : isSyncing2 || pendingCount > 0 ? { background: "#f59e0b", color: "#1a1a1a" } : { background: "#10b981", color: "#fff" }
+  };
+  const spinnerStyle = {
+    width: "12px",
+    height: "12px",
+    border: "2px solid rgba(255,255,255,0.4)",
+    borderTopColor: "#fff",
+    borderRadius: "50%",
+    animation: "egchat-spin 0.7s linear infinite",
+    flexShrink: 0
+  };
+  const renderContent = () => {
+    if (justReconnected) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "✓" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Conectado" })
+      ] });
+    }
+    if (!isOnline) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "✈" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Sin conexión — Modo offline" }),
+        pendingCount > 0 && /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { style: { opacity: 0.8 }, children: [
+          "· ",
+          pendingCount,
+          " pendientes"
+        ] })
+      ] });
+    }
+    if (error) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "⚠" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Error de sincronización" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx(
+          "button",
+          {
+            onClick: forceSync2,
+            style: {
+              marginLeft: "8px",
+              padding: "2px 10px",
+              background: "rgba(255,255,255,0.25)",
+              border: "1px solid rgba(255,255,255,0.5)",
+              borderRadius: "12px",
+              color: "#fff",
+              fontSize: "11px",
+              fontWeight: 700,
+              cursor: "pointer"
+            },
+            children: "Reintentar"
+          }
+        )
+      ] });
+    }
+    if (isSyncing2) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: spinnerStyle }),
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "Sincronizando…" })
+      ] });
+    }
+    if (pendingCount > 0) {
+      return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+        /* @__PURE__ */ jsxRuntimeExports.jsx("span", { children: "↑" }),
+        /* @__PURE__ */ jsxRuntimeExports.jsxs("span", { children: [
+          pendingCount,
+          " mensaje",
+          pendingCount !== 1 ? "s" : "",
+          " pendiente",
+          pendingCount !== 1 ? "s" : ""
+        ] })
+      ] });
+    }
+    return null;
+  };
+  return /* @__PURE__ */ jsxRuntimeExports.jsxs(jsxRuntimeExports.Fragment, { children: [
+    /* @__PURE__ */ jsxRuntimeExports.jsx("style", { children: `
+        @keyframes egchat-spin {
+          to { transform: rotate(360deg); }
+        }
+      ` }),
+    /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: barStyle, role: "status", "aria-live": "polite", children: renderContent() })
+  ] });
+};
 const BASE = (() => {
   const url = "https://egchat-api.onrender.com".trim();
   if (!url || url.startsWith("/")) return "https://egchat-api.onrender.com/api";
@@ -5115,527 +7789,6 @@ const unlockAudio = () => {
   } catch {
   }
 };
-/*! Capacitor: https://capacitorjs.com/ - MIT License */
-const createCapacitorPlatforms = (win) => {
-  const defaultPlatformMap = /* @__PURE__ */ new Map();
-  defaultPlatformMap.set("web", { name: "web" });
-  const capPlatforms = win.CapacitorPlatforms || {
-    currentPlatform: { name: "web" },
-    platforms: defaultPlatformMap
-  };
-  const addPlatform = (name, platform) => {
-    capPlatforms.platforms.set(name, platform);
-  };
-  const setPlatform = (name) => {
-    if (capPlatforms.platforms.has(name)) {
-      capPlatforms.currentPlatform = capPlatforms.platforms.get(name);
-    }
-  };
-  capPlatforms.addPlatform = addPlatform;
-  capPlatforms.setPlatform = setPlatform;
-  return capPlatforms;
-};
-const initPlatforms = (win) => win.CapacitorPlatforms = createCapacitorPlatforms(win);
-const CapacitorPlatforms = /* @__PURE__ */ initPlatforms(typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : {});
-CapacitorPlatforms.addPlatform;
-CapacitorPlatforms.setPlatform;
-var ExceptionCode;
-(function(ExceptionCode2) {
-  ExceptionCode2["Unimplemented"] = "UNIMPLEMENTED";
-  ExceptionCode2["Unavailable"] = "UNAVAILABLE";
-})(ExceptionCode || (ExceptionCode = {}));
-class CapacitorException extends Error {
-  constructor(message, code, data) {
-    super(message);
-    this.message = message;
-    this.code = code;
-    this.data = data;
-  }
-}
-const getPlatformId = (win) => {
-  var _a, _b;
-  if (win === null || win === void 0 ? void 0 : win.androidBridge) {
-    return "android";
-  } else if ((_b = (_a = win === null || win === void 0 ? void 0 : win.webkit) === null || _a === void 0 ? void 0 : _a.messageHandlers) === null || _b === void 0 ? void 0 : _b.bridge) {
-    return "ios";
-  } else {
-    return "web";
-  }
-};
-const createCapacitor = (win) => {
-  var _a, _b, _c, _d, _e;
-  const capCustomPlatform = win.CapacitorCustomPlatform || null;
-  const cap = win.Capacitor || {};
-  const Plugins = cap.Plugins = cap.Plugins || {};
-  const capPlatforms = win.CapacitorPlatforms;
-  const defaultGetPlatform = () => {
-    return capCustomPlatform !== null ? capCustomPlatform.name : getPlatformId(win);
-  };
-  const getPlatform = ((_a = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _a === void 0 ? void 0 : _a.getPlatform) || defaultGetPlatform;
-  const defaultIsNativePlatform = () => getPlatform() !== "web";
-  const isNativePlatform = ((_b = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _b === void 0 ? void 0 : _b.isNativePlatform) || defaultIsNativePlatform;
-  const defaultIsPluginAvailable = (pluginName) => {
-    const plugin = registeredPlugins.get(pluginName);
-    if (plugin === null || plugin === void 0 ? void 0 : plugin.platforms.has(getPlatform())) {
-      return true;
-    }
-    if (getPluginHeader(pluginName)) {
-      return true;
-    }
-    return false;
-  };
-  const isPluginAvailable = ((_c = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _c === void 0 ? void 0 : _c.isPluginAvailable) || defaultIsPluginAvailable;
-  const defaultGetPluginHeader = (pluginName) => {
-    var _a2;
-    return (_a2 = cap.PluginHeaders) === null || _a2 === void 0 ? void 0 : _a2.find((h) => h.name === pluginName);
-  };
-  const getPluginHeader = ((_d = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _d === void 0 ? void 0 : _d.getPluginHeader) || defaultGetPluginHeader;
-  const handleError = (err) => win.console.error(err);
-  const pluginMethodNoop = (_target, prop, pluginName) => {
-    return Promise.reject(`${pluginName} does not have an implementation of "${prop}".`);
-  };
-  const registeredPlugins = /* @__PURE__ */ new Map();
-  const defaultRegisterPlugin = (pluginName, jsImplementations = {}) => {
-    const registeredPlugin = registeredPlugins.get(pluginName);
-    if (registeredPlugin) {
-      console.warn(`Capacitor plugin "${pluginName}" already registered. Cannot register plugins twice.`);
-      return registeredPlugin.proxy;
-    }
-    const platform = getPlatform();
-    const pluginHeader = getPluginHeader(pluginName);
-    let jsImplementation;
-    const loadPluginImplementation = async () => {
-      if (!jsImplementation && platform in jsImplementations) {
-        jsImplementation = typeof jsImplementations[platform] === "function" ? jsImplementation = await jsImplementations[platform]() : jsImplementation = jsImplementations[platform];
-      } else if (capCustomPlatform !== null && !jsImplementation && "web" in jsImplementations) {
-        jsImplementation = typeof jsImplementations["web"] === "function" ? jsImplementation = await jsImplementations["web"]() : jsImplementation = jsImplementations["web"];
-      }
-      return jsImplementation;
-    };
-    const createPluginMethod = (impl, prop) => {
-      var _a2, _b2;
-      if (pluginHeader) {
-        const methodHeader = pluginHeader === null || pluginHeader === void 0 ? void 0 : pluginHeader.methods.find((m) => prop === m.name);
-        if (methodHeader) {
-          if (methodHeader.rtype === "promise") {
-            return (options) => cap.nativePromise(pluginName, prop.toString(), options);
-          } else {
-            return (options, callback) => cap.nativeCallback(pluginName, prop.toString(), options, callback);
-          }
-        } else if (impl) {
-          return (_a2 = impl[prop]) === null || _a2 === void 0 ? void 0 : _a2.bind(impl);
-        }
-      } else if (impl) {
-        return (_b2 = impl[prop]) === null || _b2 === void 0 ? void 0 : _b2.bind(impl);
-      } else {
-        throw new CapacitorException(`"${pluginName}" plugin is not implemented on ${platform}`, ExceptionCode.Unimplemented);
-      }
-    };
-    const createPluginMethodWrapper = (prop) => {
-      let remove;
-      const wrapper = (...args) => {
-        const p = loadPluginImplementation().then((impl) => {
-          const fn = createPluginMethod(impl, prop);
-          if (fn) {
-            const p2 = fn(...args);
-            remove = p2 === null || p2 === void 0 ? void 0 : p2.remove;
-            return p2;
-          } else {
-            throw new CapacitorException(`"${pluginName}.${prop}()" is not implemented on ${platform}`, ExceptionCode.Unimplemented);
-          }
-        });
-        if (prop === "addListener") {
-          p.remove = async () => remove();
-        }
-        return p;
-      };
-      wrapper.toString = () => `${prop.toString()}() { [capacitor code] }`;
-      Object.defineProperty(wrapper, "name", {
-        value: prop,
-        writable: false,
-        configurable: false
-      });
-      return wrapper;
-    };
-    const addListener = createPluginMethodWrapper("addListener");
-    const removeListener = createPluginMethodWrapper("removeListener");
-    const addListenerNative = (eventName, callback) => {
-      const call = addListener({ eventName }, callback);
-      const remove = async () => {
-        const callbackId = await call;
-        removeListener({
-          eventName,
-          callbackId
-        }, callback);
-      };
-      const p = new Promise((resolve) => call.then(() => resolve({ remove })));
-      p.remove = async () => {
-        console.warn(`Using addListener() without 'await' is deprecated.`);
-        await remove();
-      };
-      return p;
-    };
-    const proxy = new Proxy({}, {
-      get(_, prop) {
-        switch (prop) {
-          // https://github.com/facebook/react/issues/20030
-          case "$$typeof":
-            return void 0;
-          case "toJSON":
-            return () => ({});
-          case "addListener":
-            return pluginHeader ? addListenerNative : addListener;
-          case "removeListener":
-            return removeListener;
-          default:
-            return createPluginMethodWrapper(prop);
-        }
-      }
-    });
-    Plugins[pluginName] = proxy;
-    registeredPlugins.set(pluginName, {
-      name: pluginName,
-      proxy,
-      platforms: /* @__PURE__ */ new Set([
-        ...Object.keys(jsImplementations),
-        ...pluginHeader ? [platform] : []
-      ])
-    });
-    return proxy;
-  };
-  const registerPlugin2 = ((_e = capPlatforms === null || capPlatforms === void 0 ? void 0 : capPlatforms.currentPlatform) === null || _e === void 0 ? void 0 : _e.registerPlugin) || defaultRegisterPlugin;
-  if (!cap.convertFileSrc) {
-    cap.convertFileSrc = (filePath) => filePath;
-  }
-  cap.getPlatform = getPlatform;
-  cap.handleError = handleError;
-  cap.isNativePlatform = isNativePlatform;
-  cap.isPluginAvailable = isPluginAvailable;
-  cap.pluginMethodNoop = pluginMethodNoop;
-  cap.registerPlugin = registerPlugin2;
-  cap.Exception = CapacitorException;
-  cap.DEBUG = !!cap.DEBUG;
-  cap.isLoggingEnabled = !!cap.isLoggingEnabled;
-  cap.platform = cap.getPlatform();
-  cap.isNative = cap.isNativePlatform();
-  return cap;
-};
-const initCapacitorGlobal = (win) => win.Capacitor = createCapacitor(win);
-const Capacitor = /* @__PURE__ */ initCapacitorGlobal(typeof globalThis !== "undefined" ? globalThis : typeof self !== "undefined" ? self : typeof window !== "undefined" ? window : typeof global !== "undefined" ? global : {});
-const registerPlugin = Capacitor.registerPlugin;
-Capacitor.Plugins;
-class WebPlugin {
-  constructor(config) {
-    this.listeners = {};
-    this.retainedEventArguments = {};
-    this.windowListeners = {};
-    if (config) {
-      console.warn(`Capacitor WebPlugin "${config.name}" config object was deprecated in v3 and will be removed in v4.`);
-      this.config = config;
-    }
-  }
-  addListener(eventName, listenerFunc) {
-    let firstListener = false;
-    const listeners2 = this.listeners[eventName];
-    if (!listeners2) {
-      this.listeners[eventName] = [];
-      firstListener = true;
-    }
-    this.listeners[eventName].push(listenerFunc);
-    const windowListener = this.windowListeners[eventName];
-    if (windowListener && !windowListener.registered) {
-      this.addWindowListener(windowListener);
-    }
-    if (firstListener) {
-      this.sendRetainedArgumentsForEvent(eventName);
-    }
-    const remove = async () => this.removeListener(eventName, listenerFunc);
-    const p = Promise.resolve({ remove });
-    return p;
-  }
-  async removeAllListeners() {
-    this.listeners = {};
-    for (const listener in this.windowListeners) {
-      this.removeWindowListener(this.windowListeners[listener]);
-    }
-    this.windowListeners = {};
-  }
-  notifyListeners(eventName, data, retainUntilConsumed) {
-    const listeners2 = this.listeners[eventName];
-    if (!listeners2) {
-      if (retainUntilConsumed) {
-        let args = this.retainedEventArguments[eventName];
-        if (!args) {
-          args = [];
-        }
-        args.push(data);
-        this.retainedEventArguments[eventName] = args;
-      }
-      return;
-    }
-    listeners2.forEach((listener) => listener(data));
-  }
-  hasListeners(eventName) {
-    return !!this.listeners[eventName].length;
-  }
-  registerWindowListener(windowEventName, pluginEventName) {
-    this.windowListeners[pluginEventName] = {
-      registered: false,
-      windowEventName,
-      pluginEventName,
-      handler: (event) => {
-        this.notifyListeners(pluginEventName, event);
-      }
-    };
-  }
-  unimplemented(msg = "not implemented") {
-    return new Capacitor.Exception(msg, ExceptionCode.Unimplemented);
-  }
-  unavailable(msg = "not available") {
-    return new Capacitor.Exception(msg, ExceptionCode.Unavailable);
-  }
-  async removeListener(eventName, listenerFunc) {
-    const listeners2 = this.listeners[eventName];
-    if (!listeners2) {
-      return;
-    }
-    const index = listeners2.indexOf(listenerFunc);
-    this.listeners[eventName].splice(index, 1);
-    if (!this.listeners[eventName].length) {
-      this.removeWindowListener(this.windowListeners[eventName]);
-    }
-  }
-  addWindowListener(handle) {
-    window.addEventListener(handle.windowEventName, handle.handler);
-    handle.registered = true;
-  }
-  removeWindowListener(handle) {
-    if (!handle) {
-      return;
-    }
-    window.removeEventListener(handle.windowEventName, handle.handler);
-    handle.registered = false;
-  }
-  sendRetainedArgumentsForEvent(eventName) {
-    const args = this.retainedEventArguments[eventName];
-    if (!args) {
-      return;
-    }
-    delete this.retainedEventArguments[eventName];
-    args.forEach((arg) => {
-      this.notifyListeners(eventName, arg);
-    });
-  }
-}
-const encode = (str) => encodeURIComponent(str).replace(/%(2[346B]|5E|60|7C)/g, decodeURIComponent).replace(/[()]/g, escape);
-const decode = (str) => str.replace(/(%[\dA-F]{2})+/gi, decodeURIComponent);
-class CapacitorCookiesPluginWeb extends WebPlugin {
-  async getCookies() {
-    const cookies = document.cookie;
-    const cookieMap = {};
-    cookies.split(";").forEach((cookie) => {
-      if (cookie.length <= 0)
-        return;
-      let [key, value] = cookie.replace(/=/, "CAP_COOKIE").split("CAP_COOKIE");
-      key = decode(key).trim();
-      value = decode(value).trim();
-      cookieMap[key] = value;
-    });
-    return cookieMap;
-  }
-  async setCookie(options) {
-    try {
-      const encodedKey = encode(options.key);
-      const encodedValue = encode(options.value);
-      const expires = `; expires=${(options.expires || "").replace("expires=", "")}`;
-      const path = (options.path || "/").replace("path=", "");
-      const domain = options.url != null && options.url.length > 0 ? `domain=${options.url}` : "";
-      document.cookie = `${encodedKey}=${encodedValue || ""}${expires}; path=${path}; ${domain};`;
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  }
-  async deleteCookie(options) {
-    try {
-      document.cookie = `${options.key}=; Max-Age=0`;
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  }
-  async clearCookies() {
-    try {
-      const cookies = document.cookie.split(";") || [];
-      for (const cookie of cookies) {
-        document.cookie = cookie.replace(/^ +/, "").replace(/=.*/, `=;expires=${(/* @__PURE__ */ new Date()).toUTCString()};path=/`);
-      }
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  }
-  async clearAllCookies() {
-    try {
-      await this.clearCookies();
-    } catch (error) {
-      return Promise.reject(error);
-    }
-  }
-}
-registerPlugin("CapacitorCookies", {
-  web: () => new CapacitorCookiesPluginWeb()
-});
-const readBlobAsBase64 = async (blob) => new Promise((resolve, reject) => {
-  const reader = new FileReader();
-  reader.onload = () => {
-    const base64String = reader.result;
-    resolve(base64String.indexOf(",") >= 0 ? base64String.split(",")[1] : base64String);
-  };
-  reader.onerror = (error) => reject(error);
-  reader.readAsDataURL(blob);
-});
-const normalizeHttpHeaders = (headers = {}) => {
-  const originalKeys = Object.keys(headers);
-  const loweredKeys = Object.keys(headers).map((k) => k.toLocaleLowerCase());
-  const normalized = loweredKeys.reduce((acc, key, index) => {
-    acc[key] = headers[originalKeys[index]];
-    return acc;
-  }, {});
-  return normalized;
-};
-const buildUrlParams = (params, shouldEncode = true) => {
-  if (!params)
-    return null;
-  const output = Object.entries(params).reduce((accumulator, entry) => {
-    const [key, value] = entry;
-    let encodedValue;
-    let item;
-    if (Array.isArray(value)) {
-      item = "";
-      value.forEach((str) => {
-        encodedValue = shouldEncode ? encodeURIComponent(str) : str;
-        item += `${key}=${encodedValue}&`;
-      });
-      item.slice(0, -1);
-    } else {
-      encodedValue = shouldEncode ? encodeURIComponent(value) : value;
-      item = `${key}=${encodedValue}`;
-    }
-    return `${accumulator}&${item}`;
-  }, "");
-  return output.substr(1);
-};
-const buildRequestInit = (options, extra = {}) => {
-  const output = Object.assign({ method: options.method || "GET", headers: options.headers }, extra);
-  const headers = normalizeHttpHeaders(options.headers);
-  const type = headers["content-type"] || "";
-  if (typeof options.data === "string") {
-    output.body = options.data;
-  } else if (type.includes("application/x-www-form-urlencoded")) {
-    const params = new URLSearchParams();
-    for (const [key, value] of Object.entries(options.data || {})) {
-      params.set(key, value);
-    }
-    output.body = params.toString();
-  } else if (type.includes("multipart/form-data") || options.data instanceof FormData) {
-    const form = new FormData();
-    if (options.data instanceof FormData) {
-      options.data.forEach((value, key) => {
-        form.append(key, value);
-      });
-    } else {
-      for (const key of Object.keys(options.data)) {
-        form.append(key, options.data[key]);
-      }
-    }
-    output.body = form;
-    const headers2 = new Headers(output.headers);
-    headers2.delete("content-type");
-    output.headers = headers2;
-  } else if (type.includes("application/json") || typeof options.data === "object") {
-    output.body = JSON.stringify(options.data);
-  }
-  return output;
-};
-class CapacitorHttpPluginWeb extends WebPlugin {
-  /**
-   * Perform an Http request given a set of options
-   * @param options Options to build the HTTP request
-   */
-  async request(options) {
-    const requestInit = buildRequestInit(options, options.webFetchExtra);
-    const urlParams = buildUrlParams(options.params, options.shouldEncodeUrlParams);
-    const url = urlParams ? `${options.url}?${urlParams}` : options.url;
-    const response = await fetch(url, requestInit);
-    const contentType = response.headers.get("content-type") || "";
-    let { responseType = "text" } = response.ok ? options : {};
-    if (contentType.includes("application/json")) {
-      responseType = "json";
-    }
-    let data;
-    let blob;
-    switch (responseType) {
-      case "arraybuffer":
-      case "blob":
-        blob = await response.blob();
-        data = await readBlobAsBase64(blob);
-        break;
-      case "json":
-        data = await response.json();
-        break;
-      case "document":
-      case "text":
-      default:
-        data = await response.text();
-    }
-    const headers = {};
-    response.headers.forEach((value, key) => {
-      headers[key] = value;
-    });
-    return {
-      data,
-      headers,
-      status: response.status,
-      url: response.url
-    };
-  }
-  /**
-   * Perform an Http GET request given a set of options
-   * @param options Options to build the HTTP request
-   */
-  async get(options) {
-    return this.request(Object.assign(Object.assign({}, options), { method: "GET" }));
-  }
-  /**
-   * Perform an Http POST request given a set of options
-   * @param options Options to build the HTTP request
-   */
-  async post(options) {
-    return this.request(Object.assign(Object.assign({}, options), { method: "POST" }));
-  }
-  /**
-   * Perform an Http PUT request given a set of options
-   * @param options Options to build the HTTP request
-   */
-  async put(options) {
-    return this.request(Object.assign(Object.assign({}, options), { method: "PUT" }));
-  }
-  /**
-   * Perform an Http PATCH request given a set of options
-   * @param options Options to build the HTTP request
-   */
-  async patch(options) {
-    return this.request(Object.assign(Object.assign({}, options), { method: "PATCH" }));
-  }
-  /**
-   * Perform an Http DELETE request given a set of options
-   * @param options Options to build the HTTP request
-   */
-  async delete(options) {
-    return this.request(Object.assign(Object.assign({}, options), { method: "DELETE" }));
-  }
-}
-registerPlugin("CapacitorHttp", {
-  web: () => new CapacitorHttpPluginWeb()
-});
 const PushNotifications = registerPlugin("PushNotifications", {});
 let _activeCallId = null;
 let _activeCallerName = null;
@@ -5689,7 +7842,7 @@ function _clearActiveCall() {
   _activeCallerName = null;
   _activeRoomName = null;
 }
-const API_BASE$2 = "https://egchat-api.onrender.com";
+const API_BASE$1 = "https://egchat-api.onrender.com";
 const FCM_TOKEN_KEY = "egchat_fcm_token";
 const VOIP_TYPES = /* @__PURE__ */ new Set(["VOIP_CALL", "incoming_call", "call"]);
 function parseVoipData(data) {
@@ -5704,17 +7857,17 @@ function isVoipNotification(data) {
   if (!data) return false;
   return VOIP_TYPES.has(data.type) || VOIP_TYPES.has(data.notification_type) || data.is_call === "true" || data.call_type === "incoming";
 }
-function getAuthToken$1() {
+function getAuthToken() {
   return localStorage.getItem("token") || localStorage.getItem("auth_token") || localStorage.getItem("egchat_token") || localStorage.getItem("egchat_token_backup") || "";
 }
 async function registerFcmTokenOnServer(fcmToken) {
-  const authToken = getAuthToken$1();
+  const authToken = getAuthToken();
   if (!authToken) {
     console.warn("[Push] No hay token de usuario — no se registra FCM en el servidor.");
     return;
   }
   try {
-    const response = await fetch(`${API_BASE$2}/api/push/fcm-token`, {
+    const response = await fetch(`${API_BASE$1}/api/push/fcm-token`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -5906,7 +8059,7 @@ async function stopVoipService() {
   }
 }
 const App$1 = registerPlugin("App", {
-  web: () => __vitePreload(() => import("./web-BS6Zci2E.js"), true ? __vite__mapDeps([0,1,2,3]) : void 0).then((m) => new m.AppWeb())
+  web: () => __vitePreload(() => import("./web-khKW1Yqc.js"), true ? __vite__mapDeps([4,1,2,3]) : void 0).then((m) => new m.AppWeb())
 });
 const SCHEME = "egchat";
 const DOMAINS = ["egchat-v2.vercel.app", "egchat.app"];
@@ -6095,7 +8248,7 @@ var NotificationType;
   NotificationType2["Error"] = "ERROR";
 })(NotificationType || (NotificationType = {}));
 const Haptics = registerPlugin("Haptics", {
-  web: () => __vitePreload(() => import("./web-SkTF6e0l.js"), true ? __vite__mapDeps([4,1,2,3]) : void 0).then((m) => new m.HapticsWeb())
+  web: () => __vitePreload(() => import("./web-uhpJ4us-.js"), true ? __vite__mapDeps([5,1,2,3]) : void 0).then((m) => new m.HapticsWeb())
 });
 const HAPTICS_KEY = "egchat_haptics_enabled";
 let _enabled = _loadEnabled();
@@ -6393,33 +8546,33 @@ function initPredictiveBack(navigateFn) {
   });
   console.log("[PredictiveBack] Inicializado.");
 }
-const EstadosView = reactExports.lazy(() => __vitePreload(() => import("./EstadosView-BzY1EYO-.js"), true ? __vite__mapDeps([5,1,2,3]) : void 0).then((m) => ({ default: m.EstadosView })));
-const ApuestasView = reactExports.lazy(() => __vitePreload(() => import("./ApuestasView-KYZEy5jB.js"), true ? __vite__mapDeps([6,1]) : void 0).then((m) => ({ default: m.ApuestasView })));
-const CemacView = reactExports.lazy(() => __vitePreload(() => import("./CemacView-BFvXL36d.js"), true ? __vite__mapDeps([7,1,8]) : void 0).then((m) => ({ default: m.CemacView })));
-const MiTaxiView = reactExports.lazy(() => __vitePreload(() => import("./MiTaxiView-eFPCsiiz.js"), true ? __vite__mapDeps([9,1,10,11,2,3]) : void 0).then((m) => ({ default: m.MiTaxiView })));
-const Lia25View = reactExports.lazy(() => __vitePreload(() => import("./Lia25View-CbeYT-bo.js"), true ? __vite__mapDeps([12,1,2,3]) : void 0).then((m) => ({ default: m.Lia25View })));
-const EducacionModule = reactExports.lazy(() => __vitePreload(() => import("./EducacionModule-L26JxLgX.js"), true ? __vite__mapDeps([13,1,14]) : void 0).then((m) => ({ default: m.EducacionModule })));
-const HotelesModule = reactExports.lazy(() => __vitePreload(() => import("./HotelesModule-ACxCChN5.js"), true ? __vite__mapDeps([15,1,14]) : void 0).then((m) => ({ default: m.HotelesModule })));
-const TiendasModule = reactExports.lazy(() => __vitePreload(() => import("./TiendasModule-CWnnc9x1.js"), true ? __vite__mapDeps([16,1]) : void 0).then((m) => ({ default: m.TiendasModule })));
-const EGChatDesktopWelcome = reactExports.lazy(() => __vitePreload(() => import("./EGChatDesktopWelcome-8m_zKCgB.js"), true ? __vite__mapDeps([17,1]) : void 0).then((m) => ({ default: m.EGChatDesktopWelcome })));
-const PhotoEditorModal = reactExports.lazy(() => __vitePreload(() => import("./PhotoEditorModal-BaQ3NkXV.js"), true ? __vite__mapDeps([18,1]) : void 0).then((m) => ({ default: m.PhotoEditorModal })));
+const EstadosView = reactExports.lazy(() => __vitePreload(() => import("./EstadosView-C_vWV-Es.js"), true ? __vite__mapDeps([6,1,2,3]) : void 0).then((m) => ({ default: m.EstadosView })));
+const ApuestasView = reactExports.lazy(() => __vitePreload(() => import("./ApuestasView-KYZEy5jB.js"), true ? __vite__mapDeps([7,1]) : void 0).then((m) => ({ default: m.ApuestasView })));
+const CemacView = reactExports.lazy(() => __vitePreload(() => import("./CemacView-BFvXL36d.js"), true ? __vite__mapDeps([8,1,9]) : void 0).then((m) => ({ default: m.CemacView })));
+const MiTaxiView = reactExports.lazy(() => __vitePreload(() => import("./MiTaxiView-D5OQU4KN.js"), true ? __vite__mapDeps([10,1,11,12,2,3]) : void 0).then((m) => ({ default: m.MiTaxiView })));
+const Lia25View = reactExports.lazy(() => __vitePreload(() => import("./Lia25View-C31ilg0a.js"), true ? __vite__mapDeps([13,1,2,3]) : void 0).then((m) => ({ default: m.Lia25View })));
+const EducacionModule = reactExports.lazy(() => __vitePreload(() => import("./EducacionModule-L26JxLgX.js"), true ? __vite__mapDeps([14,1,15]) : void 0).then((m) => ({ default: m.EducacionModule })));
+const HotelesModule = reactExports.lazy(() => __vitePreload(() => import("./HotelesModule-ACxCChN5.js"), true ? __vite__mapDeps([16,1,15]) : void 0).then((m) => ({ default: m.HotelesModule })));
+const TiendasModule = reactExports.lazy(() => __vitePreload(() => import("./TiendasModule-CWnnc9x1.js"), true ? __vite__mapDeps([17,1]) : void 0).then((m) => ({ default: m.TiendasModule })));
+const EGChatDesktopWelcome = reactExports.lazy(() => __vitePreload(() => import("./EGChatDesktopWelcome-8m_zKCgB.js"), true ? __vite__mapDeps([18,1]) : void 0).then((m) => ({ default: m.EGChatDesktopWelcome })));
+const PhotoEditorModal = reactExports.lazy(() => __vitePreload(() => import("./PhotoEditorModal-BaQ3NkXV.js"), true ? __vite__mapDeps([19,1]) : void 0).then((m) => ({ default: m.PhotoEditorModal })));
 const AvatarCropModal = reactExports.lazy(() => __vitePreload(() => Promise.resolve().then(() => AvatarCropModal$2), true ? void 0 : void 0).then((m) => ({ default: m.AvatarCropModal })));
-const QRScanner = reactExports.lazy(() => __vitePreload(() => import("./QRScanner-B2lkFFbn.js"), true ? __vite__mapDeps([19,1,3]) : void 0).then((m) => ({ default: m.QRScanner })));
-const CameraModal = reactExports.lazy(() => __vitePreload(() => import("./CameraModal-BcZoacyD.js"), true ? __vite__mapDeps([20,1]) : void 0).then((m) => ({ default: m.CameraModal })));
-const InternetModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.InternetModal })));
-const RecargaModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.RecargaModal })));
-const CanalesModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.CanalesModal })));
-const BancosModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.BancosModal })));
-const SegurosModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.SegurosModal })));
-const FacturasModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.FacturasModal })));
-const ActividadModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.ActividadModal })));
-const SaludModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-Btjbmhx-.js"), true ? __vite__mapDeps([21,1,8,14,2,3]) : void 0).then((m) => ({ default: m.SaludModal })));
-const SupermercadosModal = reactExports.lazy(() => __vitePreload(() => import("./SupermercadosModule-BaqVM_71.js"), true ? __vite__mapDeps([22,1]) : void 0).then((m) => ({ default: m.SupermercadosModal })));
+const QRScanner = reactExports.lazy(() => __vitePreload(() => import("./QRScanner-B2lkFFbn.js"), true ? __vite__mapDeps([20,1,3]) : void 0).then((m) => ({ default: m.QRScanner })));
+const CameraModal = reactExports.lazy(() => __vitePreload(() => import("./CameraModal-BcZoacyD.js"), true ? __vite__mapDeps([21,1]) : void 0).then((m) => ({ default: m.CameraModal })));
+const InternetModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.InternetModal })));
+const RecargaModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.RecargaModal })));
+const CanalesModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.CanalesModal })));
+const BancosModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.BancosModal })));
+const SegurosModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.SegurosModal })));
+const FacturasModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.FacturasModal })));
+const ActividadModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.ActividadModal })));
+const SaludModal = reactExports.lazy(() => __vitePreload(() => import("./ServiciosModules-73WsLyP7.js"), true ? __vite__mapDeps([22,1,9,15,2,3]) : void 0).then((m) => ({ default: m.SaludModal })));
+const SupermercadosModal = reactExports.lazy(() => __vitePreload(() => import("./SupermercadosModule-BaqVM_71.js"), true ? __vite__mapDeps([23,1]) : void 0).then((m) => ({ default: m.SupermercadosModal })));
 const RecargaMonederoModal = reactExports.lazy(() => __vitePreload(() => Promise.resolve().then(() => WalletSystem), true ? void 0 : void 0).then((m) => ({ default: m.RecargaMonederoModal })));
 const RetiroMonederoModal = reactExports.lazy(() => __vitePreload(() => Promise.resolve().then(() => WalletSystem), true ? void 0 : void 0).then((m) => ({ default: m.RetiroMonederoModal })));
-const RestaurantesModule = reactExports.lazy(() => __vitePreload(() => import("./ServiciosDiarios-BvfEX-dm.js"), true ? __vite__mapDeps([23,1]) : void 0).then((m) => ({ default: m.RestaurantesModule })));
-const VuelosModule = reactExports.lazy(() => __vitePreload(() => import("./ServiciosDiarios-BvfEX-dm.js"), true ? __vite__mapDeps([23,1]) : void 0).then((m) => ({ default: m.VuelosModule })));
-const GasolinerasModule = reactExports.lazy(() => __vitePreload(() => import("./ServiciosDiarios-BvfEX-dm.js"), true ? __vite__mapDeps([23,1]) : void 0).then((m) => ({ default: m.GasolinerasModule })));
+const RestaurantesModule = reactExports.lazy(() => __vitePreload(() => import("./ServiciosDiarios-BvfEX-dm.js"), true ? __vite__mapDeps([24,1]) : void 0).then((m) => ({ default: m.RestaurantesModule })));
+const VuelosModule = reactExports.lazy(() => __vitePreload(() => import("./ServiciosDiarios-BvfEX-dm.js"), true ? __vite__mapDeps([24,1]) : void 0).then((m) => ({ default: m.VuelosModule })));
+const GasolinerasModule = reactExports.lazy(() => __vitePreload(() => import("./ServiciosDiarios-BvfEX-dm.js"), true ? __vite__mapDeps([24,1]) : void 0).then((m) => ({ default: m.GasolinerasModule })));
 const asset = (path) => (window.location.protocol === "file:" ? "." : "") + path;
 const SwipeChatItem = React.memo(({ chatId, onOpen, onArchive, onDelete, onMarkUnread, onUnarchive, isArchived, children }) => {
   const [offset, setOffset] = React.useState(0);
@@ -9941,13 +12094,16 @@ Puedo ayudarte con:
       if (repertorioSelected.size === 0) return;
       try {
         setRepertorioAdding(true);
-        await Promise.all(Array.from(repertorioSelected).map((id) => contactsAPI.add(id)));
+        await Promise.all(Array.from(repertorioSelected).map((id) => {
+          const user = repertorioUsers.find((u) => u.id?.toString() === id?.toString()) || deviceContacts.find((u) => u.id?.toString() === id?.toString());
+          return contactsAPI.add(id, user?.phone || void 0, user?.full_name || void 0);
+        }));
         showToast(`✓ ${repertorioSelected.size} contacto${repertorioSelected.size > 1 ? "s" : ""} añadido${repertorioSelected.size > 1 ? "s" : ""}`, "success");
         setRepertorioSelected(/* @__PURE__ */ new Set());
         setShowAddContact(false);
         await loadContacts();
-      } catch {
-        showToast("Error al añadir contactos", "error");
+      } catch (err) {
+        showToast(err?.message || "Error al añadir contactos", "error");
       } finally {
         setRepertorioAdding(false);
       }
@@ -15024,8 +17180,11 @@ ${directionsUrl}`;
                             avatarUrl: contact.avatarUrl || ""
                           });
                           navigateTo("Mensajería");
+                        } else {
+                          showToast("No se pudo abrir el chat", "error");
                         }
-                      } catch {
+                      } catch (err) {
+                        showToast(err?.message || "Error al iniciar chat", "error");
                       }
                     },
                     style: {
@@ -16880,6 +19039,7 @@ ${directionsUrl}`;
           localStorage.setItem("egchat_contacts_cache", JSON.stringify(sorted));
         } catch {
         }
+        setTimeout(() => syncUserAvatars(), 500);
       }
     } catch {
     }
@@ -17515,6 +19675,7 @@ ${directionsUrl}`;
           renderMenuPanel(),
           renderTimeModal(),
           renderActiveCall(),
+          /* @__PURE__ */ jsxRuntimeExports.jsx(SyncIndicator, {}),
           /* @__PURE__ */ jsxRuntimeExports.jsx(UpdateBanner, { isAuthenticated }),
           /* @__PURE__ */ jsxRuntimeExports.jsx(AppUpdateChecker, {}),
           toast2 && /* @__PURE__ */ jsxRuntimeExports.jsx("div", { style: {
@@ -21452,221 +23613,426 @@ function initSelectionErrorHandler() {
     }
   };
 }
-const DB_NAME = "egchat_offline";
-const DB_VERSION = 1;
-let db = null;
-async function initOfflineDB() {
-  return new Promise((resolve, reject) => {
-    const request2 = indexedDB.open(DB_NAME, DB_VERSION);
-    request2.onupgradeneeded = (event) => {
-      const database = event.target.result;
-      if (!database.objectStoreNames.contains("conversations")) {
-        const convStore = database.createObjectStore("conversations", { keyPath: "id" });
-        convStore.createIndex("updatedAt", "updatedAt", { unique: false });
-      }
-      if (!database.objectStoreNames.contains("messages")) {
-        const msgStore = database.createObjectStore("messages", { keyPath: "id" });
-        msgStore.createIndex("conversationId", "conversationId", { unique: false });
-        msgStore.createIndex("createdAt", "createdAt", { unique: false });
-        msgStore.createIndex("synced", "synced", { unique: false });
-        msgStore.createIndex("status", "status", { unique: false });
-      }
-    };
-    request2.onsuccess = (event) => {
-      db = event.target.result;
-      console.log("[OfflineDB] Inicializada correctamente.");
-      resolve();
-    };
-    request2.onerror = (event) => {
-      console.error("[OfflineDB] Error al abrir:", event.target.error);
-      reject(event.target.error);
-    };
-  });
-}
-function getStore(storeName, mode = "readonly") {
-  if (!db) throw new Error("[OfflineDB] Base de datos no inicializada.");
-  const tx = db.transaction(storeName, mode);
-  return tx.objectStore(storeName);
-}
-function promisify(request2) {
-  return new Promise((resolve, reject) => {
-    request2.onsuccess = () => resolve(request2.result);
-    request2.onerror = () => reject(request2.error);
-  });
-}
-async function getPendingMessages() {
-  if (!db) return [];
-  const store = getStore("messages");
-  const index = store.index("synced");
-  const all = await promisify(index.getAll(false));
-  return all.filter((m) => m.status === "pending" || m.status === "error");
-}
-async function markAsSynced(localId, serverId) {
-  if (!db) return;
-  const store = getStore("messages", "readwrite");
-  const msg = await promisify(store.get(localId));
-  if (msg) {
-    msg.synced = true;
-    msg.serverId = serverId;
-    msg.status = "sent";
-    await promisify(store.put(msg));
-  }
-}
-async function updateMessageStatus(id, status, retries) {
-  if (!db) return;
-  const store = getStore("messages", "readwrite");
-  const msg = await promisify(store.get(id));
-  if (msg) {
-    msg.status = status;
-    if (retries !== void 0) msg.retries = retries;
-    await promisify(store.put(msg));
-  }
-}
-async function deleteOldMessages(olderThanMs = 7 * 24 * 60 * 60 * 1e3) {
-  if (!db) return 0;
-  const cutoff = Date.now() - olderThanMs;
-  const store = getStore("messages", "readwrite");
-  const all = await promisify(store.getAll());
-  let deleted = 0;
-  for (const msg of all) {
-    if (msg.synced && msg.createdAt < cutoff) {
-      await promisify(store.delete(msg.id));
-      deleted++;
-    }
-  }
-  return deleted;
-}
-const API_BASE$1 = "https://egchat-api.onrender.com";
-const BATCH_SIZE = 10;
-const MAX_RETRIES = 5;
-const RETRY_DELAYS = [5e3, 15e3, 3e4, 6e4, 12e4];
-let isSyncing = false;
-let syncTimer = null;
-let isOnline = navigator.onLine;
-const listeners = /* @__PURE__ */ new Set();
-let state = {
-  isOnline: navigator.onLine,
-  isSyncing: false,
-  pendingCount: 0,
-  lastSyncAt: null,
-  error: null
-};
-function setState(partial) {
-  state = { ...state, ...partial };
-  listeners.forEach((fn) => fn(state));
-}
-function getAuthToken() {
-  return localStorage.getItem("token") || localStorage.getItem("egchat_token") || localStorage.getItem("egchat_token_backup") || "";
-}
-async function sendMessageToServer(msg) {
-  const token = getAuthToken();
-  if (!token) return null;
-  const response = await fetch(`${API_BASE$1}/api/messages`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${token}`
-    },
-    body: JSON.stringify({
-      chat_id: msg.conversationId,
-      text: msg.text,
-      type: msg.type || "text",
-      // Incluir metadatos de archivo si existen
-      ...msg.imageUrl && { file_url: msg.imageUrl },
-      ...msg.audioUrl && { file_url: msg.audioUrl },
-      ...msg.fileUrl && { file_url: msg.fileUrl, file_name: msg.fileName }
-    })
-  });
-  if (!response.ok) {
-    throw new Error(`HTTP ${response.status}`);
-  }
-  const data = await response.json();
-  return data.id || data.message_id || null;
-}
-async function syncPendingMessages() {
-  if (isSyncing || !isOnline) return;
-  const token = getAuthToken();
-  if (!token) return;
-  isSyncing = true;
-  setState({ isSyncing: true, error: null });
+const STORAGE_KEY = "egchat_monitor_v1";
+const MAX_EVENTS = 200;
+let _startTs = Date.now();
+let _metrics = _loadMetrics();
+let _events = [];
+function _loadMetrics() {
   try {
-    const pending = await getPendingMessages();
-    setState({ pendingCount: pending.length });
-    if (pending.length === 0) {
-      setState({ isSyncing: false, lastSyncAt: Date.now() });
-      isSyncing = false;
-      return;
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) return { ..._defaultMetrics(), ...JSON.parse(raw) };
+  } catch {
+  }
+  return _defaultMetrics();
+}
+function _defaultMetrics() {
+  return {
+    appStartMs: null,
+    totalSyncs: 0,
+    failedSyncs: 0,
+    totalApiCalls: 0,
+    failedApiCalls: 0,
+    avgSyncDurationMs: 0,
+    lastErrorMessage: null,
+    lastErrorTs: null,
+    sessionCount: 0,
+    pendingMessages: 0
+  };
+}
+function _save() {
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(_metrics));
+  } catch {
+  }
+}
+function _addEvent(type, payload = {}) {
+  _events.push({ type, ts: Date.now(), payload });
+  if (_events.length > MAX_EVENTS) _events.shift();
+}
+const AppMonitor = {
+  /** Registrar inicio de la app y calcular tiempo de arranque */
+  recordAppStart() {
+    const ms = Date.now() - _startTs;
+    _metrics.appStartMs = ms;
+    _metrics.sessionCount += 1;
+    _addEvent("app_start", { ms });
+    _save();
+    console.log(`[Monitor] App arrancó en ${ms}ms`);
+  },
+  /** Registrar resultado de una sincronización */
+  recordSync(ok, durationMs) {
+    _metrics.totalSyncs++;
+    if (!ok) _metrics.failedSyncs++;
+    _metrics.avgSyncDurationMs = Math.round(
+      (_metrics.avgSyncDurationMs * (_metrics.totalSyncs - 1) + durationMs) / _metrics.totalSyncs
+    );
+    _addEvent("sync", { ok, durationMs });
+    _save();
+  },
+  /** Registrar llamada a la API */
+  recordApiCall(path, ok, latencyMs) {
+    _metrics.totalApiCalls++;
+    if (!ok) _metrics.failedApiCalls++;
+    _addEvent("api_call", { path, ok, latencyMs });
+    if (_metrics.totalApiCalls % 10 === 0) _save();
+  },
+  /** Registrar un error */
+  recordError(message, context) {
+    _metrics.lastErrorMessage = message.slice(0, 200);
+    _metrics.lastErrorTs = Date.now();
+    _addEvent("error", { message: message.slice(0, 200), context });
+    _save();
+    console.error("[Monitor] Error:", message, context ?? "");
+  },
+  /** Actualizar contador de mensajes pendientes */
+  setPendingMessages(count) {
+    _metrics.pendingMessages = count;
+  },
+  /** Obtener métricas actuales */
+  getMetrics() {
+    return { ..._metrics };
+  },
+  /** Obtener eventos recientes */
+  getEvents(last = 50) {
+    return _events.slice(-last);
+  },
+  /** Limpiar todas las métricas */
+  reset() {
+    _metrics = _defaultMetrics();
+    _events = [];
+    _save();
+  },
+  /** Inicializar listeners globales de errores */
+  init() {
+    window.addEventListener("error", (e) => {
+      this.recordError(e.message ?? "JS Error", e.filename);
+    });
+    window.addEventListener("unhandledrejection", (e) => {
+      this.recordError(
+        e.reason?.message ?? String(e.reason) ?? "Unhandled rejection",
+        "promise"
+      );
+    });
+    this.recordAppStart();
+  },
+  /** Exportar reporte como texto (para pantalla de soporte) */
+  exportReport() {
+    const m = this.getMetrics();
+    return [
+      `=== EGCHAT Monitor Report ===`,
+      `Fecha: ${(/* @__PURE__ */ new Date()).toISOString()}`,
+      `Arranque: ${m.appStartMs ?? "-"}ms`,
+      `Sesiones: ${m.sessionCount}`,
+      `Syncs OK/Fail: ${m.totalSyncs - m.failedSyncs}/${m.failedSyncs}`,
+      `Sync duración media: ${m.avgSyncDurationMs}ms`,
+      `API OK/Fail: ${m.totalApiCalls - m.failedApiCalls}/${m.failedApiCalls}`,
+      `Mensajes pendientes: ${m.pendingMessages}`,
+      m.lastErrorMessage ? `Último error: ${m.lastErrorMessage}` : ""
+    ].filter(Boolean).join("\n");
+  }
+};
+let CapacitorUpdater = null;
+async function getUpdater() {
+  if (CapacitorUpdater) return CapacitorUpdater;
+  try {
+    const mod = await new Function("s", "return import(s)")("@capgo/capacitor-updater");
+    CapacitorUpdater = mod.CapacitorUpdater ?? mod.default?.CapacitorUpdater;
+    return CapacitorUpdater;
+  } catch {
+    return null;
+  }
+}
+const OTAUpdater = {
+  /**
+   * Inicializar el sistema OTA.
+   * Notifica a Capgo que la app arrancó correctamente
+   * (evita rollback automático si el bundle anterior falló).
+   */
+  async init() {
+    if (!Capacitor.isNativePlatform()) return;
+    const updater = await getUpdater();
+    if (!updater) return;
+    try {
+      await updater.notifyAppReady();
+      console.log("[OTA] App marcada como lista");
+    } catch (err) {
+      console.warn("[OTA] Error en notifyAppReady:", err);
     }
-    console.log(`[SyncManager] Sincronizando ${pending.length} mensajes pendientes...`);
-    const batch = pending.slice(0, BATCH_SIZE);
-    for (const msg of batch) {
-      if (!isOnline) break;
-      try {
-        const serverId = await sendMessageToServer(msg);
-        if (serverId) {
-          await markAsSynced(msg.id, serverId);
-          console.log(`[SyncManager] Mensaje ${msg.id} sincronizado → ${serverId}`);
-        }
-      } catch (err) {
-        const retries = (msg.retries || 0) + 1;
-        console.warn(`[SyncManager] Error enviando ${msg.id} (intento ${retries}):`, err.message);
-        if (retries >= MAX_RETRIES) {
-          await updateMessageStatus(msg.id, "error", retries);
-        } else {
-          await updateMessageStatus(msg.id, "pending", retries);
-          const delay = RETRY_DELAYS[Math.min(retries - 1, RETRY_DELAYS.length - 1)];
-          setTimeout(() => syncPendingMessages(), delay);
+  },
+  /**
+   * Buscar y descargar actualizaciones en background.
+   * No interrumpe la sesión del usuario — se aplica al reiniciar.
+   */
+  async checkAndDownload() {
+    if (!Capacitor.isNativePlatform()) return { hasUpdate: false };
+    const updater = await getUpdater();
+    if (!updater) return { hasUpdate: false };
+    try {
+      const latest = await updater.getLatest();
+      if (!latest?.url) return { hasUpdate: false };
+      console.log("[OTA] Actualización disponible:", latest.version);
+      const bundle = await updater.download({
+        url: latest.url,
+        version: latest.version
+      });
+      await updater.next(bundle);
+      console.log("[OTA] Bundle descargado y programado:", latest.version);
+      return { hasUpdate: true, version: latest.version };
+    } catch (err) {
+      if (!err.message?.includes("no update")) {
+        console.warn("[OTA] Error buscando actualización:", err.message);
+      }
+      return { hasUpdate: false };
+    }
+  },
+  /**
+   * Aplicar actualización inmediatamente (para actualizaciones críticas).
+   * Reinicia la app.
+   */
+  async applyNow() {
+    if (!Capacitor.isNativePlatform()) return;
+    const updater = await getUpdater();
+    if (!updater) return;
+    try {
+      await updater.reload();
+    } catch (err) {
+      console.warn("[OTA] Error aplicando actualización:", err);
+    }
+  }
+};
+var Directory;
+(function(Directory2) {
+  Directory2["Documents"] = "DOCUMENTS";
+  Directory2["Data"] = "DATA";
+  Directory2["Library"] = "LIBRARY";
+  Directory2["Cache"] = "CACHE";
+  Directory2["External"] = "EXTERNAL";
+  Directory2["ExternalStorage"] = "EXTERNAL_STORAGE";
+})(Directory || (Directory = {}));
+var Encoding;
+(function(Encoding2) {
+  Encoding2["UTF8"] = "utf8";
+  Encoding2["ASCII"] = "ascii";
+  Encoding2["UTF16"] = "utf16";
+})(Encoding || (Encoding = {}));
+const Filesystem = registerPlugin("Filesystem", {
+  web: () => __vitePreload(() => import("./web-D_NtMz9W.js"), true ? __vite__mapDeps([25,1,2,3]) : void 0).then((m) => new m.FilesystemWeb())
+});
+const CACHE_DIR = "egchat_files";
+const MAX_AGE_MS = 7 * 24 * 60 * 60 * 1e3;
+const WEB_CACHE_NAME = "egchat-files-v1";
+function urlToFilename(url) {
+  let hash = 0;
+  for (let i = 0; i < url.length; i++) {
+    hash = (hash << 5) - hash + url.charCodeAt(i);
+    hash |= 0;
+  }
+  const ext = url.split("?")[0].split(".").pop()?.slice(0, 5) ?? "bin";
+  return `${Math.abs(hash).toString(36)}.${ext}`;
+}
+async function fetchWithTimeout(url, ms = 15e3) {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), ms);
+  try {
+    return await fetch(url, { signal: ctrl.signal });
+  } finally {
+    clearTimeout(tid);
+  }
+}
+const FileCache = {
+  /**
+   * Obtener URL local de un archivo remoto.
+   * Si no está en caché, lo descarga automáticamente.
+   * @returns URL local o la URL original si falla todo.
+   */
+  async get(remoteUrl) {
+    if (!remoteUrl) return remoteUrl;
+    if (remoteUrl.startsWith("data:")) return remoteUrl;
+    if (remoteUrl.startsWith("blob:") || remoteUrl.startsWith("capacitor://")) return remoteUrl;
+    try {
+      const cached = await this._getFromDB(remoteUrl);
+      if (cached) {
+        await this._touchAccess(remoteUrl);
+        return cached;
+      }
+      const localPath = await this._download(remoteUrl);
+      return localPath ?? remoteUrl;
+    } catch {
+      return remoteUrl;
+    }
+  },
+  /**
+   * Precargar una lista de URLs en background (para avatares, logos, etc.)
+   */
+  async prefetch(urls) {
+    const unique = [...new Set(urls.filter(Boolean))];
+    const chunks = [];
+    for (let i = 0; i < unique.length; i += 3) {
+      chunks.push(unique.slice(i, i + 3));
+    }
+    for (const chunk of chunks) {
+      await Promise.allSettled(chunk.map((url) => this.get(url)));
+    }
+  },
+  /**
+   * Limpiar archivos no accedidos en más de MAX_AGE_MS.
+   * Llamar periódicamente (p.ej. al arrancar la app).
+   */
+  async prune() {
+    const cutoff = Date.now() - MAX_AGE_MS;
+    let deleted = 0;
+    try {
+      const rows = await query(
+        `SELECT url, local_path FROM file_cache WHERE last_accessed < ?`,
+        [cutoff]
+      );
+      for (const row of rows) {
+        try {
+          if (Capacitor.getPlatform() !== "web") {
+            await Filesystem.deleteFile({
+              path: row.local_path,
+              directory: Directory.Cache
+            });
+          }
+          await run(`DELETE FROM file_cache WHERE url = ?`, [row.url]);
+          deleted++;
+        } catch {
         }
       }
+    } catch {
     }
-    const remaining = await getPendingMessages();
-    setState({
-      isSyncing: false,
-      pendingCount: remaining.length,
-      lastSyncAt: Date.now()
-    });
-    if (remaining.length > 0 && isOnline) {
-      syncTimer = setTimeout(syncPendingMessages, 2e3);
+    return deleted;
+  },
+  /** Borrar toda la caché */
+  async clear() {
+    try {
+      if (Capacitor.getPlatform() !== "web") {
+        await Filesystem.rmdir({
+          path: CACHE_DIR,
+          directory: Directory.Cache,
+          recursive: true
+        });
+      } else {
+        const c = await caches.open(WEB_CACHE_NAME);
+        const keys = await c.keys();
+        await Promise.all(keys.map((k) => c.delete(k)));
+      }
+      await run(`DELETE FROM file_cache`);
+    } catch {
     }
-  } catch (err) {
-    console.error("[SyncManager] Error en ciclo de sync:", err);
-    setState({ isSyncing: false, error: err.message });
-  } finally {
-    isSyncing = false;
+  },
+  // ── Internos ───────────────────────────────────────────────────
+  async _getFromDB(url) {
+    const rows = await query(
+      `SELECT local_path FROM file_cache WHERE url = ? LIMIT 1`,
+      [url]
+    );
+    if (!rows.length) return null;
+    const localPath = rows[0].local_path;
+    try {
+      if (Capacitor.getPlatform() !== "web") {
+        await Filesystem.stat({ path: localPath, directory: Directory.Cache });
+        const uri = await Filesystem.getUri({ path: localPath, directory: Directory.Cache });
+        return Capacitor.convertFileSrc(uri.uri);
+      }
+      const cache = await caches.open(WEB_CACHE_NAME);
+      const match = await cache.match(url);
+      if (match) return url;
+    } catch {
+      await run(`DELETE FROM file_cache WHERE url = ?`, [url]);
+    }
+    return null;
+  },
+  async _download(url) {
+    try {
+      const res = await fetchWithTimeout(url);
+      if (!res.ok) return null;
+      const filename = urlToFilename(url);
+      const filePath = `${CACHE_DIR}/${filename}`;
+      const now = Date.now();
+      if (Capacitor.getPlatform() !== "web") {
+        const blob = await res.blob();
+        const base64 = await _blobToBase64(blob);
+        await Filesystem.writeFile({
+          path: filePath,
+          data: base64,
+          directory: Directory.Cache,
+          recursive: true
+        });
+        const uriRes = await Filesystem.getUri({ path: filePath, directory: Directory.Cache });
+        const localUrl = Capacitor.convertFileSrc(uriRes.uri);
+        await run(
+          `INSERT INTO file_cache (url, local_path, size, mime_type, downloaded_at, last_accessed, access_count)
+           VALUES (?,?,?,?,?,?,1)
+           ON CONFLICT(url) DO UPDATE SET local_path=excluded.local_path, last_accessed=excluded.last_accessed`,
+          [url, filePath, blob.size, blob.type, now, now]
+        );
+        return localUrl;
+      } else {
+        const cache = await caches.open(WEB_CACHE_NAME);
+        const blob = await res.clone().blob();
+        await cache.put(url, new Response(blob, { headers: res.headers }));
+        await run(
+          `INSERT INTO file_cache (url, local_path, size, mime_type, downloaded_at, last_accessed, access_count)
+           VALUES (?,?,?,?,?,?,1)
+           ON CONFLICT(url) DO UPDATE SET last_accessed=excluded.last_accessed`,
+          [url, url, blob.size, blob.type, now, now]
+        );
+        return url;
+      }
+    } catch (err) {
+      console.warn("[FileCache] Error descargando:", url, err);
+      return null;
+    }
+  },
+  async _touchAccess(url) {
+    await run(
+      `UPDATE file_cache SET last_accessed = ?, access_count = access_count + 1 WHERE url = ?`,
+      [Date.now(), url]
+    );
   }
-}
-function handleOnline() {
-  console.log("[SyncManager] Conexión restaurada — iniciando sync...");
-  isOnline = true;
-  setState({ isOnline: true });
-  window.dispatchEvent(new CustomEvent("egchat-online"));
-  deleteOldMessages().then((n) => {
-    if (n > 0) console.log(`[SyncManager] ${n} mensajes antiguos eliminados.`);
+};
+function _blobToBase64(blob) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      const result = reader.result;
+      resolve(result.split(",")[1] ?? result);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(blob);
   });
-  setTimeout(syncPendingMessages, 1e3);
 }
-function handleOffline() {
-  console.log("[SyncManager] Sin conexión.");
-  isOnline = false;
-  setState({ isOnline: false });
-  if (syncTimer) {
-    clearTimeout(syncTimer);
-    syncTimer = null;
+let initialized = false;
+async function initApp() {
+  if (initialized) return;
+  initialized = true;
+  AppMonitor.init();
+  try {
+    await initDatabase();
+    console.log("[AppInit] ✅ SQLite lista");
+    initSyncManager();
+    console.log("[AppInit] ✅ SyncManager listo");
+    FileCache.prune().then((n) => {
+      if (n > 0) console.log(`[AppInit] 🗑 ${n} archivos viejos eliminados del caché`);
+    }).catch(() => {
+    });
+    OTAUpdater.init().then(
+      () => OTAUpdater.checkAndDownload()
+    ).then((result) => {
+      if (result.hasUpdate) {
+        console.log("[AppInit] 📦 Actualización OTA disponible:", result.version);
+        window.dispatchEvent(
+          new CustomEvent("egchat:ota-update-ready", { detail: result })
+        );
+      }
+    }).catch(() => {
+    });
+  } catch (err) {
+    AppMonitor.recordError(err?.message ?? "AppInit failed", "init");
+    console.error("[AppInit] ⚠️ Error — modo degradado (sin persistencia local):", err);
   }
-  window.dispatchEvent(new CustomEvent("egchat-offline"));
-}
-function initSyncManager() {
-  window.addEventListener("online", handleOnline);
-  window.addEventListener("offline", handleOffline);
-  isOnline = navigator.onLine;
-  setState({ isOnline });
-  if (isOnline) {
-    setTimeout(syncPendingMessages, 3e3);
-  }
-  setInterval(() => {
-    if (isOnline && !isSyncing) syncPendingMessages();
-  }, 3e4);
-  console.log("[SyncManager] Inicializado. Online:", isOnline);
 }
 const CSS = `
   #egchat-offline-banner {
@@ -21777,7 +24143,7 @@ function showReconnectToast() {
   }, 3e3);
 }
 const SplashScreen = registerPlugin("SplashScreen", {
-  web: () => __vitePreload(() => import("./web-fIf01BB6.js"), true ? __vite__mapDeps([24,1,2,3]) : void 0).then((m) => new m.SplashScreenWeb())
+  web: () => __vitePreload(() => import("./web-mPEeMF-D.js"), true ? __vite__mapDeps([26,1,2,3]) : void 0).then((m) => new m.SplashScreenWeb())
 });
 const MAX_WAIT_MS = 8e3;
 const MIN_SHOW_MS = 1200;
@@ -21884,14 +24250,13 @@ if (isIOSPWA() && "serviceWorker" in navigator) {
 window.__pageLoadTime = Date.now();
 (async () => {
   try {
-    await initOfflineDB();
+    await initApp();
     initOfflineUI();
-    initSyncManager();
     await initDeepLinks();
     await initHaptics();
-    console.log("[EGCHAT] Sistema offline + deep links + hápticos inicializado");
+    console.log("[EGCHAT] Sistema Offline-First + deep links + hápticos inicializado");
   } catch (err) {
-    console.warn("[EGCHAT] Error inicializando sistema offline:", err);
+    console.warn("[EGCHAT] Error en inicialización — modo degradado:", err);
   }
 })();
 function fixAndroidViewportHeight() {
@@ -22054,11 +24419,13 @@ if (!isIOS() && !isNativeApp) {
   }, 2500);
 }
 export {
+  Encoding as E,
   ImpactStyle as I,
   NotificationType as N,
   WebPlugin as W,
   __vitePreload as _,
   spacesAPI as a,
+  buildRequestInit as b,
   groupStoriesAPI as g,
   liaAPI as l,
   noticiasGobAPI as n,

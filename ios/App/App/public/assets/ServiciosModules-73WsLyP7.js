@@ -1,5 +1,5 @@
 const __vite__mapDeps=(i,m=__vite__mapDeps,d=(m.f||(m.f=["assets/tesseract-DUr-bjHH.js","assets/react-core-B1rSPtcn.js"])))=>i.map(i=>d[i]);
-import { _ as __vitePreload } from "./index-CGLRabrz.js";
+import { _ as __vitePreload } from "./index-BV5wm0XH.js";
 import { R as React, j as jsxRuntimeExports, r as reactExports } from "./react-core-B1rSPtcn.js";
 import { u as useGPS, d as distanceKm } from "./useGPS-DjzmjKYl.js";
 import { D as DocUploader } from "./DocUploader-DqUv4Md2.js";

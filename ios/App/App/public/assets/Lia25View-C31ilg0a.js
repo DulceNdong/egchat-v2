@@ -1,5 +1,5 @@
 import { R as React, j as jsxRuntimeExports } from "./react-core-B1rSPtcn.js";
-import { l as liaAPI } from "./index-CGLRabrz.js";
+import { l as liaAPI } from "./index-BV5wm0XH.js";
 import "./icons-Be6fsX7F.js";
 import "./qr-D7_rpNIe.js";
 const VoiceWave = ({ active, color = "#00c8a0" }) => {

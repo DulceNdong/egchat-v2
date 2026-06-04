@@ -24,8 +24,9 @@ class AppErrorBoundary extends React.Component<{children: React.ReactNode}, {has
 import './index.css';
 import initSelectionErrorHandler from './selectionErrorHandler';
 import { WalletProvider } from './WalletSystem';
-import { initOfflineDB } from './src/offline-db';
-import { initSyncManager } from './src/sync-manager';
+// ── Nuevo sistema Offline-First (SQLite) ──────────────────────────
+import { initApp } from './src/AppInit';
+// Compatibilidad: mantener imports antiguos como fallback
 import { initOfflineUI } from './src/offline-ui';
 import { setupSplashSafetyTimeout, hideSplashWhenReady } from './splash-screen';
 import { initDeepLinks } from './deep-links';
@@ -86,15 +87,16 @@ if (isIOSPWA() && 'serviceWorker' in navigator) {
 // Se hace antes del render para que los datos locales estén disponibles
 (async () => {
   try {
-    await initOfflineDB();
+    // Nuevo sistema Offline-First: SQLite + SyncManager
+    await initApp();
+    // UI offline (barra de estado de conexión)
     initOfflineUI();
-    initSyncManager();
+    // Deep links y hápticos
     await initDeepLinks();
     await initHaptics();
-    console.log('[EGCHAT] Sistema offline + deep links + hápticos inicializado');
+    console.log('[EGCHAT] Sistema Offline-First + deep links + hápticos inicializado');
   } catch (err) {
-    console.warn('[EGCHAT] Error inicializando sistema offline:', err);
-    // No bloquear el arranque de la app si falla
+    console.warn('[EGCHAT] Error en inicialización — modo degradado:', err);
   }
 })();
 

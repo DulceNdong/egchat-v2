@@ -1,5 +1,5 @@
 import { r as reactExports, R as React, j as jsxRuntimeExports } from "./react-core-B1rSPtcn.js";
-import { s as storiesAPI, a as spacesAPI, n as noticiasGobAPI, g as groupStoriesAPI } from "./index-CGLRabrz.js";
+import { s as storiesAPI, a as spacesAPI, n as noticiasGobAPI, g as groupStoriesAPI } from "./index-BV5wm0XH.js";
 import "./icons-Be6fsX7F.js";
 import "./qr-D7_rpNIe.js";
 const NOW = Date.now();
