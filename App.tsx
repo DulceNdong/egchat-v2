@@ -5299,33 +5299,34 @@ const App: React.FC = () => {
               {/* Panel lateral del chat — desliza desde la derecha */}
               {showChatMenu && (
                 <>
-                  {/* Overlay cierra al tocar fuera */}
-                  <div style={{position:'fixed',inset:0,zIndex:2100}} onClick={()=>setShowChatMenu(false)} />
-                  {/* Panel flotante — por encima del header del chat */}
+                  {/* Overlay oscuro — cierra al tocar */}
+                  <div style={{position:'fixed',inset:0,zIndex:2100,background:'rgba(0,0,0,0.25)'}} onClick={()=>setShowChatMenu(false)} />
+                  {/* Panel dropdown — mismo estilo que el menú del home */}
                   <div style={{
                     position:'fixed',
-                    top: 0,
-                    right: 0,
-                    bottom: 0,
-                    width: '72vw',
-                    maxWidth:'220px',
-                    minWidth:'170px',
+                    top: device.isMobile ? 'calc(var(--app-statusbar-top, 0px) + 44px + 6px)' : '60px',
+                    right:'8px',
+                    width:'220px',
+                    maxWidth:'72vw',
+                    maxHeight:'80vh',
                     background:'#fff',
-                    zIndex: 2101,
-                    boxShadow:'-4px 0 24px rgba(0,0,0,0.22)',
+                    borderRadius:'14px',
+                    boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
+                    zIndex:2101,
                     display:'flex',
                     flexDirection:'column',
-                    animation:'chatMenuIn 0.22s cubic-bezier(0.25,0.46,0.45,0.94)',
-                    overflowY:'auto',
+                    overflow:'hidden',
+                    animation:'chatMenuIn 0.18s cubic-bezier(0.25,0.46,0.45,0.94)',
+                    transformOrigin:'top right',
                   }}>
-                    <style>{`@keyframes chatMenuIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}`}</style>
-                    {/* Header — respeta status bar */}
-                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',paddingTop:'calc(var(--app-statusbar-top, 0px) + 44px + 6px)',paddingBottom:'10px',paddingLeft:'12px',paddingRight:'12px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
-                      <div style={{width:'34px',height:'34px',borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                        {sc.avatarUrl?<img src={sc.avatarUrl} alt={sc.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:'12px',fontWeight:'700',color:'#fff'}}>{sc.initials||sc.title?.slice(0,2).toUpperCase()}</span>}
+                    <style>{`@keyframes chatMenuIn{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}`}</style>
+                    {/* Header azul con avatar del contacto */}
+                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',padding:'12px 14px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+                      <div style={{width:'36px',height:'36px',borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        {sc.avatarUrl?<img src={sc.avatarUrl} alt={sc.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:'13px',fontWeight:'700',color:'#fff'}}>{sc.initials||sc.title?.slice(0,2).toUpperCase()}</span>}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:'12px',fontWeight:'800',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
+                        <div style={{fontSize:'13px',fontWeight:'800',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
                         <div style={{fontSize:'10px',color:'rgba(255,255,255,0.85)',fontWeight:'600'}}>{sc.isGroup?'👥 Grupo':sc.status==='online'?'● En línea':'○ Desconectado'}</div>
                       </div>
                     </div>
