@@ -5304,11 +5304,11 @@ const App: React.FC = () => {
                   {/* Panel dropdown — mismo estilo que el menú del home */}
                   <div style={{
                     position:'fixed',
-                    top:'56px',
+                    top:'var(--header-height, 88px)',
                     right:'8px',
                     width:'220px',
                     maxWidth:'72vw',
-                    maxHeight:'80vh',
+                    maxHeight:'75vh',
                     background:'#fff',
                     borderRadius:'14px',
                     boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
