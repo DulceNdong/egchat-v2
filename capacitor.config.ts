@@ -7,6 +7,7 @@ const config: CapacitorConfig = {
   server: {
     androidScheme: 'https',
     iosScheme: 'https',
+    hostname: 'app',
     cleartext: false,
     allowNavigation: [
       'egchat-v2.vercel.app',

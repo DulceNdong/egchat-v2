@@ -29,7 +29,8 @@ const API_BASE    = (import.meta as any).env?.VITE_API_URL
 const BATCH_SIZE  = 20;
 const MAX_RETRIES = 5;
 const RETRY_MS    = [5_000, 15_000, 30_000, 60_000, 120_000] as const;
-const POLL_MS     = 30_000;
+// WebSocket cubre real-time; polling es solo fallback de 60s
+const POLL_MS     = 60_000;
 
 // ── Tipos públicos ────────────────────────────────────────────────
 

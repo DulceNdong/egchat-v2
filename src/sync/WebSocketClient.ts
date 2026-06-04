@@ -236,11 +236,15 @@ export function getStatus(): 'connected' | 'connecting' | 'disconnected' {
 
 /** Reset para reconexión (p.ej. tras login) */
 export function reset(authToken: string): void {
-  destroyed = false;
+  // Limpiar todo antes de reconectar
+  destroyed   = false;
+  reconnects  = 0;
+  isConnecting = false;
   stopPing();
-  if (reconnectTimer) clearTimeout(reconnectTimer);
+  if (reconnectTimer) { clearTimeout(reconnectTimer); reconnectTimer = null; }
   try { ws?.close(); } catch {}
   ws = null;
-  reconnects = 0;
+  // Limpiar suscripciones pero mantener handlers registrados
+  subscribedChats.clear();
   connect(authToken);
 }

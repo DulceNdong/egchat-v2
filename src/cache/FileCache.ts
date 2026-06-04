@@ -16,7 +16,7 @@
  */
 
 import { Capacitor } from '@capacitor/core';
-import { Filesystem, Directory, Encoding } from '@capacitor/filesystem';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { query, run } from '../db/database';
 
 // ── Constantes ────────────────────────────────────────────────────

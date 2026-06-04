@@ -43,11 +43,17 @@ export default defineConfig(({ mode }) => {
     hmr: { host: 'localhost' },
   },
   build: {
-    // Minificación selectiva — esbuild falla con minifyIdentifiers en este codebase
-    minify: false,
+    // esbuild minifica syntax y whitespace de forma segura
+    // minifyIdentifiers desactivado: el codebase usa eval/Function que lo requiere
+    minify: 'esbuild',
     minifyWhitespace: true,
-    minifySyntax: false,
-    // Separar chunks para carga lazy — librerías pesadas se cargan solo cuando se necesitan
+    minifySyntax: true,
+    minifyIdentifiers: false,
+    // target ES2020 cubre iOS 14+ y Android 8+ (Capacitor mínimo)
+    target: ['es2020', 'safari14'],
+    sourcemap: false,
+    cssCodeSplit: true,
+    chunkSizeWarningLimit: 1600,
     rollupOptions: {
       output: {
         manualChunks: (id) => {
@@ -66,10 +72,6 @@ export default defineConfig(({ mode }) => {
         assetFileNames: 'assets/[name]-[hash].[ext]',
       },
     },
-    chunkSizeWarningLimit: 1600,
-    sourcemap: false,
-    target: 'es2022',
-    cssCodeSplit: true,
   },
   optimizeDeps: {
     include: ['react', 'react-dom'],
