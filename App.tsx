@@ -3799,197 +3799,106 @@ const App: React.FC = () => {
   const renderMenuPanel = () => {
     if (!showMenu) return null;
     const menuItems = [
-      { id:'perfil',         label:'Mi Perfil',           icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,        accent:'#00c8a0' },
-      { id:'nuevo-contacto', label:'Nuevo contacto',      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>,  accent:'#00b4e6' },
-      { id:'crear-grupo',    label:'Crear grupo',         icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,            accent:'#a855f7' },
-      { id:'contactos',      label:'Mis contactos',       icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,            accent:'#00c8a0' },
-      { id:'mensajes-arch',  label:'Archivados',          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>,                                                       accent:'#f59e0b' },
-      { id:'notificaciones', label:'Notificaciones',      icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,                                                                              accent:'#00b4e6' },
-      { id:'privacidad',     label:'Privacidad',          icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>,                                                                                        accent:'#00c8a0' },
-      { id:'ajustes',        label:'Ajustes',             icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>, accent:'#6b7280' },
-      { id:'ayuda',          label:'Ayuda',               icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>,                                                       accent:'#00b4e6' },
-      { id:'salir',          label:'Cerrar sesión',       icon:<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>,                                                  accent:'#ef4444' },
+      { id:'perfil',          label:'Mi Perfil',            sub:'Ver y editar tu perfil',       icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>, color:'#374151' },
+      { id:'nuevo-contacto',  label:'Nuevo contacto',       sub:'A├▒adir a tu lista',            icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, color:'#374151' },
+      { id:'crear-grupo',     label:'Crear grupo',          sub:'Nuevo grupo de chat',          icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color:'#374151' },
+      { id:'contactos',       label:'Mis contactos',        sub:'Ver todos tus contactos',      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color:'#374151' },
+      { id:'mensajes-arch',   label:'Mensajes archivados',  sub:'Chats archivados',             icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>, color:'#374151' },
+      { id:'notificaciones',  label:'Notificaciones',       sub:'Gestionar alertas',            icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>, color:'#374151' },
+      { id:'privacidad',      label:'Privacidad',           sub:'Configurar privacidad',        icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, color:'#374151' },
+      { id:'ajustes',         label:'Ajustes',              sub:'configuraci├│n de la app',      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>, color:'#374151' },
+      { id:'ayuda',           label:'Ayuda y soporte',      sub:'Centro de ayuda',              icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>, color:'#374151' },
+      { id:'salir',           label:'Cerrar sesi├│n',        sub:'Salir de tu cuenta',           icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>, color:'#EF4444' },
     ];
-
-    const handleItem = (id: string) => {
-      if (id==='perfil')         { setShowProfileView(true); }
-      else if (id==='nuevo-contacto') { setShowAddContact(true); }
-      else if (id==='crear-grupo')    { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
-      else if (id==='contactos')      { setCurrentView('contactos'); }
-      else if (id==='mensajes-arch')  { setCurrentView('Mensajería'); setMessageFilter('all'); }
-      else if (id==='notificaciones') { setShowNotifications(true); }
-      else if (id==='privacidad')     { setCurrentView('ajustes'); setCurrentSettingsTab('perfil'); }
-      else if (id==='ajustes')        { setCurrentView('ajustes'); }
-      else if (id==='ayuda')          { setCurrentView('ajustes'); setCurrentSettingsTab('ayuda'); }
-      else if (id==='salir') {
-        if (window.confirm('¿Cerrar sesión?')) {
-          authAPI.logout().catch(()=>{});
-          removePushListeners().catch(()=>{});
-          cleanupCallManager().catch(()=>{});
-          ['token','egchat_token_backup','egchat_contacts_cache',
-           'egchat_chats_cache','egchat_msgs_index'].forEach(k => localStorage.removeItem(k));
-          setIsAuthenticated(false);
-          setCurrentView('home');
-        }
-      }
-      setShowMenu(false);
-    };
-
     return (
       <>
-        <style>{`
-          @keyframes egSlideLeft {
-            from { opacity: 0; transform: translateX(100%); }
-            to   { opacity: 1; transform: translateX(0); }
-          }
-        `}</style>
-
-        {/* Overlay transparente para cerrar */}
-        <div
-          style={{ position:'fixed', inset:0, zIndex:1099 }}
-          onClick={() => setShowMenu(false)}
-        />
-
-        {/* Panel — desliza desde la derecha, cubre el header (zIndex > 1000) */}
+        {/* Overlay para cerrar al tocar fuera */}
+        <div style={{ position:'fixed', inset:0, zIndex:1000, background:'rgba(0,0,0,0.3)' }} onClick={() => setShowMenu(false)} />
         <div style={{
-          position:   'fixed',
-          top:        0,
-          right:      0,
-          bottom:     0,
-          width:      '64vw',
-          maxWidth:   '240px',
-          minWidth:   '190px',
-          background: 'linear-gradient(180deg, #081224 0%, #0a1a2e 100%)',
-          zIndex:     1100,
-          display:    'flex',
-          flexDirection: 'column',
-          animation:  'egSlideLeft 0.22s cubic-bezier(0.25,0.46,0.45,0.94)',
-          boxShadow:  '-6px 0 32px rgba(0,0,0,0.45)',
-          overflowY:  'auto',
+          position:'fixed',
+          top:'56px',
+          right:'8px',
+          width:'220px',
+          maxWidth:'72vw',
+          maxHeight:'75vh',
+          background:'#fff',
+          borderRadius:'14px',
+          boxShadow:'0 8px 32px rgba(0,0,0,0.22)',
+          zIndex:1001,
+          display:'flex',
+          flexDirection:'column',
+          overflow:'hidden',
+          animation:'menuDropDown 0.18s cubic-bezier(0.25,0.46,0.45,0.94)',
+          transformOrigin:'top right',
         }}>
-
-          {/* ── Mini perfil en la parte superior ── */}
-          <div style={{
-            paddingTop:    'calc(var(--app-statusbar-top, 44px) + 12px)',
-            paddingBottom: '14px',
-            paddingLeft:   '14px',
-            paddingRight:  '14px',
-            borderBottom:  '1px solid rgba(255,255,255,0.07)',
-            display:       'flex',
-            alignItems:    'center',
-            gap:           '10px',
-            flexShrink:    0,
-          }}>
-            {/* Avatar */}
-            <div style={{
-              width:'38px', height:'38px', borderRadius:'50%',
-              background:'linear-gradient(135deg,#00c8a0,#00b4e6)',
-              border:'2px solid rgba(255,255,255,0.2)',
-              display:'flex', alignItems:'center', justifyContent:'center',
-              fontSize:'13px', fontWeight:'800', color:'#fff',
-              flexShrink:0, overflow:'hidden',
-            }}>
-              {userProfile.avatarUrl
-                ? <img src={userProfile.avatarUrl} alt="" style={{width:'100%',height:'100%',objectFit:'cover'}}/>
-                : userProfile.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase()
-              }
-            </div>
-            {/* Nombre */}
-            <div style={{ flex:1, minWidth:0 }}>
-              <div style={{ fontSize:'13px', fontWeight:'700', color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>
-                {userProfile.name}
-              </div>
-              <div style={{ fontSize:'10px', fontWeight:'600', color:'#00c8a0', marginTop:'1px', display:'flex', alignItems:'center', gap:'4px' }}>
-                <span style={{ width:'5px', height:'5px', borderRadius:'50%', background:'#00c8a0', display:'inline-block' }}/>
-                En línea
-              </div>
-            </div>
-            {/* Botón cerrar */}
-            <button
-              onClick={() => setShowMenu(false)}
-              style={{ background:'none', border:'none', color:'rgba(255,255,255,0.4)', cursor:'pointer', padding:'4px', outline:'none', flexShrink:0 }}
-            >
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="18" y1="6" x2="6" y2="18"/>
-                <line x1="6" y1="6" x2="18" y2="18"/>
-              </svg>
-            </button>
+        <style>{`@keyframes menuDropDown{from{opacity:0;transform:scale(0.92)}to{opacity:1;transform:scale(1)}}`}</style>
+        {/* Header con avatar */}
+        <div style={{ background:'#00c8a0', padding:'14px 14px 12px', display:'flex', alignItems:'center', gap:'10px', flexShrink:0 }}>
+          <div style={{ width:'38px', height:'38px', borderRadius:'50%', background:'rgba(255,255,255,0.25)', border:'2px solid rgba(255,255,255,0.7)', display:'flex', alignItems:'center', justifyContent:'center', fontSize:'14px', fontWeight:'800', color:'#fff', flexShrink:0, overflow:'hidden' }}>
+            {userProfile.avatarUrl
+              ? <img src={userProfile.avatarUrl} alt={userProfile.name} style={{width:'100%',height:'100%',objectFit:'cover'}}/>
+              : userProfile.name.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase()
+            }
           </div>
-
-          {/* ── Items del menú ── */}
-          <div style={{ flex:1, paddingTop:'6px', paddingBottom:'16px' }}>
-            {menuItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => handleItem(item.id)}
-                style={{
-                  width:          '100%',
-                  padding:        '9px 14px',
-                  background:     'none',
-                  border:         'none',
-                  cursor:         'pointer',
-                  display:        'flex',
-                  alignItems:     'center',
-                  gap:            '10px',
-                  textAlign:      'left',
-                  outline:        'none',
-                  borderRadius:   '0',
-                  transition:     'background 0.12s',
-                  WebkitTapHighlightColor: 'transparent',
-                }}
-                onMouseEnter={e => { e.currentTarget.style.background = 'rgba(255,255,255,0.05)'; }}
-                onMouseLeave={e => { e.currentTarget.style.background = 'none'; }}
-              >
-                {/* Icono con borde brillante */}
-                <div style={{
-                  width:          '30px',
-                  height:         '30px',
-                  borderRadius:   '8px',
-                  background:     item.accent + '18',
-                  border:         `1.5px solid ${item.accent}50`,
-                  display:        'flex',
-                  alignItems:     'center',
-                  justifyContent: 'center',
-                  color:          item.accent,
-                  flexShrink:     0,
-                  boxShadow:      `0 0 8px ${item.accent}30`,
-                }}>
-                  {item.icon}
-                </div>
-                {/* Label */}
-                <span style={{
-                  fontSize:   '13px',
-                  fontWeight: '600',
-                  color:      item.id === 'salir' ? '#ef4444' : 'rgba(255,255,255,0.88)',
-                  letterSpacing: '0.1px',
-                }}>
-                  {item.label}
-                </span>
-              </button>
-            ))}
-          </div>
-
-          {/* ── Versión al fondo ── */}
-          <div style={{ padding:'8px 14px 20px', borderTop:'1px solid rgba(255,255,255,0.06)' }}>
-            <div style={{ fontSize:'10px', color:'rgba(255,255,255,0.2)', fontWeight:'500' }}>
-              EGCHAT v2.5.4
-            </div>
+          <div style={{ flex:1, minWidth:0 }}>
+            <div style={{ fontSize:'17px', fontWeight:'800', color:'#fff', overflow:'hidden', textOverflow:'ellipsis', whiteSpace:'nowrap' }}>{userProfile.name}</div>
+            <div style={{ fontSize:'11px', color:'rgba(255,255,255,0.9)', fontWeight:'600', marginTop:'2px' }}>ΓùÅ En l├¡nea</div>
           </div>
         </div>
+        {/* Lista de opciones */}
+        <div style={{ overflowY:'auto', flex:1 }}>
+        {menuItems.map((item, i) => (
+          <button key={item.id} onClick={() => {
+            if (item.id==='perfil') { setShowProfileView(true); }
+            else if (item.id==='nuevo-contacto') { setShowAddContact(true); }
+            else if (item.id==='crear-grupo') { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
+            else if (item.id==='contactos') { setShowMenu(false); setCurrentView('contactos'); }
+            else if (item.id==='mensajes-arch') { setCurrentView('Mensajer├¡a'); setMessageFilter('all'); }
+            else if (item.id==='notificaciones') { setShowNotifications(true); }
+            else if (item.id==='privacidad') { setCurrentView('ajustes'); setCurrentSettingsTab('perfil'); }
+            else if (item.id==='ajustes') { setCurrentView('ajustes'); }
+            else if (item.id==='ayuda') { setCurrentView('ajustes'); setCurrentSettingsTab('ayuda'); }
+            else if (item.id==='salir') {
+              if(window.confirm('Cerrar sesi├│n?')) {
+                authAPI.logout().catch(()=>{});
+                removePushListeners().catch(()=>{});
+                cleanupCallManager().catch(()=>{});
+                localStorage.removeItem('token');
+                localStorage.removeItem('egchat_token_backup');
+                localStorage.removeItem('egchat_contacts_cache');
+                localStorage.removeItem('egchat_chats_cache');
+                localStorage.removeItem('egchat_msgs_index');
+                setIsAuthenticated(false);
+                setCurrentView('home');
+              }
+            }
+            setShowMenu(false);
+          }}
+            style={{ width:'100%', padding:'9px 14px', background:'none', border:'none', borderBottom:'1px solid #f3f4f6', cursor:'pointer', display:'flex', alignItems:'center', gap:'10px', textAlign:'left', outline:'none' }}
+            onMouseEnter={e=>{e.currentTarget.style.background='#f9fafb';}}
+            onMouseLeave={e=>{e.currentTarget.style.background='none';}}>
+            <span style={{ color: item.id==='salir' ? '#ef4444' : '#374151', display:'flex', flexShrink:0 }}>{item.icon}</span>
+            <div style={{ flex:1, minWidth:0 }}>
+              <div style={{ fontSize:'12px', fontWeight:'600', color:item.id==='salir'?'#EF4444':'#111827' }}>{item.label}</div>
+              <div style={{ fontSize:'10px', color:'#9CA3AF', marginTop:'1px' }}>{item.sub}</div>
+            </div>
+          </button>
+        ))}
+        </div>
+      </div>
       </>
     );
   };
 
-  // Modal: Añadir contacto
+  // Modal: A├▒adir contacto
   const [repertorioUsers, setRepertorioUsers] = React.useState<any[]>([]);
   const [repertorioSearch, setRepertorioSearch] = React.useState('');
   const [repertorioSelected, setRepertorioSelected] = React.useState<Set<string>>(new Set());
   const [repertorioLoading, setRepertorioLoading] = React.useState(false);
   const [repertorioAdding, setRepertorioAdding] = React.useState(false);
-  // Contactos del teléfono enriquecidos con info de EGCHAT
+  // Contactos del tel├⌐fono enriquecidos con info de EGCHAT
   const [deviceContacts, setDeviceContacts] = React.useState<any[]>([]);
   const [deviceContactsLoaded, setDeviceContactsLoaded] = React.useState(false);
-
   const loadRepertorioUsers = React.useCallback(async () => {
     try {
       setRepertorioLoading(true);
