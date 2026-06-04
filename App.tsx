@@ -5304,7 +5304,7 @@ const App: React.FC = () => {
                   {/* Panel dropdown — mismo estilo que el menú del home */}
                   <div style={{
                     position:'fixed',
-                    top: device.isMobile ? 'calc(var(--app-statusbar-top, 0px) + 44px + 6px)' : '60px',
+                    top:'56px',
                     right:'8px',
                     width:'220px',
                     maxWidth:'72vw',
