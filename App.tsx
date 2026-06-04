@@ -4089,12 +4089,17 @@ const App: React.FC = () => {
       if (repertorioSelected.size === 0) return;
       try {
         setRepertorioAdding(true);
-        await Promise.all(Array.from(repertorioSelected).map(id => contactsAPI.add(id)));
+        // Pasar también phone y nombre para que el backend cree el contacto completo
+        await Promise.all(Array.from(repertorioSelected).map(id => {
+          const user = repertorioUsers.find((u: any) => u.id?.toString() === id?.toString()) ||
+                       deviceContacts.find((u: any) => u.id?.toString() === id?.toString());
+          return contactsAPI.add(id, user?.phone || undefined, user?.full_name || undefined);
+        }));
         showToast(`✓ ${repertorioSelected.size} contacto${repertorioSelected.size > 1 ? 's' : ''} añadido${repertorioSelected.size > 1 ? 's' : ''}`, 'success');
         setRepertorioSelected(new Set());
         setShowAddContact(false);
         await loadContacts();
-      } catch { showToast('Error al añadir contactos', 'error'); }
+      } catch (err: any) { showToast(err?.message || 'Error al añadir contactos', 'error'); }
       finally { setRepertorioAdding(false); }
     };
 
@@ -8773,8 +8778,10 @@ const App: React.FC = () => {
                           avatarUrl: contact.avatarUrl || '',
                         });
                         navigateTo('Mensajería');
+                      } else {
+                        showToast('No se pudo abrir el chat', 'error');
                       }
-                    } catch {}
+                    } catch (err: any) { showToast(err?.message || 'Error al iniciar chat', 'error'); }
                   }}
                   style={{
                     width: '100%',
@@ -10463,8 +10470,10 @@ const App: React.FC = () => {
 
         const sorted = [...backendContacts, ...extraContacts].sort((a, b) => a.name.localeCompare(b.name, 'es', { sensitivity: 'base' }));
         setAllContacts(sorted);
-        // 3. Guardar en caché para la próxima apertura
+        // Guardar caché — se actualizará con avatares frescos cuando corra syncUserAvatars
         try { localStorage.setItem('egchat_contacts_cache', JSON.stringify(sorted)); } catch {}
+        // Sincronizar avatares inmediatamente tras cargar contactos
+        setTimeout(() => syncUserAvatars(), 500);
       }
     } catch {}
   }, []);
