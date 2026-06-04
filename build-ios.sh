@@ -1,56 +1,128 @@
 #!/bin/bash
-# ============================================================
-# build-ios.sh — Prepara el proyecto iOS de EGCHAT para Xcode
-# Ejecutar en Mac: bash build-ios.sh
-# ============================================================
+# ═══════════════════════════════════════════════════════════════════
+# build-ios.sh — Script completo para compilar EGCHAT en Mac
+# Ejecutar desde la raíz del proyecto: bash build-ios.sh
+# ═══════════════════════════════════════════════════════════════════
 
-set -e  # Parar si hay error
+set -e  # salir en cualquier error
 
 echo ""
-echo "🍎 EGCHAT — Preparando proyecto iOS para Xcode"
-echo "================================================"
-
-# 1. Instalar dependencias
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║          EGCHAT iOS Build Script v3.1                   ║"
+echo "║          Offline-First + SQLCipher + WebSocket           ║"
+echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
-echo "📦 [1/5] Instalando dependencias npm..."
-npm install
 
-# 2. Build del frontend
-echo ""
-echo "🔨 [2/5] Compilando frontend (vite build)..."
-npm run build
+# ── 1. Verificar herramientas requeridas ───────────────────────────
 
-# 3. Añadir plataforma iOS si no existe
-echo ""
-echo "📱 [3/5] Configurando plataforma iOS..."
-if [ ! -d "ios/App/App.xcworkspace" ]; then
-  npx cap add ios
-  echo "✅ Plataforma iOS añadida"
-else
-  echo "✅ Plataforma iOS ya existe"
+echo "▶ Verificando herramientas..."
+
+check_tool() {
+  if ! command -v "$1" &> /dev/null; then
+    echo "❌ '$1' no encontrado. Instalar con: $2"
+    exit 1
+  else
+    echo "  ✅ $1 $(${1} --version 2>&1 | head -1)"
+  fi
+}
+
+check_tool "node"    "https://nodejs.org"
+check_tool "npm"     "viene con Node.js"
+check_tool "pod"     "sudo gem install cocoapods"
+check_tool "xcodebuild" "instalar Xcode desde App Store"
+
+NODE_VER=$(node -e "process.exit(parseInt(process.version.slice(1)) < 18 ? 1 : 0)" 2>/dev/null || true)
+if [ $? -eq 1 ]; then
+  echo "❌ Node.js 18+ requerido. Versión actual: $(node --version)"
+  exit 1
 fi
 
-# 4. Sincronizar assets web con iOS
 echo ""
-echo "🔄 [4/5] Sincronizando assets con iOS..."
-npx cap sync ios
+echo "▶ Versiones detectadas:"
+echo "  Node:       $(node --version)"
+echo "  npm:        $(npm --version)"
+echo "  CocoaPods:  $(pod --version)"
+echo "  Xcode:      $(xcodebuild -version | head -1)"
+echo ""
 
-# 5. Instalar pods de CocoaPods
+# ── 2. Instalar dependencias npm ───────────────────────────────────
+
+echo "▶ Instalando dependencias npm..."
+npm install --legacy-peer-deps
+echo "  ✅ npm install completado"
 echo ""
-echo "🍫 [5/5] Instalando CocoaPods..."
+
+# ── 3. Build del frontend ──────────────────────────────────────────
+
+echo "▶ Compilando frontend (Vite build)..."
+npm run build
+echo "  ✅ Build completado (dist/)"
+echo ""
+
+# ── 4. Sync Capacitor ─────────────────────────────────────────────
+
+echo "▶ Sincronizando con Capacitor iOS..."
+npx cap sync ios
+echo "  ✅ Cap sync completado"
+echo ""
+
+# ── 5. Instalar Pods ──────────────────────────────────────────────
+
+echo "▶ Instalando CocoaPods (puede tardar 3-5 min la primera vez)..."
 cd ios/App
 pod install --repo-update
 cd ../..
+echo "  ✅ Pod install completado"
+echo ""
 
+# ── 6. Verificar workspace ────────────────────────────────────────
+
+WORKSPACE="ios/App/App.xcworkspace"
+if [ ! -d "$WORKSPACE" ]; then
+  echo "❌ No se encontró $WORKSPACE"
+  echo "   Verifica que pod install terminó correctamente"
+  exit 1
+fi
+
+echo "  ✅ Workspace encontrado: $WORKSPACE"
 echo ""
-echo "✅ ¡Proyecto iOS listo!"
+
+# ── 7. Abrir en Xcode ────────────────────────────────────────────
+
+echo "▶ Abriendo en Xcode..."
 echo ""
-echo "📂 Abre Xcode con:"
-echo "   open ios/App/App.xcworkspace"
+echo "╔══════════════════════════════════════════════════════════╗"
+echo "║  PASOS MANUALES EN XCODE:                               ║"
+echo "║                                                          ║"
+echo "║  1. Signing & Capabilities:                             ║"
+echo "║     → Team: tu Apple Developer Team                    ║"
+echo "║     → Bundle ID: com.egchat.app                        ║"
+echo "║     → Signing Certificate: iOS Distribution            ║"
+echo "║                                                          ║"
+echo "║  2. Capabilities (añadir si no están):                 ║"
+echo "║     → Push Notifications ✓                             ║"
+echo "║     → Background Modes ✓                               ║"
+echo "║       - Background fetch ✓                             ║"
+echo "║       - Remote notifications ✓                         ║"
+echo "║     → Keychain Sharing ✓ (para SecureStorage)          ║"
+echo "║                                                          ║"
+echo "║  3. Build Settings:                                     ║"
+echo "║     → Deployment Target: iOS 14.0                      ║"
+echo "║     → Version: 2.5.4                                    ║"
+echo "║     → Build: 7                                          ║"
+echo "║                                                          ║"
+echo "║  4. Para IPA de producción:                             ║"
+echo "║     → Product → Archive                                 ║"
+echo "║     → Organizer → Distribute App                       ║"
+echo "║       - App Store Connect (para App Store)              ║"
+echo "║       - Ad Hoc (para distribución directa)             ║"
+echo "╚══════════════════════════════════════════════════════════╝"
 echo ""
-echo "📋 Pasos en Xcode:"
-echo "   1. Selecciona el target 'App'"
-echo "   2. En 'Signing & Capabilities' → pon tu Apple ID / Team"
-echo "   3. Cambia Bundle ID si es necesario: com.egchat.app"
-echo "   4. Product → Archive → Distribute App → App Store Connect"
+
+open "$WORKSPACE"
+echo "  ✅ Xcode abierto con App.xcworkspace"
+echo ""
+echo "═══════════════════════════════════════════════════════════"
+echo "  Script completado. Sigue los pasos manuales en Xcode."
+echo "═══════════════════════════════════════════════════════════"
 echo ""
