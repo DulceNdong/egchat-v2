@@ -5303,25 +5303,25 @@ const App: React.FC = () => {
                     position:'absolute',
                     top: device.isMobile ? 'calc(44px + 8px + 8px)' : '64px',
                     right:'8px',
-                    width: device.isMobile ? 'calc(100vw - 60px)' : '280px',
-                    maxWidth:'320px',
+                    width: device.isMobile ? '72vw' : '220px',
+                    maxWidth:'220px',
                     background:'#fff',
-                    borderRadius:'20px',
+                    borderRadius:'14px',
                     boxShadow:'0 12px 40px rgba(0,0,0,0.18)',
                     overflow:'hidden',
                     animation:'chatMenuIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-                    maxHeight:'80vh',
+                    maxHeight:'75vh',
                     display:'flex',
                     flexDirection:'column',
                   }} onClick={e=>e.stopPropagation()}>
                     <style>{`@keyframes chatMenuIn{from{opacity:0;transform:scale(0.92) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',padding:'14px 16px',display:'flex',alignItems:'center',gap:'12px',flexShrink:0}}>
-                      <div style={{width:'44px',height:'44px',borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
-                        {sc.avatarUrl?<img src={sc.avatarUrl} alt={sc.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:'16px',fontWeight:'700',color:'#fff'}}>{sc.initials||sc.title?.slice(0,2).toUpperCase()}</span>}
+                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',padding:'10px 12px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+                      <div style={{width:'36px',height:'36px',borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
+                        {sc.avatarUrl?<img src={sc.avatarUrl} alt={sc.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:'13px',fontWeight:'700',color:'#fff'}}>{sc.initials||sc.title?.slice(0,2).toUpperCase()}</span>}
                       </div>
                       <div style={{flex:1,minWidth:0}}>
-                        <div style={{fontSize:'15px',fontWeight:'800',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
-                        <div style={{fontSize:'11px',color:'rgba(255,255,255,0.85)',fontWeight:'600'}}>{sc.isGroup?'👥 Grupo':sc.status==='online'?'● En línea':'○ Desconectado'}</div>
+                        <div style={{fontSize:'13px',fontWeight:'800',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
+                        <div style={{fontSize:'10px',color:'rgba(255,255,255,0.85)',fontWeight:'600'}}>{sc.isGroup?'👥 Grupo':sc.status==='online'?'● En línea':'○ Desconectado'}</div>
                       </div>
                     </div>
                     <div style={{overflowY:'auto',flex:1}}>
@@ -5333,7 +5333,7 @@ const App: React.FC = () => {
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,label:'Mensajes destacados',color:'#374151',action:()=>{setShowChatMenu(false);setStarredChatId(sc.id?.toString()||'');setShowStarredModal(true);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/><circle cx="12" cy="12" r="10"/></svg>,label:pinnedChats.includes(sc.id?.toString()||'')?'Desfijar chat':'Fijar chat',color:'#374151',action:()=>{const id=sc.id?.toString()||'';setPinnedChats(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);setShowChatMenu(false);}},
                     ].map((item,i)=>(
-                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.06)',textAlign:'left'}}
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'7px 10px',display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.05)',textAlign:'left'}}
                         onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,0,0,0.05)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
@@ -5344,7 +5344,7 @@ const App: React.FC = () => {
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="9" y1="21" x2="9" y2="9"/></svg>,label:'Fondo de pantalla',color:'#374151',action:()=>{setShowChatMenu(false);setShowWallpaperCatalog(true);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,label:'Cifrado E2E',color:'#00c8a0',action:()=>{setShowChatMenu(false);alert('🔒 Chat cifrado de extremo a extremo.');}},
                     ].map((item,i)=>(
-                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.06)',textAlign:'left'}}
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'7px 10px',display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.05)',textAlign:'left'}}
                         onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,0,0,0.05)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
@@ -5356,7 +5356,7 @@ const App: React.FC = () => {
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>,label:'Crear grupo con este contacto',color:'#374151',action:()=>{setShowChatMenu(false);setGroupMembers([{id:sc.id?.toString()||'',name:sc.title,initials:sc.initials||sc.title?.slice(0,2).toUpperCase()||'??',color:'#a855f7'}]);setShowCreateGroup(true);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,label:'Exportar chat',color:'#374151',action:()=>{setShowChatMenu(false);const chatId=sc.id?.toString()||'';const msgs=chatMessages[chatId]||[];const text=msgs.map(m=>`[${m.time}] ${m.from==='me'?'Yo':sc.title}: ${m.text}`).join('\n');const blob=new Blob([text],{type:'text/plain'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=`chat_${sc.title}.txt`;a.click();}},
                     ].map((item,i)=>(
-                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.06)',textAlign:'left'}}
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'7px 10px',display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',outline:'none',borderBottom:'1px solid rgba(0,0,0,0.05)',textAlign:'left'}}
                         onMouseEnter={e=>{e.currentTarget.style.background='rgba(0,0,0,0.05)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
@@ -5368,7 +5368,7 @@ const App: React.FC = () => {
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>,label:blockedChats.includes(sc.id?.toString()||'')?'Desbloquear':'Bloquear',color:'#EF4444',action:()=>{const id=sc.id?.toString()||'';setBlockedChats(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);setShowChatMenu(false);}},
                       {icon:<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="23" y1="11" x2="17" y2="11"/></svg>,label:'Eliminar contacto',color:'#EF4444',action:()=>{setShowChatMenu(false);if(window.confirm(`¿Eliminar a ${sc.title} de tus contactos?`)){const found=allContacts.find(c=>c.id===sc.id||c.phone===sc.phone);if(found){contactsAPI.remove(found.id).then(()=>{setAllContacts(prev=>prev.filter(c=>c.id!==found.id));setSelectedChat(null);showToast(`${sc.title} eliminado`,`info`);}).catch(()=>showToast('No se pudo eliminar.','error'));}else{setAllContacts(prev=>prev.filter(c=>c.id!==sc.id));setSelectedChat(null);showToast(`${sc.title} eliminado`,'info');}}}},
                     ].map((item,i,arr)=>(
-                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'10px 14px',display:'flex',alignItems:'center',gap:'10px',cursor:'pointer',outline:'none',borderBottom:i<arr.length-1?'1px solid rgba(0,0,0,0.06)':'none',textAlign:'left'}}
+                      <button key={i} onClick={item.action} style={{width:'100%',background:'none',border:'none',padding:'7px 10px',display:'flex',alignItems:'center',gap:'8px',cursor:'pointer',outline:'none',borderBottom:i<arr.length-1?'1px solid rgba(0,0,0,0.05)':'none',textAlign:'left'}}
                         onMouseEnter={e=>{e.currentTarget.style.background='rgba(239,68,68,0.06)';}} onMouseLeave={e=>{e.currentTarget.style.background='transparent';}}><span style={{color:item.color,flexShrink:0,display:'flex'}}>{item.icon}</span>
                         <span style={{fontSize:'13px',color:item.color,fontWeight:'500'}}>{item.label}</span>
                       </button>
