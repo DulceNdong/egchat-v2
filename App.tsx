@@ -5298,24 +5298,25 @@ const App: React.FC = () => {
 
               {/* Panel lateral del chat — desliza desde la derecha */}
               {showChatMenu && (
-                <div style={{position:'fixed',inset:0,zIndex:2000,background:'rgba(0,0,0,0.15)',backdropFilter:'blur(2px)'}} onClick={()=>setShowChatMenu(false)}>
+                <div style={{position:'fixed',inset:0,zIndex:2100,background:'rgba(0,0,0,0.15)',backdropFilter:'blur(2px)'}} onClick={()=>setShowChatMenu(false)}>
                   <div style={{
                     position:'absolute',
-                    top: device.isMobile ? 'calc(44px + 8px + 8px)' : '64px',
-                    right:'8px',
-                    width: device.isMobile ? '72vw' : '220px',
+                    top: 0,
+                    right: 0,
+                    bottom: 0,
+                    width: '72vw',
                     maxWidth:'220px',
+                    minWidth:'170px',
                     background:'#fff',
-                    borderRadius:'14px',
-                    boxShadow:'0 12px 40px rgba(0,0,0,0.18)',
+                    borderRadius:'0',
+                    boxShadow:'-6px 0 32px rgba(0,0,0,0.25)',
                     overflow:'hidden',
-                    animation:'chatMenuIn 0.2s cubic-bezier(0.34,1.56,0.64,1)',
-                    maxHeight:'75vh',
+                    animation:'chatMenuIn 0.22s cubic-bezier(0.25,0.46,0.45,0.94)',
                     display:'flex',
                     flexDirection:'column',
                   }} onClick={e=>e.stopPropagation()}>
-                    <style>{`@keyframes chatMenuIn{from{opacity:0;transform:scale(0.92) translateY(-8px)}to{opacity:1;transform:scale(1) translateY(0)}}`}</style>
-                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',padding:'10px 12px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
+                    <style>{`@keyframes chatMenuIn{from{opacity:0;transform:translateX(100%)}to{opacity:1;transform:translateX(0)}}`}</style>
+                    <div style={{background:'linear-gradient(135deg,#00b4e6,#0088cc)',paddingTop:'calc(var(--app-statusbar-top, 44px) + 10px)',paddingBottom:'12px',paddingLeft:'12px',paddingRight:'12px',display:'flex',alignItems:'center',gap:'8px',flexShrink:0}}>
                       <div style={{width:'36px',height:'36px',borderRadius:'50%',overflow:'hidden',border:'2px solid rgba(255,255,255,0.5)',background:'rgba(255,255,255,0.2)',display:'flex',alignItems:'center',justifyContent:'center',flexShrink:0}}>
                         {sc.avatarUrl?<img src={sc.avatarUrl} alt={sc.title} style={{width:'100%',height:'100%',objectFit:'cover'}}/>:<span style={{fontSize:'13px',fontWeight:'700',color:'#fff'}}>{sc.initials||sc.title?.slice(0,2).toUpperCase()}</span>}
                       </div>
@@ -5323,6 +5324,10 @@ const App: React.FC = () => {
                         <div style={{fontSize:'13px',fontWeight:'800',color:'#fff',overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{sc.title}</div>
                         <div style={{fontSize:'10px',color:'rgba(255,255,255,0.85)',fontWeight:'600'}}>{sc.isGroup?'👥 Grupo':sc.status==='online'?'● En línea':'○ Desconectado'}</div>
                       </div>
+                      {/* Botón cerrar */}
+                      <button onClick={()=>setShowChatMenu(false)} style={{background:'none',border:'none',color:'rgba(255,255,255,0.7)',cursor:'pointer',padding:'4px',outline:'none',flexShrink:0}}>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                      </button>
                     </div>
                     <div style={{overflowY:'auto',flex:1}}>
                     <div style={{padding:'4px 0',borderBottom:'1px solid #f0f2f5'}}>
