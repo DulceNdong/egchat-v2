@@ -3905,7 +3905,25 @@ const App: React.FC = () => {
     try {
       setRepertorioLoading(true);
 
-      // 1. Intentar leer contactos del dispositivo (API de Contactos del navegador - Chrome Android)
+      // 1. Mostrar inmediatamente los contactos ya guardados (sin necesidad de red)
+      const existingIds = new Set(allContacts.map((c: any) => (c.contact_user_id || c.id)?.toString()));
+      const myId = userProfile.id || currentUserId.current?.toString() || '';
+
+      if (allContacts.length > 0) {
+        const local = allContacts.map((c: any) => ({
+          id: (c.contact_user_id || c.id)?.toString() || '',
+          full_name: c.name || c.full_name || 'Usuario',
+          phone: c.phone || c.subtitle || '',
+          avatar_url: c.avatarUrl || c.avatar_url || '',
+          onEgchat: true,
+          alreadyContact: true,
+        }));
+        setDeviceContacts(local);
+        setDeviceContactsLoaded(true);
+        setRepertorioUsers(local);
+      }
+
+      // 2. Intentar leer contactos del dispositivo (API de Contactos del navegador - Chrome Android)
       let phoneContacts: any[] = [];
       if ('contacts' in navigator && 'ContactsManager' in window) {
         try {
@@ -3917,16 +3935,30 @@ const App: React.FC = () => {
             }))
           ).filter((c: any) => c.phone);
         } catch {
-          // Usuario canceló o no hay permiso — continuar con búsqueda en EGCHAT
+          // Usuario canceló o no hay permiso — continuar
         }
       }
 
-      // 2. Obtener todos los usuarios de EGCHAT para cruzar
-      const egchatUsers = await chatAPI.searchUsers('');
-      const existingIds = new Set(allContacts.map((c: any) => (c.contact_user_id || c.id)?.toString()));
-      const myId = userProfile.id || currentUserId.current?.toString() || '';
+      // 3. Si hay conexión, enriquecer con datos del servidor
+      if (!navigator.onLine) {
+        setRepertorioLoading(false);
+        return;
+      }
 
-      // 3. Mapa de teléfonos EGCHAT normalizado
+      // Buscar con query no vacío para compatibilidad con el backend
+      let egchatUsers: any[] = [];
+      try {
+        egchatUsers = await chatAPI.searchUsers('a').catch(() => []) || [];
+        if (egchatUsers.length === 0) {
+          egchatUsers = await chatAPI.searchUsers('e').catch(() => []) || [];
+        }
+      } catch {
+        // Sin conexión o error de red — usar datos locales
+        setRepertorioLoading(false);
+        return;
+      }
+
+      // 4. Mapa de teléfonos EGCHAT normalizado
       const egchatByPhone = new Map<string, any>();
       (egchatUsers || []).forEach((u: any) => {
         if (!u.phone) return;
@@ -3951,7 +3983,6 @@ const App: React.FC = () => {
           };
         }).filter((c: any) => c.id !== myId);
 
-        // Ordenar: primero los que tienen EGCHAT y no son contactos aún
         enriched.sort((a: any, b: any) => {
           if (a.onEgchat && !a.alreadyContact && !(b.onEgchat && !b.alreadyContact)) return -1;
           if (b.onEgchat && !b.alreadyContact && !(a.onEgchat && !a.alreadyContact)) return 1;
@@ -3968,13 +3999,42 @@ const App: React.FC = () => {
         const filtered = (egchatUsers || [])
           .filter((u: any) => u.id?.toString() !== myId && !existingIds.has(u.id?.toString()))
           .map((u: any) => ({ id: u.id?.toString() || '', full_name: u.full_name || 'Usuario', phone: u.phone || '', avatar_url: u.avatar_url || '', onEgchat: true, alreadyContact: false }));
-        setDeviceContacts(filtered);
+        
+        // Combinar: primero los nuevos del servidor, luego los ya guardados
+        const combined = [...filtered, ...allContacts.map((c: any) => ({
+          id: (c.contact_user_id || c.id)?.toString() || '',
+          full_name: c.name || c.full_name || 'Usuario',
+          phone: c.phone || '',
+          avatar_url: c.avatarUrl || c.avatar_url || '',
+          onEgchat: true,
+          alreadyContact: true,
+        }))];
+        setDeviceContacts(combined);
         setDeviceContactsLoaded(true);
-        setRepertorioUsers(filtered);
+        setRepertorioUsers(filtered.length > 0 ? filtered : allContacts.map((c: any) => ({
+          id: (c.contact_user_id || c.id)?.toString() || '',
+          full_name: c.name || c.full_name || 'Usuario',
+          phone: c.phone || '',
+          avatar_url: c.avatarUrl || c.avatar_url || '',
+          onEgchat: true,
+          alreadyContact: true,
+        })));
       }
     } catch {
-      setRepertorioUsers([]);
-      setDeviceContacts([]);
+      // En caso de cualquier error — mostrar contactos locales sin bloquear
+      if (allContacts.length > 0) {
+        const local = allContacts.map((c: any) => ({
+          id: (c.contact_user_id || c.id)?.toString() || '',
+          full_name: c.name || c.full_name || 'Usuario',
+          phone: c.phone || c.subtitle || '',
+          avatar_url: c.avatarUrl || c.avatar_url || '',
+          onEgchat: true,
+          alreadyContact: true,
+        }));
+        setDeviceContacts(local);
+        setDeviceContactsLoaded(true);
+        setRepertorioUsers(local);
+      }
     } finally {
       setRepertorioLoading(false);
     }
@@ -14056,7 +14116,7 @@ const App: React.FC = () => {
                 value={newChatPhone}
                 onChange={e=>setNewChatPhone(e.target.value)}
                 onKeyDown={e=>{ if(e.key==='Enter') document.getElementById('btn-start-chat')?.click(); }}
-                style={{flex:1,background:'none',border:'none',outline:'none',fontSize:'15px',color:'#111827',fontFamily:'inherit'}}
+                style={{flex:1,background:'none',border:'none',outline:'none',fontSize:'15px',color:'#111827',fontFamily:'inherit',WebkitTextFillColor:'#111827'}}
               />
             </div>
             {newChatSearching && (
