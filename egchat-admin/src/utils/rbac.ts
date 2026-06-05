@@ -4,7 +4,9 @@ export type Module =
   'executive' | 'financial' | 'strategic' | 'risk' |
   // FASE B — Operaciones
   'users' | 'support' | 'mini_apps' | 'operational' | 'chat' | 'wallet' | 'security' | 'infrastructure' | 'sqlite_sync' |
-  // Otros
+  // FASE C — Tecnología y Seguridad
+  'devops' |
+  // Sistema
   'audit' | 'admin_users';
 
 export type Action = 'read' | 'write' | 'delete';
@@ -63,6 +65,7 @@ export const MODULES_FOR_ROLE: Record<AdminRole, ModuleItem[]> = {
     { id: 'wallet',         label: 'Wallet',          icon: '💰' },
     { id: 'security',       label: 'Seguridad',       icon: '🔒' },
     { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
+    { id: 'devops',         label: 'DevOps',          icon: '🛠️' },
     { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
     // Other
     { id: 'audit',          label: 'Auditoría',       icon: '📋' },
@@ -135,7 +138,16 @@ export const PHASE_GROUPS: PhaseGroup[] = [
     ],
   },
   {
-    phase: 'C', label: 'Sistema',
+    phase: 'C', label: 'FASE C — Tecnología y Seguridad',
+    modules: [
+      { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
+      { id: 'devops',         label: 'DevOps',          icon: '🛠️' },
+      { id: 'security',       label: 'Seguridad',       icon: '🔒' },
+      { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
+    ],
+  },
+  {
+    phase: 'D', label: 'Sistema',
     modules: [
       { id: 'audit',       label: 'Auditoría',       icon: '📋' },
       { id: 'admin_users', label: 'Administradores', icon: '👥' },

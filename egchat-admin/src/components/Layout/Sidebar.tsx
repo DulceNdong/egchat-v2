@@ -16,6 +16,7 @@ const ROUTE_MAP: Record<string, string> = {
   wallet:         '/dashboard/wallet',
   security:       '/dashboard/security',
   infrastructure: '/dashboard/infrastructure',
+  devops:         '/dashboard/devops',
   sqlite_sync:    '/dashboard/sqlite-sync',
   audit:          '/dashboard/audit',
   admin_users:    '/admin/users',
@@ -25,7 +26,8 @@ const ROUTE_MAP: Record<string, string> = {
 const PHASE_COLORS: Record<string, { color: string; bg: string }> = {
   A: { color: '#a855f7', bg: 'rgba(168,85,247,0.1)' },
   B: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)' },
-  C: { color: '#475569', bg: 'rgba(71,85,105,0.1)'  },
+  C: { color: '#00c8a0', bg: 'rgba(0,200,160,0.1)'  },
+  D: { color: '#475569', bg: 'rgba(71,85,105,0.1)'  },
 };
 
 export const Sidebar: React.FC = () => {

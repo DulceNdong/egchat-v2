@@ -11,6 +11,7 @@ import { RiskDashboard } from './pages/Dashboard/Risk';
 import { UsersDashboard } from './pages/Dashboard/Users';
 import { SupportDashboard } from './pages/Dashboard/Support';
 import { MiniAppsDashboard } from './pages/Dashboard/MiniApps';
+import { DevOpsDashboard } from './pages/Dashboard/DevOps';
 import { OperationalDashboard } from './pages/Dashboard/Operational';
 import { ChatDashboard } from './pages/Dashboard/Chat';
 import { WalletDashboard } from './pages/Dashboard/Wallet';
@@ -29,6 +30,7 @@ const TITLES: Record<string, string> = {
   '/dashboard/users':        '👤 Dashboard de Usuarios',
   '/dashboard/support':      '🎧 Dashboard de Soporte',
   '/dashboard/mini-apps':    '📱 Dashboard Mini Apps',
+  '/dashboard/devops':       '🛠️ Dashboard DevOps',
   '/dashboard/operational':  'Dashboard Operacional',
   '/dashboard/chat':         'Dashboard Chat',
   '/dashboard/wallet':       'Dashboard Wallet',
@@ -60,6 +62,7 @@ function ProtectedLayout() {
             <Route path="/dashboard/users"        element={<UsersDashboard />} />
             <Route path="/dashboard/support"      element={<SupportDashboard />} />
             <Route path="/dashboard/mini-apps"    element={<MiniAppsDashboard />} />
+            <Route path="/dashboard/devops"       element={<DevOpsDashboard />} />
             <Route path="/dashboard/operational"   element={<OperationalDashboard />} />
             <Route path="/dashboard/chat"          element={<ChatDashboard />} />
             <Route path="/dashboard/wallet"        element={<WalletDashboard />} />
@@ -88,6 +91,7 @@ function DefaultRedirect() {
     users:          '/dashboard/users',
     support:        '/dashboard/support',
     mini_apps:      '/dashboard/mini-apps',
+    devops:         '/dashboard/devops',
     operational:    '/dashboard/operational', chat: '/dashboard/chat',
     wallet:         '/dashboard/wallet', security: '/dashboard/security',
     infrastructure: '/dashboard/infrastructure', sqlite_sync: '/dashboard/sqlite-sync',
