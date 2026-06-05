@@ -1,284 +1,180 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
-import {
-  BarChart, Bar, LineChart, Line,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from 'recharts';
+import { BarChart, Bar, LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
 import { useTheme } from '../../context/ThemeContext';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-interface AuditEntry {
-  id: number; ts: string; adminEmail: string; adminRole: string;
-  action: string; resourceType: string; resourceId: string;
-  result: 'success' | 'failure'; ip?: string;
-  metadata?: Record<string, any>;
-}
-interface AuditData {
-  totalToday: number; failuresToday: number; uniqueAdmins: number;
-  criticalActions: number;
-  byAction:  { action: string; count: number; color: string }[];
-  byAdmin:   { email: string; count: number }[];
-  hourlyActivity: { hour: string; success: number; failure: number }[];
-  weeklyActivity: { day: string; total: number; critical: number }[];
-  entries: AuditEntry[];
-  lastUpdate: string;
-}
-
-// ── Mock ──────────────────────────────────────────────────────────────────────
-const ACTIONS = ['auth.login','auth.logout','auth.login_failed','admin.user_created','admin.role_changed','admin.user_deactivated','security.block_ip','security.block_user','data.export','settings.changed'];
-const ADMINS  = ['superadmin@egchat.gq','ops@egchat.gq','security@egchat.gq','audit@egchat.gq'];
-const ROLES   = ['super_admin','operations','security','auditor'];
-const CRITICAL_ACTIONS = new Set(['admin.user_created','admin.role_changed','security.block_ip','security.block_user','data.export']);
-
-function generateMock(): AuditData {
-  const entries: AuditEntry[] = Array.from({ length: 60 }, (_, i) => {
-    const action = ACTIONS[Math.floor(Math.random() * ACTIONS.length)];
-    const adminIdx = Math.floor(Math.random() * ADMINS.length);
-    const minsAgo = i * 8 + Math.floor(Math.random() * 7);
-    return {
-      id: 1000 - i,
-      ts: minsAgo < 60 ? `Hace ${minsAgo}m` : `Hace ${Math.floor(minsAgo/60)}h ${minsAgo%60}m`,
-      adminEmail: ADMINS[adminIdx],
-      adminRole: ROLES[adminIdx],
-      action,
-      resourceType: action.split('.')[0],
-      resourceId: `${Math.floor(Math.random() * 9000 + 1000)}`,
-      result: Math.random() > 0.08 ? 'success' : 'failure',
-      ip: `${Math.floor(Math.random()*200+10)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}.${Math.floor(Math.random()*255)}`,
-    };
-  });
-
-  const criticals = entries.filter(e => CRITICAL_ACTIONS.has(e.action)).length;
-  const actionCounts: Record<string,number> = {};
-  entries.forEach(e => { actionCounts[e.action] = (actionCounts[e.action]||0)+1; });
-  const COLORS = [theme.l3,theme.l2,'#f59e0b',theme.l1,'#ef4444','#f97316','#22c55e',theme.l2,'#ec4899','#64748b'];
-
-  return {
-    totalToday: entries.length,
-    failuresToday: entries.filter(e => e.result === 'failure').length,
-    uniqueAdmins: new Set(entries.map(e => e.adminEmail)).size,
-    criticalActions: criticals,
-    byAction: Object.entries(actionCounts).sort((a,b) => b[1]-a[1]).map(([action, count], i) => ({ action, count, color: COLORS[i % COLORS.length] })),
-    byAdmin: ADMINS.map(email => ({ email, count: entries.filter(e => e.adminEmail === email).length })).sort((a,b) => b.count-a.count),
-    hourlyActivity: Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}:00`,
-      success: Math.floor(Math.random() * 8),
-      failure: Math.floor(Math.random() * 2),
-    })),
-    weeklyActivity: ['Lu','Ma','Mi','Ju','Vi','Sa','Do'].map(day => ({
-      day,
-      total:    Math.floor(20 + Math.random() * 40),
-      critical: Math.floor(Math.random() * 8),
-    })),
-    entries,
-    lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
-  };
-}
-
-const Tip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>
-      ))}
-    </div>
-  );
+const IC = {
+  Clipboard: () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x={8} y={2} width={8} height={4} rx={1}/><line x1={9} y1={12} x2={15} y2={12}/><line x1={9} y1={16} x2={15} y2={16}/></svg>,
+  Users:     () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx={9} cy={7} r={4}/></svg>,
+  Activity:  () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+  AlertTri:  () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1={12} y1={9} x2={12} y2={13}/><line x1={12} y1={17} x2={12.01} y2={17}/></svg>,
+  Download:  () => <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1={12} y1={15} x2={12} y2={3}/></svg>,
+  RefreshCw: () => <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
 };
+
+const CRITICAL_ACTIONS = new Set(['admin.user_created','admin.role_changed','security.block_ip','security.block_user','data.export']);
 
 export const AuditDashboard: React.FC = () => {
   const theme = useTheme();
-  const [data, setData] = useState<AuditData>(generateMock());
-  const [tick, setTick] = useState(0);
+  const [logs, setLogs]   = useState<any[]>([]);
+  const [tick, setTick]   = useState(0);
   const [pulse, setPulse] = useState(false);
-  const [actionFilter, setActionFilter] = useState('all');
-  const [resultFilter, setResultFilter] = useState<'all'|'success'|'failure'>('all');
-  const [page, setPage] = useState(0);
+  const [filter, setFilter] = useState('all');
+  const [page, setPage]   = useState(0);
   const PAGE = 12;
 
-  const refresh = useCallback(async () => {
-    setPulse(true); setTimeout(() => setPulse(false), 500);
+  const load = useCallback(async () => {
+    setPulse(true); setTimeout(()=>setPulse(false),500);
     try {
-      const api = await adminAPI.getAuditLog({ limit: '60' });
-      if (Array.isArray(api) && api.length > 0) {
-        const mapped: AuditEntry[] = api.map((r: any, i: number) => ({
-          id: r.id || i, ts: r.created_at ? new Date(r.created_at).toLocaleTimeString() : `Hace ${i}m`,
-          adminEmail: r.admin_id || 'admin', adminRole: 'admin',
-          action: r.action || 'unknown', resourceType: r.resource_type || '',
-          resourceId: r.resource_id || '', result: r.result || 'success',
-          ip: r.ip_address,
-        }));
-        setData(prev => ({ ...generateMock(), entries: mapped, lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour:'2-digit', minute:'2-digit', second:'2-digit' }) }));
-        return;
-      }
-    } catch {}
-    setData(generateMock());
+      const data = await adminAPI.getAuditLog({ limit: '100' });
+      setLogs(Array.isArray(data) ? data : []);
+    } catch { setLogs([]); }
   }, []);
 
   useEffect(() => {
-    refresh();
-    const rt = setInterval(refresh, 30_000);
-    const tt = setInterval(() => setTick(t => (t+1) % 30), 1_000);
+    load();
+    const rt = setInterval(load, 30_000);
+    const tt = setInterval(() => setTick(t=>(t+1)%30), 1_000);
     return () => { clearInterval(rt); clearInterval(tt); };
-  }, [refresh]);
+  }, [load]);
 
-  const d = data;
-  const filtered = d.entries.filter(e => {
-    if (actionFilter !== 'all' && e.action !== actionFilter) return false;
-    if (resultFilter !== 'all' && e.result !== resultFilter) return false;
+  const filtered = logs.filter(l => {
+    if (filter === 'critical') return CRITICAL_ACTIONS.has(l.action);
+    if (filter === 'failure')  return l.result === 'failure';
     return true;
   });
   const paged = filtered.slice(page * PAGE, (page+1) * PAGE);
   const totalPages = Math.ceil(filtered.length / PAGE);
+  const criticals  = logs.filter(l => CRITICAL_ACTIONS.has(l.action)).length;
+  const failures   = logs.filter(l => l.result === 'failure').length;
+
+  const Tip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px 12px' }}>
+      <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, fontWeight: 700 }}>{label}</div>
+      {payload.map((p: any, i: number) => <div key={i} style={{ fontSize: 12, color: p.color, fontWeight: 700 }}>{p.name}: {p.value}</div>)}
+    </div>;
+  };
 
   return (
     <div style={{ color: theme.text }}>
       {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: '22px', fontWeight: '900' }}>📋 Dashboard de Auditoría</div>
-          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>Sistema · Log inmutable · Todas las acciones de administradores · {d.lastUpdate}</div>
+          <div style={{ fontSize: 20, fontWeight: 900 }}>📋 Dashboard de Auditoría</div>
+          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 3 }}>Sistema · Log inmutable · {logs.length} entradas reales · {new Date().toLocaleTimeString('es-GQ',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#6366f1 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#6366f1', fontWeight: '800' }}>{30-tick}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l1} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l1, fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
-          <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#6366f1,#a855f7)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-            {pulse ? '⟳ ...' : '⟳ Actualizar'}
+          <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l1},${theme.l2})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IC.RefreshCw /> {pulse?'...':'Actualizar'}
           </button>
-          <button onClick={() => adminAPI.exportAudit('csv')} style={{ background: 'rgba(0,200,160,0.1)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '7px 14px', color: theme.l3, fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-            ⬇️ Exportar CSV
+          <button onClick={() => adminAPI.exportAudit('csv')} style={{ background: theme.bgCard, border: `1px solid ${theme.l3}30`, borderRadius: 10, padding: '7px 14px', color: theme.l3, fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IC.Download /> Exportar CSV
           </button>
         </div>
       </div>
 
       {/* KPIs */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '12px', marginBottom: '18px' }}>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { icon:'📊', label:'Acciones Hoy',     value: d.totalToday,         color:'#6366f1' },
-          { icon:'❌', label:'Fallos',             value: d.failuresToday,      color: d.failuresToday > 5 ? '#ef4444' : '#64748b', alert: d.failuresToday > 5 },
-          { icon:'👤', label:'Admins Activos',    value: d.uniqueAdmins,       color:theme.l2 },
-          { icon:'⚠️', label:'Acciones Críticas', value: d.criticalActions,    color:'#f59e0b', alert: d.criticalActions > 0 },
-        ].map(item => (
-          <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${(item as any).alert ? item.color : item.color+'30'}`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
-            {(item as any).alert && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', background: item.color, boxShadow: `0 0 6px ${item.color}` }} />}
-            <div style={{ fontSize:'10px', fontWeight:'700', color:'#64748b', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'5px' }}>{item.icon} {item.label}</div>
-            <div style={{ fontSize:'24px', fontWeight:'900', color: (item as any).alert ? item.color : '#f1f5f9' }}>{item.value}</div>
+          { Icon: IC.Activity,  label: 'Total Registros', value: logs.length,    color: theme.l1 },
+          { Icon: IC.AlertTri,  label: 'Críticas',        value: criticals,      color: '#f59e0b', alert: criticals > 0 },
+          { Icon: IC.AlertTri,  label: 'Fallidas',        value: failures,       color: '#ef4444', alert: failures > 5 },
+          { Icon: IC.Users,     label: 'Admins Activos',  value: new Set(logs.map(l=>l.admin_id)).size, color: theme.l2 },
+          { Icon: IC.Clipboard, label: 'Exitosas',        value: logs.filter(l=>l.result==='success').length, color: theme.l3 },
+        ].map(({ Icon, label, value, color, alert }: any) => (
+          <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'50' : theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
+            {alert && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />}
+            <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.7px' }}>{label}</div>
+              <div style={{ color }}><Icon /></div>
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: alert ? color : theme.text }}>{value}</div>
           </div>
         ))}
       </div>
 
-      {/* Charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginBottom: '18px' }}>
-        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📊 Actividad por Hora — Hoy</div>
-          <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={d.hourlyActivity} barGap={2}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
-              <XAxis dataKey="hour" tick={{ fill: '#475569', fontSize: 9 }} interval={3} />
-              <YAxis tick={{ fill: '#475569', fontSize: 9 }} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="success" name="Exitosas" fill="#6366f1" radius={[3,3,0,0]} />
-              <Bar dataKey="failure" name="Fallidas"  fill="#ef4444" radius={[3,3,0,0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📅 Semanal</div>
-          <ResponsiveContainer width="100%" height={180}>
-            <LineChart data={d.weeklyActivity}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
-              <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#475569', fontSize: 9 }} />
-              <Tooltip content={<Tip />} />
-              <Line type="monotone" dataKey="total"    name="Total"    stroke="#6366f1" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="critical" name="Críticas" stroke="#f59e0b" strokeWidth={1.5} dot={false} strokeDasharray="4 4" />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>👤 Por Admin</div>
-          {d.byAdmin.map(a => (
-            <div key={a.email} style={{ marginBottom: '8px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span style={{ fontSize: '10px', color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{a.email.split('@')[0]}</span>
-                <span style={{ fontSize: '11px', fontWeight: '800', color: '#6366f1' }}>{a.count}</span>
-              </div>
-              <div style={{ height: '4px', background: theme.bg, borderRadius: '2px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${a.count/d.totalToday*100}%`, background: '#6366f1', borderRadius: '2px' }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Log table */}
-      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>📜 Log de Auditoría ({filtered.length})</div>
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <select value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(0); }}
-              style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '5px 8px', color: theme.textMuted, fontSize: '11px', outline: 'none' }}>
-              <option value="all">Todas las acciones</option>
-              {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
-            </select>
-            {(['all','success','failure'] as const).map(r => (
-              <button key={r} onClick={() => { setResultFilter(r); setPage(0); }}
-                style={{ padding: '4px 10px', borderRadius: '8px', border: `1px solid ${r==='success'?'rgba(0,200,160,0.3)':r==='failure'?'rgba(239,68,68,0.3)':'#334155'}`, background: resultFilter === r ? r==='success'?'rgba(0,200,160,0.1)':r==='failure'?'rgba(239,68,68,0.1)':'#334155' : 'transparent', color: r==='success'?theme.l3:r==='failure'?'#ef4444':'#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-                {r === 'all' ? 'Todos' : r === 'success' ? '✅ Exitosas' : '❌ Fallidas'}
+      {/* Log table — REAL DATA */}
+      <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14, flexWrap: 'wrap', gap: 10 }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            📜 Log de Auditoría — Datos Reales ({filtered.length})
+          </div>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {[{k:'all',l:'Todos'},{k:'critical',l:'⚠️ Críticos'},{k:'failure',l:'❌ Fallidos'}].map(f => (
+              <button key={f.k} onClick={() => { setFilter(f.k); setPage(0); }}
+                style={{ padding: '4px 10px', borderRadius: 8, border: `1px solid ${theme.border}`, background: filter === f.k ? theme.l1+'18' : 'transparent', color: filter === f.k ? theme.l1 : theme.textMuted, fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+                {f.l}
               </button>
             ))}
           </div>
         </div>
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #334155' }}>
-                {['ID','Hace','Admin','Rol','Acción','Recurso','ID Recurso','Resultado','IP'].map(h => (
-                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map(e => (
-                <tr key={e.id} style={{ borderBottom: '1px solid #0f172a' }}
-                  onMouseEnter={ev => (ev.currentTarget.style.background = '#0f172a')}
-                  onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}>
-                  <td style={{ padding: '7px 10px', color: theme.textMuted, fontSize: '11px', fontFamily: 'monospace' }}>{e.id}</td>
-                  <td style={{ padding: '7px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontSize: '11px' }}>{e.ts}</td>
-                  <td style={{ padding: '7px 10px', color: '#e2e8f0', fontWeight: '600', whiteSpace: 'nowrap', fontSize: '11px' }}>{e.adminEmail.split('@')[0]}</td>
-                  <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '10px', color: theme.textMuted, background: theme.bg, padding: '1px 6px', borderRadius: '5px' }}>{e.adminRole}</span>
-                  </td>
-                  <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '11px', color: CRITICAL_ACTIONS.has(e.action) ? '#f59e0b' : '#94a3b8', fontWeight: CRITICAL_ACTIONS.has(e.action) ? '700' : '400' }}>
-                      {CRITICAL_ACTIONS.has(e.action) ? '⚠️ ' : ''}{e.action}
-                    </span>
-                  </td>
-                  <td style={{ padding: '7px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontSize: '11px' }}>{e.resourceType}</td>
-                  <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: '11px' }}>{e.resourceId}</td>
-                  <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: e.result === 'success' ? theme.l3 : '#ef4444', background: e.result === 'success' ? 'rgba(0,200,160,0.1)' : 'rgba(239,68,68,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
-                      {e.result === 'success' ? '✅' : '❌'} {e.result === 'success' ? 'OK' : 'FALLO'}
-                    </span>
-                  </td>
-                  <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: '10px', whiteSpace: 'nowrap' }}>{e.ip || '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: theme.textMuted }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length}</span>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            {[{l:'«',a:()=>setPage(0),d:page===0},{l:'‹',a:()=>setPage(p=>p-1),d:page===0},{l:'›',a:()=>setPage(p=>p+1),d:page>=totalPages-1},{l:'»',a:()=>setPage(totalPages-1),d:page>=totalPages-1}].map(btn => (
-              <button key={btn.l} onClick={btn.a} disabled={btn.d} style={{ padding:'5px 10px', borderRadius:'7px', background:'#0f172a', border:'1px solid #334155', color:btn.d?'#334155':'#94a3b8', fontSize:'11px', cursor:btn.d?'default':'pointer' }}>{btn.l}</button>
-            ))}
+
+        {logs.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: 40 }}>
+            <div style={{ fontSize: 36, marginBottom: 8 }}>📋</div>
+            <div style={{ fontSize: 14, color: theme.textMuted }}>Cargando logs de auditoría...</div>
           </div>
-        </div>
+        ) : (
+          <>
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
+                <thead>
+                  <tr style={{ borderBottom: `1px solid ${theme.border}` }}>
+                    {['ID','Hace','Admin','Acción','Recurso','Resultado','IP'].map(h => (
+                      <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: 700, fontSize: 10, textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {paged.map((l: any) => {
+                    const isCrit  = CRITICAL_ACTIONS.has(l.action);
+                    const isFail  = l.result === 'failure';
+                    const rowColor = isCrit ? '#f59e0b' : isFail ? '#ef4444' : theme.textMuted;
+                    const tsAgo = l.created_at ? (() => { const diff = Date.now() - new Date(l.created_at).getTime(); const m = Math.floor(diff/60000); return m < 60 ? `${m}m` : `${Math.floor(m/60)}h`; })() : '—';
+                    return (
+                      <tr key={l.id} style={{ borderBottom: `1px solid ${theme.bg}` }}
+                        onMouseEnter={e => (e.currentTarget.style.background = theme.bg)}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                        <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: 11 }}>{l.id}</td>
+                        <td style={{ padding: '7px 10px', color: theme.textMuted, fontSize: 11, whiteSpace: 'nowrap' }}>{tsAgo}</td>
+                        <td style={{ padding: '7px 10px', color: theme.text, fontWeight: 600, whiteSpace: 'nowrap', fontSize: 11 }}>
+                          {l.admin_id ? l.admin_id.substring(0,8)+'...' : '—'}
+                        </td>
+                        <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
+                          <span style={{ fontSize: 11, color: rowColor, fontWeight: isCrit ? 700 : 400 }}>
+                            {isCrit && '⚠️ '}{l.action}
+                          </span>
+                        </td>
+                        <td style={{ padding: '7px 10px', color: theme.textMuted, fontSize: 11 }}>{l.resource_type || '—'}</td>
+                        <td style={{ padding: '7px 10px' }}>
+                          <span style={{ fontSize: 10, fontWeight: 800, color: isFail ? '#ef4444' : '#22c55e', background: isFail ? 'rgba(239,68,68,0.1)' : 'rgba(34,197,94,0.1)', padding: '2px 7px', borderRadius: 6 }}>
+                            {isFail ? '❌' : '✅'} {l.result}
+                          </span>
+                        </td>
+                        <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: 10 }}>{l.ip_address || '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, flexWrap: 'wrap', gap: 8 }}>
+              <span style={{ fontSize: 11, color: theme.textMuted }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length}</span>
+              <div style={{ display: 'flex', gap: 6 }}>
+                {[{l:'«',a:()=>setPage(0),d:page===0},{l:'‹',a:()=>setPage(p=>p-1),d:page===0},{l:'›',a:()=>setPage(p=>p+1),d:page>=totalPages-1},{l:'»',a:()=>setPage(totalPages-1),d:page>=totalPages-1}].map(btn => (
+                  <button key={btn.l} onClick={btn.a} disabled={btn.d} style={{ padding:'5px 10px', borderRadius:7, background:theme.bg, border:`1px solid ${theme.border}`, color:btn.d?theme.border:theme.textMuted, fontSize:11, cursor:btn.d?'default':'pointer' }}>{btn.l}</button>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
       </div>
     </div>
   );

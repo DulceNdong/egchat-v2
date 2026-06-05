@@ -774,42 +774,79 @@ const App: React.FC = () => {
   const [_vvDebug, setVvDebug] = React.useState('');
   const [chatContainerHeight, setChatContainerHeight] = React.useState<string>('100dvh');
   const [chatContainerTop, setChatContainerTop] = React.useState<number>(0);
-  // Enfoque LinkedIn: cuando el teclado sube, scroll al top y ajustar bottom del contenedor
   const chatContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // Keyboard handler para iOS Capacitor con resize:none
+  // Usa eventos del Keyboard plugin para mover solo el chat, no el tab bar
   React.useEffect(() => {
-    const vv = window.visualViewport;
-    if (!vv) return;
-    const update = () => {
-      // Forzar scroll a 0 para que el body no se mueva
-      window.scrollTo(0, 0);
-      if (!chatContainerRef.current) return;
-      // vv.height = altura visible cuando el teclado está abierto
-      // vv.offsetTop = desplazamiento vertical del viewport (en Safari puede ser > 0)
-      const visibleHeight = vv.height;
-      const topOffset = vv.offsetTop || 0;
-      chatContainerRef.current.style.top = `${topOffset}px`;
-      chatContainerRef.current.style.height = `${visibleHeight}px`;
-      chatContainerRef.current.style.bottom = '';
-      // Scroll al último mensaje
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isIOS) return;
+
+    let keyboardH = 0;
+
+    const onKeyboardShow = (info: any) => {
+      keyboardH = info?.keyboardHeight || 0;
+      const winH = window.innerHeight;
+      if (chatContainerRef.current) {
+        chatContainerRef.current.style.height = `${winH - keyboardH}px`;
+        chatContainerRef.current.style.bottom = '';
+      }
       requestAnimationFrame(() => {
         const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
         if (scroll) scroll.scrollTop = scroll.scrollHeight;
       });
     };
-    // Ejecutar al montar para inicializar correctamente
-    update();
-    vv.addEventListener('resize', update);
-    vv.addEventListener('scroll', update);
-    document.addEventListener('touchend', () => window.scrollTo(0, 0));
-    return () => {
-      vv.removeEventListener('resize', update);
-      vv.removeEventListener('scroll', update);
-      document.removeEventListener('touchend', () => window.scrollTo(0, 0));
-      // Restaurar al desmontar
+
+    const onKeyboardHide = () => {
+      keyboardH = 0;
       if (chatContainerRef.current) {
-        chatContainerRef.current.style.top = '0px';
-        chatContainerRef.current.style.height = '';
-        chatContainerRef.current.style.bottom = '0px';
+        chatContainerRef.current.style.height = '100dvh';
+        chatContainerRef.current.style.bottom = '0';
+      }
+    };
+
+    // Intentar usar Capacitor Keyboard plugin
+    let unlistenShow: (() => void) | null = null;
+    let unlistenHide: (() => void) | null = null;
+
+    (async () => {
+      try {
+        const { Keyboard } = await import('@capacitor/keyboard');
+        const showHandle = await Keyboard.addListener('keyboardWillShow', onKeyboardShow);
+        const hideHandle = await Keyboard.addListener('keyboardWillHide', onKeyboardHide);
+        unlistenShow = () => showHandle.remove();
+        unlistenHide = () => hideHandle.remove();
+      } catch {
+        // Fallback: Visual Viewport API
+        const vv = window.visualViewport;
+        if (!vv) return;
+        const update = () => {
+          window.scrollTo(0, 0);
+          if (!chatContainerRef.current) return;
+          const visibleHeight = vv.height;
+          const topOffset = vv.offsetTop || 0;
+          chatContainerRef.current.style.top = `${topOffset}px`;
+          chatContainerRef.current.style.height = `${visibleHeight}px`;
+          chatContainerRef.current.style.bottom = '';
+          requestAnimationFrame(() => {
+            const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+            if (scroll) scroll.scrollTop = scroll.scrollHeight;
+          });
+        };
+        update();
+        vv.addEventListener('resize', update);
+        vv.addEventListener('scroll', update);
+        unlistenShow = () => vv.removeEventListener('resize', update);
+        unlistenHide = () => vv.removeEventListener('scroll', update);
+      }
+    })();
+
+    return () => {
+      unlistenShow?.();
+      unlistenHide?.();
+      if (chatContainerRef.current) {
+        chatContainerRef.current.style.height = '100dvh';
+        chatContainerRef.current.style.top = '0';
       }
     };
   }, []);

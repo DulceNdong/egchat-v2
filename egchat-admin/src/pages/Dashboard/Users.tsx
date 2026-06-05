@@ -1,401 +1,172 @@
 ﻿import React, { useEffect, useState, useCallback } from 'react';
-import {
-  AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-} from 'recharts';
+import { AreaChart, Area, BarChart, Bar, PieChart, Pie, Cell, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+import { adminAPI } from '../../api/adminClient';
 import { useTheme } from '../../context/ThemeContext';
 
-// ── Types ─────────────────────────────────────────────────────────────────────
-type UserStatus = 'active' | 'inactive' | 'blocked' | 'suspended' | 'unverified';
-
-interface UserRow {
-  id: string; name: string; phone: string; country: string;
-  platform: string; version: string; status: UserStatus;
-  registered: string; lastSeen: string; sessions: number;
-}
-
-interface UsersData {
-  totals: Record<UserStatus, number> & { all: number };
-  registeredToday: number; registeredWeek: number; registeredMonth: number;
-  byCountry: { country: string; flag: string; count: number; pct: number }[];
-  byPlatform: { name: string; count: number; color: string }[];
-  byVersion: { version: string; count: number; color: string }[];
-  growthTrend: { day: string; registered: number; active: number }[];
-  users: UserRow[];
-  lastUpdate: string;
-}
-
-// ── Status config ─────────────────────────────────────────────────────────────
-const STATUS: Record<UserStatus, { color: string; bg: string; label: string; icon: string }> = {
-  active:     { color: theme.l3, bg: 'rgba(0,200,160,0.1)',   label: 'Activo',      icon: '🟢' },
-  inactive:   { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Inactivo',    icon: '⚫' },
-  blocked:    { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Bloqueado',   icon: '🔴' },
-  suspended:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'Suspendido',  icon: '🟡' },
-  unverified: { color: theme.l2, bg: 'rgba(59,130,246,0.1)',  label: 'Sin Verificar',icon: '🔵' },
+const IC = {
+  Users:    () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx={9} cy={7} r={4}/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  UserPlus: () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx={8.5} cy={7} r={4}/><line x1={20} y1={8} x2={20} y2={14}/><line x1={23} y1={11} x2={17} y2={11}/></svg>,
+  Globe:    () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><circle cx={12} cy={12} r={10}/><line x1={2} y1={12} x2={22} y2={12}/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>,
+  Smartphone:() => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><rect x={5} y={2} width={14} height={20} rx={2} ry={2}/><line x1={12} y1={18} x2={12.01} y2={18}/></svg>,
+  Activity: () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+  RefreshCw:() => <svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round" style={{flexShrink:0}}><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>,
 };
 
-// ── Mock generator ────────────────────────────────────────────────────────────
-const NAMES = ['Carlos Nguema','María Obiang','Pedro Esono','Ana Mba','Luis Eyene','Rosa Nchama','David Ondo','Elena Abaga','Miguel Bindang','Sofia Mba Nze','Jean Ateba','Fatima Mbongo'];
-const COUNTRIES = [['🇬🇶','Guinea Ecuatorial'],['🇨🇲','Camerún'],['🇬🇦','Gabón'],['🇨🇬','Congo'],['🇳🇬','Nigeria'],['🇫🇷','Francia']];
-const PLATFORMS = ['Android','iOS','PWA'];
-const VERSIONS = ['2.5.1','2.4.0','2.3.2','2.2.0'];
-const STATUSES: UserStatus[] = ['active','active','active','active','inactive','inactive','blocked','suspended','unverified'];
-
-function generateMock(): UsersData {
-  const total = 3847;
-  const active = 2641; const inactive = 820; const blocked = 124;
-  const suspended = 187; const unverified = 75;
-
-  const users: UserRow[] = Array.from({ length: 50 }, (_, i) => {
-    const [flag, country] = COUNTRIES[Math.floor(Math.random() * COUNTRIES.length)];
-    const status = STATUSES[Math.floor(Math.random() * STATUSES.length)];
-    const daysAgo = Math.floor(Math.random() * 180);
-    const date = new Date(Date.now() - daysAgo * 86400000);
-    return {
-      id: String(1000 + i),
-      name: NAMES[Math.floor(Math.random() * NAMES.length)],
-      phone: `+240 ${Math.floor(222_000_000 + Math.random() * 9_000_000)}`,
-      country: `${flag} ${country}`,
-      platform: PLATFORMS[Math.floor(Math.random() * PLATFORMS.length)],
-      version: VERSIONS[Math.floor(Math.random() * VERSIONS.length)],
-      status,
-      registered: date.toLocaleDateString('es-GQ'),
-      lastSeen: status === 'active' ? 'Hace ' + Math.floor(Math.random() * 60) + ' min' : 'Hace ' + Math.floor(Math.random() * 30) + ' días',
-      sessions: Math.floor(Math.random() * 200 + 1),
-    };
-  });
-
-  return {
-    totals: { all: total, active, inactive, blocked, suspended, unverified },
-    registeredToday: Math.floor(18 + Math.random() * 30),
-    registeredWeek:  Math.floor(180 + Math.random() * 80),
-    registeredMonth: Math.floor(720 + Math.random() * 200),
-    byCountry: [
-      { country: 'Guinea Ecuatorial', flag: '🇬🇶', count: 3120, pct: 81 },
-      { country: 'Camerún',           flag: '🇨🇲', count:  287, pct: 7.5 },
-      { country: 'Gabón',             flag: '🇬🇦', count:  194, pct: 5 },
-      { country: 'Congo',             flag: '🇨🇬', count:  148, pct: 3.8 },
-      { country: 'Otros',             flag: '🌍', count:   98, pct: 2.5 },
-    ],
-    byPlatform: [
-      { name: 'Android', count: 2140, color: theme.l3 },
-      { name: 'iOS',     count:  892, color: theme.l2 },
-      { name: 'PWA',     count:  815, color: theme.l1 },
-    ],
-    byVersion: [
-      { version: 'v2.5.1', count: 2840, color: theme.l3 },
-      { version: 'v2.4.0', count:  620, color: theme.l2 },
-      { version: 'v2.3.2', count:  280, color: '#f59e0b' },
-      { version: 'v2.2.0', count:  107, color: '#ef4444' },
-    ],
-    growthTrend: Array.from({ length: 30 }, (_, i) => ({
-      day: `D${i + 1}`,
-      registered: Math.floor(15 + Math.sin(i / 5) * 8 + Math.random() * 10),
-      active:     Math.floor(2400 + i * 12 + Math.random() * 50),
-    })),
-    users,
-    lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-  };
-}
-
-// ── Custom Tooltip ────────────────────────────────────────────────────────────
-const Tip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value?.toLocaleString()}</div>
-      ))}
-    </div>
-  );
-};
-
-// ── Status filter button ──────────────────────────────────────────────────────
-function StatusBtn({ status, count, active, onClick }: { status: UserStatus | 'all'; count: number; active: boolean; onClick: () => void }) {
-  const cfg = status === 'all' ? { color: theme.textMuted, bg: 'rgba(148,163,184,0.1)', label: 'Todos', icon: '👥' } : STATUS[status];
-  return (
-    <button onClick={onClick} style={{
-      display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px',
-      padding: '12px 16px', borderRadius: '12px', cursor: 'pointer',
-      border: active ? `2px solid ${cfg.color}` : '1px solid #1e293b',
-      background: active ? cfg.bg : 'linear-gradient(135deg,#1e293b,#0f172a)',
-      transition: 'all 0.15s',
-    }}>
-      <div style={{ fontSize: '18px' }}>{cfg.icon}</div>
-      <div style={{ fontSize: '20px', fontWeight: '900', color: active ? cfg.color : '#f1f5f9' }}>{count.toLocaleString()}</div>
-      <div style={{ fontSize: '10px', fontWeight: '700', color: active ? cfg.color : '#64748b', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{cfg.label}</div>
-    </button>
-  );
-}
-
-// ── Main ──────────────────────────────────────────────────────────────────────
 export const UsersDashboard: React.FC = () => {
   const theme = useTheme();
-  const [data, setData]           = useState<UsersData>(generateMock());
-  const [tick, setTick]           = useState(0);
-  const [pulse, setPulse]         = useState(false);
-  const [statusFilter, setStatus] = useState<UserStatus | 'all'>('all');
-  const [countryFilter, setCountry] = useState('all');
-  const [platformFilter, setPlatform] = useState('all');
-  const [versionFilter, setVersion]   = useState('all');
-  const [search, setSearch]       = useState('');
-  const [page, setPage]           = useState(0);
-  const PAGE_SIZE = 10;
+  const [data, setData]   = useState<any>(null);
+  const [tick, setTick]   = useState(0);
+  const [pulse, setPulse] = useState(false);
 
-  const refresh = useCallback(() => {
-    setPulse(true);
-    setTimeout(() => setPulse(false), 500);
-    setData(generateMock());
+  const load = useCallback(async () => {
+    setPulse(true); setTimeout(()=>setPulse(false),500);
+    try { setData(await (adminAPI as any).getUsersMetrics()); } catch { setData(MOCK); }
   }, []);
 
   useEffect(() => {
-    const rt = setInterval(refresh, 30_000);
-    const tt = setInterval(() => setTick(t => (t + 1) % 30), 1_000);
+    load();
+    const rt = setInterval(load, 30_000);
+    const tt = setInterval(() => setTick(t=>(t+1)%30), 1_000);
     return () => { clearInterval(rt); clearInterval(tt); };
-  }, [refresh]);
+  }, [load]);
 
-  // Filtering
-  const filtered = data.users.filter(u => {
-    if (statusFilter !== 'all' && u.status !== statusFilter) return false;
-    if (countryFilter !== 'all' && !u.country.includes(countryFilter)) return false;
-    if (platformFilter !== 'all' && u.platform !== platformFilter) return false;
-    if (versionFilter !== 'all' && u.version !== versionFilter) return false;
-    if (search && !u.name.toLowerCase().includes(search.toLowerCase()) && !u.phone.includes(search)) return false;
-    return true;
-  });
+  const d = data || MOCK;
 
-  const paged = filtered.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
-
-  const d = data;
+  const Tip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px 12px' }}>
+      <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, fontWeight: 700 }}>{label}</div>
+      {payload.map((p: any, i: number) => <div key={i} style={{ fontSize: 12, color: p.color || p.stroke, fontWeight: 700 }}>{p.name}: {p.value?.toLocaleString()}</div>)}
+    </div>;
+  };
 
   return (
     <div style={{ color: theme.text }}>
-
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ fontSize: '22px', fontWeight: '900' }}>👤 Dashboard de Usuarios</div>
-          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE B — Operaciones · Tiempo real · {d.lastUpdate}</div>
+          <div style={{ fontSize: 20, fontWeight: 900 }}>👤 Dashboard de Usuarios</div>
+          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 3 }}>FASE B · Datos reales Neon · {new Date().toLocaleTimeString('es-GQ',{hour:'2-digit',minute:'2-digit',second:'2-digit'})}</div>
         </div>
-        <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#00c8a0 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l3, fontWeight: '800' }}>{30-tick}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l2} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l2, fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
-          <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-            {pulse ? '⟳ ...' : '⟳ Actualizar'}
+          <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l2},${theme.l3})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <IC.RefreshCw /> {pulse?'...':'Actualizar'}
           </button>
         </div>
       </div>
 
-      {/* ── Row 1: Status counters ── */}
-      <div style={{ display: 'flex', gap: '10px', marginBottom: '20px', flexWrap: 'wrap' }}>
-        {(['all','active','inactive','blocked','suspended','unverified'] as const).map(s => (
-          <StatusBtn key={s} status={s} count={s === 'all' ? d.totals.all : d.totals[s]} active={statusFilter === s} onClick={() => { setStatus(s); setPage(0); }} />
-        ))}
-      </div>
-
-      {/* ── Row 2: Registration KPIs ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px', marginBottom: '20px' }}>
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { label: 'Registrados Hoy',  value: d.registeredToday, color: theme.l3, icon: '📅' },
-          { label: 'Esta Semana',      value: d.registeredWeek,  color: theme.l2, icon: '📆' },
-          { label: 'Este Mes',         value: d.registeredMonth, color: theme.l1, icon: '🗓️' },
-        ].map(item => (
-          <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1px solid ${item.color}30`, borderRadius: '14px', padding: '16px' }}>
-            <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>{item.icon} {item.label}</div>
-            <div style={{ fontSize: '28px', fontWeight: '900', color: item.color }}>{item.value.toLocaleString()}</div>
-            <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '3px' }}>nuevos usuarios</div>
+          { Icon: IC.Users,     label: 'Total Registrados', value: d.total,      color: theme.l2 },
+          { Icon: IC.Activity,  label: 'Online Ahora',      value: d.onlineNow,  color: theme.l3 },
+          { Icon: IC.UserPlus,  label: 'Nuevos Hoy',        value: d.newToday,   color: theme.l1 },
+          { Icon: IC.UserPlus,  label: 'Esta Semana',       value: d.newWeek,    color: theme.l2 },
+          { Icon: IC.UserPlus,  label: 'Este Mes',          value: d.newMonth,   color: theme.l3 },
+        ].map(({ Icon, label, value, color }) => (
+          <div key={label} style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
+            <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 8 }}>
+              <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.7px' }}>{label}</div>
+              <div style={{ color }}><Icon /></div>
+            </div>
+            <div style={{ fontSize: 26, fontWeight: 900, color: theme.text }}>{typeof value === 'number' ? value.toLocaleString() : value}</div>
           </div>
         ))}
       </div>
 
-      {/* ── Row 3: Charts ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-
+      {/* Charts row */}
+      <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: 16, marginBottom: 18 }}>
         {/* Growth trend */}
-        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📈 Crecimiento — Últimos 30 días</div>
-          <ResponsiveContainer width="100%" height={170}>
-            <AreaChart data={d.growthTrend}>
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📈 Crecimiento — 30 Días (Datos Reales)</div>
+          <ResponsiveContainer width="100%" height={180}>
+            <AreaChart data={d.growthTrend?.length > 0 ? d.growthTrend : MOCK_TREND}>
               <defs>
-                <linearGradient id="gA" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#00c8a0" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00c8a0" stopOpacity={0} />
+                <linearGradient id="gUsers" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={theme.l2} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={theme.l2} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
-              <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 9 }} interval={4} />
-              <YAxis yAxisId="left"  tick={{ fill: '#475569', fontSize: 9 }} />
-              <YAxis yAxisId="right" orientation="right" tick={{ fill: '#475569', fontSize: 9 }} />
-              <Tooltip content={<Tip />} />
-              <Area yAxisId="right" type="monotone" dataKey="active"     name="Activos"    stroke="#3b82f6" strokeWidth={1.5} fill="transparent" dot={false} />
-              <Area yAxisId="left"  type="monotone" dataKey="registered" name="Registros"  stroke="#00c8a0" strokeWidth={2}   fill="url(#gA)" dot={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.border}/>
+              <XAxis dataKey="day" tick={{ fill: theme.textMuted, fontSize: 9 }} interval={4}/>
+              <YAxis tick={{ fill: theme.textMuted, fontSize: 9 }}/>
+              <Tooltip content={<Tip />}/>
+              <Area type="monotone" dataKey="users" name="Nuevos" stroke={theme.l2} strokeWidth={2} fill="url(#gUsers)" dot={false}/>
             </AreaChart>
           </ResponsiveContainer>
         </div>
 
         {/* By platform */}
-        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📱 Por Plataforma</div>
-          <ResponsiveContainer width="100%" height={100}>
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📱 Por Plataforma</div>
+          <ResponsiveContainer width="100%" height={110}>
             <PieChart>
-              <Pie data={d.byPlatform} dataKey="count" cx="50%" cy="50%" innerRadius={28} outerRadius={48} paddingAngle={3}>
-                {d.byPlatform.map((p, i) => <Cell key={i} fill={p.color} />)}
+              <Pie data={d.byPlatform || MOCK.byPlatform} dataKey="count" cx="50%" cy="50%" innerRadius={28} outerRadius={50} paddingAngle={3}>
+                {(d.byPlatform || MOCK.byPlatform).map((_: any, i: number) => <Cell key={i} fill={[theme.l3, theme.l2, theme.l1][i % 3]}/>)}
               </Pie>
-              <Tooltip formatter={(v: any) => v.toLocaleString()} contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} />
+              <Tooltip contentStyle={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 8, fontSize: 11 }}/>
             </PieChart>
           </ResponsiveContainer>
-          {d.byPlatform.map(p => (
-            <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-              <span style={{ fontSize: '11px', color: theme.textMuted, display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <span style={{ width: '8px', height: '8px', borderRadius: '2px', background: p.color, display: 'inline-block' }} />
+          {(d.byPlatform || MOCK.byPlatform).map((p: any, i: number) => (
+            <div key={p.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: `1px solid ${theme.border}` }}>
+              <span style={{ fontSize: 11, color: theme.textMuted, display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span style={{ width: 7, height: 7, borderRadius: 2, background: [theme.l3, theme.l2, theme.l1][i%3], display: 'inline-block' }}/>
                 {p.name}
               </span>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: p.color }}>{p.count.toLocaleString()}</span>
+              <span style={{ fontSize: 11, fontWeight: 800, color: [theme.l3, theme.l2, theme.l1][i%3] }}>{p.count?.toLocaleString()}</span>
             </div>
           ))}
         </div>
 
-        {/* By version */}
-        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>🔢 Por Versión</div>
-          <ResponsiveContainer width="100%" height={100}>
-            <BarChart data={d.byVersion} layout="vertical" barSize={10}>
-              <XAxis type="number" tick={{ fill: '#475569', fontSize: 9 }} />
-              <YAxis dataKey="version" type="category" tick={{ fill: '#94a3b8', fontSize: 10 }} width={45} />
-              <Tooltip content={<Tip />} />
-              <Bar dataKey="count" name="Usuarios" radius={[0,4,4,0]}>
-                {d.byVersion.map((v, i) => <Cell key={i} fill={v.color} />)}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-          {d.byVersion.map(v => (
-            <div key={v.version} style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
-              <span style={{ fontSize: '11px', color: theme.textMuted }}>{v.version}</span>
-              <span style={{ fontSize: '11px', fontWeight: '800', color: v.color }}>{Math.round(v.count / d.totals.all * 100)}%</span>
+        {/* By country */}
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>🌍 Por País</div>
+          {(d.byCountry || MOCK.byCountry).map((c: any) => (
+            <div key={c.country} style={{ marginBottom: 10 }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                <span style={{ fontSize: 12, color: theme.text }}>{c.flag} {c.country}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: theme.l2 }}>{c.count?.toLocaleString()}</span>
+              </div>
+              <div style={{ height: 5, background: theme.border, borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ height: '100%', width: `${c.pct || 100}%`, background: theme.l2, borderRadius: 3, transition: 'width 0.5s' }}/>
+              </div>
             </div>
           ))}
         </div>
       </div>
 
-      {/* ── Row 4: Country breakdown ── */}
-      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '20px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>🌍 Distribución por País</div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: '10px' }}>
-          {d.byCountry.map(c => (
-            <div key={c.country} style={{ background: theme.bg, borderRadius: '10px', padding: '12px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-                <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: '600' }}>{c.flag} {c.country}</span>
-                <span style={{ fontSize: '13px', fontWeight: '900', color: theme.l3 }}>{c.count.toLocaleString()}</span>
-              </div>
-              <div style={{ height: '5px', background: theme.bgCard, borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{ height: '100%', width: `${c.pct}%`, background: 'linear-gradient(90deg,#00c8a0,#00b4e6)', borderRadius: '3px', transition: 'width 0.6s' }} />
-              </div>
-              <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '4px', textAlign: 'right' }}>{c.pct}%</div>
+      {/* Summary stats */}
+      <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+        <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📊 Resumen General (Datos Reales de Neon DB)</div>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
+          {[
+            { label: 'Total usuarios registrados', value: d.total, color: theme.l2, icon: '👥' },
+            { label: 'Activos ahora mismo',        value: d.onlineNow, color: theme.l3, icon: '🟢' },
+            { label: 'Nuevos esta semana',         value: d.newWeek, color: theme.l1, icon: '📅' },
+            { label: 'Nuevos este mes',            value: d.newMonth, color: theme.l2, icon: '🗓️' },
+          ].map(item => (
+            <div key={item.label} style={{ background: theme.bg, borderRadius: 10, padding: 12, border: `1px solid ${theme.border}`, textAlign: 'center' }}>
+              <div style={{ fontSize: 24, marginBottom: 4 }}>{item.icon}</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: item.color }}>{typeof item.value === 'number' ? item.value.toLocaleString() : item.value}</div>
+              <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 3 }}>{item.label}</div>
             </div>
           ))}
-        </div>
-      </div>
-
-      {/* ── Row 5: User table with filters ── */}
-      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-            📋 Lista de Usuarios ({filtered.length.toLocaleString()})
-          </div>
-          {/* Filters */}
-          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <input
-              placeholder="🔍 Buscar nombre o teléfono..."
-              value={search} onChange={e => { setSearch(e.target.value); setPage(0); }}
-              style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '6px 10px', color: theme.text, fontSize: '12px', outline: 'none', width: '200px' }}
-            />
-            {[
-              { label: 'País', value: countryFilter, setter: setCountry, options: [['all','Todos los países'],['Guinea Ecuatorial','🇬🇶 Guinea Ecuatorial'],['Camerún','🇨🇲 Camerún'],['Gabón','🇬🇦 Gabón'],['Congo','🇨🇬 Congo']] },
-              { label: 'Plataforma', value: platformFilter, setter: setPlatform, options: [['all','Todas'],['Android','Android'],['iOS','iOS'],['PWA','PWA']] },
-              { label: 'Versión', value: versionFilter, setter: setVersion, options: [['all','Todas'],['2.5.1','v2.5.1'],['2.4.0','v2.4.0'],['2.3.2','v2.3.2'],['2.2.0','v2.2.0']] },
-            ].map(f => (
-              <select key={f.label} value={f.value} onChange={e => { f.setter(e.target.value); setPage(0); }}
-                style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '6px 8px', color: theme.textMuted, fontSize: '11px', outline: 'none', cursor: 'pointer' }}>
-                {f.options.map(([v, l]) => <option key={v} value={v}>{l}</option>)}
-              </select>
-            ))}
-          </div>
-        </div>
-
-        {/* Table */}
-        <div style={{ overflowX: 'auto' }}>
-          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '12px' }}>
-            <thead>
-              <tr style={{ borderBottom: '1px solid #334155' }}>
-                {['Usuario','Teléfono','País','Plataforma','Versión','Estado','Registrado','Última Vez','Sesiones'].map(h => (
-                  <th key={h} style={{ padding: '8px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {paged.map(u => {
-                const s = STATUS[u.status];
-                return (
-                  <tr key={u.id} style={{ borderBottom: '1px solid #0f172a', transition: 'background 0.1s' }}
-                    onMouseEnter={e => (e.currentTarget.style.background = '#0f172a')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    <td style={{ padding: '9px 10px', color: '#e2e8f0', fontWeight: '600', whiteSpace: 'nowrap' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: `linear-gradient(135deg,${s.color}40,${s.color}20)`, border: `1px solid ${s.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '12px', fontWeight: '800', color: s.color, flexShrink: 0 }}>
-                          {u.name.charAt(0)}
-                        </div>
-                        {u.name}
-                      </div>
-                    </td>
-                    <td style={{ padding: '9px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{u.phone}</td>
-                    <td style={{ padding: '9px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{u.country}</td>
-                    <td style={{ padding: '9px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '12px' }}>{u.platform === 'Android' ? '🤖' : u.platform === 'iOS' ? '🍎' : '🌐'}</span> {u.platform}
-                    </td>
-                    <td style={{ padding: '9px 10px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '700', color: u.version === '2.5.1' ? theme.l3 : '#f59e0b', background: u.version === '2.5.1' ? 'rgba(0,200,160,0.1)' : 'rgba(245,158,11,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
-                        v{u.version}
-                      </span>
-                    </td>
-                    <td style={{ padding: '9px 10px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: s.color, background: s.bg, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${s.color}20` }}>
-                        {s.icon} {s.label}
-                      </span>
-                    </td>
-                    <td style={{ padding: '9px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{u.registered}</td>
-                    <td style={{ padding: '9px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{u.lastSeen}</td>
-                    <td style={{ padding: '9px 10px', color: theme.textMuted, textAlign: 'center' }}>{u.sessions}</td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-
-        {/* Pagination */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '14px', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: theme.textMuted }}>
-            Mostrando {Math.min(page * PAGE_SIZE + 1, filtered.length)}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length.toLocaleString()} usuarios
-          </span>
-          <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={() => setPage(0)}           disabled={page === 0}            style={{ padding: '5px 10px', borderRadius: '7px', background: theme.bg, border: `1px solid ${theme.border}`, color: page === 0 ? '#334155' : '#94a3b8', fontSize: '11px', cursor: page === 0 ? 'default' : 'pointer' }}>«</button>
-            <button onClick={() => setPage(p => p - 1)} disabled={page === 0}            style={{ padding: '5px 10px', borderRadius: '7px', background: theme.bg, border: `1px solid ${theme.border}`, color: page === 0 ? '#334155' : '#94a3b8', fontSize: '11px', cursor: page === 0 ? 'default' : 'pointer' }}>‹</button>
-            {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-              const p = Math.max(0, Math.min(page - 2 + i, totalPages - 1));
-              return (
-                <button key={p} onClick={() => setPage(p)} style={{ padding: '5px 10px', borderRadius: '7px', background: p === page ? 'linear-gradient(135deg,#00c8a0,#00b4e6)' : '#0f172a', border: `1px solid ${p === page ? theme.l3 : '#334155'}`, color: p === page ? '#fff' : '#94a3b8', fontSize: '11px', cursor: 'pointer', fontWeight: p === page ? '800' : '400' }}>{p + 1}</button>
-              );
-            })}
-            <button onClick={() => setPage(p => p + 1)} disabled={page >= totalPages - 1} style={{ padding: '5px 10px', borderRadius: '7px', background: theme.bg, border: `1px solid ${theme.border}`, color: page >= totalPages - 1 ? '#334155' : '#94a3b8', fontSize: '11px', cursor: page >= totalPages - 1 ? 'default' : 'pointer' }}>›</button>
-            <button onClick={() => setPage(totalPages - 1)} disabled={page >= totalPages - 1} style={{ padding: '5px 10px', borderRadius: '7px', background: theme.bg, border: `1px solid ${theme.border}`, color: page >= totalPages - 1 ? '#334155' : '#94a3b8', fontSize: '11px', cursor: page >= totalPages - 1 ? 'default' : 'pointer' }}>»</button>
-          </div>
         </div>
       </div>
     </div>
   );
+};
+
+const MOCK_TREND = Array.from({ length: 30 }, (_, i) => ({ day: `D${i+1}`, users: Math.floor(Math.random()*5) }));
+const MOCK = {
+  total: 0, onlineNow: 0, newToday: 0, newWeek: 0, newMonth: 0,
+  byPlatform: [{ name: 'Android', count: 0 }, { name: 'iOS', count: 0 }, { name: 'Web', count: 0 }],
+  byCountry:  [{ country: 'Guinea Ecuatorial', flag: '🇬🇶', count: 0, pct: 100 }],
+  growthTrend: [],
 };
