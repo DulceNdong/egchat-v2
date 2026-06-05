@@ -37,6 +37,7 @@ export const adminAPI = {
   getSecurity:    () => req<any>('/api/admin/metrics/security'),
   getInfra:       () => req<any>('/api/admin/metrics/infra'),
   getSqliteSync:  () => req<any>('/api/admin/metrics/sqlite-sync'),
+  getUsersMetrics:() => req<any>('/api/admin/metrics/users'),
 
   // Auditoría
   getAuditLog: (params: Record<string, string>) => {
