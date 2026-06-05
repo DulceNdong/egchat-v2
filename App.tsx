@@ -788,10 +788,11 @@ const App: React.FC = () => {
       try {
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
           const kh = info.keyboardHeight || 0;
-          const el = chatContainerRef.current;
+          // Usar querySelector porque el ref puede no estar montado aún
+          const el = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
           if (el) {
-            // Con position:fixed, ajustar bottom para que suba con el teclado
             el.style.bottom = `${kh}px`;
+            el.style.transition = 'bottom 0.25s ease';
           }
           requestAnimationFrame(() => {
             const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -799,9 +800,10 @@ const App: React.FC = () => {
           });
         });
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
-          const el = chatContainerRef.current;
+          const el = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
           if (el) {
             el.style.bottom = '0px';
+            el.style.transition = 'bottom 0.2s ease';
           }
         });
       } catch {
