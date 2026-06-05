@@ -45,7 +45,9 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
   const loadAppUsers = async () => {
     try {
       setLoadingUsers(true);
-      const users = await chatAPI.searchUsers('');
+      // Buscar con query vacío puede fallar — usar 'a' como mínimo para traer todos
+      const users = await chatAPI.searchUsers('a').catch(() => []) ||
+                    await chatAPI.searchUsers('e').catch(() => []) || [];
       const existingIds = new Set(existingContacts.map((c: any) =>
         (c.contact_user_id || c.id)?.toString()
       ));
@@ -58,6 +60,19 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
           avatar_url: u.avatar_url || '',
         }));
       setAppUsers(filtered);
+      if (filtered.length === 0 && users.length === 0) {
+        // Si no hay resultados con 'a', probar con lista completa de usuarios
+        const allUsers = await chatAPI.searchUsers(' ').catch(() => []) || [];
+        const filteredAll = (allUsers || [])
+          .filter((u: any) => u.id?.toString() !== currentUserId && !existingIds.has(u.id?.toString()))
+          .map((u: any) => ({
+            id: u.id?.toString() || '',
+            full_name: u.full_name || 'Usuario',
+            phone: u.phone || '',
+            avatar_url: u.avatar_url || '',
+          }));
+        setAppUsers(filteredAll);
+      }
     } catch {
       setAppUsers([]);
     } finally {
@@ -75,8 +90,15 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
     if (selectedUsers.size === 0) return;
     try {
       setAddingUsers(true);
+      // Añadir por phone (más compatible con el backend) o por userId
+      const usersToAdd = appUsers.filter(u => selectedUsers.has(u.id));
       await Promise.all(
-        Array.from(selectedUsers).map(userId => contactsAPI.add(userId))
+        usersToAdd.map(user =>
+          contactsAPI.add(user.id).catch(() =>
+            // fallback: intentar por teléfono si falla por ID
+            contactsAPI.add(user.phone)
+          )
+        )
       );
       onClose();
     } catch {
@@ -153,7 +175,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'flex-end', zIndex: 5000 }}>
-      <div style={{ width: '100%', maxWidth: '420px', background: '#fff', borderTopLeftRadius: '20px', borderTopRightRadius: '20px', padding: '16px', maxHeight: '90vh', display: 'flex', flexDirection: 'column' }}>
+      <div style={{ width: '100%', maxWidth: '420px', background: '#ffffff', borderTopLeftRadius: '20px', borderTopRightRadius: '20px', padding: '16px', maxHeight: '90vh', display: 'flex', flexDirection: 'column', colorScheme: 'light' }}>
 
         {/* Header */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
@@ -185,12 +207,12 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               </label>
               <div style={{ position: 'relative' }}>
                 <Search size={16} style={{ position: 'absolute', left: '10px', top: '50%', transform: 'translateY(-50%)', color: '#9CA3AF' }} />
-                <input
+              <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => handleSearch(e.target.value)}
                   placeholder="Ej: +240123456789 o Juan"
-                  style={{ width: '100%', padding: '10px 12px 10px 32px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                  style={{ width: '100%', padding: '10px 12px 10px 32px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', color: '#111827', background: '#fff', WebkitTextFillColor: '#111827' }}
                 />
               </div>
             </div>
@@ -210,7 +232,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
             <div style={{ marginBottom: '12px' }}>
               <label style={{ fontSize: '12px', fontWeight: '600', color: '#6B7280', display: 'block', marginBottom: '6px' }}>Nombre del contacto</label>
               <input type="text" value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Nombre del contacto"
-                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                style={{ width: '100%', padding: '10px 12px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', color: '#111827', background: '#fff', WebkitTextFillColor: '#111827' }} />
             </div>
 
             <div style={{ marginBottom: '16px' }}>
@@ -218,7 +240,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
               <div style={{ display: 'flex', gap: '8px' }}>
                 <div style={{ padding: '10px 12px', background: '#F3F4F6', borderRadius: '10px', fontSize: '14px', fontWeight: '600', color: '#374151', whiteSpace: 'nowrap' }}>+240</div>
                 <input type="tel" value={phoneNumber} onChange={(e) => setPhoneNumber(e.target.value)} placeholder="numero de telefono"
-                  style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }} />
+                  style={{ flex: 1, padding: '10px 12px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', color: '#111827', background: '#fff', WebkitTextFillColor: '#111827' }} />
               </div>
             </div>
 
@@ -272,7 +294,7 @@ export const AddContactModal: React.FC<AddContactModalProps> = ({
                 value={repertorioSearch}
                 onChange={(e) => setRepertorioSearch(e.target.value)}
                 placeholder="Buscar por nombre o teléfono..."
-                style={{ width: '100%', padding: '10px 12px 10px 32px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none' }}
+                style={{ width: '100%', padding: '10px 12px 10px 32px', border: '1.5px solid #E5E7EB', borderRadius: '10px', fontSize: '14px', boxSizing: 'border-box', outline: 'none', color: '#111827', background: '#fff', WebkitTextFillColor: '#111827' }}
               />
             </div>
 
