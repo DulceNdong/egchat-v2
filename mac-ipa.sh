@@ -69,7 +69,16 @@ npm run build
 ok "Build completado → dist/"
 echo ""
 
-# ── 5. CAPACITOR SYNC ────────────────────────────────────────────
+# ── 5. CAPACITOR ADD + SYNC ──────────────────────────────────────
+info "Verificando plataforma iOS..."
+if [ ! -d "ios" ]; then
+  info "Añadiendo plataforma iOS..."
+  npx cap add ios
+  ok "cap add ios completado"
+else
+  ok "Plataforma iOS ya existe"
+fi
+
 info "Sincronizando Capacitor iOS..."
 npx cap sync ios
 ok "cap sync completado"

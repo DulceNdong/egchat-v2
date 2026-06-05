@@ -55,6 +55,7 @@ export default defineConfig(({ mode }) => {
     cssCodeSplit: true,
     chunkSizeWarningLimit: 1600,
     rollupOptions: {
+      external: ['@capacitor-community/sqlite'],
       output: {
         manualChunks: (id) => {
           if (id.includes('@maptiler')) return 'maptiler';
@@ -75,7 +76,7 @@ export default defineConfig(({ mode }) => {
   },
   optimizeDeps: {
     include: ['react', 'react-dom'],
-    exclude: ['@maptiler/sdk', 'tesseract.js'],
+    exclude: ['@maptiler/sdk', 'tesseract.js', '@capacitor-community/sqlite'],
   },
   };
 });

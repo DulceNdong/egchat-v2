@@ -7,6 +7,10 @@ import { Login } from './pages/Login';
 import { ExecutiveDashboard } from './pages/Dashboard/Executive';
 import { FinancialDashboard } from './pages/Dashboard/Financial';
 import { StrategicDashboard } from './pages/Dashboard/Strategic';
+import { RiskDashboard } from './pages/Dashboard/Risk';
+import { UsersDashboard } from './pages/Dashboard/Users';
+import { SupportDashboard } from './pages/Dashboard/Support';
+import { MiniAppsDashboard } from './pages/Dashboard/MiniApps';
 import { OperationalDashboard } from './pages/Dashboard/Operational';
 import { ChatDashboard } from './pages/Dashboard/Chat';
 import { WalletDashboard } from './pages/Dashboard/Wallet';
@@ -21,6 +25,10 @@ const TITLES: Record<string, string> = {
   '/dashboard/executive':    '🏛️ Centro de Control Ejecutivo',
   '/dashboard/financial':    '💹 Dashboard Financiero',
   '/dashboard/strategic':    '🎯 Dashboard Estratégico',
+  '/dashboard/risk':         '⚠️ Dashboard de Riesgo',
+  '/dashboard/users':        '👤 Dashboard de Usuarios',
+  '/dashboard/support':      '🎧 Dashboard de Soporte',
+  '/dashboard/mini-apps':    '📱 Dashboard Mini Apps',
   '/dashboard/operational':  'Dashboard Operacional',
   '/dashboard/chat':         'Dashboard Chat',
   '/dashboard/wallet':       'Dashboard Wallet',
@@ -48,6 +56,10 @@ function ProtectedLayout() {
             <Route path="/dashboard/executive"    element={<ExecutiveDashboard />} />
             <Route path="/dashboard/financial"    element={<FinancialDashboard />} />
             <Route path="/dashboard/strategic"    element={<StrategicDashboard />} />
+            <Route path="/dashboard/risk"         element={<RiskDashboard />} />
+            <Route path="/dashboard/users"        element={<UsersDashboard />} />
+            <Route path="/dashboard/support"      element={<SupportDashboard />} />
+            <Route path="/dashboard/mini-apps"    element={<MiniAppsDashboard />} />
             <Route path="/dashboard/operational"   element={<OperationalDashboard />} />
             <Route path="/dashboard/chat"          element={<ChatDashboard />} />
             <Route path="/dashboard/wallet"        element={<WalletDashboard />} />
@@ -72,6 +84,10 @@ function DefaultRedirect() {
     executive:      '/dashboard/executive',
     financial:      '/dashboard/financial',
     strategic:      '/dashboard/strategic',
+    risk:           '/dashboard/risk',
+    users:          '/dashboard/users',
+    support:        '/dashboard/support',
+    mini_apps:      '/dashboard/mini-apps',
     operational:    '/dashboard/operational', chat: '/dashboard/chat',
     wallet:         '/dashboard/wallet', security: '/dashboard/security',
     infrastructure: '/dashboard/infrastructure', sqlite_sync: '/dashboard/sqlite-sync',
