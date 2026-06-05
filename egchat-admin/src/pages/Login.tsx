@@ -12,9 +12,11 @@ export const Login: React.FC = () => {
   // Check backend status on mount
   useEffect(() => {
     const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api.onrender.com';
-    fetch(`${API}/health`, { signal: AbortSignal.timeout(8000) })
-      .then(r => setServerStatus(r.ok ? 'ok' : 'sleeping'))
-      .catch(() => setServerStatus('sleeping'));
+    const ctrl = new AbortController();
+    const timer = setTimeout(() => ctrl.abort(), 8000);
+    fetch(`${API}/health`, { signal: ctrl.signal })
+      .then(r => { clearTimeout(timer); setServerStatus(r.ok ? 'ok' : 'sleeping'); })
+      .catch(() => { clearTimeout(timer); setServerStatus('sleeping'); });
   }, []);
 
   if (admin) return <Navigate to="/dashboard/operational" replace />;

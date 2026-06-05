@@ -232,27 +232,109 @@ export const QRScanner: React.FC<Props> = ({ onScan, onClose }) => {
 
   return (
     <div style={{ position: 'fixed', inset: 0, background: '#000', zIndex: 6000, display: 'flex', flexDirection: 'column' }}>
-      {/* Header */}
-      <div style={{ padding: '16px', display: 'flex', alignItems: 'center', gap: '12px', background: 'rgba(0,0,0,0.8)' }}>
-        <button onClick={onClose} style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer', padding: '4px' }}>
-          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+      {/* Header — respeta safe-area-inset-top del iPhone */}
+      <div style={{
+        paddingTop: 'calc(env(safe-area-inset-top, 0px) + 12px)',
+        paddingBottom: '12px',
+        paddingLeft: '16px',
+        paddingRight: '16px',
+        display: 'flex',
+        alignItems: 'center',
+        gap: '12px',
+        background: 'rgba(0,0,0,0.85)',
+        backdropFilter: 'blur(12px)',
+        WebkitBackdropFilter: 'blur(12px)',
+        borderBottom: '1px solid rgba(255,255,255,0.08)',
+      }}>
+        {/* Botón volver */}
+        <button
+          onClick={onClose}
+          style={{
+            background: 'rgba(255,255,255,0.1)',
+            border: 'none',
+            color: '#fff',
+            cursor: 'pointer',
+            padding: '0',
+            width: '36px',
+            height: '36px',
+            borderRadius: '50%',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            flexShrink: 0,
+          }}
+        >
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
             <path d="M19 12H5M12 5l-7 7 7 7"/>
           </svg>
         </button>
-        <span style={{ color: '#fff', fontSize: '16px', fontWeight: '600', flex: 1 }}>Escanear QR</span>
-        {/* Toggle cámara / subir imagen */}
-        <div style={{ display: 'flex', background: 'rgba(255,255,255,0.1)', borderRadius: '20px', padding: '3px', gap: '2px' }}>
+
+        {/* Título con icono QR */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1 }}>
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <path d="M14 14h1v1h-1zM18 14h3M14 18h1M17 17h1v1M20 17v4M14 21h4"/>
+          </svg>
+          <span style={{ color: '#fff', fontSize: '16px', fontWeight: '600', letterSpacing: '-0.2px' }}>Escanear QR</span>
+        </div>
+
+        {/* Toggle cámara / imagen — con iconos SVG */}
+        <div style={{
+          display: 'flex',
+          background: 'rgba(255,255,255,0.08)',
+          borderRadius: '22px',
+          padding: '3px',
+          gap: '2px',
+          border: '1px solid rgba(255,255,255,0.1)',
+        }}>
           <button
             onClick={switchToCamera}
-            style={{ background: mode === 'camera' ? '#00c8a0' : 'transparent', border: 'none', borderRadius: '16px', padding: '5px 12px', color: '#fff', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}
+            style={{
+              background: mode === 'camera' ? '#00c8a0' : 'transparent',
+              border: 'none',
+              borderRadius: '18px',
+              padding: '6px 12px',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              letterSpacing: '0.1px',
+            }}
           >
-            📷 Cámara
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <circle cx="12" cy="13" r="4"/>
+            </svg>
+            Cámara
           </button>
           <button
             onClick={switchToUpload}
-            style={{ background: mode === 'upload' ? '#00c8a0' : 'transparent', border: 'none', borderRadius: '16px', padding: '5px 12px', color: '#fff', fontSize: '12px', fontWeight: '600', cursor: 'pointer', transition: 'background 0.2s' }}
+            style={{
+              background: mode === 'upload' ? '#00c8a0' : 'transparent',
+              border: 'none',
+              borderRadius: '18px',
+              padding: '6px 12px',
+              color: '#fff',
+              fontSize: '12px',
+              fontWeight: '600',
+              cursor: 'pointer',
+              transition: 'background 0.2s',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '5px',
+              letterSpacing: '0.1px',
+            }}
           >
-            🖼️ Imagen
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+              <polyline points="21 15 16 10 5 21"/>
+            </svg>
+            Imagen
           </button>
         </div>
       </div>
@@ -265,14 +347,32 @@ export const QRScanner: React.FC<Props> = ({ onScan, onClose }) => {
           <>
             {error ? (
               <div style={{ textAlign: 'center', padding: '32px 24px', color: '#fff', maxWidth: '320px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '16px' }}>📷</div>
+                <div style={{ width: '64px', height: '64px', background: 'rgba(239,68,68,0.15)', borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px' }}>
+                  <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#f87171" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                    <line x1="12" y1="11" x2="12" y2="15"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+                  </svg>
+                </div>
                 <div style={{ fontSize: '13px', color: '#fca5a5', marginBottom: '24px', lineHeight: '1.6', whiteSpace: 'pre-line' }}>{error}</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                  <button onClick={() => { setError(''); setStatus('loading'); startCamera(); }} style={{ background: '#00c8a0', border: 'none', borderRadius: '12px', padding: '13px 20px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                    🔄 Reintentar cámara
+                  <button
+                    onClick={() => { setError(''); setStatus('loading'); startCamera(); }}
+                    style={{ background: '#00c8a0', border: 'none', borderRadius: '12px', padding: '13px 20px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.27"/>
+                    </svg>
+                    Reintentar cámara
                   </button>
-                  <button onClick={switchToUpload} style={{ background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '12px', padding: '13px 20px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
-                    🖼️ Subir imagen del QR
+                  <button
+                    onClick={switchToUpload}
+                    style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.15)', borderRadius: '12px', padding: '13px 20px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                  >
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                      <polyline points="21 15 16 10 5 21"/>
+                    </svg>
+                    Subir imagen del QR
                   </button>
                 </div>
               </div>
@@ -306,9 +406,15 @@ export const QRScanner: React.FC<Props> = ({ onScan, onClose }) => {
         {/* ── MODO SUBIR IMAGEN ── */}
         {mode === 'upload' && (
           <div style={{ textAlign: 'center', padding: '32px 24px', color: '#fff', maxWidth: '320px', width: '100%' }}>
-            <div style={{ fontSize: '56px', marginBottom: '16px' }}>🖼️</div>
+            {/* Icono SVG profesional */}
+            <div style={{ width: '72px', height: '72px', background: 'rgba(0,200,160,0.12)', borderRadius: '24px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 20px', border: '1px solid rgba(0,200,160,0.2)' }}>
+              <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/>
+                <polyline points="21 15 16 10 5 21"/>
+              </svg>
+            </div>
             <div style={{ fontSize: '16px', fontWeight: '700', marginBottom: '8px' }}>Subir imagen del QR</div>
-            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.6)', marginBottom: '28px', lineHeight: '1.6' }}>
+            <div style={{ fontSize: '13px', color: 'rgba(255,255,255,0.5)', marginBottom: '28px', lineHeight: '1.6' }}>
               Toma una foto del código QR con tu cámara nativa y súbela aquí, o selecciona una imagen de tu galería.
             </div>
 
@@ -350,23 +456,30 @@ export const QRScanner: React.FC<Props> = ({ onScan, onClose }) => {
                     onClick={() => fileInputRef.current?.click()}
                     style={{ background: '#00c8a0', border: 'none', borderRadius: '14px', padding: '15px 20px', color: '#fff', fontSize: '15px', fontWeight: '700', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                   >
-                    📸 Tomar foto del QR
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                      <circle cx="12" cy="13" r="4"/>
+                    </svg>
+                    Tomar foto del QR
                   </button>
                   <button
                     onClick={() => document.getElementById('qr-gallery-input')?.click()}
-                    style={{ background: 'rgba(255,255,255,0.15)', border: '1.5px solid rgba(255,255,255,0.2)', borderRadius: '14px', padding: '15px 20px', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
+                    style={{ background: 'rgba(255,255,255,0.1)', border: '1.5px solid rgba(255,255,255,0.15)', borderRadius: '14px', padding: '15px 20px', color: '#fff', fontSize: '15px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '10px' }}
                   >
-                    🗂️ Elegir de galería
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                      <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+                    </svg>
+                    Elegir de galería
                   </button>
                 </div>
 
                 {uploadError && (
-                  <div style={{ marginTop: '20px', padding: '12px 16px', background: 'rgba(239,68,68,0.15)', border: '1px solid rgba(239,68,68,0.3)', borderRadius: '10px', color: '#fca5a5', fontSize: '13px', lineHeight: '1.5' }}>
+                  <div style={{ marginTop: '20px', padding: '12px 16px', background: 'rgba(239,68,68,0.12)', border: '1px solid rgba(239,68,68,0.25)', borderRadius: '10px', color: '#fca5a5', fontSize: '13px', lineHeight: '1.5' }}>
                     {uploadError}
                   </div>
                 )}
 
-                <button onClick={switchToCamera} style={{ marginTop: '20px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.5)', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}>
+                <button onClick={switchToCamera} style={{ marginTop: '20px', background: 'none', border: 'none', color: 'rgba(255,255,255,0.4)', fontSize: '13px', cursor: 'pointer', textDecoration: 'underline' }}>
                   Volver a intentar con cámara
                 </button>
               </>
