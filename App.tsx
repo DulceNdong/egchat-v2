@@ -779,36 +779,38 @@ const App: React.FC = () => {
   React.useEffect(() => {
     const vv = window.visualViewport;
     if (!vv) return;
-    let viewportHeight = window.innerHeight;
-    let offset = 0;
     const update = () => {
+      // Forzar scroll a 0 para que el body no se mueva
       window.scrollTo(0, 0);
-      const currentH = vv.height;
-      const diff = viewportHeight - currentH;
-      if (diff > 150) {
-        const adjustment = viewportHeight - currentH - offset;
-        if (chatContainerRef.current) {
-          chatContainerRef.current.style.bottom = `${adjustment}px`;
-          chatContainerRef.current.style.top = '0px';
-        }
-        // Scroll al fondo para que el último mensaje sea visible
-        requestAnimationFrame(() => {
-          const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-          if (scroll) scroll.scrollTop = scroll.scrollHeight;
-        });
-      } else {
-        offset = viewportHeight - currentH;
-        if (chatContainerRef.current) {
-          chatContainerRef.current.style.bottom = '0px';
-          chatContainerRef.current.style.top = '0px';
-        }
-      }
+      if (!chatContainerRef.current) return;
+      // vv.height = altura visible cuando el teclado está abierto
+      // vv.offsetTop = desplazamiento vertical del viewport (en Safari puede ser > 0)
+      const visibleHeight = vv.height;
+      const topOffset = vv.offsetTop || 0;
+      chatContainerRef.current.style.top = `${topOffset}px`;
+      chatContainerRef.current.style.height = `${visibleHeight}px`;
+      chatContainerRef.current.style.bottom = '';
+      // Scroll al último mensaje
+      requestAnimationFrame(() => {
+        const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+        if (scroll) scroll.scrollTop = scroll.scrollHeight;
+      });
     };
+    // Ejecutar al montar para inicializar correctamente
+    update();
     vv.addEventListener('resize', update);
+    vv.addEventListener('scroll', update);
     document.addEventListener('touchend', () => window.scrollTo(0, 0));
     return () => {
       vv.removeEventListener('resize', update);
+      vv.removeEventListener('scroll', update);
       document.removeEventListener('touchend', () => window.scrollTo(0, 0));
+      // Restaurar al desmontar
+      if (chatContainerRef.current) {
+        chatContainerRef.current.style.top = '0px';
+        chatContainerRef.current.style.height = '';
+        chatContainerRef.current.style.bottom = '0px';
+      }
     };
   }, []);
   const [showChatAttach, setShowChatAttach] = useState<boolean>(false);
@@ -5228,8 +5230,9 @@ const App: React.FC = () => {
               top: 0,
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0,
-              bottom: 0,
-              height: device.isMobile ? '100dvh' : undefined,
+              /* bottom e height son controlados por el hook de visualViewport */
+              bottom: device.isMobile ? undefined : 0,
+              height: device.isMobile ? (window.visualViewport?.height ?? window.innerHeight) + 'px' : undefined,
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',

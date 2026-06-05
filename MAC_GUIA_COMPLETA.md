@@ -1,26 +1,63 @@
-# 📱 Guía Completa para Compilar EGCHAT en Mac
+# 📱 Guía Completa — Compilar EGCHAT en Mac para IPA
+### Estado: Junio 2026 — v2.5.4 (Build 7)
 
-## ⚡ OPCIÓN RÁPIDA — Un solo comando
+---
 
-Copia el proyecto al Mac y ejecuta:
+## 🧳 QUÉ LLEVAR AL MAC
 
+### Opción A: USB / AirDrop (recomendado si no tienes git configurado en Mac)
+Copia **toda la carpeta** `EGCHAT_BACKUP_20260320` al Mac.
+
+> ⚠️ **Archivos que NO necesitas copiar** (son pesados y se regeneran):
+> - `node_modules/` → se regenera con `npm install`
+> - `dist/` → se regenera con `npm run build`
+> - `ios/App/Pods/` → se regenera con `pod install`
+> - `ios/App/App.xcworkspace` → se regenera con `pod install`
+> - `.git/` → opcional, solo si quieres historial de commits
+
+Carpeta limpia estimada: **~50 MB** sin esas carpetas
+
+### Opción B: GitHub
 ```bash
-bash build-ios.sh
+git clone https://github.com/DulceNdong/egchat-v2.git
+cd egchat-v2
 ```
 
-El script hace todo automáticamente: `npm install` → `npm run build` → `cap sync ios` → `pod install` → abre Xcode.
+---
+
+## 📋 ARCHIVOS CLAVE DEL PROYECTO (verificar que están)
+
+```
+EGCHAT_BACKUP_20260320/
+├── src/                          ← código fuente React
+├── public/                       ← assets estáticos (iconos, splash)
+├── ios/
+│   └── App/
+│       ├── App/
+│       │   ├── AppDelegate.swift  ← push notifications + deep links
+│       │   ├── Info.plist         ← permisos + bundle ID
+│       │   ├── Assets.xcassets/   ← iconos de la app
+│       │   └── public/            ← web assets copiados por cap sync
+│       └── Podfile                ← dependencias CocoaPods
+├── capacitor.config.ts            ← config Capacitor (bundle ID, plugins)
+├── package.json                   ← v2.5.4, deps Node
+├── vite.config.ts                 ← build config con code splitting
+├── sw.js                          ← service worker (egchat-push-v20260602)
+├── App.tsx                        ← layout principal (safe-area iPhone)
+└── build-ios.sh                   ← script automático
+```
 
 ---
 
 ## 🛠️ PREREQUISITOS DEL MAC
 
-### 1. Xcode (obligatorio)
+### 1. Xcode 15+ (obligatorio)
 ```bash
-# Instalar desde App Store o:
-xcode-select --install
-
-# Verificar versión (requiere Xcode 15+)
+# Verificar:
 xcodebuild -version
+# Si no está: instalar desde App Store (Xcode, ~15 GB)
+# Aceptar licencia:
+sudo xcodebuild -license accept
 ```
 
 ### 2. CocoaPods (obligatorio)
@@ -28,263 +65,284 @@ xcodebuild -version
 sudo gem install cocoapods
 pod --version   # debe mostrar 1.14+
 ```
+> Si da error con Ruby en macOS Sonoma/Ventura:
+> ```bash
+> brew install cocoapods
+> ```
 
 ### 3. Node.js 20+ (obligatorio)
 ```bash
-# Con Homebrew (recomendado):
 brew install node@20
-
-# Verificar
 node --version  # v20.x.x
 npm --version   # 10.x.x
 ```
 
-### 4. Homebrew (recomendado)
+### 4. Homebrew (si no lo tienes)
 ```bash
 /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
 ```
 
 ---
 
-## 📋 PASOS PASO A PASO
+## ⚡ OPCIÓN RÁPIDA — Un solo comando
 
-### Paso 1 — Copiar el proyecto al Mac
-
-**Opción A: GitHub (recomendado)**
+Desde la raíz del proyecto:
 ```bash
-git clone https://github.com/DulceNdong/egchat-v2.git
-cd egchat-v2
+bash build-ios.sh
 ```
+El script hace: verificar herramientas → `npm install` → `npm run build` → `cap sync ios` → `pod install` → abre Xcode.
 
-**Opción B: USB/AirDrop**
-```bash
-# Copiar EGCHAT_BACKUP_20260320/ al Mac
-cd /ruta/a/EGCHAT_BACKUP_20260320
-```
+---
 
-### Paso 2 — Instalar dependencias Node
+## 🔢 PASOS MANUALES (si prefieres hacerlo tú)
+
+### Paso 1 — Instalar dependencias
 ```bash
 npm install --legacy-peer-deps
 ```
+> `--legacy-peer-deps` es necesario por conflicto entre React 19 y algunas deps
 
-### Paso 3 — Build del frontend
+### Paso 2 — Build del frontend
 ```bash
 npm run build
 ```
-Resultado esperado: `✔ built in X.Xs`
+Resultado esperado: `✔ built in X.Xs`, carpeta `dist/` creada
 
-### Paso 4 — Sincronizar con Capacitor
+### Paso 3 — Sincronizar Capacitor
 ```bash
 npx cap sync ios
 ```
-Resultado esperado: `Sync finished in X.XXs`
+Copia `dist/` → `ios/App/App/public/` y actualiza plugins
 
-### Paso 5 — Instalar CocoaPods
+### Paso 4 — Instalar CocoaPods
 ```bash
 cd ios/App
 pod install --repo-update
 cd ../..
 ```
-⚠️ La primera vez tarda 3-10 minutos — descarga repositorio de specs de CocoaPods.
+⚠️ La primera vez tarda 5-15 min (descarga specs de CocoaPods)
 
 **Pods que se instalan:**
-```
-Capacitor                      6.x  — core del webview nativo
-CapacitorCordova               6.x  — compatibilidad plugins
-CapacitorApp                   6.x  — lifecycle (background/foreground)
-CapacitorFilesystem            6.x  — FileCache (avatares, imágenes)
-CapacitorHaptics               6.x  — vibración
-CapacitorKeyboard              6.x  — ajuste teclado
-CapacitorPreferences           6.x  — SecureStorage (Keychain)
-CapacitorPushNotifications     6.x  — push notifications FCM
-CapacitorSplashScreen          6.x  — pantalla de carga
-CapacitorCommunitySQLite       6.x  — SQLite con SQLCipher (AES-256)
-```
+| Pod | Versión | Para qué |
+|-----|---------|----------|
+| Capacitor | 6.x | Core WebView nativo |
+| CapacitorCordova | 6.x | Compatibilidad plugins |
+| CapacitorApp | 6.x | Lifecycle app |
+| CapacitorFilesystem | 6.x | Cache avatares/imágenes |
+| CapacitorHaptics | 6.x | Vibración táctil |
+| CapacitorKeyboard | 6.x | Ajuste teclado |
+| CapacitorPreferences | 6.x | SecureStorage (Keychain) |
+| CapacitorPushNotifications | 6.x | Push notifications FCM/APNs |
+| CapacitorSplashScreen | 6.x | Pantalla de carga |
+| CapacitorCommunitySQLite | 6.x | SQLite + SQLCipher AES-256 |
 
-### Paso 6 — Abrir en Xcode
+### Paso 5 — Abrir en Xcode
 ```bash
 open ios/App/App.xcworkspace
 ```
-⚠️ **IMPORTANTE:** Abrir `.xcworkspace`, NO `.xcodeproj`
+> ⚠️ **SIEMPRE** abrir `.xcworkspace`, NUNCA `.xcodeproj`
 
 ---
 
 ## ⚙️ CONFIGURACIÓN EN XCODE
 
-### 6.1 Signing & Capabilities
+### A) Signing & Capabilities
 
-1. Click en **App** en el árbol de la izquierda
-2. Seleccionar target **App**
-3. Tab **Signing & Capabilities**
-4. **Team:** selecciona tu Apple Developer Team
+1. En el árbol izquierdo → click en **App** (raíz del proyecto)
+2. Target → **App**
+3. Tab → **Signing & Capabilities**
+4. **Team:** tu Apple Developer Team (necesitas cuenta pagada para distribuir)
 5. **Bundle Identifier:** `com.egchat.app`
 6. Marcar **Automatically manage signing** ✓
 
-### 6.2 Capabilities (añadir si no aparecen)
+### B) Capabilities — verificar que están presentes
 
-Click en **+ Capability** y añadir:
+Click `+ Capability` y añadir si faltan:
 - ✅ **Push Notifications**
 - ✅ **Background Modes**
   - ✅ Background fetch
   - ✅ Remote notifications
+  - ✅ Voice over IP (VoIP)
 - ✅ **Keychain Sharing** (para SecureStorage — tokens en Keychain)
 
-### 6.3 Info.plist — Permisos
+### C) Build Settings
 
-Verificar que existan estas claves (ya deberían estar, si no añadir):
+Buscar en Build Settings:
+| Campo | Valor |
+|-------|-------|
+| iOS Deployment Target | **14.0** |
+| Swift Language Version | **Swift 5** |
+| Version (CFBundleShortVersionString) | **2.5.4** |
+| Build (CFBundleVersion) | **7** |
 
-```xml
-<key>NSCameraUsageDescription</key>
-<string>EGCHAT necesita la cámara para fotos y videollamadas</string>
+### D) Info.plist — ya configurado
 
-<key>NSMicrophoneUsageDescription</key>
-<string>EGCHAT necesita el micrófono para notas de voz y llamadas</string>
+El `Info.plist` ya tiene todos los permisos necesarios:
+- Cámara, Micrófono, Fotos, Contactos, Ubicación, Face ID
+- Background modes: fetch + remote-notification + voip
+- Deep links: `egchat://`
+- Bundle ID: `com.egchat.app`
 
-<key>NSContactsUsageDescription</key>
-<string>EGCHAT puede importar tus contactos para facilitar el chat</string>
-
-<key>NSLocationWhenInUseUsageDescription</key>
-<string>EGCHAT usa tu ubicación para MiTaxi y servicios locales</string>
-
-<key>NSPhotoLibraryUsageDescription</key>
-<string>EGCHAT necesita acceso a tus fotos para compartirlas</string>
-```
-
-### 6.4 Build Settings
-
-En **Build Settings** → buscar:
-- **iOS Deployment Target:** `14.0`
-- **Swift Language Version:** `Swift 5`
+> No hace falta tocar nada salvo que Apple rechace la build por un permiso que falta.
 
 ---
 
 ## 📦 GENERAR IPA
 
-### Para App Store (producción)
+### Para App Store Connect (producción)
 ```
 Product → Archive
 ```
-Esperar que compile (2-5 min). Luego:
+Esperar compilación (2-5 min). Luego:
 ```
 Window → Organizer → Archives
 → Seleccionar el archive más reciente
-→ Distribute App
-→ App Store Connect
-→ Upload
+→ "Distribute App"
+→ "App Store Connect"
+→ "Upload"
 ```
 
-### Para Ad Hoc / TestFlight (beta)
+### Para Ad Hoc / TestFlight (beta, enviar a testers)
 ```
 Product → Archive
-→ Distribute App
-→ Ad Hoc
-→ Seleccionar dispositivos
-→ Export
+→ "Distribute App"
+→ "Ad Hoc"
+→ Seleccionar dispositivos registrados
+→ Export IPA
 ```
 
-### Para dispositivo directo (testing)
+### Para dispositivo directo (testing sin cuenta pagada)
 ```
 Conectar iPhone por USB
 Product → Run (⌘R)
 ```
+> Requiere que el dispositivo esté registrado en tu Team de desarrollo
 
 ---
 
-## ✅ VERIFICACIONES ANTES DE ARCHIVE
+## ✅ CHECKLIST ANTES DE ARCHIVE
 
 ```bash
-# En terminal, desde raíz del proyecto:
-
-# 1. Verificar que el build está actualizado
+# 1. Build actualizado
 npm run build && echo "✅ Build OK"
 
-# 2. Verificar que cap sync está al día
+# 2. Cap sync al día
 npx cap sync ios && echo "✅ Cap sync OK"
 
-# 3. Verificar que los pods están instalados
+# 3. Pods instalados
 ls ios/App/Pods/ && echo "✅ Pods OK"
 
-# 4. Verificar que el workspace existe
+# 4. Workspace existe
 ls ios/App/App.xcworkspace && echo "✅ Workspace OK"
 ```
 
+En Xcode antes de Archive:
+- [ ] Team seleccionado en Signing
+- [ ] Bundle ID: `com.egchat.app`
+- [ ] Version: `2.5.4` / Build: `7`
+- [ ] Deployment Target: iOS 14.0
+- [ ] No hay errores rojos en el árbol del proyecto
+- [ ] Product → Clean Build Folder (⇧⌘K) antes de archivar
+
 ---
 
-## 🚨 PROBLEMAS COMUNES Y SOLUCIONES
+## 🚨 PROBLEMAS COMUNES
 
-### Error: "No such module 'Capacitor'"
+### "No such module 'Capacitor'"
 ```bash
 cd ios/App && pod deintegrate && pod install
 ```
 
-### Error: "Sandbox not in sync"
+### "Sandbox not in sync with the Podfile.lock"
 ```bash
 npx cap sync ios
 cd ios/App && pod install
 ```
 
-### Error: Signing Certificate
+### Error de Signing Certificate
 ```
-Xcode → Preferences → Accounts → Add Apple ID
+Xcode → Settings → Accounts → Add Apple ID
 Luego en Signing & Capabilities seleccionar tu Team
 ```
 
-### Error: "Multiple commands produce..."
+### "Multiple commands produce..."
 ```
 Product → Clean Build Folder (⇧⌘K)
 Luego Archive de nuevo
 ```
 
-### Pod install muy lento
+### pod install muy lento / falla
 ```bash
-# Actualizar repo de specs manualmente:
-pod repo update
+pod repo update   # actualiza specs manualmente
+pod install
 ```
 
-### Error SQLCipher / CapacitorCommunitySQLite
+### Error compilando CapacitorCommunitySQLite
 ```bash
-# Si hay error compilando el pod de SQLite:
 cd ios/App
 pod update CapacitorCommunitySQLite
 ```
 
+### Error en npm install con Node 20
+```bash
+npm install --legacy-peer-deps --force
+```
+
+### "xcrun: error: unable to find utility 'xcodebuild'"
+```bash
+sudo xcode-select --switch /Applications/Xcode.app
+sudo xcodebuild -license accept
+```
+
 ---
 
-## 📊 INFO DEL PROYECTO
+## 📊 DATOS DEL PROYECTO
 
 | Campo | Valor |
-|---|---|
-| Bundle ID | com.egchat.app |
-| Version | 2.5.4 |
+|-------|-------|
+| App Name | EGCHAT |
+| Bundle ID | `com.egchat.app` |
+| Versión | 2.5.4 |
 | Build Number | 7 |
-| iOS Mínimo | 14.0 |
+| iOS mínimo | 14.0 |
 | Capacitor | 6.x |
-| Node requerido | 18+ |
+| Node requerido | 18+ (recomendado 20+) |
 | Xcode requerido | 15+ |
 | CocoaPods | 1.14+ |
+| SW versión | egchat-push-v20260602 |
 
 ---
 
-## 🔑 URLS DE PRODUCCIÓN
+## 🔑 URLS DE PRODUCCIÓN (para verificar que la app conecta)
 
 ```
 Frontend:  https://egchat-v2.vercel.app
 API:       https://egchat-api.onrender.com
 WebSocket: wss://egchat-api.onrender.com/ws
-Repo:      https://github.com/DulceNdong/egchat-v2.git
 ```
 
 ---
 
-## 📝 VERSIÓN ESTABLE CONOCIDA
+## ⛔ REGLAS IPHONE — NO MODIFICAR
 
-El proyecto funciona correctamente en iPhone PWA en:
-- Git: master branch, commit **3b59aa0**
-- Bundle: 835 kB (con code splitting + minificación)
-- Configuración iOS: safe-area + WebSocket + SQLCipher
+Estos valores están funcionando correctamente y **no deben tocarse**:
 
-**⛔ NO MODIFICAR sin verificar:**
-- `viewPadding.top/bottom` en App.tsx
-- `env(safe-area-inset-top)` en headers
-- `height: 44px` del header
-- `height: 64px` del tab bar
+```
+viewPadding.top = 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)'
+viewPadding.bottom = 'calc(64px + env(safe-area-inset-bottom, 0px) + 16px)'
+Header paddingTop: 'env(safe-area-inset-top, 44px)'
+Header height: 44px
+Tab bar height: 64px
+```
+
+Si hay problema de layout: buscar la causa en z-index, overflow o flex.
+**Nunca tocar los valores de safe-area.**
+
+---
+
+## 📝 COMMIT ESTABLE DE REFERENCIA
+
+- Git: master branch, commit `9bfef82`
+- Bundle: 1,452 kB (con code splitting)
+- SW: egchat-push-v20260602
+- Fecha: 1 Junio 2026
