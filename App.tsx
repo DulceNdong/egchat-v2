@@ -5304,6 +5304,8 @@ const App: React.FC = () => {
               overflow: 'hidden',
               background: '#f0f2f5',
               zIndex: 1100,
+              /* Con resize:body, bottom:0 en fixed sigue el viewport no el body.
+                 Usamos height:100% del body redimensionado vía JS en el hook */
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Wallpaper del chat — individual por chat, no afecta a otros */}
               {(() => {
@@ -6458,8 +6460,7 @@ const App: React.FC = () => {
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
-                position: 'sticky',
-                bottom: 0,
+                position: 'relative',
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (
