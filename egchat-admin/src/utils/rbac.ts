@@ -1,156 +1,110 @@
 export type AdminRole = 'super_admin' | 'operations' | 'support' | 'finance' | 'security' | 'auditor';
 export type Module =
-  // FASE A — Dirección
   'executive' | 'financial' | 'strategic' | 'risk' |
-  // FASE B — Operaciones
-  'users' | 'support' | 'mini_apps' | 'operational' | 'chat' | 'wallet' | 'security' | 'infrastructure' | 'sqlite_sync' |
-  // FASE C — Tecnología y Seguridad
-  'devops' |
-  // Sistema
-  'audit' | 'admin_users';
+  'users' | 'chat' | 'wallet' | 'support' | 'mini_apps' |
+  'infrastructure' | 'devops' | 'security' | 'audit' | 'sqlite_sync' |
+  'operational' | 'admin_users';
 
 export type Action = 'read' | 'write' | 'delete';
-
-// Phase metadata for sidebar grouping
-export interface ModuleItem { id: Module; label: string; icon: string }
-export interface PhaseGroup { phase: string; label: string; modules: ModuleItem[] }
+export interface ModuleItem  { id: Module; label: string; icon: string }
+export interface PhaseGroup  { phase: string; label: string; modules: ModuleItem[] }
 
 const PERMISSIONS: Record<AdminRole, Partial<Record<Module | '*', Action[]>>> = {
   super_admin: { '*': ['read', 'write', 'delete'] },
   operations: {
-    executive: ['read'],
-    users: ['read', 'write'],
-    operational: ['read', 'write'],
-    chat: ['read', 'write'],
-    infrastructure: ['read', 'write'],
-    sqlite_sync: ['read', 'write'],
-    wallet: ['read'],
-    security: ['read'],
-    audit: ['read'],
+    executive: ['read'], users: ['read','write'], chat: ['read','write'],
+    wallet: ['read'], support: ['read'], operational: ['read','write'],
+    infrastructure: ['read','write'], sqlite_sync: ['read','write'], audit: ['read'],
   },
-  support: {
-    users: ['read'],
-    support: ['read', 'write'],
-    chat: ['read', 'write'],
-    operational: ['read'],
-  },
-  finance: {
-    financial: ['read'],
-    wallet: ['read', 'write'],
-    audit: ['read'],
-  },
-  security: {
-    security: ['read', 'write'],
-    audit: ['read', 'write'],
-    users: ['read'],
-    operational: ['read'],
-  },
-  auditor: { '*': ['read'] },
+  support:  { users: ['read'], chat: ['read','write'], support: ['read','write'], operational: ['read'] },
+  finance:  { financial: ['read'], wallet: ['read','write'], audit: ['read'] },
+  security: { security: ['read','write'], audit: ['read','write'], users: ['read'], operational: ['read'] },
+  auditor:  { '*': ['read'] },
 };
 
-// Flat list per role (for DefaultRedirect)
 export const MODULES_FOR_ROLE: Record<AdminRole, ModuleItem[]> = {
   super_admin: [
-    // A
-    { id: 'executive',      label: 'Ctrl. Ejecutivo', icon: '🏛️' },
-    { id: 'financial',      label: 'Financiero',      icon: '💹' },
-    { id: 'strategic',      label: 'Estratégico',     icon: '🎯' },
-    { id: 'risk',           label: 'Riesgo',          icon: '⚠️' },
-    // B
-    { id: 'users',          label: 'Usuarios',        icon: '👤' },
-    { id: 'support',        label: 'Soporte',         icon: '🎧' },
-    { id: 'mini_apps',      label: 'Mini Apps',       icon: '📱' },
-    { id: 'operational',    label: 'Operacional',     icon: '📊' },
-    { id: 'chat',           label: 'Chat',            icon: '💬' },
-    { id: 'wallet',         label: 'Wallet',          icon: '💰' },
-    { id: 'security',       label: 'Seguridad',       icon: '🔒' },
-    { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
-    { id: 'devops',         label: 'DevOps',          icon: '🛠️' },
-    { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
-    // Other
-    { id: 'audit',          label: 'Auditoría',       icon: '📋' },
-    { id: 'admin_users',    label: 'Administradores', icon: '👥' },
+    { id:'executive',      label:'Ejecutivo',       icon:'🏛️' },
+    { id:'financial',      label:'Financiero',      icon:'💹' },
+    { id:'strategic',      label:'Estratégico',     icon:'🎯' },
+    { id:'risk',           label:'Riesgo',          icon:'⚠️' },
+    { id:'users',          label:'Usuarios',        icon:'👤' },
+    { id:'chat',           label:'Chat',            icon:'💬' },
+    { id:'wallet',         label:'Wallet',          icon:'💰' },
+    { id:'support',        label:'Soporte',         icon:'🎧' },
+    { id:'mini_apps',      label:'Mini Apps',       icon:'📱' },
+    { id:'infrastructure', label:'Infraestructura', icon:'⚙️' },
+    { id:'devops',         label:'DevOps',          icon:'🛠️' },
+    { id:'security',       label:'Seguridad',       icon:'🔒' },
+    { id:'audit',          label:'Auditoría',       icon:'📋' },
+    { id:'sqlite_sync',    label:'Sincronización',  icon:'🔄' },
   ],
   operations: [
-    { id: 'executive',      label: 'Ctrl. Ejecutivo', icon: '🏛️' },
-    { id: 'users',          label: 'Usuarios',        icon: '👤' },
-    { id: 'operational',    label: 'Operacional',     icon: '📊' },
-    { id: 'chat',           label: 'Chat',            icon: '💬' },
-    { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
-    { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
+    { id:'executive',      label:'Ejecutivo',       icon:'🏛️' },
+    { id:'users',          label:'Usuarios',        icon:'👤' },
+    { id:'chat',           label:'Chat',            icon:'💬' },
+    { id:'infrastructure', label:'Infraestructura', icon:'⚙️' },
+    { id:'sqlite_sync',    label:'Sincronización',  icon:'🔄' },
   ],
   support: [
-    { id: 'support',     label: 'Soporte',     icon: '🎧' },
-    { id: 'users',       label: 'Usuarios',    icon: '👤' },
-    { id: 'chat',        label: 'Chat',        icon: '💬' },
-    { id: 'operational', label: 'Operacional', icon: '📊' },
+    { id:'users',   label:'Usuarios', icon:'👤' },
+    { id:'chat',    label:'Chat',     icon:'💬' },
+    { id:'support', label:'Soporte',  icon:'🎧' },
   ],
   finance: [
-    { id: 'financial', label: 'Financiero', icon: '💹' },
-    { id: 'wallet',    label: 'Wallet',     icon: '💰' },
-    { id: 'audit',     label: 'Auditoría',  icon: '📋' },
+    { id:'financial', label:'Financiero', icon:'💹' },
+    { id:'wallet',    label:'Wallet',     icon:'💰' },
+    { id:'audit',     label:'Auditoría',  icon:'📋' },
   ],
   security: [
-    { id: 'security',    label: 'Seguridad',   icon: '🔒' },
-    { id: 'users',       label: 'Usuarios',    icon: '👤' },
-    { id: 'audit',       label: 'Auditoría',   icon: '📋' },
-    { id: 'operational', label: 'Operacional', icon: '📊' },
+    { id:'security', label:'Seguridad',   icon:'🔒' },
+    { id:'users',    label:'Usuarios',    icon:'👤' },
+    { id:'audit',    label:'Auditoría',   icon:'📋' },
   ],
   auditor: [
-    { id: 'executive',      label: 'Ctrl. Ejecutivo', icon: '🏛️' },
-    { id: 'financial',      label: 'Financiero',      icon: '💹' },
-    { id: 'strategic',      label: 'Estratégico',     icon: '🎯' },
-    { id: 'risk',           label: 'Riesgo',          icon: '⚠️' },
-    { id: 'users',          label: 'Usuarios',        icon: '👤' },
-    { id: 'operational',    label: 'Operacional',     icon: '📊' },
-    { id: 'chat',           label: 'Chat',            icon: '💬' },
-    { id: 'wallet',         label: 'Wallet',          icon: '💰' },
-    { id: 'security',       label: 'Seguridad',       icon: '🔒' },
-    { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
-    { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
-    { id: 'audit',          label: 'Auditoría',       icon: '📋' },
+    { id:'executive',      label:'Ejecutivo',       icon:'🏛️' },
+    { id:'financial',      label:'Financiero',      icon:'💹' },
+    { id:'strategic',      label:'Estratégico',     icon:'🎯' },
+    { id:'risk',           label:'Riesgo',          icon:'⚠️' },
+    { id:'users',          label:'Usuarios',        icon:'👤' },
+    { id:'chat',           label:'Chat',            icon:'💬' },
+    { id:'wallet',         label:'Wallet',          icon:'💰' },
+    { id:'security',       label:'Seguridad',       icon:'🔒' },
+    { id:'infrastructure', label:'Infraestructura', icon:'⚙️' },
+    { id:'sqlite_sync',    label:'Sincronización',  icon:'🔄' },
+    { id:'audit',          label:'Auditoría',       icon:'📋' },
   ],
 };
 
-// Phase groups for sidebar display
+// ── Sidebar phase groups — EXACT layout requested ─────────────────────────────
 export const PHASE_GROUPS: PhaseGroup[] = [
   {
-    phase: 'A', label: 'FASE A — Dirección',
+    phase: '1', label: 'NIVEL 1 — DIRECCIÓN',
     modules: [
-      { id: 'executive',  label: 'Ctrl. Ejecutivo', icon: '🏛️' },
-      { id: 'financial',  label: 'Financiero',      icon: '💹' },
-      { id: 'strategic',  label: 'Estratégico',     icon: '🎯' },
-      { id: 'risk',       label: 'Riesgo',          icon: '⚠️' },
+      { id:'executive', label:'Ejecutivo',   icon:'🏛️' },
+      { id:'financial', label:'Financiero',  icon:'💹' },
+      { id:'strategic', label:'Estratégico', icon:'🎯' },
+      { id:'risk',      label:'Riesgo',      icon:'⚠️' },
     ],
   },
   {
-    phase: 'B', label: 'FASE B — Operaciones',
+    phase: '2', label: 'NIVEL 2 — OPERACIONES',
     modules: [
-      { id: 'users',          label: 'Usuarios',        icon: '👤' },
-      { id: 'support',        label: 'Soporte',         icon: '🎧' },
-      { id: 'mini_apps',      label: 'Mini Apps',       icon: '📱' },
-      { id: 'operational',    label: 'Operacional',     icon: '📊' },
-      { id: 'chat',           label: 'Chat',            icon: '💬' },
-      { id: 'wallet',         label: 'Wallet',          icon: '💰' },
-      { id: 'security',       label: 'Seguridad',       icon: '🔒' },
-      { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
-      { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
+      { id:'users',     label:'Usuarios',  icon:'👤' },
+      { id:'chat',      label:'Chat',      icon:'💬' },
+      { id:'wallet',    label:'Wallet',    icon:'💰' },
+      { id:'support',   label:'Soporte',   icon:'🎧' },
+      { id:'mini_apps', label:'Mini Apps', icon:'📱' },
     ],
   },
   {
-    phase: 'C', label: 'FASE C — Tecnología y Seguridad',
+    phase: '3', label: 'NIVEL 3 — TECNOLOGÍA',
     modules: [
-      { id: 'infrastructure', label: 'Infraestructura', icon: '⚙️' },
-      { id: 'devops',         label: 'DevOps',          icon: '🛠️' },
-      { id: 'security',       label: 'Seguridad',       icon: '🔒' },
-      { id: 'sqlite_sync',    label: 'Sincronización',  icon: '🔄' },
-    ],
-  },
-  {
-    phase: 'D', label: 'Sistema',
-    modules: [
-      { id: 'audit',       label: 'Auditoría',       icon: '📋' },
-      { id: 'admin_users', label: 'Administradores', icon: '👥' },
+      { id:'infrastructure', label:'Infraestructura', icon:'⚙️' },
+      { id:'devops',         label:'DevOps',          icon:'🛠️' },
+      { id:'security',       label:'Seguridad',       icon:'🔒' },
+      { id:'audit',          label:'Auditoría',       icon:'📋' },
+      { id:'sqlite_sync',    label:'Sincronización',  icon:'🔄' },
     ],
   },
 ];
@@ -163,19 +117,11 @@ export function can(role: AdminRole, module: Module, action: Action): boolean {
 }
 
 export const ROLE_LABELS: Record<AdminRole, string> = {
-  super_admin: 'Super Admin',
-  operations: 'Operaciones',
-  support: 'Soporte',
-  finance: 'Finanzas',
-  security: 'Seguridad',
-  auditor: 'Auditor',
+  super_admin: 'Super Admin', operations: 'Operaciones', support: 'Soporte',
+  finance: 'Finanzas', security: 'Seguridad', auditor: 'Auditor',
 };
 
 export const ROLE_COLORS: Record<AdminRole, string> = {
-  super_admin: '#ef4444',
-  operations: '#3b82f6',
-  support: '#22c55e',
-  finance: '#f59e0b',
-  security: '#a855f7',
-  auditor: '#6b7280',
+  super_admin: '#ef4444', operations: '#3b82f6', support: '#22c55e',
+  finance: '#f59e0b', security: '#a855f7', auditor: '#6b7280',
 };
