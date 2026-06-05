@@ -16,6 +16,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { HomeView }           from './HomeView';
 import { ServicesView }       from './ServicesView';
 import { NotificationsPanel } from './NotificationsPanel';
+import { Keyboard } from '@capacitor/keyboard';
 
 // ── Lazy imports — vistas y módulos pesados se cargan solo cuando se necesitan ──
 // Esto reduce el bundle inicial y acelera el primer render en Android
@@ -775,6 +776,44 @@ const App: React.FC = () => {
   const [chatContainerHeight, setChatContainerHeight] = React.useState<string>('100dvh');
   const [chatContainerTop, setChatContainerTop] = React.useState<number>(0);
   const chatContainerRef = React.useRef<HTMLDivElement | null>(null);
+
+  // iOS: mover solo el chat container cuando sube el teclado, NO el tab bar
+  React.useEffect(() => {
+    let showListener: any = null;
+    let hideListener: any = null;
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    if (!isIOS) return;
+
+    const setup = async () => {
+      try {
+        showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
+          const kh = info.keyboardHeight || 0;
+          const el = chatContainerRef.current;
+          if (el) {
+            el.style.height = `${window.screen.height - kh}px`;
+          }
+          requestAnimationFrame(() => {
+            const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+            if (scroll) scroll.scrollTop = scroll.scrollHeight;
+          });
+        });
+        hideListener = await Keyboard.addListener('keyboardWillHide', () => {
+          const el = chatContainerRef.current;
+          if (el) {
+            el.style.height = '100dvh';
+          }
+        });
+      } catch {
+        // Fallback si Keyboard plugin no está disponible (web)
+      }
+    };
+    setup();
+
+    return () => {
+      showListener?.remove?.();
+      hideListener?.remove?.();
+    };
+  }, []);
   const [showChatAttach, setShowChatAttach] = useState<boolean>(false);
   const [showNewChatModal, setShowNewChatModal] = useState<boolean>(false);
   const [showContactSearch, setShowContactSearch] = useState<boolean>(false);
