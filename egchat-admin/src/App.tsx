@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+﻿import React, { useState } from 'react';
 import { Routes, Route, Navigate, useLocation, NavLink } from 'react-router-dom';
 import { useAuthStore } from './stores/authStore';
 import { Login } from './pages/Login';
@@ -16,6 +16,7 @@ import { ChatDashboard }           from './pages/Dashboard/Chat';
 import { WalletDashboard }         from './pages/Dashboard/Wallet';
 import { SecurityDashboard }       from './pages/Dashboard/Security';
 import { InfrastructureDashboard } from './pages/Dashboard/Infrastructure';
+import { ThemeContext } from './context/ThemeContext';
 import { SQLiteSyncDashboard }     from './pages/Dashboard/SQLiteSync';
 import { AuditDashboard }          from './pages/Dashboard/Audit';
 import { UserManagement }          from './pages/Admin/UserManagement';
@@ -111,7 +112,6 @@ function applyTheme(t: Theme) {
 const ThemeCtx = React.createContext<{ theme: Theme; setTheme: (t: Theme) => void }>({
   theme: THEMES[0], setTheme: () => {},
 });
-import { ThemeContext } from './context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AdminRole = 'super_admin' | 'operations' | 'support' | 'finance' | 'security' | 'auditor';

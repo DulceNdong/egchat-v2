@@ -1111,3 +1111,22 @@ input[type="button"],
     background: rgba(255, 255, 255, 0.92);
   }
 }
+
+/* ── iOS Keyboard fix: tab bar fijo, chat container redimensionable ──────── */
+/* Con Keyboard.resize='body', el body se achica cuando sube el teclado.
+   El tab bar con position:fixed y bottom:0 queda FUERA del cuerpo redimensionado
+   en iOS, por lo que sube con el teclado. Esta regla lo ancla visualmente. */
+@supports (-webkit-touch-callout: none) {
+  /* Tab bar — siempre en la parte inferior del viewport real */
+  [data-tab-bar="true"] {
+    position: fixed !important;
+    bottom: 0 !important;
+    bottom: env(safe-area-inset-bottom, 0px) !important;
+  }
+  /* Chat container — usa toda la altura disponible cuando el teclado está abierto */
+  .chat-view-container {
+    height: 100% !important;
+    top: 0 !important;
+    bottom: 0 !important;
+  }
+}
