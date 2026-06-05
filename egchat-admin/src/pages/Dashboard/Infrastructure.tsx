@@ -1,5 +1,6 @@
-import React, { useEffect, useState, useCallback, useRef } from 'react';
+﻿import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { MetricCard } from '../../components/common/MetricCard';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 
@@ -57,8 +58,8 @@ const C = {
   degraded:  '#f59e0b',
   down:      '#ef4444',
   checking:  '#64748b',
-  blue:      '#3b82f6',
-  purple:    '#a855f7',
+  blue:      theme.l2,
+  purple:    theme.l1,
   card:      '#1e293b',
   border:    '#334155',
   text:      '#f1f5f9',
@@ -239,7 +240,7 @@ const GaugeBar: React.FC<{ value: number; max?: number; color?: string; label?: 
           </span>
         </div>
       )}
-      <div style={{ background: '#0f172a', borderRadius: 4, height: 6, overflow: 'hidden' }}>
+      <div style={{ background: theme.bg, borderRadius: 4, height: 6, overflow: 'hidden' }}>
         <div style={{ width: `${pct}%`, height: '100%', background: c, borderRadius: 4,
           transition: 'width 0.5s ease' }} />
       </div>
@@ -304,6 +305,7 @@ const ServiceRow: React.FC<{ svc: ServiceStatus; icon: string }> = ({ svc, icon 
 // ── Dashboard principal ───────────────────────────────────────────
 
 export const InfrastructureDashboard: React.FC = () => {
+  const theme = useTheme();
   const { services, render, supabase, vercel, lastUpdate, totalChecks, runChecks } = useServiceMonitor();
   const [refreshing, setRefreshing] = useState(false);
   const [countdown, setCountdown] = useState(REFRESH_INTERVAL / 1000);

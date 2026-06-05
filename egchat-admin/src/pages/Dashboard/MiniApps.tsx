@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis,
 } from 'recharts';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AppStatus = 'active' | 'degraded' | 'maintenance' | 'inactive';
@@ -33,10 +34,10 @@ interface MiniAppsData {
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const APP_STATUS: Record<AppStatus, { color: string; bg: string; label: string; dot: string }> = {
-  active:      { color: '#00c8a0', bg: 'rgba(0,200,160,0.1)',   label: 'Activa',       dot: '#00c8a0' },
+  active:      { color: theme.l3, bg: 'rgba(0,200,160,0.1)',   label: 'Activa',       dot: theme.l3 },
   degraded:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'Degradada',    dot: '#f59e0b' },
-  maintenance: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', label: 'Mantenimiento',dot: '#3b82f6' },
-  inactive:    { color: '#64748b', bg: 'rgba(100,116,139,0.1)', label: 'Inactiva',     dot: '#64748b' },
+  maintenance: { color: theme.l2, bg: 'rgba(59,130,246,0.1)', label: 'Mantenimiento',dot: theme.l2 },
+  inactive:    { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Inactiva',     dot: '#64748b' },
 };
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -47,10 +48,10 @@ const fmtK   = (n: number) => n >= 1_000 ? `${(n/1_000).toFixed(1)}K` : String(n
 const APPS_CONFIG = [
   { id:'apuestas',  name:'Apuestas GQ',      icon:'🎲', category:'Entretenimiento', color:'#ec4899', countries:['🇬🇶'] },
   { id:'mitaxi',    name:'Mi Taxi',           icon:'🚕', category:'Transporte',      color:'#f97316', countries:['🇬🇶'] },
-  { id:'cemac',     name:'CEMAC Tasas',       icon:'💱', category:'Finanzas',        color:'#3b82f6', countries:['🇬🇶','🇨🇲','🇬🇦','🇨🇬'] },
+  { id:'cemac',     name:'CEMAC Tasas',       icon:'💱', category:'Finanzas',        color:theme.l2, countries:['🇬🇶','🇨🇲','🇬🇦','🇨🇬'] },
   { id:'educacion', name:'Educación',         icon:'🎓', category:'Educación',       color:'#22c55e', countries:['🇬🇶'] },
-  { id:'hoteles',   name:'Hoteles GQ',        icon:'🏨', category:'Turismo',         color:'#00b4e6', countries:['🇬🇶'] },
-  { id:'estados',   name:'Estados',           icon:'📸', category:'Social',          color:'#a855f7', countries:['🇬🇶','🇨🇲'] },
+  { id:'hoteles',   name:'Hoteles GQ',        icon:'🏨', category:'Turismo',         color:theme.l2, countries:['🇬🇶'] },
+  { id:'estados',   name:'Estados',           icon:'📸', category:'Social',          color:theme.l1, countries:['🇬🇶','🇨🇲'] },
   { id:'noticias',  name:'Noticias GQ',       icon:'📰', category:'Información',     color:'#64748b', countries:['🇬🇶'] },
   { id:'salud',     name:'Salud+',            icon:'🏥', category:'Salud',           color:'#ef4444', countries:['🇬🇶'] },
 ];
@@ -106,9 +107,9 @@ function generateMock(): MiniAppsData {
     categoryBreakdown: [
       { category: 'Entretenimiento', apps: 1, users: apps[0].mau, color: '#ec4899' },
       { category: 'Transporte',      apps: 1, users: apps[1].mau, color: '#f97316' },
-      { category: 'Finanzas',        apps: 1, users: apps[2].mau, color: '#3b82f6' },
+      { category: 'Finanzas',        apps: 1, users: apps[2].mau, color: theme.l2 },
       { category: 'Educación',       apps: 1, users: apps[3].mau, color: '#22c55e' },
-      { category: 'Otros',           apps: 4, users: apps.slice(4).reduce((s,a)=>s+a.mau,0), color: '#64748b' },
+      { category: 'Otros',           apps: 4, users: apps.slice(4).reduce((s,a)=>s+a.mau,0), color: theme.textMuted },
     ],
     revenueRanking: apps
       .sort((a,b) => b.revenueToday - a.revenueToday)
@@ -123,8 +124,8 @@ function generateMock(): MiniAppsData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {typeof p.value === 'number' && p.value > 5000 ? fmtXAF(p.value) : p.value?.toLocaleString()}
@@ -157,21 +158,21 @@ function AppCard({ app, selected, onClick }: { app: MiniApp; selected: boolean; 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: `${app.color}20`, border: `1px solid ${app.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{app.icon}</div>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: '800', color: '#f1f5f9' }}>{app.name}</div>
-            <div style={{ fontSize: '10px', color: '#475569' }}>{app.category} · {app.version}</div>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: theme.text }}>{app.name}</div>
+            <div style={{ fontSize: '10px', color: theme.textMuted }}>{app.category} · {app.version}</div>
           </div>
         </div>
         <StatusDot status={app.status} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
-        <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+        <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
           <div style={{ fontSize: '16px', fontWeight: '900', color: app.color }}>{fmtK(app.dau)}</div>
-          <div style={{ fontSize: '9px', color: '#475569' }}>DAU</div>
+          <div style={{ fontSize: '9px', color: theme.textMuted }}>DAU</div>
         </div>
-        <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
-          <div style={{ fontSize: '16px', fontWeight: '900', color: '#f1f5f9' }}>{app.avgSessionMin}m</div>
-          <div style={{ fontSize: '9px', color: '#475569' }}>sesión media</div>
+        <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+          <div style={{ fontSize: '16px', fontWeight: '900', color: theme.text }}>{app.avgSessionMin}m</div>
+          <div style={{ fontSize: '9px', color: theme.textMuted }}>sesión media</div>
         </div>
       </div>
 
@@ -189,16 +190,16 @@ function AppCard({ app, selected, onClick }: { app: MiniApp; selected: boolean; 
 function AppDetail({ app }: { app: MiniApp }) {
   const s = APP_STATUS[app.status];
   return (
-    <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: `1px solid ${app.color}30` }}>
+    <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${app.color}30` }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
         <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: `${app.color}20`, border: `1px solid ${app.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{app.icon}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '16px', fontWeight: '900', color: '#f1f5f9' }}>{app.name}</div>
+          <div style={{ fontSize: '16px', fontWeight: '900', color: theme.text }}>{app.name}</div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px', alignItems: 'center' }}>
             <StatusDot status={app.status} />
-            <span style={{ fontSize: '10px', color: '#475569' }}>{app.version} · {app.category}</span>
-            <span style={{ fontSize: '10px', color: '#475569' }}>{app.countries.join(' ')}</span>
+            <span style={{ fontSize: '10px', color: theme.textMuted }}>{app.version} · {app.category}</span>
+            <span style={{ fontSize: '10px', color: theme.textMuted }}>{app.countries.join(' ')}</span>
           </div>
         </div>
       </div>
@@ -207,17 +208,17 @@ function AppDetail({ app }: { app: MiniApp }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px', marginBottom: '16px' }}>
         {[
           { label: 'DAU',       value: fmtK(app.dau),            color: app.color },
-          { label: 'MAU',       value: fmtK(app.mau),            color: '#3b82f6' },
-          { label: 'Sesiones',  value: fmtK(app.sessions),       color: '#a855f7' },
+          { label: 'MAU',       value: fmtK(app.mau),            color: theme.l2 },
+          { label: 'Sesiones',  value: fmtK(app.sessions),       color: theme.l1 },
           { label: 'Retención', value: `${app.retentionPct}%`,   color: '#f59e0b' },
-          { label: 'Tiempo',    value: `${app.avgSessionMin}m`,  color: '#00b4e6' },
-          { label: 'Errores',   value: String(app.errorsToday),  color: app.errorsToday > 10 ? '#ef4444' : '#00c8a0' },
-          { label: 'Error %',   value: `${app.errorRate}%`,      color: app.errorRate > 1 ? '#ef4444' : '#00c8a0' },
+          { label: 'Tiempo',    value: `${app.avgSessionMin}m`,  color: theme.l2 },
+          { label: 'Errores',   value: String(app.errorsToday),  color: app.errorsToday > 10 ? '#ef4444' : theme.l3 },
+          { label: 'Error %',   value: `${app.errorRate}%`,      color: app.errorRate > 1 ? '#ef4444' : theme.l3 },
           { label: 'Ingresos',  value: fmtXAF(app.revenueToday), color: '#22c55e' },
         ].map(item => (
-          <div key={item.label} style={{ background: '#0f172a', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+          <div key={item.label} style={{ background: theme.bg, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '13px', fontWeight: '900', color: item.color, lineHeight: 1 }}>{item.value}</div>
-            <div style={{ fontSize: '9px', color: '#475569', marginTop: '3px' }}>{item.label}</div>
+            <div style={{ fontSize: '9px', color: theme.textMuted, marginTop: '3px' }}>{item.label}</div>
           </div>
         ))}
       </div>
@@ -226,7 +227,7 @@ function AppDetail({ app }: { app: MiniApp }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
 
         <div>
-          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Usuarios por Hora</div>
+          <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Usuarios por Hora</div>
           <ResponsiveContainer width="100%" height={100}>
             <AreaChart data={app.hourlyUsers}>
               <defs>
@@ -243,18 +244,18 @@ function AppDetail({ app }: { app: MiniApp }) {
         </div>
 
         <div>
-          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Ingresos Semanales</div>
+          <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Ingresos Semanales</div>
           <ResponsiveContainer width="100%" height={100}>
             <BarChart data={app.weeklyRevenue}>
               <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 9 }} />
-              <Tooltip formatter={(v: any) => fmtXAF(v)} contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} />
+              <Tooltip formatter={(v: any) => fmtXAF(v)} contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} />
               <Bar dataKey="revenue" name="Ingresos" fill={app.color} radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div>
-          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Errores (12h)</div>
+          <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Errores (12h)</div>
           <ResponsiveContainer width="100%" height={100}>
             <LineChart data={app.errorTrend}>
               <XAxis dataKey="hour" tick={false} />
@@ -270,6 +271,7 @@ function AppDetail({ app }: { app: MiniApp }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const MiniAppsDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]       = useState<MiniAppsData>(generateMock());
   const [tick, setTick]       = useState(0);
   const [pulse, setPulse]     = useState(false);
@@ -292,18 +294,18 @@ export const MiniAppsDashboard: React.FC = () => {
   const COLORS = d.apps.slice(0,5).map(a => a.color);
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: '900' }}>📱 Dashboard Mini Apps</div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>FASE B — Operaciones · {d.totalActive} apps activas · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE B — Operaciones · {d.totalActive} apps activas · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#a855f7 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#a855f7', fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l1, fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#a855f7,#6366f1)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -315,11 +317,11 @@ export const MiniAppsDashboard: React.FC = () => {
       {/* ── Row 1: Global KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '12px', marginBottom: '18px' }}>
         {[
-          { icon:'📱', label:'Apps Activas',    value:d.totalActive,           sub:`de ${d.apps.length} total`, color:'#00c8a0' },
-          { icon:'👥', label:'DAU Total',       value:fmtK(d.totalDau),        sub:'usuarios activos hoy',      color:'#3b82f6' },
+          { icon:'📱', label:'Apps Activas',    value:d.totalActive,           sub:`de ${d.apps.length} total`, color:theme.l3 },
+          { icon:'👥', label:'DAU Total',       value:fmtK(d.totalDau),        sub:'usuarios activos hoy',      color:theme.l2 },
           { icon:'💰', label:'Ingresos Hoy',    value:fmtXAF(d.totalRevenue),  sub:'todas las apps',            color:'#f59e0b' },
           { icon:'🐛', label:'Errores Hoy',     value:d.totalErrors,           sub:'total registrados',         color:d.totalErrors>50?'#ef4444':'#22c55e' },
-          { icon:'⚡', label:'Uptime Promedio', value:`${d.avgUptime}%`,       sub:'todas las apps',            color:'#a855f7' },
+          { icon:'⚡', label:'Uptime Promedio', value:`${d.avgUptime}%`,       sub:'todas las apps',            color:theme.l1 },
         ].map(item => (
           <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1px solid ${item.color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top:'-10px', right:'-10px', width:'60px', height:'60px', borderRadius:'50%', background:`radial-gradient(circle,${item.color}20 0%,transparent 70%)` }} />
@@ -344,19 +346,19 @@ export const MiniAppsDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '16px', marginTop: '18px', marginBottom: '18px' }}>
 
         {/* Revenue ranking */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🏆 Ranking por Ingresos Hoy
           </div>
           {d.revenueRanking.map((app, i) => (
-            <div key={app.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: '#0f172a', marginBottom: '6px' }}>
+            <div key={app.name} style={{ display: 'flex', alignItems: 'center', gap: '10px', padding: '8px 10px', borderRadius: '10px', background: theme.bg, marginBottom: '6px' }}>
               <span style={{ fontSize: '14px', fontWeight: '900', color: i < 3 ? ['#f59e0b','#94a3b8','#f97316'][i] : '#475569', width: '20px', textAlign: 'center', flexShrink: 0 }}>
                 {i < 3 ? ['🥇','🥈','🥉'][i] : `${i+1}.`}
               </span>
               <span style={{ fontSize: '16px' }}>{app.icon}</span>
               <div style={{ flex: 1, minWidth: 0 }}>
                 <div style={{ fontSize: '12px', fontWeight: '700', color: '#e2e8f0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{app.name}</div>
-                <div style={{ height: '3px', background: '#1e293b', borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
+                <div style={{ height: '3px', background: theme.bgCard, borderRadius: '2px', marginTop: '4px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${app.revenue / d.revenueRanking[0].revenue * 100}%`, background: app.color, borderRadius: '2px' }} />
                 </div>
               </div>
@@ -366,8 +368,8 @@ export const MiniAppsDashboard: React.FC = () => {
         </div>
 
         {/* Usage trend */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📈 Uso Semanal por App — Top 5 (DAU)
           </div>
           <ResponsiveContainer width="100%" height={220}>
@@ -402,8 +404,8 @@ export const MiniAppsDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 5: Error summary table ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
           🐛 Resumen de Errores por App
         </div>
         <div style={{ overflowX: 'auto' }}>
@@ -411,7 +413,7 @@ export const MiniAppsDashboard: React.FC = () => {
             <thead>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 {['App','Estado','DAU','Sesiones','Sesión Media','Errores Hoy','Tasa Error','Ingresos Hoy','Ingresos Mes'].map(h => (
-                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: '#64748b', fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -436,16 +438,16 @@ export const MiniAppsDashboard: React.FC = () => {
                       </div>
                     </td>
                     <td style={{ padding: '8px 10px', color: app.color, fontWeight: '800' }}>{fmtK(app.dau)}</td>
-                    <td style={{ padding: '8px 10px', color: '#94a3b8' }}>{fmtK(app.sessions)}</td>
-                    <td style={{ padding: '8px 10px', color: '#94a3b8' }}>{app.avgSessionMin}m</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted }}>{fmtK(app.sessions)}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted }}>{app.avgSessionMin}m</td>
                     <td style={{ padding: '8px 10px', color: app.errorsToday > 10 ? '#ef4444' : '#64748b', fontWeight: app.errorsToday > 10 ? '800' : '400' }}>{app.errorsToday}</td>
                     <td style={{ padding: '8px 10px' }}>
-                      <span style={{ fontSize: '11px', fontWeight: '800', color: app.errorRate > 1 ? '#ef4444' : '#00c8a0', background: app.errorRate > 1 ? 'rgba(239,68,68,0.1)' : 'rgba(0,200,160,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '11px', fontWeight: '800', color: app.errorRate > 1 ? '#ef4444' : theme.l3, background: app.errorRate > 1 ? 'rgba(239,68,68,0.1)' : 'rgba(0,200,160,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
                         {app.errorRate}%
                       </span>
                     </td>
                     <td style={{ padding: '8px 10px', color: '#22c55e', fontWeight: '700' }}>{fmtXAF(app.revenueToday)}</td>
-                    <td style={{ padding: '8px 10px', color: '#64748b' }}>{fmtXAF(app.revenueMonth)}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted }}>{fmtXAF(app.revenueMonth)}</td>
                   </tr>
                 );
               })}
@@ -455,8 +457,8 @@ export const MiniAppsDashboard: React.FC = () => {
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ marginTop: '14px', padding: '10px 16px', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#475569' }}>📱 Dashboard Mini Apps · Click en una app para ver detalle · Auto-refresh 30s</span>
+      <div style={{ marginTop: '14px', padding: '10px 16px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>📱 Dashboard Mini Apps · Click en una app para ver detalle · Auto-refresh 30s</span>
         <div style={{ display: 'flex', gap: '10px' }}>
           {(['active','degraded','maintenance'] as AppStatus[]).map(s => (
             <span key={s} style={{ fontSize: '11px', color: APP_STATUS[s].color, display: 'flex', alignItems: 'center', gap: '4px' }}>

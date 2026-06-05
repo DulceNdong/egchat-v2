@@ -107,10 +107,11 @@ function applyTheme(t: Theme) {
   r.setProperty('--l3',        t.l3);
 }
 
-// Theme context
+// Theme context — also exported via ThemeContext.ts for dashboards to consume
 const ThemeCtx = React.createContext<{ theme: Theme; setTheme: (t: Theme) => void }>({
   theme: THEMES[0], setTheme: () => {},
 });
+import { ThemeContext } from './context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AdminRole = 'super_admin' | 'operations' | 'support' | 'finance' | 'security' | 'auditor';
@@ -478,6 +479,7 @@ function ProtectedLayout() {
 
   return (
     <ThemeCtx.Provider value={{ theme, setTheme: handleTheme }}>
+    <ThemeContext.Provider value={theme}>
       <div style={{ display: 'flex', minHeight: '100vh', background: theme.bg }}>
         <AppSidebar collapsed={collapsed} onToggle={() => setCollapsed(c => !c)} theme={theme} role={role} />
         <div style={{
@@ -589,6 +591,7 @@ function ProtectedLayout() {
           </main>
         </div>
       </div>
+    </ThemeContext.Provider>
     </ThemeCtx.Provider>
   );
 }

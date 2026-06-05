@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, LineChart, Line, BarChart, Bar,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell,
 } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type AlertLevel = 'critical' | 'warning' | 'info';
@@ -33,7 +34,7 @@ interface ChatData {
 const ALERT_CFG: Record<AlertLevel, { color: string; bg: string; border: string; icon: string }> = {
   critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.25)',  icon: '🚨' },
   warning:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: '⚠️' },
-  info:     { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: 'ℹ️' },
+  info:     { color: theme.l2, bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: 'ℹ️' },
 };
 
 // ── Mock ──────────────────────────────────────────────────────────────────────
@@ -78,9 +79,9 @@ function generateMock(): ChatData {
       p99:  Math.floor(250 + Math.random() * 150),
     })),
     mediaBreakdown: [
-      { name: 'Texto',     count: Math.floor(32000 + Math.random() * 3000), color: '#00c8a0' },
-      { name: 'Imágenes',  count: Math.floor(8400  + Math.random() * 1000), color: '#3b82f6' },
-      { name: 'Audio',     count: Math.floor(4200  + Math.random() * 500),  color: '#a855f7' },
+      { name: 'Texto',     count: Math.floor(32000 + Math.random() * 3000), color: theme.l3 },
+      { name: 'Imágenes',  count: Math.floor(8400  + Math.random() * 1000), color: theme.l2 },
+      { name: 'Audio',     count: Math.floor(4200  + Math.random() * 500),  color: theme.l1 },
       { name: 'Video',     count: Math.floor(2100  + Math.random() * 300),  color: '#f59e0b' },
       { name: 'Docs',      count: Math.floor(1500  + Math.random() * 200),  color: '#ec4899' },
     ],
@@ -97,8 +98,8 @@ function generateMock(): ChatData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value?.toLocaleString()}</div>
       ))}
@@ -111,20 +112,20 @@ function KPI({ icon, label, value, sub, color, alert }: { icon: string; label: s
     <div style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${alert ? '#ef4444' : color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
       {alert && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />}
       <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '60px', height: '60px', borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
-      <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
+      <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
       <div style={{ fontSize: '22px', fontWeight: '900', color: alert ? '#ef4444' : '#f1f5f9', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '3px' }}>{sub}</div>}
     </div>
   );
 }
 
 function LatBadge({ label, value, warn, crit }: { label: string; value: number; warn: number; crit: number }) {
-  const color = value >= crit ? '#ef4444' : value >= warn ? '#f59e0b' : '#00c8a0';
+  const color = value >= crit ? '#ef4444' : value >= warn ? '#f59e0b' : theme.l3;
   return (
-    <div style={{ background: '#0f172a', borderRadius: '10px', padding: '12px', textAlign: 'center', border: `1px solid ${color}20` }}>
-      <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
+    <div style={{ background: theme.bg, borderRadius: '10px', padding: '12px', textAlign: 'center', border: `1px solid ${color}20` }}>
+      <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '4px' }}>{label}</div>
       <div style={{ fontSize: '20px', fontWeight: '900', color }}>{value}ms</div>
-      <div style={{ height: '4px', background: '#1e293b', borderRadius: '2px', marginTop: '6px', overflow: 'hidden' }}>
+      <div style={{ height: '4px', background: theme.bgCard, borderRadius: '2px', marginTop: '6px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${Math.min(value / crit * 100, 100)}%`, background: color, borderRadius: '2px', transition: 'width 0.5s' }} />
       </div>
     </div>
@@ -133,6 +134,7 @@ function LatBadge({ label, value, warn, crit }: { label: string; value: number; 
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const ChatDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]   = useState<ChatData>(generateMock());
   const [tick, setTick]   = useState(0);
   const [pulse, setPulse] = useState(false);
@@ -169,7 +171,7 @@ export const ChatDashboard: React.FC = () => {
   const hasAlerts = d.alerts.some(a => a.level === 'critical' || a.level === 'warning');
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
@@ -177,8 +179,8 @@ export const ChatDashboard: React.FC = () => {
           <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
             <span style={{ fontSize: '22px', fontWeight: '900' }}>💬 Dashboard de Chat</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(0,200,160,0.1)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '20px', padding: '4px 12px' }}>
-              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#00c8a0', boxShadow: '0 0 6px #00c8a0' }} />
-              <span style={{ fontSize: '11px', fontWeight: '800', color: '#00c8a0' }}>{d.msgPerSec} msg/s</span>
+              <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: theme.l3, boxShadow: '0 0 6px #00c8a0' }} />
+              <span style={{ fontSize: '11px', fontWeight: '800', color: theme.l3 }}>{d.msgPerSec} msg/s</span>
             </div>
             {hasAlerts && (
               <div style={{ background: 'rgba(245,158,11,0.1)', border: '1px solid rgba(245,158,11,0.3)', borderRadius: '20px', padding: '4px 12px', fontSize: '11px', fontWeight: '800', color: '#f59e0b' }}>
@@ -186,14 +188,14 @@ export const ChatDashboard: React.FC = () => {
               </div>
             )}
           </div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>FASE B — Operaciones · Solo monitoreo · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE B — Operaciones · Solo monitoreo · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#00c8a0 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#00c8a0', fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l3, fontWeight: '800' }}>{30-tick}</div>
             </div>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>próx. refresh</span>
+            <span style={{ fontSize: '11px', color: theme.textMuted }}>próx. refresh</span>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
             {pulse ? '⟳ ...' : '⟳ Actualizar'}
@@ -209,11 +211,11 @@ export const ChatDashboard: React.FC = () => {
             <span style={{ fontSize: '16px', flexShrink: 0 }}>{cfg.icon}</span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#e2e8f0' }}>{alert.title}</span>
-              <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>{alert.detail}</span>
+              <span style={{ fontSize: '11px', color: theme.textMuted, marginLeft: '8px' }}>{alert.detail}</span>
             </div>
             <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexShrink: 0 }}>
               {alert.auto && <span style={{ fontSize: '10px', color: cfg.color, background: `${cfg.color}15`, padding: '1px 6px', borderRadius: '5px', border: `1px solid ${cfg.color}30` }}>AUTO</span>}
-              <span style={{ fontSize: '10px', color: '#475569' }}>{alert.time}</span>
+              <span style={{ fontSize: '10px', color: theme.textMuted }}>{alert.time}</span>
             </div>
           </div>
         );
@@ -232,8 +234,8 @@ export const ChatDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 2: Latency gauges ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155', marginBottom: '18px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '18px' }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
           ⚡ Latencia de Entrega
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3,1fr)', gap: '12px' }}>
@@ -247,8 +249,8 @@ export const ChatDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Hourly messages */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📊 Mensajes Enviados vs Fallidos — Últimas 24h
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -264,8 +266,8 @@ export const ChatDashboard: React.FC = () => {
         </div>
 
         {/* Latency history */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📈 Historial de Latencia — 20h
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -286,8 +288,8 @@ export const ChatDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* 7-day */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📅 Histórico Semanal — Mensajes y Usuarios
           </div>
           <ResponsiveContainer width="100%" height={170}>
@@ -309,37 +311,37 @@ export const ChatDashboard: React.FC = () => {
         </div>
 
         {/* Chat types */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             💬 Tipo de Conversaciones
           </div>
           <ResponsiveContainer width="100%" height={120}>
             <PieChart>
               <Pie data={[
-                { name: 'Privadas',   value: d.privateChats, fill: '#00c8a0' },
-                { name: 'Grupos',     value: d.groupChats,   fill: '#3b82f6' },
-                { name: 'Broadcast', value: d.broadcast,    fill: '#a855f7' },
+                { name: 'Privadas',   value: d.privateChats, fill: theme.l3 },
+                { name: 'Grupos',     value: d.groupChats,   fill: theme.l2 },
+                { name: 'Broadcast', value: d.broadcast,    fill: theme.l1 },
               ]} dataKey="value" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={3}>
-                {[{ fill: '#00c8a0' },{ fill: '#3b82f6' },{ fill: '#a855f7' }].map((e,i) => <Cell key={i} fill={e.fill} />)}
+                {[{ fill: theme.l3 },{ fill: theme.l2 },{ fill: theme.l1 }].map((e,i) => <Cell key={i} fill={e.fill} />)}
               </Pie>
-              <Tooltip formatter={(v: any) => v.toLocaleString()} contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} />
+              <Tooltip formatter={(v: any) => v.toLocaleString()} contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} />
             </PieChart>
           </ResponsiveContainer>
           {[
-            { label: 'Privadas',  value: d.privateChats, color: '#00c8a0' },
-            { label: 'Grupos',    value: d.groupChats,   color: '#3b82f6' },
-            { label: 'Broadcast', value: d.broadcast,    color: '#a855f7' },
+            { label: 'Privadas',  value: d.privateChats, color: theme.l3 },
+            { label: 'Grupos',    value: d.groupChats,   color: theme.l2 },
+            { label: 'Broadcast', value: d.broadcast,    color: theme.l1 },
           ].map(item => (
             <div key={item.label} style={{ display: 'flex', justifyContent: 'space-between', padding: '4px 0', borderBottom: '1px solid #0f172a' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>{item.label}</span>
+              <span style={{ fontSize: '11px', color: theme.textMuted }}>{item.label}</span>
               <span style={{ fontSize: '11px', fontWeight: '800', color: item.color }}>{item.value.toLocaleString()}</span>
             </div>
           ))}
         </div>
 
         {/* Media breakdown */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🗂️ Tipo de Mensajes
           </div>
           {(() => {
@@ -347,10 +349,10 @@ export const ChatDashboard: React.FC = () => {
             return d.mediaBreakdown.map(m => (
               <div key={m.name} style={{ marginBottom: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>{m.name}</span>
+                  <span style={{ fontSize: '11px', color: theme.textMuted }}>{m.name}</span>
                   <span style={{ fontSize: '11px', fontWeight: '800', color: m.color }}>{Math.round(m.count / total * 100)}%</span>
                 </div>
-                <div style={{ height: '5px', background: '#0f172a', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '5px', background: theme.bg, borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${m.count / total * 100}%`, background: m.color, borderRadius: '3px', transition: 'width 0.5s' }} />
                 </div>
               </div>
@@ -360,10 +362,10 @@ export const ChatDashboard: React.FC = () => {
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ padding: '10px 16px', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#475569' }}>💬 Dashboard Chat · Solo Monitoreo · Alertas automáticas activas</span>
+      <div style={{ padding: '10px 16px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>💬 Dashboard Chat · Solo Monitoreo · Alertas automáticas activas</span>
         <div style={{ display: 'flex', gap: '16px' }}>
-          <span style={{ fontSize: '11px', color: '#00c8a0' }}>● Latencia normal &lt;150ms</span>
+          <span style={{ fontSize: '11px', color: theme.l3 }}>● Latencia normal &lt;150ms</span>
           <span style={{ fontSize: '11px', color: '#f59e0b' }}>● Atención 150-300ms</span>
           <span style={{ fontSize: '11px', color: '#ef4444' }}>● Crítico &gt;300ms</span>
         </div>

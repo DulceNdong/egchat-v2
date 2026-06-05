@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   RadialBarChart, RadialBar,
 } from 'recharts';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Risk level config ─────────────────────────────────────────────────────────
 type RiskLevel = 'critical' | 'high' | 'medium' | 'low';
@@ -121,8 +122,8 @@ function generateMock(): RiskData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '5px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '5px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>
       ))}
@@ -144,7 +145,7 @@ function ScoreGauge({ score, level, label }: { score: number; level: RiskLevel; 
   const data = [{ value: score, fill: r.color }, { value: 100 - score, fill: '#1e293b' }];
   return (
     <div style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1px solid ${r.border}`, borderRadius: '14px', padding: '16px', textAlign: 'center' }}>
-      <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>{label}</div>
+      <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>{label}</div>
       <div style={{ position: 'relative', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <ResponsiveContainer width={80} height={80}>
           <RadialBarChart innerRadius="65%" outerRadius="100%" data={data} startAngle={90} endAngle={-270}>
@@ -153,7 +154,7 @@ function ScoreGauge({ score, level, label }: { score: number; level: RiskLevel; 
         </ResponsiveContainer>
         <div style={{ position: 'absolute', textAlign: 'center' }}>
           <div style={{ fontSize: '20px', fontWeight: '900', color: r.color, lineHeight: 1 }}>{score}</div>
-          <div style={{ fontSize: '9px', color: '#64748b' }}>/100</div>
+          <div style={{ fontSize: '9px', color: theme.textMuted }}>/100</div>
         </div>
       </div>
       <RiskBadge level={level} />
@@ -167,11 +168,11 @@ function RiskItem({ name, level, detail, latency }: { name: string; level: RiskL
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderRadius: '8px', background: r.bg, border: `1px solid ${r.border}`, marginBottom: '6px' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '12px', fontWeight: '700', color: '#e2e8f0' }}>{name}</div>
-        <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
+        <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px', flexShrink: 0 }}>
         {latency !== undefined && (
-          <span style={{ fontSize: '11px', color: '#64748b' }}>{latency}ms</span>
+          <span style={{ fontSize: '11px', color: theme.textMuted }}>{latency}ms</span>
         )}
         <RiskBadge level={level} />
       </div>
@@ -194,8 +195,8 @@ function EventRow({ event }: { event: RiskEvent }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: '16px', flexShrink: 0 }}>{r.icon}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>{event.title}</div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{event.description}</div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: theme.text }}>{event.title}</div>
+            <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '2px' }}>{event.description}</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginLeft: '10px', flexShrink: 0 }}>
@@ -204,9 +205,9 @@ function EventRow({ event }: { event: RiskEvent }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
-        <span style={{ fontSize: '10px', color: '#475569' }}>📦 {event.affected}</span>
-        <span style={{ fontSize: '10px', color: '#475569' }}>🏷️ {event.category}</span>
-        <span style={{ fontSize: '10px', color: '#475569' }}>🕐 {event.time}</span>
+        <span style={{ fontSize: '10px', color: theme.textMuted }}>📦 {event.affected}</span>
+        <span style={{ fontSize: '10px', color: theme.textMuted }}>🏷️ {event.category}</span>
+        <span style={{ fontSize: '10px', color: theme.textMuted }}>🕐 {event.time}</span>
       </div>
     </div>
   );
@@ -214,6 +215,7 @@ function EventRow({ event }: { event: RiskEvent }) {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const RiskDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData] = useState<RiskData>(generateMock());
   const [tick, setTick] = useState(0);
   const [pulse, setPulse] = useState(false);
@@ -236,7 +238,7 @@ export const RiskDashboard: React.FC = () => {
   const filteredEvents = filter === 'all' ? d.events : d.events.filter(e => e.level === filter);
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
@@ -248,14 +250,14 @@ export const RiskDashboard: React.FC = () => {
               RIESGO GLOBAL {globalR.label}
             </div>
           </div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>Solo lectura · Actualización automática · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>Solo lectura · Actualización automática · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(${globalR.color} ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: globalR.color, fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: globalR.color, fontWeight: '800' }}>{30-tick}</div>
             </div>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>próx. actualización</span>
+            <span style={{ fontSize: '11px', color: theme.textMuted }}>próx. actualización</span>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : `linear-gradient(135deg,${globalR.color},#f97316)`, border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer', transition: 'all 0.2s' }}>
             {pulse ? '⟳ ...' : '⟳ Actualizar'}
@@ -273,7 +275,7 @@ export const RiskDashboard: React.FC = () => {
               <div style={{ fontSize: '28px', marginBottom: '4px' }}>{r.icon}</div>
               <div style={{ fontSize: '30px', fontWeight: '900', color: r.color, lineHeight: 1 }}>{d.summary[level]}</div>
               <div style={{ fontSize: '11px', fontWeight: '700', color: r.color, marginTop: '4px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>{r.label}</div>
-              {filter === level && <div style={{ marginTop: '6px', fontSize: '10px', color: '#64748b' }}>filtro activo</div>}
+              {filter === level && <div style={{ marginTop: '6px', fontSize: '10px', color: theme.textMuted }}>filtro activo</div>}
             </div>
           );
         })}
@@ -287,13 +289,13 @@ export const RiskDashboard: React.FC = () => {
             </ResponsiveContainer>
             <div style={{ position: 'absolute', textAlign: 'center' }}>
               <div style={{ fontSize: '18px', fontWeight: '900', color: globalR.color, lineHeight: 1 }}>{d.globalScore}</div>
-              <div style={{ fontSize: '9px', color: '#64748b' }}>/100</div>
+              <div style={{ fontSize: '9px', color: theme.textMuted }}>/100</div>
             </div>
           </div>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>Puntuación Global de Riesgo</div>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>Puntuación Global de Riesgo</div>
             <RiskBadge level={d.globalLevel} />
-            <div style={{ fontSize: '11px', color: '#475569', marginTop: '8px' }}>0 = sin riesgo · 100 = riesgo máximo</div>
+            <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '8px' }}>0 = sin riesgo · 100 = riesgo máximo</div>
             <div style={{ display: 'flex', gap: '6px', marginTop: '8px' }}>
               {(['critical','high','medium','low'] as RiskLevel[]).map(l => (
                 <div key={l} style={{ width: '12px', height: '12px', borderRadius: '3px', background: RISK[l].color, opacity: d.summary[l] > 0 ? 1 : 0.2 }} title={RISK[l].label} />
@@ -315,8 +317,8 @@ export const RiskDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Fraud panel */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #ef444430' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: '1px solid #ef444430' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🕵️ Alertas de Fraude
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginBottom: '14px' }}>
@@ -324,15 +326,15 @@ export const RiskDashboard: React.FC = () => {
               { label: 'Alertas Hoy',        value: d.fraud.alertsToday,          color: '#ef4444' },
               { label: 'Tx Bloqueadas',       value: d.fraud.blockedTx,            color: '#f97316' },
               { label: 'Cuentas Sospechosas', value: d.fraud.suspiciousAccounts,   color: '#f59e0b' },
-              { label: 'Logins Fallidos/h',   value: d.fraud.failedLoginsHour,     color: '#a855f7' },
+              { label: 'Logins Fallidos/h',   value: d.fraud.failedLoginsHour,     color: theme.l1 },
             ].map(item => (
-              <div key={item.label} style={{ background: '#0f172a', borderRadius: '10px', padding: '10px', border: `1px solid ${item.color}20` }}>
+              <div key={item.label} style={{ background: theme.bg, borderRadius: '10px', padding: '10px', border: `1px solid ${item.color}20` }}>
                 <div style={{ fontSize: '20px', fontWeight: '900', color: item.color }}>{item.value}</div>
-                <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>{item.label}</div>
+                <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '2px' }}>{item.label}</div>
               </div>
             ))}
           </div>
-          <div style={{ fontSize: '11px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Alertas por Hora — Últimas 24h</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', marginBottom: '8px' }}>Alertas por Hora — Últimas 24h</div>
           <ResponsiveContainer width="100%" height={120}>
             <AreaChart data={d.fraud.hourlyAlerts}>
               <defs>
@@ -350,8 +352,8 @@ export const RiskDashboard: React.FC = () => {
         </div>
 
         {/* Risk trend */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📈 Tendencia de Riesgo — Últimos 7 días
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -373,37 +375,37 @@ export const RiskDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Operational */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>⚙️ Riesgo Operativo</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.6px' }}>⚙️ Riesgo Operativo</span>
             <RiskBadge level={d.operational.level} />
           </div>
           {d.operational.items.map(item => <RiskItem key={item.name} {...item} />)}
         </div>
 
         {/* Financial */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>💰 Riesgo Financiero</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.6px' }}>💰 Riesgo Financiero</span>
             <RiskBadge level={d.financial.level} />
           </div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '10px' }}>
-            <div style={{ background: '#0f172a', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+            <div style={{ background: theme.bg, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '14px', fontWeight: '900', color: '#f97316' }}>{(d.financial.exposureXAF/1_000_000).toFixed(1)}M XAF</div>
-              <div style={{ fontSize: '9px', color: '#64748b' }}>exposición</div>
+              <div style={{ fontSize: '9px', color: theme.textMuted }}>exposición</div>
             </div>
-            <div style={{ background: '#0f172a', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+            <div style={{ background: theme.bg, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
               <div style={{ fontSize: '14px', fontWeight: '900', color: d.financial.failedTxPct > 2 ? '#ef4444' : '#22c55e' }}>{d.financial.failedTxPct}%</div>
-              <div style={{ fontSize: '9px', color: '#64748b' }}>tx fallidas</div>
+              <div style={{ fontSize: '9px', color: theme.textMuted }}>tx fallidas</div>
             </div>
           </div>
           {d.financial.items.map(item => <RiskItem key={item.name} {...item} />)}
         </div>
 
         {/* Technological */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <span style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.6px' }}>🔧 Riesgo Tecnológico</span>
+            <span style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.6px' }}>🔧 Riesgo Tecnológico</span>
             <RiskBadge level={d.technological.level} />
           </div>
           {d.technological.items.map(item => <RiskItem key={item.name} {...item} />)}
@@ -411,14 +413,14 @@ export const RiskDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 5: Event log ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             📋 Registro de Eventos Críticos
           </div>
           {/* Filter buttons */}
           <div style={{ display: 'flex', gap: '6px' }}>
-            <button onClick={() => setFilter('all')} style={{ padding: '4px 12px', borderRadius: '8px', border: '1px solid #334155', background: filter === 'all' ? '#334155' : 'transparent', color: filter === 'all' ? '#f1f5f9' : '#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+            <button onClick={() => setFilter('all')} style={{ padding: '4px 12px', borderRadius: '8px', border: `1px solid ${theme.border}`, background: filter === 'all' ? '#334155' : 'transparent', color: filter === 'all' ? '#f1f5f9' : '#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
               Todos ({d.events.length})
             </button>
             {(['critical','high','medium','low'] as RiskLevel[]).map(level => (
@@ -438,8 +440,8 @@ export const RiskDashboard: React.FC = () => {
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ marginTop: '14px', padding: '10px 16px', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#475569' }}>⚠️ Dashboard de Riesgo · Solo Lectura · Las puntuaciones son calculadas en tiempo real</span>
+      <div style={{ marginTop: '14px', padding: '10px 16px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>⚠️ Dashboard de Riesgo · Solo Lectura · Las puntuaciones son calculadas en tiempo real</span>
         <div style={{ display: 'flex', gap: '12px' }}>
           {(['critical','high','medium','low'] as RiskLevel[]).map(l => (
             <span key={l} style={{ fontSize: '11px', color: RISK[l].color, display: 'flex', alignItems: 'center', gap: '4px' }}>

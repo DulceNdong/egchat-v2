@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Currency config ───────────────────────────────────────────────────────────
 type Currency = 'XAF' | 'EUR' | 'USD' | 'GBP';
@@ -56,9 +57,9 @@ function generateMock(): FinancialData {
     },
     costs: { operational: ops, infrastructure: infra, marketing: 32_000, support: 18_000 },
     services: [
-      { name: 'Wallet / Pagos',   revenue: daily * 0.42, color: '#00c8a0', icon: '💰' },
-      { name: 'Chat Premium',     revenue: daily * 0.28, color: '#3b82f6', icon: '💬' },
-      { name: 'Publicidad',       revenue: daily * 0.15, color: '#a855f7', icon: '📢' },
+      { name: 'Wallet / Pagos',   revenue: daily * 0.42, color: theme.l3, icon: '💰' },
+      { name: 'Chat Premium',     revenue: daily * 0.28, color: theme.l2, icon: '💬' },
+      { name: 'Publicidad',       revenue: daily * 0.15, color: theme.l1, icon: '📢' },
       { name: 'Suscripciones',    revenue: daily * 0.10, color: '#f59e0b', icon: '⭐' },
       { name: 'Integraciones API',revenue: daily * 0.05, color: '#ec4899', icon: '🔌' },
     ],
@@ -90,8 +91,8 @@ function generateMock(): FinancialData {
 const ChartTip = ({ active, payload, label, currency }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px', minWidth: '140px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px', minWidth: '140px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '6px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {convertAmount(p.value, currency)}
@@ -118,11 +119,11 @@ function FinCard({ icon, label, value, sub, color, trend, badge }: {
           {badge}
         </div>
       )}
-      <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>{icon} {label}</div>
-      <div style={{ fontSize: '22px', fontWeight: '900', color: '#f1f5f9', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>{sub}</div>}
+      <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>{icon} {label}</div>
+      <div style={{ fontSize: '22px', fontWeight: '900', color: theme.text, lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '4px' }}>{sub}</div>}
       {trend !== undefined && (
-        <div style={{ marginTop: '8px', fontSize: '12px', color: trend >= 0 ? '#00c8a0' : '#ef4444', fontWeight: '700' }}>
+        <div style={{ marginTop: '8px', fontSize: '12px', color: trend >= 0 ? theme.l3 : '#ef4444', fontWeight: '700' }}>
           {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}% vs período anterior
         </div>
       )}
@@ -138,13 +139,13 @@ function CostRow({ label, amount, total, color, icon, currency }: {
   return (
     <div style={{ marginBottom: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>{icon} {label}</span>
+        <span style={{ fontSize: '12px', color: theme.textMuted, fontWeight: '600' }}>{icon} {label}</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', color: '#475569' }}>{pct}%</span>
+          <span style={{ fontSize: '11px', color: theme.textMuted }}>{pct}%</span>
           <span style={{ fontSize: '13px', color, fontWeight: '800' }}>{convertAmount(amount, currency)}</span>
         </div>
       </div>
-      <div style={{ height: '5px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
+      <div style={{ height: '5px', background: theme.bgCard, borderRadius: '3px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '3px', boxShadow: `0 0 6px ${color}50`, transition: 'width 0.6s ease' }} />
       </div>
     </div>
@@ -153,6 +154,7 @@ function CostRow({ label, amount, total, color, icon, currency }: {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const FinancialDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]       = useState<FinancialData>(generateMock());
   const [currency, setCurrency] = useState<Currency>('XAF');
   const [pulse, setPulse]     = useState(false);
@@ -190,17 +192,17 @@ export const FinancialDashboard: React.FC = () => {
   const totalRevenue = data.revenue[period === 'daily' ? 'daily' : period === 'weekly' ? 'weekly' : 'monthly'];
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: '900' }}>💹 Dashboard Financiero</div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>Solo lectura · Actualiza cada 30s · {data.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>Solo lectura · Actualiza cada 30s · {data.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '10px', flexWrap: 'wrap', alignItems: 'center' }}>
           {/* Period selector */}
-          <div style={{ display: 'flex', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
             {(['daily','weekly','monthly'] as const).map(p => (
               <button key={p} onClick={() => setPeriod(p)} style={{
                 padding: '6px 14px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '700',
@@ -212,7 +214,7 @@ export const FinancialDashboard: React.FC = () => {
             ))}
           </div>
           {/* Currency selector */}
-          <div style={{ display: 'flex', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', overflow: 'hidden' }}>
+          <div style={{ display: 'flex', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, overflow: 'hidden' }}>
             {(['XAF','EUR','USD','GBP'] as const).map(c => (
               <button key={c} onClick={() => setCurrency(c)} style={{
                 padding: '6px 12px', border: 'none', cursor: 'pointer', fontSize: '11px', fontWeight: '700',
@@ -248,8 +250,8 @@ export const FinancialDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Revenue / Costs / Profit weekly bar */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
             📊 Ingresos vs Costes vs Beneficio — Últimos 7 días ({currency})
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -266,8 +268,8 @@ export const FinancialDashboard: React.FC = () => {
         </div>
 
         {/* Services pie */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
             🏆 Servicios más Rentables
           </div>
           <ResponsiveContainer width="100%" height={140}>
@@ -275,13 +277,13 @@ export const FinancialDashboard: React.FC = () => {
               <Pie data={data.services} dataKey="revenue" cx="50%" cy="50%" innerRadius={35} outerRadius={65} paddingAngle={3}>
                 {data.services.map((s, i) => <Cell key={i} fill={s.color} />)}
               </Pie>
-              <Tooltip formatter={(v: any) => convertAmount(v, currency)} contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} />
+              <Tooltip formatter={(v: any) => convertAmount(v, currency)} contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} />
             </PieChart>
           </ResponsiveContainer>
           <div style={{ marginTop: '8px' }}>
             {data.services.map(s => (
               <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #1e293b' }}>
-                <span style={{ fontSize: '11px', color: '#94a3b8' }}>{s.icon} {s.name}</span>
+                <span style={{ fontSize: '11px', color: theme.textMuted }}>{s.icon} {s.name}</span>
                 <span style={{ fontSize: '11px', fontWeight: '800', color: s.color }}>{convertAmount(s.revenue, currency)}</span>
               </div>
             ))}
@@ -293,8 +295,8 @@ export const FinancialDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Monthly area chart */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
             📈 Ingresos Mensuales vs Objetivo ({currency})
           </div>
           <ResponsiveContainer width="100%" height={190}>
@@ -320,8 +322,8 @@ export const FinancialDashboard: React.FC = () => {
         </div>
 
         {/* Weekly commissions line */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
             🤝 Tendencia Comisiones — 8 Semanas ({currency})
           </div>
           <ResponsiveContainer width="100%" height={190}>
@@ -330,7 +332,7 @@ export const FinancialDashboard: React.FC = () => {
               <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 11 }} />
               <YAxis tick={{ fill: '#475569', fontSize: 10 }} tickFormatter={v => convertAmount(v, currency)} width={70} />
               <Tooltip content={(props) => <ChartTip {...props} currency={currency} />} />
-              <Line type="monotone" dataKey="revenue"     name="Ingresos"   stroke="#00c8a0" strokeWidth={2} dot={{ fill: '#00c8a0', r: 3 }} />
+              <Line type="monotone" dataKey="revenue"     name="Ingresos"   stroke="#00c8a0" strokeWidth={2} dot={{ fill: theme.l3, r: 3 }} />
               <Line type="monotone" dataKey="commissions" name="Comisiones" stroke="#ec4899" strokeWidth={2} dot={{ fill: '#ec4899', r: 3 }} strokeDasharray="5 5" />
             </LineChart>
           </ResponsiveContainer>
@@ -341,9 +343,9 @@ export const FinancialDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Cost breakdown */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+            <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
               📉 Desglose de Costes Mensuales
             </div>
             <span style={{ fontSize: '13px', fontWeight: '800', color: '#ef4444' }}>{convertAmount(totalCosts, currency)}</span>
@@ -354,12 +356,12 @@ export const FinancialDashboard: React.FC = () => {
           <CostRow label="Soporte"          amount={data.costs.support}       total={totalCosts} color="#a855f7" icon="🎧" currency={currency} />
 
           {/* Margin indicator */}
-          <div style={{ marginTop: '20px', padding: '14px', background: '#0f172a', borderRadius: '12px', border: `1px solid ${data.profit.margin > 30 ? '#00c8a040' : '#ef444440'}` }}>
+          <div style={{ marginTop: '20px', padding: '14px', background: theme.bg, borderRadius: '12px', border: `1px solid ${data.profit.margin > 30 ? '#00c8a040' : '#ef444440'}` }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
-              <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>Margen de Beneficio</span>
-              <span style={{ fontSize: '14px', fontWeight: '900', color: data.profit.margin > 30 ? '#00c8a0' : '#ef4444' }}>{data.profit.margin}%</span>
+              <span style={{ fontSize: '12px', color: theme.textMuted, fontWeight: '600' }}>Margen de Beneficio</span>
+              <span style={{ fontSize: '14px', fontWeight: '900', color: data.profit.margin > 30 ? theme.l3 : '#ef4444' }}>{data.profit.margin}%</span>
             </div>
-            <div style={{ height: '8px', background: '#1e293b', borderRadius: '4px', overflow: 'hidden' }}>
+            <div style={{ height: '8px', background: theme.bgCard, borderRadius: '4px', overflow: 'hidden' }}>
               <div style={{
                 height: '100%', borderRadius: '4px',
                 width: `${Math.min(data.profit.margin, 100)}%`,
@@ -372,11 +374,11 @@ export const FinancialDashboard: React.FC = () => {
         </div>
 
         {/* 6-month projection */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '6px' }}>
             🔭 Proyección 6 Meses ({currency})
           </div>
-          <div style={{ fontSize: '11px', color: '#475569', marginBottom: '14px' }}>Optimista / Base / Conservador</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '14px' }}>Optimista / Base / Conservador</div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={data.projection}>
               <defs>
@@ -394,7 +396,7 @@ export const FinancialDashboard: React.FC = () => {
               <YAxis tick={{ fill: '#475569', fontSize: 10 }} tickFormatter={v => convertAmount(v, currency)} width={70} />
               <Tooltip content={(props) => <ChartTip {...props} currency={currency} />} />
               <Area type="monotone" dataKey="optimistic"    name="Optimista"    stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 4" fill="url(#gradOpt)" dot={false} />
-              <Area type="monotone" dataKey="projected"     name="Base"         stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradPrj)" dot={{ fill: '#3b82f6', r: 4 }} />
+              <Area type="monotone" dataKey="projected"     name="Base"         stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradPrj)" dot={{ fill: theme.l2, r: 4 }} />
               <Line type="monotone" dataKey="conservative" name="Conservador"  stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
@@ -402,29 +404,29 @@ export const FinancialDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 5: Commission breakdown ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${theme.border}` }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
           🤝 Desglose de Comisiones Diarias
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           {[
-            { label: 'Wallet / Pagos',   amount: data.commissions.wallet,  color: '#00c8a0', icon: '💰', pct: '10%' },
-            { label: 'Chat Premium',     amount: data.commissions.premium, color: '#3b82f6', icon: '💬', pct: '5%'  },
-            { label: 'Publicidad',       amount: data.commissions.ads,     color: '#a855f7', icon: '📢', pct: '3%'  },
+            { label: 'Wallet / Pagos',   amount: data.commissions.wallet,  color: theme.l3, icon: '💰', pct: '10%' },
+            { label: 'Chat Premium',     amount: data.commissions.premium, color: theme.l2, icon: '💬', pct: '5%'  },
+            { label: 'Publicidad',       amount: data.commissions.ads,     color: theme.l1, icon: '📢', pct: '3%'  },
             { label: 'Total Comisiones', amount: data.commissions.total,   color: '#ec4899', icon: '✅', pct: '18%' },
           ].map(({ label, amount, color, icon, pct }) => (
-            <div key={label} style={{ background: '#0f172a', borderRadius: '12px', padding: '14px', border: `1px solid ${color}20` }}>
-              <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>{icon} {label}</div>
+            <div key={label} style={{ background: theme.bg, borderRadius: '12px', padding: '14px', border: `1px solid ${color}20` }}>
+              <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px' }}>{icon} {label}</div>
               <div style={{ fontSize: '18px', fontWeight: '900', color }}>{convertAmount(amount, currency)}</div>
-              <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px' }}>tasa: {pct}</div>
+              <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '2px' }}>tasa: {pct}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* ── Footer ── */}
-      <div style={{ marginTop: '14px', padding: '12px', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#475569' }}>💹 Dashboard Financiero · Solo Lectura · Los datos financieros son estimaciones basadas en transacciones reales</span>
+      <div style={{ marginTop: '14px', padding: '12px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>💹 Dashboard Financiero · Solo Lectura · Los datos financieros son estimaciones basadas en transacciones reales</span>
         <div style={{ display: 'flex', gap: '16px' }}>
           {(['XAF','EUR','USD','GBP'] as const).map(c => (
             <span key={c} style={{ fontSize: '11px', color: '#334155' }}>

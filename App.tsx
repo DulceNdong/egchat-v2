@@ -5298,7 +5298,6 @@ const App: React.FC = () => {
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0,
               bottom: 0,
-              height: device.isMobile ? 'var(--vv-height, 100dvh)' : undefined,
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
@@ -6458,8 +6457,8 @@ const App: React.FC = () => {
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
-                position: 'relative',
-                marginTop: 'auto',
+                position: 'sticky',
+                bottom: 0,
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (

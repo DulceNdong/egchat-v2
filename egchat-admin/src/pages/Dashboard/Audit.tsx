@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 interface AuditEntry {
@@ -50,7 +51,7 @@ function generateMock(): AuditData {
   const criticals = entries.filter(e => CRITICAL_ACTIONS.has(e.action)).length;
   const actionCounts: Record<string,number> = {};
   entries.forEach(e => { actionCounts[e.action] = (actionCounts[e.action]||0)+1; });
-  const COLORS = ['#00c8a0','#3b82f6','#f59e0b','#a855f7','#ef4444','#f97316','#22c55e','#00b4e6','#ec4899','#64748b'];
+  const COLORS = [theme.l3,theme.l2,'#f59e0b',theme.l1,'#ef4444','#f97316','#22c55e',theme.l2,'#ec4899','#64748b'];
 
   return {
     totalToday: entries.length,
@@ -77,8 +78,8 @@ function generateMock(): AuditData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>
       ))}
@@ -87,6 +88,7 @@ const Tip = ({ active, payload, label }: any) => {
 };
 
 export const AuditDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData] = useState<AuditData>(generateMock());
   const [tick, setTick] = useState(0);
   const [pulse, setPulse] = useState(false);
@@ -131,23 +133,23 @@ export const AuditDashboard: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / PAGE);
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: '900' }}>📋 Dashboard de Auditoría</div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>Sistema · Log inmutable · Todas las acciones de administradores · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>Sistema · Log inmutable · Todas las acciones de administradores · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#6366f1 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#6366f1', fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#6366f1', fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#6366f1,#a855f7)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
             {pulse ? '⟳ ...' : '⟳ Actualizar'}
           </button>
-          <button onClick={() => adminAPI.exportAudit('csv')} style={{ background: 'rgba(0,200,160,0.1)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '7px 14px', color: '#00c8a0', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+          <button onClick={() => adminAPI.exportAudit('csv')} style={{ background: 'rgba(0,200,160,0.1)', border: '1px solid rgba(0,200,160,0.3)', borderRadius: '10px', padding: '7px 14px', color: theme.l3, fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
             ⬇️ Exportar CSV
           </button>
         </div>
@@ -158,7 +160,7 @@ export const AuditDashboard: React.FC = () => {
         {[
           { icon:'📊', label:'Acciones Hoy',     value: d.totalToday,         color:'#6366f1' },
           { icon:'❌', label:'Fallos',             value: d.failuresToday,      color: d.failuresToday > 5 ? '#ef4444' : '#64748b', alert: d.failuresToday > 5 },
-          { icon:'👤', label:'Admins Activos',    value: d.uniqueAdmins,       color:'#3b82f6' },
+          { icon:'👤', label:'Admins Activos',    value: d.uniqueAdmins,       color:theme.l2 },
           { icon:'⚠️', label:'Acciones Críticas', value: d.criticalActions,    color:'#f59e0b', alert: d.criticalActions > 0 },
         ].map(item => (
           <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${(item as any).alert ? item.color : item.color+'30'}`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
@@ -171,8 +173,8 @@ export const AuditDashboard: React.FC = () => {
 
       {/* Charts */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr 1fr', gap: '16px', marginBottom: '18px' }}>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📊 Actividad por Hora — Hoy</div>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📊 Actividad por Hora — Hoy</div>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={d.hourlyActivity} barGap={2}>
               <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
@@ -184,8 +186,8 @@ export const AuditDashboard: React.FC = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📅 Semanal</div>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>📅 Semanal</div>
           <ResponsiveContainer width="100%" height={180}>
             <LineChart data={d.weeklyActivity}>
               <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
@@ -197,15 +199,15 @@ export const AuditDashboard: React.FC = () => {
             </LineChart>
           </ResponsiveContainer>
         </div>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>👤 Por Admin</div>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>👤 Por Admin</div>
           {d.byAdmin.map(a => (
             <div key={a.email} style={{ marginBottom: '8px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                <span style={{ fontSize: '10px', color: '#94a3b8', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{a.email.split('@')[0]}</span>
+                <span style={{ fontSize: '10px', color: theme.textMuted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: '120px' }}>{a.email.split('@')[0]}</span>
                 <span style={{ fontSize: '11px', fontWeight: '800', color: '#6366f1' }}>{a.count}</span>
               </div>
-              <div style={{ height: '4px', background: '#0f172a', borderRadius: '2px', overflow: 'hidden' }}>
+              <div style={{ height: '4px', background: theme.bg, borderRadius: '2px', overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${a.count/d.totalToday*100}%`, background: '#6366f1', borderRadius: '2px' }} />
               </div>
             </div>
@@ -214,18 +216,18 @@ export const AuditDashboard: React.FC = () => {
       </div>
 
       {/* Log table */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>📜 Log de Auditoría ({filtered.length})</div>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>📜 Log de Auditoría ({filtered.length})</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <select value={actionFilter} onChange={e => { setActionFilter(e.target.value); setPage(0); }}
-              style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '5px 8px', color: '#94a3b8', fontSize: '11px', outline: 'none' }}>
+              style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '5px 8px', color: theme.textMuted, fontSize: '11px', outline: 'none' }}>
               <option value="all">Todas las acciones</option>
               {ACTIONS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
             {(['all','success','failure'] as const).map(r => (
               <button key={r} onClick={() => { setResultFilter(r); setPage(0); }}
-                style={{ padding: '4px 10px', borderRadius: '8px', border: `1px solid ${r==='success'?'rgba(0,200,160,0.3)':r==='failure'?'rgba(239,68,68,0.3)':'#334155'}`, background: resultFilter === r ? r==='success'?'rgba(0,200,160,0.1)':r==='failure'?'rgba(239,68,68,0.1)':'#334155' : 'transparent', color: r==='success'?'#00c8a0':r==='failure'?'#ef4444':'#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+                style={{ padding: '4px 10px', borderRadius: '8px', border: `1px solid ${r==='success'?'rgba(0,200,160,0.3)':r==='failure'?'rgba(239,68,68,0.3)':'#334155'}`, background: resultFilter === r ? r==='success'?'rgba(0,200,160,0.1)':r==='failure'?'rgba(239,68,68,0.1)':'#334155' : 'transparent', color: r==='success'?theme.l3:r==='failure'?'#ef4444':'#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
                 {r === 'all' ? 'Todos' : r === 'success' ? '✅ Exitosas' : '❌ Fallidas'}
               </button>
             ))}
@@ -236,7 +238,7 @@ export const AuditDashboard: React.FC = () => {
             <thead>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 {['ID','Hace','Admin','Rol','Acción','Recurso','ID Recurso','Resultado','IP'].map(h => (
-                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: '#64748b', fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -245,32 +247,32 @@ export const AuditDashboard: React.FC = () => {
                 <tr key={e.id} style={{ borderBottom: '1px solid #0f172a' }}
                   onMouseEnter={ev => (ev.currentTarget.style.background = '#0f172a')}
                   onMouseLeave={ev => (ev.currentTarget.style.background = 'transparent')}>
-                  <td style={{ padding: '7px 10px', color: '#475569', fontSize: '11px', fontFamily: 'monospace' }}>{e.id}</td>
-                  <td style={{ padding: '7px 10px', color: '#64748b', whiteSpace: 'nowrap', fontSize: '11px' }}>{e.ts}</td>
+                  <td style={{ padding: '7px 10px', color: theme.textMuted, fontSize: '11px', fontFamily: 'monospace' }}>{e.id}</td>
+                  <td style={{ padding: '7px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontSize: '11px' }}>{e.ts}</td>
                   <td style={{ padding: '7px 10px', color: '#e2e8f0', fontWeight: '600', whiteSpace: 'nowrap', fontSize: '11px' }}>{e.adminEmail.split('@')[0]}</td>
                   <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '10px', color: '#64748b', background: '#0f172a', padding: '1px 6px', borderRadius: '5px' }}>{e.adminRole}</span>
+                    <span style={{ fontSize: '10px', color: theme.textMuted, background: theme.bg, padding: '1px 6px', borderRadius: '5px' }}>{e.adminRole}</span>
                   </td>
                   <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
                     <span style={{ fontSize: '11px', color: CRITICAL_ACTIONS.has(e.action) ? '#f59e0b' : '#94a3b8', fontWeight: CRITICAL_ACTIONS.has(e.action) ? '700' : '400' }}>
                       {CRITICAL_ACTIONS.has(e.action) ? '⚠️ ' : ''}{e.action}
                     </span>
                   </td>
-                  <td style={{ padding: '7px 10px', color: '#64748b', whiteSpace: 'nowrap', fontSize: '11px' }}>{e.resourceType}</td>
-                  <td style={{ padding: '7px 10px', color: '#475569', fontFamily: 'monospace', fontSize: '11px' }}>{e.resourceId}</td>
+                  <td style={{ padding: '7px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontSize: '11px' }}>{e.resourceType}</td>
+                  <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: '11px' }}>{e.resourceId}</td>
                   <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
-                    <span style={{ fontSize: '10px', fontWeight: '800', color: e.result === 'success' ? '#00c8a0' : '#ef4444', background: e.result === 'success' ? 'rgba(0,200,160,0.1)' : 'rgba(239,68,68,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
+                    <span style={{ fontSize: '10px', fontWeight: '800', color: e.result === 'success' ? theme.l3 : '#ef4444', background: e.result === 'success' ? 'rgba(0,200,160,0.1)' : 'rgba(239,68,68,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
                       {e.result === 'success' ? '✅' : '❌'} {e.result === 'success' ? 'OK' : 'FALLO'}
                     </span>
                   </td>
-                  <td style={{ padding: '7px 10px', color: '#475569', fontFamily: 'monospace', fontSize: '10px', whiteSpace: 'nowrap' }}>{e.ip || '—'}</td>
+                  <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: '10px', whiteSpace: 'nowrap' }}>{e.ip || '—'}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: '#475569' }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length}</span>
+          <span style={{ fontSize: '11px', color: theme.textMuted }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length}</span>
           <div style={{ display: 'flex', gap: '6px' }}>
             {[{l:'«',a:()=>setPage(0),d:page===0},{l:'‹',a:()=>setPage(p=>p-1),d:page===0},{l:'›',a:()=>setPage(p=>p+1),d:page>=totalPages-1},{l:'»',a:()=>setPage(totalPages-1),d:page>=totalPages-1}].map(btn => (
               <button key={btn.l} onClick={btn.a} disabled={btn.d} style={{ padding:'5px 10px', borderRadius:'7px', background:'#0f172a', border:'1px solid #334155', color:btn.d?'#334155':'#94a3b8', fontSize:'11px', cursor:btn.d?'default':'pointer' }}>{btn.l}</button>

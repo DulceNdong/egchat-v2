@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type DeployStatus = 'success' | 'failed' | 'in_progress' | 'cancelled' | 'queued';
@@ -38,24 +39,24 @@ interface DevOpsData {
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const DEPLOY_STATUS: Record<DeployStatus, { color: string; bg: string; label: string; icon: string }> = {
-  success:     { color: '#00c8a0', bg: 'rgba(0,200,160,0.1)',   label: 'Exitoso',      icon: '✅' },
+  success:     { color: theme.l3, bg: 'rgba(0,200,160,0.1)',   label: 'Exitoso',      icon: '✅' },
   failed:      { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Fallido',      icon: '❌' },
-  in_progress: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔄' },
-  cancelled:   { color: '#64748b', bg: 'rgba(100,116,139,0.1)', label: 'Cancelado',    icon: '⛔' },
+  in_progress: { color: theme.l2, bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔄' },
+  cancelled:   { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Cancelado',    icon: '⛔' },
   queued:      { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'En Cola',      icon: '⏳' },
 };
 
 const ENV_CFG: Record<BuildEnv, { color: string; label: string }> = {
   production:  { color: '#ef4444', label: 'PROD'  },
   preview:     { color: '#f59e0b', label: 'PREV'  },
-  development: { color: '#3b82f6', label: 'DEV'   },
+  development: { color: theme.l2, label: 'DEV'   },
 };
 
 const LOG_CFG = {
-  info:    { color: '#94a3b8', bg: 'transparent',            icon: '·' },
+  info:    { color: theme.textMuted, bg: 'transparent',            icon: '·' },
   warn:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.05)', icon: '⚠' },
   error:   { color: '#ef4444', bg: 'rgba(239,68,68,0.06)',  icon: '✖' },
-  success: { color: '#00c8a0', bg: 'rgba(0,200,160,0.05)',  icon: '✔' },
+  success: { color: theme.l3, bg: 'rgba(0,200,160,0.05)',  icon: '✔' },
 };
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
@@ -67,9 +68,9 @@ const COMMIT_MSGS = [
 ];
 const AUTHORS = ['dulcendong','carlos.ng','ana.mb','miguel.ondo','rosa.nch'];
 const PROJECTS = [
-  { name: 'egchat-v2',    platform: 'Vercel',  platformIcon: '▲', color: '#f1f5f9', currentVersion: 'v2.5.1', deploysThisWeek: 8  },
-  { name: 'egchat-api',   platform: 'Render',  platformIcon: '🚀', color: '#3b82f6', currentVersion: 'v3.2.0', deploysThisWeek: 5  },
-  { name: 'egchat-admin', platform: 'Vercel',  platformIcon: '▲', color: '#a855f7', currentVersion: 'v1.4.0', deploysThisWeek: 12 },
+  { name: 'egchat-v2',    platform: 'Vercel',  platformIcon: '▲', color: theme.text, currentVersion: 'v2.5.1', deploysThisWeek: 8  },
+  { name: 'egchat-api',   platform: 'Render',  platformIcon: '🚀', color: theme.l2, currentVersion: 'v3.2.0', deploysThisWeek: 5  },
+  { name: 'egchat-admin', platform: 'Vercel',  platformIcon: '▲', color: theme.l1, currentVersion: 'v1.4.0', deploysThisWeek: 12 },
 ];
 
 function generateMock(): DevOpsData {
@@ -139,9 +140,9 @@ function generateMock(): DevOpsData {
     })),
     recentLogs: logs,
     platformStats: [
-      { platform: 'Vercel',  deploys: 84, color: '#f1f5f9', icon: '▲' },
-      { platform: 'Render',  deploys: 52, color: '#3b82f6', icon: '🚀' },
-      { platform: 'GitHub',  deploys: 20, color: '#64748b', icon: '🐙' },
+      { platform: 'Vercel',  deploys: 84, color: theme.text, icon: '▲' },
+      { platform: 'Render',  deploys: 52, color: theme.l2, icon: '🚀' },
+      { platform: 'GitHub',  deploys: 20, color: theme.textMuted, icon: '🐙' },
     ],
     lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
   };
@@ -151,8 +152,8 @@ function generateMock(): DevOpsData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {p.value}
@@ -164,6 +165,7 @@ const Tip = ({ active, payload, label }: any) => {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const DevOpsDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]       = useState<DevOpsData>(generateMock());
   const [tick, setTick]       = useState(0);
   const [pulse, setPulse]     = useState(false);
@@ -196,7 +198,7 @@ export const DevOpsDashboard: React.FC = () => {
   const filteredLogs = logFilter === 'all' ? d.recentLogs : d.recentLogs.filter(l => l.level === logFilter || (logFilter === 'warn' && l.level === 'success'));
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── Header ── */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
@@ -205,17 +207,17 @@ export const DevOpsDashboard: React.FC = () => {
             <span style={{ fontSize: '22px', fontWeight: '900' }}>🛠️ Dashboard DevOps</span>
             {d.deployingNow > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '20px', padding: '4px 12px' }}>
-                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: '#3b82f6', boxShadow: '0 0 6px #3b82f6' }} />
-                <span style={{ fontSize: '11px', fontWeight: '800', color: '#3b82f6' }}>{d.deployingNow} deploy en progreso</span>
+                <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: theme.l2, boxShadow: '0 0 6px #3b82f6' }} />
+                <span style={{ fontSize: '11px', fontWeight: '800', color: theme.l2 }}>{d.deployingNow} deploy en progreso</span>
               </div>
             )}
           </div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>FASE C — Tecnología · Deployments · Builds · Logs · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE C — Tecnología · Deployments · Builds · Logs · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#3b82f6 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#3b82f6', fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l2, fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#3b82f6,#6366f1)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -227,11 +229,11 @@ export const DevOpsDashboard: React.FC = () => {
       {/* ── Row 1: KPIs ── */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(145px,1fr))', gap: '12px', marginBottom: '18px' }}>
         {[
-          { icon:'🚀', label:'Total Deploys',     value:d.totalDeploys,                   color:'#3b82f6' },
-          { icon:'✅', label:'Tasa de Éxito',     value:`${d.successRate}%`,               color:d.successRate>=90?'#00c8a0':'#f59e0b' },
+          { icon:'🚀', label:'Total Deploys',     value:d.totalDeploys,                   color:theme.l2 },
+          { icon:'✅', label:'Tasa de Éxito',     value:`${d.successRate}%`,               color:d.successRate>=90?theme.l3:'#f59e0b' },
           { icon:'❌', label:'Fallos Hoy',         value:d.failedToday,                    color:d.failedToday>2?'#ef4444':'#64748b', alert:d.failedToday>2 },
-          { icon:'⏱️', label:'Tiempo Build',      value:`${d.avgBuildMin}min`,             color:'#a855f7' },
-          { icon:'🔄', label:'En Progreso',        value:d.deployingNow,                   color:'#3b82f6' },
+          { icon:'⏱️', label:'Tiempo Build',      value:`${d.avgBuildMin}min`,             color:theme.l1 },
+          { icon:'🔄', label:'En Progreso',        value:d.deployingNow,                   color:theme.l2 },
         ].map(item => (
           <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${(item as any).alert ? '#ef4444' : item.color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
             {(item as any).alert && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />}
@@ -247,29 +249,29 @@ export const DevOpsDashboard: React.FC = () => {
         {d.projects.map(proj => {
           const s = DEPLOY_STATUS[proj.status];
           return (
-            <div key={proj.name} style={{ background: '#1e293b', borderRadius: '14px', padding: '16px', border: `1px solid ${proj.color}20` }}>
+            <div key={proj.name} style={{ background: theme.bgCard, borderRadius: '14px', padding: '16px', border: `1px solid ${proj.color}20` }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <div style={{ width: '32px', height: '32px', borderRadius: '8px', background: `${proj.color}15`, border: `1px solid ${proj.color}30`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px', fontWeight: '900', color: proj.color }}>{proj.platformIcon}</div>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: '800', color: '#f1f5f9' }}>{proj.name}</div>
-                    <div style={{ fontSize: '10px', color: '#475569' }}>{proj.platform}</div>
+                    <div style={{ fontSize: '13px', fontWeight: '800', color: theme.text }}>{proj.name}</div>
+                    <div style={{ fontSize: '10px', color: theme.textMuted }}>{proj.platform}</div>
                   </div>
                 </div>
                 <span style={{ fontSize: '11px', fontWeight: '800', color: s.color, background: s.bg, padding: '2px 8px', borderRadius: '6px' }}>{proj.currentVersion}</span>
               </div>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '6px' }}>
-                <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+                <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
                   <div style={{ fontSize: '14px', fontWeight: '900', color: proj.color }}>{proj.deploysThisWeek}</div>
-                  <div style={{ fontSize: '9px', color: '#475569' }}>deploys/sem</div>
+                  <div style={{ fontSize: '9px', color: theme.textMuted }}>deploys/sem</div>
                 </div>
-                <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '14px', fontWeight: '900', color: proj.successRate >= 90 ? '#00c8a0' : '#f59e0b' }}>{proj.successRate}%</div>
-                  <div style={{ fontSize: '9px', color: '#475569' }}>éxito</div>
+                <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '14px', fontWeight: '900', color: proj.successRate >= 90 ? theme.l3 : '#f59e0b' }}>{proj.successRate}%</div>
+                  <div style={{ fontSize: '9px', color: theme.textMuted }}>éxito</div>
                 </div>
-                <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
-                  <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proj.lastDeploy}</div>
-                  <div style={{ fontSize: '9px', color: '#475569' }}>último</div>
+                <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+                  <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textMuted, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{proj.lastDeploy}</div>
+                  <div style={{ fontSize: '9px', color: theme.textMuted }}>último</div>
                 </div>
               </div>
             </div>
@@ -279,8 +281,8 @@ export const DevOpsDashboard: React.FC = () => {
 
       {/* ── Row 3: Build trend + Duration trend ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '16px', marginBottom: '18px' }}>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📊 Deploys por Día — Esta Semana
           </div>
           <ResponsiveContainer width="100%" height={180}>
@@ -294,8 +296,8 @@ export const DevOpsDashboard: React.FC = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             ⏱️ Duración de Builds — Últimos 15
           </div>
           <ResponsiveContainer width="100%" height={180}>
@@ -309,7 +311,7 @@ export const DevOpsDashboard: React.FC = () => {
               <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
               <XAxis dataKey="deploy" tick={{ fill: '#475569', fontSize: 9 }} interval={2} />
               <YAxis tick={{ fill: '#475569', fontSize: 9 }} unit="s" />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} formatter={(v: any) => [`${v}s`, 'Duración']} />
+              <Tooltip contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} formatter={(v: any) => [`${v}s`, 'Duración']} />
               <Area type="monotone" dataKey="duration" name="Duración" stroke="#a855f7" strokeWidth={2} fill="url(#gDur)" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
@@ -317,8 +319,8 @@ export const DevOpsDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 4: Platform stats ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155', marginBottom: '18px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '18px' }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
           🌐 Deploys por Plataforma
         </div>
         <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
@@ -326,15 +328,15 @@ export const DevOpsDashboard: React.FC = () => {
             const total = d.platformStats.reduce((s, x) => s + x.deploys, 0);
             const pct = Math.round(p.deploys / total * 100);
             return (
-              <div key={p.platform} style={{ flex: 1, minWidth: '180px', background: '#0f172a', borderRadius: '12px', padding: '14px', border: `1px solid ${p.color}15` }}>
+              <div key={p.platform} style={{ flex: 1, minWidth: '180px', background: theme.bg, borderRadius: '12px', padding: '14px', border: `1px solid ${p.color}15` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                   <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: '700' }}>{p.icon} {p.platform}</span>
                   <span style={{ fontSize: '18px', fontWeight: '900', color: p.color }}>{p.deploys}</span>
                 </div>
-                <div style={{ height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '6px', background: theme.bgCard, borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: p.color, borderRadius: '3px' }} />
                 </div>
-                <div style={{ fontSize: '10px', color: '#475569', marginTop: '4px', textAlign: 'right' }}>{pct}% del total</div>
+                <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '4px', textAlign: 'right' }}>{pct}% del total</div>
               </div>
             );
           })}
@@ -342,19 +344,19 @@ export const DevOpsDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 5: Deploy history ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155', marginBottom: '18px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '18px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             🚀 Historial de Deployments ({filtered.length})
           </div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
             <select value={projectFilter} onChange={e => { setProjectFilter(e.target.value); setPage(0); }}
-              style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '5px 8px', color: '#94a3b8', fontSize: '11px', outline: 'none' }}>
+              style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '5px 8px', color: theme.textMuted, fontSize: '11px', outline: 'none' }}>
               <option value="all">Todos los proyectos</option>
               {PROJECTS.map(p => <option key={p.name} value={p.name}>{p.name}</option>)}
             </select>
             {(['all','success','failed','in_progress','cancelled'] as const).map(s => {
-              const cfg = s === 'all' ? { color: '#64748b', label: 'Todos', icon: '📋' } : DEPLOY_STATUS[s];
+              const cfg = s === 'all' ? { color: theme.textMuted, label: 'Todos', icon: '📋' } : DEPLOY_STATUS[s];
               return (
                 <button key={s} onClick={() => { setStatusFilter(s as any); setPage(0); }}
                   style={{ padding: '4px 10px', borderRadius: '8px', border: `1px solid ${(cfg as any).color}30`, background: statusFilter === s ? (cfg as any).bg || '#334155' : 'transparent', color: (cfg as any).color, fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -370,7 +372,7 @@ export const DevOpsDashboard: React.FC = () => {
             <thead>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 {['Proyecto','Versión','Commit','Branch','Estado','Entorno','Autor','Iniciado','Duración'].map(h => (
-                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: '#64748b', fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -386,12 +388,12 @@ export const DevOpsDashboard: React.FC = () => {
                       <span style={{ fontSize: '12px', marginRight: '5px' }}>{dep.platformIcon}</span>
                       <span style={{ fontWeight: '700', color: '#e2e8f0' }}>{dep.project}</span>
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#94a3b8', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '11px' }}>{dep.version}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '11px' }}>{dep.version}</td>
                     <td style={{ padding: '8px 10px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <span style={{ color: '#64748b', fontFamily: 'monospace', fontSize: '11px' }}>{dep.commit} </span>
-                      <span style={{ color: '#94a3b8', fontSize: '11px' }}>{dep.commitMsg}</span>
+                      <span style={{ color: theme.textMuted, fontFamily: 'monospace', fontSize: '11px' }}>{dep.commit} </span>
+                      <span style={{ color: theme.textMuted, fontSize: '11px' }}>{dep.commitMsg}</span>
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '11px' }}>{dep.branch}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontFamily: 'monospace', fontSize: '11px' }}>{dep.branch}</td>
                     <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                       <div>
                         <span style={{ fontSize: '10px', fontWeight: '800', color: s.color, background: s.bg, padding: '2px 7px', borderRadius: '6px' }}>{s.icon} {s.label}</span>
@@ -401,9 +403,9 @@ export const DevOpsDashboard: React.FC = () => {
                     <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: '10px', fontWeight: '800', color: env.color, background: `${env.color}15`, padding: '2px 6px', borderRadius: '5px' }}>{env.label}</span>
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap' }}>{dep.author}</td>
-                    <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap', fontSize: '11px' }}>{dep.startedAt}</td>
-                    <td style={{ padding: '8px 10px', color: dep.status === 'success' ? '#00c8a0' : '#64748b', fontWeight: '700', whiteSpace: 'nowrap' }}>{dep.duration}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{dep.author}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontSize: '11px' }}>{dep.startedAt}</td>
+                    <td style={{ padding: '8px 10px', color: dep.status === 'success' ? theme.l3 : '#64748b', fontWeight: '700', whiteSpace: 'nowrap' }}>{dep.duration}</td>
                   </tr>
                 );
               })}
@@ -412,7 +414,7 @@ export const DevOpsDashboard: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: '#475569' }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length}</span>
+          <span style={{ fontSize: '11px', color: theme.textMuted }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length}</span>
           <div style={{ display: 'flex', gap: '6px' }}>
             {[{l:'«',a:()=>setPage(0),d:page===0},{l:'‹',a:()=>setPage(p=>p-1),d:page===0},{l:'›',a:()=>setPage(p=>p+1),d:page>=totalPages-1},{l:'»',a:()=>setPage(totalPages-1),d:page>=totalPages-1}].map(btn => (
               <button key={btn.l} onClick={btn.a} disabled={btn.d} style={{ padding:'5px 10px', borderRadius:'7px', background:'#0f172a', border:'1px solid #334155', color:btn.d?'#334155':'#94a3b8', fontSize:'11px', cursor:btn.d?'default':'pointer' }}>{btn.l}</button>
@@ -424,7 +426,7 @@ export const DevOpsDashboard: React.FC = () => {
       {/* ── Row 6: Build logs ── */}
       <div style={{ background: '#0b1120', borderRadius: '16px', padding: '18px', border: '1px solid #1e293b' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             📄 Logs de Build — Recientes
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -452,8 +454,8 @@ export const DevOpsDashboard: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop: '14px', padding: '10px 16px', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#475569' }}>🛠️ DevOps · FASE C — Tecnología · Auto-refresh 30s</span>
+      <div style={{ marginTop: '14px', padding: '10px 16px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>🛠️ DevOps · FASE C — Tecnología · Auto-refresh 30s</span>
         <div style={{ display: 'flex', gap: '12px' }}>
           {(['success','failed','in_progress'] as DeployStatus[]).map(s => (
             <span key={s} style={{ fontSize: '11px', color: DEPLOY_STATUS[s].color, display: 'flex', alignItems: 'center', gap: '4px' }}>

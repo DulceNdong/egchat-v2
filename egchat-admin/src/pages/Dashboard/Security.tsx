@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type ThreatLevel  = 'critical' | 'high' | 'medium' | 'low' | 'info';
@@ -48,26 +49,26 @@ const THREAT: Record<ThreatLevel, { color: string; bg: string; border: string; l
   critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',   border: 'rgba(239,68,68,0.3)',   label: 'CRÍTICO', icon: '🚨' },
   high:     { color: '#f97316', bg: 'rgba(249,115,22,0.08)',  border: 'rgba(249,115,22,0.3)',  label: 'ALTO',    icon: '⚠️' },
   medium:   { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)',  border: 'rgba(245,158,11,0.3)',  label: 'MEDIO',   icon: '🔶' },
-  low:      { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.3)', label: 'BAJO',    icon: '🔵' },
-  info:     { color: '#64748b', bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.3)', label: 'INFO',   icon: 'ℹ️' },
+  low:      { color: theme.l2, bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.3)', label: 'BAJO',    icon: '🔵' },
+  info:     { color: theme.textMuted, bg: 'rgba(100,116,139,0.08)', border: 'rgba(100,116,139,0.3)', label: 'INFO',   icon: 'ℹ️' },
 };
 
 const THREAT_TYPE_CFG: Record<ThreatType, { label: string; icon: string; color: string }> = {
   brute_force:   { label: 'Fuerza Bruta',       icon: '🔨', color: '#ef4444' },
   token_invalid: { label: 'Token Inválido',      icon: '🔑', color: '#f97316' },
   rate_limit:    { label: 'Rate Limit',          icon: '⚡', color: '#f59e0b' },
-  suspicious_tx: { label: 'Tx Sospechosa',       icon: '💰', color: '#a855f7' },
+  suspicious_tx: { label: 'Tx Sospechosa',       icon: '💰', color: theme.l1 },
   sqli_attempt:  { label: 'SQLi Intento',        icon: '💉', color: '#ef4444' },
   xss_attempt:   { label: 'XSS Intento',         icon: '🕷️', color: '#f97316' },
-  anomaly:       { label: 'Comportam. Anómalo',  icon: '👻', color: '#3b82f6' },
-  geo_block:     { label: 'Bloqueo Geográfico',  icon: '🌍', color: '#64748b' },
+  anomaly:       { label: 'Comportam. Anómalo',  icon: '👻', color: theme.l2 },
+  geo_block:     { label: 'Bloqueo Geográfico',  icon: '🌍', color: theme.textMuted },
 };
 
 const INCIDENT_STATUS: Record<IncidentStatus, { color: string; label: string }> = {
   open:          { color: '#ef4444', label: 'Abierto'       },
   investigating: { color: '#f59e0b', label: 'Investigando'  },
-  contained:     { color: '#3b82f6', label: 'Contenido'     },
-  resolved:      { color: '#00c8a0', label: 'Resuelto'      },
+  contained:     { color: theme.l2, label: 'Contenido'     },
+  resolved:      { color: theme.l3, label: 'Resuelto'      },
 };
 
 // ── Mock ──────────────────────────────────────────────────────────────────────
@@ -101,10 +102,10 @@ function generateMock(): SecData {
       { type: 'Fuerza Bruta',      count: 94,  color: '#ef4444', icon: '🔨' },
       { type: 'Token Inválido',    count: 72,  color: '#f97316', icon: '🔑' },
       { type: 'Rate Limit',        count: 58,  color: '#f59e0b', icon: '⚡' },
-      { type: 'Comportam. Anómalo',count: 31,  color: '#3b82f6', icon: '👻' },
-      { type: 'Tx Sospechosa',     count: 18,  color: '#a855f7', icon: '💰' },
+      { type: 'Comportam. Anómalo',count: 31,  color: theme.l2, icon: '👻' },
+      { type: 'Tx Sospechosa',     count: 18,  color: theme.l1, icon: '💰' },
       { type: 'SQLi / XSS',        count:  7,  color: '#ef4444', icon: '💉' },
-      { type: 'Geo Bloqueado',     count:  4,  color: '#64748b', icon: '🌍' },
+      { type: 'Geo Bloqueado',     count:  4,  color: theme.textMuted, icon: '🌍' },
     ],
     hourlyAttacks: Array.from({ length: 24 }, (_, i) => ({
       hour: `${i}:00`,
@@ -176,8 +177,8 @@ function generateMock(): SecData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>
       ))}
@@ -187,6 +188,7 @@ const Tip = ({ active, payload, label }: any) => {
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const SecurityDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]       = useState<SecData>(generateMock());
   const [tick, setTick]       = useState(0);
   const [pulse, setPulse]     = useState(false);
@@ -221,7 +223,7 @@ export const SecurityDashboard: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / PAGE);
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── SOC Banner ── */}
       {hasCritical && (
@@ -229,7 +231,7 @@ export const SecurityDashboard: React.FC = () => {
           <span style={{ fontSize: '22px' }}>🚨</span>
           <div>
             <div style={{ fontSize: '14px', fontWeight: '900', color: '#ef4444' }}>ALERTA CRÍTICA ACTIVA — {d.activeThreats} amenazas en tiempo real</div>
-            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Campaña de fuerza bruta en curso · {d.bruteForceHour} intentos en la última hora</div>
+            <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '2px' }}>Campaña de fuerza bruta en curso · {d.bruteForceHour} intentos en la última hora</div>
           </div>
           <div style={{ marginLeft: 'auto', width: '10px', height: '10px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 10px #ef4444' }} />
         </div>
@@ -239,12 +241,12 @@ export const SecurityDashboard: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: '900' }}>🛡️ Centro de Operaciones de Seguridad</div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>FASE C — SOC · Auto-refresh 20s · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE C — SOC · Auto-refresh 20s · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
-            <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(${hasCritical ? '#ef4444' : '#00c8a0'} ${(20-tick)/20*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: hasCritical ? '#ef4444' : '#00c8a0', fontWeight: '800' }}>{20-tick}</div>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(${hasCritical ? '#ef4444' : theme.l3} ${(20-tick)/20*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: hasCritical ? '#ef4444' : theme.l3, fontWeight: '800' }}>{20-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : hasCritical ? 'linear-gradient(135deg,#ef4444,#f97316)' : 'linear-gradient(135deg,#00c8a0,#00b4e6)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -258,9 +260,9 @@ export const SecurityDashboard: React.FC = () => {
         {[
           { icon:'🎯', label:'Ataques Hoy',        value:d.attacksToday,         color:'#ef4444', alert:true },
           { icon:'🔨', label:'Fuerza Bruta/hora',   value:d.bruteForceHour,       color:'#f97316', alert:d.bruteForceHour>10 },
-          { icon:'🚫', label:'IPs Bloqueadas',      value:d.blockedIPs,           color:'#a855f7' },
+          { icon:'🚫', label:'IPs Bloqueadas',      value:d.blockedIPs,           color:theme.l1 },
           { icon:'🔑', label:'Tokens Inválidos/h',  value:d.invalidTokensHour,    color:'#f59e0b', alert:d.invalidTokensHour>20 },
-          { icon:'👻', label:'Eventos Sospechosos', value:d.suspiciousEvents,     color:'#3b82f6' },
+          { icon:'👻', label:'Eventos Sospechosos', value:d.suspiciousEvents,     color:theme.l2 },
           { icon:'🔴', label:'Amenazas Activas',    value:d.activeThreats,        color:'#ef4444', alert:d.activeThreats>0 },
         ].map(item => (
           <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${item.alert ? item.color : item.color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
@@ -282,7 +284,7 @@ export const SecurityDashboard: React.FC = () => {
               <div style={{ fontSize: '20px', marginBottom: '4px' }}>{cfg.icon}</div>
               <div style={{ fontSize: '24px', fontWeight: '900', color: cfg.color, lineHeight: 1 }}>{d.threatsByLevel[level]}</div>
               <div style={{ fontSize: '10px', fontWeight: '800', color: cfg.color, marginTop: '4px', textTransform: 'uppercase' }}>{cfg.label}</div>
-              {levelFilter === level && <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>filtro activo</div>}
+              {levelFilter === level && <div style={{ fontSize: '9px', color: theme.textMuted, marginTop: '3px' }}>filtro activo</div>}
             </div>
           );
         })}
@@ -290,14 +292,14 @@ export const SecurityDashboard: React.FC = () => {
 
       {/* ── Row 3: Attack charts ── */}
       <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '16px', marginBottom: '18px' }}>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📊 Ataques por Tipo — Últimas 24h
           </div>
           <ResponsiveContainer width="100%" height={200}>
             <AreaChart data={d.hourlyAttacks}>
               <defs>
-                {[['brute','#ef4444'],['tokens','#f97316'],['anomaly','#3b82f6'],['sqli','#a855f7']].map(([k,c]) => (
+                {[['brute','#ef4444'],['tokens','#f97316'],['anomaly',theme.l2],['sqli',theme.l1]].map(([k,c]) => (
                   <linearGradient key={k} id={`g${k}`} x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%"  stopColor={c} stopOpacity={0.3} />
                     <stop offset="95%" stopColor={c} stopOpacity={0} />
@@ -316,8 +318,8 @@ export const SecurityDashboard: React.FC = () => {
           </ResponsiveContainer>
         </div>
 
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🌍 Top Orígenes de Ataques
           </div>
           {d.topAttackGeo.map(geo => {
@@ -328,12 +330,12 @@ export const SecurityDashboard: React.FC = () => {
                   <span style={{ fontSize: '12px', color: '#e2e8f0' }}>{geo.flag} {geo.country}</span>
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <span style={{ fontSize: '11px', color: '#ef4444', fontWeight: '700' }}>{geo.count} ataques</span>
-                    <span style={{ fontSize: '11px', color: '#00c8a0' }}>{geo.blocked} bloq.</span>
+                    <span style={{ fontSize: '11px', color: theme.l3 }}>{geo.blocked} bloq.</span>
                   </div>
                 </div>
-                <div style={{ height: '5px', background: '#0f172a', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '5px', background: theme.bg, borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ display: 'flex', height: '100%' }}>
-                    <div style={{ width: `${geo.blocked/maxCount*100}%`, background: '#00c8a0', transition: 'width 0.5s' }} />
+                    <div style={{ width: `${geo.blocked/maxCount*100}%`, background: theme.l3, transition: 'width 0.5s' }} />
                     <div style={{ width: `${(geo.count-geo.blocked)/maxCount*100}%`, background: '#ef4444', transition: 'width 0.5s' }} />
                   </div>
                 </div>
@@ -341,7 +343,7 @@ export const SecurityDashboard: React.FC = () => {
             );
           })}
           <div style={{ marginTop: '12px', display: 'flex', gap: '12px', fontSize: '10px' }}>
-            <span style={{ color: '#00c8a0' }}>■ Bloqueado</span>
+            <span style={{ color: theme.l3 }}>■ Bloqueado</span>
             <span style={{ color: '#ef4444' }}>■ Pasó filtros</span>
           </div>
         </div>
@@ -351,8 +353,8 @@ export const SecurityDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Type breakdown */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🏷️ Clasificación de Amenazas
           </div>
           {d.threatsByType.map(t => {
@@ -360,10 +362,10 @@ export const SecurityDashboard: React.FC = () => {
             return (
               <div key={t.type} style={{ marginBottom: '9px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '3px' }}>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>{t.icon} {t.type}</span>
+                  <span style={{ fontSize: '11px', color: theme.textMuted }}>{t.icon} {t.type}</span>
                   <span style={{ fontSize: '12px', fontWeight: '800', color: t.color }}>{t.count}</span>
                 </div>
-                <div style={{ height: '4px', background: '#0f172a', borderRadius: '2px', overflow: 'hidden' }}>
+                <div style={{ height: '4px', background: theme.bg, borderRadius: '2px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${t.count/total*100}%`, background: t.color, borderRadius: '2px', transition: 'width 0.5s' }} />
                 </div>
               </div>
@@ -372,8 +374,8 @@ export const SecurityDashboard: React.FC = () => {
         </div>
 
         {/* Weekly trend */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📅 Tendencia Semanal
           </div>
           <ResponsiveContainer width="100%" height={180}>
@@ -390,25 +392,25 @@ export const SecurityDashboard: React.FC = () => {
         </div>
 
         {/* Blocked IPs */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #ef444420' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: '1px solid #ef444420' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🚫 IPs Bloqueadas ({d.blockedIPs})
           </div>
           {d.blockedIPList.map(ip => (
-            <div key={ip.ip} style={{ padding: '8px 10px', background: '#0f172a', borderRadius: '8px', marginBottom: '6px', border: '1px solid rgba(239,68,68,0.15)' }}>
+            <div key={ip.ip} style={{ padding: '8px 10px', background: theme.bg, borderRadius: '8px', marginBottom: '6px', border: '1px solid rgba(239,68,68,0.15)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2px' }}>
                 <span style={{ fontSize: '12px', fontFamily: 'monospace', color: '#ef4444', fontWeight: '700' }}>{ip.ip}</span>
                 <span style={{ fontSize: '10px', color: '#f59e0b', fontWeight: '700' }}>{ip.expires}</span>
               </div>
-              <div style={{ fontSize: '10px', color: '#64748b' }}>{ip.flag} {ip.country} · {ip.reason} · {ip.since}</div>
+              <div style={{ fontSize: '10px', color: theme.textMuted }}>{ip.flag} {ip.country} · {ip.reason} · {ip.since}</div>
             </div>
           ))}
         </div>
       </div>
 
       {/* ── Row 5: Incidents ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155', marginBottom: '18px' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '18px' }}>
+        <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
           📋 Gestión de Incidentes — Respuesta
         </div>
         {d.incidents.map(inc => {
@@ -422,8 +424,8 @@ export const SecurityDashboard: React.FC = () => {
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flex: 1, minWidth: 0 }}>
                   <span style={{ fontSize: '18px', flexShrink: 0 }}>{t.icon}</span>
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>{inc.title}</div>
-                    <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: theme.text }}>{inc.title}</div>
+                    <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '2px' }}>
                       {inc.id} · {inc.started} · duración: {inc.duration}
                       {inc.affectedUsers > 0 && ` · ${inc.affectedUsers} usuarios afectados`}
                     </div>
@@ -432,18 +434,18 @@ export const SecurityDashboard: React.FC = () => {
                 <div style={{ display: 'flex', gap: '8px', flexShrink: 0, alignItems: 'center' }}>
                   <span style={{ fontSize: '10px', fontWeight: '800', color: t.color, background: `${t.color}15`, padding: '2px 8px', borderRadius: '6px' }}>{t.label}</span>
                   <span style={{ fontSize: '10px', fontWeight: '800', color: s.color, background: `${s.color}15`, padding: '2px 8px', borderRadius: '6px' }}>{s.label}</span>
-                  <span style={{ color: '#64748b', fontSize: '12px' }}>{expanded ? '▲' : '▼'}</span>
+                  <span style={{ color: theme.textMuted, fontSize: '12px' }}>{expanded ? '▲' : '▼'}</span>
                 </div>
               </div>
               {expanded && (
                 <div style={{ padding: '0 14px 14px', borderTop: `1px solid ${t.border}` }}>
-                  <div style={{ fontSize: '12px', color: '#94a3b8', margin: '10px 0 12px', lineHeight: 1.6 }}>{inc.summary}</div>
-                  <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', marginBottom: '8px' }}>Timeline de Respuesta</div>
+                  <div style={{ fontSize: '12px', color: theme.textMuted, margin: '10px 0 12px', lineHeight: 1.6 }}>{inc.summary}</div>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', marginBottom: '8px' }}>Timeline de Respuesta</div>
                   {inc.timeline.map((tl, i) => (
                     <div key={i} style={{ display: 'flex', gap: '10px', marginBottom: '6px', alignItems: 'flex-start' }}>
                       <span style={{ fontSize: '10px', color: t.color, fontFamily: 'monospace', flexShrink: 0, fontWeight: '700' }}>{tl.ts}</span>
                       <div style={{ width: '1px', background: `${t.color}30`, alignSelf: 'stretch', flexShrink: 0, marginTop: '2px' }} />
-                      <span style={{ fontSize: '11px', color: '#94a3b8' }}>{tl.action}</span>
+                      <span style={{ fontSize: '11px', color: theme.textMuted }}>{tl.action}</span>
                     </div>
                   ))}
                 </div>
@@ -454,13 +456,13 @@ export const SecurityDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 6: Event log ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             📡 Registro de Eventos ({filtered.length})
           </div>
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <button onClick={() => { setLevel('all'); setPage(0); }} style={{ padding: '4px 10px', borderRadius: '8px', border: '1px solid #334155', background: levelFilter === 'all' ? '#334155' : 'transparent', color: '#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>Todos</button>
+            <button onClick={() => { setLevel('all'); setPage(0); }} style={{ padding: '4px 10px', borderRadius: '8px', border: `1px solid ${theme.border}`, background: levelFilter === 'all' ? '#334155' : 'transparent', color: theme.textMuted, fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>Todos</button>
             {(['critical','high','medium','low'] as ThreatLevel[]).map(l => (
               <button key={l} onClick={() => { setLevel(l); setPage(0); }}
                 style={{ padding: '4px 9px', borderRadius: '8px', border: `1px solid ${THREAT[l].border}`, background: levelFilter === l ? THREAT[l].bg : 'transparent', color: THREAT[l].color, fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -475,7 +477,7 @@ export const SecurityDashboard: React.FC = () => {
             <thead>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 {['Hace','Tipo','Nivel','IP Origen','País','Objetivo','Detalle','Acción'].map(h => (
-                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: '#64748b', fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -487,7 +489,7 @@ export const SecurityDashboard: React.FC = () => {
                   <tr key={evt.id} style={{ borderBottom: '1px solid #0f172a' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#0f172a')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    <td style={{ padding: '7px 10px', color: '#475569', whiteSpace: 'nowrap', fontSize: '11px' }}>{evt.ts}</td>
+                    <td style={{ padding: '7px 10px', color: theme.textMuted, whiteSpace: 'nowrap', fontSize: '11px' }}>{evt.ts}</td>
                     <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: '12px', marginRight: '4px' }}>{tc.icon}</span>
                       <span style={{ fontSize: '11px', color: tc.color, fontWeight: '600' }}>{tc.label}</span>
@@ -496,11 +498,11 @@ export const SecurityDashboard: React.FC = () => {
                       <span style={{ fontSize: '10px', fontWeight: '800', color: t.color, background: t.bg, padding: '2px 7px', borderRadius: '6px' }}>{t.icon} {t.label}</span>
                     </td>
                     <td style={{ padding: '7px 10px', color: '#ef4444', fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'nowrap' }}>{evt.ip}</td>
-                    <td style={{ padding: '7px 10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{evt.flag} {evt.country}</td>
-                    <td style={{ padding: '7px 10px', color: '#64748b', fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'nowrap' }}>{evt.target}</td>
-                    <td style={{ padding: '7px 10px', color: '#94a3b8', maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '11px' }}>{evt.detail}</td>
+                    <td style={{ padding: '7px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{evt.flag} {evt.country}</td>
+                    <td style={{ padding: '7px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'nowrap' }}>{evt.target}</td>
+                    <td style={{ padding: '7px 10px', color: theme.textMuted, maxWidth: '200px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '11px' }}>{evt.detail}</td>
                     <td style={{ padding: '7px 10px', whiteSpace: 'nowrap' }}>
-                      <span style={{ fontSize: '10px', fontWeight: '800', color: evt.blocked ? '#00c8a0' : '#f59e0b', background: evt.blocked ? 'rgba(0,200,160,0.1)' : 'rgba(245,158,11,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
+                      <span style={{ fontSize: '10px', fontWeight: '800', color: evt.blocked ? theme.l3 : '#f59e0b', background: evt.blocked ? 'rgba(0,200,160,0.1)' : 'rgba(245,158,11,0.1)', padding: '2px 7px', borderRadius: '6px' }}>
                         {evt.blocked ? '🚫 BLOQUEADO' : '⚠️ PASÓ'}
                       </span>
                     </td>
@@ -512,7 +514,7 @@ export const SecurityDashboard: React.FC = () => {
         </div>
 
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: '#475569' }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length} eventos</span>
+          <span style={{ fontSize: '11px', color: theme.textMuted }}>{Math.min(page*PAGE+1,filtered.length)}–{Math.min((page+1)*PAGE,filtered.length)} de {filtered.length} eventos</span>
           <div style={{ display: 'flex', gap: '6px' }}>
             {[{l:'«',a:()=>setPage(0),d:page===0},{l:'‹',a:()=>setPage(p=>p-1),d:page===0},{l:'›',a:()=>setPage(p=>p+1),d:page>=totalPages-1},{l:'»',a:()=>setPage(totalPages-1),d:page>=totalPages-1}].map(btn => (
               <button key={btn.l} onClick={btn.a} disabled={btn.d} style={{ padding:'5px 10px', borderRadius:'7px', background:'#0f172a', border:'1px solid #334155', color:btn.d?'#334155':'#94a3b8', fontSize:'11px', cursor:btn.d?'default':'pointer' }}>{btn.l}</button>
@@ -522,8 +524,8 @@ export const SecurityDashboard: React.FC = () => {
       </div>
 
       {/* Footer */}
-      <div style={{ marginTop: '14px', padding: '10px 16px', background: '#1e293b', borderRadius: '10px', border: '1px solid #334155', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#475569' }}>🛡️ SOC · FASE C — Tecnología · Click en incidente para ver timeline · Auto-refresh 20s</span>
+      <div style={{ marginTop: '14px', padding: '10px 16px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>🛡️ SOC · FASE C — Tecnología · Click en incidente para ver timeline · Auto-refresh 20s</span>
         <div style={{ display: 'flex', gap: '10px' }}>
           {(['critical','high','medium','low'] as ThreatLevel[]).map(l => (
             <span key={l} style={{ fontSize: '11px', color: THREAT[l].color, display: 'flex', alignItems: 'center', gap: '4px' }}>

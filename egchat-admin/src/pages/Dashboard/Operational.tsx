@@ -1,11 +1,13 @@
-import React, { useEffect, useState } from 'react';
+﻿import React, { useEffect, useState } from 'react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { MetricCard } from '../../components/common/MetricCard';
 import { StatusBadge } from '../../components/common/StatusBadge';
 import { adminAPI } from '../../api/adminClient';
 import { useSSE } from '../../hooks/useSSE';
+import { useTheme } from '../../context/ThemeContext';
 
 export const OperationalDashboard: React.FC = () => {
+  const theme = useTheme();
   const [metrics, setMetrics] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -26,7 +28,7 @@ export const OperationalDashboard: React.FC = () => {
 
   return (
     <div>
-      <h2 style={{ fontSize: '18px', fontWeight: '800', color: '#f1f5f9', marginBottom: '20px' }}>📊 Dashboard Operacional</h2>
+      <h2 style={{ fontSize: '18px', fontWeight: '800', color: theme.text, marginBottom: '20px' }}>📊 Dashboard Operacional</h2>
 
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '14px', marginBottom: '24px' }}>
@@ -37,11 +39,11 @@ export const OperationalDashboard: React.FC = () => {
       </div>
 
       {/* Servicios */}
-      <div style={{ background: '#1e293b', borderRadius: '14px', padding: '18px', marginBottom: '24px', border: '1px solid #334155' }}>
-        <div style={{ fontSize: '13px', fontWeight: '700', color: '#94a3b8', marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de Servicios</div>
+      <div style={{ background: theme.bgCard, borderRadius: '14px', padding: '18px', marginBottom: '24px', border: `1px solid ${theme.border}` }}>
+        <div style={{ fontSize: '13px', fontWeight: '700', color: theme.textMuted, marginBottom: '14px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Estado de Servicios</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: '10px' }}>
           {(d.services || []).map((s: any) => (
-            <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#0f172a', borderRadius: '8px', padding: '10px 14px' }}>
+            <div key={s.name} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: theme.bg, borderRadius: '8px', padding: '10px 14px' }}>
               <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: '600' }}>{s.name}</span>
               <StatusBadge status={s.status} />
             </div>
@@ -50,14 +52,14 @@ export const OperationalDashboard: React.FC = () => {
       </div>
 
       {/* Gráfica tendencia */}
-      <div style={{ background: '#1e293b', borderRadius: '14px', padding: '18px', border: '1px solid #334155' }}>
-        <div style={{ fontSize: '13px', fontWeight: '700', color: '#94a3b8', marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Usuarios Activos — Últimas 24h</div>
+      <div style={{ background: theme.bgCard, borderRadius: '14px', padding: '18px', border: `1px solid ${theme.border}` }}>
+        <div style={{ fontSize: '13px', fontWeight: '700', color: theme.textMuted, marginBottom: '16px', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Usuarios Activos — Últimas 24h</div>
         <ResponsiveContainer width="100%" height={220}>
           <LineChart data={d.hourlyUsers || []}>
             <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
             <XAxis dataKey="hour" tick={{ fill: '#64748b', fontSize: 11 }} />
             <YAxis tick={{ fill: '#64748b', fontSize: 11 }} />
-            <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', color: '#f1f5f9' }} />
+            <Tooltip contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', color: theme.text }} />
             <Line type="monotone" dataKey="users" stroke="#00c8a0" strokeWidth={2} dot={false} />
           </LineChart>
         </ResponsiveContainer>

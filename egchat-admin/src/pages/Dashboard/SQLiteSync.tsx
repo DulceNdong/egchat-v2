@@ -1,8 +1,9 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
 } from 'recharts';
+import { useTheme } from '../../context/ThemeContext';
 
 type DeviceStatus   = 'synced' | 'pending' | 'conflict' | 'offline';
 type DevicePlatform = 'Android' | 'iOS' | 'Web';
@@ -28,9 +29,9 @@ interface SyncData {
 }
 
 const STATUS_CFG: Record<DeviceStatus, { color: string; bg: string; label: string; icon: string }> = {
-  synced:   { color: '#00c8a0', bg: 'rgba(0,200,160,0.1)',  label: 'Sincronizado', icon: '✅' },
+  synced:   { color: theme.l3, bg: 'rgba(0,200,160,0.1)',  label: 'Sincronizado', icon: '✅' },
   pending:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', label: 'Pendiente',    icon: '⏳' },
-  conflict: { color: '#a855f7', bg: 'rgba(168,85,247,0.1)', label: 'Conflicto',    icon: '⚠️' },
+  conflict: { color: theme.l1, bg: 'rgba(168,85,247,0.1)', label: 'Conflicto',    icon: '⚠️' },
   offline:  { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',  label: 'Offline',      icon: '📴' },
 };
 const PLATFORM_ICON: Record<DevicePlatform, string> = { Android: '🤖', iOS: '🍎', Web: '🌐' };
@@ -90,14 +91,15 @@ function generateMock(): SyncData {
 const ChartTip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => <div key={i} style={{ fontSize: '12px', color: p.color||p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>)}
     </div>
   );
 };
 
 export const SQLiteSyncDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]   = useState<SyncData>(generateMock());
   const [tick, setTick]   = useState(0);
   const [pulse, setPulse] = useState(false);
@@ -125,10 +127,10 @@ export const SQLiteSyncDashboard: React.FC = () => {
   });
   const pagedDevices  = filteredDevices.slice(devPage * DEV_PAGE, (devPage+1) * DEV_PAGE);
   const totalDevPages = Math.ceil(filteredDevices.length / DEV_PAGE);
-  const rateColor = d.syncSuccessRate >= 90 ? '#00c8a0' : d.syncSuccessRate >= 70 ? '#f59e0b' : '#ef4444';
+  const rateColor = d.syncSuccessRate >= 90 ? theme.l3 : d.syncSuccessRate >= 70 ? '#f59e0b' : '#ef4444';
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
       {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
@@ -141,14 +143,14 @@ export const SQLiteSyncDashboard: React.FC = () => {
               </div>
             )}
           </div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>FASE C — Tecnología · SQLite Offline Sync · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE C — Tecnología · SQLite Offline Sync · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#00c8a0 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#00c8a0', fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l3, fontWeight: '800' }}>{30-tick}</div>
             </div>
-            <span style={{ fontSize: '10px', color: '#475569' }}>auto-refresh</span>
+            <span style={{ fontSize: '10px', color: theme.textMuted }}>auto-refresh</span>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#00c8a0,#22c55e)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
             {pulse ? '⟳ ...' : '⟳ Actualizar'}
@@ -159,11 +161,11 @@ export const SQLiteSyncDashboard: React.FC = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: '12px', marginBottom: '20px' }}>
         {[
-          { icon:'📱', label:'Total Dispositivos', value: d.totalDevices,          color:'#00c8a0' },
+          { icon:'📱', label:'Total Dispositivos', value: d.totalDevices,          color:theme.l3 },
           { icon:'🟢', label:'Online Ahora',        value: d.onlineNow,            color:'#22c55e' },
           { icon:'📴', label:'Offline >7 días',     value: d.offlineLong,          color:'#ef4444', alert: d.offlineLong > 0 },
           { icon:'⏳', label:'Cola Pendiente',       value: `${d.pendingCount} · ${d.pendingKB}KB`, color:'#f59e0b' },
-          { icon:'⚠️', label:'Conflictos',          value: d.conflictCount,        color:'#a855f7', alert: d.conflictCount > 0 },
+          { icon:'⚠️', label:'Conflictos',          value: d.conflictCount,        color:theme.l1, alert: d.conflictCount > 0 },
           { icon:'✅', label:'Tasa de Éxito',        value: `${d.syncSuccessRate}%`, color: rateColor },
         ].map(item => (
           <div key={item.label} style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${(item as any).alert ? item.color : item.color+'30'}`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
@@ -176,12 +178,12 @@ export const SQLiteSyncDashboard: React.FC = () => {
       </div>
 
       {/* Charts */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155', marginBottom: '16px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '16px' }}>
         <div style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'14px' }}>📈 Actividad de Sync — Últimas 24h</div>
         <ResponsiveContainer width="100%" height={180}>
           <AreaChart data={d.activityChart}>
             <defs>
-              {[['Synced','#00c8a0'],['Failed','#ef4444'],['Pending','#f59e0b']].map(([k,c]) => (
+              {[['Synced',theme.l3],['Failed','#ef4444'],['Pending','#f59e0b']].map(([k,c]) => (
                 <linearGradient key={k} id={`g${k}`} x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor={c} stopOpacity={0.3} />
                   <stop offset="95%" stopColor={c} stopOpacity={0} />
@@ -200,7 +202,7 @@ export const SQLiteSyncDashboard: React.FC = () => {
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '16px', marginBottom: '16px' }}>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
           <div style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'14px' }}>📊 Dispositivos por Estado — 7 Días</div>
           <ResponsiveContainer width="100%" height={170}>
             <BarChart data={d.weekChart} barGap={2}>
@@ -215,22 +217,22 @@ export const SQLiteSyncDashboard: React.FC = () => {
             </BarChart>
           </ResponsiveContainer>
         </div>
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
           <div style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.8px', marginBottom:'14px' }}>🔀 Conflictos — 7 Días</div>
           <ResponsiveContainer width="100%" height={170}>
             <LineChart data={d.conflictTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="#0f172a" />
               <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 11 }} />
               <YAxis tick={{ fill: '#475569', fontSize: 9 }} />
-              <Tooltip contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} formatter={(v:any)=>[v,'Conflictos']} />
-              <Line type="monotone" dataKey="conflicts" name="Conflictos" stroke="#a855f7" strokeWidth={2} dot={{ fill:'#a855f7', r:3 }} />
+              <Tooltip contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} formatter={(v:any)=>[v,'Conflictos']} />
+              <Line type="monotone" dataKey="conflicts" name="Conflictos" stroke="#a855f7" strokeWidth={2} dot={{ fill:theme.l1, r:3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
       </div>
 
       {/* Device table */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155', marginBottom: '16px' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}`, marginBottom: '16px' }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
           <div style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.8px' }}>📱 Dispositivos ({filteredDevices.length})</div>
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
@@ -293,10 +295,10 @@ export const SQLiteSyncDashboard: React.FC = () => {
       </div>
 
       {/* Conflict table */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #a855f730' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: '1px solid #a855f730' }}>
         <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'14px', flexWrap:'wrap', gap:'10px' }}>
           <div style={{ fontSize:'12px', fontWeight:'700', color:'#94a3b8', textTransform:'uppercase', letterSpacing:'0.8px' }}>⚠️ Conflictos ({d.conflicts.length})</div>
-          {d.conflicts.length > 0 && <div style={{ fontSize:'11px', color:'#a855f7', background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.2)', borderRadius:'8px', padding:'4px 10px', fontWeight:'700' }}>Solo lectura · revisión manual requerida</div>}
+          {d.conflicts.length > 0 && <div style={{ fontSize:'11px', color:theme.l1, background:'rgba(168,85,247,0.1)', border:'1px solid rgba(168,85,247,0.2)', borderRadius:'8px', padding:'4px 10px', fontWeight:'700' }}>Solo lectura · revisión manual requerida</div>}
         </div>
         {d.conflicts.length === 0 ? (
           <div style={{ textAlign:'center', padding:'30px', color:'#475569', fontSize:'14px' }}>🎉 Sin conflictos activos</div>
@@ -315,13 +317,13 @@ export const SQLiteSyncDashboard: React.FC = () => {
                   <tr key={c.id} style={{ borderBottom: '1px solid #0f172a' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#0f172a')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:'11px', color:'#a855f7', whiteSpace:'nowrap' }}>{c.id}</td>
+                    <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:'11px', color:theme.l1, whiteSpace:'nowrap' }}>{c.id}</td>
                     <td style={{ padding:'8px 10px', fontFamily:'monospace', fontSize:'11px', color:'#94a3b8', whiteSpace:'nowrap' }}>{c.deviceId}</td>
                     <td style={{ padding:'8px 10px', color:'#e2e8f0', fontWeight:'600', whiteSpace:'nowrap' }}>{c.user}</td>
                     <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}><span style={{ background:'rgba(100,116,139,0.15)', color:'#94a3b8', padding:'2px 7px', borderRadius:'5px', fontSize:'11px', fontFamily:'monospace' }}>{c.table}</span></td>
                     <td style={{ padding:'8px 10px', color:'#64748b', fontFamily:'monospace', fontSize:'11px', whiteSpace:'nowrap' }}>{c.field}</td>
                     <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}><span style={{ background:'rgba(245,158,11,0.1)', color:'#f59e0b', padding:'2px 8px', borderRadius:'5px', fontFamily:'monospace', fontSize:'11px' }}>{c.localValue}</span></td>
-                    <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}><span style={{ background:'rgba(59,130,246,0.1)', color:'#3b82f6', padding:'2px 8px', borderRadius:'5px', fontFamily:'monospace', fontSize:'11px' }}>{c.serverValue}</span></td>
+                    <td style={{ padding:'8px 10px', whiteSpace:'nowrap' }}><span style={{ background:'rgba(59,130,246,0.1)', color:theme.l2, padding:'2px 8px', borderRadius:'5px', fontFamily:'monospace', fontSize:'11px' }}>{c.serverValue}</span></td>
                     <td style={{ padding:'8px 10px', color:'#475569', fontSize:'11px', whiteSpace:'nowrap' }}>{c.createdAt}</td>
                   </tr>
                 ))}

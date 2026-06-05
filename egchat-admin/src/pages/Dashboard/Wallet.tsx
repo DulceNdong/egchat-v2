@@ -1,10 +1,11 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   PieChart, Pie, Cell,
 } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
+import { useTheme } from '../../context/ThemeContext';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type TxStatus = 'completed' | 'pending' | 'rejected' | 'refunded' | 'processing';
@@ -32,17 +33,17 @@ interface WalletData {
 
 // ── Configs ───────────────────────────────────────────────────────────────────
 const TX_STATUS: Record<TxStatus, { color: string; bg: string; label: string; icon: string }> = {
-  completed:  { color: '#00c8a0', bg: 'rgba(0,200,160,0.1)',   label: 'Completado',   icon: '✅' },
+  completed:  { color: theme.l3, bg: 'rgba(0,200,160,0.1)',   label: 'Completado',   icon: '✅' },
   pending:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'Pendiente',    icon: '⏳' },
   rejected:   { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Rechazado',    icon: '❌' },
-  refunded:   { color: '#a855f7', bg: 'rgba(168,85,247,0.1)',  label: 'Reembolsado',  icon: '↩️' },
-  processing: { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)',  label: 'Procesando',   icon: '🔄' },
+  refunded:   { color: theme.l1, bg: 'rgba(168,85,247,0.1)',  label: 'Reembolsado',  icon: '↩️' },
+  processing: { color: theme.l2, bg: 'rgba(59,130,246,0.1)',  label: 'Procesando',   icon: '🔄' },
 };
 
 const ALERT_CFG = {
   critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)',  border: 'rgba(239,68,68,0.25)',  icon: '🚨' },
   warning:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', icon: '⚠️' },
-  info:     { color: '#3b82f6', bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: 'ℹ️' },
+  info:     { color: theme.l2, bg: 'rgba(59,130,246,0.08)', border: 'rgba(59,130,246,0.25)', icon: 'ℹ️' },
 };
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -105,17 +106,17 @@ function generateMock(): WalletData {
       rejected: Math.floor(20 + Math.random() * 30),
     })),
     methodBreakdown: [
-      { name: 'Wallet Saldo',    count: 820,  volume: 980_000,   color: '#00c8a0' },
+      { name: 'Wallet Saldo',    count: 820,  volume: 980_000,   color: theme.l3 },
       { name: 'Orange Money',    count: 540,  volume: 720_000,   color: '#f97316' },
       { name: 'MTN Mobile',      count: 310,  volume: 420_000,   color: '#f59e0b' },
-      { name: 'Tarjeta BGFI',    count: 140,  volume: 280_000,   color: '#3b82f6' },
-      { name: 'Efectivo',        count:  37,  volume:  80_000,   color: '#64748b' },
+      { name: 'Tarjeta BGFI',    count: 140,  volume: 280_000,   color: theme.l2 },
+      { name: 'Efectivo',        count:  37,  volume:  80_000,   color: theme.textMuted },
     ],
     categoryBreakdown: [
-      { name: 'Transferencias',   pct: 42, color: '#00c8a0', icon: '💸' },
+      { name: 'Transferencias',   pct: 42, color: theme.l3, icon: '💸' },
       { name: 'Recargas Móvil',   pct: 28, color: '#f97316', icon: '📱' },
-      { name: 'Pagos Servicios',  pct: 18, color: '#3b82f6', icon: '🔌' },
-      { name: 'Compras Online',   pct:  8, color: '#a855f7', icon: '🛒' },
+      { name: 'Pagos Servicios',  pct: 18, color: theme.l2, icon: '🔌' },
+      { name: 'Compras Online',   pct:  8, color: theme.l1, icon: '🛒' },
       { name: 'Internacional',    pct:  4, color: '#f59e0b', icon: '🌍' },
     ],
     recentTx,
@@ -131,8 +132,8 @@ function generateMock(): WalletData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {typeof p.value === 'number' && p.value > 10000 ? fmtXAF(p.value) : p.value?.toLocaleString()}
@@ -147,9 +148,9 @@ function KPI({ icon, label, value, sub, color, alert }: { icon: string; label: s
     <div style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${alert ? '#ef4444' : color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
       {alert && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />}
       <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '60px', height: '60px', borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
-      <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
+      <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
       <div style={{ fontSize: '20px', fontWeight: '900', color: alert ? '#ef4444' : '#f1f5f9', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '3px' }}>{sub}</div>}
     </div>
   );
 }
@@ -165,13 +166,14 @@ const ReadOnlyBanner = () => (
     <span style={{ fontSize: '20px' }}>🚫</span>
     <div>
       <div style={{ fontSize: '13px', fontWeight: '800', color: '#ef4444' }}>SOLO MONITOREO — No se pueden ejecutar pagos desde este panel</div>
-      <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>Este dashboard es de consulta. Ninguna acción modifica transacciones ni saldos.</div>
+      <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '2px' }}>Este dashboard es de consulta. Ninguna acción modifica transacciones ni saldos.</div>
     </div>
   </div>
 );
 
 // ── Main ──────────────────────────────────────────────────────────────────────
 export const WalletDashboard: React.FC = () => {
+  const theme = useTheme();
   const [data, setData]     = useState<WalletData>(generateMock());
   const [tick, setTick]     = useState(0);
   const [pulse, setPulse]   = useState(false);
@@ -208,7 +210,7 @@ export const WalletDashboard: React.FC = () => {
   const totalPages = Math.ceil(filtered.length / PAGE_SIZE);
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
+    <div style={{ color: theme.text }}>
 
       {/* ── Read-only banner ── */}
       <ReadOnlyBanner />
@@ -217,12 +219,12 @@ export const WalletDashboard: React.FC = () => {
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '18px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
           <div style={{ fontSize: '22px', fontWeight: '900' }}>💰 Dashboard Wallet</div>
-          <div style={{ fontSize: '11px', color: '#475569', marginTop: '3px' }}>FASE B — Operaciones · Solo monitoreo · {d.lastUpdate}</div>
+          <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '3px' }}>FASE B — Operaciones · Solo monitoreo · {d.lastUpdate}</div>
         </div>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <div style={{ background: '#1e293b', border: '1px solid #334155', borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#f59e0b ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#f59e0b', fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#f59e0b', fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#f59e0b,#f97316)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -239,9 +241,9 @@ export const WalletDashboard: React.FC = () => {
             <span style={{ fontSize: '15px' }}>{cfg.icon}</span>
             <div style={{ flex: 1 }}>
               <span style={{ fontSize: '12px', fontWeight: '700', color: '#e2e8f0' }}>{a.title}</span>
-              <span style={{ fontSize: '11px', color: '#64748b', marginLeft: '8px' }}>{a.detail}</span>
+              <span style={{ fontSize: '11px', color: theme.textMuted, marginLeft: '8px' }}>{a.detail}</span>
             </div>
-            <span style={{ fontSize: '10px', color: '#475569', flexShrink: 0 }}>{a.time}</span>
+            <span style={{ fontSize: '10px', color: theme.textMuted, flexShrink: 0 }}>{a.time}</span>
           </div>
         );
       })}
@@ -253,7 +255,7 @@ export const WalletDashboard: React.FC = () => {
         <KPI icon="❌" label="Operaciones Rechazo" value={d.rejectedCount.toLocaleString()}  sub={fmtXAF(d.rejectedVolume)}     color="#ef4444" alert={d.rejectedCount > 30} />
         <KPI icon="💸" label="Transferencias"     value={d.transferCount.toLocaleString()}   sub={fmtXAF(d.transferVolume)}     color="#3b82f6" />
         <KPI icon="📊" label="Volumen Total Hoy"  value={fmtXAF(d.totalVolume)}              sub="completado + pendiente"       color="#a855f7" />
-        <KPI icon="✔️" label="Tasa de Éxito"      value={`${d.successRate}%`}                sub="completadas / total"          color={d.successRate >= 97 ? '#00c8a0' : '#f59e0b'} />
+        <KPI icon="✔️" label="Tasa de Éxito"      value={`${d.successRate}%`}                sub="completadas / total"          color={d.successRate >= 97 ? theme.l3 : '#f59e0b'} />
         <KPI icon="📈" label="Valor Medio Tx"     value={fmtXAF(d.avgTxValue)}               sub="por transacción"              color="#00b4e6" />
       </div>
 
@@ -261,8 +263,8 @@ export const WalletDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '3fr 2fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Hourly stacked area */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📊 Volumen por Hora — Hoy (XAF)
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -279,8 +281,8 @@ export const WalletDashboard: React.FC = () => {
         </div>
 
         {/* 7-day area */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📅 Volumen Semanal (XAF)
           </div>
           <ResponsiveContainer width="100%" height={200}>
@@ -306,8 +308,8 @@ export const WalletDashboard: React.FC = () => {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '18px' }}>
 
         {/* Payment methods */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             💳 Métodos de Pago
           </div>
           {d.methodBreakdown.map(m => {
@@ -316,13 +318,13 @@ export const WalletDashboard: React.FC = () => {
             return (
               <div key={m.name} style={{ marginBottom: '10px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                  <span style={{ fontSize: '11px', color: '#94a3b8' }}>{m.name}</span>
+                  <span style={{ fontSize: '11px', color: theme.textMuted }}>{m.name}</span>
                   <div style={{ display: 'flex', gap: '8px' }}>
-                    <span style={{ fontSize: '10px', color: '#475569' }}>{pct}%</span>
+                    <span style={{ fontSize: '10px', color: theme.textMuted }}>{pct}%</span>
                     <span style={{ fontSize: '11px', fontWeight: '800', color: m.color }}>{fmtXAF(m.volume)}</span>
                   </div>
                 </div>
-                <div style={{ height: '5px', background: '#0f172a', borderRadius: '3px', overflow: 'hidden' }}>
+                <div style={{ height: '5px', background: theme.bg, borderRadius: '3px', overflow: 'hidden' }}>
                   <div style={{ height: '100%', width: `${pct}%`, background: m.color, borderRadius: '3px', transition: 'width 0.5s' }} />
                 </div>
               </div>
@@ -331,8 +333,8 @@ export const WalletDashboard: React.FC = () => {
         </div>
 
         {/* Categories pie */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             🗂️ Categorías de Pago
           </div>
           <ResponsiveContainer width="100%" height={120}>
@@ -340,20 +342,20 @@ export const WalletDashboard: React.FC = () => {
               <Pie data={d.categoryBreakdown} dataKey="pct" cx="50%" cy="50%" innerRadius={30} outerRadius={55} paddingAngle={3}>
                 {d.categoryBreakdown.map((c, i) => <Cell key={i} fill={c.color} />)}
               </Pie>
-              <Tooltip formatter={(v: any) => `${v}%`} contentStyle={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: '11px' }} />
+              <Tooltip formatter={(v: any) => `${v}%`} contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} />
             </PieChart>
           </ResponsiveContainer>
           {d.categoryBreakdown.map(c => (
             <div key={c.name} style={{ display: 'flex', justifyContent: 'space-between', padding: '3px 0', borderBottom: '1px solid #0f172a' }}>
-              <span style={{ fontSize: '11px', color: '#94a3b8' }}>{c.icon} {c.name}</span>
+              <span style={{ fontSize: '11px', color: theme.textMuted }}>{c.icon} {c.name}</span>
               <span style={{ fontSize: '11px', fontWeight: '800', color: c.color }}>{c.pct}%</span>
             </div>
           ))}
         </div>
 
         {/* Status summary */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
+        <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '14px' }}>
             📈 Resumen de Operaciones
           </div>
           {[
@@ -364,12 +366,12 @@ export const WalletDashboard: React.FC = () => {
           ].map(item => {
             const cfg = TX_STATUS[item.status];
             return (
-              <div key={item.label} style={{ padding: '10px', background: '#0f172a', borderRadius: '10px', marginBottom: '6px', border: `1px solid ${cfg.color}15` }}>
+              <div key={item.label} style={{ padding: '10px', background: theme.bg, borderRadius: '10px', marginBottom: '6px', border: `1px solid ${cfg.color}15` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                  <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>{cfg.icon} {item.label}</span>
+                  <span style={{ fontSize: '12px', color: theme.textMuted, fontWeight: '600' }}>{cfg.icon} {item.label}</span>
                   <span style={{ fontSize: '14px', fontWeight: '900', color: cfg.color }}>{item.value.toLocaleString()}</span>
                 </div>
-                <div style={{ fontSize: '10px', color: '#475569', marginTop: '2px', textAlign: 'right' }}>{fmtXAF(item.volume)}</div>
+                <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '2px', textAlign: 'right' }}>{fmtXAF(item.volume)}</div>
               </div>
             );
           })}
@@ -377,9 +379,9 @@ export const WalletDashboard: React.FC = () => {
       </div>
 
       {/* ── Row 4: Transaction log ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '18px', border: '1px solid #334155' }}>
+      <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '18px', border: `1px solid ${theme.border}` }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px', flexWrap: 'wrap', gap: '10px' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
+          <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>
             📋 Transacciones Recientes ({filtered.length})
             <span style={{ marginLeft: '8px', fontSize: '10px', color: '#ef4444', fontWeight: '600', background: 'rgba(239,68,68,0.1)', padding: '1px 6px', borderRadius: '5px' }}>
               🚫 Solo lectura
@@ -387,7 +389,7 @@ export const WalletDashboard: React.FC = () => {
           </div>
           {/* Status filter */}
           <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap' }}>
-            <button onClick={() => { setStatusFilter('all'); setPage(0); }} style={{ padding: '4px 12px', borderRadius: '8px', border: '1px solid #334155', background: statusFilter === 'all' ? '#334155' : 'transparent', color: statusFilter === 'all' ? '#f1f5f9' : '#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
+            <button onClick={() => { setStatusFilter('all'); setPage(0); }} style={{ padding: '4px 12px', borderRadius: '8px', border: `1px solid ${theme.border}`, background: statusFilter === 'all' ? '#334155' : 'transparent', color: statusFilter === 'all' ? '#f1f5f9' : '#64748b', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
               Todos
             </button>
             {(['completed','pending','rejected','processing','refunded'] as TxStatus[]).map(s => {
@@ -408,7 +410,7 @@ export const WalletDashboard: React.FC = () => {
             <thead>
               <tr style={{ borderBottom: '1px solid #334155' }}>
                 {['Ref.','Usuario','Tipo','Método','Monto','Estado','Hace'].map(h => (
-                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: '#64748b', fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
+                  <th key={h} style={{ padding: '7px 10px', textAlign: 'left', color: theme.textMuted, fontWeight: '700', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.5px', whiteSpace: 'nowrap' }}>{h}</th>
                 ))}
               </tr>
             </thead>
@@ -419,17 +421,17 @@ export const WalletDashboard: React.FC = () => {
                   <tr key={tx.id} style={{ borderBottom: '1px solid #0f172a' }}
                     onMouseEnter={e => (e.currentTarget.style.background = '#0f172a')}
                     onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
-                    <td style={{ padding: '8px 10px', color: '#64748b', fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'nowrap' }}>{tx.ref}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, fontFamily: 'monospace', fontSize: '11px', whiteSpace: 'nowrap' }}>{tx.ref}</td>
                     <td style={{ padding: '8px 10px', color: '#e2e8f0', fontWeight: '600', whiteSpace: 'nowrap' }}>{tx.user}</td>
-                    <td style={{ padding: '8px 10px', color: '#94a3b8', whiteSpace: 'nowrap' }}>{tx.type}</td>
-                    <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap' }}>{tx.method}</td>
-                    <td style={{ padding: '8px 10px', fontWeight: '800', color: '#f1f5f9', whiteSpace: 'nowrap' }}>{fmtXAF(tx.amount)}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{tx.type}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{tx.method}</td>
+                    <td style={{ padding: '8px 10px', fontWeight: '800', color: theme.text, whiteSpace: 'nowrap' }}>{fmtXAF(tx.amount)}</td>
                     <td style={{ padding: '8px 10px', whiteSpace: 'nowrap' }}>
                       <span style={{ fontSize: '10px', fontWeight: '800', color: s.color, background: s.bg, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${s.color}20` }}>
                         {s.icon} {s.label}
                       </span>
                     </td>
-                    <td style={{ padding: '8px 10px', color: '#64748b', whiteSpace: 'nowrap' }}>{tx.time}</td>
+                    <td style={{ padding: '8px 10px', color: theme.textMuted, whiteSpace: 'nowrap' }}>{tx.time}</td>
                   </tr>
                 );
               })}
@@ -439,7 +441,7 @@ export const WalletDashboard: React.FC = () => {
 
         {/* Pagination */}
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '12px', flexWrap: 'wrap', gap: '8px' }}>
-          <span style={{ fontSize: '11px', color: '#475569' }}>
+          <span style={{ fontSize: '11px', color: theme.textMuted }}>
             {Math.min(page * PAGE_SIZE + 1, filtered.length)}–{Math.min((page + 1) * PAGE_SIZE, filtered.length)} de {filtered.length} transacciones
           </span>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -449,7 +451,7 @@ export const WalletDashboard: React.FC = () => {
               { label: '›', action: () => setPage(p => p + 1),  disabled: page >= totalPages - 1 },
               { label: '»', action: () => setPage(totalPages-1), disabled: page >= totalPages - 1 },
             ].map(btn => (
-              <button key={btn.label} onClick={btn.action} disabled={btn.disabled} style={{ padding: '5px 10px', borderRadius: '7px', background: '#0f172a', border: '1px solid #334155', color: btn.disabled ? '#334155' : '#94a3b8', fontSize: '11px', cursor: btn.disabled ? 'default' : 'pointer' }}>{btn.label}</button>
+              <button key={btn.label} onClick={btn.action} disabled={btn.disabled} style={{ padding: '5px 10px', borderRadius: '7px', background: theme.bg, border: `1px solid ${theme.border}`, color: btn.disabled ? '#334155' : '#94a3b8', fontSize: '11px', cursor: btn.disabled ? 'default' : 'pointer' }}>{btn.label}</button>
             ))}
           </div>
         </div>
@@ -457,8 +459,8 @@ export const WalletDashboard: React.FC = () => {
 
       {/* ── Footer ── */}
       <div style={{ marginTop: '14px', padding: '10px 16px', background: 'linear-gradient(135deg,rgba(239,68,68,0.05),rgba(249,115,22,0.05))', borderRadius: '10px', border: '1px solid rgba(239,68,68,0.2)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-        <span style={{ fontSize: '11px', color: '#64748b' }}>🚫 <strong style={{ color: '#ef4444' }}>SOLO MONITOREO</strong> — Consulta de datos exclusivamente. Sin capacidad de ejecutar, cancelar ni modificar pagos.</span>
-        <span style={{ fontSize: '11px', color: '#475569' }}>Actualización cada 30s · {d.lastUpdate}</span>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>🚫 <strong style={{ color: '#ef4444' }}>SOLO MONITOREO</strong> — Consulta de datos exclusivamente. Sin capacidad de ejecutar, cancelar ni modificar pagos.</span>
+        <span style={{ fontSize: '11px', color: theme.textMuted }}>Actualización cada 30s · {d.lastUpdate}</span>
       </div>
     </div>
   );

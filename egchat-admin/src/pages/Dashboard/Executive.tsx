@@ -1,437 +1,263 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import {
-  LineChart, Line, AreaChart, Area,
-  XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
-  BarChart, Bar
-} from 'recharts';
+import { AreaChart, Area, BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
 import { adminAPI } from '../../api/adminClient';
+import { useTheme } from '../../context/ThemeContext';
 
-// ── Types ────────────────────────────────────────────────────────────────────
-interface ExecMetrics {
-  activeNow: number;
-  activeToday: number;
-  activeMonth: number;
-  newToday: number;
-  newWeek: number;
-  totalUsers: number;
-  platformHealth: 'optimal' | 'degraded' | 'critical';
-  uptime: number;
-  services: { name: string; status: 'ok' | 'degraded' | 'down'; latency?: number }[];
-  alerts: { id: string; severity: 'critical' | 'warning' | 'info'; title: string; time: string }[];
-  hourlyTrend: { hour: string; users: number }[];
-  dailyTrend: { day: string; users: number; newUsers: number }[];
-  chatVolume: number;
-  walletVolume: number;
-  successRate: number;
+// ── Inline SVG icons ──────────────────────────────────────────────────────────
+const IC = {
+  Users:   () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx={9} cy={7} r={4}/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>,
+  Calendar:() => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><rect x={3} y={4} width={18} height={18} rx={2} ry={2}/><line x1={16} y1={2} x2={16} y2={6}/><line x1={8} y1={2} x2={8} y2={6}/><line x1={3} y1={10} x2={21} y2={10}/></svg>,
+  Star:    () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>,
+  Plus:    () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><line x1={12} y1={5} x2={12} y2={19}/><line x1={5} y1={12} x2={19} y2={12}/></svg>,
+  Activity:() => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>,
+  Zap:     () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>,
+  Shield:  () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>,
+  TrendUp: () => <svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/></svg>,
+  CheckCircle: () => <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>,
+  AlertTriangle: () => <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1={12} y1={9} x2={12} y2={13}/><line x1={12} y1={17} x2={12.01} y2={17}/></svg>,
+  XCircle: () => <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><circle cx={12} cy={12} r={10}/><line x1={15} y1={9} x2={9} y2={15}/><line x1={9} y1={9} x2={15} y2={15}/></svg>,
+  Bell:    () => <svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>,
+};
+
+interface ExecData {
+  activeNow: number; activeToday: number; activeMonth: number;
+  newToday: number; totalUsers: number; uptime: number;
+  platformHealth: 'optimal'|'degraded'|'critical';
+  services: { name: string; status: 'ok'|'degraded'|'down'; latency?: number }[];
+  alerts: { id: string; level: 'critical'|'warning'|'info'; title: string; time: string }[];
+  hourlyUsers: { hour: string; users: number }[];
+  dailyUsers: { day: string; users: number; newUsers: number }[];
   lastUpdate: string;
 }
 
-// ── Helpers ──────────────────────────────────────────────────────────────────
-const HEALTH_CONFIG = {
-  optimal:  { color: '#00c8a0', bg: 'rgba(0,200,160,0.1)',  border: 'rgba(0,200,160,0.3)',  label: 'ÓPTIMO',   dot: '#00c8a0' },
-  degraded: { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', border: 'rgba(245,158,11,0.3)', label: 'DEGRADADO', dot: '#f59e0b' },
-  critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',  border: 'rgba(239,68,68,0.3)',  label: 'CRÍTICO',   dot: '#ef4444' },
+function mock(): ExecData {
+  const h = new Date().getHours();
+  const base = Math.floor(150 + Math.sin(h / 24 * Math.PI * 2) * 80 + Math.random() * 30);
+  return {
+    activeNow: base, activeToday: Math.floor(base * 3.2),
+    activeMonth: Math.floor(base * 22), newToday: Math.floor(12 + Math.random() * 40),
+    totalUsers: 3847, uptime: 99.84, platformHealth: 'optimal',
+    services: [
+      { name: 'API (Render)', status: 'ok',       latency: Math.floor(120 + Math.random() * 80) },
+      { name: 'DB (Neon)',    status: 'ok',       latency: Math.floor(8   + Math.random() * 12) },
+      { name: 'CDN (Vercel)', status: 'ok',       latency: Math.floor(18  + Math.random() * 10) },
+      { name: 'Push (FCM)',   status: Math.random() > 0.7 ? 'degraded' : 'ok', latency: Math.floor(80 + Math.random() * 60) },
+    ],
+    alerts: [
+      { id:'1', level:'warning', title:'WebSocket latencia P95 > 250ms', time:'Hace 8 min' },
+      { id:'2', level:'info',    title:'Deploy completado — v2.5.1',      time:'Hace 42 min' },
+    ],
+    hourlyUsers: Array.from({ length: 24 }, (_, i) => ({ hour: `${i}:00`, users: Math.floor(80 + Math.sin((i-6)/24*Math.PI*2)*120 + Math.random()*20) })),
+    dailyUsers:  ['Lu','Ma','Mi','Ju','Vi','Sa','Do'].map(day => ({ day, users: Math.floor(400 + Math.random()*200), newUsers: Math.floor(15 + Math.random()*40) })),
+    lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+  };
+}
+
+const STATUS_CFG = {
+  ok:       { color: '#22c55e', label: 'OK' },
+  degraded: { color: '#f59e0b', label: 'Degradado' },
+  down:     { color: '#ef4444', label: 'Caído' },
 };
 
-const STATUS_CONFIG = {
-  ok:       { color: '#00c8a0', label: 'OK' },
+const HEALTH_CFG = {
+  optimal:  { color: '#22c55e', label: 'ÓPTIMO' },
   degraded: { color: '#f59e0b', label: 'DEGRADADO' },
-  down:     { color: '#ef4444', label: 'CAÍDO' },
+  critical: { color: '#ef4444', label: 'CRÍTICO' },
 };
 
-const SEVERITY_CONFIG = {
-  critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',  icon: '🚨' },
-  warning:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)', icon: '⚠️' },
-  info:     { color: '#3b82f6', bg: 'rgba(59,130,246,0.1)', icon: 'ℹ️' },
+const ALERT_CFG = {
+  critical: { color: '#ef4444', bg: 'rgba(239,68,68,0.08)', border: 'rgba(239,68,68,0.25)', Icon: IC.XCircle },
+  warning:  { color: '#f59e0b', bg: 'rgba(245,158,11,0.08)', border: 'rgba(245,158,11,0.25)', Icon: IC.AlertTriangle },
+  info:     { color: '#60a5fa', bg: 'rgba(96,165,250,0.08)', border: 'rgba(96,165,250,0.25)', Icon: IC.Bell },
 };
 
-function fmt(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M';
-  if (n >= 1_000) return (n / 1_000).toFixed(1) + 'K';
-  return String(n);
-}
+export const ExecutiveDashboard: React.FC = () => {
+  const theme = useTheme();
+  const [data, setData] = useState<ExecData>(mock());
+  const [tick, setTick] = useState(0);
+  const [pulse, setPulse] = useState(false);
 
-function fmtXAF(n: number): string {
-  if (n >= 1_000_000) return (n / 1_000_000).toFixed(1) + 'M XAF';
-  if (n >= 1_000) return (n / 1_000).toFixed(0) + 'K XAF';
-  return n + ' XAF';
-}
+  const refresh = useCallback(async () => {
+    setPulse(true); setTimeout(() => setPulse(false), 500);
+    try {
+      const [ops, infra] = await Promise.allSettled([adminAPI.getOperational(), adminAPI.getInfra()]);
+      const o = ops.status === 'fulfilled' ? ops.value : null;
+      const inf = infra.status === 'fulfilled' ? infra.value : null;
+      const base = mock();
+      setData({
+        ...base,
+        activeNow:    o?.activeUsers    ?? base.activeNow,
+        activeToday:  o?.activeUsers    ? Math.floor(o.activeUsers * 3.2) : base.activeToday,
+        newToday:     o?.newUsersToday  ?? base.newToday,
+        totalUsers:   o?.totalUsers     ?? base.totalUsers,
+        uptime:       o?.uptime         ?? base.uptime,
+        services:     inf?.services     ?? base.services,
+        hourlyUsers:  o?.hourlyUsers    ?? base.hourlyUsers,
+        platformHealth: (inf?.services?.some((s: any) => s.status === 'down') ? 'critical' : inf?.services?.some((s: any) => s.status === 'degraded') ? 'degraded' : 'optimal') ?? base.platformHealth,
+        lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour:'2-digit', minute:'2-digit', second:'2-digit' }),
+      });
+    } catch { setData(mock()); }
+  }, []);
 
-// ── KPI Card ─────────────────────────────────────────────────────────────────
-function KpiCard({ icon, label, value, sub, color, trend }: {
-  icon: string; label: string; value: string | number; sub?: string;
-  color: string; trend?: number;
-}) {
-  return (
-    <div style={{
-      background: 'linear-gradient(135deg, #1e293b 0%, #0f172a 100%)',
-      border: `1px solid ${color}30`,
-      borderRadius: '16px', padding: '20px',
-      position: 'relative', overflow: 'hidden',
-    }}>
-      {/* Glow top-right */}
-      <div style={{
-        position: 'absolute', top: '-20px', right: '-20px',
-        width: '80px', height: '80px', borderRadius: '50%',
-        background: `radial-gradient(circle, ${color}20 0%, transparent 70%)`,
-      }} />
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
-        <div>
-          <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '8px' }}>{label}</div>
-          <div style={{ fontSize: '28px', fontWeight: '900', color: '#f1f5f9', lineHeight: 1 }}>{value}</div>
-          {sub && <div style={{ fontSize: '11px', color: '#94a3b8', marginTop: '4px' }}>{sub}</div>}
-        </div>
-        <div style={{
-          width: '44px', height: '44px', borderRadius: '12px',
-          background: `${color}20`, border: `1px solid ${color}30`,
-          display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px',
-        }}>{icon}</div>
+  useEffect(() => {
+    refresh();
+    const rt = setInterval(refresh, 30_000);
+    const tt = setInterval(() => setTick(t => (t+1) % 30), 1_000);
+    return () => { clearInterval(rt); clearInterval(tt); };
+  }, [refresh]);
+
+  const d = data;
+  const hc = HEALTH_CFG[d.platformHealth];
+
+  const Tip = ({ active, payload, label }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 8, padding: '8px 12px' }}>
+        <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4, fontWeight: 700 }}>{label}</div>
+        {payload.map((p: any, i: number) => <div key={i} style={{ fontSize: 12, color: p.color, fontWeight: 700 }}>{p.name}: {p.value?.toLocaleString()}</div>)}
       </div>
+    );
+  };
+
+  // KPI Card
+  const KPI = ({ Icon: Ic, label, value, sub, color, trend }: any) => (
+    <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
+      <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 10 }}>
+        <div style={{ fontSize: 10, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px' }}>{label}</div>
+        <div style={{ color, opacity: 0.9 }}><Ic /></div>
+      </div>
+      <div style={{ fontSize: 26, fontWeight: 900, color: theme.text, lineHeight: 1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>{sub}</div>}
       {trend !== undefined && (
-        <div style={{ marginTop: '12px', display: 'flex', alignItems: 'center', gap: '4px' }}>
-          <span style={{ fontSize: '12px', color: trend >= 0 ? '#00c8a0' : '#ef4444', fontWeight: '700' }}>
-            {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}%
-          </span>
-          <span style={{ fontSize: '11px', color: '#475569' }}>vs ayer</span>
+        <div style={{ marginTop: 8, fontSize: 11, color: trend >= 0 ? '#22c55e' : '#ef4444', fontWeight: 700 }}>
+          {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}% vs ayer
         </div>
       )}
     </div>
   );
-}
-
-// ── Service Row ───────────────────────────────────────────────────────────────
-function ServiceRow({ name, status, latency }: { name: string; status: 'ok' | 'degraded' | 'down'; latency?: number }) {
-  const cfg = STATUS_CONFIG[status];
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-      padding: '10px 14px', borderRadius: '10px',
-      background: '#0f172a', border: `1px solid ${cfg.color}20`,
-      marginBottom: '6px',
-    }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: cfg.color, boxShadow: `0 0 6px ${cfg.color}` }} />
-        <span style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: '600' }}>{name}</span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-        {latency !== undefined && <span style={{ fontSize: '11px', color: '#64748b' }}>{latency}ms</span>}
-        <span style={{ fontSize: '11px', fontWeight: '800', color: cfg.color, background: `${cfg.color}15`, padding: '2px 8px', borderRadius: '6px' }}>{cfg.label}</span>
-      </div>
-    </div>
-  );
-}
-
-// ── Alert Row ─────────────────────────────────────────────────────────────────
-function AlertRow({ severity, title, time }: { severity: 'critical' | 'warning' | 'info'; title: string; time: string }) {
-  const cfg = SEVERITY_CONFIG[severity];
-  return (
-    <div style={{
-      display: 'flex', alignItems: 'center', gap: '12px',
-      padding: '10px 14px', borderRadius: '10px',
-      background: cfg.bg, border: `1px solid ${cfg.color}30`,
-      marginBottom: '6px',
-    }}>
-      <span style={{ fontSize: '16px' }}>{cfg.icon}</span>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: '13px', color: '#e2e8f0', fontWeight: '600' }}>{title}</div>
-        <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{time}</div>
-      </div>
-      <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: cfg.color, flexShrink: 0 }} />
-    </div>
-  );
-}
-
-// ── Custom Tooltip ────────────────────────────────────────────────────────────
-const ChartTooltip = ({ active, payload, label }: any) => {
-  if (!active || !payload?.length) return null;
-  return (
-    <div style={{ background: '#0f172a', border: '1px solid #334155', borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px' }}>{label}</div>
-      {payload.map((p: any, i: number) => (
-        <div key={i} style={{ fontSize: '13px', color: p.color, fontWeight: '700' }}>
-          {p.name}: {p.value}
-        </div>
-      ))}
-    </div>
-  );
-};
-
-// ── Generate realistic mock data ──────────────────────────────────────────────
-function generateMock(): ExecMetrics {
-  const now = new Date();
-  const hour = now.getHours();
-  const baseActive = Math.floor(150 + Math.sin(hour / 24 * Math.PI * 2) * 80 + Math.random() * 30);
-  return {
-    activeNow:     baseActive,
-    activeToday:   Math.floor(baseActive * 3.2),
-    activeMonth:   Math.floor(baseActive * 22),
-    newToday:      Math.floor(12 + Math.random() * 40),
-    newWeek:       Math.floor(180 + Math.random() * 120),
-    totalUsers:    3847,
-    platformHealth: 'optimal',
-    uptime:        99.84,
-    services: [
-      { name: 'API Principal (Render)',  status: 'ok',       latency: Math.floor(120 + Math.random() * 80) },
-      { name: 'Base de Datos (Neon)',    status: 'ok',       latency: Math.floor(8  + Math.random() * 12) },
-      { name: 'CDN / Frontend (Vercel)', status: 'ok',       latency: Math.floor(18 + Math.random() * 10) },
-      { name: 'Push Notifications',     status: 'ok',       latency: Math.floor(45 + Math.random() * 30) },
-      { name: 'Almacenamiento (ImageKit)', status: 'ok',    latency: Math.floor(60 + Math.random() * 40) },
-      { name: 'WebSocket Relay',        status: 'degraded', latency: Math.floor(280 + Math.random() * 100) },
-    ],
-    alerts: [
-      { id: '1', severity: 'warning', title: 'WebSocket latencia elevada (>250ms)', time: 'Hace 8 min' },
-      { id: '2', severity: 'info',    title: 'Deploy completado — v2.5.1', time: 'Hace 42 min' },
-      { id: '3', severity: 'info',    title: '3 nuevos usuarios registrados desde GQ', time: 'Hace 1h' },
-    ],
-    hourlyTrend: Array.from({ length: 24 }, (_, i) => ({
-      hour: `${i}:00`,
-      users: Math.floor(80 + Math.sin((i - 6) / 24 * Math.PI * 2) * 120 + Math.random() * 20),
-    })),
-    dailyTrend: ['Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá', 'Do'].map((day, i) => ({
-      day,
-      users:    Math.floor(400 + Math.sin(i / 7 * Math.PI) * 200 + Math.random() * 50),
-      newUsers: Math.floor(20 + Math.random() * 60),
-    })),
-    chatVolume:    Math.floor(1200 + Math.random() * 800),
-    walletVolume:  Math.floor(2_500_000 + Math.random() * 1_500_000),
-    successRate:   parseFloat((97.2 + Math.random() * 2.5).toFixed(1)),
-    lastUpdate:    now.toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-  };
-}
-
-// ── Main Component ────────────────────────────────────────────────────────────
-export const ExecutiveDashboard: React.FC = () => {
-  const [data, setData] = useState<ExecMetrics>(generateMock());
-  const [tick, setTick]   = useState(0);
-  const [pulse, setPulse] = useState(false);
-
-  const refresh = useCallback(async () => {
-    setPulse(true);
-    setTimeout(() => setPulse(false), 600);
-    try {
-      // Fetch all endpoints in parallel, merge into executive view
-      const [ops, chat, wallet, infra] = await Promise.allSettled([
-        adminAPI.getOperational(),
-        adminAPI.getChat(),
-        adminAPI.getWallet(),
-        adminAPI.getInfra(),
-      ]);
-
-      const o = ops.status      === 'fulfilled' ? ops.value      : null;
-      const c = chat.status     === 'fulfilled' ? chat.value     : null;
-      const w = wallet.status   === 'fulfilled' ? wallet.value   : null;
-      const inf = infra.status  === 'fulfilled' ? infra.value    : null;
-
-      const services = inf?.services ?? data.services;
-      const downCount = services.filter((s: any) => s.status === 'down').length;
-      const degradCount = services.filter((s: any) => s.status === 'degraded').length;
-      const health: ExecMetrics['platformHealth'] =
-        downCount > 0 ? 'critical' : degradCount > 1 ? 'degraded' : 'optimal';
-
-      setData(prev => ({
-        ...prev,
-        activeNow:     o?.activeUsers    ?? prev.activeNow,
-        activeToday:   o?.activeUsers    ? Math.floor(o.activeUsers * 3.2) : prev.activeToday,
-        activeMonth:   o?.totalUsers     ?? prev.activeMonth,
-        newToday:      o?.newUsersToday  ?? prev.newToday,
-        totalUsers:    o?.totalUsers     ?? prev.totalUsers,
-        uptime:        o?.uptime         ?? prev.uptime,
-        platformHealth: health,
-        services:      services,
-        chatVolume:    c?.messagesPerMin ? c.messagesPerMin * 60 : prev.chatVolume,
-        walletVolume:  w?.volumeToday    ?? prev.walletVolume,
-        successRate:   w?.successRate    ?? prev.successRate,
-        hourlyTrend:   o?.hourlyUsers    ?? prev.hourlyTrend,
-        lastUpdate:    new Date().toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-      }));
-    } catch {
-      // fallback: just refresh mock numbers
-      setData(generateMock());
-    }
-  }, []);
-
-  // Auto-refresh every 30s, countdown tick every second
-  useEffect(() => {
-    refresh();
-    const refreshTimer = setInterval(refresh, 30_000);
-    const tickTimer    = setInterval(() => setTick(t => (t + 1) % 30), 1_000);
-    return () => { clearInterval(refreshTimer); clearInterval(tickTimer); };
-  }, [refresh]);
-
-  const health = HEALTH_CONFIG[data.platformHealth];
 
   return (
-    <div style={{ color: '#f1f5f9' }}>
-
-      {/* ── Header ── */}
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '24px', flexWrap: 'wrap', gap: '12px' }}>
+    <div style={{ color: theme.text }}>
+      {/* Header */}
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 20, flexWrap: 'wrap', gap: 10 }}>
         <div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-            <div style={{ fontSize: '22px', fontWeight: '900', color: '#f1f5f9' }}>🏛️ Centro de Control Ejecutivo</div>
-            <div style={{
-              padding: '4px 12px', borderRadius: '20px',
-              background: health.bg, border: `1px solid ${health.border}`,
-              fontSize: '11px', fontWeight: '800', color: health.color, letterSpacing: '1px',
-              display: 'flex', alignItems: 'center', gap: '6px',
-            }}>
-              <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: health.color, boxShadow: `0 0 6px ${health.color}`, animation: 'pulse 2s infinite' }} />
-              PLATAFORMA {health.label}
-            </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+            <span style={{ fontSize: 20, fontWeight: 900, color: theme.text }}>🏛️ Centro de Control Ejecutivo</span>
+            <span style={{ fontSize: 10, fontWeight: 800, color: hc.color, background: `${hc.color}12`, border: `1px solid ${hc.color}30`, borderRadius: 20, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+              <span style={{ width: 6, height: 6, borderRadius: '50%', background: hc.color, display: 'inline-block', boxShadow: `0 0 6px ${hc.color}` }} />
+              {hc.label}
+            </span>
           </div>
-          <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>
-            Vista solo lectura · Dirección General · Actualización automática cada 30s
-          </div>
+          <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 3 }}>Solo lectura · Dirección General · {d.lastUpdate}</div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          {/* Countdown ring */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', background: '#1e293b', padding: '6px 14px', borderRadius: '20px', border: '1px solid #334155' }}>
-            <div style={{
-              width: '28px', height: '28px', borderRadius: '50%',
-              background: `conic-gradient(#00c8a0 ${(30 - tick) / 30 * 360}deg, #1e293b 0deg)`,
-              display: 'flex', alignItems: 'center', justifyContent: 'center',
-            }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: '#0f172a', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#00c8a0', fontWeight: '800' }}>{30 - tick}</div>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+          <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', alignItems: 'center', gap: 6 }}>
+            <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l1} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l1, fontWeight: 800 }}>{30-tick}</div>
             </div>
-            <span style={{ fontSize: '11px', color: '#64748b' }}>próx. actualización</span>
+            <span style={{ fontSize: 11, color: theme.textMuted }}>próx. refresh</span>
           </div>
-          <button onClick={refresh} style={{
-            background: 'linear-gradient(135deg, #00c8a0, #00b4e6)',
-            border: 'none', borderRadius: '10px', padding: '8px 16px',
-            color: '#fff', fontSize: '12px', fontWeight: '700', cursor: 'pointer',
-            opacity: pulse ? 0.7 : 1, transition: 'opacity 0.3s',
-          }}>
-            {pulse ? '⟳ Actualizando...' : '⟳ Actualizar'}
+          <button onClick={refresh} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l1},${theme.l2})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 16px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer' }}>
+            {pulse ? '⟳ ...' : '⟳ Actualizar'}
           </button>
         </div>
       </div>
 
-      {/* ── Timestamp ── */}
-      <div style={{ fontSize: '11px', color: '#334155', marginBottom: '20px', textAlign: 'right' }}>
-        Última actualización: {data.lastUpdate} · Uptime: {data.uptime}%
-      </div>
-
-      {/* ── Row 1: KPIs principales ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px', marginBottom: '20px' }}>
-        <KpiCard icon="🟢" label="Activos Ahora"   value={fmt(data.activeNow)}   sub="usuarios en línea"      color="#00c8a0" trend={8}  />
-        <KpiCard icon="📅" label="Activos Hoy"     value={fmt(data.activeToday)} sub="sesiones únicas"        color="#3b82f6" trend={5}  />
-        <KpiCard icon="📆" label="Activos Mes"     value={fmt(data.activeMonth)} sub="usuarios únicos"        color="#a855f7" trend={12} />
-        <KpiCard icon="✨" label="Nuevos Hoy"      value={fmt(data.newToday)}    sub="registros nuevos"       color="#f59e0b" trend={3}  />
-        <KpiCard icon="👥" label="Total Usuarios"  value={fmt(data.totalUsers)}  sub="registrados"            color="#00b4e6"            />
-        <KpiCard icon="💬" label="Mensajes/hora"   value={fmt(data.chatVolume)}  sub="tráfico de chat"        color="#ec4899"            />
-        <KpiCard icon="💰" label="Volumen Wallet"  value={fmtXAF(data.walletVolume)} sub="transacciones hoy"  color="#22c55e"            />
-        <KpiCard icon="✅" label="Tasa de Éxito"   value={`${data.successRate}%`} sub="transacciones ok"      color="#00c8a0" trend={1}  />
-      </div>
-
-      {/* ── Row 2: Gráficas ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-
-        {/* Usuarios activos 24h */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
-            📈 Usuarios Activos — Últimas 24h
+      {/* Alerts */}
+      {d.alerts.map(a => {
+        const ac = ALERT_CFG[a.level];
+        return (
+          <div key={a.id} style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 14px', borderRadius: 10, background: ac.bg, border: `1px solid ${ac.border}`, marginBottom: 8, color: ac.color }}>
+            <ac.Icon />
+            <span style={{ fontSize: 12, fontWeight: 700, color: theme.text, flex: 1 }}>{a.title}</span>
+            <span style={{ fontSize: 10, color: theme.textMuted }}>{a.time}</span>
           </div>
+        );
+      })}
+
+      {/* KPIs */}
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 12, marginBottom: 18, marginTop: d.alerts.length ? 12 : 0 }}>
+        <KPI Icon={IC.Activity}  label="Activos Ahora"   value={d.activeNow.toLocaleString()}   sub="en línea"          color={theme.l3} trend={8} />
+        <KPI Icon={IC.Calendar}  label="Activos Hoy"     value={d.activeToday.toLocaleString()}  sub="sesiones únicas"   color={theme.l2} trend={5} />
+        <KPI Icon={IC.Users}     label="Activos Mes"     value={d.activeMonth.toLocaleString()}  sub="usuarios únicos"   color={theme.l1} trend={12} />
+        <KPI Icon={IC.Plus}      label="Nuevos Hoy"      value={d.newToday.toLocaleString()}     sub="registros"         color={theme.l2} trend={3} />
+        <KPI Icon={IC.Star}      label="Total Usuarios"  value={d.totalUsers.toLocaleString()}   sub="registrados"       color={theme.l3} />
+        <KPI Icon={IC.Zap}       label="Uptime"          value={`${d.uptime}%`}                  sub="últimos 30 días"   color={theme.l3} />
+        <KPI Icon={IC.Shield}    label="Plataforma"      value={hc.label}                        sub="estado general"    color={hc.color} />
+        <KPI Icon={IC.TrendUp}   label="Servicios OK"    value={`${d.services.filter(s=>s.status==='ok').length}/${d.services.length}`} sub="operativos" color={theme.l2} />
+      </div>
+
+      {/* Charts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 18 }}>
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📈 Usuarios Activos — 24h</div>
           <ResponsiveContainer width="100%" height={180}>
-            <AreaChart data={data.hourlyTrend}>
+            <AreaChart data={d.hourlyUsers}>
               <defs>
-                <linearGradient id="gradGreen" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#00c8a0" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#00c8a0" stopOpacity={0} />
+                <linearGradient id="gExec1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="5%"  stopColor={theme.l3} stopOpacity={0.3}/>
+                  <stop offset="95%" stopColor={theme.l3} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="hour" tick={{ fill: '#475569', fontSize: 10 }} interval={3} />
-              <YAxis tick={{ fill: '#475569', fontSize: 10 }} />
-              <Tooltip content={<ChartTooltip />} />
-              <Area type="monotone" dataKey="users" name="Usuarios" stroke="#00c8a0" strokeWidth={2} fill="url(#gradGreen)" dot={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.border}/>
+              <XAxis dataKey="hour" tick={{ fill: theme.textMuted, fontSize: 10 }} interval={3}/>
+              <YAxis tick={{ fill: theme.textMuted, fontSize: 10 }}/>
+              <Tooltip content={<Tip />}/>
+              <Area type="monotone" dataKey="users" name="Usuarios" stroke={theme.l3} strokeWidth={2} fill="url(#gExec1)" dot={false}/>
             </AreaChart>
           </ResponsiveContainer>
         </div>
-
-        {/* Tendencia semanal */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
-            📊 Actividad Semanal — Usuarios y Nuevos Registros
-          </div>
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📊 Actividad Semanal</div>
           <ResponsiveContainer width="100%" height={180}>
-            <BarChart data={data.dailyTrend} barGap={4}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
-              <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 10 }} />
-              <YAxis tick={{ fill: '#475569', fontSize: 10 }} />
-              <Tooltip content={<ChartTooltip />} />
-              <Bar dataKey="users"    name="Activos"  fill="#3b82f6" radius={[4,4,0,0]} />
-              <Bar dataKey="newUsers" name="Nuevos"   fill="#00c8a0" radius={[4,4,0,0]} />
+            <BarChart data={d.dailyUsers} barGap={4}>
+              <CartesianGrid strokeDasharray="3 3" stroke={theme.border}/>
+              <XAxis dataKey="day" tick={{ fill: theme.textMuted, fontSize: 11 }}/>
+              <YAxis tick={{ fill: theme.textMuted, fontSize: 10 }}/>
+              <Tooltip content={<Tip />}/>
+              <Bar dataKey="users"    name="Activos"  fill={theme.l2} radius={[4,4,0,0]}/>
+              <Bar dataKey="newUsers" name="Nuevos"   fill={theme.l3} radius={[4,4,0,0]}/>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* ── Row 3: Servicios + Alertas ── */}
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '20px' }}>
-
-        {/* Estado de Servicios */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-              ⚙️ Estado de Servicios Críticos
-            </div>
-            <div style={{ fontSize: '11px', color: '#64748b' }}>
-              {data.services.filter(s => s.status === 'ok').length}/{data.services.length} operativos
-            </div>
-          </div>
-          {data.services.map(s => <ServiceRow key={s.name} {...s} />)}
+      {/* Services + Alerts */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>⚙️ Estado de Servicios</div>
+          {d.services.map(s => {
+            const sc = STATUS_CFG[s.status];
+            return (
+              <div key={s.name} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 12px', borderRadius: 9, background: `${sc.color}08`, border: `1px solid ${sc.color}20`, marginBottom: 6 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <div style={{ width: 7, height: 7, borderRadius: '50%', background: sc.color, boxShadow: s.status === 'ok' ? `0 0 5px ${sc.color}` : 'none' }} />
+                  <span style={{ fontSize: 12, fontWeight: 600, color: theme.text }}>{s.name}</span>
+                </div>
+                <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                  {s.latency && <span style={{ fontSize: 11, color: theme.textMuted }}>{s.latency}ms</span>}
+                  <span style={{ fontSize: 10, fontWeight: 800, color: sc.color, background: `${sc.color}12`, padding: '2px 8px', borderRadius: 6 }}>{sc.label}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
-
-        {/* Alertas */}
-        <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-            <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px' }}>
-              🔔 Alertas Activas
-            </div>
-            <div style={{ fontSize: '11px', fontWeight: '700', color: data.alerts.some(a => a.severity === 'critical') ? '#ef4444' : '#64748b' }}>
-              {data.alerts.filter(a => a.severity === 'critical').length} críticas
-            </div>
-          </div>
-          {data.alerts.length === 0
-            ? <div style={{ textAlign: 'center', padding: '20px', color: '#00c8a0', fontSize: '13px' }}>✅ Sin alertas activas</div>
-            : data.alerts.map(a => <AlertRow key={a.id} {...a} />)
+        <div style={{ background: theme.bgCard, borderRadius: 14, padding: 18, border: `1px solid ${theme.border}` }}>
+          <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>🔔 Alertas Activas</div>
+          {d.alerts.length === 0
+            ? <div style={{ textAlign: 'center', padding: 20, color: '#22c55e', fontSize: 13 }}>✅ Sin alertas activas</div>
+            : d.alerts.map(a => {
+                const ac = ALERT_CFG[a.level];
+                return (
+                  <div key={a.id} style={{ padding: '10px 12px', borderRadius: 9, background: ac.bg, border: `1px solid ${ac.border}`, marginBottom: 6 }}>
+                    <div style={{ fontSize: 12, fontWeight: 700, color: theme.text }}>{a.title}</div>
+                    <div style={{ fontSize: 10, color: theme.textMuted, marginTop: 2 }}>{a.time}</div>
+                  </div>
+                );
+              })
           }
         </div>
-      </div>
-
-      {/* ── Row 4: Indicadores de salud ── */}
-      <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: '1px solid #334155' }}>
-        <div style={{ fontSize: '12px', fontWeight: '700', color: '#94a3b8', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>
-          💡 Indicadores de Salud de la Plataforma
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px' }}>
-          {[
-            { label: 'Disponibilidad API',      value: data.uptime,         max: 100,  unit: '%',   color: '#00c8a0', icon: '⚡' },
-            { label: 'Tasa Éxito Transacciones', value: data.successRate,   max: 100,  unit: '%',   color: '#22c55e', icon: '✅' },
-            { label: 'Usuarios Activos (cap.)',  value: Math.min(data.activeNow / 10, 100), max: 100, unit: '%', color: '#3b82f6', icon: '📊' },
-            { label: 'Servicios Operativos',     value: data.services.filter(s => s.status === 'ok').length / data.services.length * 100, max: 100, unit: '%', color: '#a855f7', icon: '⚙️' },
-          ].map(({ label, value, max, unit, color, icon }) => (
-            <div key={label} style={{ background: '#0f172a', borderRadius: '12px', padding: '14px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px' }}>
-                <span style={{ fontSize: '12px', color: '#94a3b8', fontWeight: '600' }}>{icon} {label}</span>
-                <span style={{ fontSize: '14px', color, fontWeight: '800' }}>{value.toFixed(1)}{unit}</span>
-              </div>
-              <div style={{ height: '6px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
-                <div style={{
-                  height: '100%', borderRadius: '3px',
-                  width: `${(value / max) * 100}%`,
-                  background: `linear-gradient(90deg, ${color}, ${color}cc)`,
-                  boxShadow: `0 0 8px ${color}60`,
-                  transition: 'width 0.5s ease',
-                }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* ── Footer ── */}
-      <div style={{ marginTop: '16px', textAlign: 'center', fontSize: '11px', color: '#1e293b' }}>
-        EGCHAT Admin Portal · Centro de Control Ejecutivo · Solo Lectura · {new Date().toLocaleDateString('es-GQ', { year: 'numeric', month: 'long', day: 'numeric' })}
       </div>
     </div>
   );
