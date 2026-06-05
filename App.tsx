@@ -790,7 +790,8 @@ const App: React.FC = () => {
           const kh = info.keyboardHeight || 0;
           const el = chatContainerRef.current;
           if (el) {
-            el.style.height = `${window.screen.height - kh}px`;
+            // Con position:fixed, ajustar bottom para que suba con el teclado
+            el.style.bottom = `${kh}px`;
           }
           requestAnimationFrame(() => {
             const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -800,7 +801,7 @@ const App: React.FC = () => {
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
           const el = chatContainerRef.current;
           if (el) {
-            el.style.height = '100dvh';
+            el.style.bottom = '0px';
           }
         });
       } catch {
@@ -5293,6 +5294,9 @@ const App: React.FC = () => {
 
           return (
             <>
+            {/* Con Keyboard.resize=body, el body se redimensiona cuando sube el teclado.
+                El chat container NO puede ser position:fixed (ignora el resize del body).
+                Debe ocupar el 100% del body redimensionado con position:absolute o relativo. */}
             <div className="chat-view-container" ref={chatContainerRef} style={{ 
               position: 'fixed', 
               top: 0,
@@ -5304,8 +5308,6 @@ const App: React.FC = () => {
               overflow: 'hidden',
               background: '#f0f2f5',
               zIndex: 1100,
-              /* Con resize:body, bottom:0 en fixed sigue el viewport no el body.
-                 Usamos height:100% del body redimensionado vía JS en el hook */
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
               {/* Wallpaper del chat — individual por chat, no afecta a otros */}
               {(() => {
