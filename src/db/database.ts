@@ -15,12 +15,19 @@
  */
 
 import { Capacitor } from '@capacitor/core';
-import {
-  CapacitorSQLite,
-  SQLiteConnection,
-  SQLiteDBConnection,
-} from '@capacitor-community/sqlite';
 import { DB_NAME, DB_VERSION, CREATE_TABLES } from './schema';
+
+// Importación dinámica de SQLite — evita error de resolución de módulo
+// en el WebView de iOS/Android antes de que el bridge de Capacitor esté listo
+let CapacitorSQLite: any;
+let SQLiteConnection: any;
+
+async function loadSQLite() {
+  if (CapacitorSQLite) return;
+  const mod = await import('@capacitor-community/sqlite');
+  CapacitorSQLite = mod.CapacitorSQLite;
+  SQLiteConnection = mod.SQLiteConnection;
+}
 
 // ── Nombres de base de datos ──────────────────────────────────────
 const DB_PLAIN     = 'egchat_offline_v1';   // legacy sin cifrar
@@ -57,6 +64,7 @@ export async function initDatabase(): Promise<void> {
 
 async function _doInit(): Promise<void> {
   try {
+    await loadSQLite();
     const platform = Capacitor.getPlatform();
     if (platform === 'web') {
       await _initWeb();
