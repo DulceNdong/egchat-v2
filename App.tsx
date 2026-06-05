@@ -1182,12 +1182,19 @@ const App: React.FC = () => {
       const winH = window.innerHeight;
       const vvH = vv ? vv.height : winH;
       const vvTop = vv ? vv.offsetTop : 0;
-      document.documentElement.style.setProperty('--vv-height', `${Math.min(winH, vvH)}px`);
+      const visibleH = Math.min(winH, vvH);
+      document.documentElement.style.setProperty('--vv-height', `${visibleH}px`);
       document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
-      const keyboardH = Math.max(0, winH - Math.min(winH, vvH) - vvTop);
+      const keyboardH = Math.max(0, winH - visibleH - vvTop);
       document.documentElement.style.setProperty('--keyboard-offset', `${keyboardH}px`);
 
-      // iOS: también hacer scroll al fondo del chat cuando sube el teclado
+      // Actualizar height del contenedor de chat en tiempo real
+      const chatContainer = document.querySelector('.chat-view-container') as HTMLElement | null;
+      if (chatContainer && isIOS) {
+        chatContainer.style.height = `${visibleH}px`;
+      }
+
+      // iOS: scroll al fondo cuando sube el teclado
       if (isIOS && keyboardH > 100) {
         requestAnimationFrame(() => {
           const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -5290,9 +5297,8 @@ const App: React.FC = () => {
               top: 0,
               left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'), 
               right: 0,
-              /* bottom e height son controlados por el hook de visualViewport */
-              bottom: device.isMobile ? undefined : 0,
-              height: device.isMobile ? (window.visualViewport?.height ?? window.innerHeight) + 'px' : undefined,
+              bottom: 0,
+              height: device.isMobile ? 'var(--vv-height, 100dvh)' : undefined,
               display: 'flex', 
               flexDirection: 'column', 
               overflow: 'hidden',
@@ -6453,6 +6459,7 @@ const App: React.FC = () => {
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 10,
                 position: 'relative',
+                marginTop: 'auto',
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (

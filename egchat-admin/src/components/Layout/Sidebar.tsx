@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useContext } from 'react';
 import { NavLink } from 'react-router-dom';
 import { useAuthStore } from '../../stores/authStore';
 import { MODULES_FOR_ROLE, PHASE_GROUPS, ROLE_LABELS, ROLE_COLORS } from '../../utils/rbac';
+import { SidebarContext } from '../../context/SidebarContext';
 import {
   LayoutDashboard, TrendingUp, Target, ShieldAlert,
   Users, MessageSquare, Wallet, HeadphonesIcon, AppWindow,
@@ -102,7 +103,7 @@ const EGChatLogo: React.FC<{ size?: number }> = ({ size = 28 }) => (
 // ── Main Sidebar ──────────────────────────────────────────────────────────────
 export const Sidebar: React.FC = () => {
   const { admin, logout } = useAuthStore();
-  const [collapsed, setCollapsed] = useState(false);
+  const { collapsed, setCollapsed } = useContext(SidebarContext);
   if (!admin) return null;
 
   const allowedModules = new Set((MODULES_FOR_ROLE[admin.role] || []).map(m => m.id));
