@@ -36,10 +36,10 @@ export async function initApp(): Promise<void> {
     .then(() => console.log('[AppInit] ✅ Servidor activo'))
     .catch(() => console.log('[AppInit] ⏳ Servidor despertando...'));
 
-  // Configurar teclado: native = el WebView se redimensiona nativamente con el teclado
+  // Configurar teclado: none = WebView no se mueve, solo el #chat-input-bar via translateY
   try {
-    await Keyboard.setResizeMode({ mode: 'native' });
-    console.log('[AppInit] ✅ Keyboard resize: native');
+    await Keyboard.setResizeMode({ mode: 'none' });
+    console.log('[AppInit] ✅ Keyboard resize: none');
   } catch { /* web/no capacitor */ }
 
   try {
