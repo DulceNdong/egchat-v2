@@ -87,8 +87,8 @@ const SwipeChatItem = React.memo<{
   const startY = React.useRef(0);
   const isHoriz = React.useRef<boolean | null>(null);
   const THRESHOLD = 60;
-  const MAX_LEFT = 140;   // swipe izquierda (archivar/eliminar)
-  const MAX_RIGHT = 130;  // swipe derecha (no leído / desarchivar)
+  const MAX_LEFT = 140;
+  const MAX_RIGHT = 130;
 
   const onTouchStart = (e: React.TouchEvent) => {
     startX.current = e.touches[0].clientX;
@@ -101,7 +101,7 @@ const SwipeChatItem = React.memo<{
     const dx = e.touches[0].clientX - startX.current;
     const dy = e.touches[0].clientY - startY.current;
     if (isHoriz.current === null) {
-      isHoriz.current = Math.abs(dx) > Math.abs(dy);
+      isHoriz.current = Math.abs(dx) > Math.abs(dy) + 4;
     }
     if (!isHoriz.current) return;
     e.preventDefault();
@@ -123,53 +123,61 @@ const SwipeChatItem = React.memo<{
 
   const close = () => setOffset(0);
 
+  // Solo mostrar fondos de acción cuando hay swipe activo (offset significativo)
+  const showLeft = offset > 20;
+  const showRight = offset < -20;
+
   return (
-    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '12px', marginBottom: '6px' }}>
-      {/* Acciones DERECHA — No leído / Desarchivar (swipe derecha) */}
-      <div style={{
-        position: 'absolute', left: 0, top: 0, bottom: 0,
-        display: 'flex', alignItems: 'stretch',
-        width: `${MAX_RIGHT}px`,
-      }}>
-        {/* No leído */}
-        {!isArchived && (
-          <button onClick={() => { close(); onMarkUnread?.(); }}
-            style={{ flex: 1, background: 'linear-gradient(135deg,#3b82f6,#1d4ed8)', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/><circle cx="9" cy="10" r="1" fill="currentColor"/><circle cx="12" cy="10" r="1" fill="currentColor"/><circle cx="15" cy="10" r="1" fill="currentColor"/></svg>
-            <span style={{ fontSize: '11px', fontWeight: '700' }}>No leído</span>
-          </button>
-        )}
-        {/* Desarchivar */}
-        {isArchived && (
-          <button onClick={() => { close(); onUnarchive?.(); }}
-            style={{ flex: 1, background: 'linear-gradient(135deg,#10b981,#059669)', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="10 12 12 14 14 12"/><line x1="12" y1="14" x2="12" y2="9"/></svg>
-            <span style={{ fontSize: '11px', fontWeight: '700' }}>Desarchivar</span>
-          </button>
-        )}
-      </div>
+    <div style={{ position: 'relative', overflow: 'hidden', borderRadius: '14px', marginBottom: '4px' }}>
+      {/* Acciones DERECHA — No leído / Desarchivar */}
+      {showLeft && (
+        <div style={{
+          position: 'absolute', left: 0, top: 0, bottom: 0,
+          display: 'flex', alignItems: 'stretch',
+          width: `${MAX_RIGHT}px`,
+          borderRadius: '14px 0 0 14px',
+          overflow: 'hidden',
+        }}>
+          {!isArchived && (
+            <button onClick={() => { close(); onMarkUnread?.(); }}
+              style={{ flex: 1, background: '#2563eb', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px', color: '#fff' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+              <span style={{ fontSize: '11px', fontWeight: '600', letterSpacing: '0.2px' }}>No leído</span>
+            </button>
+          )}
+          {isArchived && (
+            <button onClick={() => { close(); onUnarchive?.(); }}
+              style={{ flex: 1, background: '#059669', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px', color: '#fff' }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><polyline points="10 12 12 14 14 12"/><line x1="12" y1="14" x2="12" y2="9"/></svg>
+              <span style={{ fontSize: '11px', fontWeight: '600' }}>Desarchivar</span>
+            </button>
+          )}
+        </div>
+      )}
 
-      {/* Acciones IZQUIERDA — Archivar + Eliminar (swipe izquierda) */}
-      <div style={{
-        position: 'absolute', right: 0, top: 0, bottom: 0,
-        display: 'flex', alignItems: 'stretch',
-        width: `${MAX_LEFT}px`,
-      }}>
-        {/* Archivar */}
-        <button onClick={() => { close(); onArchive(); }}
-          style={{ flex: 1, background: '#f59e0b', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
-          <span style={{ fontSize: '11px', fontWeight: '700' }}>Archivar</span>
-        </button>
-        {/* Eliminar */}
-        <button onClick={() => { close(); onDelete(); }}
-          style={{ flex: 1, background: '#ef4444', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '4px', color: '#fff' }}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
-          <span style={{ fontSize: '11px', fontWeight: '700' }}>Eliminar</span>
-        </button>
-      </div>
+      {/* Acciones IZQUIERDA — Archivar + Eliminar */}
+      {showRight && (
+        <div style={{
+          position: 'absolute', right: 0, top: 0, bottom: 0,
+          display: 'flex', alignItems: 'stretch',
+          width: `${MAX_LEFT}px`,
+          borderRadius: '0 14px 14px 0',
+          overflow: 'hidden',
+        }}>
+          <button onClick={() => { close(); onArchive(); }}
+            style={{ flex: 1, background: '#d97706', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px', color: '#fff' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+            <span style={{ fontSize: '11px', fontWeight: '600' }}>Archivar</span>
+          </button>
+          <button onClick={() => { close(); onDelete(); }}
+            style={{ flex: 1, background: '#dc2626', border: 'none', cursor: 'pointer', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '5px', color: '#fff' }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+            <span style={{ fontSize: '11px', fontWeight: '600' }}>Eliminar</span>
+          </button>
+        </div>
+      )}
 
-      {/* Contenido del chat — se desliza en ambas direcciones */}
+      {/* Contenido del chat */}
       <div
         onClick={() => { if (Math.abs(offset) > 10) { close(); return; } onOpen(); }}
         onTouchStart={onTouchStart}
@@ -177,7 +185,7 @@ const SwipeChatItem = React.memo<{
         onTouchEnd={onTouchEnd}
         style={{
           background: '#fff',
-          borderRadius: '12px',
+          borderRadius: '14px',
           padding: '12px 10px',
           cursor: 'pointer',
           display: 'flex',
@@ -187,7 +195,7 @@ const SwipeChatItem = React.memo<{
           transition: isDragging ? 'none' : 'transform 0.25s cubic-bezier(0.25,0.46,0.45,0.94)',
           position: 'relative',
           zIndex: 1,
-          boxShadow: Math.abs(offset) > 10 ? '0 2px 12px rgba(0,0,0,0.12)' : '0 1px 3px rgba(0,0,0,0.06)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
           willChange: 'transform',
         }}
         onMouseEnter={e => { if (offset === 0) e.currentTarget.style.background = '#f9fafb'; }}
@@ -6815,20 +6823,20 @@ const App: React.FC = () => {
                 <div style={{ position: 'relative', flex: 1 }}>
                   <input
                     type="text"
-                    placeholder="🔍  Buscar chat o contacto..."
+                    placeholder="Buscar chat o contacto..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     style={{
                       width: '100%',
                       padding: '9px 14px 9px 36px',
-                      background: '#fff',
-                      border: searchQuery ? '1.5px solid #00c8a0' : '1.5px solid #e5e7eb',
-                      borderRadius: '12px',
+                      background: '#f5f6f8',
+                      border: searchQuery ? '1.5px solid #00c8a0' : '1.5px solid transparent',
+                      borderRadius: '22px',
                       color: '#111827',
-                      fontSize: '13px',
+                      fontSize: '14px',
                       outline: 'none',
-                      boxShadow: searchQuery ? '0 0 0 3px rgba(0,200,160,0.12)' : '0 1px 4px rgba(0,0,0,0.06)',
-                      transition: 'border 0.2s, box-shadow 0.2s',
+                      boxShadow: 'none',
+                      transition: 'border 0.2s',
                       boxSizing: 'border-box',
                     }}
                   />
