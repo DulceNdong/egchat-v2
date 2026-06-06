@@ -820,26 +820,30 @@ const App: React.FC = () => {
         let alturaTecladoActual = 0;
 
         const ajustarPorTeclado = (alturaTeclado: number) => {
-          const contenedorMensajes = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-          if (contenedorMensajes) {
-            if (alturaTeclado > 0) {
-              const headerH = 88;
-              const inputBarH = 56;
-              const available = window.innerHeight - alturaTeclado - headerH - inputBarH;
-              contenedorMensajes.style.maxHeight = `${available}px`;
-              contenedorMensajes.style.overflow = 'auto';
-            } else {
-              contenedorMensajes.style.maxHeight = '';
-              contenedorMensajes.style.overflow = '';
-            }
-            // Scroll al fondo inmediatamente y también tras la animación
-            contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
-            setTimeout(() => {
-              contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
-            }, 100);
-            setTimeout(() => {
-              contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
-            }, 300);
+          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+          const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+          const header = document.querySelector('.chat-header-fixed') as HTMLElement | null;
+          if (!chatBar || !messagesContainer) return;
+
+          if (alturaTeclado > 0) {
+            // 1. Mover barra exactamente la altura del teclado
+            chatBar.style.transform = `translateY(-${alturaTeclado}px)`;
+            chatBar.style.marginBottom = '0';
+            chatBar.style.paddingBottom = '0';
+            // 2. Calcular altura disponible real usando offsetHeight
+            const headerHeight = header?.offsetHeight || 88;
+            const chatBarHeight = chatBar.offsetHeight;
+            const newHeight = window.innerHeight - alturaTeclado - chatBarHeight - headerHeight;
+            messagesContainer.style.maxHeight = `${newHeight}px`;
+            messagesContainer.style.overflow = 'auto';
+            // 3. Forzar scroll al último mensaje
+            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 20);
+          } else {
+            // Teclado cerrado: restaurar
+            chatBar.style.transform = 'translateY(0)';
+            messagesContainer.style.maxHeight = '';
+            messagesContainer.style.overflow = '';
+            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 20);
           }
         };
 
@@ -11907,7 +11911,7 @@ const App: React.FC = () => {
       {selectedChat && currentView === 'Mensajería' && (() => {
         const sc = selectedChat;
         return (
-          <div style={{ 
+          <div className="chat-header-fixed" style={{ 
             position: 'fixed',
             top: 0,
             left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
