@@ -28,7 +28,6 @@ let initialized = false;
 
 export function initRealtime(authToken: string): void {
   if (initialized) {
-    // Ya conectado — solo resetear con nuevo token (re-login)
     WSClient.reset(authToken);
     return;
   }
@@ -37,11 +36,20 @@ export function initRealtime(authToken: string): void {
   // Conectar WebSocket
   WSClient.connect(authToken);
 
+  // Exponer subscribe/unsubscribe en window para que App.tsx los llame
+  (window as any).__subscribeToChat = (chatId: string) => WSClient.subscribeChat(chatId);
+  (window as any).__unsubscribeFromChat = (chatId: string) => WSClient.unsubscribeChat(chatId);
+
   // ── Handlers de eventos del servidor ─────────────────────────
 
-  // Nuevo mensaje recibido en tiempo real
+  // Nuevo mensaje recibido en tiempo real — notificar UI inmediatamente
   WSClient.on('new_message', async (data) => {
     if (!data?.chatId || !data?.message) return;
+    // Disparar recarga inmediata en App.tsx (entrega instantánea sin polling)
+    window.dispatchEvent(
+      new CustomEvent('egchat:messages-updated', { detail: { chatId: data.chatId } })
+    );
+    window.dispatchEvent(new CustomEvent('egchat:conversations-updated'));
     try {
       const m = data.message;
       const msg: Message = {

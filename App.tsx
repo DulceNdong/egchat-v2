@@ -502,24 +502,24 @@ const App: React.FC = () => {
     if (!chatId || chatId.length < 10) return;
     try {
       const msgs = await chatAPI.getMessages(chatId);
-      // Protección: si el servidor devuelve vacío pero tenemos mensajes cacheados,
-      // ignorar la respuesta vacía (puede ser error de red/BD temporal)
-      if (!Array.isArray(msgs) || msgs.length === 0) return;
-        const fmt = msgs.map((m: any) => ({
+      if (!Array.isArray(msgs) || msgs.length === 0) {
+        console.warn('[LM] servidor devolvió vacío para', chatId);
+        return;
+      }
+      console.log('[LM] servidor devolvió', msgs.length, 'msgs para', chatId.slice(0,8));
+      console.log('[LM] último msg del servidor:', msgs[msgs.length-1]?.id?.slice(0,8), msgs[msgs.length-1]?.text?.slice(0,20));
+      const fmt = msgs.map((m: any) => ({
           id: m.id, from: m.sender_id === currentUserId.current ? 'me' as const : 'them' as const,
           text: m.text || '', time: new Date(m.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
           created_at: m.created_at,
           status: (m.status||'delivered') as 'pending'|'delivered'|'read',
-          // Mensajes de llamada
           ...(m.type === 'call' ? {
             type: 'call',
             callType: m.call_type || (m.text?.includes('Video') ? 'video' : 'audio'),
             callStatus: m.call_status || (m.text?.includes('perdida') ? 'missed' : m.text?.includes('saliente') ? 'outgoing' : 'completed'),
             callDuration: m.call_duration || 0,
           } : {}),
-          // Archivos e imágenes del backend
           ...(m.file_url ? (() => {
-            // Detectar tipo por extensión si el backend no lo especifica bien
             const ext = (m.file_url || '').split('.').pop()?.split('?')[0]?.toLowerCase() || '';
             const isImg = m.type === 'image' || ['jpg','jpeg','png','gif','webp','heic','heif','bmp','svg'].includes(ext);
             const isAudio = m.type === 'audio' || ['mp3','ogg','webm','m4a','wav','aac'].includes(ext);
@@ -551,55 +551,44 @@ const App: React.FC = () => {
             const newest = newFromThem[newFromThem.length - 1];
             if (lastId && newest.id !== lastId) {
               notifyNewMessage(chatId, newest.text);
-              playMessageReceived(); vibrate([50, 30, 50]); // sonido + vibración doble al recibir
+              playMessageReceived(); vibrate([50, 30, 50]);
             }
             lastMsgIds.current[chatId] = newest.id;
           }
-          // Fusionar: conservar mensajes locales (fotos, audio, archivos, contactos) que no están en el backend
+
           const backendIds = new Set(fmt.map((m: any) => m.id));
-          // También excluir mensajes locales cuya URL de archivo ya existe en el backend (evita duplicados durante el upload)
           const backendFileUrls = new Set(fmt.map((m: any) => m.imageUrl || m.audioUrl || m.fileUrl).filter(Boolean));
           const now = Date.now();
-          // Grace period de 15s: preservar mensajes enviados muy recientemente aunque el loadMessages
-          // los haya perdido (evita que visibilitychange/polling los "borre" antes de sincronizar)
-          const graceMs = 15000;
+          const graceMs = 30000; // 30s grace period
           const backendMyTexts = new Set(fmt.filter((m: any) => m.from === 'me').map((m: any) => m.text));
+
+          // Preservar mensajes locales que NO están en el backend todavía
           const localOnly = (prev[chatId] || []).filter((m: any) => {
-            if (backendIds.has(m.id)) return false; // ya en backend con mismo id
+            if (backendIds.has(m.id)) return false;
             if (m.imageUrl && backendFileUrls.has(m.imageUrl)) return false;
             if (m.audioUrl && backendFileUrls.has(m.audioUrl)) return false;
             if (m.fileUrl && backendFileUrls.has(m.fileUrl)) return false;
-            // Mensajes de texto propios con ID numérico (temporales o ya confirmados localmente)
-            if (m.from === 'me' && !m.imageUrl && !m.audioUrl && !m.fileUrl) {
-              const isNumericId = !isNaN(Number(m.id)) && Number(m.id) > 1e12;
-              if (isNumericId) {
-                const msgAge = now - Number(m.id);
-                if (msgAge < graceMs) return true; // grace period — preservar siempre
-                if (backendMyTexts.has(m.text)) return false; // ya en backend — descartar
-              }
+            // Mensajes de texto propios con ID numérico (temporales)
+            const isNumericId = !isNaN(Number(m.id)) && Number(m.id) > 1e12;
+            if (m.from === 'me' && !m.imageUrl && !m.audioUrl && !m.fileUrl && isNumericId) {
+              const msgAge = now - Number(m.id);
+              if (msgAge < graceMs) return true; // dentro del grace period — preservar
+              if (backendMyTexts.has(m.text)) return false; // ya confirmado en backend
             }
-            // Preservar: media, contactos, o mensajes pendientes
             return (m.type === 'image' || m.type === 'audio' || m.type === 'contact' || m.type === 'video' || m.imageUrl || m.audioUrl || m.status === 'pending');
           });
-          // Filtrar mensajes eliminados para mí localmente (respaldo)
+
           const filteredFmt = fmt.filter((m: any) => !deletedForMeIds.current.has(m.id));
-          // Enriquecer mensajes del backend con metadata local (type, contactAvatar, imageUrl, etc.)
-          // Esto preserva type:'contact', type:'image', etc. cuando el backend devuelve type:'text'
           const localById = new Map((prev[chatId] || []).map((m: any) => [m.id, m]));
           const enrichedFmt = filteredFmt.map((m: any) => {
             const local = localById.get(m.id);
-            // Detectar tipo por texto si el backend no lo guarda
             const textType = m.text?.startsWith('👤') ? 'contact'
               : (m.text?.startsWith('📍') || m.text?.startsWith('📌')) ? 'location'
               : m.text?.startsWith('💸') ? 'money'
               : null;
             return {
               ...m,
-              // Preservar type especial: primero del local, luego detectado por texto, luego del backend
-              type: (local?.type && local.type !== 'text') ? local.type
-                : textType ? textType
-                : m.type,
-              // Preservar metadata de archivos/contactos
+              type: (local?.type && local.type !== 'text') ? local.type : textType ? textType : m.type,
               imageUrl: m.imageUrl || local?.imageUrl,
               audioUrl: m.audioUrl || local?.audioUrl,
               fileUrl: m.fileUrl || local?.fileUrl,
@@ -607,21 +596,28 @@ const App: React.FC = () => {
               contactAvatar: local?.contactAvatar || m.contactAvatar,
             };
           });
-          // Ordenar por timestamp real (created_at) o por id numérico (Date.now) como fallback
+
           const merged = [...enrichedFmt, ...localOnly].sort((a: any, b: any) => {
-            // Primero usar created_at si está disponible (más preciso)
             if (a.created_at && b.created_at) {
               return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
             }
-            // Para mensajes locales pendientes sin created_at, usar el id numérico (Date.now)
             const aNum = Number(a.id);
             const bNum = Number(b.id);
             if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-            if (!isNaN(aNum)) return 1;  // local pending va al final
+            if (!isNaN(aNum)) return 1;
             if (!isNaN(bNum)) return -1;
-            // Fallback por HH:MM
             return (a.time || '00:00').localeCompare(b.time || '00:00');
           });
+
+          // PROTECCIÓN FINAL: nunca devolver menos mensajes de los que ya teníamos
+          const prev_count = (prev[chatId] || []).filter((m: any) => m.status !== 'pending').length;
+          const merged_count = merged.filter((m: any) => m.status !== 'pending').length;
+          console.log('[LM] merge:', prev_count, '→', merged_count, '| localOnly:', localOnly.length);
+          if (merged_count < prev_count - 2) {
+            console.warn('[LM] ⚠️ merge eliminó mensajes — abortando. prev:', prev_count, 'merged:', merged_count);
+            return prev;
+          }
+
           return { ...prev, [chatId]: merged };
         });
     } catch {}
@@ -10690,17 +10686,19 @@ const App: React.FC = () => {
     // Cargar mensajes inmediatamente al abrir
     loadMessages(chatId);
 
+    // Suscribir al chat por WebSocket para recibir mensajes instantáneos
+    try { (window as any).__subscribeToChat?.(chatId); } catch {}
+
     const startInterval = () => {
       if (pollingRef.current) clearInterval(pollingRef.current);
       pollingRef.current = setInterval(() => {
-        // Solo hacer polling si la página está visible Y el SSE no está activo
+        // Solo hacer polling si la página está visible (fallback si WebSocket no está activo)
         if (document.visibilityState === 'visible') loadMessages(chatId);
-      }, 30000); // EGRESS FIX: 30s en lugar de 8s — el SSE cubre el tiempo real
+      }, 8000); // 8s fallback
     };
 
     startInterval();
 
-    // Reiniciar el intervalo al volver al primer plano
     const onVisible = () => {
       if (document.visibilityState === 'visible') {
         loadMessages(chatId);
@@ -10712,6 +10710,8 @@ const App: React.FC = () => {
     return () => {
       if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
       document.removeEventListener('visibilitychange', onVisible);
+      // Desuscribir al salir del chat
+      try { (window as any).__unsubscribeFromChat?.(chatId); } catch {}
     };
   }, [selectedChat, loadMessages]);
 
