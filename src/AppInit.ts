@@ -36,11 +36,10 @@ export async function initApp(): Promise<void> {
     .then(() => console.log('[AppInit] ✅ Servidor activo'))
     .catch(() => console.log('[AppInit] ⏳ Servidor despertando...'));
 
-  // Configurar teclado: none = el WebView nunca se redimensiona automáticamente
-  // El listener keyboardWillShow/Hide en App.tsx mueve solo el chat container manualmente
+  // Configurar teclado: native = el WebView se redimensiona nativamente con el teclado
   try {
-    await Keyboard.setResizeMode({ mode: 'none' });
-    console.log('[AppInit] ✅ Keyboard resize: none');
+    await Keyboard.setResizeMode({ mode: 'native' });
+    console.log('[AppInit] ✅ Keyboard resize: native');
   } catch { /* web/no capacitor */ }
 
   try {

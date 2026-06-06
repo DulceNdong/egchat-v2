@@ -818,39 +818,17 @@ const App: React.FC = () => {
     const setup = async () => {
       try {
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
-          // Solo actuar si hay un chat abierto
+          // Con resize:native el WebView ya se redimensiona — solo hacer scroll al fondo
           if (!document.querySelector('.chat-view-container')) return;
-          const kh = info.keyboardHeight || 0;
-          // Mover el input bar fijo hacia arriba con translateY
-          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
-          if (chatBar) {
-            chatBar.style.transform = `translateY(-${kh}px)`;
-          }
-          // Reducir el área de scroll para que los mensajes no queden detrás del input
-          const el = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
-          if (el) {
-            el.style.bottom = `${kh}px`;
-            el.style.transition = 'bottom 0.25s ease';
-          }
           requestAnimationFrame(() => {
             const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
             if (scroll) scroll.scrollTop = scroll.scrollHeight;
           });
         });
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
-          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
-          if (chatBar) {
-            chatBar.style.transform = 'translateY(0)';
-          }
-          const el = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
-          if (el) {
-            el.style.bottom = '0px';
-            el.style.transition = 'bottom 0.2s ease';
-          }
+          // Nada que hacer — native lo gestiona
         });
-      } catch {
-        // Fallback si Keyboard plugin no está disponible (web)
-      }
+      } catch {}
     };
     setup();
 
@@ -1391,7 +1369,7 @@ const App: React.FC = () => {
   // Siempre 'native' — el WebView maneja el resize automáticamente
   React.useEffect(() => {
     try {
-      Keyboard.setResizeMode({ mode: 'none' });
+      Keyboard.setResizeMode({ mode: 'native' });
     } catch { /* no capacitor */ }
   }, []);
 
@@ -5582,7 +5560,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? '80px' : '70px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: '8px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
@@ -6554,17 +6532,14 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Input bar — position: fixed para que el teclado lo mueva con translateY */}
+              {/* Input bar — position: relative, native keyboard lo mueve con el WebView */}
               <div id="chat-input-bar" style={{
-                position: 'fixed',
-                bottom: 0,
-                left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
-                right: 0,
+                flexShrink: 0,
                 background: '#f0f2f5',
                 borderTop: '1px solid rgba(0,0,0,0.06)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
-                zIndex: 1100,
-                transition: 'transform 0.25s ease',
+                zIndex: 10,
+                position: 'relative',
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (
