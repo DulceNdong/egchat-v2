@@ -818,14 +818,20 @@ const App: React.FC = () => {
     const setup = async () => {
       try {
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
-          // Solo actuar si hay un chat abierto — fuera del chat el modo 'native' lo gestiona
-          const hasChatOpen = !!document.querySelector('.chat-view-container');
-          if (!hasChatOpen) return;
+          // Solo actuar si hay un chat abierto
+          if (!document.querySelector('.chat-view-container')) return;
           const kh = info.keyboardHeight || 0;
+          // Mover el chat container completo hacia arriba
           const el = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
           if (el) {
             el.style.bottom = `${kh}px`;
             el.style.transition = 'bottom 0.25s ease';
+          }
+          // Mover también el input bar con translateY para que suba suavemente
+          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+          if (chatBar) {
+            chatBar.style.transform = `translateY(-${kh}px)`;
+            chatBar.style.transition = 'transform 0.25s ease';
           }
           requestAnimationFrame(() => {
             const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -837,6 +843,11 @@ const App: React.FC = () => {
           if (el) {
             el.style.bottom = '0px';
             el.style.transition = 'bottom 0.2s ease';
+          }
+          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+          if (chatBar) {
+            chatBar.style.transform = 'translateY(0)';
+            chatBar.style.transition = 'transform 0.2s ease';
           }
         });
       } catch {
