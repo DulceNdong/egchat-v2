@@ -1148,3 +1148,24 @@ input[type="button"],
   transition: transform 0.25s ease;
   z-index: 1100;
 }
+
+/* ── Espaciado cero en mensajes y barra de chat ──────────────────────────── */
+.chat-messages-scroll {
+  overflow-y: auto;
+  position: relative;
+  margin: 0 !important;
+  box-sizing: border-box;
+}
+
+#chat-input-bar {
+  position: fixed !important;
+  bottom: 0 !important;
+  left: 0;
+  right: 0;
+  background: #f0f2f5;
+  transition: transform 0.2s ease;
+  z-index: 1100;
+  margin: 0 !important;
+  border: none;
+  box-sizing: border-box;
+}
