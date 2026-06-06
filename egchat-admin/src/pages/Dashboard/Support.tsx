@@ -49,7 +49,7 @@ const STATUS: Record<TicketStatus, { color: string; bg: string; label: string; i
   open:        { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Abierto',      icon: '🔴' },
   in_progress: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔵' },
   resolved:    { color: '#34d399', bg: 'rgba(0,200,160,0.1)',  label: 'Resuelto',     icon: '✅' },
-  closed:      { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)',label: 'Cerrado',      icon: '⚫' },
+  closed:      { color: '#64748b', bg: 'rgba(100,116,139,0.1)',label: 'Cerrado',      icon: '⚫' },
   escalated:   { color: '#818cf8', bg: 'rgba(168,85,247,0.1)', label: 'Escalado',     icon: '🆙' },
 };
 
@@ -59,7 +59,7 @@ const CATEGORY_CFG: Record<TicketCategory, { label: string; icon: string; color:
   chat:     { label: 'Chat / Mensajes',   icon: '💬', color: '#34d399' },
   app_bug:  { label: 'Error de la App',   icon: '🐛', color: '#f97316' },
   account:  { label: 'Cuenta / Perfil',   icon: '👤', color: '#60a5fa' },
-  other:    { label: 'Otros',             icon: '📋', color: theme.textMuted },
+  other:    { label: 'Otros',             icon: '📋', color: '#64748b' },
 };
 
 // ── Mock ──────────────────────────────────────────────────────────────────────
@@ -108,7 +108,7 @@ function generateMock(): SupportData {
       { name: 'Chat / Mensajes',  count:  94, color: '#34d399', icon: '💬' },
       { name: 'Error App',        count:  87, color: '#f97316', icon: '🐛' },
       { name: 'Cuenta / Perfil',  count:  72, color: '#60a5fa', icon: '👤' },
-      { name: 'Otros',            count:  46, color: theme.textMuted, icon: '📋' },
+      { name: 'Otros',            count:  46, color: '#64748b', icon: '📋' },
     ],
     byAgent: AGENTS.map(name => ({
       name, open: Math.floor(3 + Math.random() * 8),
@@ -152,8 +152,8 @@ function generateMock(): SupportData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>
       ))}
@@ -182,9 +182,9 @@ function KPI({ icon, label, value, sub, color, alert }: { icon: string; label: s
     <div style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1.5px solid ${alert ? '#ef4444' : color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
       {alert && <div style={{ position: 'absolute', top: '8px', right: '8px', width: '8px', height: '8px', borderRadius: '50%', background: '#ef4444', boxShadow: '0 0 6px #ef4444' }} />}
       <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '60px', height: '60px', borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
-      <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
+      <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
       <div style={{ fontSize: '22px', fontWeight: '900', color: alert ? '#ef4444' : '#f1f5f9', lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '3px' }}>{sub}</div>}
+      {sub && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>{sub}</div>}
     </div>
   );
 }

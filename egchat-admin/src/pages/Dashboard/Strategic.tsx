@@ -109,8 +109,8 @@ function generateMock(): StrategicData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '5px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '5px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {typeof p.value === 'number' && p.value > 999 ? p.value.toLocaleString() : p.value}</div>
       ))}
@@ -120,7 +120,7 @@ const Tip = ({ active, payload, label }: any) => {
 
 // ── Section title ─────────────────────────────────────────────────────────────
 const SectionTitle = ({ children }: { children: React.ReactNode }) => (
-  <div style={{ fontSize: '12px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>{children}</div>
+  <div style={{ fontSize: '12px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '16px' }}>{children}</div>
 );
 
 // ── KPI card ──────────────────────────────────────────────────────────────────
@@ -128,11 +128,11 @@ function KPI({ icon, label, value, sub, color, trend }: { icon: string; label: s
   return (
     <div style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1px solid ${color}30`, borderRadius: '14px', padding: '16px', position: 'relative', overflow: 'hidden' }}>
       <div style={{ position: 'absolute', top: '-10px', right: '-10px', width: '60px', height: '60px', borderRadius: '50%', background: `radial-gradient(circle,${color}25 0%,transparent 70%)` }} />
-      <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
-      <div style={{ fontSize: '22px', fontWeight: '900', color: theme.text, lineHeight: 1.1 }}>{typeof value === 'number' ? value.toLocaleString() : value}</div>
-      {sub && <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '3px' }}>{sub}</div>}
+      <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '5px' }}>{icon} {label}</div>
+      <div style={{ fontSize: '22px', fontWeight: '900', color: '#f1f5f9', lineHeight: 1.1 }}>{typeof value === 'number' ? value.toLocaleString() : value}</div>
+      {sub && <div style={{ fontSize: '10px', color: '#64748b', marginTop: '3px' }}>{sub}</div>}
       {trend !== undefined && (
-        <div style={{ marginTop: '6px', fontSize: '11px', color: trend >= 0 ? theme.l3 : '#ef4444', fontWeight: '700' }}>
+        <div style={{ marginTop: '6px', fontSize: '11px', color: trend >= 0 ? '#34d399' : '#ef4444', fontWeight: '700' }}>
           {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}%
         </div>
       )}
@@ -145,10 +145,10 @@ function RetentionBar({ label, value, color }: { label: string; value: number; c
   return (
     <div style={{ marginBottom: '10px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-        <span style={{ fontSize: '11px', color: theme.textMuted, fontWeight: '600' }}>{label}</span>
+        <span style={{ fontSize: '11px', color: '#64748b', fontWeight: '600' }}>{label}</span>
         <span style={{ fontSize: '12px', color, fontWeight: '800' }}>{value}%</span>
       </div>
-      <div style={{ height: '6px', background: theme.bg, borderRadius: '3px', overflow: 'hidden' }}>
+      <div style={{ height: '6px', background: '#0f172a', borderRadius: '3px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${value}%`, background: color, borderRadius: '3px', boxShadow: `0 0 6px ${color}60`, transition: 'width 0.6s' }} />
       </div>
     </div>
@@ -159,7 +159,7 @@ function RetentionBar({ label, value, color }: { label: string; value: number; c
 const STATUS_MAP = {
   active:  { color: '#34d399', label: 'ACTIVO'    },
   growing: { color: '#f59e0b', label: 'CRECIENDO' },
-  planned: { color: theme.textMuted, label: 'PLANIFICADO'},
+  planned: { color: '#64748b', label: 'PLANIFICADO'},
 };
 
 // ── Main component ────────────────────────────────────────────────────────────

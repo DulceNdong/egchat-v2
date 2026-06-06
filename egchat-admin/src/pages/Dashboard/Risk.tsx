@@ -122,8 +122,8 @@ function generateMock(): RiskData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '5px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '5px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>{p.name}: {p.value}</div>
       ))}
@@ -145,7 +145,7 @@ function ScoreGauge({ score, level, label }: { score: number; level: RiskLevel; 
   const data = [{ value: score, fill: r.color }, { value: 100 - score, fill: '#1e293b' }];
   return (
     <div style={{ background: 'linear-gradient(135deg,#1e293b,#0f172a)', border: `1px solid ${r.border}`, borderRadius: '14px', padding: '16px', textAlign: 'center' }}>
-      <div style={{ fontSize: '10px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>{label}</div>
+      <div style={{ fontSize: '10px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: '4px' }}>{label}</div>
       <div style={{ position: 'relative', height: '80px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <ResponsiveContainer width={80} height={80}>
           <RadialBarChart innerRadius="65%" outerRadius="100%" data={data} startAngle={90} endAngle={-270}>
@@ -154,7 +154,7 @@ function ScoreGauge({ score, level, label }: { score: number; level: RiskLevel; 
         </ResponsiveContainer>
         <div style={{ position: 'absolute', textAlign: 'center' }}>
           <div style={{ fontSize: '20px', fontWeight: '900', color: r.color, lineHeight: 1 }}>{score}</div>
-          <div style={{ fontSize: '9px', color: theme.textMuted }}>/100</div>
+          <div style={{ fontSize: '9px', color: '#64748b' }}>/100</div>
         </div>
       </div>
       <RiskBadge level={level} />
@@ -168,11 +168,11 @@ function RiskItem({ name, level, detail, latency }: { name: string; level: RiskL
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '9px 12px', borderRadius: '8px', background: r.bg, border: `1px solid ${r.border}`, marginBottom: '6px' }}>
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: '12px', fontWeight: '700', color: '#e2e8f0' }}>{name}</div>
-        <div style={{ fontSize: '10px', color: theme.textMuted, marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
+        <div style={{ fontSize: '10px', color: '#64748b', marginTop: '2px', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{detail}</div>
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px', flexShrink: 0 }}>
         {latency !== undefined && (
-          <span style={{ fontSize: '11px', color: theme.textMuted }}>{latency}ms</span>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>{latency}ms</span>
         )}
         <RiskBadge level={level} />
       </div>
@@ -195,8 +195,8 @@ function EventRow({ event }: { event: RiskEvent }) {
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flex: 1, minWidth: 0 }}>
           <span style={{ fontSize: '16px', flexShrink: 0 }}>{r.icon}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ fontSize: '13px', fontWeight: '700', color: theme.text }}>{event.title}</div>
-            <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '2px' }}>{event.description}</div>
+            <div style={{ fontSize: '13px', fontWeight: '700', color: '#f1f5f9' }}>{event.title}</div>
+            <div style={{ fontSize: '11px', color: '#64748b', marginTop: '2px' }}>{event.description}</div>
           </div>
         </div>
         <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px', marginLeft: '10px', flexShrink: 0 }}>
@@ -205,9 +205,9 @@ function EventRow({ event }: { event: RiskEvent }) {
         </div>
       </div>
       <div style={{ display: 'flex', gap: '12px', marginTop: '6px' }}>
-        <span style={{ fontSize: '10px', color: theme.textMuted }}>📦 {event.affected}</span>
-        <span style={{ fontSize: '10px', color: theme.textMuted }}>🏷️ {event.category}</span>
-        <span style={{ fontSize: '10px', color: theme.textMuted }}>🕐 {event.time}</span>
+        <span style={{ fontSize: '10px', color: '#64748b' }}>📦 {event.affected}</span>
+        <span style={{ fontSize: '10px', color: '#64748b' }}>🏷️ {event.category}</span>
+        <span style={{ fontSize: '10px', color: '#64748b' }}>🕐 {event.time}</span>
       </div>
     </div>
   );

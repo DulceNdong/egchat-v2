@@ -3385,9 +3385,27 @@ const App: React.FC = () => {
     return (
       <div style={{ position: 'fixed', inset: 0, zIndex: 2000, background: type === 'video' ? '#000' : 'linear-gradient(160deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%)', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
 
-        {/* Botón minimizar — bajar la llamada y seguir chateando */}
-        <button onClick={() => setCallMinimized(true)} style={{ position: 'absolute', top: '16px', left: '16px', zIndex: 20, background: 'rgba(255,255,255,0.15)', border: 'none', borderRadius: '20px', padding: '8px 14px', color: '#fff', fontSize: '13px', fontWeight: '600', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', backdropFilter: 'blur(10px)' }}>
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
+        {/* Botón minimizar — más abajo para no tapar la hora del sistema */}
+        <button onClick={() => setCallMinimized(true)} style={{
+          position: 'absolute',
+          top: 'calc(env(safe-area-inset-top, 44px) + 12px)',
+          left: '16px',
+          zIndex: 20,
+          background: 'rgba(255,255,255,0.12)',
+          border: '1px solid rgba(255,255,255,0.18)',
+          borderRadius: '14px',
+          padding: '7px 13px',
+          color: 'rgba(255,255,255,0.85)',
+          fontSize: '12px',
+          fontWeight: '500',
+          cursor: 'pointer',
+          display: 'flex',
+          alignItems: 'center',
+          gap: '5px',
+          backdropFilter: 'blur(12px)',
+          letterSpacing: '0.2px',
+        }}>
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><polyline points="18 15 12 9 6 15"/></svg>
           Minimizar
         </button>
         {/* Video remoto (fondo) */}
@@ -3434,7 +3452,7 @@ const App: React.FC = () => {
         )}
 
         {/* Info contacto */}
-        <div style={{ marginTop: '80px', textAlign: 'center', zIndex: 5 }}>
+        <div style={{ marginTop: 'calc(env(safe-area-inset-top, 44px) + 80px)', textAlign: 'center', zIndex: 5 }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', background: `${color}30`, border: `3px solid ${color}60`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color, margin: '0 auto 14px' }}>
             {initials}
           </div>

@@ -42,7 +42,7 @@ const DEPLOY_STATUS: Record<DeployStatus, { color: string; bg: string; label: st
   success:     { color: '#34d399', bg: 'rgba(0,200,160,0.1)',   label: 'Exitoso',      icon: '✅' },
   failed:      { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Fallido',      icon: '❌' },
   in_progress: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔄' },
-  cancelled:   { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Cancelado',    icon: '⛔' },
+  cancelled:   { color: '#64748b', bg: 'rgba(100,116,139,0.1)', label: 'Cancelado',    icon: '⛔' },
   queued:      { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'En Cola',      icon: '⏳' },
 };
 
@@ -53,7 +53,7 @@ const ENV_CFG: Record<BuildEnv, { color: string; label: string }> = {
 };
 
 const LOG_CFG = {
-  info:    { color: theme.textMuted, bg: 'transparent',            icon: '·' },
+  info:    { color: '#64748b', bg: 'transparent',            icon: '·' },
   warn:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.05)', icon: '⚠' },
   error:   { color: '#ef4444', bg: 'rgba(239,68,68,0.06)',  icon: '✖' },
   success: { color: '#34d399', bg: 'rgba(0,200,160,0.05)',  icon: '✔' },
@@ -68,7 +68,7 @@ const COMMIT_MSGS = [
 ];
 const AUTHORS = ['dulcendong','carlos.ng','ana.mb','miguel.ondo','rosa.nch'];
 const PROJECTS = [
-  { name: 'egchat-v2',    platform: 'Vercel',  platformIcon: '▲', color: theme.text, currentVersion: 'v2.5.1', deploysThisWeek: 8  },
+  { name: 'egchat-v2',    platform: 'Vercel',  platformIcon: '▲', color: '#f1f5f9', currentVersion: 'v2.5.1', deploysThisWeek: 8  },
   { name: 'egchat-api',   platform: 'Render',  platformIcon: '🚀', color: '#60a5fa', currentVersion: 'v3.2.0', deploysThisWeek: 5  },
   { name: 'egchat-admin', platform: 'Vercel',  platformIcon: '▲', color: '#818cf8', currentVersion: 'v1.4.0', deploysThisWeek: 12 },
 ];
@@ -140,9 +140,9 @@ function generateMock(): DevOpsData {
     })),
     recentLogs: logs,
     platformStats: [
-      { platform: 'Vercel',  deploys: 84, color: theme.text, icon: '▲' },
+      { platform: 'Vercel',  deploys: 84, color: '#f1f5f9', icon: '▲' },
       { platform: 'Render',  deploys: 52, color: '#60a5fa', icon: '🚀' },
-      { platform: 'GitHub',  deploys: 20, color: theme.textMuted, icon: '🐙' },
+      { platform: 'GitHub',  deploys: 20, color: '#64748b', icon: '🐙' },
     ],
     lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
   };
@@ -152,8 +152,8 @@ function generateMock(): DevOpsData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {p.value}

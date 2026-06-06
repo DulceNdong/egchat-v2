@@ -91,8 +91,8 @@ function generateMock(): FinancialData {
 const ChartTip = ({ active, payload, label, currency }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px', minWidth: '140px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '6px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', padding: '8px 12px', minWidth: '140px' }}>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '6px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {convertAmount(p.value, currency)}
@@ -119,11 +119,11 @@ function FinCard({ icon, label, value, sub, color, trend, badge }: {
           {badge}
         </div>
       )}
-      <div style={{ fontSize: '11px', fontWeight: '700', color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>{icon} {label}</div>
-      <div style={{ fontSize: '22px', fontWeight: '900', color: theme.text, lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: '11px', color: theme.textMuted, marginTop: '4px' }}>{sub}</div>}
+      <div style={{ fontSize: '11px', fontWeight: '700', color: '#64748b', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '6px' }}>{icon} {label}</div>
+      <div style={{ fontSize: '22px', fontWeight: '900', color: '#f1f5f9', lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: '11px', color: '#64748b', marginTop: '4px' }}>{sub}</div>}
       {trend !== undefined && (
-        <div style={{ marginTop: '8px', fontSize: '12px', color: trend >= 0 ? theme.l3 : '#ef4444', fontWeight: '700' }}>
+        <div style={{ marginTop: '8px', fontSize: '12px', color: trend >= 0 ? '#34d399' : '#ef4444', fontWeight: '700' }}>
           {trend >= 0 ? '▲' : '▼'} {Math.abs(trend)}% vs período anterior
         </div>
       )}
@@ -139,13 +139,13 @@ function CostRow({ label, amount, total, color, icon, currency }: {
   return (
     <div style={{ marginBottom: '12px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '5px' }}>
-        <span style={{ fontSize: '12px', color: theme.textMuted, fontWeight: '600' }}>{icon} {label}</span>
+        <span style={{ fontSize: '12px', color: '#64748b', fontWeight: '600' }}>{icon} {label}</span>
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-          <span style={{ fontSize: '11px', color: theme.textMuted }}>{pct}%</span>
+          <span style={{ fontSize: '11px', color: '#64748b' }}>{pct}%</span>
           <span style={{ fontSize: '13px', color, fontWeight: '800' }}>{convertAmount(amount, currency)}</span>
         </div>
       </div>
-      <div style={{ height: '5px', background: theme.bgCard, borderRadius: '3px', overflow: 'hidden' }}>
+      <div style={{ height: '5px', background: '#1e293b', borderRadius: '3px', overflow: 'hidden' }}>
         <div style={{ height: '100%', width: `${pct}%`, background: color, borderRadius: '3px', boxShadow: `0 0 6px ${color}50`, transition: 'width 0.6s ease' }} />
       </div>
     </div>

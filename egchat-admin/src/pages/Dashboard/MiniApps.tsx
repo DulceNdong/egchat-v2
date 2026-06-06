@@ -34,10 +34,10 @@ interface MiniAppsData {
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const APP_STATUS: Record<AppStatus, { color: string; bg: string; label: string; dot: string }> = {
-  active:      { color: '#34d399', bg: 'rgba(0,200,160,0.1)',   label: 'Activa',       dot: theme.l3 },
+  active:      { color: '#34d399', bg: 'rgba(0,200,160,0.1)',   label: 'Activa',       dot: '#34d399' },
   degraded:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'Degradada',    dot: '#f59e0b' },
-  maintenance: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'Mantenimiento',dot: theme.l2 },
-  inactive:    { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Inactiva',     dot: '#64748b' },
+  maintenance: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'Mantenimiento',dot: '#60a5fa' },
+  inactive:    { color: '#64748b', bg: 'rgba(100,116,139,0.1)', label: 'Inactiva',     dot: '#64748b' },
 };
 
 // ── Formatters ────────────────────────────────────────────────────────────────
@@ -48,10 +48,10 @@ const fmtK   = (n: number) => n >= 1_000 ? `${(n/1_000).toFixed(1)}K` : String(n
 const APPS_CONFIG = [
   { id:'apuestas',  name:'Apuestas GQ',      icon:'🎲', category:'Entretenimiento', color:'#ec4899', countries:['🇬🇶'] },
   { id:'mitaxi',    name:'Mi Taxi',           icon:'🚕', category:'Transporte',      color:'#f97316', countries:['🇬🇶'] },
-  { id:'cemac',     name:'CEMAC Tasas',       icon:'💱', category:'Finanzas',        color:theme.l2, countries:['🇬🇶','🇨🇲','🇬🇦','🇨🇬'] },
+  { id:'cemac',     name:'CEMAC Tasas',       icon:'💱', category:'Finanzas',        color:'#60a5fa', countries:['🇬🇶','🇨🇲','🇬🇦','🇨🇬'] },
   { id:'educacion', name:'Educación',         icon:'🎓', category:'Educación',       color:'#22c55e', countries:['🇬🇶'] },
-  { id:'hoteles',   name:'Hoteles GQ',        icon:'🏨', category:'Turismo',         color:theme.l2, countries:['🇬🇶'] },
-  { id:'estados',   name:'Estados',           icon:'📸', category:'Social',          color:theme.l1, countries:['🇬🇶','🇨🇲'] },
+  { id:'hoteles',   name:'Hoteles GQ',        icon:'🏨', category:'Turismo',         color:'#60a5fa', countries:['🇬🇶'] },
+  { id:'estados',   name:'Estados',           icon:'📸', category:'Social',          color:'#818cf8', countries:['🇬🇶','🇨🇲'] },
   { id:'noticias',  name:'Noticias GQ',       icon:'📰', category:'Información',     color:'#64748b', countries:['🇬🇶'] },
   { id:'salud',     name:'Salud+',            icon:'🏥', category:'Salud',           color:'#ef4444', countries:['🇬🇶'] },
 ];
@@ -109,7 +109,7 @@ function generateMock(): MiniAppsData {
       { category: 'Transporte',      apps: 1, users: apps[1].mau, color: '#f97316' },
       { category: 'Finanzas',        apps: 1, users: apps[2].mau, color: '#60a5fa' },
       { category: 'Educación',       apps: 1, users: apps[3].mau, color: '#22c55e' },
-      { category: 'Otros',           apps: 4, users: apps.slice(4).reduce((s,a)=>s+a.mau,0), color: theme.textMuted },
+      { category: 'Otros',           apps: 4, users: apps.slice(4).reduce((s,a)=>s+a.mau,0), color: '#64748b' },
     ],
     revenueRanking: apps
       .sort((a,b) => b.revenueToday - a.revenueToday)
@@ -124,8 +124,8 @@ function generateMock(): MiniAppsData {
 const Tip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div style={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', padding: '8px 12px' }}>
-      <div style={{ fontSize: '11px', color: theme.textMuted, marginBottom: '4px', fontWeight: '700' }}>{label}</div>
+    <div style={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', padding: '8px 12px' }}>
+      <div style={{ fontSize: '11px', color: '#64748b', marginBottom: '4px', fontWeight: '700' }}>{label}</div>
       {payload.map((p: any, i: number) => (
         <div key={i} style={{ fontSize: '12px', color: p.color || p.fill, fontWeight: '700', marginBottom: '2px' }}>
           {p.name}: {typeof p.value === 'number' && p.value > 5000 ? fmtXAF(p.value) : p.value?.toLocaleString()}
@@ -158,21 +158,21 @@ function AppCard({ app, selected, onClick }: { app: MiniApp; selected: boolean; 
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '36px', height: '36px', borderRadius: '10px', background: `${app.color}20`, border: `1px solid ${app.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>{app.icon}</div>
           <div>
-            <div style={{ fontSize: '12px', fontWeight: '800', color: theme.text }}>{app.name}</div>
-            <div style={{ fontSize: '10px', color: theme.textMuted }}>{app.category} · {app.version}</div>
+            <div style={{ fontSize: '12px', fontWeight: '800', color: '#f1f5f9' }}>{app.name}</div>
+            <div style={{ fontSize: '10px', color: '#64748b' }}>{app.category} · {app.version}</div>
           </div>
         </div>
         <StatusDot status={app.status} />
       </div>
 
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', marginBottom: '8px' }}>
-        <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+        <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
           <div style={{ fontSize: '16px', fontWeight: '900', color: app.color }}>{fmtK(app.dau)}</div>
-          <div style={{ fontSize: '9px', color: theme.textMuted }}>DAU</div>
+          <div style={{ fontSize: '9px', color: '#64748b' }}>DAU</div>
         </div>
-        <div style={{ background: theme.bg, borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
-          <div style={{ fontSize: '16px', fontWeight: '900', color: theme.text }}>{app.avgSessionMin}m</div>
-          <div style={{ fontSize: '9px', color: theme.textMuted }}>sesión media</div>
+        <div style={{ background: '#0f172a', borderRadius: '8px', padding: '7px', textAlign: 'center' }}>
+          <div style={{ fontSize: '16px', fontWeight: '900', color: '#f1f5f9' }}>{app.avgSessionMin}m</div>
+          <div style={{ fontSize: '9px', color: '#64748b' }}>sesión media</div>
         </div>
       </div>
 
@@ -190,16 +190,16 @@ function AppCard({ app, selected, onClick }: { app: MiniApp; selected: boolean; 
 function AppDetail({ app }: { app: MiniApp }) {
   const s = APP_STATUS[app.status];
   return (
-    <div style={{ background: theme.bgCard, borderRadius: '16px', padding: '20px', border: `1px solid ${app.color}30` }}>
+    <div style={{ background: '#1e293b', borderRadius: '16px', padding: '20px', border: `1px solid ${app.color}30` }}>
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '18px' }}>
         <div style={{ width: '48px', height: '48px', borderRadius: '14px', background: `${app.color}20`, border: `1px solid ${app.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '24px' }}>{app.icon}</div>
         <div style={{ flex: 1 }}>
-          <div style={{ fontSize: '16px', fontWeight: '900', color: theme.text }}>{app.name}</div>
+          <div style={{ fontSize: '16px', fontWeight: '900', color: '#f1f5f9' }}>{app.name}</div>
           <div style={{ display: 'flex', gap: '8px', marginTop: '4px', alignItems: 'center' }}>
             <StatusDot status={app.status} />
-            <span style={{ fontSize: '10px', color: theme.textMuted }}>{app.version} · {app.category}</span>
-            <span style={{ fontSize: '10px', color: theme.textMuted }}>{app.countries.join(' ')}</span>
+            <span style={{ fontSize: '10px', color: '#64748b' }}>{app.version} · {app.category}</span>
+            <span style={{ fontSize: '10px', color: '#64748b' }}>{app.countries.join(' ')}</span>
           </div>
         </div>
       </div>
@@ -212,13 +212,13 @@ function AppDetail({ app }: { app: MiniApp }) {
           { label: 'Sesiones',  value: fmtK(app.sessions),       color: '#818cf8' },
           { label: 'Retención', value: `${app.retentionPct}%`,   color: '#f59e0b' },
           { label: 'Tiempo',    value: `${app.avgSessionMin}m`,  color: '#60a5fa' },
-          { label: 'Errores',   value: String(app.errorsToday),  color: app.errorsToday > 10 ? '#ef4444' : theme.l3 },
-          { label: 'Error %',   value: `${app.errorRate}%`,      color: app.errorRate > 1 ? '#ef4444' : theme.l3 },
+          { label: 'Errores',   value: String(app.errorsToday),  color: app.errorsToday > 10 ? '#ef4444' : '#34d399' },
+          { label: 'Error %',   value: `${app.errorRate}%`,      color: app.errorRate > 1 ? '#ef4444' : '#34d399' },
           { label: 'Ingresos',  value: fmtXAF(app.revenueToday), color: '#22c55e' },
         ].map(item => (
-          <div key={item.label} style={{ background: theme.bg, borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
+          <div key={item.label} style={{ background: '#0f172a', borderRadius: '8px', padding: '8px', textAlign: 'center' }}>
             <div style={{ fontSize: '13px', fontWeight: '900', color: item.color, lineHeight: 1 }}>{item.value}</div>
-            <div style={{ fontSize: '9px', color: theme.textMuted, marginTop: '3px' }}>{item.label}</div>
+            <div style={{ fontSize: '9px', color: '#64748b', marginTop: '3px' }}>{item.label}</div>
           </div>
         ))}
       </div>
@@ -227,7 +227,7 @@ function AppDetail({ app }: { app: MiniApp }) {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
 
         <div>
-          <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Usuarios por Hora</div>
+          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Usuarios por Hora</div>
           <ResponsiveContainer width="100%" height={100}>
             <AreaChart data={app.hourlyUsers}>
               <defs>
@@ -244,18 +244,18 @@ function AppDetail({ app }: { app: MiniApp }) {
         </div>
 
         <div>
-          <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Ingresos Semanales</div>
+          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Ingresos Semanales</div>
           <ResponsiveContainer width="100%" height={100}>
             <BarChart data={app.weeklyRevenue}>
               <XAxis dataKey="day" tick={{ fill: '#475569', fontSize: 9 }} />
-              <Tooltip formatter={(v: any) => fmtXAF(v)} contentStyle={{ background: theme.bg, border: `1px solid ${theme.border}`, borderRadius: '8px', fontSize: '11px' }} />
+              <Tooltip formatter={(v: any) => fmtXAF(v)} contentStyle={{ background: '#0f172a', border: `1px solid ${'#334155'}`, borderRadius: '8px', fontSize: '11px' }} />
               <Bar dataKey="revenue" name="Ingresos" fill={app.color} radius={[3,3,0,0]} />
             </BarChart>
           </ResponsiveContainer>
         </div>
 
         <div>
-          <div style={{ fontSize: '10px', color: theme.textMuted, fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Errores (12h)</div>
+          <div style={{ fontSize: '10px', color: '#64748b', fontWeight: '700', textTransform: 'uppercase', marginBottom: '6px' }}>Errores (12h)</div>
           <ResponsiveContainer width="100%" height={100}>
             <LineChart data={app.errorTrend}>
               <XAxis dataKey="hour" tick={false} />
