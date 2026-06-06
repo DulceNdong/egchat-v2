@@ -823,16 +823,25 @@ const App: React.FC = () => {
           const contenedorMensajes = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
           if (contenedorMensajes) {
             if (alturaTeclado > 0) {
-              // Teclado abierto: restar altura del teclado + barra de chat (~56px) + header (~88px)
               contenedorMensajes.style.height = `calc(100vh - ${alturaTeclado}px - 56px - 88px)`;
             } else {
-              // Teclado cerrado: restaurar altura (100vh - header - barra chat - safe areas)
               contenedorMensajes.style.height = '';
             }
             setTimeout(() => {
               contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
             }, 50);
           }
+          // DEBUG: mostrar valores reales en pantalla
+          let dbg = document.getElementById('keyboard-debug') as HTMLElement | null;
+          if (!dbg) {
+            dbg = document.createElement('div');
+            dbg.id = 'keyboard-debug';
+            dbg.style.cssText = 'position:fixed;top:50px;left:10px;right:10px;background:rgba(0,0,0,0.8);color:white;padding:10px;zIndex:99999;fontSize:12px;borderRadius:8px;';
+            document.body.appendChild(dbg);
+          }
+          const el = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+          dbg.innerHTML = `kh:${alturaTeclado} | scrollH:${el?.scrollHeight} | clientH:${el?.clientHeight} | vh:${window.innerHeight} | elH:${el?.style.height || 'auto'}`;
+          setTimeout(() => { if (dbg) dbg.remove(); }, 5000);
         };
 
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
