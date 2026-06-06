@@ -106,8 +106,11 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
   
   const headers = { ...getHeaders(), ...(options.headers as Record<string,string> || {}) };
 
-  // Timeout adaptativo: GET = 20s, POST = 25s — redes móviles africanas pueden ser lentas
-  const timeoutMs = method === 'GET' ? 20000 : 25000;
+  // Timeout adaptativo — Render free tier puede tardar 30-60s en despertar
+  // Mensajes: 60s para dar tiempo al servidor a despertar
+  // GET: 20s, otros POST: 45s
+  const isMessageEndpoint = path.includes('/messages');
+  const timeoutMs = method === 'GET' ? 20000 : isMessageEndpoint ? 60000 : 45000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -142,8 +145,10 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
     // Reintentar en caso de timeout o error de red (no en errores 4xx)
     const isNetworkError = err.name === 'AbortError' || err.name === 'TypeError' || err.message?.includes('fetch') || err.message?.includes('network') || err.message?.includes('Failed');
     if (isNetworkError && retries > 0) {
-      // Backoff: 2s, 4s entre reintentos
-      await new Promise(r => setTimeout(r, (3 - retries) * 2000));
+      // Backoff más largo para mensajes (servidor Render puede tardar en despertar)
+      const isMsg = path.includes('/messages');
+      const delay = isMsg ? (4 - retries) * 5000 : (3 - retries) * 2000; // 5s, 10s para mensajes
+      await new Promise(r => setTimeout(r, delay));
       return request<T>(path, options, retries - 1);
     }
     throw err;
@@ -152,6 +157,8 @@ async function request<T>(path: string, options: RequestInit = {}, retries = 2):
 
 const get  = <T>(path: string, headers?: Record<string,string>) => request<T>(path, { method:'GET', headers });
 const post = <T>(path: string, body: unknown) => request<T>(path, { method:'POST', body: JSON.stringify(body) });
+// Envío de mensajes con más reintentos — Render free tier puede dormir
+const postMessage = <T>(path: string, body: unknown) => request<T>(path, { method:'POST', body: JSON.stringify(body) }, 3);
 const put  = <T>(path: string, body: unknown) => request<T>(path, { method:'PUT',  body: JSON.stringify(body) });
 const patch = <T>(path: string, body: unknown) => request<T>(path, { method:'PATCH', body: JSON.stringify(body) });
 const del  = <T>(path: string) => request<T>(path, { method:'DELETE' });
@@ -211,7 +218,7 @@ export const chatAPI = {
   getChats: () => get<any[]>('/chats'),
   
   // Obtener mensajes de un chat específico
-  getMessages: (chatId:string, page=1, limit=50) => 
+  getMessages: (chatId:string, page=1, limit=200) => 
     get<any[]>(`/chats/${chatId}/messages?page=${page}&limit=${limit}`),
   
   // Enviar mensaje
@@ -223,7 +230,7 @@ export const chatAPI = {
     file_type?: string;
     file_size?: number;
     thumbnail_url?: string;
-  }) => post<any>(`/chats/${chatId}/messages`, data),
+  }) => postMessage<any>(`/chats/${chatId}/messages`, data),
   
   // Crear chat privado
   createPrivate: (participant_id?: string, phone?: string) => 

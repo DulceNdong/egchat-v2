@@ -371,7 +371,9 @@ const App: React.FC = () => {
     return [];
   });
   const [newChatSearching, setNewChatSearching] = useState(false);
-  const currentUserId = useRef<string>('');
+  const currentUserId = useRef<string>(
+    localStorage.getItem('egchat_user_id') || ''
+  );
   const pollingRef = useRef<ReturnType<typeof setInterval>|null>(null);
 
   // Helper: enriquecer objeto de chat/grupo con overrides del usuario antes de mostrarlo
@@ -500,7 +502,9 @@ const App: React.FC = () => {
     if (!chatId || chatId.length < 10) return;
     try {
       const msgs = await chatAPI.getMessages(chatId);
-      if (Array.isArray(msgs)) {
+      // Protección: si el servidor devuelve vacío pero tenemos mensajes cacheados,
+      // ignorar la respuesta vacía (puede ser error de red/BD temporal)
+      if (!Array.isArray(msgs) || msgs.length === 0) return;
         const fmt = msgs.map((m: any) => ({
           id: m.id, from: m.sender_id === currentUserId.current ? 'me' as const : 'them' as const,
           text: m.text || '', time: new Date(m.created_at).toLocaleTimeString('es-ES',{hour:'2-digit',minute:'2-digit'}),
@@ -555,13 +559,28 @@ const App: React.FC = () => {
           const backendIds = new Set(fmt.map((m: any) => m.id));
           // También excluir mensajes locales cuya URL de archivo ya existe en el backend (evita duplicados durante el upload)
           const backendFileUrls = new Set(fmt.map((m: any) => m.imageUrl || m.audioUrl || m.fileUrl).filter(Boolean));
-          const localOnly = (prev[chatId] || []).filter((m: any) =>
-            !backendIds.has(m.id) &&
-            !(m.imageUrl && backendFileUrls.has(m.imageUrl)) &&
-            !(m.audioUrl && backendFileUrls.has(m.audioUrl)) &&
-            !(m.fileUrl && backendFileUrls.has(m.fileUrl)) &&
-            (m.type === 'image' || m.type === 'audio' || m.type === 'contact' || m.type === 'video' || m.imageUrl || m.audioUrl || m.status === 'pending')
-          );
+          const now = Date.now();
+          // Grace period de 15s: preservar mensajes enviados muy recientemente aunque el loadMessages
+          // los haya perdido (evita que visibilitychange/polling los "borre" antes de sincronizar)
+          const graceMs = 15000;
+          const backendMyTexts = new Set(fmt.filter((m: any) => m.from === 'me').map((m: any) => m.text));
+          const localOnly = (prev[chatId] || []).filter((m: any) => {
+            if (backendIds.has(m.id)) return false; // ya en backend con mismo id
+            if (m.imageUrl && backendFileUrls.has(m.imageUrl)) return false;
+            if (m.audioUrl && backendFileUrls.has(m.audioUrl)) return false;
+            if (m.fileUrl && backendFileUrls.has(m.fileUrl)) return false;
+            // Mensajes de texto propios con ID numérico (temporales o ya confirmados localmente)
+            if (m.from === 'me' && !m.imageUrl && !m.audioUrl && !m.fileUrl) {
+              const isNumericId = !isNaN(Number(m.id)) && Number(m.id) > 1e12;
+              if (isNumericId) {
+                const msgAge = now - Number(m.id);
+                if (msgAge < graceMs) return true; // grace period — preservar siempre
+                if (backendMyTexts.has(m.text)) return false; // ya en backend — descartar
+              }
+            }
+            // Preservar: media, contactos, o mensajes pendientes
+            return (m.type === 'image' || m.type === 'audio' || m.type === 'contact' || m.type === 'video' || m.imageUrl || m.audioUrl || m.status === 'pending');
+          });
           // Filtrar mensajes eliminados para mí localmente (respaldo)
           const filteredFmt = fmt.filter((m: any) => !deletedForMeIds.current.has(m.id));
           // Enriquecer mensajes del backend con metadata local (type, contactAvatar, imageUrl, etc.)
@@ -588,15 +607,23 @@ const App: React.FC = () => {
               contactAvatar: local?.contactAvatar || m.contactAvatar,
             };
           });
-          // Ordenar por tiempo para mantener el orden correcto
+          // Ordenar por timestamp real (created_at) o por id numérico (Date.now) como fallback
           const merged = [...enrichedFmt, ...localOnly].sort((a: any, b: any) => {
-            const ta = a.time || '00:00';
-            const tb = b.time || '00:00';
-            return ta.localeCompare(tb);
+            // Primero usar created_at si está disponible (más preciso)
+            if (a.created_at && b.created_at) {
+              return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+            }
+            // Para mensajes locales pendientes sin created_at, usar el id numérico (Date.now)
+            const aNum = Number(a.id);
+            const bNum = Number(b.id);
+            if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+            if (!isNaN(aNum)) return 1;  // local pending va al final
+            if (!isNaN(bNum)) return -1;
+            // Fallback por HH:MM
+            return (a.time || '00:00').localeCompare(b.time || '00:00');
           });
           return { ...prev, [chatId]: merged };
         });
-      }
     } catch {}
   }, []);
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
@@ -1283,8 +1310,8 @@ const App: React.FC = () => {
       // Esto evita un único JSON enorme que bloquea el hilo principal
       for (const [k, msgs] of Object.entries(chatMessages)) {
         try {
-          // Solo los últimos 50 mensajes por chat
-          const recent = (msgs as any[]).slice(-50).map((m: any) => {
+          // Solo los últimos 200 mensajes por chat
+          const recent = (msgs as any[]).slice(-200).map((m: any) => {
             const saved: any = { ...m };
             // Excluir blob: URLs que expiran
             if (saved.audioUrl?.startsWith('blob:')) delete saved.audioUrl;
@@ -5272,8 +5299,11 @@ const App: React.FC = () => {
           };
           const makeTime = () => { const n = new Date(); return `${n.getHours().toString().padStart(2,'0')}:${n.getMinutes().toString().padStart(2,'0')}`; };
 
+          let _sending = false; // flag anti-doble envío
           const sendChatMessage = async () => {
+            if (_sending) { console.warn('[SEND] bloqueado doble envío'); return; }
             if (!currentChatInput.trim()) return;
+            _sending = true;
             const messageText = currentChatInput.trim();
 
             // MODO EDICIÓN — actualiza el mensaje existente
@@ -5308,16 +5338,43 @@ const App: React.FC = () => {
             
             if (chatId && chatId.includes('-') && chatId.length > 20) {
               try {
-                await chatAPI.sendMessage(chatId, { text: messageText, type: 'text' });
-                setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'delivered'} : m) }));
-                setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'read'} : m) })), 2000);
-              } catch {
+                const sent = await chatAPI.sendMessage(chatId, { text: messageText, type: 'text' });
+                const serverId = sent?.id || newMsg.id;
+                console.log('[SEND] ok, tempId:', newMsg.id, '→ serverId:', serverId);
+                // Reemplazar id temporal con el id real del servidor — NO recargar lista
+                // (evita que loadMessages sobrescriba y "borre" el mensaje visualmente)
+                setChatMessages(prev => {
+                  const list = prev[chatId] || [];
+                  const found = list.find((m: any) => m.id === newMsg.id);
+                  console.log('[SEND] replace en state — encontrado?', !!found, '| lista length:', list.length);
+                  return {
+                    ...prev,
+                    [chatId]: list.map((m: any) =>
+                      m.id === newMsg.id ? { ...m, id: serverId, created_at: sent?.created_at || new Date().toISOString(), status: 'delivered' as const } : m
+                    )
+                  };
+                });
+              } catch (err: any) {
+                console.error('[SEND] error:', err?.message);
                 setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'pending'} : m) }));
+                setTimeout(async () => {
+                  try {
+                    const sent = await chatAPI.sendMessage(chatId, { text: messageText, type: 'text' });
+                    const serverId = sent?.id || newMsg.id;
+                    setChatMessages(prev => ({
+                      ...prev,
+                      [chatId]: (prev[chatId]||[]).map(m =>
+                        m.id === newMsg.id ? { ...m, id: serverId, created_at: sent?.created_at || new Date().toISOString(), status: 'delivered' as const } : m
+                      )
+                    }));
+                  } catch (err2: any) { /* silencioso — mensaje queda pendiente */ }
+                }, 5000);
               }
             } else {
               setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'delivered'} : m) })), 1000);
               setTimeout(() => setChatMessages(prev => ({ ...prev, [chatId]: (prev[chatId]||[]).map(m => m.id===newMsg.id ? {...m, status:'read'} : m) })), 3000);
             }
+            _sending = false;
           };
 
           return (
@@ -10337,6 +10394,7 @@ const App: React.FC = () => {
       authAPI.me().then((u: any) => {
       if (u?.id) {
         currentUserId.current = u.id;
+        localStorage.setItem('egchat_user_id', u.id);
         const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
         // Si el nombre es vacío, "Usuario" o genérico, usar el número de teléfono
         const rawName = u.full_name || '';
@@ -10480,6 +10538,7 @@ const App: React.FC = () => {
       localStorage.removeItem('token');
       localStorage.removeItem('egchat_token_backup');
       localStorage.removeItem('egchat_user_profile');
+      localStorage.removeItem('egchat_user_id');
       setIsAuthenticated(false);
       setSelectedChat(null);
       setCurrentView('home');
@@ -10596,6 +10655,26 @@ const App: React.FC = () => {
     // Solo recargar chats al entrar a Mensajería si no hay grupo seleccionado
     if (currentView === 'Mensajería' && !selectedChat?.isGroup) loadChats();
   }, [currentView, loadChats]);
+
+  // -- Tiempo real: escuchar evento WebSocket/SSE de nuevo mensaje --
+  // RealtimeSync emite 'egchat:messages-updated' cuando llega un mensaje por WebSocket/SSE
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const handler = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      const incomingChatId = detail?.chatId?.toString() || '';
+      if (!incomingChatId) return;
+      // Si el chat abierto es el que recibió el mensaje, recargar inmediatamente
+      const openChatId = selectedChat?.id?.toString() || '';
+      if (openChatId && openChatId === incomingChatId) {
+        loadMessages(incomingChatId);
+      }
+      // Actualizar lista de chats para mostrar último mensaje y badge
+      if (!selectedChat?.isGroup) loadChats();
+    };
+    window.addEventListener('egchat:messages-updated', handler);
+    return () => window.removeEventListener('egchat:messages-updated', handler);
+  }, [isAuthenticated, selectedChat, loadMessages, loadChats]);
 
   // -- Polling: actualizar mensajes del chat abierto cada 30s (EGRESS FIX: reducido de 8s a 30s) ---
   // El SSE (/api/chat/stream) es el canal principal para mensajes en tiempo real.

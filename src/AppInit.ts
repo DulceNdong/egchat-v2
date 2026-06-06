@@ -27,6 +27,15 @@ export async function initApp(): Promise<void> {
 
   AppMonitor.init();
 
+  // Wake-up ping al servidor (Render free tier duerme tras 15min de inactividad)
+  // Lanzar en background sin bloquear la inicialización
+  const apiUrl = (typeof (window as any).__API_URL__ !== 'undefined' && (window as any).__API_URL__)
+    ? (window as any).__API_URL__.replace(/\/$/, '').replace(/\/api$/, '')
+    : 'https://egchat-api.onrender.com';
+  fetch(`${apiUrl}/health`, { method: 'GET', signal: AbortSignal.timeout(90000) })
+    .then(() => console.log('[AppInit] ✅ Servidor activo'))
+    .catch(() => console.log('[AppInit] ⏳ Servidor despertando...'));
+
   // Configurar teclado: native = el WebView sube con el teclado de forma nativa
   // Esto es lo que hace que el input bar siempre quede visible sobre el teclado
   try {
