@@ -1382,7 +1382,7 @@ const App: React.FC = () => {
   // Siempre 'native' — el WebView maneja el resize automáticamente
   React.useEffect(() => {
     try {
-      Keyboard.setResizeMode({ mode: 'native' });
+      Keyboard.setResizeMode({ mode: 'none' });
     } catch { /* no capacitor */ }
   }, []);
 
