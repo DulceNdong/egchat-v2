@@ -818,8 +818,10 @@ const App: React.FC = () => {
     const setup = async () => {
       try {
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
+          // Solo actuar si hay un chat abierto — fuera del chat el modo 'native' lo gestiona
+          const hasChatOpen = !!document.querySelector('.chat-view-container');
+          if (!hasChatOpen) return;
           const kh = info.keyboardHeight || 0;
-          // Usar querySelector porque el ref puede no estar montado aún
           const el = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
           if (el) {
             el.style.bottom = `${kh}px`;
@@ -1377,18 +1379,12 @@ const App: React.FC = () => {
     }, 100);
   }, [selectedChat?.id]);
 
-  // Cambiar modo teclado iOS según vista:
   // Siempre 'native' — el WebView maneja el resize automáticamente
-  // Al salir del chat, forzar cierre del teclado para evitar área negra
   React.useEffect(() => {
     try {
       Keyboard.setResizeMode({ mode: 'native' });
-      if (!selectedChat) {
-        // Al salir del chat: cerrar teclado y forzar resize del WebView
-        Keyboard.hide();
-      }
     } catch { /* no capacitor */ }
-  }, [selectedChat?.id]);
+  }, []);
 
   // Scroll automático: solo cuando hay mensaje nuevo real
   const lastScrollMsgId = React.useRef<string>('');
