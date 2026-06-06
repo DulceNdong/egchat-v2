@@ -817,37 +817,43 @@ const App: React.FC = () => {
 
     const setup = async () => {
       try {
+        let alturaTecladoActual = 0;
+
+        const ajustarPorTeclado = (alturaTeclado: number) => {
+          const contenedorMensajes = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+          if (contenedorMensajes) {
+            if (alturaTeclado > 0) {
+              // Teclado abierto: restar altura del teclado + barra de chat (~56px) + header (~88px)
+              contenedorMensajes.style.height = `calc(100vh - ${alturaTeclado}px - 56px - 88px)`;
+            } else {
+              // Teclado cerrado: restaurar altura (100vh - header - barra chat - safe areas)
+              contenedorMensajes.style.height = '';
+            }
+            setTimeout(() => {
+              contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
+            }, 50);
+          }
+        };
+
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
-          const kh = info.keyboardHeight || 0;
-          // Mover la barra de input justo encima del teclado
+          alturaTecladoActual = info.keyboardHeight || 0;
+          // Mover la barra de chat encima del teclado
           const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
           if (chatBar) {
-            chatBar.style.transform = `translateY(-${kh}px)`;
+            chatBar.style.transform = `translateY(-${alturaTecladoActual}px)`;
             chatBar.style.transition = 'transform 0.25s ease';
           }
-          // Reducir el container de mensajes para que no queden tapados
-          const container = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
-          if (container) {
-            container.style.bottom = `${kh}px`;
-            container.style.transition = 'bottom 0.25s ease';
-          }
-          // Scroll al fondo DESPUÉS de la animación
-          setTimeout(() => {
-            const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-            if (scroll) scroll.scrollTop = scroll.scrollHeight;
-          }, 280);
+          ajustarPorTeclado(alturaTecladoActual);
         });
+
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
+          alturaTecladoActual = 0;
           const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
           if (chatBar) {
             chatBar.style.transform = 'translateY(0)';
             chatBar.style.transition = 'transform 0.2s ease';
           }
-          const container = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
-          if (container) {
-            container.style.bottom = '0px';
-            container.style.transition = 'bottom 0.2s ease';
-          }
+          ajustarPorTeclado(0);
         });
       } catch {}
     };
