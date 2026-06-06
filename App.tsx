@@ -823,9 +823,8 @@ const App: React.FC = () => {
           const contenedorMensajes = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
           if (contenedorMensajes) {
             if (alturaTeclado > 0) {
-              // kh:301, vh:896 — el contenedor es flex:1 así que usamos max-height
-              const headerH = 88; // header fijo
-              const inputBarH = 56; // barra de input
+              const headerH = 88;
+              const inputBarH = 56;
               const available = window.innerHeight - alturaTeclado - headerH - inputBarH;
               contenedorMensajes.style.maxHeight = `${available}px`;
               contenedorMensajes.style.overflow = 'auto';
@@ -833,9 +832,14 @@ const App: React.FC = () => {
               contenedorMensajes.style.maxHeight = '';
               contenedorMensajes.style.overflow = '';
             }
+            // Scroll al fondo inmediatamente y también tras la animación
+            contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
             setTimeout(() => {
               contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
-            }, 50);
+            }, 100);
+            setTimeout(() => {
+              contenedorMensajes.scrollTop = contenedorMensajes.scrollHeight;
+            }, 300);
           }
         };
 
