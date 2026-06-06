@@ -819,10 +819,17 @@ const App: React.FC = () => {
       try {
         showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
           const kh = info.keyboardHeight || 0;
+          // Mover la barra de input justo encima del teclado
           const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
           if (chatBar) {
             chatBar.style.transform = `translateY(-${kh}px)`;
             chatBar.style.transition = 'transform 0.25s ease';
+          }
+          // Reducir el container de mensajes para que no queden tapados
+          const container = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
+          if (container) {
+            container.style.bottom = `${kh}px`;
+            container.style.transition = 'bottom 0.25s ease';
           }
           requestAnimationFrame(() => {
             const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -834,6 +841,11 @@ const App: React.FC = () => {
           if (chatBar) {
             chatBar.style.transform = 'translateY(0)';
             chatBar.style.transition = 'transform 0.2s ease';
+          }
+          const container = chatContainerRef.current || document.querySelector('.chat-view-container') as HTMLElement | null;
+          if (container) {
+            container.style.bottom = '0px';
+            container.style.transition = 'bottom 0.2s ease';
           }
         });
       } catch {}
@@ -5568,7 +5580,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 80px)' : '60px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 56px)' : '60px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
