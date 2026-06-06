@@ -1378,14 +1378,14 @@ const App: React.FC = () => {
   }, [selectedChat?.id]);
 
   // Cambiar modo teclado iOS según vista:
-  // - Con chat abierto: 'native' → el WebView redimensiona y el input bar sube con el teclado
-  // - Sin chat abierto: 'body' → solo el área de texto sube, el resto de la app queda fija
+  // Siempre 'native' — el WebView maneja el resize automáticamente
+  // Al salir del chat, forzar cierre del teclado para evitar área negra
   React.useEffect(() => {
     try {
-      if (selectedChat) {
-        Keyboard.setResizeMode({ mode: 'native' });
-      } else {
-        Keyboard.setResizeMode({ mode: 'body' });
+      Keyboard.setResizeMode({ mode: 'native' });
+      if (!selectedChat) {
+        // Al salir del chat: cerrar teclado y forzar resize del WebView
+        Keyboard.hide();
       }
     } catch { /* no capacitor */ }
   }, [selectedChat?.id]);
