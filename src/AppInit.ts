@@ -36,11 +36,11 @@ export async function initApp(): Promise<void> {
     .then(() => console.log('[AppInit] ✅ Servidor activo'))
     .catch(() => console.log('[AppInit] ⏳ Servidor despertando...'));
 
-  // Configurar teclado: native = el WebView sube con el teclado de forma nativa
-  // Esto es lo que hace que el input bar siempre quede visible sobre el teclado
+  // Configurar teclado: empezar con 'body' — se cambia a 'native' al abrir un chat (App.tsx)
+  // Con 'body' el teclado solo empuja el input, sin mover toda la app
   try {
-    await Keyboard.setResizeMode({ mode: 'native' });
-    console.log('[AppInit] ✅ Keyboard resize: native');
+    await Keyboard.setResizeMode({ mode: 'body' });
+    console.log('[AppInit] ✅ Keyboard resize: body (default)');
   } catch { /* web/no capacitor */ }
 
   try {
