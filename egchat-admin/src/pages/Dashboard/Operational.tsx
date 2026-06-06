@@ -66,7 +66,7 @@ export const OperationalDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l2} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l2, fontWeight: 800 }}>{30-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#60a5fa', fontWeight: 800 }}>{30-tick}</div>
             </div>
             <span style={{ fontSize: 11, color: theme.textMuted }}>refresh</span>
           </div>
@@ -79,12 +79,12 @@ export const OperationalDashboard: React.FC = () => {
       {/* KPIs — real data */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(160px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { Icon: IC.Users,    label: 'Usuarios Activos', value: d.activeUsers,     sub: 'últimos 5 min',  color: theme.l3, trend: d.activeUsersTrend },
-          { Icon: IC.UserPlus, label: 'Nuevos Hoy',       value: d.newUsersToday,   sub: 'registros',      color: theme.l2, trend: d.newUsersTrend },
-          { Icon: IC.Monitor,  label: 'Sesiones Abiertas',value: d.activeSessions,  sub: 'ahora mismo',    color: theme.l1 },
-          { Icon: IC.Zap,      label: 'Uptime',           value: `${d.uptime}%`,    sub: '30 días',        color: theme.l3 },
-          { Icon: IC.Users,    label: 'Total Usuarios',   value: d.totalUsers,      sub: 'registrados',    color: theme.l2 },
-          { Icon: IC.Chat,     label: 'Total Chats',      value: d.totalChats,      sub: 'en la plataforma',color: theme.l1 },
+          { Icon: IC.Users,    label: 'Usuarios Activos', value: d.activeUsers,     sub: 'últimos 5 min',  color: '#34d399', trend: d.activeUsersTrend },
+          { Icon: IC.UserPlus, label: 'Nuevos Hoy',       value: d.newUsersToday,   sub: 'registros',      color: '#60a5fa', trend: d.newUsersTrend },
+          { Icon: IC.Monitor,  label: 'Sesiones Abiertas',value: d.activeSessions,  sub: 'ahora mismo',    color: '#818cf8' },
+          { Icon: IC.Zap,      label: 'Uptime',           value: `${d.uptime}%`,    sub: '30 días',        color: '#34d399' },
+          { Icon: IC.Users,    label: 'Total Usuarios',   value: d.totalUsers,      sub: 'registrados',    color: '#60a5fa' },
+          { Icon: IC.Chat,     label: 'Total Chats',      value: d.totalChats,      sub: 'en la plataforma',color: '#818cf8' },
         ].map(({ Icon, label, value, sub, color, trend }) => (
           <div key={label} style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
@@ -146,9 +146,9 @@ export const OperationalDashboard: React.FC = () => {
           <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📊 Resumen de Actividad</div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 20 }}>
             {[
-              { label: 'Usuarios Activos',  value: d.activeUsers,    max: Math.max(d.activeUsers, 100),    color: theme.l3 },
-              { label: 'Sesiones',          value: d.activeSessions, max: Math.max(d.activeSessions, 100), color: theme.l2 },
-              { label: 'Nuevos Hoy',        value: d.newUsersToday,  max: Math.max(d.newUsersToday, 10),   color: theme.l1 },
+              { label: 'Usuarios Activos',  value: d.activeUsers,    max: Math.max(d.activeUsers, 100),    color: '#34d399' },
+              { label: 'Sesiones',          value: d.activeSessions, max: Math.max(d.activeSessions, 100), color: '#60a5fa' },
+              { label: 'Nuevos Hoy',        value: d.newUsersToday,  max: Math.max(d.newUsersToday, 10),   color: '#818cf8' },
             ].map(item => (
               <div key={item.label}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 5 }}>
@@ -162,7 +162,7 @@ export const OperationalDashboard: React.FC = () => {
             ))}
             <div style={{ marginTop: 10, padding: 12, background: theme.bg, borderRadius: 10, border: `1px solid ${theme.border}` }}>
               <div style={{ fontSize: 11, color: theme.textMuted, marginBottom: 4 }}>Uptime plataforma</div>
-              <div style={{ fontSize: 22, fontWeight: 900, color: theme.l3 }}>{d.uptime}%</div>
+              <div style={{ fontSize: 22, fontWeight: 900, color: '#34d399' }}>{d.uptime}%</div>
               <div style={{ fontSize: 10, color: theme.textMuted }}>Total: {d.totalUsers?.toLocaleString()} usuarios · {d.totalChats?.toLocaleString()} chats</div>
             </div>
           </div>

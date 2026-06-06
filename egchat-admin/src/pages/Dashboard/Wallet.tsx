@@ -66,7 +66,7 @@ export const WalletDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l1} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l1, fontWeight: 800 }}>{30-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#818cf8', fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l1},${theme.l2})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -78,11 +78,11 @@ export const WalletDashboard: React.FC = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { Icon: IC.CheckCircle, label: 'Tx Completadas', value: d.txCount,       sub: fmtXAF(d.volumeToday || 0), color: theme.l3 },
+          { Icon: IC.CheckCircle, label: 'Tx Completadas', value: d.txCount,       sub: fmtXAF(d.volumeToday || 0), color: '#34d399' },
           { Icon: IC.XCircle,     label: 'Tx Fallidas',    value: d.txFailed,      sub: 'hoy',                      color: '#ef4444', alert: d.txFailed > 5 },
           { Icon: IC.TrendUp,     label: 'Tasa de Éxito',  value: `${d.successRate}%`, sub: 'completadas/total',    color: d.successRate >= 97 ? theme.l3 : '#f59e0b' },
-          { Icon: IC.Wallet,      label: 'Volumen Hoy',    value: fmtXAF(d.volumeToday || 0), sub: 'total procesado', color: theme.l2 },
-          { Icon: IC.ArrowUp,     label: 'Tendencia Tx',   value: `+${d.txTrend}%`, sub: 'vs ayer',                color: theme.l3 },
+          { Icon: IC.Wallet,      label: 'Volumen Hoy',    value: fmtXAF(d.volumeToday || 0), sub: 'total procesado', color: '#60a5fa' },
+          { Icon: IC.ArrowUp,     label: 'Tendencia Tx',   value: `+${d.txTrend}%`, sub: 'vs ayer',                color: '#34d399' },
         ].map(({ Icon, label, value, sub, color, alert }: any) => (
           <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'60' : theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
             {alert && <div style={{ position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: `0 0 5px ${color}` }} />}
@@ -114,9 +114,9 @@ export const WalletDashboard: React.FC = () => {
       {/* Stats summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
         {[
-          { label: 'Total Transacciones Hoy', value: d.txCount, color: theme.l3, icon: '✅' },
+          { label: 'Total Transacciones Hoy', value: d.txCount, color: '#34d399', icon: '✅' },
           { label: 'Transacciones Fallidas',  value: d.txFailed, color: '#ef4444', icon: '❌' },
-          { label: 'Volumen Total Hoy',       value: fmtXAF(d.volumeToday || 0), color: theme.l2, icon: '💰' },
+          { label: 'Volumen Total Hoy',       value: fmtXAF(d.volumeToday || 0), color: '#60a5fa', icon: '💰' },
           { label: 'Tasa de Éxito',           value: `${d.successRate}%`, color: d.successRate >= 97 ? theme.l3 : '#f59e0b', icon: '📈' },
         ].map(item => (
           <div key={item.label} style={{ background: theme.bgCard, borderRadius: 12, padding: 14, border: `1px solid ${theme.border}`, display: 'flex', alignItems: 'center', gap: 12 }}>

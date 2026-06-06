@@ -62,7 +62,7 @@ export const InfrastructureDashboard: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 20, fontWeight: 900 }}>⚙️ Dashboard de Infraestructura</span>
-            <span style={{ fontSize: 10, fontWeight: 800, color: theme.l3, background: `${theme.l3}12`, border: `1px solid ${theme.l3}30`, borderRadius: 20, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#34d399', background: `${theme.l3}12`, border: `1px solid ${theme.l3}30`, borderRadius: 20, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.l3, display: 'inline-block', boxShadow: `0 0 5px ${theme.l3}` }} />
               {d.services?.filter((s:any) => s.status === 'ok').length}/{d.services?.length} operativos
             </span>
@@ -72,7 +72,7 @@ export const InfrastructureDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l2} ${(15-tick)/15*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l2, fontWeight: 800 }}>{15-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#60a5fa', fontWeight: 800 }}>{15-tick}</div>
             </div>
           </div>
           <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l2},${theme.l3})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -88,7 +88,7 @@ export const InfrastructureDashboard: React.FC = () => {
           { Icon: IC.Server,   label: 'RAM Render',        value: `${d.renderRam}%`,                                 color: ramColor,  alert: d.renderRam > 85 },
           { Icon: IC.Database, label: 'DB Conexiones',     value: `${d.supabaseConns}/${d.supabaseMaxConns}`,         color: connPct > 80 ? '#ef4444' : theme.l2, alert: connPct > 80 },
           { Icon: IC.Globe,    label: 'CDN Hit Rate',      value: `${d.cdnHitRate}%`,                                color: d.cdnHitRate > 90 ? theme.l3 : '#f59e0b' },
-          { Icon: IC.Server,   label: 'Servicios OK',      value: `${d.services?.filter((s:any)=>s.status==='ok').length||0}/${d.services?.length||0}`, color: theme.l3 },
+          { Icon: IC.Server,   label: 'Servicios OK',      value: `${d.services?.filter((s:any)=>s.status==='ok').length||0}/${d.services?.length||0}`, color: '#34d399' },
         ].map(({ Icon, label, value, color, alert }: any) => (
           <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'50' : theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
             {alert && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />}

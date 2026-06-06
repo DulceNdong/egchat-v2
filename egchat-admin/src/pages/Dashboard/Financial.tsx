@@ -57,9 +57,9 @@ function generateMock(): FinancialData {
     },
     costs: { operational: ops, infrastructure: infra, marketing: 32_000, support: 18_000 },
     services: [
-      { name: 'Wallet / Pagos',   revenue: daily * 0.42, color: theme.l3, icon: '💰' },
-      { name: 'Chat Premium',     revenue: daily * 0.28, color: theme.l2, icon: '💬' },
-      { name: 'Publicidad',       revenue: daily * 0.15, color: theme.l1, icon: '📢' },
+      { name: 'Wallet / Pagos',   revenue: daily * 0.42, color: '#34d399', icon: '💰' },
+      { name: 'Chat Premium',     revenue: daily * 0.28, color: '#60a5fa', icon: '💬' },
+      { name: 'Publicidad',       revenue: daily * 0.15, color: '#818cf8', icon: '📢' },
       { name: 'Suscripciones',    revenue: daily * 0.10, color: '#f59e0b', icon: '⭐' },
       { name: 'Integraciones API',revenue: daily * 0.05, color: '#ec4899', icon: '🔌' },
     ],
@@ -332,7 +332,7 @@ export const FinancialDashboard: React.FC = () => {
               <XAxis dataKey="week" tick={{ fill: '#475569', fontSize: 11 }} />
               <YAxis tick={{ fill: '#475569', fontSize: 10 }} tickFormatter={v => convertAmount(v, currency)} width={70} />
               <Tooltip content={(props) => <ChartTip {...props} currency={currency} />} />
-              <Line type="monotone" dataKey="revenue"     name="Ingresos"   stroke="#00c8a0" strokeWidth={2} dot={{ fill: theme.l3, r: 3 }} />
+              <Line type="monotone" dataKey="revenue"     name="Ingresos"   stroke="#00c8a0" strokeWidth={2} dot={{ fill: '#34d399', r: 3 }} />
               <Line type="monotone" dataKey="commissions" name="Comisiones" stroke="#ec4899" strokeWidth={2} dot={{ fill: '#ec4899', r: 3 }} strokeDasharray="5 5" />
             </LineChart>
           </ResponsiveContainer>
@@ -396,7 +396,7 @@ export const FinancialDashboard: React.FC = () => {
               <YAxis tick={{ fill: '#475569', fontSize: 10 }} tickFormatter={v => convertAmount(v, currency)} width={70} />
               <Tooltip content={(props) => <ChartTip {...props} currency={currency} />} />
               <Area type="monotone" dataKey="optimistic"    name="Optimista"    stroke="#22c55e" strokeWidth={1.5} strokeDasharray="4 4" fill="url(#gradOpt)" dot={false} />
-              <Area type="monotone" dataKey="projected"     name="Base"         stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradPrj)" dot={{ fill: theme.l2, r: 4 }} />
+              <Area type="monotone" dataKey="projected"     name="Base"         stroke="#3b82f6" strokeWidth={2.5} fill="url(#gradPrj)" dot={{ fill: '#60a5fa', r: 4 }} />
               <Line type="monotone" dataKey="conservative" name="Conservador"  stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="3 3" dot={false} />
             </AreaChart>
           </ResponsiveContainer>
@@ -410,9 +410,9 @@ export const FinancialDashboard: React.FC = () => {
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '12px' }}>
           {[
-            { label: 'Wallet / Pagos',   amount: data.commissions.wallet,  color: theme.l3, icon: '💰', pct: '10%' },
-            { label: 'Chat Premium',     amount: data.commissions.premium, color: theme.l2, icon: '💬', pct: '5%'  },
-            { label: 'Publicidad',       amount: data.commissions.ads,     color: theme.l1, icon: '📢', pct: '3%'  },
+            { label: 'Wallet / Pagos',   amount: data.commissions.wallet,  color: '#34d399', icon: '💰', pct: '10%' },
+            { label: 'Chat Premium',     amount: data.commissions.premium, color: '#60a5fa', icon: '💬', pct: '5%'  },
+            { label: 'Publicidad',       amount: data.commissions.ads,     color: '#818cf8', icon: '📢', pct: '3%'  },
             { label: 'Total Comisiones', amount: data.commissions.total,   color: '#ec4899', icon: '✅', pct: '18%' },
           ].map(({ label, amount, color, icon, pct }) => (
             <div key={label} style={{ background: theme.bg, borderRadius: '12px', padding: '14px', border: `1px solid ${color}20` }}>

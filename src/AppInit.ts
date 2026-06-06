@@ -17,6 +17,7 @@ import { initRealtime }    from './sync/RealtimeSync';
 import { AppMonitor }      from './monitor/AppMonitor';
 import { OTAUpdater }      from './ota/OTAUpdater';
 import { FileCache }       from './cache/FileCache';
+import { Keyboard }        from '@capacitor/keyboard';
 
 let initialized = false;
 
@@ -25,6 +26,13 @@ export async function initApp(): Promise<void> {
   initialized = true;
 
   AppMonitor.init();
+
+  // Configurar teclado: native = el WebView sube con el teclado de forma nativa
+  // Esto es lo que hace que el input bar siempre quede visible sobre el teclado
+  try {
+    await Keyboard.setResizeMode({ mode: 'native' });
+    console.log('[AppInit] ✅ Keyboard resize: native');
+  } catch { /* web/no capacitor */ }
 
   try {
     // 1. SQLite

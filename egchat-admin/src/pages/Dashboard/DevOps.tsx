@@ -39,9 +39,9 @@ interface DevOpsData {
 
 // ── Config ────────────────────────────────────────────────────────────────────
 const DEPLOY_STATUS: Record<DeployStatus, { color: string; bg: string; label: string; icon: string }> = {
-  success:     { color: theme.l3, bg: 'rgba(0,200,160,0.1)',   label: 'Exitoso',      icon: '✅' },
+  success:     { color: '#34d399', bg: 'rgba(0,200,160,0.1)',   label: 'Exitoso',      icon: '✅' },
   failed:      { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Fallido',      icon: '❌' },
-  in_progress: { color: theme.l2, bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔄' },
+  in_progress: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔄' },
   cancelled:   { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Cancelado',    icon: '⛔' },
   queued:      { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'En Cola',      icon: '⏳' },
 };
@@ -49,14 +49,14 @@ const DEPLOY_STATUS: Record<DeployStatus, { color: string; bg: string; label: st
 const ENV_CFG: Record<BuildEnv, { color: string; label: string }> = {
   production:  { color: '#ef4444', label: 'PROD'  },
   preview:     { color: '#f59e0b', label: 'PREV'  },
-  development: { color: theme.l2, label: 'DEV'   },
+  development: { color: '#60a5fa', label: 'DEV'   },
 };
 
 const LOG_CFG = {
   info:    { color: theme.textMuted, bg: 'transparent',            icon: '·' },
   warn:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.05)', icon: '⚠' },
   error:   { color: '#ef4444', bg: 'rgba(239,68,68,0.06)',  icon: '✖' },
-  success: { color: theme.l3, bg: 'rgba(0,200,160,0.05)',  icon: '✔' },
+  success: { color: '#34d399', bg: 'rgba(0,200,160,0.05)',  icon: '✔' },
 };
 
 // ── Mock data ─────────────────────────────────────────────────────────────────
@@ -69,8 +69,8 @@ const COMMIT_MSGS = [
 const AUTHORS = ['dulcendong','carlos.ng','ana.mb','miguel.ondo','rosa.nch'];
 const PROJECTS = [
   { name: 'egchat-v2',    platform: 'Vercel',  platformIcon: '▲', color: theme.text, currentVersion: 'v2.5.1', deploysThisWeek: 8  },
-  { name: 'egchat-api',   platform: 'Render',  platformIcon: '🚀', color: theme.l2, currentVersion: 'v3.2.0', deploysThisWeek: 5  },
-  { name: 'egchat-admin', platform: 'Vercel',  platformIcon: '▲', color: theme.l1, currentVersion: 'v1.4.0', deploysThisWeek: 12 },
+  { name: 'egchat-api',   platform: 'Render',  platformIcon: '🚀', color: '#60a5fa', currentVersion: 'v3.2.0', deploysThisWeek: 5  },
+  { name: 'egchat-admin', platform: 'Vercel',  platformIcon: '▲', color: '#818cf8', currentVersion: 'v1.4.0', deploysThisWeek: 12 },
 ];
 
 function generateMock(): DevOpsData {
@@ -141,7 +141,7 @@ function generateMock(): DevOpsData {
     recentLogs: logs,
     platformStats: [
       { platform: 'Vercel',  deploys: 84, color: theme.text, icon: '▲' },
-      { platform: 'Render',  deploys: 52, color: theme.l2, icon: '🚀' },
+      { platform: 'Render',  deploys: 52, color: '#60a5fa', icon: '🚀' },
       { platform: 'GitHub',  deploys: 20, color: theme.textMuted, icon: '🐙' },
     ],
     lastUpdate: new Date().toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
@@ -208,7 +208,7 @@ export const DevOpsDashboard: React.FC = () => {
             {d.deployingNow > 0 && (
               <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(59,130,246,0.1)', border: '1px solid rgba(59,130,246,0.3)', borderRadius: '20px', padding: '4px 12px' }}>
                 <div style={{ width: '7px', height: '7px', borderRadius: '50%', background: theme.l2, boxShadow: '0 0 6px #3b82f6' }} />
-                <span style={{ fontSize: '11px', fontWeight: '800', color: theme.l2 }}>{d.deployingNow} deploy en progreso</span>
+                <span style={{ fontSize: '11px', fontWeight: '800', color: '#60a5fa' }}>{d.deployingNow} deploy en progreso</span>
               </div>
             )}
           </div>
@@ -217,7 +217,7 @@ export const DevOpsDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', gap: '6px', alignItems: 'center' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#3b82f6 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l2, fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#60a5fa', fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#3b82f6,#6366f1)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>

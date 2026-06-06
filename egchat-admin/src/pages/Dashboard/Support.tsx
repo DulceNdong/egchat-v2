@@ -47,18 +47,18 @@ const PRIORITY: Record<TicketPriority, { color: string; bg: string; label: strin
 
 const STATUS: Record<TicketStatus, { color: string; bg: string; label: string; icon: string }> = {
   open:        { color: '#ef4444', bg: 'rgba(239,68,68,0.1)',   label: 'Abierto',      icon: '🔴' },
-  in_progress: { color: theme.l2, bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔵' },
-  resolved:    { color: theme.l3, bg: 'rgba(0,200,160,0.1)',  label: 'Resuelto',     icon: '✅' },
+  in_progress: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'En Proceso',   icon: '🔵' },
+  resolved:    { color: '#34d399', bg: 'rgba(0,200,160,0.1)',  label: 'Resuelto',     icon: '✅' },
   closed:      { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)',label: 'Cerrado',      icon: '⚫' },
-  escalated:   { color: theme.l1, bg: 'rgba(168,85,247,0.1)', label: 'Escalado',     icon: '🆙' },
+  escalated:   { color: '#818cf8', bg: 'rgba(168,85,247,0.1)', label: 'Escalado',     icon: '🆙' },
 };
 
 const CATEGORY_CFG: Record<TicketCategory, { label: string; icon: string; color: string }> = {
   login:    { label: 'Login / Acceso',    icon: '🔐', color: '#ef4444' },
   wallet:   { label: 'Wallet / Pagos',    icon: '💰', color: '#f59e0b' },
-  chat:     { label: 'Chat / Mensajes',   icon: '💬', color: theme.l3 },
+  chat:     { label: 'Chat / Mensajes',   icon: '💬', color: '#34d399' },
   app_bug:  { label: 'Error de la App',   icon: '🐛', color: '#f97316' },
-  account:  { label: 'Cuenta / Perfil',   icon: '👤', color: theme.l2 },
+  account:  { label: 'Cuenta / Perfil',   icon: '👤', color: '#60a5fa' },
   other:    { label: 'Otros',             icon: '📋', color: theme.textMuted },
 };
 
@@ -105,9 +105,9 @@ function generateMock(): SupportData {
     byCategory: [
       { name: 'Login / Acceso',   count: 142, color: '#ef4444', icon: '🔐' },
       { name: 'Wallet / Pagos',   count: 118, color: '#f59e0b', icon: '💰' },
-      { name: 'Chat / Mensajes',  count:  94, color: theme.l3, icon: '💬' },
+      { name: 'Chat / Mensajes',  count:  94, color: '#34d399', icon: '💬' },
       { name: 'Error App',        count:  87, color: '#f97316', icon: '🐛' },
-      { name: 'Cuenta / Perfil',  count:  72, color: theme.l2, icon: '👤' },
+      { name: 'Cuenta / Perfil',  count:  72, color: '#60a5fa', icon: '👤' },
       { name: 'Otros',            count:  46, color: theme.textMuted, icon: '📋' },
     ],
     byAgent: AGENTS.map(name => ({
@@ -128,8 +128,8 @@ function generateMock(): SupportData {
       backlog:  Math.floor(40 + i * 3 + Math.random() * 10),
     })),
     resolutionDist: [
-      { range: '<15 min',   count: 38, color: theme.l3 },
-      { range: '15-60 min', count: 52, color: theme.l2 },
+      { range: '<15 min',   count: 38, color: '#34d399' },
+      { range: '15-60 min', count: 52, color: '#60a5fa' },
       { range: '1-4 h',     count: 24, color: '#f59e0b' },
       { range: '4-24 h',    count: 10, color: '#f97316' },
       { range: '>24 h',     count:  4, color: '#ef4444' },
@@ -231,7 +231,7 @@ export const SupportDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#3b82f6 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l2, fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#60a5fa', fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#3b82f6,#6366f1)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
@@ -356,7 +356,7 @@ export const SupportDashboard: React.FC = () => {
               <Tooltip content={<Tip />} />
               <Area type="monotone" dataKey="backlog"  name="Backlog"   stroke="#f59e0b" strokeWidth={1.5} fill="url(#gBacklog)" dot={false} />
               <Line type="monotone" dataKey="opened"   name="Abiertos"  stroke="#ef4444" strokeWidth={2} dot={{ fill: '#ef4444', r: 3 }} />
-              <Line type="monotone" dataKey="resolved" name="Resueltos" stroke="#00c8a0" strokeWidth={2} dot={{ fill: theme.l3, r: 3 }} />
+              <Line type="monotone" dataKey="resolved" name="Resueltos" stroke="#00c8a0" strokeWidth={2} dot={{ fill: '#34d399', r: 3 }} />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -433,7 +433,7 @@ export const SupportDashboard: React.FC = () => {
               </div>
               <div style={{ display: 'flex', gap: '10px', fontSize: '10px', color: theme.textMuted }}>
                 <span style={{ color: '#ef4444' }}>Abiertos: <b>{agent.open}</b></span>
-                <span style={{ color: theme.l3 }}>Resueltos: <b>{agent.resolved}</b></span>
+                <span style={{ color: '#34d399' }}>Resueltos: <b>{agent.resolved}</b></span>
                 <span>⏱️ {fmtMin(agent.avgMin)}</span>
               </div>
             </div>
@@ -525,7 +525,7 @@ export const SupportDashboard: React.FC = () => {
       <div style={{ marginTop: '14px', padding: '10px 16px', background: theme.bgCard, borderRadius: '10px', border: `1px solid ${theme.border}`, display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
         <span style={{ fontSize: '11px', color: theme.textMuted }}>🎧 Dashboard Soporte · Métricas de calidad · Actualización cada 30s</span>
         <div style={{ display: 'flex', gap: '12px' }}>
-          <span style={{ fontSize: '11px', color: theme.l3 }}>SLA objetivo: 90%</span>
+          <span style={{ fontSize: '11px', color: '#34d399' }}>SLA objetivo: 90%</span>
           <span style={{ fontSize: '11px', color: '#f59e0b' }}>Satisfacción objetivo: ≥4.0/5</span>
         </div>
       </div>

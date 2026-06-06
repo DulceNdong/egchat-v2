@@ -49,7 +49,7 @@ export const SQLiteSyncDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l3} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l3, fontWeight: 800 }}>{30-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#34d399', fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l3},${theme.l2})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -61,11 +61,11 @@ export const SQLiteSyncDashboard: React.FC = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { Icon: IC.CheckCircle, label: 'Sync OK Hoy',     value: d.syncOkToday,  color: theme.l3 },
+          { Icon: IC.CheckCircle, label: 'Sync OK Hoy',     value: d.syncOkToday,  color: '#34d399' },
           { Icon: IC.AlertTri,    label: 'Pendientes Sync', value: d.pendingSync,  color: d.pendingSync > 20 ? '#f59e0b' : theme.l2, alert: d.pendingSync > 20 },
           { Icon: IC.AlertTri,    label: 'Conflictos',      value: d.conflicts,    color: d.conflicts > 0 ? '#ef4444' : theme.l3, alert: d.conflicts > 0 },
           { Icon: IC.Clock,       label: 'Offline Largo',   value: d.offlineLong,  color: d.offlineLong > 0 ? '#f59e0b' : theme.l3, alert: d.offlineLong > 0 },
-          { Icon: IC.Wifi,        label: 'Tasa de Éxito',   value: d.syncOkToday > 0 ? `${Math.round(d.syncOkToday/(d.syncOkToday+d.pendingSync)*100)}%` : '100%', color: theme.l3 },
+          { Icon: IC.Wifi,        label: 'Tasa de Éxito',   value: d.syncOkToday > 0 ? `${Math.round(d.syncOkToday/(d.syncOkToday+d.pendingSync)*100)}%` : '100%', color: '#34d399' },
         ].map(({ Icon, label, value, color, alert }: any) => (
           <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'50' : theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
             {alert && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />}
@@ -100,8 +100,8 @@ export const SQLiteSyncDashboard: React.FC = () => {
         <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📋 Resumen General</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
           {[
-            { label: 'Sync Completados Hoy', value: d.syncOkToday, color: theme.l3, icon: '✅' },
-            { label: 'En Cola de Sync',      value: d.pendingSync, color: theme.l2, icon: '⏳' },
+            { label: 'Sync Completados Hoy', value: d.syncOkToday, color: '#34d399', icon: '✅' },
+            { label: 'En Cola de Sync',      value: d.pendingSync, color: '#60a5fa', icon: '⏳' },
             { label: 'Conflictos Activos',   value: d.conflicts,   color: d.conflicts > 0 ? '#ef4444' : theme.l3, icon: d.conflicts > 0 ? '⚠️' : '✅' },
             { label: 'Dispositivos Offline', value: d.offlineLong, color: d.offlineLong > 0 ? '#f59e0b' : theme.l3, icon: d.offlineLong > 0 ? '📴' : '✅' },
           ].map(item => (

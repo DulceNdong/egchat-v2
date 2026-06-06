@@ -67,13 +67,13 @@ export const AuditDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l1} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l1, fontWeight: 800 }}>{30-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#818cf8', fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l1},${theme.l2})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <IC.RefreshCw /> {pulse?'...':'Actualizar'}
           </button>
-          <button onClick={() => adminAPI.exportAudit('csv')} style={{ background: theme.bgCard, border: `1px solid ${theme.l3}30`, borderRadius: 10, padding: '7px 14px', color: theme.l3, fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <button onClick={() => adminAPI.exportAudit('csv')} style={{ background: theme.bgCard, border: `1px solid ${theme.l3}30`, borderRadius: 10, padding: '7px 14px', color: '#34d399', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
             <IC.Download /> Exportar CSV
           </button>
         </div>
@@ -82,11 +82,11 @@ export const AuditDashboard: React.FC = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { Icon: IC.Activity,  label: 'Total Registros', value: logs.length,    color: theme.l1 },
+          { Icon: IC.Activity,  label: 'Total Registros', value: logs.length,    color: '#818cf8' },
           { Icon: IC.AlertTri,  label: 'Críticas',        value: criticals,      color: '#f59e0b', alert: criticals > 0 },
           { Icon: IC.AlertTri,  label: 'Fallidas',        value: failures,       color: '#ef4444', alert: failures > 5 },
-          { Icon: IC.Users,     label: 'Admins Activos',  value: new Set(logs.map(l=>l.admin_id)).size, color: theme.l2 },
-          { Icon: IC.Clipboard, label: 'Exitosas',        value: logs.filter(l=>l.result==='success').length, color: theme.l3 },
+          { Icon: IC.Users,     label: 'Admins Activos',  value: new Set(logs.map(l=>l.admin_id)).size, color: '#60a5fa' },
+          { Icon: IC.Clipboard, label: 'Exitosas',        value: logs.filter(l=>l.result==='success').length, color: '#34d399' },
         ].map(({ Icon, label, value, color, alert }: any) => (
           <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'50' : theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
             {alert && <div style={{ position: 'absolute', top: 8, right: 8, width: 8, height: 8, borderRadius: '50%', background: color, boxShadow: `0 0 6px ${color}` }} />}

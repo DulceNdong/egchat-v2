@@ -49,7 +49,7 @@ export const ChatDashboard: React.FC = () => {
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ fontSize: 20, fontWeight: 900 }}>💬 Dashboard Chat</span>
-            <span style={{ fontSize: 10, fontWeight: 800, color: theme.l3, background: `${theme.l3}12`, border: `1px solid ${theme.l3}30`, borderRadius: 20, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
+            <span style={{ fontSize: 10, fontWeight: 800, color: '#34d399', background: `${theme.l3}12`, border: `1px solid ${theme.l3}30`, borderRadius: 20, padding: '3px 10px', display: 'flex', alignItems: 'center', gap: 5 }}>
               <span style={{ width: 6, height: 6, borderRadius: '50%', background: theme.l3, display: 'inline-block', boxShadow: `0 0 6px ${theme.l3}` }} />
               {d.messagesPerMin} msg/min
             </span>
@@ -59,7 +59,7 @@ export const ChatDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l3} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l3, fontWeight: 800 }}>{30-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#34d399', fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l3},${theme.l2})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -71,14 +71,14 @@ export const ChatDashboard: React.FC = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { Icon: IC.Msg,     label: 'Mensajes/min',    value: d.messagesPerMin,  color: theme.l3 },
-          { Icon: IC.Users,   label: 'Chats Activos',   value: d.activeChats,     color: theme.l2 },
-          { Icon: IC.Phone,   label: 'Llamadas Audio',  value: d.audioCalls,      color: theme.l1 },
-          { Icon: IC.Video,   label: 'Llamadas Video',  value: d.videoCalls,      color: theme.l2 },
+          { Icon: IC.Msg,     label: 'Mensajes/min',    value: d.messagesPerMin,  color: '#34d399' },
+          { Icon: IC.Users,   label: 'Chats Activos',   value: d.activeChats,     color: '#60a5fa' },
+          { Icon: IC.Phone,   label: 'Llamadas Audio',  value: d.audioCalls,      color: '#818cf8' },
+          { Icon: IC.Video,   label: 'Llamadas Video',  value: d.videoCalls,      color: '#60a5fa' },
           { Icon: IC.XCircle, label: 'Llamadas Fallidas',value: d.failedCalls,   color: '#ef4444', alert: d.failedCalls > 2 },
           { Icon: IC.Zap,     label: 'Latencia P95',    value: `${d.latencyP95}ms`, color: latencyColor(d.latencyP95), alert: d.latencyP95 > 300 },
-          { Icon: IC.Msg,     label: 'Privados',        value: d.privateChats,    color: theme.l3 },
-          { Icon: IC.Users,   label: 'Grupos',          value: d.groupChats,      color: theme.l1 },
+          { Icon: IC.Msg,     label: 'Privados',        value: d.privateChats,    color: '#34d399' },
+          { Icon: IC.Users,   label: 'Grupos',          value: d.groupChats,      color: '#818cf8' },
         ].map(({ Icon, label, value, color, alert }: any) => (
           <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'60' : theme.border}`, borderRadius: 14, padding: 14, position: 'relative', overflow: 'hidden' }}>
             {alert && <div style={{ position: 'absolute', top: 8, right: 8, width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: `0 0 5px ${color}` }} />}
@@ -133,7 +133,7 @@ export const ChatDashboard: React.FC = () => {
           ))}
           <div style={{ marginTop: 12, padding: 10, background: theme.bg, borderRadius: 9, border: `1px solid ${theme.border}` }}>
             <div style={{ fontSize: 10, color: theme.textMuted }}>VoIP activas ahora</div>
-            <div style={{ fontSize: 18, fontWeight: 900, color: theme.l2, marginTop: 2 }}>{(d.audioCalls||0) + (d.videoCalls||0)} llamadas</div>
+            <div style={{ fontSize: 18, fontWeight: 900, color: '#60a5fa', marginTop: 2 }}>{(d.audioCalls||0) + (d.videoCalls||0)} llamadas</div>
           </div>
         </div>
       </div>

@@ -326,7 +326,7 @@ export const RiskDashboard: React.FC = () => {
               { label: 'Alertas Hoy',        value: d.fraud.alertsToday,          color: '#ef4444' },
               { label: 'Tx Bloqueadas',       value: d.fraud.blockedTx,            color: '#f97316' },
               { label: 'Cuentas Sospechosas', value: d.fraud.suspiciousAccounts,   color: '#f59e0b' },
-              { label: 'Logins Fallidos/h',   value: d.fraud.failedLoginsHour,     color: theme.l1 },
+              { label: 'Logins Fallidos/h',   value: d.fraud.failedLoginsHour,     color: '#818cf8' },
             ].map(item => (
               <div key={item.label} style={{ background: theme.bg, borderRadius: '10px', padding: '10px', border: `1px solid ${item.color}20` }}>
                 <div style={{ fontSize: '20px', fontWeight: '900', color: item.color }}>{item.value}</div>

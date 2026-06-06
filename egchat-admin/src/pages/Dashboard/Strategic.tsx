@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+﻿import React, { useEffect, useState, useCallback } from 'react';
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line, RadarChart, Radar,
   PolarGrid, PolarAngleAxis, PolarRadiusAxis,
@@ -42,22 +42,22 @@ function generateMock(): StrategicData {
       avgSessionMin: 12.4, sessionsPerDay: 2.8,
     },
     features: [
-      { name: 'Chat',       dau: 2841, mau: 3420, adoptionPct: 89, color: theme.l3, icon: '💬' },
+      { name: 'Chat',       dau: 2841, mau: 3420, adoptionPct: 89, color: '#34d399', icon: '💬' },
       { name: 'Wallet',     dau: 1204, mau: 2180, adoptionPct: 57, color: '#f59e0b', icon: '💰' },
-      { name: 'Mini Apps',  dau:  876, mau: 1640, adoptionPct: 43, color: theme.l2, icon: '📱' },
-      { name: 'Noticias',   dau:  654, mau: 1320, adoptionPct: 34, color: theme.l1, icon: '📰' },
+      { name: 'Mini Apps',  dau:  876, mau: 1640, adoptionPct: 43, color: '#60a5fa', icon: '📱' },
+      { name: 'Noticias',   dau:  654, mau: 1320, adoptionPct: 34, color: '#818cf8', icon: '📰' },
       { name: 'Apuestas',   dau:  412, mau:  890, adoptionPct: 23, color: '#ec4899', icon: '🎲' },
       { name: 'Mi Taxi',    dau:  287, mau:  640, adoptionPct: 17, color: '#f97316', icon: '🚕' },
       { name: 'Educación',  dau:  198, mau:  480, adoptionPct: 12, color: '#22c55e', icon: '🎓' },
-      { name: 'Hoteles',    dau:   94, mau:  240, adoptionPct:  6, color: theme.l2, icon: '🏨' },
+      { name: 'Hoteles',    dau:   94, mau:  240, adoptionPct:  6, color: '#60a5fa', icon: '🏨' },
     ],
     wallet: {
       txCount: 1847, avgTxValue: 12_400, adoptionPct: 57, repeatUsers: 68,
       topCategories: [
-        { name: 'Transferencias', pct: 42, color: theme.l3 },
-        { name: 'Recargas Móvil', pct: 28, color: theme.l2 },
+        { name: 'Transferencias', pct: 42, color: '#34d399' },
+        { name: 'Recargas Móvil', pct: 28, color: '#60a5fa' },
         { name: 'Pagos Servicios', pct: 18, color: '#f59e0b' },
-        { name: 'Compras Online', pct: 12, color: theme.l1 },
+        { name: 'Compras Online', pct: 12, color: '#818cf8' },
       ],
     },
     chat: {
@@ -67,10 +67,10 @@ function generateMock(): StrategicData {
     miniApps: [
       { name: 'Apuestas GQ',   users: 412, sessions: 1840, color: '#ec4899', icon: '🎲', country: '🇬🇶 GQ' },
       { name: 'Mi Taxi',       users: 287, sessions:  940, color: '#f97316', icon: '🚕', country: '🇬🇶 GQ' },
-      { name: 'CEMAC Tasa',    users: 198, sessions:  620, color: theme.l2, icon: '💱', country: '🌍 CEMAC' },
+      { name: 'CEMAC Tasa',    users: 198, sessions:  620, color: '#60a5fa', icon: '💱', country: '🌍 CEMAC' },
       { name: 'Educación',     users: 198, sessions:  580, color: '#22c55e', icon: '🎓', country: '🇬🇶 GQ' },
-      { name: 'Hoteles GQ',    users:  94, sessions:  310, color: theme.l2, icon: '🏨', country: '🇬🇶 GQ' },
-      { name: 'Estados',       users:  76, sessions:  890, color: theme.l1, icon: '📸', country: '🇬🇶 GQ' },
+      { name: 'Hoteles GQ',    users:  94, sessions:  310, color: '#60a5fa', icon: '🏨', country: '🇬🇶 GQ' },
+      { name: 'Estados',       users:  76, sessions:  890, color: '#818cf8', icon: '📸', country: '🇬🇶 GQ' },
     ],
     userGrowthHistory: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'].map((month, i) => {
       const u = Math.floor(800 + i * 280 + Math.random() * 120);
@@ -157,7 +157,7 @@ function RetentionBar({ label, value, color }: { label: string; value: number; c
 
 // ── Status badge ──────────────────────────────────────────────────────────────
 const STATUS_MAP = {
-  active:  { color: theme.l3, label: 'ACTIVO'    },
+  active:  { color: '#34d399', label: 'ACTIVO'    },
   growing: { color: '#f59e0b', label: 'CRECIENDO' },
   planned: { color: theme.textMuted, label: 'PLANIFICADO'},
 };
@@ -195,7 +195,7 @@ export const StrategicDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
             <div style={{ width: '28px', height: '28px', borderRadius: '50%', background: `conic-gradient(#00c8a0 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l3, fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '20px', height: '20px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#34d399', fontWeight: '800' }}>{30-tick}</div>
             </div>
             <span style={{ fontSize: '11px', color: theme.textMuted }}>{d.lastUpdate}</span>
           </div>
@@ -254,7 +254,7 @@ export const StrategicDashboard: React.FC = () => {
               <Tooltip content={<Tip />} />
               <Line type="monotone" dataKey="mau" name="MAU" stroke="#a855f7" strokeWidth={2} dot={false} />
               <Line type="monotone" dataKey="wau" name="WAU" stroke="#3b82f6" strokeWidth={2} dot={false} />
-              <Line type="monotone" dataKey="dau" name="DAU" stroke="#00c8a0" strokeWidth={2} dot={{ fill: theme.l3, r: 3 }} />
+              <Line type="monotone" dataKey="dau" name="DAU" stroke="#00c8a0" strokeWidth={2} dot={{ fill: '#34d399', r: 3 }} />
             </LineChart>
           </ResponsiveContainer>
         </div>
@@ -272,11 +272,11 @@ export const StrategicDashboard: React.FC = () => {
           <RetentionBar label="Día 90" value={d.retention.day90} color="#f59e0b" />
           <div style={{ marginTop: '16px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px' }}>
             <div style={{ background: theme.bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: theme.l3 }}>{d.retention.avgSessionMin}m</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#34d399' }}>{d.retention.avgSessionMin}m</div>
               <div style={{ fontSize: '10px', color: theme.textMuted }}>sesión media</div>
             </div>
             <div style={{ background: theme.bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: theme.l2 }}>{d.retention.sessionsPerDay}x</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#60a5fa' }}>{d.retention.sessionsPerDay}x</div>
               <div style={{ fontSize: '10px', color: theme.textMuted }}>sesiones/día</div>
             </div>
           </div>
@@ -343,9 +343,9 @@ export const StrategicDashboard: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             {[
               { label: 'Tx Diarias',    value: d.wallet.txCount.toLocaleString(), color: '#f59e0b' },
-              { label: 'Valor Medio Tx',value: `${(d.wallet.avgTxValue/1000).toFixed(0)}K XAF`, color: theme.l3 },
-              { label: 'Adopción',      value: `${d.wallet.adoptionPct}%`,          color: theme.l2 },
-              { label: 'Usuarios Recur.',value: `${d.wallet.repeatUsers}%`,         color: theme.l1 },
+              { label: 'Valor Medio Tx',value: `${(d.wallet.avgTxValue/1000).toFixed(0)}K XAF`, color: '#34d399' },
+              { label: 'Adopción',      value: `${d.wallet.adoptionPct}%`,          color: '#60a5fa' },
+              { label: 'Usuarios Recur.',value: `${d.wallet.repeatUsers}%`,         color: '#818cf8' },
             ].map(item => (
               <div key={item.label} style={{ background: theme.bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
                 <div style={{ fontSize: '17px', fontWeight: '900', color: item.color }}>{item.value}</div>
@@ -372,9 +372,9 @@ export const StrategicDashboard: React.FC = () => {
           <SectionTitle>💬 Uso del Chat</SectionTitle>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
             {[
-              { label: 'Mensajes/Día',   value: (d.chat.dailyMessages/1000).toFixed(1)+'K', color: theme.l3 },
-              { label: 'Chats Activos',  value: d.chat.activeChats.toLocaleString(),        color: theme.l2 },
-              { label: 'Grupos',         value: d.chat.groupChats.toLocaleString(),          color: theme.l1 },
+              { label: 'Mensajes/Día',   value: (d.chat.dailyMessages/1000).toFixed(1)+'K', color: '#34d399' },
+              { label: 'Chats Activos',  value: d.chat.activeChats.toLocaleString(),        color: '#60a5fa' },
+              { label: 'Grupos',         value: d.chat.groupChats.toLocaleString(),          color: '#818cf8' },
               { label: 'Msg/Usuario/Día',value: d.chat.avgMsgPerUser,                        color: '#f59e0b' },
             ].map(item => (
               <div key={item.label} style={{ background: theme.bg, borderRadius: '10px', padding: '10px', textAlign: 'center' }}>
@@ -387,12 +387,12 @@ export const StrategicDashboard: React.FC = () => {
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             <div style={{ background: theme.bg, borderRadius: '10px', padding: '12px', textAlign: 'center', border: '1px solid #00c8a020' }}>
               <div style={{ fontSize: '24px', marginBottom: '4px' }}>🎙️</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: theme.l3 }}>{(d.chat.voiceMin/60).toFixed(0)}h</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#34d399' }}>{(d.chat.voiceMin/60).toFixed(0)}h</div>
               <div style={{ fontSize: '10px', color: theme.textMuted }}>voz / día</div>
             </div>
             <div style={{ background: theme.bg, borderRadius: '10px', padding: '12px', textAlign: 'center', border: '1px solid #3b82f620' }}>
               <div style={{ fontSize: '24px', marginBottom: '4px' }}>📹</div>
-              <div style={{ fontSize: '18px', fontWeight: '900', color: theme.l2 }}>{(d.chat.videoMin/60).toFixed(0)}h</div>
+              <div style={{ fontSize: '18px', fontWeight: '900', color: '#60a5fa' }}>{(d.chat.videoMin/60).toFixed(0)}h</div>
               <div style={{ fontSize: '10px', color: theme.textMuted }}>vídeo / día</div>
             </div>
           </div>
@@ -444,7 +444,7 @@ export const StrategicDashboard: React.FC = () => {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
                   {c.growth > 0 && (
-                    <span style={{ fontSize: '12px', fontWeight: '800', color: theme.l3 }}>▲ {c.growth}%</span>
+                    <span style={{ fontSize: '12px', fontWeight: '800', color: '#34d399' }}>▲ {c.growth}%</span>
                   )}
                   <span style={{ fontSize: '10px', fontWeight: '800', color: s.color, background: `${s.color}15`, padding: '2px 8px', borderRadius: '6px', border: `1px solid ${s.color}30` }}>
                     {s.label}
@@ -454,7 +454,7 @@ export const StrategicDashboard: React.FC = () => {
             );
           })}
           <div style={{ marginTop: '14px', padding: '12px', background: 'rgba(0,180,230,0.05)', borderRadius: '10px', border: '1px solid rgba(0,180,230,0.15)' }}>
-            <div style={{ fontSize: '11px', color: theme.l2, fontWeight: '700', marginBottom: '4px' }}>🗺️ Plan de Expansión</div>
+            <div style={{ fontSize: '11px', color: '#60a5fa', fontWeight: '700', marginBottom: '4px' }}>🗺️ Plan de Expansión</div>
             <div style={{ fontSize: '11px', color: theme.textMuted, lineHeight: 1.6 }}>
               Fase 1 (activo): Guinea Ecuatorial · Fase 2 (2026): CEMAC completa · Fase 3 (2027): Costa Oeste África
             </div>

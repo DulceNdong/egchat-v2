@@ -34,9 +34,9 @@ interface MiniAppsData {
 
 // ── Status config ─────────────────────────────────────────────────────────────
 const APP_STATUS: Record<AppStatus, { color: string; bg: string; label: string; dot: string }> = {
-  active:      { color: theme.l3, bg: 'rgba(0,200,160,0.1)',   label: 'Activa',       dot: theme.l3 },
+  active:      { color: '#34d399', bg: 'rgba(0,200,160,0.1)',   label: 'Activa',       dot: theme.l3 },
   degraded:    { color: '#f59e0b', bg: 'rgba(245,158,11,0.1)',  label: 'Degradada',    dot: '#f59e0b' },
-  maintenance: { color: theme.l2, bg: 'rgba(59,130,246,0.1)', label: 'Mantenimiento',dot: theme.l2 },
+  maintenance: { color: '#60a5fa', bg: 'rgba(59,130,246,0.1)', label: 'Mantenimiento',dot: theme.l2 },
   inactive:    { color: theme.textMuted, bg: 'rgba(100,116,139,0.1)', label: 'Inactiva',     dot: '#64748b' },
 };
 
@@ -107,7 +107,7 @@ function generateMock(): MiniAppsData {
     categoryBreakdown: [
       { category: 'Entretenimiento', apps: 1, users: apps[0].mau, color: '#ec4899' },
       { category: 'Transporte',      apps: 1, users: apps[1].mau, color: '#f97316' },
-      { category: 'Finanzas',        apps: 1, users: apps[2].mau, color: theme.l2 },
+      { category: 'Finanzas',        apps: 1, users: apps[2].mau, color: '#60a5fa' },
       { category: 'Educación',       apps: 1, users: apps[3].mau, color: '#22c55e' },
       { category: 'Otros',           apps: 4, users: apps.slice(4).reduce((s,a)=>s+a.mau,0), color: theme.textMuted },
     ],
@@ -208,10 +208,10 @@ function AppDetail({ app }: { app: MiniApp }) {
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4,1fr)', gap: '8px', marginBottom: '16px' }}>
         {[
           { label: 'DAU',       value: fmtK(app.dau),            color: app.color },
-          { label: 'MAU',       value: fmtK(app.mau),            color: theme.l2 },
-          { label: 'Sesiones',  value: fmtK(app.sessions),       color: theme.l1 },
+          { label: 'MAU',       value: fmtK(app.mau),            color: '#60a5fa' },
+          { label: 'Sesiones',  value: fmtK(app.sessions),       color: '#818cf8' },
           { label: 'Retención', value: `${app.retentionPct}%`,   color: '#f59e0b' },
-          { label: 'Tiempo',    value: `${app.avgSessionMin}m`,  color: theme.l2 },
+          { label: 'Tiempo',    value: `${app.avgSessionMin}m`,  color: '#60a5fa' },
           { label: 'Errores',   value: String(app.errorsToday),  color: app.errorsToday > 10 ? '#ef4444' : theme.l3 },
           { label: 'Error %',   value: `${app.errorRate}%`,      color: app.errorRate > 1 ? '#ef4444' : theme.l3 },
           { label: 'Ingresos',  value: fmtXAF(app.revenueToday), color: '#22c55e' },
@@ -305,7 +305,7 @@ export const MiniAppsDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: '10px', padding: '6px 12px', display: 'flex', alignItems: 'center', gap: '6px' }}>
             <div style={{ width: '26px', height: '26px', borderRadius: '50%', background: `conic-gradient(#a855f7 ${(30-tick)/30*360}deg,#1e293b 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: theme.l1, fontWeight: '800' }}>{30-tick}</div>
+              <div style={{ width: '18px', height: '18px', borderRadius: '50%', background: theme.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '9px', color: '#818cf8', fontWeight: '800' }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={refresh} style={{ background: pulse ? '#334155' : 'linear-gradient(135deg,#a855f7,#6366f1)', border: 'none', borderRadius: '10px', padding: '7px 16px', color: '#fff', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>

@@ -78,7 +78,7 @@ export const SecurityDashboard: React.FC = () => {
           { Icon: IC.AlertTri, label: 'Logins Fallidos/h', value: d.failedLoginsHour, color: d.failedLoginsHour > 10 ? '#ef4444' : d.failedLoginsHour > 3 ? '#f59e0b' : theme.l3, alert: d.failedLoginsHour > 10 },
           { Icon: IC.Lock,     label: 'IPs Bloqueadas',    value: d.blockedIps,       color: d.blockedIps > 0 ? '#f59e0b' : theme.l3 },
           { Icon: IC.Users,    label: 'Usuarios Bloqueados',value: d.blockedUsers,    color: d.blockedUsers > 0 ? '#ef4444' : theme.l3, alert: d.blockedUsers > 0 },
-          { Icon: IC.Key,      label: 'Tokens Activos',    value: d.activeTokens || 0, color: theme.l2 },
+          { Icon: IC.Key,      label: 'Tokens Activos',    value: d.activeTokens || 0, color: '#60a5fa' },
           { Icon: IC.Shield,   label: 'Estado General',    value: hasCritical ? 'ALERTA' : 'NORMAL', color: hasCritical ? '#ef4444' : theme.l3, alert: hasCritical },
         ].map(({ Icon, label, value, color, alert }: any) => (
           <div key={label} style={{ background: theme.bgCard, border: `${alert ? 1.5 : 1}px solid ${alert ? color+'50' : theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
@@ -132,7 +132,7 @@ export const SecurityDashboard: React.FC = () => {
       {(d.failedLogins?.length === 0 || !d.failedLogins) && (
         <div style={{ background: theme.bgCard, borderRadius: 14, padding: 28, border: `1px solid ${theme.border}`, textAlign: 'center' }}>
           <div style={{ fontSize: 36, marginBottom: 8 }}>✅</div>
-          <div style={{ fontSize: 14, fontWeight: 700, color: theme.l3 }}>Sin eventos de seguridad en la última hora</div>
+          <div style={{ fontSize: 14, fontWeight: 700, color: '#34d399' }}>Sin eventos de seguridad en la última hora</div>
           <div style={{ fontSize: 11, color: theme.textMuted, marginTop: 4 }}>La plataforma está operando con normalidad</div>
         </div>
       )}

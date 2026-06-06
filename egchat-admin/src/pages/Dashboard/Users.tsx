@@ -51,7 +51,7 @@ export const UsersDashboard: React.FC = () => {
         <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
           <div style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '5px 12px', display: 'flex', gap: 6, alignItems: 'center' }}>
             <div style={{ width: 26, height: 26, borderRadius: '50%', background: `conic-gradient(${theme.l2} ${(30-tick)/30*360}deg,${theme.border} 0deg)`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: theme.l2, fontWeight: 800 }}>{30-tick}</div>
+              <div style={{ width: 18, height: 18, borderRadius: '50%', background: theme.bgCard, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 9, color: '#60a5fa', fontWeight: 800 }}>{30-tick}</div>
             </div>
           </div>
           <button onClick={load} style={{ background: pulse ? theme.bgCard : `linear-gradient(135deg,${theme.l2},${theme.l3})`, border: `1px solid ${theme.border}`, borderRadius: 10, padding: '7px 14px', color: '#fff', fontSize: 11, fontWeight: 700, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 6 }}>
@@ -63,11 +63,11 @@ export const UsersDashboard: React.FC = () => {
       {/* KPIs */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(155px,1fr))', gap: 12, marginBottom: 18 }}>
         {[
-          { Icon: IC.Users,     label: 'Total Registrados', value: d.total,      color: theme.l2 },
-          { Icon: IC.Activity,  label: 'Online Ahora',      value: d.onlineNow,  color: theme.l3 },
-          { Icon: IC.UserPlus,  label: 'Nuevos Hoy',        value: d.newToday,   color: theme.l1 },
-          { Icon: IC.UserPlus,  label: 'Esta Semana',       value: d.newWeek,    color: theme.l2 },
-          { Icon: IC.UserPlus,  label: 'Este Mes',          value: d.newMonth,   color: theme.l3 },
+          { Icon: IC.Users,     label: 'Total Registrados', value: d.total,      color: '#60a5fa' },
+          { Icon: IC.Activity,  label: 'Online Ahora',      value: d.onlineNow,  color: '#34d399' },
+          { Icon: IC.UserPlus,  label: 'Nuevos Hoy',        value: d.newToday,   color: '#818cf8' },
+          { Icon: IC.UserPlus,  label: 'Esta Semana',       value: d.newWeek,    color: '#60a5fa' },
+          { Icon: IC.UserPlus,  label: 'Este Mes',          value: d.newMonth,   color: '#34d399' },
         ].map(({ Icon, label, value, color }) => (
           <div key={label} style={{ background: theme.bgCard, border: `1px solid ${theme.border}`, borderRadius: 14, padding: 16, position: 'relative', overflow: 'hidden' }}>
             <div style={{ position: 'absolute', top: -10, right: -10, width: 60, height: 60, borderRadius: '50%', background: `radial-gradient(circle,${color}20 0%,transparent 70%)` }} />
@@ -131,7 +131,7 @@ export const UsersDashboard: React.FC = () => {
             <div key={c.country} style={{ marginBottom: 10 }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
                 <span style={{ fontSize: 12, color: theme.text }}>{c.flag} {c.country}</span>
-                <span style={{ fontSize: 12, fontWeight: 800, color: theme.l2 }}>{c.count?.toLocaleString()}</span>
+                <span style={{ fontSize: 12, fontWeight: 800, color: '#60a5fa' }}>{c.count?.toLocaleString()}</span>
               </div>
               <div style={{ height: 5, background: theme.border, borderRadius: 3, overflow: 'hidden' }}>
                 <div style={{ height: '100%', width: `${c.pct || 100}%`, background: theme.l2, borderRadius: 3, transition: 'width 0.5s' }}/>
@@ -146,10 +146,10 @@ export const UsersDashboard: React.FC = () => {
         <div style={{ fontSize: 11, fontWeight: 700, color: theme.textMuted, textTransform: 'uppercase', letterSpacing: '0.8px', marginBottom: 14 }}>📊 Resumen General (Datos Reales de Neon DB)</div>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(150px,1fr))', gap: 10 }}>
           {[
-            { label: 'Total usuarios registrados', value: d.total, color: theme.l2, icon: '👥' },
-            { label: 'Activos ahora mismo',        value: d.onlineNow, color: theme.l3, icon: '🟢' },
-            { label: 'Nuevos esta semana',         value: d.newWeek, color: theme.l1, icon: '📅' },
-            { label: 'Nuevos este mes',            value: d.newMonth, color: theme.l2, icon: '🗓️' },
+            { label: 'Total usuarios registrados', value: d.total, color: '#60a5fa', icon: '👥' },
+            { label: 'Activos ahora mismo',        value: d.onlineNow, color: '#34d399', icon: '🟢' },
+            { label: 'Nuevos esta semana',         value: d.newWeek, color: '#818cf8', icon: '📅' },
+            { label: 'Nuevos este mes',            value: d.newMonth, color: '#60a5fa', icon: '🗓️' },
           ].map(item => (
             <div key={item.label} style={{ background: theme.bg, borderRadius: 10, padding: 12, border: `1px solid ${theme.border}`, textAlign: 'center' }}>
               <div style={{ fontSize: 24, marginBottom: 4 }}>{item.icon}</div>
