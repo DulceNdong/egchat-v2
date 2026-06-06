@@ -831,10 +831,11 @@ const App: React.FC = () => {
             container.style.bottom = `${kh}px`;
             container.style.transition = 'bottom 0.25s ease';
           }
-          requestAnimationFrame(() => {
+          // Scroll al fondo DESPUÉS de la animación
+          setTimeout(() => {
             const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
             if (scroll) scroll.scrollTop = scroll.scrollHeight;
-          });
+          }, 280);
         });
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
           const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
