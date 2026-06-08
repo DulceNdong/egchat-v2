@@ -16,6 +16,7 @@ import { useRole } from '../hooks/useRole';
 const BusinessDashboard         = lazy(() => import('./BusinessDashboard').then(m => ({ default: m.BusinessDashboard })));
 const MerchantDashboard         = lazy(() => import('./MerchantDashboard').then(m => ({ default: m.MerchantDashboard })));
 const ServiceProviderDashboard  = lazy(() => import('./ServiceProviderDashboard').then(m => ({ default: m.ServiceProviderDashboard })));
+const ProviderServicesDashboard = lazy(() => import('./ProviderServicesDashboard').then(m => ({ default: m.ProviderServicesDashboard })));
 const ProviderDirectorDashboard = lazy(() => import('./ProviderDirectorDashboard').then(m => ({ default: m.ProviderDirectorDashboard })));
 const ProviderOperatorDashboard = lazy(() => import('./ProviderOperatorDashboard').then(m => ({ default: m.ProviderOperatorDashboard })));
 const OfficialAccountView       = lazy(() => import('./OfficialAccountView').then(m => ({ default: m.OfficialAccountView })));
@@ -68,7 +69,7 @@ export const CuentaOficialHub: React.FC<Props> = ({
         {active === 'comunicacion' && <OfficialAccountView {...p} />}
         {active === 'business'     && <BusinessDashboard {...p} onNavigate={v => { if(v==='merchant') setActive('merchant'); else if(v==='provider') setActive('provider'); else setActive(null); }} />}
         {active === 'merchant'     && <MerchantDashboard {...p} onOpenWallet={onOpenWallet} />}
-        {active === 'provider'     && <ServiceProviderDashboard {...p} />}
+        {active === 'provider'     && <ProviderServicesDashboard {...p} />}
         {active === 'director'     && <ProviderDirectorDashboard {...p} />}
         {active === 'operator'     && <ProviderOperatorDashboard {...p} />}
       </Suspense>
