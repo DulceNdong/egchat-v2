@@ -48,6 +48,7 @@ const MerchantDashboard    = lazy(() => import('./src/views/MerchantDashboard').
 const ServiceProviderDashboard = lazy(() => import('./src/views/ServiceProviderDashboard').then(m => ({ default: m.ServiceProviderDashboard })));
 const ProviderDirectorDashboard  = lazy(() => import('./src/views/ProviderDirectorDashboard').then(m => ({ default: m.ProviderDirectorDashboard })));
 const ProviderOperatorDashboard  = lazy(() => import('./src/views/ProviderOperatorDashboard').then(m => ({ default: m.ProviderOperatorDashboard })));
+const CuentaOficialHub = lazy(() => import('./src/views/CuentaOficialHub').then(m => ({ default: m.CuentaOficialHub })));
 const SaludModal        = lazy(() => import('./ServiciosModules').then(m => ({ default: m.SaludModal })));
 const SupermercadosModal = lazy(() => import('./SupermercadosModule').then(m => ({ default: m.SupermercadosModal })));
 const RecargaMonederoModal = lazy(() => import('./WalletSystem').then(m => ({ default: m.RecargaMonederoModal })));
@@ -1162,6 +1163,7 @@ const App: React.FC = () => {
   const [showProviderView, setShowProviderView]         = useState<boolean>(false);
   const [showDirectorView, setShowDirectorView]         = useState<boolean>(false);
   const [showOperatorView, setShowOperatorView]         = useState<boolean>(false);
+  const [showCuentaOficial, setShowCuentaOficial]       = useState<boolean>(false);
   const [showProfileQR, setShowProfileQR] = useState<boolean>(false);
   const [hapticsOn, setHapticsOn] = useState<boolean>(() => hapticsEnabled());
   const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
@@ -3917,20 +3919,9 @@ const App: React.FC = () => {
       { id:'nuevo-contacto',  label:'Nuevo contacto',       sub:'Añadir a tu lista',            icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, color:'#374151' },
       { id:'crear-grupo',     label:'Crear grupo',          sub:'Nuevo grupo de chat',          icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color:'#374151' },
       { id:'contactos',       label:'Mis contactos',        sub:'Ver todos tus contactos',      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color:'#374151' },
-      // Cuentas oficiales y business (solo si el usuario tiene el rol)
-      ...(userRole.isAtLeast('official') ? [
-        { id:'official', label:'Cuenta Oficial', sub:'Broadcast y estadísticas', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="6 12 10 16 18 8"/></svg>, color:'#1DA1F2' },
-      ] : []),
-      ...(userRole.isAtLeast('business') ? [
-        { id:'business', label:'Dashboard Empresarial', sub:'Métricas y gestión', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>, color:'#00c8a0' },
-      ] : []),
-      ...(userRole.isAtLeast('merchant') ? [
-        { id:'merchant', label:'Merchant', sub:'Productos y pedidos', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, color:'#f59e0b' },
-      ] : []),
-      ...(userRole.hasPermission('services.view_orders') ? [
-        { id:'provider', label:'Panel de Proveedor', sub:'Gestiona tus pedidos de servicios', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>, color:'#1485EE' },
-        { id:'director', label:'Panel Director', sub:'Ganancias, comisiones y métricas', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>, color:'#722ED1' },
-        { id:'operator', label:'Panel Operaciones', sub:'Procesar pedidos y modo automático', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/><rect x="9" y="3" width="6" height="4" rx="1"/></svg>, color:'#2E9E6B' },
+      // Un solo punto de entrada — Cuenta Oficial — contiene todos los módulos
+      ...((userRole.isAtLeast('official') || userRole.hasPermission('services.view_orders')) ? [
+        { id:'cuentaoficial', label:'Cuenta Oficial', sub:'Gestiona todos tus módulos empresariales', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="6 12 10 16 18 8"/></svg>, color:'#5B8DEF' },
       ] : []),
       { id:'mensajes-arch',   label:'Mensajes archivados',  sub:'Chats archivados',             icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>, color:'#374151' },
       { id:'notificaciones',  label:'Notificaciones',       sub:'Gestionar alertas',            icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>, color:'#374151' },
@@ -3985,6 +3976,7 @@ const App: React.FC = () => {
             else if (item.id==='provider') { setShowProviderView(true); setIsMenuOpen(false); }
             else if (item.id==='director') { setShowDirectorView(true); setIsMenuOpen(false); }
             else if (item.id==='operator') { setShowOperatorView(true); setIsMenuOpen(false); }
+            else if (item.id==='cuentaoficial') { setShowCuentaOficial(true); setIsMenuOpen(false); }
             else if (item.id==='nuevo-contacto') { setShowAddContact(true); }
             else if (item.id==='crear-grupo') { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
             else if (item.id==='contactos') { setShowMenu(false); setCurrentView('contactos'); }
@@ -11667,6 +11659,16 @@ const App: React.FC = () => {
             userProfile={userProfile}
             isAuthenticated={isAuthenticated}
             onBack={() => setShowOperatorView(false)}
+            viewPadding={viewPadding}
+          />
+        </Suspense>
+      )}
+      {showCuentaOficial && (
+        <Suspense fallback={null}>
+          <CuentaOficialHub
+            userProfile={userProfile}
+            isAuthenticated={isAuthenticated}
+            onBack={() => setShowCuentaOficial(false)}
             viewPadding={viewPadding}
           />
         </Suspense>
