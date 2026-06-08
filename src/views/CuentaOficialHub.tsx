@@ -14,6 +14,7 @@ const ProviderServicesDashboard = lazy(() => import('./ProviderServicesDashboard
 const ProviderDirectorDashboard = lazy(() => import('./ProviderDirectorDashboard').then(m => ({ default: m.ProviderDirectorDashboard })));
 const ProviderOperatorDashboard = lazy(() => import('./ProviderOperatorDashboard').then(m => ({ default: m.ProviderOperatorDashboard })));
 const OfficialAccountView       = lazy(() => import('./OfficialAccountView').then(m => ({ default: m.OfficialAccountView })));
+const CompanyBusinessDashboard  = lazy(() => import('./CompanyBusinessDashboard').then(m => ({ default: m.CompanyBusinessDashboard })));
 
 interface Props {
   userProfile: any;
@@ -63,7 +64,7 @@ export const CuentaOficialHub: React.FC<Props> = ({
     return (
       <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: '#0D1B4B', zIndex: 2100 }}/>}>
         {active === 'comunicacion' && <OfficialAccountView {...p} />}
-        {active === 'business'     && <BusinessDashboard {...p} onNavigate={v => { if(v==='merchant') setActive('merchant'); else if(v==='provider') setActive('provider'); else setActive(null); }} />}
+        {active === 'business'     && <CompanyBusinessDashboard {...p} />}
         {active === 'merchant'     && <MerchantDashboard {...p} onOpenWallet={onOpenWallet} />}
         {active === 'provider'     && <ProviderServicesDashboard {...p} />}
         {active === 'director'     && <ProviderDirectorDashboard {...p} />}
