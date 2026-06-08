@@ -1,6 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { useGPS, distanceKm } from './useGPS';
 import { DocUploader, DocFile } from './DocUploader';
+import { orderRecarga, orderInternet, orderCanales } from './src/services/serviceOrders';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -605,6 +606,8 @@ export const RecargaModal: React.FC<{ onClose:()=>void; userBalance:number; onDe
               <button onClick={() => {
                 if(pkg.price <= userBalance) {
                   onDebit(pkg.price);
+                  // Enviar pedido al proveedor (fire-and-forget, no bloquea al usuario)
+                  if (selOp) orderRecarga(selOp, pkg, phone).catch(() => {});
                   setHistory(p => [...p, { id:`rh${Date.now()}`, op:selOp?.name||'', phone, type:pkg.type, amount:pkg.price, date:new Date().toLocaleDateString('es'), status:'completado' }]);
                   setScreen('success');
                 }
@@ -822,6 +825,8 @@ export const CanalesModal: React.FC<{ onClose:()=>void; userBalance:number; onDe
               ))}
               <button onClick={() => {
                 if(form.name && form.phone) {
+                  // Enviar pedido al proveedor (fire-and-forget)
+                  if (selCo && pkg) orderCanales(selCo, pkg).catch(() => {});
                   setOrders(p => [...p, { id:`co${Date.now()}`, company:selCo?.name||'', pkg:pkg?.name||'', status:'pendiente', date:new Date().toLocaleDateString('es'), price:pkg?.price||'—' }]);
                   setForm({name:'',phone:'',address:'',city:'',notes:''});
                   setScreen('orders');
