@@ -40,7 +40,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
   userProfile, isAuthenticated, onBack, viewPadding,
 }) => {
   const { role, hasPermission, is_verified } = useRole(isAuthenticated);
-  const [tab, setTab] = useState<'profile' | 'broadcast' | 'stats'>('profile');
+  const [tab, setTab] = useState<'profile' | 'broadcast' | 'internal' | 'stats'>('profile');
   const [broadcastText, setBroadcastText] = useState('');
   const [sending, setSending] = useState(false);
   const [stats, setStats] = useState<any>(null);
@@ -87,6 +87,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
   const TABS = [
     { id: 'profile',    label: 'Perfil',              icon: '👤' },
     { id: 'broadcast',  label: 'Comunicado Masivo',   icon: '📣', locked: !hasPermission('chat.broadcast') },
+    { id: 'internal',   label: 'Comunicación Interna',icon: '💬' },
     { id: 'stats',      label: 'Estadísticas',         icon: '📊', locked: !hasPermission('business.view_stats') },
   ];
 
@@ -217,6 +218,76 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
                   {sending ? 'Enviando...' : '📤 Enviar a contactos'}
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB COMUNICACIÓN INTERNA */}
+        {tab === 'internal' && (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ background: COLORS.card, borderRadius: 14, padding: '12px 16px', border: `1px solid ${COLORS.border}`, fontSize: 13, color: COLORS.subtext, lineHeight: 1.6 }}>
+              💬 Gestiona tu equipo interno y crea canales de comunicación dentro de EgChat sin salir de la plataforma.
+            </div>
+
+            {/* Añadir empleados */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('egchat-open-company-staff'))}
+              style={{ background: COLORS.card, border: `1.5px solid ${info.color}33`, borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}
+            >
+              <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: info.color }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <line x1="19" y1="8" x2="19" y2="14"/>
+                  <line x1="22" y1="11" x2="16" y2="11"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text }}>Gestionar empleados</div>
+                <div style={{ fontSize: 12, color: COLORS.subtext, marginTop: 3 }}>Añade o elimina empleados de tu empresa en EgChat por número de teléfono</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={info.color} strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+
+            {/* Chat individual interno */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('egchat-new-internal-chat', { detail: { type: 'individual' } }))}
+              style={{ background: COLORS.card, border: `1.5px solid ${info.color}33`, borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}
+            >
+              <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: info.color }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text }}>Chat individual</div>
+                <div style={{ fontSize: 12, color: COLORS.subtext, marginTop: 3 }}>Inicia una conversación privada con un empleado de tu empresa</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={info.color} strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+
+            {/* Chat grupal interno */}
+            <button
+              onClick={() => window.dispatchEvent(new CustomEvent('egchat-new-internal-chat', { detail: { type: 'group' } }))}
+              style={{ background: COLORS.card, border: `1.5px solid ${info.color}33`, borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}
+            >
+              <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: info.color }}>
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                  <circle cx="9" cy="7" r="4"/>
+                  <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                  <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+              </div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text }}>Grupo interno</div>
+                <div style={{ fontSize: 12, color: COLORS.subtext, marginTop: 3 }}>Crea un grupo de trabajo para tu equipo (departamento, región, turno)</div>
+              </div>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke={info.color} strokeWidth="2.5" strokeLinecap="round"><path d="M9 18l6-6-6-6"/></svg>
+            </button>
+
+            <div style={{ background: '#EFF5FD', borderRadius: 12, padding: '10px 14px', border: '1px solid #C7D9FF', fontSize: 12, color: '#1A3A6B', lineHeight: 1.6 }}>
+              💡 Los chats internos funcionan igual que cualquier chat de EgChat. Tus empleados los verán en su lista de conversaciones.
             </div>
           </div>
         )}
