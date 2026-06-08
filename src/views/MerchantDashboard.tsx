@@ -16,6 +16,7 @@ interface MerchantDashboardProps {
   isAuthenticated: boolean;
   onBack: () => void;
   viewPadding: { top: string; bottom: string };
+  onOpenWallet?: () => void; // abre el monedero EgChat real para recibir pagos
 }
 
 const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
@@ -52,7 +53,7 @@ const NEXT_STATUS: Record<string, string> = {
   pending: 'confirmed', confirmed: 'preparing', preparing: 'shipped', shipped: 'delivered',
 };
 
-export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ isAuthenticated, onBack, viewPadding }) => {
+export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ isAuthenticated, onBack, viewPadding, onOpenWallet }) => {
   const { role, hasPermission, is_verified, isAtLeast } = useRole(isAuthenticated);
   const [tab, setTab] = useState<Tab>('analytics');
   const [analytics, setAnalytics] = useState<any>(null);
@@ -320,18 +321,21 @@ export const MerchantDashboard: React.FC<MerchantDashboardProps> = ({ isAuthenti
         {/* PAYOUTS */}
         {!loading && tab === 'payouts' && (
           <>
-            <div style={{ background: COLORS.card, borderRadius: 18, padding: 20, border: `1px solid ${COLORS.border}`, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, marginBottom: 6 }}>💳 Solicitar cobro</div>
+              <div style={{ background: COLORS.card, borderRadius: 18, padding: 20, border: `1px solid ${COLORS.border}`, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}>
+              <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, marginBottom: 6 }}>💳 Recibir pago</div>
               <div style={{ fontSize: 13, color: COLORS.subtext, marginBottom: 16, lineHeight: 1.6 }}>
-                Cuando solicites un cobro, el equipo de EgChat procesará la transferencia a tu cuenta bancaria en 1-3 días hábiles. Mínimo: 5,000 XAF.
+                El cliente paga directamente desde su monedero EgChat al tuyo. El pago llega al instante y recibirás una notificación.
               </div>
-              <input type="number" placeholder="Monto a cobrar (XAF)" value={payoutAmount}
-                onChange={e => setPayoutAmount(e.target.value)}
-                style={{ width: '100%', padding: '12px 14px', borderRadius: 12, border: `1.5px solid ${COLORS.border}`, marginBottom: 12, fontSize: 14, outline: 'none', boxSizing: 'border-box', background: COLORS.bg, color: COLORS.text }}
-              />
-              <button onClick={requestPayout} style={{ width: '100%', padding: 13, background: `linear-gradient(135deg,${COLORS.success},#389E0D)`, color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 14px rgba(82,196,26,0.35)' }}>
-                Solicitar cobro
-              </button>
+              {onOpenWallet ? (
+                <button onClick={onOpenWallet} style={{ width: '100%', padding: 13, background: `linear-gradient(135deg,${COLORS.success},#389E0D)`, color: '#fff', border: 'none', borderRadius: 12, fontWeight: 700, fontSize: 14, cursor: 'pointer', boxShadow: '0 4px 14px rgba(82,196,26,0.35)', display:'flex', alignItems:'center', justifyContent:'center', gap:8 }}>
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><rect x="2" y="5" width="20" height="14" rx="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg>
+                  Abrir Monedero EgChat
+                </button>
+              ) : (
+                <div style={{ fontSize: 13, color: COLORS.subtext, background: '#F5F6FA', borderRadius: 10, padding: '10px 14px' }}>
+                  Accede al monedero EgChat desde la pestaña Cartera para ver tus cobros
+                </div>
+              )}
             </div>
 
             {payouts.length === 0 ? (

@@ -85,9 +85,9 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
   const info = ROLE_INFO[role] || ROLE_INFO.official;
 
   const TABS = [
-    { id: 'profile',   label: 'Perfil',     icon: '👤' },
-    { id: 'broadcast', label: 'Broadcast',  icon: '📢', locked: !hasPermission('chat.broadcast') },
-    { id: 'stats',     label: 'Estadísticas', icon: '📊', locked: !hasPermission('business.view_stats') },
+    { id: 'profile',    label: 'Perfil',              icon: '👤' },
+    { id: 'broadcast',  label: 'Comunicado Masivo',   icon: '📣', locked: !hasPermission('chat.broadcast') },
+    { id: 'stats',      label: 'Estadísticas',         icon: '📊', locked: !hasPermission('business.view_stats') },
   ];
 
   return (
@@ -175,7 +175,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
             <div style={{ background: info.bg, borderRadius: 16, padding: 16, border: `1px solid ${info.color}33` }}>
               <div style={{ fontWeight: 700, fontSize: 13, color: info.color, marginBottom: 8 }}>¿Para qué sirve tu cuenta {info.label}?</div>
               <ul style={{ margin: 0, padding: '0 0 0 18px', color: COLORS.text, fontSize: 13, lineHeight: 1.7 }}>
-                <li>Envía mensajes masivos (broadcast) a todos tus contactos a la vez</li>
+                <li>Envía comunicados masivos a todos tus contactos a la vez</li>
                 <li>Muestra el badge de verificación en tus chats</li>
                 <li>Accede a estadísticas de tu actividad en EgChat</li>
                 {role === 'merchant' && <li>Gestiona productos, pedidos y cobra pagos</li>}
@@ -196,9 +196,9 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
         {tab === 'broadcast' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
             <div style={{ background: COLORS.card, borderRadius: 20, padding: 20, boxShadow: '0 2px 12px rgba(0,0,0,0.06)', border: `1px solid ${COLORS.border}` }}>
-              <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, marginBottom: 6 }}>📢 Enviar mensaje masivo</div>
+              <div style={{ fontWeight: 700, fontSize: 15, color: COLORS.text, marginBottom: 6 }}>📣 Enviar comunicado masivo</div>
               <div style={{ fontSize: 13, color: COLORS.subtext, marginBottom: 16, lineHeight: 1.6 }}>
-                El broadcast envía tu mensaje a <b>todos tus contactos</b> como si fuera un mensaje directo. Cada contacto lo recibe en su chat privado contigo. Límite: 1 broadcast cada 30 minutos.
+                El comunicado llega a <b>todos tus contactos</b> como un mensaje directo en su chat contigo. Límite: 1 comunicado cada 30 minutos.
               </div>
               <textarea
                 value={broadcastText}
@@ -233,7 +233,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
                   { label: 'Contactos', value: stats.contacts, icon: '👥', color: COLORS.primary, bg: '#EBF0FF', desc: 'Personas que te tienen guardado' },
                   { label: 'Mensajes enviados', value: stats.messages_sent, icon: '💬', color: COLORS.teal, bg: '#E6FFFB', desc: 'Total de mensajes tuyos' },
                   { label: 'Chats activos', value: stats.active_chats, icon: '🗨️', color: COLORS.purple, bg: '#F3E8FF', desc: 'Conversaciones abiertas' },
-                  { label: 'Broadcasts', value: stats.broadcasts, icon: '📢', color: COLORS.warning, bg: '#FFFBE6', desc: 'Mensajes masivos enviados' },
+                  { label: 'Comunicados', value: stats.broadcasts, icon: '📣', color: COLORS.warning, bg: '#FFFBE6', desc: 'Comunicados masivos enviados' },
                 ].map(s => (
                   <div key={s.label} style={{ background: COLORS.card, borderRadius: 18, padding: '16px 14px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', border: `1px solid ${COLORS.border}`, textAlign: 'center' }}>
                     <div style={{ width: 44, height: 44, borderRadius: 14, background: s.bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, margin: '0 auto 8px' }}>{s.icon}</div>

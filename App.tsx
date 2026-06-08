@@ -11670,6 +11670,7 @@ const App: React.FC = () => {
             isAuthenticated={isAuthenticated}
             onBack={() => setShowCuentaOficial(false)}
             viewPadding={viewPadding}
+            onOpenWallet={() => { setShowCuentaOficial(false); setCurrentView('monedero'); }}
           />
         </Suspense>
       )}
