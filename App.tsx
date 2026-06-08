@@ -17,6 +17,7 @@ import { HomeView }           from './HomeView';
 import { ServicesView }       from './ServicesView';
 import { NotificationsPanel } from './NotificationsPanel';
 import { Keyboard } from '@capacitor/keyboard';
+import { useRole, clearRoleCache } from './src/hooks/useRole';
 
 // ── Lazy imports — vistas y módulos pesados se cargan solo cuando se necesitan ──
 // Esto reduce el bundle inicial y acelera el primer render en Android
@@ -40,6 +41,10 @@ const BancosModal       = lazy(() => import('./ServiciosModules').then(m => ({ d
 const SegurosModal      = lazy(() => import('./ServiciosModules').then(m => ({ default: m.SegurosModal })));
 const FacturasModal     = lazy(() => import('./ServiciosModules').then(m => ({ default: m.FacturasModal })));
 const ActividadModal    = lazy(() => import('./ServiciosModules').then(m => ({ default: m.ActividadModal })));
+// ── Nuevos módulos: roles, cuentas oficiales, business, merchant ──
+const OfficialAccountView = lazy(() => import('./src/views/OfficialAccountView').then(m => ({ default: m.OfficialAccountView })));
+const BusinessDashboard   = lazy(() => import('./src/views/BusinessDashboard').then(m => ({ default: m.BusinessDashboard })));
+const MerchantDashboard   = lazy(() => import('./src/views/MerchantDashboard').then(m => ({ default: m.MerchantDashboard })));
 const SaludModal        = lazy(() => import('./ServiciosModules').then(m => ({ default: m.SaludModal })));
 const SupermercadosModal = lazy(() => import('./SupermercadosModule').then(m => ({ default: m.SupermercadosModal })));
 const RecargaMonederoModal = lazy(() => import('./WalletSystem').then(m => ({ default: m.RecargaMonederoModal })));
@@ -284,6 +289,8 @@ const App: React.FC = () => {
       return false;
     }
   });
+  // ── Roles y permisos ─────────────────────────────────────────────
+  const userRole = useRole(isAuthenticated);
   useEffect(() => {
     if (!isHydrating) return;
     const done = () => setIsHydrating(false);
@@ -1145,6 +1152,10 @@ const App: React.FC = () => {
   const [editedProfile, setEditedProfile] = useState<any>(null);
   const [showProfileModal, setShowProfileModal] = useState<boolean>(false);
   const [showProfileView, setShowProfileView] = useState<boolean>(false);
+  // Nuevas vistas: oficial, business, merchant
+  const [showOfficialView, setShowOfficialView]   = useState<boolean>(false);
+  const [showBusinessView, setShowBusinessView]   = useState<boolean>(false);
+  const [showMerchantView, setShowMerchantView]   = useState<boolean>(false);
   const [showProfileQR, setShowProfileQR] = useState<boolean>(false);
   const [hapticsOn, setHapticsOn] = useState<boolean>(() => hapticsEnabled());
   const [avatarCropUrl, setAvatarCropUrl] = useState<string | null>(null);
@@ -3900,6 +3911,16 @@ const App: React.FC = () => {
       { id:'nuevo-contacto',  label:'Nuevo contacto',       sub:'Añadir a tu lista',            icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>, color:'#374151' },
       { id:'crear-grupo',     label:'Crear grupo',          sub:'Nuevo grupo de chat',          icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color:'#374151' },
       { id:'contactos',       label:'Mis contactos',        sub:'Ver todos tus contactos',      icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>, color:'#374151' },
+      // Cuentas oficiales y business (solo si el usuario tiene el rol)
+      ...(userRole.isAtLeast('official') ? [
+        { id:'official', label:'Cuenta Oficial', sub:'Broadcast y estadísticas', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><circle cx="12" cy="12" r="10"/><polyline points="6 12 10 16 18 8"/></svg>, color:'#1DA1F2' },
+      ] : []),
+      ...(userRole.isAtLeast('business') ? [
+        { id:'business', label:'Dashboard Empresarial', sub:'Métricas y gestión', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>, color:'#00c8a0' },
+      ] : []),
+      ...(userRole.isAtLeast('merchant') ? [
+        { id:'merchant', label:'Merchant', sub:'Productos y pedidos', icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>, color:'#f59e0b' },
+      ] : []),
       { id:'mensajes-arch',   label:'Mensajes archivados',  sub:'Chats archivados',             icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><polyline points="21 8 21 21 3 21 3 8"/><rect x="1" y="3" width="22" height="5"/><line x1="10" y1="12" x2="14" y2="12"/></svg>, color:'#374151' },
       { id:'notificaciones',  label:'Notificaciones',       sub:'Gestionar alertas',            icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>, color:'#374151' },
       { id:'privacidad',      label:'Privacidad',           sub:'Configurar privacidad',        icon:<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>, color:'#374151' },
@@ -3947,6 +3968,9 @@ const App: React.FC = () => {
         {menuItems.map((item, i) => (
           <button key={item.id} onClick={() => {
             if (item.id==='perfil') { setShowProfileView(true); }
+            else if (item.id==='official') { setShowOfficialView(true); setIsMenuOpen(false); }
+            else if (item.id==='business') { setShowBusinessView(true); setIsMenuOpen(false); }
+            else if (item.id==='merchant') { setShowMerchantView(true); setIsMenuOpen(false); }
             else if (item.id==='nuevo-contacto') { setShowAddContact(true); }
             else if (item.id==='crear-grupo') { setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); }
             else if (item.id==='contactos') { setShowMenu(false); setCurrentView('contactos'); }
@@ -10572,6 +10596,7 @@ const App: React.FC = () => {
       localStorage.removeItem('egchat_token_backup');
       localStorage.removeItem('egchat_user_profile');
       localStorage.removeItem('egchat_user_id');
+      clearRoleCache();
       setIsAuthenticated(false);
       setSelectedChat(null);
       setCurrentView('home');
@@ -11570,6 +11595,38 @@ const App: React.FC = () => {
       {renderProfileView()}
       {renderAddContactModal()}
       {renderCreateGroupModal()}
+
+      {/* ── Vistas nuevas: Oficial, Business, Merchant ── */}
+      {showOfficialView && (
+        <Suspense fallback={null}>
+          <OfficialAccountView
+            userProfile={userProfile}
+            isAuthenticated={isAuthenticated}
+            onBack={() => setShowOfficialView(false)}
+            viewPadding={viewPadding}
+          />
+        </Suspense>
+      )}
+      {showBusinessView && (
+        <Suspense fallback={null}>
+          <BusinessDashboard
+            userProfile={userProfile}
+            isAuthenticated={isAuthenticated}
+            onBack={() => setShowBusinessView(false)}
+            onNavigate={(view) => { setShowBusinessView(false); if (view === 'official') setShowOfficialView(true); else if (view === 'merchant') setShowMerchantView(true); else setCurrentView(view); }}
+            viewPadding={viewPadding}
+          />
+        </Suspense>
+      )}
+      {showMerchantView && (
+        <Suspense fallback={null}>
+          <MerchantDashboard
+            isAuthenticated={isAuthenticated}
+            onBack={() => setShowMerchantView(false)}
+            viewPadding={viewPadding}
+          />
+        </Suspense>
+      )}
       
       {/* Modal de importación de contactos - primera vez */}
       {showContactImportModal && (
