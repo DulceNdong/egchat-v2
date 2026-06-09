@@ -1258,12 +1258,18 @@ const App: React.FC = () => {
       if (isIOS && !isCapacitor) {
         const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
+        const chatHeader = document.querySelector('.chat-header-fixed') as HTMLElement | null;
         if (keyboardH > 100) {
+          // Teclado visible
           if (chatBar) chatBar.style.transform = `translateY(-${keyboardH}px)`;
           if (tabBar) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
+          // Fijar el header al top real del viewport (no al del visualViewport encogido)
+          if (chatHeader) chatHeader.style.top = `${vvTop}px`;
         } else {
+          // Teclado oculto — restaurar
           if (chatBar) chatBar.style.transform = 'translateY(0)';
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
+          if (chatHeader) chatHeader.style.top = '0px';
         }
       }
 
