@@ -5602,7 +5602,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)' : '60px', display: 'flex', flexDirection: 'column', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)' : '60px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
@@ -6580,8 +6580,8 @@ const App: React.FC = () => {
                 bottom: 0,
                 left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
                 right: 0,
-                background: '#f0f2f5',
-                borderTop: '1px solid rgba(0,0,0,0.06)',
+                background: device.isMobile ? '#d1d3d9' : '#f0f2f5',
+                borderTop: '1px solid rgba(0,0,0,0.10)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
                 zIndex: 1100,
               }}>
