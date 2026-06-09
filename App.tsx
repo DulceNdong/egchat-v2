@@ -1251,6 +1251,21 @@ const App: React.FC = () => {
         msgListContainer.style.maxHeight = `${visibleH}px`;
       }
 
+      // Anclar tab bar al bottom real del viewport cuando el teclado sube
+      // Con resize:native el WebView encoge, bottom:0 sube con el teclado
+      // Usamos translateY para compensar y mantener el tab bar en su lugar
+      const bottomNav = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
+      if (bottomNav && isIOS) {
+        if (keyboardH > 100) {
+          // Teclado visible: mover el tab bar hacia abajo para que quede FUERA del viewport visible
+          // (se oculta debajo del teclado, no se sube con él)
+          bottomNav.style.transform = `translateY(${keyboardH}px) translateZ(0)`;
+        } else {
+          // Teclado oculto: restaurar posición original
+          bottomNav.style.transform = 'translateZ(0)';
+        }
+      }
+
       // iOS: scroll al fondo cuando sube el teclado
       if (isIOS && keyboardH > 100) {
         const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -5236,7 +5251,7 @@ const App: React.FC = () => {
 
     return (
       <>
-        <div style={{
+        <div data-bottom-nav="true" style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'linear-gradient(90deg, #00d4aa 0%, #00bcd4 50%, #0099cc 100%)',
           zIndex: 1000,
