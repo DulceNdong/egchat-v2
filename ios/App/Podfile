@@ -10,18 +10,15 @@ install! 'cocoapods', :disable_input_output_paths => true
 def capacitor_pods
   pod 'Capacitor', :path => '../../node_modules/@capacitor/ios'
   pod 'CapacitorCordova', :path => '../../node_modules/@capacitor/ios'
-
-  # ── Capacitor Plugins ──────────────────────────────────────────
-  pod 'CapacitorApp',               :path => '../../node_modules/@capacitor/app'
-  pod 'CapacitorFilesystem',        :path => '../../node_modules/@capacitor/filesystem'
-  pod 'CapacitorHaptics',           :path => '../../node_modules/@capacitor/haptics'
-  pod 'CapacitorKeyboard',          :path => '../../node_modules/@capacitor/keyboard'
-  pod 'CapacitorPreferences',       :path => '../../node_modules/@capacitor/preferences'
+  pod 'CapacitorCommunitySqlite', :path => '../../node_modules/@capacitor-community/sqlite'
+  pod 'CapacitorApp', :path => '../../node_modules/@capacitor/app'
+  pod 'CapacitorFilesystem', :path => '../../node_modules/@capacitor/filesystem'
+  pod 'CapacitorHaptics', :path => '../../node_modules/@capacitor/haptics'
+  pod 'CapacitorKeyboard', :path => '../../node_modules/@capacitor/keyboard'
+  pod 'CapacitorPreferences', :path => '../../node_modules/@capacitor/preferences'
   pod 'CapacitorPushNotifications', :path => '../../node_modules/@capacitor/push-notifications'
-  pod 'CapacitorSplashScreen',      :path => '../../node_modules/@capacitor/splash-screen'
-
-  # ── SQLite con SQLCipher (cifrado AES-256) ─────────────────────
-  pod 'CapacitorCommunitySQLite',   :path => '../../node_modules/@capacitor-community/sqlite'
+  pod 'CapacitorSplashScreen', :path => '../../node_modules/@capacitor/splash-screen'
+  pod 'CallScreen', :path => '../../call-screen-stub'
 end
 
 target 'App' do

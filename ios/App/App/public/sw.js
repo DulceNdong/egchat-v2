@@ -1,6 +1,6 @@
 // EGCHAT Service Worker — solo notificaciones push (sin interceptar fetch)
 // Evita pantalla en blanco en PWA por caché de index.html o JS antiguos
-const SW_VERSION = 'egchat-push-mpzsovos';
+const SW_VERSION = 'egchat-push-mq6jfflj';
 
 self.addEventListener('install', (e) => {
   self.skipWaiting();
