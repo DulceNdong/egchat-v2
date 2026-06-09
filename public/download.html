@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Descargar EGCHAT</title>
+  <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #00c8a0 0%, #00b4e6 100%);
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+    .card {
+      background: white;
+      border-radius: 24px;
+      padding: 40px 32px;
+      max-width: 420px;
+      width: 100%;
+      text-align: center;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      background: linear-gradient(135deg, #00c8a0, #00b4e6);
+      border-radius: 20px;
+      margin: 0 auto 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 36px;
+    }
+    h1 { font-size: 28px; font-weight: 800; color: #111; margin-bottom: 6px; }
+    .subtitle { font-size: 14px; color: #6b7280; margin-bottom: 32px; }
+    .platform {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 24px;
+      margin-bottom: 16px;
+      border: 2px solid #e5e7eb;
+    }
+    .platform-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #111;
+      margin-bottom: 4px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .platform-sub {
+      font-size: 12px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+    canvas { margin: 0 auto; display: block; }
+    .btn {
+      display: block;
+      width: 100%;
+      padding: 14px;
+      border-radius: 12px;
+      font-size: 15px;
+      font-weight: 700;
+      text-decoration: none;
+      margin-top: 16px;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-android {
+      background: linear-gradient(135deg, #34a853, #0f9d58);
+      color: white;
+    }
+    .btn-pwa {
+      background: linear-gradient(135deg, #00c8a0, #00b4e6);
+      color: white;
+    }
+    .version { font-size: 11px; color: #d1d5db; margin-top: 24px; }
+    .steps {
+      text-align: left;
+      background: #fffbeb;
+      border-radius: 10px;
+      padding: 12px 14px;
+      margin-top: 12px;
+      border: 1px solid #fde68a;
+    }
+    .steps p { font-size: 12px; color: #92400e; line-height: 1.8; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">💬</div>
+    <h1>EGCHAT</h1>
+    <p class="subtitle">La app de mensajería de Guinea Ecuatorial 🇬🇶</p>
+
+    <!-- ANDROID -->
+    <div class="platform">
+      <div class="platform-title">🤖 Android</div>
+      <div class="platform-sub">Escanea o pulsa para descargar la APK</div>
+      <canvas id="qr-android"></canvas>
+      <a class="btn btn-android" href="https://drive.google.com/uc?export=download&id=1J9SLvEHs9QFMQijypoZBmwl7dWlInR6V">
+        ⬇️ Descargar APK Android
+      </a>
+      <div class="steps">
+        <p>1. Descarga la APK<br>
+           2. Abre el archivo descargado<br>
+           3. Permite "Instalar apps desconocidas"<br>
+           4. Pulsa Instalar ✅</p>
+      </div>
+    </div>
+
+    <!-- iOS PWA -->
+    <div class="platform">
+      <div class="platform-title">🍎 iPhone</div>
+      <div class="platform-sub">Abre en Safari y añade a pantalla de inicio</div>
+      <canvas id="qr-ios"></canvas>
+      <a class="btn btn-pwa" href="https://egchat-v2.vercel.app">
+        🌐 Abrir en Safari
+      </a>
+      <div class="steps">
+        <p>1. Abre el enlace en Safari<br>
+           2. Pulsa el botón compartir ⬆️<br>
+           3. "Añadir a pantalla de inicio"<br>
+           4. Pulsa Añadir ✅</p>
+      </div>
+    </div>
+
+    <p class="version">EGCHAT v2.5 · egchat-v2.vercel.app</p>
+  </div>
+
+  <script>
+    // QR Android — link directo de descarga
+    QRCode.toCanvas(
+      document.getElementById('qr-android'),
+      'https://drive.google.com/uc?export=download&id=1J9SLvEHs9QFMQijypoZBmwl7dWlInR6V',
+      { width: 180, margin: 1, color: { dark: '#111827', light: '#f8fafc' } }
+    );
+
+    // QR iOS — PWA
+    QRCode.toCanvas(
+      document.getElementById('qr-ios'),
+      'https://egchat-v2.vercel.app',
+      { width: 180, margin: 1, color: { dark: '#00b4e6', light: '#f8fafc' } }
+    );
+  </script>
+</body>
+</html>
