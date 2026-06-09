@@ -840,6 +840,10 @@ const App: React.FC = () => {
         const clampMessagingList = (keyboardH: number) => {
           const msgList = document.querySelector('.messaging-list-container') as HTMLElement | null;
           const bottomNav = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
+          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+          const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+
+          // Lista de mensajes: clampear altura para que no suba
           if (msgList) {
             if (keyboardH > 0) {
               const newH = window.innerHeight - keyboardH;
@@ -850,10 +854,26 @@ const App: React.FC = () => {
               msgList.style.maxHeight = '100dvh';
             }
           }
+
+          // Tab bar: bajar con translateY para que no suba visible
           if (bottomNav) {
             bottomNav.style.transform = keyboardH > 0
               ? `translateY(${keyboardH}px) translateZ(0)`
               : 'translateZ(0)';
+          }
+
+          // Chat input bar: subir con translateY para que quede encima del teclado
+          // (con resize:none el WebView no se mueve, hay que moverlo manualmente)
+          if (chatBar) {
+            chatBar.style.transform = keyboardH > 0
+              ? `translateY(-${keyboardH}px)`
+              : 'translateY(0)';
+          }
+
+          // Chat messages: reducir altura disponible y scroll al fondo
+          if (messagesContainer && keyboardH > 0) {
+            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
+            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 200);
           }
         };
 
@@ -1442,12 +1462,9 @@ const App: React.FC = () => {
     setTimeout(scrollDown, 350);
   }, [selectedChat?.id]);
 
-  // Siempre 'native' — el WebView maneja el resize automáticamente
-  React.useEffect(() => {
-    try {
-      Keyboard.setResizeMode({ mode: 'native' });
-    } catch { /* no capacitor */ }
-  }, []);
+  // resize: 'none' — configurado en capacitor.config.ts y AppInit.ts
+  // El teclado flota sobre el contenido sin redimensionar el WebView
+  // El chat maneja su propio scroll via keyboardWillShow/Hide listeners
 
   // Scroll automático: solo cuando hay mensaje nuevo real
   const lastScrollMsgId = React.useRef<string>('');
