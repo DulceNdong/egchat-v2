@@ -828,55 +828,22 @@ const App: React.FC = () => {
 
     const setup = async () => {
       try {
-        let alturaTecladoActual = 0;
-
-        const ajustarPorTeclado = (alturaTeclado: number) => {
-          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+        // Con Keyboard.resize=native el WebView ya se redimensiona solo —
+        // NO mover la input bar con translateY ni recalcular maxHeight.
+        // Solo forzar scroll al fondo para que el último mensaje quede visible.
+        const scrollToBottom = () => {
           const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-          const header = document.querySelector('.chat-header-fixed') as HTMLElement | null;
-          if (!chatBar || !messagesContainer) return;
-
-          if (alturaTeclado > 0) {
-            // 1. Mover barra exactamente la altura del teclado
-            chatBar.style.transform = `translateY(-${alturaTeclado}px)`;
-            chatBar.style.marginBottom = '0';
-            chatBar.style.paddingBottom = '0';
-            // 2. Calcular altura disponible real usando offsetHeight
-            const headerHeight = header?.offsetHeight || 88;
-            const chatBarHeight = chatBar.offsetHeight;
-            const newHeight = window.innerHeight - alturaTeclado - chatBarHeight - headerHeight;
-            messagesContainer.style.maxHeight = `${newHeight}px`;
-            messagesContainer.style.overflow = 'auto';
-            // 3. Forzar scroll al último mensaje
-            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 20);
-          } else {
-            // Teclado cerrado: restaurar
-            chatBar.style.transform = 'translateY(0)';
-            messagesContainer.style.maxHeight = '';
-            messagesContainer.style.overflow = '';
-            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 20);
-          }
+          if (!messagesContainer) return;
+          setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
+          setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 150);
         };
 
-        showListener = await Keyboard.addListener('keyboardWillShow', (info) => {
-          alturaTecladoActual = info.keyboardHeight || 0;
-          // Mover la barra de chat encima del teclado
-          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
-          if (chatBar) {
-            chatBar.style.transform = `translateY(-${alturaTecladoActual}px)`;
-            chatBar.style.transition = 'transform 0.25s ease';
-          }
-          ajustarPorTeclado(alturaTecladoActual);
+        showListener = await Keyboard.addListener('keyboardWillShow', () => {
+          scrollToBottom();
         });
 
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
-          alturaTecladoActual = 0;
-          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
-          if (chatBar) {
-            chatBar.style.transform = 'translateY(0)';
-            chatBar.style.transition = 'transform 0.2s ease';
-          }
-          ajustarPorTeclado(0);
+          scrollToBottom();
         });
       } catch {}
     };
