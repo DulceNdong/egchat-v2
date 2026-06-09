@@ -819,7 +819,7 @@ const App: React.FC = () => {
   const [chatContainerTop, setChatContainerTop] = React.useState<number>(0);
   const chatContainerRef = React.useRef<HTMLDivElement | null>(null);
 
-  // iOS: mover solo el chat container cuando sube el teclado, NO el tab bar
+  // iOS: scroll al fondo en chat + ocultar tab bar cuando sube el teclado
   React.useEffect(() => {
     let showListener: any = null;
     let hideListener: any = null;
@@ -828,9 +828,6 @@ const App: React.FC = () => {
 
     const setup = async () => {
       try {
-        // Con Keyboard.resize=native el WebView ya se redimensiona solo —
-        // NO mover la input bar con translateY ni recalcular maxHeight.
-        // Solo forzar scroll al fondo para que el último mensaje quede visible.
         const scrollToBottom = () => {
           const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
           if (!messagesContainer) return;
@@ -838,11 +835,23 @@ const App: React.FC = () => {
           setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 150);
         };
 
+        const setTabBarVisible = (visible: boolean) => {
+          // Ocultar el tab bar cuando el teclado sube para que no quede flotando
+          // encima del teclado. Solo afecta a la lista de mensajes, NO al chat.
+          const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
+          if (tabBar) {
+            tabBar.style.visibility = visible ? 'visible' : 'hidden';
+            tabBar.style.pointerEvents = visible ? 'auto' : 'none';
+          }
+        };
+
         showListener = await Keyboard.addListener('keyboardWillShow', () => {
+          setTabBarVisible(false);
           scrollToBottom();
         });
 
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
+          setTabBarVisible(true);
           scrollToBottom();
         });
       } catch {}
@@ -5228,7 +5237,7 @@ const App: React.FC = () => {
 
     return (
       <>
-        <div style={{
+        <div data-bottom-nav="true" style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'linear-gradient(90deg, #00d4aa 0%, #00bcd4 50%, #0099cc 100%)',
           zIndex: 1000,
