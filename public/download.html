@@ -7,72 +7,145 @@
   <script src="https://cdn.jsdelivr.net/npm/qrcode@1.5.3/build/qrcode.min.js"></script>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
+
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-      background: linear-gradient(135deg, #00c8a0 0%, #00b4e6 100%);
+      background: linear-gradient(160deg, #00c8a0 0%, #00b4e6 50%, #0066cc 100%);
       min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 20px;
+      padding: 24px 16px;
     }
+
+    /* Lang switcher */
+    .lang-bar {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .lang-btn {
+      background: rgba(255,255,255,0.2);
+      border: 1.5px solid rgba(255,255,255,0.4);
+      color: white;
+      border-radius: 20px;
+      padding: 6px 16px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      backdrop-filter: blur(8px);
+      transition: background 0.2s;
+    }
+    .lang-btn.active, .lang-btn:hover {
+      background: rgba(255,255,255,0.35);
+    }
+
     .card {
       background: white;
-      border-radius: 24px;
-      padding: 40px 32px;
-      max-width: 420px;
+      border-radius: 28px;
+      padding: 40px 28px 32px;
+      max-width: 460px;
       width: 100%;
       text-align: center;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+      box-shadow: 0 24px 80px rgba(0,0,0,0.18);
     }
-    .logo {
-      width: 80px;
-      height: 80px;
+
+    .logo-wrap {
+      width: 88px;
+      height: 88px;
       background: linear-gradient(135deg, #00c8a0, #00b4e6);
-      border-radius: 20px;
-      margin: 0 auto 16px;
+      border-radius: 22px;
+      margin: 0 auto 14px;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 8px 24px rgba(0,200,160,0.4);
+    }
+    .logo-wrap img {
+      width: 60px;
+      height: 60px;
+      object-fit: contain;
+      border-radius: 12px;
+    }
+    .logo-text {
       font-size: 36px;
+      font-weight: 900;
+      color: white;
+      letter-spacing: 1px;
     }
-    h1 { font-size: 28px; font-weight: 800; color: #111; margin-bottom: 6px; }
-    .subtitle { font-size: 14px; color: #6b7280; margin-bottom: 32px; }
-    .platform {
-      background: #f8fafc;
-      border-radius: 16px;
-      padding: 24px;
-      margin-bottom: 16px;
-      border: 2px solid #e5e7eb;
-    }
-    .platform-title {
-      font-size: 16px;
-      font-weight: 700;
+
+    h1 {
+      font-size: 30px;
+      font-weight: 900;
       color: #111;
       margin-bottom: 4px;
+      letter-spacing: -0.5px;
+    }
+    .subtitle {
+      font-size: 14px;
+      color: #6b7280;
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* Tabs */
+    .tabs {
+      display: flex;
+      background: #f3f4f6;
+      border-radius: 14px;
+      padding: 4px;
+      margin-bottom: 24px;
+      gap: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 10px 8px;
+      border-radius: 10px;
+      border: none;
+      background: transparent;
+      font-size: 13px;
+      font-weight: 600;
+      color: #9ca3af;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .tab.active {
+      background: white;
+      color: #111;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .platform { display: none; }
+    .platform.active { display: block; }
+
+    .qr-wrap {
+      background: #f8fafc;
+      border-radius: 16px;
+      padding: 20px;
+      display: inline-block;
+      margin-bottom: 20px;
+      border: 2px solid #e5e7eb;
+    }
+
+    .btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-    }
-    .platform-sub {
-      font-size: 12px;
-      color: #9ca3af;
-      margin-bottom: 16px;
-    }
-    canvas { margin: 0 auto; display: block; }
-    .btn {
-      display: block;
+      gap: 10px;
       width: 100%;
-      padding: 14px;
-      border-radius: 12px;
-      font-size: 15px;
+      padding: 16px;
+      border-radius: 14px;
+      font-size: 16px;
       font-weight: 700;
       text-decoration: none;
-      margin-top: 16px;
       cursor: pointer;
       border: none;
+      margin-bottom: 12px;
+      transition: opacity 0.15s, transform 0.15s;
     }
+    .btn:active { opacity: 0.85; transform: scale(0.98); }
+
     .btn-android {
       background: linear-gradient(135deg, #34a853, #0f9d58);
       color: white;
@@ -81,73 +154,287 @@
       background: linear-gradient(135deg, #00c8a0, #00b4e6);
       color: white;
     }
-    .version { font-size: 11px; color: #d1d5db; margin-top: 24px; }
+    .btn-share {
+      background: #f3f4f6;
+      color: #374151;
+      font-size: 14px;
+    }
+
     .steps {
       text-align: left;
-      background: #fffbeb;
-      border-radius: 10px;
-      padding: 12px 14px;
-      margin-top: 12px;
-      border: 1px solid #fde68a;
+      background: #f0fdf4;
+      border-radius: 12px;
+      padding: 14px 16px;
+      border: 1px solid #bbf7d0;
+      margin-top: 4px;
     }
-    .steps p { font-size: 12px; color: #92400e; line-height: 1.8; }
+    .steps-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: #059669;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+    .steps ol {
+      padding-left: 16px;
+    }
+    .steps li {
+      font-size: 13px;
+      color: #065f46;
+      line-height: 1.9;
+    }
+
+    .steps-ios {
+      background: #eff6ff;
+      border-color: #bfdbfe;
+    }
+    .steps-ios .steps-title { color: #2563eb; }
+    .steps-ios li { color: #1e3a5f; }
+
+    .badge {
+      display: inline-block;
+      background: linear-gradient(135deg, #00c8a0, #00b4e6);
+      color: white;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      margin-bottom: 10px;
+    }
+
+    .divider {
+      height: 1px;
+      background: #f3f4f6;
+      margin: 20px 0;
+    }
+
+    .share-url {
+      background: #f8fafc;
+      border: 1.5px solid #e5e7eb;
+      border-radius: 10px;
+      padding: 10px 14px;
+      font-size: 13px;
+      color: #374151;
+      word-break: break-all;
+      margin-bottom: 12px;
+      cursor: pointer;
+      user-select: all;
+    }
+    .copy-hint {
+      font-size: 11px;
+      color: #9ca3af;
+      margin-bottom: 16px;
+    }
+
+    .footer {
+      margin-top: 24px;
+      font-size: 12px;
+      color: #d1d5db;
+    }
+    .footer a { color: #00c8a0; text-decoration: none; }
   </style>
 </head>
 <body>
+
+  <!-- Selector de idioma -->
+  <div class="lang-bar">
+    <button class="lang-btn active" onclick="setLang('es')">🇪🇸 Español</button>
+    <button class="lang-btn" onclick="setLang('fr')">🇫🇷 Français</button>
+    <button class="lang-btn" onclick="setLang('en')">🇬🇧 English</button>
+  </div>
+
   <div class="card">
-    <div class="logo">💬</div>
+    <div class="logo-wrap">
+      <span class="logo-text">EG</span>
+    </div>
     <h1>EGCHAT</h1>
-    <p class="subtitle">La app de mensajería de Guinea Ecuatorial 🇬🇶</p>
+    <p class="subtitle" id="txt-subtitle">La app de mensajería de Guinea Ecuatorial 🇬🇶</p>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <button class="tab active" onclick="showTab('android')" id="tab-android">🤖 Android</button>
+      <button class="tab" onclick="showTab('ios')" id="tab-ios">🍎 iPhone</button>
+    </div>
 
     <!-- ANDROID -->
-    <div class="platform">
-      <div class="platform-title">🤖 Android</div>
-      <div class="platform-sub">Escanea o pulsa para descargar la APK</div>
-      <canvas id="qr-android"></canvas>
-      <a class="btn btn-android" href="https://drive.google.com/uc?export=download&id=1J9SLvEHs9QFMQijypoZBmwl7dWlInR6V">
-        ⬇️ Descargar APK Android
+    <div class="platform active" id="platform-android">
+      <span class="badge" id="txt-badge-android">Versión 2.5 · APK</span>
+      <br>
+      <div class="qr-wrap">
+        <canvas id="qr-android"></canvas>
+      </div>
+      <a class="btn btn-android" href="https://drive.google.com/uc?export=download&id=1J9SLvEHs9QFMQijypoZBmwl7dWlInR6V" id="btn-android-dl">
+        ⬇️ <span id="txt-dl-android">Descargar APK</span>
       </a>
+      <div class="divider"></div>
+      <p class="copy-hint" id="txt-share-hint">Comparte este enlace:</p>
+      <div class="share-url" onclick="copyUrl(this)">https://egchat-v2.vercel.app/download.html</div>
+      <button class="btn btn-share" onclick="shareApp()">
+        📤 <span id="txt-share-btn">Compartir enlace de descarga</span>
+      </button>
       <div class="steps">
-        <p>1. Descarga la APK<br>
-           2. Abre el archivo descargado<br>
-           3. Permite "Instalar apps desconocidas"<br>
-           4. Pulsa Instalar ✅</p>
+        <div class="steps-title" id="txt-steps-title">Cómo instalar</div>
+        <ol id="steps-android">
+          <li>Descarga el archivo APK</li>
+          <li>Abre el archivo desde notificaciones</li>
+          <li>Permite "Instalar apps desconocidas"</li>
+          <li>Pulsa <strong>Instalar</strong> ✅</li>
+        </ol>
       </div>
     </div>
 
-    <!-- iOS PWA -->
-    <div class="platform">
-      <div class="platform-title">🍎 iPhone</div>
-      <div class="platform-sub">Abre en Safari y añade a pantalla de inicio</div>
-      <canvas id="qr-ios"></canvas>
-      <a class="btn btn-pwa" href="https://egchat-v2.vercel.app">
-        🌐 Abrir en Safari
+    <!-- iOS -->
+    <div class="platform" id="platform-ios">
+      <span class="badge" id="txt-badge-ios">PWA · Sin App Store</span>
+      <br>
+      <div class="qr-wrap">
+        <canvas id="qr-ios"></canvas>
+      </div>
+      <a class="btn btn-pwa" href="https://egchat-v2.vercel.app" id="btn-ios-open">
+        🌐 <span id="txt-open-ios">Abrir en Safari</span>
       </a>
-      <div class="steps">
-        <p>1. Abre el enlace en Safari<br>
-           2. Pulsa el botón compartir ⬆️<br>
-           3. "Añadir a pantalla de inicio"<br>
-           4. Pulsa Añadir ✅</p>
+      <div class="divider"></div>
+      <p class="copy-hint" id="txt-share-hint-ios">Comparte este enlace:</p>
+      <div class="share-url" onclick="copyUrl(this)">https://egchat-v2.vercel.app</div>
+      <button class="btn btn-share" onclick="shareIOS()">
+        📤 <span id="txt-share-ios-btn">Compartir</span>
+      </button>
+      <div class="steps steps-ios">
+        <div class="steps-title" id="txt-steps-ios-title">Cómo instalar</div>
+        <ol id="steps-ios">
+          <li>Abre el enlace en <strong>Safari</strong></li>
+          <li>Pulsa el botón compartir <strong>⬆️</strong></li>
+          <li>Selecciona <strong>"Añadir a pantalla de inicio"</strong></li>
+          <li>Pulsa <strong>Añadir</strong> ✅</li>
+        </ol>
       </div>
     </div>
 
-    <p class="version">EGCHAT v2.5 · egchat-v2.vercel.app</p>
+    <div class="footer">
+      EGCHAT v2.5 · <a href="https://egchat-v2.vercel.app">egchat-v2.vercel.app</a>
+    </div>
   </div>
 
   <script>
-    // QR Android — link directo de descarga
-    QRCode.toCanvas(
-      document.getElementById('qr-android'),
+    // Generar QR Android
+    QRCode.toCanvas(document.getElementById('qr-android'),
       'https://drive.google.com/uc?export=download&id=1J9SLvEHs9QFMQijypoZBmwl7dWlInR6V',
-      { width: 180, margin: 1, color: { dark: '#111827', light: '#f8fafc' } }
+      { width: 190, margin: 1, color: { dark: '#111827', light: '#f8fafc' } }
     );
 
-    // QR iOS — PWA
-    QRCode.toCanvas(
-      document.getElementById('qr-ios'),
+    // Generar QR iOS
+    QRCode.toCanvas(document.getElementById('qr-ios'),
       'https://egchat-v2.vercel.app',
-      { width: 180, margin: 1, color: { dark: '#00b4e6', light: '#f8fafc' } }
+      { width: 190, margin: 1, color: { dark: '#00b4e6', light: '#f8fafc' } }
     );
+
+    // Tabs
+    function showTab(tab) {
+      document.querySelectorAll('.platform').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.getElementById('platform-' + tab).classList.add('active');
+      document.getElementById('tab-' + tab).classList.add('active');
+    }
+
+    // Copiar URL
+    function copyUrl(el) {
+      navigator.clipboard.writeText(el.textContent.trim()).then(() => {
+        const orig = el.textContent;
+        el.textContent = '✅ ¡Copiado!';
+        setTimeout(() => { el.textContent = orig; }, 2000);
+      });
+    }
+
+    // Compartir Android
+    function shareApp() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'EGCHAT',
+          text: '📲 Descarga EGCHAT para Android',
+          url: 'https://egchat-v2.vercel.app/download.html'
+        });
+      } else {
+        copyUrl({ textContent: 'https://egchat-v2.vercel.app/download.html' });
+      }
+    }
+
+    // Compartir iOS
+    function shareIOS() {
+      if (navigator.share) {
+        navigator.share({
+          title: 'EGCHAT',
+          text: '📲 Instala EGCHAT en tu iPhone',
+          url: 'https://egchat-v2.vercel.app'
+        });
+      } else {
+        copyUrl({ textContent: 'https://egchat-v2.vercel.app' });
+      }
+    }
+
+    // Traducciones
+    const i18n = {
+      es: {
+        subtitle: 'La app de mensajería de Guinea Ecuatorial 🇬🇶',
+        badgeAndroid: 'Versión 2.5 · APK',
+        badgeIOS: 'PWA · Sin App Store',
+        dlAndroid: 'Descargar APK',
+        openIOS: 'Abrir en Safari',
+        shareBtn: 'Compartir enlace de descarga',
+        shareIOS: 'Compartir',
+        shareHint: 'Comparte este enlace:',
+        stepsTitle: 'Cómo instalar',
+        stepsTitleIOS: 'Cómo instalar',
+        stepsAndroid: ['Descarga el archivo APK','Abre el archivo desde notificaciones','Permite "Instalar apps desconocidas"','Pulsa <strong>Instalar</strong> ✅'],
+        stepsIOS: ['Abre el enlace en <strong>Safari</strong>','Pulsa el botón compartir <strong>⬆️</strong>','Selecciona <strong>"Añadir a pantalla de inicio"</strong>','Pulsa <strong>Añadir</strong> ✅'],
+      },
+      fr: {
+        subtitle: 'L\'application de messagerie de Guinée Équatoriale 🇬🇶',
+        badgeAndroid: 'Version 2.5 · APK',
+        badgeIOS: 'PWA · Sans App Store',
+        dlAndroid: 'Télécharger l\'APK',
+        openIOS: 'Ouvrir dans Safari',
+        shareBtn: 'Partager le lien',
+        shareIOS: 'Partager',
+        shareHint: 'Partagez ce lien :',
+        stepsTitle: 'Comment installer',
+        stepsTitleIOS: 'Comment installer',
+        stepsAndroid: ['Téléchargez le fichier APK','Ouvrez le fichier depuis les notifications','Autorisez "Sources inconnues"','Appuyez sur <strong>Installer</strong> ✅'],
+        stepsIOS: ['Ouvrez le lien dans <strong>Safari</strong>','Appuyez sur le bouton partager <strong>⬆️</strong>','Sélectionnez <strong>"Sur l\'écran d\'accueil"</strong>','Appuyez sur <strong>Ajouter</strong> ✅'],
+      },
+      en: {
+        subtitle: 'The messaging app of Equatorial Guinea 🇬🇶',
+        badgeAndroid: 'Version 2.5 · APK',
+        badgeIOS: 'PWA · No App Store needed',
+        dlAndroid: 'Download APK',
+        openIOS: 'Open in Safari',
+        shareBtn: 'Share download link',
+        shareIOS: 'Share',
+        shareHint: 'Share this link:',
+        stepsTitle: 'How to install',
+        stepsTitleIOS: 'How to install',
+        stepsAndroid: ['Download the APK file','Open the file from notifications','Allow "Unknown sources"','Tap <strong>Install</strong> ✅'],
+        stepsIOS: ['Open the link in <strong>Safari</strong>','Tap the share button <strong>⬆️</strong>','Select <strong>"Add to Home Screen"</strong>','Tap <strong>Add</strong> ✅'],
+      }
+    };
+
+    function setLang(lang) {
+      document.querySelectorAll('.lang-btn').forEach(b => b.classList.remove('active'));
+      document.querySelector(`[onclick="setLang('${lang}')"]`).classList.add('active');
+      const t = i18n[lang];
+      document.getElementById('txt-subtitle').textContent = t.subtitle;
+      document.getElementById('txt-badge-android').textContent = t.badgeAndroid;
+      document.getElementById('txt-badge-ios').textContent = t.badgeIOS;
+      document.getElementById('txt-dl-android').textContent = t.dlAndroid;
+      document.getElementById('txt-open-ios').textContent = t.openIOS;
+      document.getElementById('txt-share-btn').textContent = t.shareBtn;
+      document.getElementById('txt-share-ios-btn').textContent = t.shareIOS;
+      document.querySelectorAll('.copy-hint').forEach(el => el.textContent = t.shareHint);
+      document.getElementById('txt-steps-title').textContent = t.stepsTitle;
+      document.getElementById('txt-steps-ios-title').textContent = t.stepsTitleIOS;
+      document.getElementById('steps-android').innerHTML = t.stepsAndroid.map(s => `<li>${s}</li>`).join('');
+      document.getElementById('steps-ios').innerHTML = t.stepsIOS.map(s => `<li>${s}</li>`).join('');
+    }
   </script>
 </body>
 </html>
