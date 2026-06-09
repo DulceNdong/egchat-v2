@@ -1252,6 +1252,21 @@ const App: React.FC = () => {
         chatContainer.style.height = `${visibleH}px`;
       }
 
+      // PWA (no IPA): mover input bar y ocultar tab bar cuando sube el teclado
+      // En IPA esto lo hace el Capacitor Keyboard listener — aquí solo PWA
+      const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
+      if (isIOS && !isCapacitor) {
+        const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+        const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
+        if (keyboardH > 100) {
+          if (chatBar) chatBar.style.transform = `translateY(-${keyboardH}px)`;
+          if (tabBar) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
+        } else {
+          if (chatBar) chatBar.style.transform = 'translateY(0)';
+          if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
+        }
+      }
+
       // iOS: scroll al fondo cuando sube el teclado
       if (isIOS && keyboardH > 100) {
         const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -12011,7 +12026,7 @@ const App: React.FC = () => {
             left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
             right: 0,
             display: 'flex', alignItems: 'center',
-            paddingTop: device.isMobile ? '44px' : '8px', 
+            paddingTop: device.isMobile ? 'max(44px, env(safe-area-inset-top, 44px))' : '8px', 
             paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
             background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
             boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
