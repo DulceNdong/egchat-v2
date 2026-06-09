@@ -1245,10 +1245,12 @@ const App: React.FC = () => {
 
       // iOS: scroll al fondo cuando sube el teclado
       if (isIOS && keyboardH > 100) {
-        requestAnimationFrame(() => {
-          const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-          if (scroll) scroll.scrollTop = scroll.scrollHeight;
-        });
+        const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+        if (scroll) {
+          requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
+          setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 100);
+          setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 250);
+        }
       }
     };
 
@@ -1385,16 +1387,20 @@ const App: React.FC = () => {
   React.useEffect(() => {
     if (!selectedChat) return;
     isAtBottomRef.current = true;
-    setTimeout(() => {
+    // Múltiples intentos para asegurar scroll al fondo en iOS
+    const scrollDown = () => {
       const el = document.querySelector('.chat-messages-scroll') as HTMLElement;
       if (el) el.scrollTop = el.scrollHeight;
-    }, 100);
+    };
+    setTimeout(scrollDown, 50);
+    setTimeout(scrollDown, 150);
+    setTimeout(scrollDown, 350);
   }, [selectedChat?.id]);
 
   // Siempre 'native' — el WebView maneja el resize automáticamente
   React.useEffect(() => {
     try {
-      Keyboard.setResizeMode({ mode: 'none' });
+      Keyboard.setResizeMode({ mode: 'native' });
     } catch { /* no capacitor */ }
   }, []);
 
