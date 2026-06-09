@@ -63,7 +63,11 @@ export const CuentaOficialHub: React.FC<Props> = ({
     const p = { isAuthenticated, onBack: () => setActive(null), viewPadding, userProfile };
     return (
       <Suspense fallback={<div style={{ position: 'fixed', inset: 0, background: '#0D1B4B', zIndex: 2100 }}/>}>
-        {active === 'comunicacion' && <OfficialAccountView {...p} />}
+        {active === 'comunicacion' && <OfficialAccountView {...p}
+          onManageStaff={() => setActive('business')}
+          onNewIndividualChat={() => { setActive(null); setTimeout(() => window.dispatchEvent(new CustomEvent('egchat-open-new-chat')), 200); }}
+          onNewGroupChat={() => { setActive(null); setTimeout(() => window.dispatchEvent(new CustomEvent('egchat-open-create-group')), 200); }}
+        />}
         {active === 'business'     && <CompanyBusinessDashboard {...p} />}
         {active === 'merchant'     && <MerchantDashboard {...p} onOpenWallet={onOpenWallet} />}
         {active === 'provider'     && <ProviderServicesDashboard {...p} />}

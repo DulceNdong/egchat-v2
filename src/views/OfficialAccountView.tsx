@@ -17,6 +17,9 @@ interface OfficialAccountViewProps {
   isAuthenticated: boolean;
   onBack: () => void;
   viewPadding: { top: string; bottom: string };
+  onManageStaff?: () => void;
+  onNewIndividualChat?: () => void;
+  onNewGroupChat?: () => void;
 }
 
 const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
@@ -38,6 +41,7 @@ const COLORS = {
 
 export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
   userProfile, isAuthenticated, onBack, viewPadding,
+  onManageStaff, onNewIndividualChat, onNewGroupChat,
 }) => {
   const { role, hasPermission, is_verified } = useRole(isAuthenticated);
   const [tab, setTab] = useState<'profile' | 'broadcast' | 'internal' | 'stats'>('profile');
@@ -231,7 +235,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
 
             {/* Añadir empleados */}
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('egchat-open-company-staff'))}
+              onClick={() => onManageStaff?.()}
               style={{ background: COLORS.card, border: `1.5px solid ${info.color}33`, borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}
             >
               <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: info.color }}>
@@ -251,7 +255,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
 
             {/* Chat individual interno */}
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('egchat-new-internal-chat', { detail: { type: 'individual' } }))}
+              onClick={() => onNewIndividualChat?.()}
               style={{ background: COLORS.card, border: `1.5px solid ${info.color}33`, borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}
             >
               <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: info.color }}>
@@ -268,7 +272,7 @@ export const OfficialAccountView: React.FC<OfficialAccountViewProps> = ({
 
             {/* Chat grupal interno */}
             <button
-              onClick={() => window.dispatchEvent(new CustomEvent('egchat-new-internal-chat', { detail: { type: 'group' } }))}
+              onClick={() => onNewGroupChat?.()}
               style={{ background: COLORS.card, border: `1.5px solid ${info.color}33`, borderRadius: 16, padding: '16px 18px', cursor: 'pointer', textAlign: 'left', display: 'flex', alignItems: 'center', gap: 16, boxShadow: '0 2px 10px rgba(0,0,0,0.04)' }}
             >
               <div style={{ width: 48, height: 48, display: 'flex', alignItems: 'center', justifyContent: 'center', color: info.color }}>

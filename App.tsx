@@ -10700,6 +10700,12 @@ const App: React.FC = () => {
     window.addEventListener(SHORTCUT_EVENTS['contactos'],  handleShortcutContactos);
     window.addEventListener(SHORTCUT_EVENTS['llamada'],    handleShortcutLlamada);
 
+    // Comunicación interna desde Cuenta Oficial
+    const handleOpenNewChat    = () => { setShowCuentaOficial(false); setCurrentView('Mensajería'); setShowNewChatModal(true); };
+    const handleOpenCreateGroup = () => { setShowCuentaOficial(false); setCurrentView('Mensajería'); setShowCreateGroup(true); setGroupName(''); setGroupMembers([]); };
+    window.addEventListener('egchat-open-new-chat',     handleOpenNewChat);
+    window.addEventListener('egchat-open-create-group', handleOpenCreateGroup);
+
     return () => {
       window.removeEventListener('egchat-push-received', handlePushReceived);
       window.removeEventListener('egchat-push-action', handlePushAction);
@@ -10712,6 +10718,8 @@ const App: React.FC = () => {
       window.removeEventListener(SHORTCUT_EVENTS['nuevo-chat'], handleShortcutNuevoChat);
       window.removeEventListener(SHORTCUT_EVENTS['contactos'],  handleShortcutContactos);
       window.removeEventListener(SHORTCUT_EVENTS['llamada'],    handleShortcutLlamada);
+      window.removeEventListener('egchat-open-new-chat',      handleOpenNewChat);
+      window.removeEventListener('egchat-open-create-group',  handleOpenCreateGroup);
     };
   }, [notifyNewMessage, loadChats, incomingCall, webrtc]);
 
