@@ -1243,6 +1243,14 @@ const App: React.FC = () => {
         chatContainer.style.height = `${visibleH}px`;
       }
 
+      // Clamp de la vista de mensajería (lista de chats) al espacio visible
+      // Evita que el contenido suba cuando el teclado aparece
+      const msgListContainer = document.querySelector('.messaging-list-container') as HTMLElement | null;
+      if (msgListContainer && isIOS) {
+        msgListContainer.style.height = `${visibleH}px`;
+        msgListContainer.style.maxHeight = `${visibleH}px`;
+      }
+
       // iOS: scroll al fondo cuando sube el teclado
       if (isIOS && keyboardH > 100) {
         const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -6893,7 +6901,7 @@ const App: React.FC = () => {
           );
         }
         return (
-          <div style={{
+          <div className="messaging-list-container" style={{
             paddingTop: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '8px',
             paddingLeft: '8px',
             paddingRight: '8px',
