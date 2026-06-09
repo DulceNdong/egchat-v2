@@ -829,8 +829,7 @@ const App: React.FC = () => {
     const setup = async () => {
       try {
         // Con Keyboard.resize=native el WebView ya se redimensiona solo —
-        // NO mover la input bar con translateY ni recalcular maxHeight.
-        // Solo forzar scroll al fondo para que el último mensaje quede visible.
+        // Solo forzar scroll al fondo para chat, y clampear la lista de mensajes.
         const scrollToBottom = () => {
           const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
           if (!messagesContainer) return;
@@ -838,12 +837,35 @@ const App: React.FC = () => {
           setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 150);
         };
 
-        showListener = await Keyboard.addListener('keyboardWillShow', () => {
+        const clampMessagingList = (keyboardH: number) => {
+          const msgList = document.querySelector('.messaging-list-container') as HTMLElement | null;
+          const bottomNav = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
+          if (msgList) {
+            if (keyboardH > 0) {
+              const newH = window.innerHeight - keyboardH;
+              msgList.style.height = `${newH}px`;
+              msgList.style.maxHeight = `${newH}px`;
+            } else {
+              msgList.style.height = '100dvh';
+              msgList.style.maxHeight = '100dvh';
+            }
+          }
+          if (bottomNav) {
+            bottomNav.style.transform = keyboardH > 0
+              ? `translateY(${keyboardH}px) translateZ(0)`
+              : 'translateZ(0)';
+          }
+        };
+
+        showListener = await Keyboard.addListener('keyboardWillShow', (info: any) => {
+          const kbH = info?.keyboardHeight || 0;
           scrollToBottom();
+          clampMessagingList(kbH);
         });
 
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
           scrollToBottom();
+          clampMessagingList(0);
         });
       } catch {}
     };
