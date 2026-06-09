@@ -6923,6 +6923,23 @@ const App: React.FC = () => {
                     placeholder="Buscar chat o contacto..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
+                    onFocus={() => {
+                      // iOS: prevenir que el sistema haga scroll automático
+                      // cuando el teclado sube en una vista position:fixed
+                      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+                        const y = window.scrollY;
+                        setTimeout(() => {
+                          window.scrollTo(0, 0);
+                          document.documentElement.scrollTop = 0;
+                          document.body.scrollTop = 0;
+                        }, 50);
+                        setTimeout(() => {
+                          window.scrollTo(0, 0);
+                          document.documentElement.scrollTop = 0;
+                          document.body.scrollTop = 0;
+                        }, 200);
+                      }
+                    }}
                     style={{
                       width: '100%',
                       padding: '9px 14px 9px 36px',
