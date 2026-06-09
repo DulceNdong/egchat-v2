@@ -829,7 +829,8 @@ const App: React.FC = () => {
     const setup = async () => {
       try {
         // Con Keyboard.resize=native el WebView ya se redimensiona solo —
-        // Solo forzar scroll al fondo para chat, y clampear la lista de mensajes.
+        // NO mover la input bar con translateY ni recalcular maxHeight.
+        // Solo forzar scroll al fondo para que el último mensaje quede visible.
         const scrollToBottom = () => {
           const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
           if (!messagesContainer) return;
@@ -837,55 +838,12 @@ const App: React.FC = () => {
           setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 150);
         };
 
-        const clampMessagingList = (keyboardH: number) => {
-          const msgList = document.querySelector('.messaging-list-container') as HTMLElement | null;
-          const bottomNav = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
-          const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
-          const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-
-          // Lista de mensajes: clampear altura para que no suba
-          if (msgList) {
-            if (keyboardH > 0) {
-              const newH = window.innerHeight - keyboardH;
-              msgList.style.height = `${newH}px`;
-              msgList.style.maxHeight = `${newH}px`;
-            } else {
-              msgList.style.height = '100dvh';
-              msgList.style.maxHeight = '100dvh';
-            }
-          }
-
-          // Tab bar: bajar con translateY para que no suba visible
-          if (bottomNav) {
-            bottomNav.style.transform = keyboardH > 0
-              ? `translateY(${keyboardH}px) translateZ(0)`
-              : 'translateZ(0)';
-          }
-
-          // Chat input bar: subir con translateY para que quede encima del teclado
-          // (con resize:none el WebView no se mueve, hay que moverlo manualmente)
-          if (chatBar) {
-            chatBar.style.transform = keyboardH > 0
-              ? `translateY(-${keyboardH}px)`
-              : 'translateY(0)';
-          }
-
-          // Chat messages: reducir altura disponible y scroll al fondo
-          if (messagesContainer && keyboardH > 0) {
-            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
-            setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 200);
-          }
-        };
-
-        showListener = await Keyboard.addListener('keyboardWillShow', (info: any) => {
-          const kbH = info?.keyboardHeight || 0;
+        showListener = await Keyboard.addListener('keyboardWillShow', () => {
           scrollToBottom();
-          clampMessagingList(kbH);
         });
 
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
           scrollToBottom();
-          clampMessagingList(0);
         });
       } catch {}
     };
@@ -1285,29 +1243,6 @@ const App: React.FC = () => {
         chatContainer.style.height = `${visibleH}px`;
       }
 
-      // Clamp de la vista de mensajería (lista de chats) al espacio visible
-      // Evita que el contenido suba cuando el teclado aparece
-      const msgListContainer = document.querySelector('.messaging-list-container') as HTMLElement | null;
-      if (msgListContainer && isIOS) {
-        msgListContainer.style.height = `${visibleH}px`;
-        msgListContainer.style.maxHeight = `${visibleH}px`;
-      }
-
-      // Anclar tab bar al bottom real del viewport cuando el teclado sube
-      // Con resize:native el WebView encoge, bottom:0 sube con el teclado
-      // Usamos translateY para compensar y mantener el tab bar en su lugar
-      const bottomNav = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
-      if (bottomNav && isIOS) {
-        if (keyboardH > 100) {
-          // Teclado visible: mover el tab bar hacia abajo para que quede FUERA del viewport visible
-          // (se oculta debajo del teclado, no se sube con él)
-          bottomNav.style.transform = `translateY(${keyboardH}px) translateZ(0)`;
-        } else {
-          // Teclado oculto: restaurar posición original
-          bottomNav.style.transform = 'translateZ(0)';
-        }
-      }
-
       // iOS: scroll al fondo cuando sube el teclado
       if (isIOS && keyboardH > 100) {
         const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
@@ -1462,9 +1397,12 @@ const App: React.FC = () => {
     setTimeout(scrollDown, 350);
   }, [selectedChat?.id]);
 
-  // resize: 'none' — configurado en capacitor.config.ts y AppInit.ts
-  // El teclado flota sobre el contenido sin redimensionar el WebView
-  // El chat maneja su propio scroll via keyboardWillShow/Hide listeners
+  // Siempre 'native' — el WebView maneja el resize automáticamente
+  React.useEffect(() => {
+    try {
+      Keyboard.setResizeMode({ mode: 'native' });
+    } catch { /* no capacitor */ }
+  }, []);
 
   // Scroll automático: solo cuando hay mensaje nuevo real
   const lastScrollMsgId = React.useRef<string>('');
@@ -5290,7 +5228,7 @@ const App: React.FC = () => {
 
     return (
       <>
-        <div data-bottom-nav="true" style={{
+        <div style={{
           position: 'fixed', bottom: 0, left: 0, right: 0,
           background: 'linear-gradient(90deg, #00d4aa 0%, #00bcd4 50%, #0099cc 100%)',
           zIndex: 1000,
@@ -6955,22 +6893,18 @@ const App: React.FC = () => {
           );
         }
         return (
-          <div className="messaging-list-container" style={{
+          <div style={{
             paddingTop: device.isMobile ? 'calc(env(safe-area-inset-top, 0px) + 44px + 8px)' : '8px',
             paddingLeft: '8px',
             paddingRight: '8px',
-            height: device.isMobile ? '100dvh' : 'calc(100vh - 44px)',
+            height: device.isMobile ? '100vh' : 'calc(100vh - 44px)',
             marginTop: device.isMobile ? '0' : '44px',
             width: device.isMobile ? '100%' : (device.isTablet ? '280px' : '300px'),
             overflow: 'hidden',
             display: 'flex',
             flexDirection: 'column',
             background: '#fff',
-            position: device.isMobile ? 'fixed' : 'relative',
-            top: device.isMobile ? 0 : undefined,
-            left: device.isMobile ? 0 : undefined,
-            right: device.isMobile ? 0 : undefined,
-            bottom: device.isMobile ? 0 : undefined,
+            position: 'relative',
             zIndex: 1002,
             borderRight: device.isMobile ? 'none' : '1px solid #e5e7eb',
             boxSizing: 'border-box',
@@ -6985,23 +6919,6 @@ const App: React.FC = () => {
                     placeholder="Buscar chat o contacto..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    onFocus={() => {
-                      // iOS: prevenir que el sistema haga scroll automático
-                      // cuando el teclado sube en una vista position:fixed
-                      if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-                        const y = window.scrollY;
-                        setTimeout(() => {
-                          window.scrollTo(0, 0);
-                          document.documentElement.scrollTop = 0;
-                          document.body.scrollTop = 0;
-                        }, 50);
-                        setTimeout(() => {
-                          window.scrollTo(0, 0);
-                          document.documentElement.scrollTop = 0;
-                          document.body.scrollTop = 0;
-                        }, 200);
-                      }
-                    }}
                     style={{
                       width: '100%',
                       padding: '9px 14px 9px 36px',
