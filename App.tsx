@@ -1280,16 +1280,17 @@ const App: React.FC = () => {
         const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+        const isInChat = !!document.querySelector('.chat-view-container');
         if (keyboardH > 80) {
           // Teclado visible: subir barra con bottom
           if (chatBar) { chatBar.style.bottom = `${keyboardH}px`; chatBar.style.transform = ''; }
-          if (tabBar) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
+          if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
             messagesScroll.style.paddingBottom = `${keyboardH + 72}px`;
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
           }
         } else {
-          // Teclado oculto — restaurar todo
+          // Teclado oculto — restaurar todo siempre
           if (chatBar) { chatBar.style.bottom = '0px'; chatBar.style.transform = ''; }
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
           if (messagesScroll) messagesScroll.style.paddingBottom = '';
