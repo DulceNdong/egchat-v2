@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/egchat-icon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content" />
     <title>EGCHAT v2.5.2</title>
     <meta name="description" content="EGCHAT v2.5.1 - Super App Guinea Ecuatorial" />
     <meta name="cache-control" content="no-cache, no-store, must-revalidate" />
@@ -53,10 +53,10 @@
         margin: 0; padding: 0;
         overflow-x: hidden;
       }
-      /* Chat container — JS actualiza height con visualViewport para iOS keyboard */
+      /* Chat container — altura fija, no se encoge con el teclado */
       .chat-view-container {
         top: 0px;
-        height: 100dvh;
+        height: 100svh;
       }
       /* Ocultar scrollbar en toda la app */
       ::-webkit-scrollbar { display: none; }
