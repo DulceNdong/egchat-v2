@@ -1254,36 +1254,35 @@ const App: React.FC = () => {
   React.useEffect(() => {
     const vv = (window as any).visualViewport as VisualViewport | undefined;
     const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
+
+    // Guardar altura original ANTES de que el teclado la modifique
+    // En iOS PWA, window.innerHeight se encoge cuando sube el teclado
+    // Hay que capturarla en el primer frame sin teclado
+    const originalH = window.innerHeight;
 
     const update = () => {
-      const winH = window.innerHeight;
+      const winH = originalH; // siempre la altura real de pantalla
       const vvH = vv ? vv.height : winH;
       const vvTop = vv ? vv.offsetTop : 0;
       const visibleH = Math.min(winH, vvH);
       document.documentElement.style.setProperty('--vv-height', `${visibleH}px`);
       document.documentElement.style.setProperty('--vv-offset-top', `${vvTop}px`);
-      const keyboardH = Math.max(0, winH - visibleH - vvTop);
+      const keyboardH = Math.max(0, winH - vvH);
       document.documentElement.style.setProperty('--keyboard-offset', `${keyboardH}px`);
 
-      // DEBUG temporal — mostrar valores en pantalla
+      // DEBUG temporal
       let dbg = document.getElementById('__kbdebug');
       if (!dbg) { dbg = document.createElement('div'); dbg.id = '__kbdebug'; dbg.style.cssText = 'position:fixed;top:50%;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font-size:13px;padding:8px 12px;z-index:99999;font-family:monospace;text-align:center;transform:translateY(-50%)'; document.body.appendChild(dbg); }
-      dbg.textContent = `winH:${winH} vvH:${Math.round(vvH)} vvTop:${Math.round(vvTop)} kbH:${Math.round(keyboardH)} isIOS:${isIOS} cap:${!!(window as any).Capacitor?.isNativePlatform?.()}`;
-
-      // Actualizar height del contenedor de chat en tiempo real
-      // NO cambiar height — causa que el container tape el header
-      // El header es position:fixed zIndex:1102, siempre visible encima del container
+      dbg.textContent = `origH:${originalH} vvH:${Math.round(vvH)} vvTop:${Math.round(vvTop)} kbH:${Math.round(keyboardH)} isIOS:${isIOS} cap:${isCapacitor}`;
 
       // PWA (no IPA): mover input bar cuando sube el teclado
-      // En IPA nativo esto lo gestiona el Capacitor Keyboard listener
-      // Aquí solo iOS PWA — Android APK y desktop no necesitan esto
-      const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
       if (isIOS && !isCapacitor) {
         const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
         if (keyboardH > 80) {
-          // Teclado visible: subir barra con bottom (no translateY)
+          // Teclado visible: subir barra con bottom
           if (chatBar) { chatBar.style.bottom = `${keyboardH}px`; chatBar.style.transform = ''; }
           if (tabBar) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
@@ -1297,19 +1296,17 @@ const App: React.FC = () => {
           if (messagesScroll) messagesScroll.style.paddingBottom = '';
         }
       }
-    };
 
-    if (vv) {
-      vv.addEventListener('resize', update);
-      vv.addEventListener('scroll', update);
-    }
-    window.addEventListener('resize', update);
-    update();
-    return () => {
-      if (vv) { vv.removeEventListener('resize', update); vv.removeEventListener('scroll', update); }
-      window.removeEventListener('resize', update);
+      // iOS: scroll al fondo cuando sube el teclado
+      if (isIOS && keyboardH > 100) {
+        const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+        if (scroll) {
+          requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
+          setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 100);
+          setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 250);
+        }
+      }
     };
-  }, []);
   const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
   const updateSoundSetting = (key: keyof SoundSettings, value: any) => {
     const updated = { ...soundSettings, [key]: value };
