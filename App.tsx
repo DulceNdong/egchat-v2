@@ -819,25 +819,26 @@ const App: React.FC = () => {
   const [chatContainerTop, setChatContainerTop] = React.useState<number>(0);
   const chatContainerRef = React.useRef<HTMLDivElement | null>(null);
 
-  // iOS: scroll al fondo en chat + ocultar tab bar cuando sube el teclado
+  // Keyboard listener para iOS Y Android nativos (Capacitor)
   React.useEffect(() => {
     let showListener: any = null;
     let hideListener: any = null;
-    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
-    if (!isIOS) return;
+    const isIOS     = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    const isAndroid = /Android/.test(navigator.userAgent);
+    const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
+    // Solo aplica en app nativa (IPA/APK), no en PWA web
+    if (!isCapacitor) return;
 
     const setup = async () => {
       try {
         const scrollToBottom = () => {
-          const messagesContainer = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-          if (!messagesContainer) return;
-          setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 50);
-          setTimeout(() => { messagesContainer.scrollTop = messagesContainer.scrollHeight; }, 150);
+          const el = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+          if (!el) return;
+          setTimeout(() => { el.scrollTop = el.scrollHeight; }, 50);
+          setTimeout(() => { el.scrollTop = el.scrollHeight; }, 200);
         };
 
         const setTabBarVisible = (visible: boolean) => {
-          // Ocultar el tab bar cuando el teclado sube para que no quede flotando
-          // encima del teclado. Solo afecta a la lista de mensajes, NO al chat.
           const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
           if (tabBar) {
             tabBar.style.visibility = visible ? 'visible' : 'hidden';
@@ -845,14 +846,36 @@ const App: React.FC = () => {
           }
         };
 
-        showListener = await Keyboard.addListener('keyboardWillShow', () => {
+        showListener = await Keyboard.addListener('keyboardWillShow', (info: any) => {
           setTabBarVisible(false);
           scrollToBottom();
+          // Android: mover el input bar encima del teclado (resize:none lo requiere)
+          if (isAndroid) {
+            const kh = info?.keyboardHeight || 0;
+            const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+            const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+            if (chatBar && kh > 0) {
+              chatBar.style.transform = `translateY(-${kh}px)`;
+              chatBar.style.transition = 'transform 0.2s ease';
+            }
+            if (messagesScroll && kh > 0) {
+              const headerH = document.querySelector('.chat-header-fixed')?.getBoundingClientRect().height || 88;
+              const barH = chatBar?.offsetHeight || 56;
+              messagesScroll.style.maxHeight = `${window.innerHeight - kh - headerH - barH}px`;
+              setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 80);
+            }
+          }
         });
 
         hideListener = await Keyboard.addListener('keyboardWillHide', () => {
           setTabBarVisible(true);
           scrollToBottom();
+          if (isAndroid) {
+            const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
+            const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+            if (chatBar) { chatBar.style.transform = 'translateY(0)'; chatBar.style.transition = 'transform 0.2s ease'; }
+            if (messagesScroll) messagesScroll.style.maxHeight = '';
+          }
         });
       } catch {}
     };
@@ -3761,7 +3784,17 @@ const App: React.FC = () => {
             {/* Avatar + info basica */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '20px', padding: '14px', background: 'rgba(250,250,250,0.88)', borderRadius: '14px', border: '1px solid rgba(0,0,0,0.07)' }}>
               <div style={{ width: '90px', height: '90px', borderRadius: '50%', background: 'linear-gradient(135deg, rgba(0,200,160,0.3), rgba(0,180,230,0.3))', border: '3px solid rgba(0,200,160,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '28px', fontWeight: '700', color: '#00c8a0', flexShrink: 0, overflow: 'hidden', cursor: 'pointer' }}
-                onClick={() => { const i=document.createElement('input');i.type='file';i.accept='image/*';i.onchange=()=>{const f=i.files?.[0];if(f){const r=new FileReader();r.onload=e=>{setAvatarCropUrl(e.target?.result as string);};r.readAsDataURL(f);}};i.click(); }}>
+                onClick={async () => {
+                  // Usar input file — funciona en Android WebView (Capacitor) y iOS PWA
+                  const i = document.createElement('input');
+                  i.type = 'file';
+                  i.accept = 'image/*';
+                  i.onchange = () => {
+                    const f = i.files?.[0];
+                    if (f) { const r = new FileReader(); r.onload = e => { setAvatarCropUrl(e.target?.result as string); }; r.readAsDataURL(f); }
+                  };
+                  i.click();
+                }}>
                 {(userProfile as any).avatarUrl ? <img src={(userProfile as any).avatarUrl} style={{width:'100%',height:'100%',objectFit:'cover'}} alt=""/> : userProfile.avatar}
               </div>
               <div style={{ flex: 1 }}>
@@ -14524,6 +14557,12 @@ if (typeof window !== 'undefined' && 'navigator' in window) {
   const ua = navigator.userAgent;
   const isHarmonyOS = /HarmonyOS|harmony/i.test(ua);
   const isAndroid = /android/i.test(ua);
+  
+  // Añadir clase CSS para reducir animaciones en Android (mejora rendimiento)
+  const isCapacitorNative = !!(window as any).Capacitor?.isNativePlatform?.();
+  if (isAndroid && isCapacitorNative) {
+    document.body.classList.add('android-app');
+  }
   
   if (isHarmonyOS || isAndroid) {
     let originalHeight = window.innerHeight;

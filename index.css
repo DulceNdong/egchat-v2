@@ -1169,3 +1169,20 @@ input[type="button"],
   border: none;
   box-sizing: border-box;
 }
+
+/* ── Android APK: reducir animaciones para mejor rendimiento ────── */
+/* En Android WebView las transiciones CSS son costosas — las minimizamos */
+@media (max-width: 768px) {
+  /* Detectar Android via UA en JS y añadir clase al body */
+  body.android-app * {
+    transition-duration: 0.05s !important;
+    animation-duration: 0.1s !important;
+  }
+  body.android-app .eg-card:hover {
+    transform: none !important;
+  }
+  body.android-app .glass-effect {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+}
