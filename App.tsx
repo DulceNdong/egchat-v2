@@ -9018,6 +9018,7 @@ const App: React.FC = () => {
           </div>
         );
       case 'ajustes':
+        try {
         return (
           <ConfiguracionView
             viewPadding={viewPadding}
@@ -9054,7 +9055,7 @@ const App: React.FC = () => {
             currentSettingsTab={currentSettingsTab}
             setCurrentSettingsTab={setCurrentSettingsTab}
           />
-        );
+        ); } catch(e: any) { return <div style={{position:'fixed',inset:0,zIndex:9999,background:'#fff',padding:40,fontSize:14,color:'red',whiteSpace:'pre-wrap'}}>{String(e?.message||e)}</div>; }
       case 'Lia-25':
         return (
           <div style={{ position:'fixed', inset:0, zIndex:500 }}>
