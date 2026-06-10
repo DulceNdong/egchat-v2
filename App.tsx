@@ -1254,9 +1254,9 @@ const App: React.FC = () => {
 
       // PWA (no IPA): mover input bar cuando sube el teclado
       // En IPA nativo esto lo gestiona el Capacitor Keyboard listener
-      // Aquí cubrimos: iOS PWA, Android PWA, Chrome desktop
+      // Aquí solo iOS PWA — Android APK y desktop no necesitan esto
       const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
-      if (!isCapacitor) {
+      if (isIOS && !isCapacitor) {
         const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const chatHeader = document.querySelector('.chat-header-fixed') as HTMLElement | null;
@@ -1269,7 +1269,6 @@ const App: React.FC = () => {
           }
           if (tabBar) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (chatHeader) chatHeader.style.top = `${vvTop}px`;
-          // Reducir área de mensajes para que no queden tapados
           if (messagesScroll) {
             messagesScroll.style.maxHeight = `${visibleH - (chatBar?.offsetHeight || 56) - (chatHeader?.offsetHeight || 88)}px`;
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
