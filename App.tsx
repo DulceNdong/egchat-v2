@@ -1273,8 +1273,7 @@ const App: React.FC = () => {
 
       // DEBUG temporal
       let dbg = document.getElementById('__kbdebug');
-      if (!dbg) { dbg = document.createElement('div'); dbg.id = '__kbdebug'; dbg.style.cssText = 'position:fixed;top:50%;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font-size:13px;padding:8px 12px;z-index:99999;font-family:monospace;text-align:center;transform:translateY(-50%)'; document.body.appendChild(dbg); }
-      dbg.textContent = `origH:${originalH} vvH:${Math.round(vvH)} vvTop:${Math.round(vvTop)} kbH:${Math.round(keyboardH)} isIOS:${isIOS} cap:${isCapacitor}`;
+      if (dbg) dbg.remove(); // quitar debug
 
       // PWA (no IPA): mover input bar cuando sube el teclado
       if (isIOS && !isCapacitor) {
@@ -5487,7 +5486,7 @@ const App: React.FC = () => {
               bottom: 0,
               display: 'flex', 
               flexDirection: 'column', 
-              overflow: 'hidden',
+              overflow: 'visible',
               background: '#f0f2f5',
               zIndex: 1100,
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
