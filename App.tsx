@@ -16,6 +16,7 @@ import { QRCodeSVG } from 'qrcode.react';
 import { HomeView }           from './HomeView';
 import { ServicesView }       from './ServicesView';
 import { NotificationsPanel } from './NotificationsPanel';
+import { ConfiguracionView }  from './ConfiguracionView';
 import { Keyboard } from '@capacitor/keyboard';
 import { useRole, clearRoleCache } from './src/hooks/useRole';
 
