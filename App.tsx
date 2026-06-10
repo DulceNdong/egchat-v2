@@ -5486,7 +5486,7 @@ const App: React.FC = () => {
               bottom: 0,
               display: 'flex', 
               flexDirection: 'column', 
-              overflow: 'visible',
+              overflow: 'hidden',
               background: '#f0f2f5',
               zIndex: 1100,
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
@@ -6645,7 +6645,7 @@ const App: React.FC = () => {
                 background: device.isMobile ? '#d1d3d9' : '#f0f2f5',
                 borderTop: '1px solid rgba(0,0,0,0.10)',
                 paddingBottom: device.isMobile ? 'max(8px, env(safe-area-inset-bottom, 0px))' : '8px',
-                zIndex: 1100,
+                zIndex: 1200,
               }}>
               {/* Panel adjuntar — encima del input para que sea visible en móvil */}
               {showChatAttach && (
@@ -11108,7 +11108,7 @@ const App: React.FC = () => {
             paddingLeft: '4px', paddingRight: '8px', paddingBottom: '8px', 
             background: 'linear-gradient(135deg, #00b4e6 0%, #0088cc 100%)', 
             boxShadow: '0 2px 12px rgba(0,180,230,0.3)',
-            zIndex: 1102,
+            zIndex: 1200,
           }}>
             <button onClick={() => { setSelectedChat(null); setShowChatEmojis(false); setCurrentChatInput(''); setShowChatMenu(false); setSelectionMode(false); setSelectedMsgIds([]); }}
               style={{ background: 'transparent', border: 'none', color: '#ffffff', cursor: 'pointer', outline: 'none', padding: '5px', display: 'flex', borderRadius: '50%', flexShrink: 0 }}>
