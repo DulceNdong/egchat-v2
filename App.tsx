@@ -1319,6 +1319,7 @@ const App: React.FC = () => {
       window.removeEventListener('resize', update);
     };
   }, []);
+  const [soundSettings, setSoundSettings] = React.useState<SoundSettings>(getSoundSettings);
   const updateSoundSetting = (key: keyof SoundSettings, value: any) => {
     const updated = { ...soundSettings, [key]: value };
     setSoundSettings(updated);
