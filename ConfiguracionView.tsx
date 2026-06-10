@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { authAPI } from './api';
+import QRCode from 'qrcode';
 
 // ─────────────────────────────────────────────
 // Tipos
@@ -306,111 +307,266 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = ({
     );
 
     // ── PERFIL ──
-    if (subView === 'perfil') return wrap('Perfil', (
-      <div style={{ paddingBottom: '32px' }}>
-        {/* Hero */}
-        <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', padding: '32px 16px 24px', background: '#fff', marginBottom: '8px' }}>
-          <div style={{ position: 'relative', marginBottom: '14px' }}>
-            <div style={{
-              width: '90px', height: '90px', borderRadius: '50%',
-              background: 'linear-gradient(135deg,#07c160,#00b4e6)',
-              overflow: 'hidden', display: 'flex', alignItems: 'center',
-              justifyContent: 'center', fontSize: '32px', fontWeight: '700', color: '#fff',
-              border: '3px solid #fff', boxShadow: '0 4px 16px rgba(0,0,0,0.12)',
-            }}>
-              {userProfile.avatarUrl
-                ? <img src={userProfile.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                : <span>{userProfile.avatar || 'U'}</span>}
-            </div>
-            <button onClick={() => {
-              const inp = document.createElement('input');
-              inp.type = 'file'; inp.accept = 'image/*';
-              inp.onchange = () => { const f = inp.files?.[0]; if (f) { const r = new FileReader(); r.onload = e => setAvatarCropUrl(e.target?.result as string); r.readAsDataURL(f); } };
-              inp.click();
-            }} style={{
-              position: 'absolute', bottom: 0, right: 0, width: '26px', height: '26px',
-              borderRadius: '50%', background: '#07c160', border: '2px solid #fff',
-              display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', outline: 'none',
-            }}>
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.5" strokeLinecap="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></svg>
+    if (subView === 'perfil') {
+      // estado local para QR y edición de bio
+      const [qrImg, setQrImg] = React.useState('');
+      const [showQR, setShowQR] = React.useState(false);
+      const [editingField, setEditingField] = React.useState<string | null>(null);
+      const [fieldVal, setFieldVal] = React.useState('');
+      const [gender, setGender] = React.useState(
+        () => localStorage.getItem('cfg_gender') || 'No especificado');
+      const [bio, setBio] = React.useState(
+        () => localStorage.getItem('cfg_bio') || '');
+      const [region, setRegion] = React.useState(
+        () => userProfile.country || 'Guinea Ecuatorial');
+
+      const maskPhone = (p: string) => {
+        if (!p || p.length < 6) return p;
+        return p.slice(0, 3) + '****' + p.slice(-2);
+      };
+
+      const generateQR = async () => {
+        try {
+          const data = JSON.stringify({ type: 'contact', app: 'EGCHAT', id: userProfile.id, phone: userProfile.phone, name: userProfile.name });
+          const img = await QRCode.toDataURL(data, { width: 220, margin: 2, color: { dark: '#111827', light: '#ffffff' } });
+          setQrImg(img); setShowQR(true);
+        } catch {}
+      };
+
+      const openEdit = (field: string, current: string) => {
+        setEditingField(field); setFieldVal(current);
+      };
+
+      const saveField = async () => {
+        if (!editingField) return;
+        try {
+          if (editingField === 'name') {
+            await authAPI.updateProfile({ full_name: fieldVal, avatar_url: userProfile.avatarUrl });
+            setUserProfile({ ...userProfile, name: fieldVal });
+            localStorage.setItem('egchat_user_profile', JSON.stringify({ ...userProfile, name: fieldVal }));
+            showToast('✓ Nombre actualizado', 'success');
+          } else if (editingField === 'bio') {
+            setBio(fieldVal); localStorage.setItem('cfg_bio', fieldVal);
+            showToast('✓ Novedades actualizadas', 'success');
+          } else if (editingField === 'gender') {
+            setGender(fieldVal); localStorage.setItem('cfg_gender', fieldVal);
+            showToast('✓ Género guardado', 'success');
+          } else if (editingField === 'region') {
+            setRegion(fieldVal);
+            setUserProfile({ ...userProfile, country: fieldVal });
+            showToast('✓ Región actualizada', 'success');
+          }
+        } catch (e: any) { showToast(e?.message || 'Error al guardar', 'error'); }
+        setEditingField(null);
+      };
+
+      return wrap('Perfil', (
+        <div style={{ paddingBottom: '32px' }}>
+          {/* Bloque foto + nombre */}
+          <div style={{ background: '#fff', marginBottom: '1px' }}>
+            {/* Foto de perfil */}
+            <button
+              onClick={() => {
+                const inp = document.createElement('input');
+                inp.type = 'file'; inp.accept = 'image/*';
+                inp.onchange = () => { const f = inp.files?.[0]; if (f) { const r = new FileReader(); r.onload = e => setAvatarCropUrl(e.target?.result as string); r.readAsDataURL(f); } };
+                inp.click();
+              }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}
+            >
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Foto de perfil</span>
+              <div style={{ width: '52px', height: '52px', borderRadius: '6px', overflow: 'hidden', background: 'linear-gradient(135deg,#07c160,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, marginRight: '10px' }}>
+                {userProfile.avatarUrl
+                  ? <img src={userProfile.avatarUrl} alt="avatar" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  : <span style={{ fontSize: '20px', fontWeight: '700', color: '#fff' }}>{userProfile.avatar || 'U'}</span>}
+              </div>
+              <ChevronRight />
+            </button>
+
+            {/* Nombre */}
+            <button onClick={() => openEdit('name', userProfile.name || '')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Nombre</span>
+              <span style={{ fontSize: '15px', color: '#8e8e93', marginRight: '8px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userProfile.name || '—'}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Novedades / Bio */}
+            <button onClick={() => openEdit('bio', bio)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Novedades</span>
+              <span style={{ fontSize: '15px', color: '#8e8e93', marginRight: '8px', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontStyle: bio ? 'normal' : 'italic' }}>{bio || 'Añadir estado'}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Género */}
+            <button onClick={() => openEdit('gender', gender)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Género</span>
+              <span style={{ fontSize: '15px', color: '#8e8e93', marginRight: '8px' }}>{gender}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Región */}
+            <button onClick={() => openEdit('region', region)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Región</span>
+              <span style={{ fontSize: '15px', color: '#8e8e93', marginRight: '8px' }}>{region}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Teléfono */}
+            <button onClick={() => showToast('Contacta soporte para cambiar el teléfono', 'info')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Teléfono</span>
+              <span style={{ fontSize: '15px', color: '#8e8e93', marginRight: '8px', fontFamily: 'monospace' }}>{maskPhone(userProfile.phone || '')}</span>
+              <ChevronRight />
+            </button>
+
+            {/* ID */}
+            <button
+              onClick={() => { navigator.clipboard?.writeText(userProfile.id || '').then(() => showToast('✓ ID copiado', 'success')).catch(() => showToast(userProfile.id || '', 'info')); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>ID</span>
+              <span style={{ fontSize: '15px', color: '#8e8e93', marginRight: '8px', fontFamily: 'monospace' }}>{userProfile.id?.slice(0, 8).toUpperCase() || '—'}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Mi código QR */}
+            <button onClick={generateQR}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Mi código QR</span>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#8e8e93" strokeWidth="1.8" strokeLinecap="round" style={{ marginRight: '8px' }}>
+                <rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/>
+                <rect x="14" y="14" width="3" height="3"/><rect x="18" y="18" width="3" height="3"/>
+              </svg>
+              <ChevronRight />
+            </button>
+
+          </div>
+
+          {/* Segunda sección */}
+          <div style={{ background: '#fff', marginTop: '8px', marginBottom: '1px' }}>
+
+            {/* Tono de timbre */}
+            <button onClick={() => setSubView('sonidos')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Tono de timbre para llamadas entrantes</span>
+              <span style={{ fontSize: '14px', color: '#8e8e93', marginRight: '8px' }}>{RINGTONES.find(r => r.id === soundSettings.ringtone)?.name || 'Clásico'}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Mi dirección */}
+            <button onClick={() => openEdit('region', userProfile.address || '')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Mi dirección</span>
+              <span style={{ fontSize: '14px', color: '#8e8e93', marginRight: '8px', maxWidth: '160px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{userProfile.address || '—'}</span>
+              <ChevronRight />
+            </button>
+
+            {/* Título de beneficiario */}
+            <button onClick={() => showToast('Configura tu nombre en pagos recibidos', 'info')}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', borderBottom: '0.5px solid #e5e7eb' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>Mi título de beneficiario de ingreso</span>
+              <span style={{ fontSize: '14px', color: '#8e8e93', marginRight: '8px' }}>{userProfile.name || '—'}</span>
+              <ChevronRight />
+            </button>
+
+            {/* EGCoins — equivalente a WeBeans */}
+            <button onClick={() => { setSubView(null); setCurrentView('monedero'); }}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>EGCoins</span>
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth="2" strokeLinecap="round" style={{ marginRight: '8px' }}>
+                <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+              </svg>
+              <ChevronRight />
             </button>
           </div>
-          <div style={{ fontSize: '20px', fontWeight: '600', color: '#111827', marginBottom: '4px' }}>{userProfile.name || 'Usuario'}</div>
-          <div style={{ fontSize: '14px', color: '#8e8e93' }}>{userProfile.phone}</div>
-        </div>
 
-        {/* Campos */}
-        <Card>
-          {[
-            { label: 'Nombre', value: userProfile.name || '—', key: 'name' },
-            { label: 'Teléfono', value: userProfile.phone || '—', key: 'phone' },
-            { label: 'Email', value: userProfile.email || '—', key: 'email' },
-            { label: 'Ciudad', value: userProfile.city || '—', key: 'city' },
-            { label: 'País', value: userProfile.country || 'Guinea Ecuatorial', key: 'country' },
-          ].map((row, i, arr) => (
-            <React.Fragment key={row.key}>
-              <button
-                onClick={() => { setEditedProfile({ ...userProfile }); setIsEditingProfile(true); }}
-                style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none' }}
-              >
-                <span style={{ fontSize: '15px', color: '#8e8e93', minWidth: '90px', textAlign: 'left' }}>{row.label}</span>
-                <span style={{ fontSize: '15px', color: '#111827', flex: 1, textAlign: 'right', marginRight: '8px' }}>{row.value}</span>
-                <ChevronRight />
-              </button>
-              {i < arr.length - 1 && <Divider />}
-            </React.Fragment>
-          ))}
-        </Card>
+          {/* PIN de pagos */}
+          <div style={{ background: '#fff', marginTop: '8px' }}>
+            <button onClick={() => setShowSetupPIN(true)}
+              style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none' }}>
+              <span style={{ flex: 1, fontSize: '16px', color: '#111827', textAlign: 'left' }}>PIN de pagos</span>
+              <span style={{ fontSize: '14px', color: walletPIN.isSet() ? '#07c160' : '#f59e0b', marginRight: '8px' }}>{walletPIN.isSet() ? '✅ Configurado' : '⚠️ Sin PIN'}</span>
+              <ChevronRight />
+            </button>
+          </div>
 
-        {/* Formulario inline */}
-        {isEditingProfile && editedProfile && (
-          <div style={{ margin: '16px', background: '#fff', borderRadius: '12px', padding: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {[
-              { label: 'Nombre', key: 'name', type: 'text' },
-              { label: 'Email', key: 'email', type: 'email' },
-              { label: 'Ciudad', key: 'city', type: 'text' },
-              { label: 'Dirección', key: 'address', type: 'text' },
-            ].map(f => (
-              <div key={f.key}>
-                <div style={{ fontSize: '12px', color: '#8e8e93', marginBottom: '4px' }}>{f.label}</div>
-                <input
-                  type={f.type}
-                  value={editedProfile[f.key] || ''}
-                  onChange={e => setEditedProfile((p: any) => ({ ...p, [f.key]: e.target.value }))}
-                  style={{ width: '100%', padding: '10px 12px', border: '1px solid #e5e7eb', borderRadius: '10px', fontSize: '15px', outline: 'none', boxSizing: 'border-box' }}
-                />
+          {/* Modal edición de campo */}
+          {editingField && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.5)', zIndex: 50, display: 'flex', alignItems: 'flex-end' }}>
+              <div style={{ width: '100%', background: '#fff', borderRadius: '16px 16px 0 0', padding: '20px 16px', paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 20px)' }}>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: '#111827', marginBottom: '16px', textAlign: 'center' }}>
+                  {editingField === 'name' ? 'Nombre' : editingField === 'bio' ? 'Novedades' : editingField === 'gender' ? 'Género' : 'Región'}
+                </div>
+
+                {editingField === 'gender' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    {['Hombre', 'Mujer', 'No especificado'].map(g => (
+                      <button key={g} onClick={() => setFieldVal(g)}
+                        style={{ padding: '12px 16px', borderRadius: '10px', border: fieldVal === g ? '2px solid #07c160' : '1px solid #e5e7eb', background: fieldVal === g ? '#d1fae5' : '#f9fafb', fontSize: '15px', color: '#111827', cursor: 'pointer', outline: 'none', textAlign: 'left' }}>
+                        {g} {fieldVal === g && '✓'}
+                      </button>
+                    ))}
+                  </div>
+                ) : editingField === 'region' ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px', maxHeight: '240px', overflowY: 'auto' }}>
+                    {['Guinea Ecuatorial', 'Camerún', 'Gabón', 'Nigeria', 'España', 'Francia', 'Estados Unidos', 'China', 'Otro'].map(r => (
+                      <button key={r} onClick={() => setFieldVal(r)}
+                        style={{ padding: '12px 16px', borderRadius: '10px', border: fieldVal === r ? '2px solid #07c160' : '1px solid #e5e7eb', background: fieldVal === r ? '#d1fae5' : '#f9fafb', fontSize: '15px', color: '#111827', cursor: 'pointer', outline: 'none', textAlign: 'left' }}>
+                        {r} {fieldVal === r && '✓'}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <input
+                    type="text"
+                    value={fieldVal}
+                    onChange={e => setFieldVal(e.target.value)}
+                    autoFocus
+                    placeholder={editingField === 'bio' ? 'Escribe tu estado...' : 'Escribe tu nombre...'}
+                    style={{ width: '100%', padding: '12px 14px', border: '1.5px solid #07c160', borderRadius: '10px', fontSize: '16px', outline: 'none', boxSizing: 'border-box', marginBottom: '16px' }}
+                  />
+                )}
+
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => setEditingField(null)}
+                    style={{ flex: 1, padding: '13px', background: '#f3f4f6', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', color: '#374151', cursor: 'pointer' }}>
+                    Cancelar
+                  </button>
+                  <button onClick={saveField}
+                    style={{ flex: 1, padding: '13px', background: '#07c160', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', color: '#fff', cursor: 'pointer' }}>
+                    Guardar
+                  </button>
+                </div>
               </div>
-            ))}
-            <div style={{ display: 'flex', gap: '8px' }}>
-              <button onClick={() => { setIsEditingProfile(false); setEditedProfile(null); }}
-                style={{ flex: 1, padding: '12px', background: '#f3f4f6', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '600', color: '#374151', cursor: 'pointer' }}>
-                Cancelar
-              </button>
-              <button onClick={async () => {
-                try {
-                  await authAPI.updateProfile({ full_name: editedProfile.name, avatar_url: editedProfile.avatarUrl });
-                  setUserProfile({ ...editedProfile });
-                  localStorage.setItem('egchat_user_profile', JSON.stringify(editedProfile));
-                  showToast('✓ Perfil actualizado', 'success');
-                } catch (e: any) { showToast(e?.message || 'Error al guardar', 'error'); }
-                setIsEditingProfile(false); setEditedProfile(null);
-              }} style={{ flex: 1, padding: '12px', background: '#07c160', border: 'none', borderRadius: '10px', fontSize: '15px', fontWeight: '700', color: '#fff', cursor: 'pointer' }}>
-                Guardar
-              </button>
             </div>
-          </div>
-        )}
+          )}
 
-        {/* ID & QR */}
-        <SectionHeader label="" />
-        <Card>
-          <div style={{ padding: '14px 16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <span style={{ fontSize: '15px', color: '#111827' }}>Mi ID EGCHAT</span>
-            <span style={{ fontSize: '14px', color: '#8e8e93', fontFamily: 'monospace' }}>{userProfile.id?.slice(0, 10).toUpperCase() || '—'}</span>
-          </div>
-        </Card>
-      </div>
-    ));
+          {/* Modal QR */}
+          {showQR && qrImg && (
+            <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 50, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <div style={{ background: '#fff', borderRadius: '20px', padding: '28px 24px', textAlign: 'center', width: '280px', boxShadow: '0 20px 60px rgba(0,0,0,0.3)' }}>
+                <div style={{ fontSize: '17px', fontWeight: '600', color: '#111827', marginBottom: '6px' }}>Mi código QR</div>
+                <div style={{ fontSize: '13px', color: '#8e8e93', marginBottom: '18px' }}>Escanea para agregarme en EGCHAT</div>
+                <img src={qrImg} alt="QR" style={{ width: '200px', height: '200px', margin: '0 auto 18px', display: 'block', borderRadius: '12px' }} />
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  <button onClick={() => { const a = document.createElement('a'); a.href = qrImg; a.download = `egchat-qr-${userProfile.phone}.png`; a.click(); showToast('QR descargado', 'success'); }}
+                    style={{ flex: 1, padding: '12px', background: '#07c160', border: 'none', borderRadius: '10px', color: '#fff', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                    Descargar
+                  </button>
+                  <button onClick={() => setShowQR(false)}
+                    style={{ flex: 1, padding: '12px', background: '#f3f4f6', border: 'none', borderRadius: '10px', color: '#374151', fontSize: '14px', fontWeight: '600', cursor: 'pointer' }}>
+                    Cerrar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      ));
+    }
 
     // ── SEGURIDAD ──
     if (subView === 'seguridad') return wrap('Seguridad de la cuenta', (
