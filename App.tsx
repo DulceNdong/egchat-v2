@@ -9019,7 +9019,6 @@ const App: React.FC = () => {
           </div>
         );
       case 'ajustes':
-        try {
         return (
           <div style={{ position: 'fixed', inset: 0, zIndex: 1500 }}>
           <ConfiguracionView
@@ -9058,7 +9057,7 @@ const App: React.FC = () => {
             setCurrentSettingsTab={setCurrentSettingsTab}
           />
           </div>
-        ); } catch(e: any) { return <div style={{position:'fixed',inset:0,zIndex:9999,background:'#fff',padding:40,fontSize:18,color:'red',whiteSpace:'pre-wrap',wordBreak:'break-all',overflow:'auto'}}><b>ERROR EN AJUSTES:</b><br/>{String(e?.stack||e?.message||e)}</div>; }
+        );
       case 'Lia-25':
         return (
           <div style={{ position:'fixed', inset:0, zIndex:500 }}>
