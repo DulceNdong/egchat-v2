@@ -94,3 +94,24 @@ export const orderCanales = (ch: { id: string; name: string; color: string }, pk
     amount:        parseFloat(pkg.price.replace(/[^\d]/g, '')) || 0,
     metadata:      { duration: pkg.duration, channels: pkg.channels, price_text: pkg.price },
   });
+
+/** Helper para pago de facturas (SEGESA electricidad, SNGE agua, etc.) */
+export const orderFactura = (bill: {
+  ref: string; service: string; provider: string;
+  amount: number; providerKey?: string; color?: string;
+  clientType?: string; period?: string;
+}) =>
+  createServiceOrder({
+    provider_id:    bill.providerKey || 'segesa',
+    provider_name:  bill.provider,
+    provider_color: bill.color || '#F59E0B',
+    category:       'facturas',
+    package_name:   bill.service,
+    amount:         bill.amount,
+    metadata: {
+      contract_ref: bill.ref,
+      client_type:  bill.clientType || 'residencial',
+      period:       bill.period || new Date().toLocaleDateString('es-GQ', { month: 'long', year: 'numeric' }),
+      bill_amount:  bill.amount,
+    },
+  });

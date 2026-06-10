@@ -1,7 +1,7 @@
 ﻿import React, { useState } from 'react';
 import { useGPS, distanceKm } from './useGPS';
 import { DocUploader, DocFile } from './DocUploader';
-import { orderRecarga, orderInternet, orderCanales } from './src/services/serviceOrders';
+import { orderRecarga, orderInternet, orderCanales, orderFactura } from './src/services/serviceOrders';
 
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
@@ -1631,6 +1631,15 @@ const BILL_CATEGORIES = [
   { id:'otro',    label:'Otro',         provider:'',          icon:'📄', color:'#5A7090' },
 ];
 
+const API_BASE_SVC = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+const getTokenSvc = () => localStorage.getItem('token') || localStorage.getItem('egchat_token_backup') || '';
+
+// Mapeo proveedor → provider_key para las órdenes
+const PROVIDER_KEY_MAP: Record<string, string> = {
+  'SEGESA': 'segesa', 'SNGE': 'snge', 'GETESA': 'getesa',
+  'GEPetrol': 'gepetrol', 'DGI': 'dgi',
+};
+
 export const FacturasModal: React.FC<{ onClose:()=>void; userBalance:number; onDebit:(n:number)=>void }> = ({ onClose, userBalance, onDebit }) => {
   const [screen, setScreen] = React.useState<FScreen>('home');
   const [bills, setBills] = React.useState<Bill[]>([
@@ -1645,6 +1654,14 @@ export const FacturasModal: React.FC<{ onClose:()=>void; userBalance:number; onD
   const [filter, setFilter] = React.useState<'todas'|'pendiente'|'vencida'|'pagada'>('todas');
   const setF = (k:string,v:string) => setForm(p=>({...p,[k]:v}));
 
+  // Comunicados de SEGESA / proveedores de electricidad
+  const [announcements, setAnnouncements] = React.useState<any[]>([]);
+  React.useEffect(() => {
+    fetch(`${API_BASE_SVC}/api/company/public-announcements?category=electricidad,general,mantenimiento,corte`, {
+      headers: { Authorization: `Bearer ${getTokenSvc()}` },
+    }).then(r => r.ok ? r.json() : []).then(d => Array.isArray(d) && setAnnouncements(d.slice(0, 3))).catch(() => {});
+  }, []);
+
   const pending = bills.filter(b=>b.status!=='pagada');
   const totalPending = pending.reduce((s,b)=>s+b.amount,0);
   const overdue = bills.filter(b=>b.status==='vencida');
@@ -1654,6 +1671,17 @@ export const FacturasModal: React.FC<{ onClose:()=>void; userBalance:number; onD
     if(!selected||!payMethod) return;
     onDebit(selected.amount);
     setBills(p=>p.map(b=>b.id===selected.id?{...b,status:'pagada' as const}:b));
+    // Enviar orden al backend (fire-and-forget — no bloquea la UI)
+    if (payMethod === 'wallet') {
+      orderFactura({
+        ref:         selected.ref,
+        service:     selected.service,
+        provider:    selected.provider,
+        amount:      selected.amount,
+        providerKey: PROVIDER_KEY_MAP[selected.provider] || selected.provider.toLowerCase(),
+        color:       selected.color,
+      }).catch(() => {});
+    }
     setScreen('success');
   };
 
@@ -1719,6 +1747,27 @@ export const FacturasModal: React.FC<{ onClose:()=>void; userBalance:number; onD
                 <button key={f} onClick={()=>setFilter(f)} style={{flex:1,background:filter===f?'#C47D2A':'#fff',border:`1px solid ${filter===f?'#C47D2A':'#E5E7EB'}`,borderRadius:'8px',padding:'6px 4px',fontSize:'10px',fontWeight:'700',color:filter===f?'#fff':'#6B7280',cursor:'pointer',textTransform:'capitalize'}}>{f}</button>
               ))}
             </div>
+
+            {/* Comunicados de SEGESA / empresas */}
+            {announcements.length > 0 && (
+              <div style={{marginBottom:'12px'}}>
+                <div style={{fontSize:'11px',fontWeight:'700',color:'#9CA3AF',marginBottom:'6px',letterSpacing:'0.5px',textTransform:'uppercase'}}>📢 Avisos de proveedores</div>
+                {announcements.map((a: any) => {
+                  const catColor: Record<string,string> = { general:'#1485EE', mantenimiento:'#FA8C16', corte:'#FF4D4F', aviso:'#722ED1', oferta:'#52C41A' };
+                  const cc = catColor[a.category] || '#1485EE';
+                  return (
+                    <div key={a.id} style={{background:'#fff',borderRadius:'12px',padding:'11px 13px',marginBottom:'6px',border:`1.5px solid ${cc}22`,boxShadow:'0 1px 4px rgba(0,0,0,0.05)'}}>
+                      <div style={{display:'flex',alignItems:'center',gap:'8px',marginBottom:'3px'}}>
+                        <span style={{background:`${cc}18`,color:cc,borderRadius:'6px',padding:'2px 8px',fontSize:'9px',fontWeight:'700',textTransform:'uppercase'}}>{a.category}</span>
+                        <span style={{fontSize:'10px',color:'#9CA3AF'}}>{a.provider_name || 'SEGESA'}</span>
+                      </div>
+                      <div style={{fontSize:'13px',fontWeight:'700',color:'#111827',marginBottom:'2px'}}>{a.title}</div>
+                      <div style={{fontSize:'12px',color:'#6B7280',lineHeight:1.5}}>{a.body?.slice(0,100)}{a.body?.length > 100 ? '...' : ''}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
 
             {/* Lista de facturas */}
             {filtered.length===0?(
