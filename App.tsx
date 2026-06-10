@@ -1275,25 +1275,20 @@ const App: React.FC = () => {
       let dbg = document.getElementById('__kbdebug');
       if (dbg) dbg.remove(); // quitar debug
 
-      // PWA (no IPA): mover input bar cuando sube el teclado
+      // iOS PWA (no IPA nativa): el teclado se gestiona con env(keyboard-inset-height) en CSS
+      // Solo ocultamos el tab bar y hacemos scroll al fondo
+      const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
       if (isIOS && !isCapacitor) {
-        const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
         const isInChat = !!document.querySelector('.chat-view-container');
         if (keyboardH > 80) {
-          // Teclado visible: subir barra con bottom
-          if (chatBar) { chatBar.style.bottom = `${keyboardH}px`; chatBar.style.transform = ''; }
           if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
-            messagesScroll.style.paddingBottom = `${keyboardH + 72}px`;
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
           }
         } else {
-          // Teclado oculto — restaurar todo siempre
-          if (chatBar) { chatBar.style.bottom = '0px'; chatBar.style.transform = ''; }
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
-          if (messagesScroll) messagesScroll.style.paddingBottom = '';
         }
       }
 
@@ -5666,7 +5661,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)' : '60px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 72px + env(keyboard-inset-height, 0px))' : '60px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
@@ -6638,10 +6633,10 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Input bar — position: fixed, teclado lo mueve con translateY */}
+              {/* Input bar — position: fixed, usa env(keyboard-inset-height) para iOS PWA */}
               <div id="chat-input-bar" style={{
                 position: 'fixed',
-                bottom: 0,
+                bottom: 'env(keyboard-inset-height, 0px)',
                 left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
                 right: 0,
                 background: device.isMobile ? '#d1d3d9' : '#f0f2f5',
