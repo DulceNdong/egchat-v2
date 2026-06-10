@@ -1265,6 +1265,11 @@ const App: React.FC = () => {
       const keyboardH = Math.max(0, winH - visibleH - vvTop);
       document.documentElement.style.setProperty('--keyboard-offset', `${keyboardH}px`);
 
+      // DEBUG temporal — mostrar valores en pantalla
+      let dbg = document.getElementById('__kbdebug');
+      if (!dbg) { dbg = document.createElement('div'); dbg.id = '__kbdebug'; dbg.style.cssText = 'position:fixed;top:50%;left:0;right:0;background:rgba(0,0,0,0.85);color:#0f0;font-size:13px;padding:8px 12px;z-index:99999;font-family:monospace;text-align:center;transform:translateY(-50%)'; document.body.appendChild(dbg); }
+      dbg.textContent = `winH:${winH} vvH:${Math.round(vvH)} vvTop:${Math.round(vvTop)} kbH:${Math.round(keyboardH)} isIOS:${isIOS} cap:${!!(window as any).Capacitor?.isNativePlatform?.()}`;
+
       // Actualizar height del contenedor de chat en tiempo real
       // NO cambiar height — causa que el container tape el header
       // El header es position:fixed zIndex:1102, siempre visible encima del container
