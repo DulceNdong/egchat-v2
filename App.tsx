@@ -1249,7 +1249,8 @@ const App: React.FC = () => {
       // Actualizar height del contenedor de chat en tiempo real
       const chatContainer = document.querySelector('.chat-view-container') as HTMLElement | null;
       if (chatContainer && isIOS) {
-        chatContainer.style.height = `${visibleH}px`;
+        // NO cambiar height — top:0/bottom:0 fijos son suficientes
+        // El scroll interno se ajusta con paddingBottom
       }
 
       // iOS PWA (no IPA nativa): mover la barra de input encima del teclado
@@ -5458,7 +5459,7 @@ const App: React.FC = () => {
               bottom: 0,
               display: 'flex', 
               flexDirection: 'column', 
-              overflow: 'hidden',
+              overflow: 'visible',
               background: '#f0f2f5',
               zIndex: 1100,
             }} onClick={() => { if(showChatMenu) setShowChatMenu(false); }}>
@@ -5636,7 +5637,7 @@ const App: React.FC = () => {
                     else setShowScrollBottom(el.scrollHeight - el.scrollTop - el.clientHeight > 200);
                   }; }
                 }}
-                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 72px)' : '60px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
+                style={{ flex: 1, minHeight: 0, overflowY: 'scroll', overflowX: 'hidden', WebkitOverflowScrolling: 'touch' as any, padding: '10px 10px 8px', paddingTop: device.isMobile ? '88px' : '70px', paddingBottom: device.isMobile ? 'calc(env(safe-area-inset-bottom, 0px) + 72px + var(--keyboard-offset, 0px))' : '60px', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end', gap: '3px', position: 'relative', zIndex: 1, background: getActiveChatWallpaper() === 'none' ? 'linear-gradient(160deg,#f0fdf9 0%,#f5f3ff 50%,#fdf2f8 100%)' : 'transparent' }}
               >
                 {(() => {
                   const sorted = [...msgs].filter((m,i,a)=>a.findIndex((x:any)=>x.id===m.id)===i).sort((a:any,b:any)=>{const ts=(m:any)=>{if(m.created_at){const d=new Date(m.created_at);if(!isNaN(d.getTime()))return d.getTime();}if(m.timestamp){const d=new Date(m.timestamp);if(!isNaN(d.getTime()))return d.getTime();}const n=parseInt((m.id?.toString()||"").replace(/\D/g,"")||"0");return n>1e12?n:0;};return ts(a)-ts(b);});
