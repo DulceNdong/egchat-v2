@@ -1252,34 +1252,37 @@ const App: React.FC = () => {
         chatContainer.style.height = `${visibleH}px`;
       }
 
-      // PWA (no IPA): mover input bar y ocultar tab bar cuando sube el teclado
-      // En IPA esto lo hace el Capacitor Keyboard listener — aquí solo PWA
+      // PWA (no IPA): mover input bar cuando sube el teclado
+      // En IPA nativo esto lo gestiona el Capacitor Keyboard listener
+      // Aquí cubrimos: iOS PWA, Android PWA, Chrome desktop
       const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
-      if (isIOS && !isCapacitor) {
+      if (!isCapacitor) {
         const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const chatHeader = document.querySelector('.chat-header-fixed') as HTMLElement | null;
-        if (keyboardH > 100) {
-          // Teclado visible
-          if (chatBar) chatBar.style.transform = `translateY(-${keyboardH}px)`;
+        const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+        if (keyboardH > 80) {
+          // Teclado visible — subir la barra justo encima del teclado
+          if (chatBar) {
+            chatBar.style.transform = `translateY(-${keyboardH}px)`;
+            chatBar.style.transition = 'transform 0.15s ease';
+          }
           if (tabBar) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
-          // Fijar el header al top real del viewport (no al del visualViewport encogido)
           if (chatHeader) chatHeader.style.top = `${vvTop}px`;
+          // Reducir área de mensajes para que no queden tapados
+          if (messagesScroll) {
+            messagesScroll.style.maxHeight = `${visibleH - (chatBar?.offsetHeight || 56) - (chatHeader?.offsetHeight || 88)}px`;
+            setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
+          }
         } else {
-          // Teclado oculto — restaurar
-          if (chatBar) chatBar.style.transform = 'translateY(0)';
+          // Teclado oculto — restaurar todo
+          if (chatBar) {
+            chatBar.style.transform = 'translateY(0)';
+            chatBar.style.transition = 'transform 0.15s ease';
+          }
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
           if (chatHeader) chatHeader.style.top = '0px';
-        }
-      }
-
-      // iOS: scroll al fondo cuando sube el teclado
-      if (isIOS && keyboardH > 100) {
-        const scroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
-        if (scroll) {
-          requestAnimationFrame(() => { scroll.scrollTop = scroll.scrollHeight; });
-          setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 100);
-          setTimeout(() => { scroll.scrollTop = scroll.scrollHeight; }, 250);
+          if (messagesScroll) messagesScroll.style.maxHeight = '';
         }
       }
     };
