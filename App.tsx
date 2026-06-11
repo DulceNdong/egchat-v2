@@ -1292,17 +1292,21 @@ const App: React.FC = () => {
 
       // iOS PWA (no IPA nativa): el teclado se gestiona con env(keyboard-inset-height) en CSS
       // Solo ocultamos el tab bar y hacemos scroll al fondo
-      const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
-      if (isIOS && !isCapacitor) {
+      const isCapacitor2 = !!(window as any).Capacitor?.isNativePlatform?.();
+      if (isIOS && !isCapacitor2) {
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
+        const chatHeader = document.querySelector('.chat-header-fixed') as HTMLElement | null;
         const isInChat = !!document.querySelector('.chat-view-container');
         if (keyboardH > 80) {
+          // Anclar header al visual viewport — vvTop es el desplazamiento del viewport
+          if (chatHeader) chatHeader.style.top = `${vvTop}px`;
           if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
           }
         } else {
+          if (chatHeader) chatHeader.style.top = '0px';
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
         }
       }
