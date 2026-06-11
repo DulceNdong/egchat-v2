@@ -377,7 +377,22 @@ const App: React.FC = () => {
       const cached = localStorage.getItem('egchat_chats_cache');
       if (cached) {
         const parsed = JSON.parse(cached);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          // Precargar avatares en cache del browser inmediatamente
+          setTimeout(() => {
+            const urls = new Set<string>();
+            parsed.forEach((chat: any) => {
+              if (chat.avatar_url) urls.add(chat.avatar_url);
+              if (chat.avatarUrl) urls.add(chat.avatarUrl);
+              (chat.participants || []).forEach((p: any) => {
+                if (p.avatar_url) urls.add(p.avatar_url);
+                if (p.users?.avatar_url) urls.add(p.users.avatar_url);
+              });
+            });
+            urls.forEach(url => { if (url) { const img = new Image(); img.src = url; } });
+          }, 0);
+          return parsed;
+        }
       }
     } catch {}
     return [];
@@ -9343,6 +9358,10 @@ const App: React.FC = () => {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) {
           setAllContacts(parsed);
+          // Precargar avatares de contactos en background
+          setTimeout(() => {
+            parsed.forEach((c: any) => { if (c.avatarUrl) { const img = new Image(); img.src = c.avatarUrl; } });
+          }, 100);
         }
       }
     } catch {}

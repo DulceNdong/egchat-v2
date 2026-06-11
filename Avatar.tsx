@@ -51,6 +51,9 @@ export const Avatar: React.FC<AvatarProps> = ({
     <div style={{ position: 'relative', width: size, height: size, flexShrink: 0, ...style }}>
       {photo ? (
         <img src={photo} alt={name}
+          loading="eager"
+          fetchPriority="high"
+          decoding="async"
           style={{ width: size, height: size, borderRadius: '50%', objectFit: 'cover', display: 'block' }}
           onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
         />
