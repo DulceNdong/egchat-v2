@@ -1297,16 +1297,20 @@ const App: React.FC = () => {
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
         const messagesScroll = document.querySelector('.chat-messages-scroll') as HTMLElement | null;
         const chatHeader = document.querySelector('.chat-header-fixed') as HTMLElement | null;
+        const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const isInChat = !!document.querySelector('.chat-view-container');
         if (keyboardH > 80) {
-          // Anclar header al visual viewport — vvTop es el desplazamiento del viewport
+          // Anclar header al visual viewport
           if (chatHeader) chatHeader.style.top = `${vvTop}px`;
+          // Subir barra encima del teclado
+          if (chatBar) chatBar.style.bottom = `${keyboardH}px`;
           if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
           }
         } else {
           if (chatHeader) chatHeader.style.top = '0px';
+          if (chatBar) chatBar.style.bottom = '0px';
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
         }
       }
@@ -6652,10 +6656,10 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Input bar — position: fixed, usa env(keyboard-inset-height) para iOS PWA */}
+              {/* Input bar — position: fixed */}
               <div id="chat-input-bar" style={{
                 position: 'fixed',
-                bottom: 'env(keyboard-inset-height, 0px)',
+                bottom: 0,
                 left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
                 right: 0,
                 background: device.isMobile ? '#d1d3d9' : '#f0f2f5',
