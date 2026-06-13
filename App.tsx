@@ -1311,7 +1311,8 @@ const App: React.FC = () => {
             chatHeader.style.top = `${vvTop}px`;
             chatHeader.style.paddingTop = '8px';
           }
-          if (chatBar) chatBar.style.bottom = `${effectiveKbH}px`;
+          // Usar CSS variable para que sobreviva re-renders de React
+          document.documentElement.style.setProperty('--chat-bar-bottom', `${effectiveKbH}px`);
           if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
@@ -1319,7 +1320,7 @@ const App: React.FC = () => {
         } else if (keyboardH === 0 && vvTop === 0) {
           // Solo restaurar cuando ambos son 0 — teclado definitivamente bajó
           if (chatHeader) { chatHeader.style.top = '0px'; chatHeader.style.paddingTop = ''; }
-          if (chatBar) chatBar.style.bottom = '0px';
+          document.documentElement.style.setProperty('--chat-bar-bottom', '0px');
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
         }
       }
@@ -6665,10 +6666,10 @@ const App: React.FC = () => {
                 </div>
               )}
 
-              {/* Input bar — position: fixed */}
+              {/* Input bar — bottom controlado por CSS variable para sobrevivir re-renders */}
               <div id="chat-input-bar" style={{
                 position: 'fixed',
-                bottom: 0,
+                bottom: 'var(--chat-bar-bottom, 0px)',
                 left: device.isMobile ? 0 : (device.isTablet ? '72px' : '240px'),
                 right: 0,
                 background: device.isMobile ? '#d1d3d9' : '#f0f2f5',
