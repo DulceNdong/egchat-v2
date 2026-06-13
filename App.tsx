@@ -1290,8 +1290,7 @@ const App: React.FC = () => {
       let dbg = document.getElementById('__kbdebug');
       if (dbg) dbg.remove(); // quitar debug
 
-      // iOS PWA (no IPA nativa): el teclado se gestiona con env(keyboard-inset-height) en CSS
-      // Solo ocultamos el tab bar y hacemos scroll al fondo
+      // iOS PWA (no IPA nativa)
       const isCapacitor2 = !!(window as any).Capacitor?.isNativePlatform?.();
       if (isIOS && !isCapacitor2) {
         const tabBar = document.querySelector('[data-bottom-nav="true"]') as HTMLElement | null;
@@ -1299,23 +1298,27 @@ const App: React.FC = () => {
         const chatHeader = document.querySelector('.chat-header-fixed') as HTMLElement | null;
         const chatBar = document.querySelector('#chat-input-bar') as HTMLElement | null;
         const isInChat = !!document.querySelector('.chat-view-container');
-        if (keyboardH > 80) {
-          // Anclar header al visual viewport
+
+        // iOS dispara dos eventos al subir el teclado:
+        // 1) vvH=896, keyboardH=0 (falso — viewport aún no se actualizó)
+        // 2) vvH=551, keyboardH=345, vvTop=297 (correcto)
+        // Ignorar el primer evento si vvTop > 0 pero keyboardH = 0
+        // También ignorar si el teclado está subiendo pero keyboardH parece 0 temporalmente
+        const effectiveKbH = vvTop > 50 ? Math.max(keyboardH, vvTop) : keyboardH;
+
+        if (effectiveKbH > 80) {
           if (chatHeader) {
             chatHeader.style.top = `${vvTop}px`;
-            chatHeader.style.paddingTop = '8px'; // sin safe-area cuando ya está desplazado
+            chatHeader.style.paddingTop = '8px';
           }
-          // Subir barra encima del teclado
-          if (chatBar) chatBar.style.bottom = `${keyboardH}px`;
+          if (chatBar) chatBar.style.bottom = `${effectiveKbH}px`;
           if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
           if (messagesScroll) {
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
           }
-        } else {
-          if (chatHeader) {
-            chatHeader.style.top = '0px';
-            chatHeader.style.paddingTop = ''; // restaurar al CSS original
-          }
+        } else if (keyboardH === 0 && vvTop === 0) {
+          // Solo restaurar cuando ambos son 0 — teclado definitivamente bajó
+          if (chatHeader) { chatHeader.style.top = '0px'; chatHeader.style.paddingTop = ''; }
           if (chatBar) chatBar.style.bottom = '0px';
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
         }
