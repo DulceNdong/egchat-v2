@@ -7,21 +7,20 @@ async function pickProfilePhoto(onResult: (dataUrl: string) => void) {
   const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
   if (isCapacitor) {
     try {
-      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
-      // Mostrar action sheet: galería o cámara
-      const photo = await Camera.getPhoto({
-        quality: 85,
-        allowEditing: true,
-        resultType: CameraResultType.DataUrl,
-        source: CameraSource.Prompt, // pregunta: cámara o galería
-      });
-      if (photo.dataUrl) onResult(photo.dataUrl);
-      return;
-    } catch (e) {
-      // Si falla Capacitor Camera, caer al input file
-    }
+      // Usar Capacitor Camera API si está disponible en el contexto nativo
+      const CapCamera = (window as any).Capacitor?.Plugins?.Camera;
+      if (CapCamera) {
+        const photo = await CapCamera.getPhoto({
+          quality: 85,
+          allowEditing: true,
+          resultType: 'dataUrl',
+          source: 'PROMPT',
+        });
+        if (photo?.dataUrl) { onResult(photo.dataUrl); return; }
+      }
+    } catch {}
   }
-  // Web / fallback
+  // Web / fallback universal
   const i = document.createElement('input');
   i.type = 'file';
   i.accept = 'image/*';
@@ -29,13 +28,10 @@ async function pickProfilePhoto(onResult: (dataUrl: string) => void) {
   document.body.appendChild(i);
   i.onchange = () => {
     const f = i.files?.[0];
-    if (f) {
-      const r = new FileReader();
-      r.onload = e => { onResult(e.target?.result as string); };
-      r.readAsDataURL(f);
-    }
-    document.body.removeChild(i);
+    if (f) { const r = new FileReader(); r.onload = e => { onResult(e.target?.result as string); }; r.readAsDataURL(f); }
+    try { document.body.removeChild(i); } catch {}
   };
+  i.addEventListener('cancel', () => { try { document.body.removeChild(i); } catch {} });
   i.click();
 }
 
