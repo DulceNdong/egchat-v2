@@ -2,6 +2,43 @@ import React, { useState } from 'react';
 import { authAPI } from './api';
 import QRCode from 'qrcode';
 
+// Helper: abrir galería/cámara compatible con Android APK (Capacitor) y web
+async function pickProfilePhoto(onResult: (dataUrl: string) => void) {
+  const isCapacitor = !!(window as any).Capacitor?.isNativePlatform?.();
+  if (isCapacitor) {
+    try {
+      const { Camera, CameraResultType, CameraSource } = await import('@capacitor/camera');
+      // Mostrar action sheet: galería o cámara
+      const photo = await Camera.getPhoto({
+        quality: 85,
+        allowEditing: true,
+        resultType: CameraResultType.DataUrl,
+        source: CameraSource.Prompt, // pregunta: cámara o galería
+      });
+      if (photo.dataUrl) onResult(photo.dataUrl);
+      return;
+    } catch (e) {
+      // Si falla Capacitor Camera, caer al input file
+    }
+  }
+  // Web / fallback
+  const i = document.createElement('input');
+  i.type = 'file';
+  i.accept = 'image/*';
+  i.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;opacity:0;';
+  document.body.appendChild(i);
+  i.onchange = () => {
+    const f = i.files?.[0];
+    if (f) {
+      const r = new FileReader();
+      r.onload = e => { onResult(e.target?.result as string); };
+      r.readAsDataURL(f);
+    }
+    document.body.removeChild(i);
+  };
+  i.click();
+}
+
 // ─── Types ───────────────────────────────────
 type SubView =
   | null | 'perfil' | 'seguridad' | 'privacidad' | 'notificaciones'
@@ -170,7 +207,7 @@ const PerfilView = (p: ConfiguracionViewProps & { onBack: () => void; padTop: st
         {/* ── Sección 1: identidad ── */}
         <Card>
           {/* Foto */}
-          <button onClick={() => { const i = document.createElement('input'); i.type = 'file'; i.accept = 'image/*'; i.onchange = () => { const f = i.files?.[0]; if (f) { const r = new FileReader(); r.onload = e => p.setAvatarCropUrl(e.target?.result as string); r.readAsDataURL(f); } }; i.click(); }}
+          <button onClick={() => pickProfilePhoto(url => p.setAvatarCropUrl(url))}
             style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', textAlign: 'left' }}>
             <span style={{ flex: 1, fontSize: 16, color: '#111827' }}>Foto de perfil</span>
             <div style={{ width: 52, height: 52, borderRadius: 6, overflow: 'hidden', background: 'linear-gradient(135deg,#07c160,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0 }}>

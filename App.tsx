@@ -1301,7 +1301,10 @@ const App: React.FC = () => {
         const isInChat = !!document.querySelector('.chat-view-container');
         if (keyboardH > 80) {
           // Anclar header al visual viewport
-          if (chatHeader) chatHeader.style.top = `${vvTop}px`;
+          if (chatHeader) {
+            chatHeader.style.top = `${vvTop}px`;
+            chatHeader.style.paddingTop = '8px'; // sin safe-area cuando ya está desplazado
+          }
           // Subir barra encima del teclado
           if (chatBar) chatBar.style.bottom = `${keyboardH}px`;
           if (tabBar && isInChat) { tabBar.style.visibility = 'hidden'; tabBar.style.pointerEvents = 'none'; }
@@ -1309,7 +1312,10 @@ const App: React.FC = () => {
             setTimeout(() => { if (messagesScroll) messagesScroll.scrollTop = messagesScroll.scrollHeight; }, 50);
           }
         } else {
-          if (chatHeader) chatHeader.style.top = '0px';
+          if (chatHeader) {
+            chatHeader.style.top = '0px';
+            chatHeader.style.paddingTop = ''; // restaurar al CSS original
+          }
           if (chatBar) chatBar.style.bottom = '0px';
           if (tabBar) { tabBar.style.visibility = 'visible'; tabBar.style.pointerEvents = 'auto'; }
         }
