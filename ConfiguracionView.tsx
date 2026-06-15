@@ -159,7 +159,7 @@ const PerfilView = (p: ConfiguracionViewProps & { onBack: () => void; padTop: st
     if (!editingField) return;
     try {
       if (editingField === 'name') {
-        await authAPI.updateProfile({ full_name: fieldVal, avatar_url: p.userProfile.avatarUrl });
+        await authAPI.updateProfile({ full_name: fieldVal, avatar_url: p.userProfile.avatarUrl || p.userProfile.avatar_url });
         const updated = { ...p.userProfile, name: fieldVal };
         p.setUserProfile(updated);
         localStorage.setItem('egchat_user_profile', JSON.stringify(updated));
@@ -207,8 +207,8 @@ const PerfilView = (p: ConfiguracionViewProps & { onBack: () => void; padTop: st
             style={{ width: '100%', display: 'flex', alignItems: 'center', padding: '14px 16px', background: 'none', border: 'none', cursor: 'pointer', outline: 'none', textAlign: 'left' }}>
             <span style={{ flex: 1, fontSize: 16, color: '#111827' }}>Foto de perfil</span>
             <div style={{ width: 52, height: 52, borderRadius: 6, overflow: 'hidden', background: 'linear-gradient(135deg,#07c160,#00b4e6)', display: 'flex', alignItems: 'center', justifyContent: 'center', marginRight: 10, flexShrink: 0 }}>
-              {p.userProfile.avatarUrl
-                ? <img src={p.userProfile.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {p.userProfile.avatarUrl || p.userProfile.avatar_url
+                ? <img src={p.userProfile.avatarUrl || p.userProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span style={{ fontSize: 20, fontWeight: 700, color: '#fff' }}>{p.userProfile.avatar || 'U'}</span>}
             </div>
             <Chevron />
@@ -1037,8 +1037,8 @@ export const ConfiguracionView: React.FC<ConfiguracionViewProps> = (props) => {
           <button onClick={() => setSubView('perfil')}
             style={{ width: '100%', background: '#fff', padding: '14px 16px', display: 'flex', alignItems: 'center', gap: 14, border: 'none', cursor: 'pointer', outline: 'none', marginBottom: 1 }}>
             <div style={{ width: 56, height: 56, borderRadius: '50%', background: 'linear-gradient(135deg,#07c160,#00b4e6)', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 22, fontWeight: 700, color: '#fff', flexShrink: 0, border: '2px solid #fff', boxShadow: '0 2px 8px rgba(0,0,0,.12)' }}>
-              {userProfile.avatarUrl
-                ? <img src={userProfile.avatarUrl} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+              {userProfile.avatarUrl || userProfile.avatar_url
+                ? <img src={userProfile.avatarUrl || userProfile.avatar_url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
                 : <span>{userProfile.avatar || 'U'}</span>}
             </div>
             <div style={{ flex: 1, textAlign: 'left' }}>

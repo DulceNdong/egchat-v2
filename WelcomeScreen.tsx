@@ -124,7 +124,7 @@ export const WelcomeScreen: React.FC<Props> = ({ onComplete }) => {
             alignItems: 'center',
             justifyContent: 'center',
             boxShadow: '0 20px 60px rgba(0, 0, 0, 0.2)',
-            animation: 'spin 2s linear infinite',
+            animation: 'spin 60s linear infinite',
             backdropFilter: 'blur(10px)',
             border: '1px solid rgba(255, 255, 255, 0.2)',
             overflow: 'hidden'
@@ -232,7 +232,7 @@ export const WelcomeScreen: React.FC<Props> = ({ onComplete }) => {
                 alignItems: 'center',
                 justifyContent: 'center',
                 boxShadow: '0 8px 32px rgba(0, 0, 0, 0.2)',
-                animation: 'spin 2s linear infinite',
+                animation: 'spin 60s linear infinite',
                 backdropFilter: 'blur(10px)',
                 border: '1px solid rgba(255, 255, 255, 0.2)',
                 overflow: 'hidden'

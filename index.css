@@ -1176,7 +1176,10 @@ input[type="button"],
   /* Detectar Android via UA en JS y añadir clase al body */
   body.android-app * {
     transition-duration: 0.05s !important;
-    animation-duration: 0.1s !important;
+  }
+  body.android-app img[style*="spin"],
+  body.android-app [style*="animation: spin"] {
+    animation-duration: 60s !important;
   }
   body.android-app .eg-card:hover {
     transform: none !important;

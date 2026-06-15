@@ -79,6 +79,41 @@ import { initPredictiveBack, pushView, clearHistory } from './predictive-back-ma
 // Helper para rutas de assets — funciona en web, Capacitor y Electron
 const asset = (path: string) => (window.location.protocol === 'file:' ? '.' : '') + path;
 
+const getTokenUserId = (): string => {
+  try {
+    const token = localStorage.getItem('token') || localStorage.getItem('egchat_token_backup') || '';
+    if (!token || !token.includes('.')) return '';
+    const payload = JSON.parse(atob(token.split('.')[1]));
+    return (payload.id || payload.sub || '').toString();
+  } catch {
+    return '';
+  }
+};
+
+const normalizeUserProfile = (user: any, fallback: any = {}) => {
+  const rawName = (user?.full_name || user?.name || fallback?.name || '').trim();
+  const phone = user?.phone || fallback?.phone || '';
+  const displayName = rawName || phone || 'Usuario';
+  const avatarUrl = user?.avatar_url || user?.avatarUrl || fallback?.avatarUrl || fallback?.avatar_url || localStorage.getItem('user_avatar') || '';
+  return {
+    id: user?.id || fallback?.id || '',
+    name: displayName,
+    full_name: displayName,
+    email: user?.email || fallback?.email || '',
+    phone,
+    country: user?.country || fallback?.country || 'Guinea Ecuatorial',
+    city: user?.city || fallback?.city || '',
+    address: user?.address || fallback?.address || '',
+    avatar: displayName.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase() || 'U',
+    avatarUrl,
+    avatar_url: avatarUrl,
+    joinDate: fallback?.joinDate || new Date().toLocaleDateString('es-ES'),
+    verificationStatus: fallback?.verificationStatus || 'pending',
+    twoFactorEnabled: !!fallback?.twoFactorEnabled,
+    notificationsEnabled: fallback?.notificationsEnabled !== false,
+  };
+};
+
 // ── SwipeChatItem — swipe derecha: No leído / Desarchivar | swipe izquierda: Archivar / Eliminar ──
 // React.memo evita re-renders cuando el padre actualiza estado no relacionado (toast, polling, etc.)
 const SwipeChatItem = React.memo<{
@@ -1124,14 +1159,10 @@ const App: React.FC = () => {
       const saved = localStorage.getItem('egchat_user_profile');
       if (saved) {
         const p = JSON.parse(saved);
-        return {
-          id: p.id || '', name: p.name || 'Usuario', email: p.email || '',
-          phone: p.phone || '', country: p.country || 'Guinea Ecuatorial',
-          city: p.city || '', address: p.address || '',
-          avatar: p.avatar || 'U', avatarUrl: p.avatarUrl || localStorage.getItem('user_avatar') || '',
-          joinDate: p.joinDate || new Date().toLocaleDateString('es-ES'),
-          verificationStatus: 'pending', twoFactorEnabled: false, notificationsEnabled: true,
-        };
+        const tokenUserId = getTokenUserId();
+        if (!tokenUserId || !p.id || p.id === tokenUserId) {
+          return normalizeUserProfile(p);
+        }
       }
     } catch {}
     return {
@@ -1142,6 +1173,15 @@ const App: React.FC = () => {
     };
   });
   // -- Bandera del país por prefijo telefónico ------------------
+  const applyProfileAvatar = useCallback((avatarUrl: string) => {
+    localStorage.setItem('user_avatar', avatarUrl);
+    setUserProfile((prev: any) => {
+      const updated = { ...prev, avatarUrl, avatar_url: avatarUrl };
+      try { localStorage.setItem('egchat_user_profile', JSON.stringify(updated)); } catch {}
+      return updated;
+    });
+  }, []);
+
   const PHONE_PREFIX_COUNTRY: Record<string, string> = {
     '+240':'GQ','+237':'CM','+241':'GA','+234':'NG',
     '+34':'ES','+33':'FR','+44':'GB','+1':'US',
@@ -3174,7 +3214,7 @@ const App: React.FC = () => {
               <img 
                 src="/logo-transparent.png" 
                 alt="EGCHAT Logo" 
-                style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', animation: 'spin 6s linear infinite', willChange: 'transform', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
+                style={{ width: '36px', height: '36px', borderRadius: '50%', objectFit: 'cover', animation: 'spin 60s linear infinite', willChange: 'transform', transform: 'translateZ(0)', backfaceVisibility: 'hidden' }}
               />
             </div>
             <div style={{ display: 'flex', alignItems: 'baseline', gap: '1px', marginLeft: '4px' }}>
@@ -9505,12 +9545,16 @@ const App: React.FC = () => {
     if (cachedProfile) {
       try {
         const p = JSON.parse(cachedProfile);
+        const tokenUserId = getTokenUserId();
         // Si el nombre guardado es genérico, no usarlo — esperar al fetch real
         const isGeneric = !p.name || p.name.trim().toLowerCase() === 'usuario';
-        if (!isGeneric) {
-          setUserProfile((prev: any) => ({ ...prev, ...p }));
+        if ((!tokenUserId || !p.id || p.id === tokenUserId) && !isGeneric) {
+          setUserProfile((prev: any) => ({ ...prev, ...normalizeUserProfile(p, prev) }));
+        } else if (tokenUserId && p.id && p.id !== tokenUserId) {
+          localStorage.removeItem('egchat_user_profile');
+          localStorage.removeItem('user_avatar');
         }
-        if (p.id) currentUserId.current = p.id;
+        if ((!tokenUserId || p.id === tokenUserId) && p.id) currentUserId.current = p.id;
       } catch {}
     }
     // Manejar link de añadir contacto desde QR: /add?phone=...&name=...&id=...
@@ -9569,20 +9613,10 @@ const App: React.FC = () => {
       if (u?.id) {
         currentUserId.current = u.id;
         localStorage.setItem('egchat_user_id', u.id);
-        const savedAvatar = localStorage.getItem('user_avatar') || u.avatar_url || '';
-        // Si el nombre es vacío, "Usuario" o genérico, usar el número de teléfono
-        const rawName = u.full_name || '';
-        const isGenericName = !rawName || rawName.trim() === '' || rawName.trim().toLowerCase() === 'usuario';
-        const displayName = isGenericName ? (u.phone || 'Usuario') : rawName;
-        const profile = {
-          id: u.id,
-          name: displayName,
-          phone: u.phone || '',
-          avatar: displayName.split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
-          avatarUrl: savedAvatar,
-        };
+        const profile = normalizeUserProfile(u);
+        if (profile.avatarUrl) localStorage.setItem('user_avatar', profile.avatarUrl);
         setUserProfile((prev: any) => ({ ...prev, ...profile }));
-        // Guardar en localStorage para persistencia offline
+        // Perfil normalizado: evita mostrar datos cacheados de otra cuenta.
         localStorage.setItem('egchat_user_profile', JSON.stringify(profile));
       }
     }).catch((_e: any) => {
@@ -9973,14 +10007,15 @@ const App: React.FC = () => {
       return;
     }
     if (user) {
-      const savedAvatar = localStorage.getItem('user_avatar') || user.avatar_url || '';
+      const profile = normalizeUserProfile(user);
+      if (profile.id) {
+        currentUserId.current = profile.id;
+        localStorage.setItem('egchat_user_id', profile.id);
+      }
+      if (profile.avatarUrl) localStorage.setItem('user_avatar', profile.avatarUrl);
       // Guardar datos del usuario para restauración rápida en próxima apertura
-      try { localStorage.setItem('egchat_user_profile', JSON.stringify(user)); } catch {}
-      setUserProfile((prev: any) => ({
-        ...prev, id: user.id||prev.id, name: user.full_name||prev.name, phone: user.phone||prev.phone,
-        avatar: (user.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
-        avatarUrl: savedAvatar,
-      }));
+      try { localStorage.setItem('egchat_user_profile', JSON.stringify(profile)); } catch {}
+      setUserProfile((prev: any) => ({ ...prev, ...profile }));
       // Mostrar modal de importación de contactos solo en el primer registro
       const isNewRegistration = !localStorage.getItem('egchat_contacts_imported');
       if (isNewRegistration) {
@@ -11281,8 +11316,7 @@ const App: React.FC = () => {
           imageUrl={avatarCropUrl}
           onClose={() => setAvatarCropUrl(null)}
           onSave={async (croppedUrl) => {
-            localStorage.setItem('user_avatar', croppedUrl);
-            setUserProfile((p: any) => ({ ...p, avatarUrl: croppedUrl }));
+            applyProfileAvatar(croppedUrl);
             try {
               // Subir como multipart (más fiable en Android que base64 JSON)
               let uploaded = false;
@@ -11292,8 +11326,7 @@ const App: React.FC = () => {
                 const file = new File([blob], 'avatar.jpg', { type: blob.type || 'image/jpeg' });
                 const result = await userAPI.uploadAvatar(file);
                 if (result?.avatar_url) {
-                  localStorage.setItem('user_avatar', result.avatar_url);
-                  setUserProfile((p: any) => ({ ...p, avatarUrl: result.avatar_url }));
+                  applyProfileAvatar(result.avatar_url);
                   uploaded = true;
                 }
               } catch {}

@@ -51,6 +51,8 @@ const getCountryFlag = (countryCode: string) => {
 
 interface Props { onAuth:(user:any)=>void }
 
+const LOGO_SPIN = 'spin 60s linear infinite';
+
 export default function AuthScreen({onAuth}:Props) {
   const [sc, setSc] = useState<'welcome'|'login'|'reg'|'recover'>('welcome');
   const [countryCode, setCountryCode] = useState('+240');
@@ -209,11 +211,15 @@ export default function AuthScreen({onAuth}:Props) {
     try{
       // Registrar sin avatar primero (evita payload grande)
       const r=await authAPI.register({full_name:name,phone:fullPhone,password:pass,avatar_url:undefined});
+      let registeredUser = { ...(r?.user || {}), full_name: name, phone: r?.user?.phone || fullPhone };
       localStorage.setItem('user_name',name);
       // Garantizar token guardado antes de notificar (mismo fix que doLogin)
       if (r?.token) {
         localStorage.setItem('token', r.token);
         localStorage.setItem('egchat_token_backup', r.token);
+      }
+      if (registeredUser.id) {
+        localStorage.setItem('egchat_user_id', registeredUser.id);
       }
       // Subir avatar después del registro si existe
       if(avatar){
@@ -223,13 +229,26 @@ export default function AuthScreen({onAuth}:Props) {
           const blob=await res.blob();
           const file=new File([blob],'avatar.jpg',{type:'image/jpeg'});
           const up=await (await import('./api')).userAPI.uploadAvatar(file);
-          if(up?.avatar_url) localStorage.setItem('user_avatar',up.avatar_url);
-          else localStorage.setItem('user_avatar',avatar);
+          const avatarUrl = up?.avatar_url || avatar;
+          localStorage.setItem('user_avatar',avatarUrl);
+          registeredUser = { ...registeredUser, avatar_url: avatarUrl, avatarUrl };
         }catch{
           localStorage.setItem('user_avatar',avatar);
+          registeredUser = { ...registeredUser, avatar_url: avatar, avatarUrl: avatar };
         }
       }
-      onAuth(r.user);
+      const profile = {
+        id: registeredUser.id || '',
+        name: registeredUser.full_name || name,
+        full_name: registeredUser.full_name || name,
+        phone: registeredUser.phone || fullPhone,
+        avatar: (registeredUser.full_name || name || 'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
+        avatarUrl: registeredUser.avatar_url || registeredUser.avatarUrl || '',
+        avatar_url: registeredUser.avatar_url || registeredUser.avatarUrl || '',
+      };
+      localStorage.setItem('egchat_user_profile', JSON.stringify(profile));
+      localStorage.setItem('user', JSON.stringify(registeredUser));
+      onAuth(registeredUser);
     }
     catch(e:any){
       const msg = e.message || '';
@@ -246,7 +265,22 @@ export default function AuthScreen({onAuth}:Props) {
     finally{setLoading(false);}
   };
 
-  const pickImg = () => {
+  const pickImg = async () => {
+    try {
+      const CapCamera = (window as any).Capacitor?.Plugins?.Camera;
+      if (CapCamera) {
+        const photo = await CapCamera.getPhoto({
+          quality: 85,
+          allowEditing: false,
+          resultType: 'dataUrl',
+          source: 'PROMPT',
+        });
+        if (photo?.dataUrl) {
+          setCropImageUrl(photo.dataUrl);
+          return;
+        }
+      }
+    } catch {}
     avatarInputRef.current?.click();
   };
 
@@ -289,7 +323,7 @@ export default function AuthScreen({onAuth}:Props) {
       <style>{`@keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }`}</style>
       <div style={{display:'flex',flexDirection:'column',alignItems:'center',gap:'8px'}}>
         <div style={{width:'160px',height:'160px',borderRadius:'20px',background:'white',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.1)',border:'2px solid rgba(255,255,255,0.8)'}}>
-          <img src="/logo-transparent.png" alt="EgChat" style={{width:140,height:140,objectFit:'contain',animation:'spin 20s linear infinite'}}/>
+          <img src="/logo-transparent.png" alt="EgChat" style={{width:140,height:140,objectFit:'contain',animation:LOGO_SPIN}}/>
         </div>
         <div style={{textAlign:'center',marginTop:'4px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',flexWrap:'wrap',marginBottom:'4px'}}>
@@ -335,7 +369,7 @@ export default function AuthScreen({onAuth}:Props) {
     <div style={{minHeight:'100dvh',background:BG,display:'flex',flexDirection:'column',maxWidth:'420px',margin:'0 auto',overflowY:'auto',WebkitOverflowScrolling:'touch',paddingBottom:'env(safe-area-inset-bottom,20px)'} as any}>
       <div style={{padding:'36px 20px 14px',display:'flex',flexDirection:'column',alignItems:'center',gap:'8px'}}>
         <div style={{width:'80px',height:'80px',borderRadius:'16px',background:'white',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.1)',border:'2px solid rgba(255,255,255,0.8)'}}>
-          <img src="/logo-transparent.png" alt="EgChat" style={{width:60,height:60,objectFit:'contain',animation:'spin 20s linear infinite'}}/>
+          <img src="/logo-transparent.png" alt="EgChat" style={{width:60,height:60,objectFit:'contain',animation:LOGO_SPIN}}/>
         </div>
         <div style={{textAlign:'center',marginTop:'4px'}}>
           <div style={{display:'flex',alignItems:'center',justifyContent:'center',gap:'6px',flexWrap:'wrap'}}>
@@ -376,7 +410,7 @@ export default function AuthScreen({onAuth}:Props) {
     <div style={{minHeight:'100vh',background:BG,display:'flex',flexDirection:'column',maxWidth:'420px',margin:'0 auto',overflowY:'auto',WebkitOverflowScrolling:'touch'} as any}>
       <div style={{padding:'36px 20px 14px',display:'flex',flexDirection:'column',alignItems:'center',gap:'8px'}}>
         <div style={{width:'80px',height:'80px',borderRadius:'16px',background:'white',display:'flex',alignItems:'center',justifyContent:'center',boxShadow:'0 8px 32px rgba(0,0,0,0.1)'}}>
-          <img src="/logo-transparent.png" alt="EgChat" style={{width:60,height:60,objectFit:'contain',animation:'spin 20s linear infinite'}}/>
+          <img src="/logo-transparent.png" alt="EgChat" style={{width:60,height:60,objectFit:'contain',animation:LOGO_SPIN}}/>
         </div>
       </div>
       <div style={{flex:1,padding:'12px 20px 28px'}}>
