@@ -28,6 +28,7 @@ import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
 import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ContactProfileModal } from '../../src/components/ContactProfileModal';
+import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
 import {
   pickImageFromLibrary, pickImageFromCamera, pickVideo, pickFile,
@@ -218,6 +219,19 @@ export default function ChatScreen() {
     applyMessageStatus(messageId, 'delivered');
     scheduleReadReceipt(messageId, applyMessageStatus);
   }, [applyMessageStatus]);
+
+  // Actualizar mi avatar/nombre cuando cambia el perfil
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      if (patch.avatar_url || patch.full_name) {
+        setMyProfile(prev => ({
+          ...prev,
+          ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+          ...(patch.full_name ? { full_name: patch.full_name } : {}),
+        }));
+      }
+    });
+  }, []);
 
   // Cargar datos iniciales
   useEffect(() => {
