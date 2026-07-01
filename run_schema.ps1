@@ -1,5 +1,5 @@
-$headers = @{
-    "Authorization" = "Bearer sbp_a4641afade9647541a8503a98484bc328a690dae"
+﻿$headers = @{
+    "Authorization" = "Bearer SUPABASE_TOKEN_REMOVED"
     "Content-Type" = "application/json"
 }
 $baseUrl = "https://api.supabase.com/v1/projects/dptpdifjqgzccjauhodq/database/query"
@@ -58,3 +58,4 @@ foreach ($q in $queries) {
 }
 
 Write-Host "`nTodas las tablas procesadas." -ForegroundColor Cyan
+
