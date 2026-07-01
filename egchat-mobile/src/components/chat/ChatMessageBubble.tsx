@@ -1,12 +1,123 @@
-// Burbuja de mensaje — paridad App.tsx (gradiente propio, avatares 36px, no WhatsApp)
+// Burbuja de mensaje — paridad EGCHAT v2.5.2
 import React from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Image,
+  View, Text, TouchableOpacity, StyleSheet, Image, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
 import type { ChatMessage } from '../../types/chat';
+
+// ── Tarjeta CONTACTO ──────────────────────────────────────────────
+const ContactCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
+  const lines = (text || '').split('\n');
+  const name = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
+  const phone = lines[1]?.replace(/^📞\s*/, '').trim() || '';
+  return (
+    <View style={cs.card}>
+      <View style={cs.row}>
+        <EGAvatar name={name} size={44} />
+        <View style={cs.info}>
+          <Text style={cs.name} numberOfLines={1}>{name}</Text>
+          {!!phone && <Text style={cs.phone}>{phone}</Text>}
+        </View>
+      </View>
+      <View style={[cs.divider, isOwn ? cs.divOwn : cs.divTheir]} />
+      <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} activeOpacity={0.7}>
+        <Text style={[cs.action, isOwn ? cs.actionOwn : cs.actionTheir]}>📞 Llamar</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+const cs = StyleSheet.create({
+  card: { minWidth: 200, maxWidth: 250 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 10 },
+  info: { flex: 1, minWidth: 0 },
+  name: { fontSize: 14, fontWeight: '700', color: '#111827' },
+  phone: { fontSize: 12, color: '#6b7280', marginTop: 2 },
+  divider: { height: 1, marginHorizontal: -10, marginBottom: 8 },
+  divOwn: { backgroundColor: 'rgba(0,200,160,0.2)' },
+  divTheir: { backgroundColor: 'rgba(0,0,0,0.07)' },
+  action: { fontSize: 13, fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
+  actionOwn: { color: '#00c8a0' },
+  actionTheir: { color: '#00b4e6' },
+});
+
+// ── Tarjeta UBICACIÓN ─────────────────────────────────────────────
+const LocationCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
+  const lines = (text || '').split('\n');
+  const label = lines[0]?.replace(/^📍\s*/, '').trim() || 'Ubicación';
+  const url = lines[1]?.trim() || '';
+  return (
+    <View style={ls.card}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => url && Linking.openURL(url)}>
+        <LinearGradient colors={['#4facfe', '#00f2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ls.preview}>
+          <View style={ls.gridH1} /><View style={ls.gridH2} />
+          <View style={ls.gridV1} /><View style={ls.gridV2} />
+          <View style={ls.pin}><Text style={ls.pinEmoji}>📍</Text></View>
+        </LinearGradient>
+      </TouchableOpacity>
+      <Text style={ls.label} numberOfLines={2}>{label}</Text>
+      <TouchableOpacity onPress={() => url && Linking.openURL(url)}
+        style={[ls.btn, isOwn ? ls.btnOwn : ls.btnTheir]} activeOpacity={0.7}>
+        <Text style={ls.btnText}>Abrir en Maps</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+const ls = StyleSheet.create({
+  card: { minWidth: 220, maxWidth: 260, overflow: 'hidden', marginHorizontal: -4 },
+  preview: { height: 120, borderRadius: 10, marginBottom: 8, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  gridH1: { position: 'absolute', left: 0, right: 0, top: '33%', height: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  gridH2: { position: 'absolute', left: 0, right: 0, top: '66%', height: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  gridV1: { position: 'absolute', top: 0, bottom: 0, left: '33%', width: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  gridV2: { position: 'absolute', top: 0, bottom: 0, left: '66%', width: 1, backgroundColor: 'rgba(255,255,255,0.22)' },
+  pin: { width: 36, height: 36, borderRadius: 18, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 4 },
+  pinEmoji: { fontSize: 18 },
+  label: { fontSize: 12, color: '#374151', fontWeight: '600', marginBottom: 6, paddingHorizontal: 4 },
+  btn: { paddingVertical: 6, borderRadius: 8, alignItems: 'center' },
+  btnOwn: { backgroundColor: 'rgba(0,200,160,0.12)' },
+  btnTheir: { backgroundColor: 'rgba(0,180,230,0.10)' },
+  btnText: { fontSize: 12, fontWeight: '700', color: '#00b4e6' },
+});
+
+// ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
+const MoneyCard = ({ text }: { text: string }) => {
+  const lines = (text || '').split('\n');
+  const amountLine = lines.find(l => l.includes('💰')) || '';
+  const toLine = lines.find(l => l.includes('👤')) || '';
+  const refLine = lines.find(l => l.includes('🔑')) || '';
+  const amount = amountLine.replace(/^💰\s*/, '').trim();
+  const to = toLine.replace(/^👤 Para:\s*/i, '').trim();
+  const ref = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
+  return (
+    <LinearGradient colors={['#1a73e8', '#0d47a1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ms.card}>
+      <View style={ms.header}>
+        <Text style={ms.headerIcon}>💸</Text>
+        <Text style={ms.headerTitle}>Transferencia enviada</Text>
+      </View>
+      <Text style={ms.amount}>{amount}</Text>
+      {!!to && <Text style={ms.to}>Para: {to}</Text>}
+      <View style={ms.divider} />
+      <View style={ms.footer}>
+        <Text style={ms.status}>✅ Completado</Text>
+        {!!ref && <Text style={ms.ref}>Ref: {ref}</Text>}
+      </View>
+    </LinearGradient>
+  );
+};
+const ms = StyleSheet.create({
+  card: { borderRadius: 12, padding: 14, minWidth: 200, maxWidth: 260 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  headerIcon: { fontSize: 18 },
+  headerTitle: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', flex: 1 },
+  amount: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
+  to: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 8 },
+  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 8 },
+  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  status: { fontSize: 12, color: '#a5f3fc', fontWeight: '600' },
+  ref: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
+});
 
 const formatTime = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -46,7 +157,13 @@ export const ChatMessageBubble = React.memo(({
   const canOpenImage = !!imageUri && !canRetry;
   const showUploadState = isOwn && message.status === 'pending' && !!message.uploadState;
   const uploadPercent = Math.max(5, Math.min(99, Math.round((message.uploadProgress || 0.05) * 100)));
-  const isMoney = message.text?.startsWith('💸') || message.type === 'money';
+
+  const isMoneyMsg = message.text?.startsWith('💸') || message.type === 'money';
+  const isContactMsg = message.type === 'contact'
+    || (message.type === 'text' && !!message.text?.startsWith('👤'));
+  const isLocationMsg = message.type === 'location'
+    || (message.type === 'text' && !!message.text?.startsWith('📍'));
+  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg;
 
   const renderAvatar = (side: 'left' | 'right') => {
     if (side === 'left' && isOwn) return null;
@@ -84,7 +201,13 @@ export const ChatMessageBubble = React.memo(({
           <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
         </View>
       )}
-      {(message.type === 'text' || message.type === 'contact' || message.type === 'location') && !!message.text && (
+      {/* Tarjetas especiales */}
+      {isContactMsg && !!message.text && <ContactCard text={message.text} isOwn={isOwn} />}
+      {isLocationMsg && !!message.text && <LocationCard text={message.text} isOwn={isOwn} />}
+      {isMoneyMsg && !!message.text && <MoneyCard text={message.text} />}
+
+      {/* Texto normal */}
+      {!isCardType && message.type === 'text' && !!message.text && (
         <Text style={s.bubbleText}>{message.text}</Text>
       )}
       {message.type === 'image' && imageUri ? (
@@ -133,16 +256,23 @@ export const ChatMessageBubble = React.memo(({
       ]}>
         {renderAvatar('left')}
         {isOwn ? (
-          <LinearGradient
-            colors={isMoney ? ['#e0f2fe', '#dbeafe'] : ['#e8f5e9', '#f0fdf4']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={[s.bubble, s.ownBubble, isMoney && s.moneyBubble]}
-          >
-            {bubbleContent}
-          </LinearGradient>
+          isMoneyMsg ? (
+            // La tarjeta de dinero lleva su propio gradiente — burbuja transparente
+            <View style={[s.bubble, s.ownBubble, s.cardBubble]}>
+              {bubbleContent}
+            </View>
+          ) : (
+            <LinearGradient
+              colors={['#e8f5e9', '#f0fdf4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={[s.bubble, s.ownBubble, isCardType && s.cardBubble]}
+            >
+              {bubbleContent}
+            </LinearGradient>
+          )
         ) : (
-          <View style={[s.bubble, s.theirBubble]}>
+          <View style={[s.bubble, s.theirBubble, isCardType && s.cardBubble]}>
             {bubbleContent}
           </View>
         )}
@@ -177,6 +307,10 @@ const s = StyleSheet.create({
     paddingVertical: 9,
     paddingHorizontal: 12,
     overflow: 'hidden',
+  },
+  cardBubble: {
+    paddingVertical: 8,
+    paddingHorizontal: 8,
   },
   ownBubble: {
     borderTopLeftRadius: 18,
