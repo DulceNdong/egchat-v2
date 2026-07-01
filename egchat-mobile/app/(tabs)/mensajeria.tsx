@@ -7,20 +7,32 @@
 // Lista de chats con avatar, nombre, último msg, hora, badge
 // FAB refresh + LIA-25 flotante
 // ══════════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Text, TouchableOpacity, StyleSheet,
   TextInput, ActivityIndicator, RefreshControl,
-  ScrollView, Image, Platform, Animated,
+  ScrollView, Image, Platform, Alert, Modal, Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { chatAPI, storiesAPI, getToken } from '../../src/api';
+import { chatAPI, authAPI, contactsAPI } from '../../src/api';
+import { onProfileUpdated } from '../../src/utils/profileEvents';
+import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
+import {
+  loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
+  type ArchivedChat,
+} from '../../src/utils/chatArchive';
+import { SwipeChatItem } from '../../src/components/chat/SwipeChatItem';
+import { toast } from '../../src/components/Toast';
+import type { WeatherCondition } from '../../src/components/EGChatHeader';
 import { haptics } from '../../src/hooks/useHaptics';
+import { useOffline } from '../../src/hooks/useOffline';
 import { EGAvatar, OfflineBanner } from '../../src/components/ui';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -34,13 +46,21 @@ interface Chat {
   type: 'private' | 'group';
   name?: string;
   avatar_url?: string;
-  participants: Array<{ user_id: string; full_name?: string; avatar_url?: string }>;
+  participants: Array<{
+    user_id: string;
+    full_name?: string;
+    avatar_url?: string;
+    phone?: string;
+    users?: { full_name?: string; avatar_url?: string; phone?: string };
+    user?: { full_name?: string; avatar_url?: string; phone?: string };
+  }>;
   last_message?: { text?: string; type: string; created_at: string; sender_id: string };
   unread_count: number;
   updated_at: string;
 }
 
-type FilterType = 'individual' | 'grupos' | 'dinero';
+type FilterType = 'individual' | 'grupos' | 'dinero' | 'archivar';
+type ArchiveSubFilter = 'individual' | 'group';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const formatTime = (dateStr: string) => {
@@ -57,28 +77,62 @@ const formatTime = (dateStr: string) => {
 
 const getLastMessageText = (msg?: Chat['last_message']) => {
   if (!msg) return 'Sin mensajes';
-  if (msg.type === 'text') return msg.text || '';
+  const txt = msg.text || '';
+  if (txt.includes('Llamada perdida')) return 'Llamada perdida';
+  if (txt.includes('Transferencia') || txt.includes('💸')) return txt.split('\n')[0] || '💸 Transferencia';
+  if (msg.type === 'text') return txt;
   if (msg.type === 'image') return '📷 Foto';
   if (msg.type === 'video') return '🎥 Video';
   if (msg.type === 'audio') return '🎵 Audio';
   if (msg.type === 'file') return '📄 Archivo';
-  return 'Mensaje';
+  return txt || 'Mensaje';
 };
 
+const getParticipantName = (participant?: Chat['participants'][number]) =>
+  participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
+
+const isValidAvatarUrl = (url?: string | null): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  !url.includes('egchat-api.onrender.com/static/avatars/');
+
+const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
+  const raw =
+    participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url;
+  return isValidAvatarUrl(raw) ? raw : undefined;
+};
+
+const sortChatsByActivity = (items: Chat[] = []) =>
+  [...items].sort((a, b) => {
+    const bTime = new Date(b.updated_at || b.last_message?.created_at || 0).getTime();
+    const aTime = new Date(a.updated_at || a.last_message?.created_at || 0).getTime();
+    return (Number.isFinite(bTime) ? bTime : 0) - (Number.isFinite(aTime) ? aTime : 0);
+  });
+
+const IconUser = ({ color = '#374151' }: { color?: string }) => (
+  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
+    <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><Circle cx="12" cy="7" r="4" />
+  </Svg>
+);
+const IconUsers = ({ color = '#374151' }: { color?: string }) => (
+  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
+    <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" /><Circle cx="9" cy="7" r="4" />
+    <Path d="M23 21v-2a4 4 0 0 0-3-3.87" /><Path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </Svg>
+);
+const IconMoney = ({ color = '#374151' }: { color?: string }) => (
+  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
+    <Rect x="2" y="5" width="20" height="14" rx="2" /><Line x1="2" y1="10" x2="22" y2="10" /><Circle cx="12" cy="15" r="2" />
+  </Svg>
+);
+const IconArchive = ({ color = '#374151' }: { color?: string }) => (
+  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
+    <Polyline points="21 8 21 21 3 21 3 8" /><Rect x="1" y="3" width="22" height="5" /><Line x1="10" y1="12" x2="14" y2="12" />
+  </Svg>
+);
+
 // ── Iconos SVG ────────────────────────────────────────────────────
-const IconBell = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <Path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </Svg>
-);
-const IconMenu = () => (
-  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round">
-    <Line x1="3" y1="6" x2="21" y2="6"/>
-    <Line x1="3" y1="12" x2="21" y2="12"/>
-    <Line x1="3" y1="18" x2="21" y2="18"/>
-  </Svg>
-);
 const IconSearch = ({ color = Colors.textTertiary }: { color?: string }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
     <Circle cx="11" cy="11" r="8"/>
@@ -93,20 +147,20 @@ const IconRefresh = () => (
 );
 
 // ── ChatItem ──────────────────────────────────────────────────────
-const ChatItem = React.memo(({ chat, currentUserId, onPress }: {
-  chat: Chat; currentUserId: string; onPress: () => void;
+const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow }: {
+  chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
 }) => {
   const other = chat.participants.find(p => p.user_id !== currentUserId);
   const chatName = chat.type === 'private'
-    ? (other?.full_name || 'Usuario')
+    ? (getParticipantName(other) || 'Usuario')
     : (chat.name || 'Grupo');
-  const avatarSrc = chat.type === 'private' ? other?.avatar_url : chat.avatar_url;
+  const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
   const lastMsg = getLastMessageText(chat.last_message);
   const time = formatTime(chat.updated_at);
   const hasUnread = chat.unread_count > 0;
 
-  return (
-    <TouchableOpacity onPress={onPress} style={st.chatItem} activeOpacity={0.7}>
+  const body = (
+    <>
       <EGAvatar src={avatarSrc} name={chatName} size={50} />
       <View style={st.chatInfo}>
         <View style={st.chatRow}>
@@ -122,31 +176,50 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress }: {
           )}
         </View>
       </View>
+    </>
+  );
+
+  if (staticRow) {
+    return <View style={st.chatItem}>{body}</View>;
+  }
+  return (
+    <TouchableOpacity onPress={onPress} onLongPress={onLongPress} style={st.chatItem} activeOpacity={0.7} delayLongPress={400}>
+      {body}
     </TouchableOpacity>
   );
 });
 
-// ── FavoriteEmpty ─────────────────────────────────────────────────
+// ── Favoritos horizontales (como web) ─────────────────────────────
 const FavoriteSection = ({
-  title, empty, C,
-}: { title: string; empty: string; C: typeof Colors }) => {
-  const [collapsed, setCollapsed] = useState(false);
+  title, empty, C, children,
+}: { title: string; empty: string; C: typeof Colors; children?: React.ReactNode }) => {
+  const [collapsed, setCollapsed] = useState(true);
+  const hasItems = React.Children.count(children) > 0;
   return (
-    <View style={st.favSection}>
-      <TouchableOpacity
-        style={st.favHeader}
-        onPress={() => setCollapsed(v => !v)}
-        activeOpacity={0.7}
-      >
+    <View style={[st.favSection, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+      <TouchableOpacity style={st.favHeader} onPress={() => setCollapsed(v => !v)} activeOpacity={0.7}>
         <Text style={[st.favTitle, { color: C.textTertiary }]}>{title}</Text>
         <Text style={[st.favToggle, { color: C.textTertiary }]}>{collapsed ? '+' : '−'}</Text>
       </TouchableOpacity>
       {!collapsed && (
-        <Text style={[st.favEmpty, { color: C.textTertiary }]}>{empty}</Text>
+        hasItems ? (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.favScroll}>
+            {children}
+          </ScrollView>
+        ) : (
+          <Text style={[st.favEmpty, { color: C.textTertiary }]}>{empty}</Text>
+        )
       )}
     </View>
   );
 };
+
+const FavoriteChip = ({ name, avatar, onPress }: { name: string; avatar?: string; onPress: () => void }) => (
+  <TouchableOpacity style={st.favChip} onPress={onPress} activeOpacity={0.8}>
+    <EGAvatar src={avatar} name={name} size={56} />
+    <Text style={st.favChipName} numberOfLines={1}>{name}</Text>
+  </TouchableOpacity>
+);
 
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL
@@ -162,44 +235,65 @@ export default function MensajeriaScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
+  const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
+  const [archivedChats, setArchivedChats] = useState<ArchivedChat[]>([]);
+  const [archivePassword, setArchivePasswordState] = useState('');
+  const [archiveUnlocked, setArchiveUnlocked] = useState(false);
+  const [archiveSubFilter, setArchiveSubFilter] = useState<ArchiveSubFilter>('individual');
+  const [showArchiveSetup, setShowArchiveSetup] = useState(false);
+  const [showArchiveUnlock, setShowArchiveUnlock] = useState(false);
+  const [archivePwdInput, setArchivePwdInput] = useState('');
+  const [archivePwdError, setArchivePwdError] = useState('');
+  const [temp, setTemp] = useState(27);
+  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>('cloudy');
   const { isDark } = useThemeContext();
+  const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
-  // ── Rotación continua del logo ──────────────────────────────────
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.loop(
-      Animated.timing(spinAnim, {
-        toValue: 1,
-        duration: 8000,
-        useNativeDriver: true,
-      })
-    ).start();
-  }, []);
-  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  const getChatMeta = useCallback((chat: Chat) => {
+    const other = chat.participants.find(p => p.user_id !== currentUserId);
+    const name = chat.type === 'private' ? (getParticipantName(other) || 'Usuario') : (chat.name || 'Grupo');
+    const avatar = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
+    return { name, avatar, other };
+  }, [currentUserId]);
 
   // ── Carga ───────────────────────────────────────────────────────
   const loadChats = useCallback(async () => {
     try {
-      const token = await getToken();
-      if (!token) return;
-      const data = await chatAPI.getChats();
-      setChats(data || []);
-    } catch {}
+      const [data, favContacts, favGroups] = await Promise.all([
+        chatAPI.getChats(),
+        contactsAPI.getFavorites().catch(() => []),
+        getFavoriteGroupIds(),
+      ]);
+      const sortedChats = sortChatsByActivity(data || []);
+      setChats(sortedChats);
+      saveCache('chat_list', sortedChats);
+      setFavoriteContacts(favContacts || []);
+      setFavoriteGroupIds(favGroups);
+    } catch {
+      const cachedChats = await readCache<Chat[]>('chat_list');
+      if (cachedChats?.length) setChats(sortChatsByActivity(cachedChats));
+    }
     finally { setLoading(false); setRefreshing(false); }
-  }, []);
+  }, [readCache, saveCache]);
 
   useEffect(() => {
     loadChats();
-    // Obtener userId del token
-    getToken().then((token: string | null) => {
-      if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split('.')[1]));
-          setCurrentUserId(payload.id || '');
-        } catch {}
-      }
-    });
+    loadArchivedChats().then(setArchivedChats);
+    getArchivePassword().then(setArchivePasswordState);
+    authAPI.me().then(me => setCurrentUserId(me?.id || '')).catch(() => {});
+    fetch('https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current=temperature_2m,weather_code&timezone=auto')
+      .then(r => r.json())
+      .then(d => {
+        const t = Math.round(d?.current?.temperature_2m ?? 27);
+        setTemp(t);
+        const code = d?.current?.weather_code ?? 0;
+        if (code <= 1) setWeatherCondition('sunny');
+        else if (code >= 51) setWeatherCondition('rain');
+        else setWeatherCondition('cloudy');
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -209,77 +303,207 @@ export default function MensajeriaScreen() {
     return unsub;
   }, [currentUserId]);
 
+  // Cuando el usuario actual cambia su avatar/nombre, actualizar su participante en todos los chats
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      if (!patch.avatar_url && !patch.full_name) return;
+      setChats(prev => prev.map(chat => ({
+        ...chat,
+        participants: chat.participants.map(p =>
+          p.user_id === currentUserId
+            ? {
+                ...p,
+                ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+                ...(patch.full_name ? { full_name: patch.full_name } : {}),
+              }
+            : p,
+        ),
+      })));
+    });
+  }, [currentUserId]);
+
   const onRefresh = () => { setRefreshing(true); loadChats(); };
+
+  const openChat = useCallback((chat: Chat | ArchivedChat) => {
+    router.push(`/chat/${chat.id}` as any);
+  }, []);
+
+  const handleFilterPress = (id: FilterType) => {
+    haptics.selection();
+    if (id === 'archivar') {
+      setFilter('archivar');
+      if (!archivePassword) {
+        setShowArchiveSetup(true);
+      } else if (!archiveUnlocked) {
+        setShowArchiveUnlock(true);
+      }
+      return;
+    }
+    setArchiveUnlocked(false);
+    setFilter(id);
+  };
+
+  const archiveChat = useCallback(async (chat: Chat) => {
+    const { name, avatar } = getChatMeta(chat);
+    const entry: ArchivedChat = {
+      id: chat.id,
+      type: chat.type,
+      name,
+      avatar_url: avatar,
+      isGroup: chat.type === 'group',
+      participants: chat.participants,
+      last_message: chat.last_message,
+      unread_count: chat.unread_count,
+      updated_at: chat.updated_at,
+    };
+    const nextArchived = [entry, ...archivedChats.filter(c => c.id !== chat.id)];
+    await saveArchivedChats(nextArchived);
+    setArchivedChats(nextArchived);
+    setChats(prev => prev.filter(c => c.id !== chat.id));
+    toast.info('Chat archivado');
+  }, [archivedChats, getChatMeta]);
+
+  const unarchiveChat = useCallback(async (chat: ArchivedChat) => {
+    const nextArchived = archivedChats.filter(c => c.id !== chat.id);
+    await saveArchivedChats(nextArchived);
+    setArchivedChats(nextArchived);
+    await loadChats();
+    toast.info('Chat desarchivado');
+  }, [archivedChats, loadChats]);
+
+  const deleteChatLocal = useCallback((chatId: string) => {
+    Alert.alert('Eliminar chat', '¿Eliminar este chat de la lista?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar', style: 'destructive',
+        onPress: () => {
+          setChats(prev => prev.filter(c => c.id !== chatId));
+          toast.success('Chat eliminado');
+        },
+      },
+    ]);
+  }, []);
+
+  const openFavoriteContact = useCallback(async (contact: any) => {
+    try {
+      const contactUserId = contact.contact_user_id || contact.user_id || contact.id;
+      const existing = chats.find(c => {
+        if (c.type === 'group') return false;
+        return c.participants.some(p => p.user_id?.toString() === contactUserId?.toString());
+      });
+      if (existing) {
+        openChat(existing);
+        return;
+      }
+      const chat = await chatAPI.createPrivate(contactUserId);
+      if (chat?.id) {
+        await loadChats();
+        openChat(chat);
+      } else {
+        toast.error('No se pudo abrir el chat');
+      }
+    } catch {
+      toast.error('No se pudo abrir el chat');
+    }
+  }, [chats, loadChats, openChat]);
+
+  const handleChatLongPress = useCallback(async (chat: Chat) => {
+    const { name } = getChatMeta(chat);
+    if (chat.type === 'group') {
+      const isFav = favoriteGroupIds.includes(chat.id);
+      Alert.alert(name, isFav ? 'Quitar de grupos favoritos' : 'Añadir a grupos favoritos', [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: isFav ? 'Quitar' : 'Favorito',
+          onPress: async () => {
+            const next = await toggleFavoriteGroup(chat.id);
+            setFavoriteGroupIds(next);
+          },
+        },
+      ]);
+      return;
+    }
+    const other = chat.participants.find(p => p.user_id !== currentUserId);
+    const contact = favoriteContacts.find(
+      (c: any) => c.contact_user_id === other?.user_id || c.user?.id === other?.user_id,
+    );
+    Alert.alert(name, 'Opciones', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: contact ? 'Quitar favorito' : 'Marcar favorito',
+        onPress: async () => {
+          try {
+            let list = await contactsAPI.getAll();
+            let row = list.find((c: any) => c.contact_user_id === other?.user_id);
+            if (!row && other?.user_id) {
+              await contactsAPI.add(other.user_id, undefined, name);
+              list = await contactsAPI.getAll();
+              row = list.find((c: any) => c.contact_user_id === other?.user_id);
+            }
+            if (row?.id) {
+              if (row.is_favorite) await contactsAPI.unfavorite(row.id);
+              else await contactsAPI.favorite(row.id);
+            }
+            setFavoriteContacts(await contactsAPI.getFavorites());
+          } catch {}
+        },
+      },
+    ]);
+  }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId]);
+
+  const favoriteGroupChats = chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id));
+  const archivedIds = new Set(archivedChats.map(c => c.id));
+
+  const matchesSearch = (name: string, last?: string) => {
+    if (!searchQuery.trim()) return true;
+    const q = searchQuery.toLowerCase();
+    return name.toLowerCase().includes(q) || (last || '').toLowerCase().includes(q);
+  };
 
   // ── Filtrado ────────────────────────────────────────────────────
   const filtered = chats.filter(c => {
-    // Filtro de búsqueda
-    if (searchQuery) {
-      const other = c.participants.find(p => p.user_id !== currentUserId);
-      const name = c.type === 'private' ? other?.full_name : c.name;
-      if (!name?.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    }
-    // Filtro de tab
+    if (archivedIds.has(c.id)) return false;
+    const other = c.participants.find(p => p.user_id !== currentUserId);
+    const name = c.type === 'private' ? getParticipantName(other) : (c.name || 'Grupo');
+    const last = c.last_message?.text || '';
+    if (!matchesSearch(name, last)) return false;
     if (filter === 'individual') return c.type === 'private';
     if (filter === 'grupos') return c.type === 'group';
     if (filter === 'dinero') {
-      const txt = c.last_message?.text || '';
-      return txt.includes('XAF') || txt.includes('💸') || txt.includes('Transferencia');
+      return last.includes('XAF') || last.includes('💸') || last.includes('Transferencia') || last.includes('📌');
     }
+    if (filter === 'archivar') return false;
     return true;
   });
 
+  const filteredArchived = archivedChats.filter(c => {
+    const isGrp = c.isGroup || c.type === 'group';
+    if (archiveSubFilter === 'group' ? !isGrp : isGrp) return false;
+    const name = c.name || c.title || 'Chat';
+    return matchesSearch(name, c.last_message?.text);
+  });
+
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
+    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['bottom', 'left', 'right']}>
       <OfflineBanner />
 
       {/* ══════════════════════════════════════════════════════════
           HEADER — Logo + Temp + Bell + Menu (igual que Home)
       ══════════════════════════════════════════════════════════ */}
-      <LinearGradient
-        colors={['#00C8A0', '#00B4E6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={st.header}
-      >
-        {/* Logo */}
-        <View style={st.headerLogo}>
-          <Animated.View style={[st.logoWrap, { transform: [{ rotate: spin }] }]}>
-            <Image
-              source={require('../../assets/logo-transparent.png')}
-              style={st.logoImg}
-              resizeMode="contain"
-            />
-          </Animated.View>
-          <Text style={st.logoText}>EG</Text>
-          <Text style={st.logoText}>CHAT</Text>
-        </View>
-
-        {/* Acciones */}
-        <View style={st.headerRight}>
-          <TouchableOpacity style={st.headerPill} activeOpacity={0.8} onPress={() => setShowWeather(true)}>
-            <Text style={st.headerPillText}>☁️ 27° Malabo</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={st.headerIconBtn}
-            activeOpacity={0.8}
-            onPress={() => {
-              setShowNotifications(true);
-              setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            }}
-          >
-            <IconBell />
-            {notifications.some(n => !n.read) && <View style={st.notifDot} />}
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={st.headerIconBtn}
-            activeOpacity={0.8}
-            onPress={() => setShowMenu(true)}
-          >
-            <IconMenu />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <EGChatHeader
+        temp={temp}
+        city="Malabo"
+        weatherCondition={weatherCondition}
+        unreadCount={notifications.filter(n => !n.read).length}
+        notificationsOpen={showNotifications}
+        menuOpen={showMenu}
+        onWeatherPress={() => setShowWeather(true)}
+        onNotificationsPress={() => {
+          setShowNotifications(true);
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }}
+        onMenuPress={() => setShowMenu(true)}
+      />
 
       {/* ══════════════════════════════════════════════════════════
           BARRA BÚSQUEDA + BOTÓN +
@@ -291,7 +515,7 @@ export default function MensajeriaScreen() {
             style={[st.searchText, { color: C.textPrimary }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Buscar..."
+            placeholder="Buscar chat o contacto..."
             placeholderTextColor={C.textTertiary}
             returnKeyType="search"
           />
@@ -328,20 +552,27 @@ export default function MensajeriaScreen() {
         {/* ══════════════════════════════════════════════════════
             CONTACTOS FAVORITOS
         ══════════════════════════════════════════════════════ */}
-        <FavoriteSection
-          title="CONTACTOS FAVORITOS"
-          empty="No tienes contactos favoritos aún"
-          C={C}
-        />
+        <FavoriteSection title="Contactos Favoritos" empty="No tienes contactos favoritos aún" C={C}>
+          {favoriteContacts.map((contact: any) => {
+            const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
+            const avatar = contact.avatar_url || contact.user?.avatar_url;
+            return (
+              <FavoriteChip
+                key={contact.id || contact.contact_user_id}
+                name={name}
+                avatar={avatar}
+                onPress={() => openFavoriteContact(contact)}
+              />
+            );
+          })}
+        </FavoriteSection>
 
-        {/* ══════════════════════════════════════════════════════
-            GRUPOS FAVORITOS
-        ══════════════════════════════════════════════════════ */}
-        <FavoriteSection
-          title="GRUPOS FAVORITOS"
-          empty="No tienes grupos favoritos aún"
-          C={C}
-        />
+        <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
+          {favoriteGroupChats.map(chat => {
+            const { name, avatar } = getChatMeta(chat);
+            return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
+          })}
+        </FavoriteSection>
 
         {/* ══════════════════════════════════════════════════════
             FILTROS — Individual | Grupos | Dinero (sticky)
@@ -349,21 +580,29 @@ export default function MensajeriaScreen() {
         <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.filtersRow}>
             {([
-              { id: 'individual', label: 'Individual', icon: '👤' },
-              { id: 'grupos',     label: 'Grupos',     icon: '👥' },
-              { id: 'dinero',     label: 'Dinero',     icon: '💵' },
-            ] as { id: FilterType; label: string; icon: string }[]).map(f => (
-              <TouchableOpacity
-                key={f.id}
-                style={[st.filterChip, filter === f.id && st.filterChipActive]}
-                onPress={() => setFilter(f.id)}
-                activeOpacity={0.75}
-              >
-                <Text style={[st.filterText, filter === f.id && st.filterTextActive]}>
-                  {f.icon} {f.label}
-                </Text>
-              </TouchableOpacity>
-            ))}
+              { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
+              { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
+              { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
+              { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
+            ]).map(f => {
+              const active = filter === f.id;
+              const iconColor = active ? '#fff' : '#374151';
+              const isArchive = f.id === 'archivar';
+              return (
+                <TouchableOpacity
+                  key={f.id}
+                  style={[
+                    st.filterChip,
+                    active && (isArchive ? st.filterChipArchive : st.filterChipActive),
+                  ]}
+                  onPress={() => handleFilterPress(f.id)}
+                  activeOpacity={0.75}
+                >
+                  <f.Icon color={iconColor} />
+                  <Text style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         </View>
 
@@ -374,25 +613,111 @@ export default function MensajeriaScreen() {
           <View style={st.center}>
             <ActivityIndicator size="large" color={Colors.brand} />
           </View>
+        ) : filter === 'archivar' && !archiveUnlocked ? (
+          <View style={st.center}>
+            <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+            <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
+            <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>
+              Introduce tu contraseña para ver chats archivados
+            </Text>
+            <TouchableOpacity
+              style={st.archiveUnlockBtn}
+              onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
+            >
+              <Text style={st.archiveUnlockBtnText}>
+                {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        ) : filter === 'archivar' && archiveUnlocked ? (
+          <View style={{ paddingHorizontal: 8 }}>
+            <View style={st.archiveSubTabs}>
+              {(['individual', 'group'] as ArchiveSubFilter[]).map(sub => (
+                <TouchableOpacity
+                  key={sub}
+                  style={[st.archiveSubTab, archiveSubFilter === sub && st.archiveSubTabActive]}
+                  onPress={() => setArchiveSubFilter(sub)}
+                >
+                  <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
+                    {sub === 'individual' ? 'Individuales' : 'Grupos'}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {filteredArchived.length === 0 ? (
+              <View style={st.center}>
+                <Text style={{ fontSize: 32 }}>📦</Text>
+                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
+                  Sin {archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados
+                </Text>
+                <Text style={[st.emptySub, { color: C.textSecondary }]}>
+                  Desliza un chat a la izquierda para archivarlo
+                </Text>
+              </View>
+            ) : filteredArchived.map(chat => {
+              const name = chat.name || chat.title || 'Chat';
+              return (
+                <TouchableOpacity
+                  key={chat.id}
+                  style={st.archivedRow}
+                  onPress={() => openChat(chat)}
+                  activeOpacity={0.7}
+                >
+                  <EGAvatar src={chat.avatar_url || chat.avatarUrl} name={name} size={46} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={st.archivedName} numberOfLines={1}>{name}</Text>
+                    <Text style={st.archivedSub}>Archivado</Text>
+                  </View>
+                  <TouchableOpacity style={st.restoreBtn} onPress={() => unarchiveChat(chat)}>
+                    <Text style={st.restoreBtnText}>Restaurar</Text>
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              );
+            })}
+            <View style={{ height: 100 }} />
+          </View>
         ) : filtered.length === 0 ? (
           <View style={st.center}>
-            <Text style={st.emptyIcon}>💬</Text>
+            <Text style={st.emptyIcon}>{filter === 'dinero' ? '💸' : '💬'}</Text>
             <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
-              {searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
+              {filter === 'dinero'
+                ? 'Sin transferencias recientes'
+                : searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
             </Text>
             <Text style={[st.emptySub, { color: C.textSecondary }]}>
-              {searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
+              {filter === 'dinero'
+                ? 'Los chats con movimientos XAF aparecerán aquí'
+                : searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
             </Text>
+            {filter === 'dinero' && (
+              <TouchableOpacity
+                style={st.dineroCta}
+                onPress={() => router.push('/(tabs)/monedero' as any)}
+                activeOpacity={0.85}
+              >
+                <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.dineroCtaGrad}>
+                  <Text style={st.dineroCtaText}>Abrir Mi Cartera</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            )}
           </View>
         ) : (
           <View>
             {filtered.map((item, i) => (
               <View key={item.id}>
-                <ChatItem
-                  chat={item}
-                  currentUserId={currentUserId}
-                  onPress={() => router.push(`/chat/${item.id}` as any)}
-                />
+                <SwipeChatItem
+                  onOpen={() => openChat(item)}
+                  onArchive={() => archiveChat(item)}
+                  onDelete={() => deleteChatLocal(item.id)}
+                  onMarkUnread={() => toast.info('Marcado como no leído')}
+                >
+                  <ChatItem
+                    chat={item}
+                    currentUserId={currentUserId}
+                    staticRow
+                    onLongPress={() => handleChatLongPress(item)}
+                  />
+                </SwipeChatItem>
                 {i < filtered.length - 1 && (
                   <View style={[st.separator, { backgroundColor: C.borderLight }]} />
                 )}
@@ -430,12 +755,12 @@ export default function MensajeriaScreen() {
         activeOpacity={0.85}
       >
         <LinearGradient
-          colors={['#e91e8c', '#9c27b0']}
+          colors={['#00C8A0', '#00B4E6']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={st.liaBtnGrad}
         >
-          <Text style={st.liaIcon}>🧠</Text>
+          <SpinningLogo size={36} glow={false} />
         </LinearGradient>
       </TouchableOpacity>
 
@@ -461,10 +786,72 @@ export default function MensajeriaScreen() {
       <WeatherModal
         visible={showWeather}
         onClose={() => setShowWeather(false)}
-        temp="27°"
+        temp={`${temp}°`}
         city="Malabo"
-        condition="cloudy"
+        condition={weatherCondition}
       />
+
+      {/* Modal contraseña archivo */}
+      <Modal
+        visible={showArchiveSetup || showArchiveUnlock}
+        transparent
+        animationType="fade"
+        onRequestClose={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); setArchivePwdInput(''); setArchivePwdError(''); }}
+      >
+        <Pressable style={st.modalOverlay} onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); }}>
+          <Pressable style={st.modalSheet} onPress={() => {}}>
+            <Text style={st.modalTitle}>
+              {showArchiveSetup ? (archivePassword ? 'Cambiar contraseña' : 'Crear contraseña') : 'Desbloquear archivo'}
+            </Text>
+            <TextInput
+              secureTextEntry
+              value={archivePwdInput}
+              onChangeText={setArchivePwdInput}
+              placeholder="Contraseña"
+              placeholderTextColor="#9ca3af"
+              style={st.modalInput}
+            />
+            {archivePwdError ? <Text style={st.modalError}>{archivePwdError}</Text> : null}
+            <View style={st.modalActions}>
+              <TouchableOpacity
+                style={[st.modalBtn, { backgroundColor: '#f3f4f6' }]}
+                onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); setArchivePwdInput(''); }}
+              >
+                <Text style={{ fontWeight: '600', color: '#374151' }}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[st.modalBtn, { backgroundColor: '#6B5BD6' }]}
+                onPress={async () => {
+                  if (showArchiveSetup) {
+                    if (archivePwdInput.length < 4) {
+                      setArchivePwdError('Mínimo 4 caracteres');
+                      return;
+                    }
+                    await setArchivePassword(archivePwdInput);
+                    setArchivePasswordState(archivePwdInput);
+                    setArchiveUnlocked(true);
+                    setShowArchiveSetup(false);
+                    setArchivePwdInput('');
+                    toast.success('Contraseña guardada');
+                  } else {
+                    if (archivePwdInput !== archivePassword) {
+                      setArchivePwdError('Contraseña incorrecta');
+                      return;
+                    }
+                    setArchiveUnlocked(true);
+                    setShowArchiveUnlock(false);
+                    setArchivePwdInput('');
+                  }
+                }}
+              >
+                <Text style={{ fontWeight: '700', color: '#fff' }}>
+                  {showArchiveSetup ? (archivePassword ? 'Cambiar' : 'Crear') : 'Desbloquear'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
 
     </SafeAreaView>
   );
@@ -584,6 +971,9 @@ const st = StyleSheet.create({
     color: Colors.textTertiary,
     paddingVertical: Spacing.sm,
   },
+  favScroll: { gap: 8, paddingVertical: 4, paddingRight: 8 },
+  favChip: { alignItems: 'center', width: 72, gap: 6 },
+  favChipName: { fontSize: 13, fontWeight: '600', color: '#111827', maxWidth: 70, textAlign: 'center' },
 
   // ── Filtros ──────────────────────────────────────────────────────
   filtersWrap: {
@@ -599,21 +989,36 @@ const st = StyleSheet.create({
     alignItems: 'center',
   },
   filterChip: {
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
     borderRadius: 20,
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: '#ffffff',
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: '#d1d5db',
   },
   filterChipActive: {
     backgroundColor: Colors.brand,
     borderColor: Colors.brand,
+    shadowColor: '#00c8a0',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  filterChipArchive: {
+    backgroundColor: '#6B5BD6',
+    borderColor: '#6B5BD6',
+    shadowColor: '#6B5BD6',
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 3,
   },
   filterText: {
-    fontSize: FontSize.sm,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textSecondary,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#374151',
   },
   filterTextActive: {
     color: '#fff',
@@ -650,6 +1055,42 @@ const st = StyleSheet.create({
   emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: Spacing.sm, textAlign: 'center' },
   emptySub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
+  dineroCta: { marginTop: Spacing.lg, borderRadius: BorderRadius.lg, overflow: 'hidden' },
+  dineroCtaGrad: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },
+  dineroCtaText: { color: '#fff', fontSize: FontSize.md, fontWeight: '700' },
+
+  archiveUnlockBtn: {
+    paddingHorizontal: 28, paddingVertical: 12, borderRadius: 12,
+    backgroundColor: '#6B5BD6',
+  },
+  archiveUnlockBtnText: { color: '#fff', fontSize: 14, fontWeight: '700' },
+  archiveSubTabs: {
+    flexDirection: 'row', gap: 6, marginBottom: 10, marginHorizontal: 8,
+    backgroundColor: 'rgba(107,91,214,0.06)', borderRadius: 10, padding: 4,
+  },
+  archiveSubTab: { flex: 1, paddingVertical: 8, borderRadius: 8, alignItems: 'center' },
+  archiveSubTabActive: { backgroundColor: '#6B5BD6' },
+  archiveSubTabText: { fontSize: 13, fontWeight: '500', color: '#9ca3af' },
+  archiveSubTabTextActive: { color: '#fff', fontWeight: '700' },
+  archivedRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    backgroundColor: '#fff', borderRadius: 12, padding: 12, marginBottom: 6,
+    marginHorizontal: 4,
+  },
+  archivedName: { fontSize: 15, fontWeight: '600', color: '#111827' },
+  archivedSub: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  restoreBtn: { backgroundColor: '#10b981', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 6 },
+  restoreBtnText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', padding: 24 },
+  modalSheet: { backgroundColor: '#fff', borderRadius: 16, padding: 20 },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: '#111827', marginBottom: 12, textAlign: 'center' },
+  modalInput: {
+    borderWidth: 1.5, borderColor: '#6B5BD6', borderRadius: 10,
+    paddingHorizontal: 14, paddingVertical: 12, fontSize: 16, marginBottom: 8,
+  },
+  modalError: { color: '#ef4444', fontSize: 13, marginBottom: 8, textAlign: 'center' },
+  modalActions: { flexDirection: 'row', gap: 8, marginTop: 8 },
+  modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
 
   // ── FAB Refresh ──────────────────────────────────────────────────
   fabRefresh: {
@@ -672,15 +1113,21 @@ const st = StyleSheet.create({
     position: 'absolute',
     bottom: 80,
     right: 20,
-    width: 26,
-    height: 26,
-    borderRadius: 13,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     zIndex: 20,
     ...Shadow.lg,
   },
   liaBtnGrad: {
-    width: 26, height: 26, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+    overflow: 'hidden',
   },
-  liaIcon: { fontSize: 12 },
+  liaLogo: { width: 36, height: 36, borderRadius: 18 },
 });

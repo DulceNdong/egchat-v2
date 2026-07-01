@@ -1,41 +1,63 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, FlatList, TextInput, TouchableOpacity,
+  View, Text, FlatList, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, Modal, Pressable, Alert, Dimensions, ScrollView, Image,
+  Animated, Modal, Pressable, Alert, Image, Share,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
+import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { chatAPI, authAPI } from '../../src/api';
+import { chatAPI, authAPI, getToken } from '../../src/api';
+import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
+import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPickerModal';
+import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
+import { QuickTransferModal } from '../../src/components/chat/QuickTransferModal';
+import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuPanel';
+import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
+import { ChatHeader } from '../../src/components/chat/ChatHeader';
+import { ChatInputBar } from '../../src/components/chat/ChatInputBar';
+import { ChatWallpaperBackground } from '../../src/components/chat/ChatWallpaperBackground';
+import { ChatWallpaperModal } from '../../src/components/chat/ChatWallpaperModal';
+import { ChatSearchBar } from '../../src/components/chat/ChatSearchBar';
+import { ChatStarredModal } from '../../src/components/chat/ChatStarredModal';
+import { ChatContextMenu } from '../../src/components/chat/ChatContextMenu';
+import { scheduleReadReceipt, clearAllMessageStatusTimers } from '../../src/features/chat/messageStatus';
+import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
+import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { ContactProfileModal } from '../../src/components/ContactProfileModal';
+import { AvatarCropModal } from '../../src/components/AvatarCropModal';
+import {
+  pickImageFromLibrary, pickImageFromCamera, pickVideo, pickFile,
+  getCurrentLocationLabel, uploadAndSend,
+} from '../../src/utils/chatMedia';
 import { haptics } from '../../src/hooks/useHaptics';
-import { subscribeToChat } from '../../src/supabase';
-import { EGAvatar } from '../../src/components/ui';
+import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
+import { useOffline } from '../../src/hooks/useOffline';
+import { toast } from '../../src/components/Toast';
+import { createChatTypingChannel, subscribeToChat, subscribeToOnlineUsers } from '../../src/supabase';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import type { ChatMessage as Message } from '../../src/types/chat';
+import {
+  createTempMessageId,
+  getLastReadableMessageId,
+  isTempMessage,
+  markMessageFailed,
+  mergeMessages,
+  normalizeMessage,
+  normalizeMessages,
+  replaceTempMessage,
+} from '../../src/features/chat/messageUtils';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
-const DRAWER_WIDTH = SCREEN_WIDTH * 0.72;
-
 // ── Tipos ─────────────────────────────────────────────────────────
-interface Message {
-  id: string;
-  text?: string;
-  type: string;
-  sender_id: string;
-  status: 'pending' | 'sent' | 'delivered' | 'read' | 'failed';
-  reply_to?: string;
-  file_url?: string;
-  created_at: string;
-  sender?: { id: string; full_name: string; avatar_url?: string };
-}
-
 // ── Helpers ───────────────────────────────────────────────────────
 const formatTime = (dateStr: string) => {
   const d = new Date(dateStr);
@@ -52,14 +74,14 @@ const getDateLabel = (dateStr: string) => {
   return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'long' });
 };
 
-// ── StatusTicks ───────────────────────────────────────────────────
-const StatusTicks = ({ status }: { status: Message['status'] }) => {
-  const color = status === 'read' ? '#53bdeb' : Colors.textTertiary;
-  if (status === 'pending') return <Text style={{ color, fontSize: 11 }}>○</Text>;
-  if (status === 'sent') return <Text style={{ color, fontSize: 11 }}>✓</Text>;
-  if (status === 'failed') return <Text style={{ color: Colors.error, fontSize: 11 }}>❌</Text>;
-  return <Text style={{ color, fontSize: 11 }}>✓✓</Text>;
-};
+const getParticipantName = (participant?: any) =>
+  participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
+
+const getParticipantAvatar = (participant?: any) =>
+  participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url || '';
+
+const getParticipantPhone = (participant?: any) =>
+  participant?.phone || participant?.users?.phone || participant?.user?.phone || '';
 
 // ── TypingIndicator ───────────────────────────────────────────────
 const TypingIndicator = () => {
@@ -92,323 +114,20 @@ const TypingIndicator = () => {
   );
 };
 
-// ── ChatDrawer ────────────────────────────────────────────────────
-
-interface DrawerItem {
-  icon: React.ReactNode;
-  label: string;
-  onPress: () => void;
-  color?: string;
-  danger?: boolean;
-  section?: 'main' | 'config' | 'actions' | 'danger';
-}
-
-const ChatDrawer = ({
-  visible,
-  onClose,
-  chatName,
-  chatAvatar,
-  chatInitials,
-  isGroup,
-  isOnline,
-  items,
-  isDark = false,
-}: {
-  visible: boolean;
-  onClose: () => void;
-  chatName: string;
-  chatAvatar?: string;
-  chatInitials?: string;
-  isGroup?: boolean;
-  isOnline?: boolean;
-  items: DrawerItem[];
-  isDark?: boolean;
-}) => {
-  const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    if (visible) {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0, duration: 220, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: DRAWER_WIDTH, duration: 200, useNativeDriver: true }),
-        Animated.timing(fadeAnim, { toValue: 0, duration: 160, useNativeDriver: true }),
-      ]).start();
-    }
-  }, [visible]);
-
-  const sections: Array<DrawerItem['section']> = ['main', 'config', 'actions', 'danger'];
-  const grouped = sections.map(s => items.filter(i => i.section === s)).filter(g => g.length > 0);
-
-  return (
-    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      <View style={drawerStyles.root}>
-        {/* Overlay */}
-        <Animated.View style={[drawerStyles.overlay, { opacity: fadeAnim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-
-        {/* Panel */}
-        <Animated.View style={[drawerStyles.panel, isDark && { backgroundColor: '#1a1a1a' }, { transform: [{ translateX: slideAnim }] }]}>
-
-          {/* Header con gradiente simulado */}
-          <View style={drawerStyles.drawerHeader}>
-            {/* Avatar */}
-            <View style={drawerStyles.drawerAvatar}>
-              {chatAvatar ? (
-                <Image source={{ uri: chatAvatar }} style={drawerStyles.drawerAvatarImg} />
-              ) : (
-                <Text style={drawerStyles.drawerAvatarText}>
-                  {chatInitials || chatName?.slice(0, 2).toUpperCase()}
-                </Text>
-              )}
-            </View>
-            {/* Info */}
-            <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={drawerStyles.drawerHeaderName} numberOfLines={1}>{chatName}</Text>
-              <Text style={drawerStyles.drawerHeaderSub}>
-                {isGroup ? '👥 Grupo' : isOnline ? '● En línea' : '○ Desconectado'}
-              </Text>
-            </View>
-            {/* Botón cerrar */}
-            <TouchableOpacity onPress={onClose} style={drawerStyles.drawerCloseBtn} activeOpacity={0.7}>
-              <Svg width={16} height={16} viewBox="0 0 24 24" stroke="#fff" strokeWidth={2.5}>
-                <Line x1="18" y1="6" x2="6" y2="18" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
-                <Line x1="6" y1="6" x2="18" y2="18" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
-              </Svg>
-            </TouchableOpacity>
-          </View>
-
-          {/* Opciones */}
-          <ScrollView style={drawerStyles.scroll} showsVerticalScrollIndicator={false} bounces={false}>
-            {grouped.map((group, gi) => (
-              <View key={gi} style={[drawerStyles.section, isDark && { borderBottomColor: '#2a2a2a' }]}>
-                {group.map((item, i) => (
-                  <TouchableOpacity
-                    key={i}
-                    style={[
-                      drawerStyles.item,
-                      isDark && { borderBottomColor: '#2a2a2a' },
-                      i === group.length - 1 && drawerStyles.itemLast,
-                    ]}
-                    onPress={() => { onClose(); setTimeout(item.onPress, 180); }}
-                    activeOpacity={0.6}
-                  >
-                    <View style={drawerStyles.iconWrap}>{item.icon}</View>
-                    <Text style={[
-                      drawerStyles.label,
-                      isDark && { color: '#e8e8e8' },
-                      item.color ? { color: item.color } : null,
-                    ]}>
-                      {item.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            ))}
-            <View style={{ height: 24 }} />
-          </ScrollView>
-        </Animated.View>
-      </View>
-    </Modal>
-  );
-};
-
-const drawerStyles = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  panel: {
-    width: DRAWER_WIDTH,
-    backgroundColor: '#ffffff',
-    shadowColor: '#000',
-    shadowOffset: { width: -4, height: 0 },
-    shadowOpacity: 0.2,
-    shadowRadius: 16,
-    elevation: 20,
-  },
-  // Header gradiente azul
-  drawerHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 16,
-    paddingTop: Platform.OS === 'ios' ? 52 : 16,
-    backgroundColor: '#00b4e6',
-  },
-  drawerAvatar: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.5)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden',
-    flexShrink: 0,
-  },
-  drawerAvatarImg: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-  },
-  drawerAvatarText: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  drawerHeaderName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#fff',
-  },
-  drawerHeaderSub: {
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.75)',
-    marginTop: 1,
-  },
-  drawerCloseBtn: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  scroll: {
-    flex: 1,
-  },
-  section: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#f0f2f5',
-    paddingVertical: 4,
-  },
-  item: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    paddingHorizontal: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: 'rgba(0,0,0,0.06)',
-    gap: 10,
-  },
-  itemLast: {
-    borderBottomWidth: 0,
-  },
-  iconWrap: {
-    width: 20,
-    alignItems: 'center',
-    flexShrink: 0,
-  },
-  label: {
-    fontSize: 13,
-    color: '#374151',
-    fontWeight: '500',
-    flex: 1,
-  },
-});
-
-// ── ContextMenu ───────────────────────────────────────────────────
-const ContextMenu = ({
-  visible, message, isOwn, onClose, onCopy, onReply, onDelete, onDeleteForMe,
-}: {
-  visible: boolean; message: Message | null; isOwn: boolean;
-  onClose: () => void; onCopy: () => void; onReply: () => void;
-  onDelete: () => void; onDeleteForMe: () => void;
-}) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-    <Pressable style={styles.contextOverlay} onPress={onClose}>
-      <View style={styles.contextMenu}>
-        <TouchableOpacity style={styles.contextItem} onPress={onCopy}>
-          <Text style={styles.contextItemText}>📋 Copiar</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.contextItem} onPress={onReply}>
-          <Text style={styles.contextItemText}>↩️ Responder</Text>
-        </TouchableOpacity>
-        {isOwn && (
-          <TouchableOpacity style={styles.contextItem} onPress={onDelete}>
-            <Text style={[styles.contextItemText, { color: Colors.errorText }]}>🗑️ Eliminar para todos</Text>
-          </TouchableOpacity>
-        )}
-        <TouchableOpacity style={[styles.contextItem, { borderBottomWidth: 0 }]} onPress={onDeleteForMe}>
-          <Text style={[styles.contextItemText, { color: Colors.errorText }]}>✕ Eliminar para mí</Text>
-        </TouchableOpacity>
-      </View>
-    </Pressable>
-  </Modal>
-);
-
 // ── ReplyPreview ──────────────────────────────────────────────────
-const ReplyPreview = ({ text, onCancel }: { text: string; onCancel: () => void }) => (
+const ReplyPreview = ({
+  author, text, onCancel,
+}: { author: string; text: string; onCancel: () => void }) => (
   <View style={styles.replyPreview}>
-    <View style={styles.replyBar} />
-    <Text style={styles.replyText} numberOfLines={1}>{text}</Text>
+    <View style={styles.replyInner}>
+      <Text style={styles.replyAuthor} numberOfLines={1}>{author}</Text>
+      <Text style={styles.replyText} numberOfLines={1}>{text}</Text>
+    </View>
     <TouchableOpacity onPress={onCancel} style={styles.replyCancel}>
       <Text style={styles.replyCancelText}>✕</Text>
     </TouchableOpacity>
   </View>
 );
-
-// ── SenderName (grupos) ───────────────────────────────────────────
-const SenderName = ({ name }: { name: string }) => (
-  <Text style={styles.senderName}>{name}</Text>
-);
-
-// ── MessageBubble ─────────────────────────────────────────────────
-const MessageBubble = React.memo(({
-  message, isOwn, isGroup, onLongPress,
-}: {
-  message: Message; isOwn: boolean; isGroup: boolean;
-  onLongPress: (msg: Message) => void;
-}) => {
-  const time = formatTime(message.created_at);
-
-  return (
-    <TouchableOpacity onLongPress={() => onLongPress(message)} activeOpacity={0.8} delayLongPress={400}>
-      <View style={[styles.bubbleWrapper, isOwn ? styles.ownWrapper : styles.theirWrapper]}>
-        {!isOwn && isGroup && (
-          <View style={styles.groupAvatarCol}>
-            <EGAvatar src={message.sender?.avatar_url} name={message.sender?.full_name || '?'} size={28} />
-          </View>
-        )}
-        <View style={[styles.bubble, isOwn ? styles.ownBubble : styles.theirBubble]}>
-          {!isOwn && isGroup && message.sender?.full_name && (
-            <SenderName name={message.sender.full_name} />
-          )}
-          {message.type === 'text' && (
-            <Text style={styles.bubbleText}>{message.text}</Text>
-          )}
-          {message.type === 'image' && (
-            <Text style={styles.bubbleText}>📷 Imagen</Text>
-          )}
-          {message.type === 'audio' && (
-            <Text style={styles.bubbleText}>🎵 Audio</Text>
-          )}
-          {message.type === 'file' && (
-            <Text style={styles.bubbleText}>📄 {message.file_url?.split('/').pop() || 'Archivo'}</Text>
-          )}
-          <View style={styles.bubbleMeta}>
-            <Text style={styles.bubbleTime}>{time}</Text>
-            {isOwn && <StatusTicks status={message.status} />}
-          </View>
-        </View>
-      </View>
-    </TouchableOpacity>
-  );
-});
 
 // ── DateSeparator ─────────────────────────────────────────────────
 const DateSeparator = ({ label }: { label: string }) => (
@@ -423,6 +142,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [chat, setChat] = useState<any>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [onlineUserIds, setOnlineUserIds] = useState<string[]>([]);
   const [text, setText] = useState('');
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
@@ -435,11 +155,69 @@ export default function ChatScreen() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
+  const [showEmojis, setShowEmojis] = useState(false);
+  const [showQuickTransfer, setShowQuickTransfer] = useState(false);
+  const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
+  const [showContactPicker, setShowContactPicker] = useState(false);
+  const [showProfile, setShowProfile] = useState(false);
+  const [cropUri, setCropUri] = useState<string | null>(null);
+  const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [showReadReceipts, setShowReadReceipts] = useState(true);
+  const [wallpaperId, setWallpaperId] = useState('default');
+  const [showWallpaperModal, setShowWallpaperModal] = useState(false);
+  const [showChatSearch, setShowChatSearch] = useState(false);
+  const [chatSearchQuery, setChatSearchQuery] = useState('');
+  const [starredIds, setStarredIds] = useState<string[]>([]);
+  const [showStarredModal, setShowStarredModal] = useState(false);
+  const [isPinned, setIsPinned] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [showScrollBottom, setShowScrollBottom] = useState(false);
   const flatListRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const remoteTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const typingChannelRef = useRef<ReturnType<typeof createChatTypingChannel> | null>(null);
+  const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
+  const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
+  const { isOnline, saveCache, readCache } = useOffline();
+
+  useEffect(() => {
+    getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
+    return () => clearAllMessageStatusTimers();
+  }, []);
+
+  useEffect(() => {
+    if (!chatId) return;
+    getChatWallpaperId(chatId).then(setWallpaperId);
+    AsyncStorage.getItem('egchat_starred_msgs').then(raw => {
+      if (!raw) return;
+      try {
+        const map = JSON.parse(raw) as Record<string, string[]>;
+        setStarredIds(map[chatId] ?? []);
+      } catch { /* ignore */ }
+    });
+    AsyncStorage.getItem('egchat_pinned_chats').then(raw => {
+      if (!raw) return;
+      try {
+        const ids = JSON.parse(raw) as string[];
+        setIsPinned(ids.includes(chatId));
+      } catch { /* ignore */ }
+    });
+    AsyncStorage.getItem(`egchat_muted_${chatId}`).then(v => setIsMuted(v === '1'));
+  }, [chatId]);
+
+  const applyMessageStatus = useCallback((messageId: string, status: Message['status']) => {
+    setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, status } : m)));
+  }, []);
+
+  const markDeliveredAndScheduleRead = useCallback((messageId: string) => {
+    applyMessageStatus(messageId, 'delivered');
+    scheduleReadReceipt(messageId, applyMessageStatus);
+  }, [applyMessageStatus]);
 
   // Cargar datos iniciales
   useEffect(() => {
@@ -448,6 +226,7 @@ export default function ChatScreen() {
         // Obtener usuario actual via API (no decodificar JWT en RN)
         const me = await authAPI.me();
         setCurrentUserId(me?.id || '');
+        setMyProfile({ full_name: me?.full_name, avatar_url: me?.avatar_url, phone: me?.phone });
 
         // Cargar chat y mensajes en paralelo
         const [chats, msgs] = await Promise.all([
@@ -458,34 +237,80 @@ export default function ChatScreen() {
         const current = chats.find((c: any) => c.id === chatId);
         if (current) setChat(current);
 
-        const msgList = msgs || [];
+        const msgList = normalizeMessages(msgs || []);
         setMessages(msgList);
+        saveCache(`chat_messages_${chatId}`, msgList);
         setHasMore(msgList.length === 50);
 
         // Marcar como leídos
-        if (msgList.length > 0) {
-          chatAPI.markAsRead(chatId, msgList[msgList.length - 1].id).catch(() => {});
+        const lastReadableId = getLastReadableMessageId(msgList, me?.id || '');
+        if (lastReadableId) {
+          chatAPI.markAsRead(chatId, lastReadableId).catch(() => {});
         }
       } catch (e) {
         console.error('Error cargando chat:', e);
+        const cached = await readCache<Message[]>(`chat_messages_${chatId}`);
+        if (cached?.length) {
+          setMessages(normalizeMessages(cached));
+        }
       } finally {
         setLoading(false);
       }
     };
     init();
-  }, [chatId]);
+  }, [chatId, readCache, saveCache]);
+
+  useEffect(() => {
+    if (!chatId || messages.length === 0) return;
+    saveCache(`chat_messages_${chatId}`, messages);
+  }, [chatId, messages, saveCache]);
 
   // Supabase Realtime
   useEffect(() => {
     if (!chatId || !currentUserId) return;
-    const unsubscribe = subscribeToChat(chatId, (newMsg: any) => {
+    const unsubscribe = subscribeToChat(chatId, (newMsg, event) => {
+      if (event === 'DELETE') {
+        setMessages(prev => prev.filter(message => message.id !== newMsg.id));
+        return;
+      }
+
       if (newMsg.sender_id !== currentUserId) {
-        setMessages(prev => [...prev, newMsg]);
-        chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
+        const enriched = normalizeMessage(newMsg);
+        setMessages(prev => mergeMessages(prev, [enriched]));
+        if (event === 'INSERT') {
+          chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
+        }
         setIsTyping(false);
+      } else if (event === 'UPDATE') {
+        setMessages(prev => mergeMessages(prev, [newMsg]));
       }
     });
     return unsubscribe;
+  }, [chatId, currentUserId]);
+
+  useEffect(() => {
+    if (!currentUserId) return;
+    return subscribeToOnlineUsers(setOnlineUserIds);
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (!chatId || !currentUserId) return;
+
+    typingChannelRef.current?.unsubscribe();
+    typingChannelRef.current = createChatTypingChannel(chatId, currentUserId, (typing) => {
+      setIsTyping(typing);
+      if (remoteTypingTimer.current) clearTimeout(remoteTypingTimer.current);
+      if (typing) {
+        remoteTypingTimer.current = setTimeout(() => setIsTyping(false), 3500);
+      }
+    });
+
+    return () => {
+      if (typingTimer.current) clearTimeout(typingTimer.current);
+      if (remoteTypingTimer.current) clearTimeout(remoteTypingTimer.current);
+      typingChannelRef.current?.unsubscribe();
+      typingChannelRef.current = null;
+    };
   }, [chatId, currentUserId]);
 
   // Scroll al fondo cuando llegan mensajes nuevos
@@ -503,7 +328,7 @@ export default function ChatScreen() {
       const nextPage = page + 1;
       const older = await chatAPI.getMessages(chatId, nextPage, 50);
       if (older && older.length > 0) {
-        setMessages(prev => [...older, ...prev]);
+        setMessages(prev => mergeMessages(normalizeMessages(older), prev));
         setPage(nextPage);
         setHasMore(older.length === 50);
       } else {
@@ -527,7 +352,7 @@ export default function ChatScreen() {
       Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30 }),
     ]).start();
 
-    const tempId = `temp-${Date.now()}`;
+    const tempId = createTempMessageId();
     const tempMsg: Message = {
       id: tempId,
       text: trimmed,
@@ -537,7 +362,14 @@ export default function ChatScreen() {
       created_at: new Date().toISOString(),
       reply_to: replyTo?.id,
     };
-    setMessages(prev => [...prev, tempMsg]);
+    setMessages(prev => mergeMessages(prev, [tempMsg]));
+
+    if (!isOnline) {
+      setMessages(prev => markMessageFailed(prev, tempId));
+      setSending(false);
+      toast.info('Sin conexión', 'El mensaje queda listo para reintentar');
+      return;
+    }
 
     try {
       const real = await chatAPI.sendMessage(chatId, {
@@ -545,18 +377,98 @@ export default function ChatScreen() {
         type: 'text',
         reply_to: replyTo?.id,
       });
-      setMessages(prev => prev.map(m => m.id === tempId ? { ...real, status: 'sent' } : m));
+      const realId = real.id;
+      setMessages(prev => replaceTempMessage(prev, tempId, { ...real, status: 'delivered' }));
+      markDeliveredAndScheduleRead(realId);
     } catch {
-      setMessages(prev => prev.map(m => m.id === tempId ? { ...m, status: 'failed' } : m));
+      setMessages(prev => markMessageFailed(prev, tempId));
     } finally {
       setSending(false);
     }
-  }, [text, sending, chatId, currentUserId, replyTo]);
+  }, [text, sending, chatId, currentUserId, replyTo, isOnline, markDeliveredAndScheduleRead]);
 
   const handleLongPress = useCallback((msg: Message) => {
+    haptics.medium();
     setContextMsg(msg);
     setContextVisible(true);
   }, []);
+
+  const persistStarred = useCallback(async (ids: string[]) => {
+    if (!chatId) return;
+    setStarredIds(ids);
+    try {
+      const raw = await AsyncStorage.getItem('egchat_starred_msgs');
+      const map = raw ? JSON.parse(raw) as Record<string, string[]> : {};
+      map[chatId] = ids;
+      await AsyncStorage.setItem('egchat_starred_msgs', JSON.stringify(map));
+    } catch { /* ignore */ }
+  }, [chatId]);
+
+  const handleStarMessage = useCallback(() => {
+    if (!contextMsg) return;
+    const next = starredIds.includes(contextMsg.id)
+      ? starredIds.filter(id => id !== contextMsg.id)
+      : [...starredIds, contextMsg.id];
+    persistStarred(next);
+    toast.info('Destacado', starredIds.includes(contextMsg.id) ? 'Quitado de destacados' : 'Mensaje destacado');
+  }, [contextMsg, starredIds, persistStarred]);
+
+  const handleReaction = useCallback((emoji: string) => {
+    if (!contextMsg || !chatId) return;
+    const reactText = `${emoji} reaccionaste a: ${(contextMsg.text || '').slice(0, 40)}`;
+    chatAPI.sendMessage(chatId, { text: reactText, type: 'text' }).catch(() => {});
+  }, [contextMsg, chatId]);
+
+  const exportChat = useCallback(() => {
+    const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const name = chat?.type === 'group'
+      ? (chat?.name || 'Grupo')
+      : (getParticipantName(other) || 'Usuario');
+    const body = messages.map(m => {
+      const who = m.sender_id === currentUserId ? 'Yo' : name;
+      return `[${formatTime(m.created_at)}] ${who}: ${m.text || `[${m.type}]`}`;
+    }).join('\n');
+    Share.share({ message: body, title: `Chat ${name}` }).catch(() => {});
+  }, [messages, currentUserId, chat]);
+
+  const togglePin = useCallback(async () => {
+    if (!chatId) return;
+    const raw = await AsyncStorage.getItem('egchat_pinned_chats');
+    const ids = raw ? JSON.parse(raw) as string[] : [];
+    const next = isPinned ? ids.filter(id => id !== chatId) : [...ids, chatId];
+    await AsyncStorage.setItem('egchat_pinned_chats', JSON.stringify(next));
+    setIsPinned(!isPinned);
+    toast.info(isPinned ? 'Chat desfijado' : 'Chat fijado');
+  }, [chatId, isPinned]);
+
+  const toggleMute = useCallback(async () => {
+    if (!chatId) return;
+    const next = !isMuted;
+    await AsyncStorage.setItem(`egchat_muted_${chatId}`, next ? '1' : '0');
+    setIsMuted(next);
+    toast.info(next ? 'Chat silenciado' : 'Notificaciones activadas');
+  }, [chatId, isMuted]);
+
+  const getReplyPreview = useCallback((msg: Message) => {
+    if (!msg.reply_to) return undefined;
+    const parent = messages.find(m => m.id === msg.reply_to);
+    if (!parent) return undefined;
+    const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const fallbackName = chat?.type === 'group'
+      ? (chat?.name || 'Grupo')
+      : (getParticipantName(other) || 'Usuario');
+    return {
+      author: parent.sender_id === currentUserId ? 'Tú' : (parent.sender?.full_name || fallbackName),
+      text: parent.text || 'Mensaje',
+    };
+  }, [messages, currentUserId, chat]);
+
+  const handleScroll = useCallback((e: any) => {
+    const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
+    const distBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
+    setShowScrollBottom(distBottom > 200);
+    if (contentOffset.y < 60 && hasMore && !loadingMore) loadMore();
+  }, [hasMore, loadingMore, loadMore]);
 
   const handleCopy = useCallback(async () => {
     if (contextMsg?.text) await Clipboard.setStringAsync(contextMsg.text);
@@ -597,69 +509,392 @@ export default function ChatScreen() {
     setText(val);
     if (typingTimer.current) clearTimeout(typingTimer.current);
     if (val.trim()) {
-      chatAPI.sendTyping?.(chatId).catch(() => {});
+      typingChannelRef.current?.sendTyping(true);
       typingTimer.current = setTimeout(() => {
-        chatAPI.stopTyping?.(chatId).catch(() => {});
+        typingChannelRef.current?.sendTyping(false);
       }, 2000);
+    } else {
+      typingChannelRef.current?.sendTyping(false);
     }
   }, [chatId]);
+
+  const pushOptimistic = useCallback((msg: Message) => {
+    setMessages(prev => mergeMessages(prev, [msg]));
+  }, []);
+
+  const replaceOptimistic = useCallback((tempId: string, real: Message) => {
+    const realId = real.id;
+    setMessages(prev => replaceTempMessage(prev, tempId, { ...real, status: 'delivered' }));
+    markDeliveredAndScheduleRead(realId);
+  }, [markDeliveredAndScheduleRead]);
+
+  const failOptimistic = useCallback((tempId: string) => {
+    setMessages(prev => markMessageFailed(prev, tempId));
+  }, []);
+
+  const retryMessage = useCallback(async (message: Message) => {
+    if (!chatId || message.status !== 'failed') return;
+    if (!isOnline) {
+      toast.info('Sin conexión', 'Se reintentará cuando recuperes internet');
+      return;
+    }
+
+    setMessages(prev => prev.map(item =>
+      item.id === message.id
+        ? {
+            ...item,
+            status: 'pending',
+            uploadState: message.type === 'text' ? undefined : 'uploading',
+            uploadProgress: message.type === 'text' ? undefined : 0.2,
+          }
+        : item,
+    ));
+
+    try {
+      const localUri = message.imageUrl || message.file_url;
+      const isLocalMedia = !!localUri && !/^https?:\/\//i.test(localUri);
+      let sent: Message;
+
+      if (isLocalMedia && message.type !== 'text') {
+        const fileName = localUri.split('/').pop() || `${message.type}.dat`;
+        const asset = {
+          uri: localUri,
+          fileName,
+          mimeType: message.type === 'image'
+            ? 'image/jpeg'
+            : message.type === 'video'
+              ? 'video/mp4'
+              : message.type === 'audio'
+                ? 'audio/m4a'
+                : 'application/octet-stream',
+        };
+        sent = await uploadAndSend(chatId, asset, {
+          text: message.text || '',
+          type: message.type,
+        });
+      } else {
+        sent = await chatAPI.sendMessage(chatId, {
+          text: message.text || '',
+          type: message.type,
+          reply_to: message.reply_to,
+          file_url: message.file_url,
+        });
+      }
+
+      replaceOptimistic(message.id, sent);
+    } catch {
+      failOptimistic(message.id);
+      toast.error('Error', 'No se pudo reenviar el mensaje');
+    } finally {
+      retryingMessagesRef.current.delete(message.id);
+    }
+  }, [chatId, failOptimistic, isOnline, replaceOptimistic]);
+
+  useEffect(() => {
+    if (!isOnline || !currentUserId) return;
+
+    const retryable = messages.filter(message =>
+      message.sender_id === currentUserId
+      && message.status === 'failed'
+      && isTempMessage(message.id)
+      && !retryingMessagesRef.current.has(message.id),
+    );
+
+    retryable.slice(0, 3).forEach((message, index) => {
+      retryingMessagesRef.current.add(message.id);
+      setTimeout(() => retryMessage(message), 350 * index);
+    });
+  }, [currentUserId, isOnline, messages, retryMessage]);
+
+  const sendMedia = useCallback(async (
+    asset: { uri: string; fileName: string; mimeType: string },
+    payload: { text: string; type: string },
+    extra?: Partial<Message>,
+  ) => {
+    const tempId = createTempMessageId();
+    pushOptimistic({
+      id: tempId,
+      text: payload.text,
+      type: payload.type,
+      sender_id: currentUserId,
+      status: 'pending',
+      created_at: new Date().toISOString(),
+      imageUrl: payload.type === 'image' ? asset.uri : undefined,
+      file_url: payload.type !== 'image' ? asset.uri : undefined,
+      uploadState: 'queued',
+      uploadProgress: 0.05,
+      ...extra,
+    });
+    setShowAttach(false);
+    haptics.light();
+
+    if (!isOnline) {
+      failOptimistic(tempId);
+      toast.info('Sin conexion', 'El archivo queda listo para reintentar');
+      return;
+    }
+
+    try {
+      setMessages(prev => prev.map(message =>
+        message.id === tempId ? { ...message, uploadState: 'uploading', uploadProgress: 0.35 } : message,
+      ));
+      const sent = await uploadAndSend(chatId!, asset, payload);
+      setMessages(prev => prev.map(message =>
+        message.id === tempId ? { ...message, uploadState: 'processing', uploadProgress: 0.9 } : message,
+      ));
+      replaceOptimistic(tempId, { ...sent, imageUrl: sent.file_url, file_url: sent.file_url });
+    } catch {
+      failOptimistic(tempId);
+      toast.error('Error', 'No se pudo enviar el archivo');
+    }
+  }, [chatId, currentUserId, pushOptimistic, replaceOptimistic, failOptimistic, isOnline]);
+
+  const handleAttachAction = useCallback(async (action: AttachAction) => {
+    if (!chatId) return;
+    if (action === 'photo') {
+      Alert.alert('Foto', '¿Cómo quieres enviar la foto?', [
+        {
+          text: 'Cámara',
+          onPress: async () => {
+            const asset = await pickImageFromCamera();
+            if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
+          },
+        },
+        {
+          text: 'Galería',
+          onPress: async () => {
+            const asset = await pickImageFromLibrary();
+            if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
+          },
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+      return;
+    }
+    if (action === 'video') {
+      const asset = await pickVideo();
+      if (asset) {
+        await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
+      }
+      return;
+    }
+    if (action === 'file') {
+      const asset = await pickFile();
+      if (asset) {
+        await sendMedia(asset, { text: `📄 ${asset.fileName}`, type: 'file' });
+      }
+      return;
+    }
+    if (action === 'contact') {
+      setShowAttach(false);
+      setShowContactPicker(true);
+      return;
+    }
+    if (action === 'location') {
+      const { lat, lng, label } = await getCurrentLocationLabel();
+      const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+      const msgText = `📍 ${label}\n${directionsUrl}`;
+      const tempId = createTempMessageId();
+      pushOptimistic({
+        id: tempId, text: msgText, type: 'location', sender_id: currentUserId,
+        status: 'pending', created_at: new Date().toISOString(),
+      });
+      setShowAttach(false);
+      try {
+        const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+        replaceOptimistic(tempId, sent);
+      } catch {
+        failOptimistic(tempId);
+      }
+      return;
+    }
+    if (action === 'music') {
+      const asset = await pickFile();
+      if (asset) {
+        await sendMedia(asset, { text: `🎵 ${asset.fileName}`, type: 'audio' });
+      }
+      return;
+    }
+    if (action === 'money') {
+      setShowAttach(false);
+      setShowQuickTransfer(true);
+    }
+  }, [chatId, sendMedia, pushOptimistic, replaceOptimistic, failOptimistic]);
+
+  const sendTransferMessage = useCallback(async (msgText: string) => {
+    if (!chatId) return;
+    const tempId = createTempMessageId();
+    pushOptimistic({
+      id: tempId, text: msgText, type: 'text', sender_id: currentUserId,
+      status: 'pending', created_at: new Date().toISOString(),
+    });
+    try {
+      const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+      replaceOptimistic(tempId, sent);
+    } catch {
+      failOptimistic(tempId);
+    }
+  }, [chatId, currentUserId, pushOptimistic, replaceOptimistic, failOptimistic]);
+
+  const insertEmoji = useCallback((emoji: string) => {
+    setText(prev => prev + emoji);
+  }, []);
+
+  const sendStickerMessage = useCallback(async (stickerText: string) => {
+    if (!chatId) return;
+    setShowEmojis(false);
+    const tempId = createTempMessageId();
+    pushOptimistic({
+      id: tempId, text: stickerText, type: 'text', sender_id: currentUserId,
+      status: 'pending', created_at: new Date().toISOString(),
+    });
+    try {
+      const sent = await chatAPI.sendMessage(chatId, { text: stickerText, type: 'text' });
+      replaceOptimistic(tempId, sent);
+    } catch {
+      failOptimistic(tempId);
+    }
+  }, [chatId, currentUserId, pushOptimistic, replaceOptimistic, failOptimistic]);
+
+  const handleShareContact = useCallback(async (contact: any) => {
+    if (!chatId) return;
+    const name = contact.full_name || contact.name || 'Contacto';
+    const phone = contact.phone || '';
+    const msgText = `👤 ${name}\n📞 ${phone}`;
+    const tempId = createTempMessageId();
+    pushOptimistic({
+      id: tempId, text: msgText, type: 'contact', sender_id: currentUserId,
+      status: 'pending', created_at: new Date().toISOString(),
+    });
+    try {
+      const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+      replaceOptimistic(tempId, sent);
+      toast.success('Contacto compartido');
+    } catch {
+      failOptimistic(tempId);
+    }
+  }, [chatId, pushOptimistic, replaceOptimistic, failOptimistic]);
+
+  const uploadChatAvatar = useCallback(async (uri: string) => {
+    setUploadingAvatar(true);
+    try {
+      const token = await getToken();
+      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+      const formData = new FormData();
+      formData.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any);
+      const res = await fetch(`${BASE}/api/user/avatar`, {
+        method: 'POST',
+        body: formData,
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.ok) {
+        const { avatar_url } = await res.json();
+        await authAPI.updateProfile({ avatar_url });
+        setChat((prev: any) => {
+          if (!prev) return prev;
+          if (prev.type === 'group') return { ...prev, avatar_url };
+          return {
+            ...prev,
+            participants: prev.participants?.map((p: any) =>
+              p.user_id === currentUserId ? { ...p, avatar_url } : p,
+            ),
+          };
+        });
+        toast.success('Foto actualizada', 'Todos los contactos la verán');
+      }
+    } catch {
+      toast.error('Error', 'No se pudo actualizar la foto');
+    } finally {
+      setUploadingAvatar(false);
+      setCropUri(null);
+    }
+  }, [currentUserId]);
+
+  const pickProfilePhoto = useCallback(() => {
+    Alert.alert('Foto de perfil', 'Elige una opción', [
+      {
+        text: 'Cámara',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestCameraPermissionsAsync();
+          if (status !== 'granted') return;
+          const r = await ImagePicker.launchCameraAsync({ quality: 0.9 });
+          if (!r.canceled && r.assets[0]) setCropUri(r.assets[0].uri);
+        },
+      },
+      {
+        text: 'Galería',
+        onPress: async () => {
+          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+          if (status !== 'granted') return;
+          const r = await ImagePicker.launchImageLibraryAsync({
+            mediaTypes: ImagePicker.MediaTypeOptions.Images,
+            quality: 0.9,
+          });
+          if (!r.canceled && r.assets[0]) setCropUri(r.assets[0].uri);
+        },
+      },
+      { text: 'Cancelar', style: 'cancel' },
+    ]);
+  }, []);
 
   const isGroup = chat?.type === 'group';
   const otherParticipant = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
   const chatName = chat
-    ? isGroup ? (chat.name || 'Grupo') : (otherParticipant?.full_name || 'Usuario')
+    ? isGroup ? (chat.name || 'Grupo') : (getParticipantName(otherParticipant) || 'Usuario')
     : '...';
-  const chatAvatar = isGroup ? chat?.avatar_url : otherParticipant?.avatar_url;
+  const chatAvatar = isGroup ? chat?.avatar_url : getParticipantAvatar(otherParticipant);
+  const otherPhone = getParticipantPhone(otherParticipant);
+  const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(otherParticipant.user_id);
   const chatSubtitle = isGroup
     ? `${chat?.participants?.length || 0} miembros`
-    : 'En línea';
+    : isOtherOnline ? 'En línea' : 'Desconectado';
 
   // ── Items del drawer ──────────────────────────────────────────
   const IC = '#374151'; // color base
-  const drawerItems: DrawerItem[] = [
+  const drawerItems: ChatMenuItem[] = [
     // ── Sección principal ──
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="12" cy="7" r="4"/></Svg>,
       label: 'Ver perfil',
       color: IC,
-      onPress: () => Alert.alert('Ver perfil', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); setShowProfile(true); },
     },
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35" strokeLinecap="round"/></Svg>,
       label: 'Buscar en el chat',
       color: IC,
-      onPress: () => Alert.alert('Buscar', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); setShowChatSearch(true); setChatSearchQuery(''); },
     },
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Svg>,
       label: 'Mensajes destacados',
       color: IC,
-      onPress: () => Alert.alert('Destacados', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); setShowStarredModal(true); },
     },
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="12" y1="5" x2="12" y2="19" strokeLinecap="round"/><Line x1="5" y1="12" x2="19" y2="12" strokeLinecap="round"/><Circle cx="12" cy="12" r="10"/></Svg>,
-      label: 'Fijar chat',
+      label: isPinned ? 'Desfijar chat' : 'Fijar chat',
       color: IC,
-      onPress: () => Alert.alert('Fijar chat', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); togglePin(); },
     },
     // ── Sección configuración ──
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
-      label: 'Silenciar',
+      label: isMuted ? 'Activar notificaciones' : 'Silenciar',
       color: IC,
-      onPress: () => Alert.alert('Silenciar', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); toggleMute(); },
     },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Rect x="3" y="3" width="18" height="18" rx="2"/><Line x1="3" y1="9" x2="21" y2="9" strokeLinecap="round"/><Line x1="9" y1="21" x2="9" y2="9" strokeLinecap="round"/></Svg>,
       label: 'Fondo de pantalla',
       color: IC,
-      onPress: () => Alert.alert('Fondo de pantalla', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); setShowWallpaperModal(true); },
     },
     {
       section: 'config',
@@ -674,28 +909,28 @@ export default function ChatScreen() {
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="22" y1="2" x2="11" y2="13" strokeLinecap="round"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>,
       label: 'Enviar dinero',
       color: IC,
-      onPress: () => router.push('/(tabs)/monedero' as any),
+      onPress: () => { setDrawerVisible(false); setShowQuickTransfer(true); },
     },
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Circle cx="18" cy="5" r="3"/><Circle cx="6" cy="12" r="3"/><Circle cx="18" cy="19" r="3"/><Line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeLinecap="round"/><Line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeLinecap="round"/></Svg>,
       label: 'Compartir contacto',
       color: IC,
-      onPress: () => Alert.alert('Compartir contacto', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); setShowContactPicker(true); },
     },
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" strokeLinecap="round"/></Svg>,
       label: 'Crear grupo con este contacto',
       color: IC,
-      onPress: () => Alert.alert('Crear grupo', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); router.push('/new-chat' as any); },
     },
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" strokeLinecap="round"/><Polyline points="7 10 12 15 17 10"/><Line x1="12" y1="15" x2="12" y2="3" strokeLinecap="round"/></Svg>,
       label: 'Exportar chat',
       color: IC,
-      onPress: () => Alert.alert('Exportar chat', 'Próximamente'),
+      onPress: () => { setDrawerVisible(false); exportChat(); },
     },
     // ── Sección peligrosa ──
     {
@@ -740,22 +975,50 @@ export default function ChatScreen() {
     },
   ];
 
+  const displayMessages = chatSearchQuery.trim()
+    ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+    : messages;
+
+  const starredMessages = messages.filter(m => starredIds.includes(m.id));
+
   const renderItem = ({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === currentUserId;
-    const prevMsg = index > 0 ? messages[index - 1] : null;
+    const prevMsg = index > 0 ? displayMessages[index - 1] : null;
     const showDate = !prevMsg || getDateLabel(item.created_at) !== getDateLabel(prevMsg.created_at);
+    const searchHit = !!chatSearchQuery.trim() && !!item.text?.toLowerCase().includes(chatSearchQuery.toLowerCase());
 
     return (
       <>
         {showDate && <DateSeparator label={getDateLabel(item.created_at)} />}
-        <MessageBubble
+        <ChatMessageBubble
           message={item}
           isOwn={isOwn}
           isGroup={isGroup}
+          myAvatar={myProfile.avatar_url}
+          myName={myProfile.full_name}
+          replyPreview={getReplyPreview(item)}
+          showReadReceipts={showReadReceipts}
+          highlight={searchHit}
           onLongPress={handleLongPress}
+          onRetry={retryMessage}
+          onOpenImage={setPreviewImageUri}
         />
       </>
     );
+  };
+
+  const goToCall = (callType: 'audio' | 'video') => {
+    router.push({
+      pathname: '/call/[callId]',
+      params: {
+        callId: `call_${Date.now()}`,
+        targetName: chatName,
+        targetAvatar: chatAvatar || '',
+        callType,
+        role: 'caller',
+        targetUserId: otherParticipant?.user_id || '',
+      },
+    } as any);
   };
 
   if (loading) {
@@ -767,68 +1030,41 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgTertiary }]} edges={['top']}>
-      {/* ── Header con gradiente ── */}
-      <LinearGradient
-        colors={['#00C8A0', '#00B4E6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-            <Line x1="19" y1="12" x2="5" y2="12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"/>
-            <Polyline points="12 19 5 12 12 5" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"/>
-          </Svg>
-        </TouchableOpacity>
-        <TouchableOpacity style={styles.headerInfo} activeOpacity={0.7}>
-          <EGAvatar src={chatAvatar} name={chatName} size={38} />
-          <View style={styles.headerText}>
-            <Text style={styles.headerName} numberOfLines={1}>{chatName}</Text>
-            <Text style={styles.headerStatus}>
-              {isTyping ? '● Escribiendo...' : `● ${chatSubtitle}`}
-            </Text>
-          </View>
-        </TouchableOpacity>
-        <View style={styles.headerActions}>
-          {/* Llamada de voz */}
-          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push({ pathname: '/call/[callId]', params: { callId: `call_${Date.now()}`, targetName: chatName, targetAvatar: chatAvatar || '', callType: 'audio', role: 'caller', targetUserId: otherParticipant?.user_id || '' } } as any)}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round">
-              <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
-            </Svg>
-          </TouchableOpacity>
-          {/* Videollamada */}
-          <TouchableOpacity style={styles.headerBtn} onPress={() => router.push({ pathname: '/call/[callId]', params: { callId: `call_${Date.now()}`, targetName: chatName, targetAvatar: chatAvatar || '', callType: 'video', role: 'caller', targetUserId: otherParticipant?.user_id || '' } } as any)}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round">
-              <Polygon points="23 7 16 12 23 17 23 7"/>
-              <Rect x="1" y="5" width="15" height="14" rx="2"/>
-            </Svg>
-          </TouchableOpacity>
-          {/* Menú tres puntos */}
-          <TouchableOpacity style={styles.headerBtn} onPress={() => setDrawerVisible(true)}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-              <Circle cx="12" cy="5" r="1" fill="#fff"/>
-              <Circle cx="12" cy="12" r="1" fill="#fff"/>
-              <Circle cx="12" cy="19" r="1" fill="#fff"/>
-            </Svg>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bgTertiary }]} edges={['bottom', 'left', 'right']}>
+      <ChatHeader
+        chatName={chatName}
+        chatAvatar={chatAvatar}
+        subtitle={chatSubtitle}
+        isTyping={isTyping}
+        isOnline={isOtherOnline}
+        onBack={() => router.back()}
+        onProfilePress={() => setShowProfile(true)}
+        onAudioCall={() => goToCall('audio')}
+        onVideoCall={() => goToCall('video')}
+        onMenuPress={() => setDrawerVisible(true)}
+      />
 
-      {/* ── Mensajes + Input ── */}
+      {showChatSearch && (
+        <ChatSearchBar
+          value={chatSearchQuery}
+          onChange={setChatSearchQuery}
+          onClose={() => { setShowChatSearch(false); setChatSearchQuery(''); }}
+        />
+      )}
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        {/* Fondo beige estilo WhatsApp */}
         <View style={styles.chatBg}>
+          <ChatWallpaperBackground wallpaperId={wallpaperId} />
           <FlatList
             ref={flatListRef}
-            data={messages}
+            data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
             contentContainerStyle={styles.messagesList}
             showsVerticalScrollIndicator={false}
+            onScroll={handleScroll}
+            scrollEventThrottle={16}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
-            onEndReached={loadMore}
-            onEndReachedThreshold={0.1}
             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 8 }} /> : null}
             ListFooterComponent={isTyping ? <TypingIndicator /> : null}
             ListEmptyComponent={
@@ -839,124 +1075,196 @@ export default function ChatScreen() {
             }
           />
 
-          {/* LIA-25 flotante */}
+          {showScrollBottom && (
+            <TouchableOpacity
+              style={styles.scrollBottomBtn}
+              onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.scrollBottomIcon}>↓</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.liaFloat}
             onPress={() => router.push('/(tabs)/lia' as any)}
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#e91e8c', '#9c27b0']}
+              colors={['#00C8A0', '#00B4E6']}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.liaFloatGrad}
             >
-              <Text style={styles.liaFloatIcon}>🧠</Text>
+              <Image
+                source={require('../../assets/logo-transparent.png')}
+                style={styles.liaFloatLogo}
+                resizeMode="cover"
+              />
             </LinearGradient>
           </TouchableOpacity>
         </View>
 
-        {/* Reply preview */}
-        {replyTo && <ReplyPreview text={replyTo.text || 'Mensaje'} onCancel={() => setReplyTo(null)} />}
-
-        {/* Panel adjuntos — se muestra encima del input */}
-        {showAttach && (
-          <View style={[styles.attachPanel, { backgroundColor: C.bgSecondary }]}>
-            {[
-              { icon: '🖼️', label: 'Foto',          color: '#e3f2fd', onPress: () => { setShowAttach(false); Alert.alert('Foto', 'Próximamente'); } },
-              { icon: '🎥', label: 'Video',         color: '#fff8e1', onPress: () => { setShowAttach(false); Alert.alert('Video', 'Próximamente'); } },
-              { icon: '📎', label: 'Archivo',       color: '#e0f7fa', onPress: () => { setShowAttach(false); Alert.alert('Archivo', 'Próximamente'); } },
-              { icon: '👤', label: 'Contacto',      color: '#fce4ec', onPress: () => { setShowAttach(false); Alert.alert('Contacto', 'Próximamente'); } },
-              { icon: '📍', label: 'Ubicación',     color: '#fce4ec', onPress: () => { setShowAttach(false); Alert.alert('Ubicación', 'Próximamente'); } },
-              { icon: '💸', label: 'Enviar dinero', color: '#e8f5e9', onPress: () => { setShowAttach(false); router.push('/(tabs)/monedero' as any); } },
-            ].map(item => (
-              <TouchableOpacity
-                key={item.label}
-                style={styles.attachItem}
-                onPress={item.onPress}
-                activeOpacity={0.75}
-              >
-                <View style={[styles.attachIconBox, { backgroundColor: item.color }]}>
-                  <Text style={styles.attachEmoji}>{item.icon}</Text>
-                </View>
-                <Text style={[styles.attachLabel, { color: C.textSecondary }]}>{item.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+        {replyTo && (
+          <ReplyPreview
+            author={replyTo.sender_id === currentUserId ? 'Tú' : (replyTo.sender?.full_name || chatName)}
+            text={replyTo.text || 'Mensaje'}
+            onCancel={() => setReplyTo(null)}
+          />
         )}
 
-        {/* ── Input bar ── */}
-        <View style={[styles.inputBar, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
-          {/* Botón + adjuntos */}
-          <TouchableOpacity
-            style={styles.attachBtn}
-            onPress={() => setShowAttach(v => !v)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.attachBtnIcon, showAttach && { color: Colors.accent }]}>+</Text>
-          </TouchableOpacity>
+        {/* Panel adjuntos — se muestra encima del input */}
+        {showAttach && <ChatAttachPanel onAction={handleAttachAction} />}
+        {showEmojis && (
+          <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
+        )}
 
-          {/* Campo de texto */}
-          <View style={[styles.inputWrapper, { backgroundColor: C.bgTertiary }]}>
-            <TextInput
-              style={[styles.input, { color: C.textPrimary }]}
-              value={text}
-              onChangeText={handleTextChange}
-              placeholder="Escribe un mensaje..."
-              placeholderTextColor={C.textTertiary}
-              multiline
-              maxLength={4000}
-            />
-          </View>
-
-          {/* Emoji */}
-          <TouchableOpacity style={styles.emojiBtn} activeOpacity={0.8}>
-            <Text style={styles.emojiBtnIcon}>🙂</Text>
-          </TouchableOpacity>
-
-          {/* Enviar o micrófono */}
-          {text.trim() ? (
-            <Animated.View style={{ transform: [{ scale: sendScale }] }}>
-              <TouchableOpacity
-                onPress={sendMessage}
-                disabled={sending}
-                style={styles.sendBtn}
-                activeOpacity={0.8}
-              >
-                {sending
-                  ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <Line x1="22" y1="2" x2="11" y2="13"/>
-                      <Polygon points="22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="#fff"/>
-                    </Svg>
-                }
-              </TouchableOpacity>
-            </Animated.View>
-          ) : (
-            <TouchableOpacity style={styles.micBtn} activeOpacity={0.8}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={Colors.textSecondary} strokeWidth={1.8} strokeLinecap="round">
-                <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <Path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <Line x1="12" y1="19" x2="12" y2="23"/>
-                <Line x1="8" y1="23" x2="16" y2="23"/>
-              </Svg>
-            </TouchableOpacity>
-          )}
-        </View>
+        <ChatInputBar
+          text={text}
+          sending={sending}
+          showAttach={showAttach}
+          showEmojis={showEmojis}
+          isRecording={isRecording}
+          durationFormatted={durationFormatted}
+          sendScale={sendScale}
+          onChangeText={handleTextChange}
+          onToggleAttach={() => {
+            setShowAttach(v => { const n = !v; if (n) setShowEmojis(false); return n; });
+          }}
+          onToggleEmojis={() => {
+            setShowEmojis(v => { const n = !v; if (n) setShowAttach(false); return n; });
+          }}
+          onSend={sendMessage}
+          onStartRecording={async () => {
+            haptics.medium();
+            const ok = await startRecording();
+            if (!ok) toast.error('Sin permiso', 'Activa el micrófono en ajustes');
+          }}
+          onCancelRecording={cancelRecording}
+          onStopRecording={async () => {
+            const rec = await stopRecording();
+            if (!rec?.uri || !chatId) return;
+            haptics.success();
+            const tempId = createTempMessageId();
+            const label = `🎵 Audio (${rec.duration}s)`;
+            pushOptimistic({
+              id: tempId, text: label, type: 'audio', sender_id: currentUserId,
+              status: 'pending', created_at: new Date().toISOString(),
+            });
+            try {
+              const asset = { uri: rec.uri, fileName: 'audio.m4a', mimeType: 'audio/m4a' };
+              const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
+              replaceOptimistic(tempId, sent);
+            } catch {
+              failOptimistic(tempId);
+              toast.error('Error', 'No se pudo enviar el audio');
+            }
+          }}
+        />
       </KeyboardAvoidingView>
 
-      <ContextMenu visible={contextVisible} message={contextMsg} isOwn={contextMsg?.sender_id === currentUserId} onClose={() => setContextVisible(false)} onCopy={handleCopy} onReply={handleReply} onDelete={handleDelete} onDeleteForMe={handleDeleteForMe} />
-      <ChatDrawer
+      <ChatContextMenu
+        visible={contextVisible}
+        message={contextMsg}
+        isOwn={contextMsg?.sender_id === currentUserId}
+        onClose={() => setContextVisible(false)}
+        onCopy={handleCopy}
+        onReply={handleReply}
+        onStar={handleStarMessage}
+        onDelete={handleDelete}
+        onDeleteForMe={handleDeleteForMe}
+        onReaction={handleReaction}
+      />
+      <ChatWallpaperModal
+        visible={showWallpaperModal}
+        activeId={wallpaperId}
+        onClose={() => setShowWallpaperModal(false)}
+        onSelect={async (id) => {
+          setWallpaperId(id);
+          if (chatId) await setChatWallpaperId(chatId, id);
+        }}
+      />
+      <ChatStarredModal
+        visible={showStarredModal}
+        messages={starredMessages}
+        onClose={() => setShowStarredModal(false)}
+        onRemove={(id) => persistStarred(starredIds.filter(sid => sid !== id))}
+      />
+      <ChatMenuPanel
         visible={drawerVisible}
         onClose={() => setDrawerVisible(false)}
         chatName={chatName}
         chatAvatar={chatAvatar}
         chatInitials={chatName?.slice(0, 2).toUpperCase()}
         isGroup={isGroup}
-        isOnline={chatSubtitle === 'En línea'}
+        isOnline={isOtherOnline}
         items={drawerItems}
-        isDark={isDark}
+        headerHeight={56}
       />
+      <ChatContactPickerModal
+        visible={showContactPicker}
+        onClose={() => setShowContactPicker(false)}
+        onSelect={handleShareContact}
+      />
+      <ContactProfileModal
+        visible={showProfile}
+        contact={{
+          id: chatId,
+          title: chatName,
+          name: chatName,
+          avatarUrl: chatAvatar,
+          phone: otherPhone,
+          isGroup,
+          type: isGroup ? 'group' : 'private',
+        }}
+        onClose={() => setShowProfile(false)}
+        onStartCall={(type) => {
+          setShowProfile(false);
+          router.push({
+            pathname: '/call/[callId]',
+            params: {
+              callId: `call_${Date.now()}`,
+              targetName: chatName,
+              targetAvatar: chatAvatar || '',
+              callType: type,
+              role: 'caller',
+              targetUserId: otherParticipant?.user_id || '',
+            },
+          } as any);
+        }}
+        onSendMoney={() => { setShowProfile(false); setShowQuickTransfer(true); }}
+      />
+      <QuickTransferModal
+        visible={showQuickTransfer}
+        onClose={() => setShowQuickTransfer(false)}
+        contactName={chatName}
+        contactAvatar={chatAvatar}
+        recipientId={otherParticipant?.user_id}
+        recipientPhone={otherPhone}
+        myAvatar={myProfile.avatar_url}
+        myName={myProfile.full_name || 'Yo'}
+        onTransferred={sendTransferMessage}
+      />
+      {cropUri ? (
+        <AvatarCropModal
+          visible
+          imageUri={cropUri}
+          onClose={() => setCropUri(null)}
+          onSave={uploadChatAvatar}
+        />
+      ) : null}
+      {uploadingAvatar && (
+        <View style={styles.uploadOverlay}>
+          <ActivityIndicator size="large" color="#00c8a0" />
+        </View>
+      )}
+      <Modal visible={!!previewImageUri} transparent animationType="fade" onRequestClose={() => setPreviewImageUri(null)}>
+        <Pressable style={styles.imagePreviewOverlay} onPress={() => setPreviewImageUri(null)}>
+          {previewImageUri ? (
+            <Image source={{ uri: previewImageUri }} style={styles.imagePreview} resizeMode="contain" />
+          ) : null}
+        </Pressable>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -969,26 +1277,84 @@ const styles = StyleSheet.create({
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: Spacing.sm,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
+    paddingHorizontal: 8,
+    paddingBottom: 10,
+    gap: 6,
+    backgroundColor: '#ffffff',
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
+    zIndex: 10,
   },
-  backBtn: { padding: Spacing.sm },
+  backBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   backIcon: { fontSize: 28, color: Colors.white, lineHeight: 32 },
-  headerInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: Spacing.sm },
-  headerText: { flex: 1 },
-  headerName: { ...Typography.chatHeaderName, color: '#ffffff' },
-  headerStatus: { fontSize: FontSize.xs, color: 'rgba(255,255,255,0.85)', marginTop: 1 },
-  headerActions: { flexDirection: 'row', gap: 4 },
-  headerBtn: { padding: Spacing.sm },
+  headerInfo: {
+    flex: 1,
+    minWidth: 0,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 2,
+  },
+  headerText: { flex: 1, minWidth: 0 },
+  headerName: {
+    fontSize: 16,
+    lineHeight: 20,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  headerStatus: {
+    fontSize: 12,
+    lineHeight: 16,
+    color: '#667781',
+    marginTop: 1,
+  },
+  headerStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
+  headerStatusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: 'rgba(255,255,255,0.58)',
+  },
+  headerStatusDotActive: { backgroundColor: '#b8ffdf' },
+  headerStatusTyping: { color: '#00c8a0', fontWeight: '600' },
+  headerActions: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  headerBtn: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   headerBtnIcon: { fontSize: 18, color: Colors.white },
 
-  // Chat background — beige estilo WhatsApp
   chatBg: {
     flex: 1,
-    backgroundColor: '#e5ddd5',
+    backgroundColor: '#f0f2f5',
     position: 'relative',
   },
+  scrollBottomBtn: {
+    position: 'absolute',
+    right: 16,
+    bottom: 16,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  scrollBottomIcon: { fontSize: 18, color: '#00c8a0', fontWeight: '700' },
 
   // Messages
   messagesList: { paddingHorizontal: Spacing.sm + 2, paddingVertical: Spacing.sm, gap: 2 },
@@ -1034,6 +1400,33 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
   bubbleTime: { ...Typography.timestamp, color: Colors.textTertiary },
+  uploadStatus: {
+    marginTop: 6,
+    gap: 4,
+  },
+  uploadTrack: {
+    height: 3,
+    borderRadius: 2,
+    overflow: 'hidden',
+    backgroundColor: 'rgba(0,0,0,0.12)',
+  },
+  uploadFill: {
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: Colors.accent,
+  },
+  uploadText: {
+    color: Colors.textTertiary,
+    fontSize: FontSize.xs,
+    textAlign: 'right',
+  },
+  retryHint: {
+    color: Colors.error,
+    fontSize: FontSize.xs,
+    fontWeight: FontWeight.semibold,
+    marginTop: 3,
+    textAlign: 'right',
+  },
 
   // Date separator
   dateSeparator: { alignItems: 'center', marginVertical: Spacing.sm },
@@ -1074,28 +1467,38 @@ const styles = StyleSheet.create({
   contextItem: { padding: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
   contextItemText: { fontSize: FontSize.md, color: Colors.textPrimary },
 
-  // Reply preview
   replyPreview: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.bgTertiary,
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    gap: Spacing.sm,
+    backgroundColor: 'rgba(0,180,230,0.08)',
+    borderLeftWidth: 3,
+    borderLeftColor: '#00b4e6',
+    marginHorizontal: 8,
+    marginTop: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 8,
+    gap: 8,
   },
-  replyBar: { width: 3, height: 36, backgroundColor: Colors.accent, borderRadius: 2 },
-  replyText: { flex: 1, fontSize: FontSize.sm, color: Colors.textSecondary },
-  replyCancel: { padding: Spacing.xs },
-  replyCancelText: { fontSize: 16, color: Colors.textTertiary },
+  replyInner: { flex: 1, minWidth: 0 },
+  replyAuthor: { fontSize: 11, fontWeight: '700', color: '#00b4e6', marginBottom: 2 },
+  replyText: { fontSize: 12, color: '#6b7280' },
+  replyCancel: { padding: 4 },
+  replyCancelText: { fontSize: 14, color: '#9ca3af', fontWeight: '700' },
 
   // Empty state
   emptyChat: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingTop: 80 },
   emptyChatIcon: { fontSize: 48, marginBottom: Spacing.md },
   emptyChatText: { ...Typography.subtitle, color: Colors.textSecondary },
 
-  // LIA-25 flotante en el chat
+  bubbleImage: {
+    width: 220,
+    height: 160,
+    borderRadius: 10,
+    marginBottom: 4,
+  },
+
+  // LIA-25 flotante en el chat (36px como web)
   liaFloat: {
     position: 'absolute',
     right: 12,
@@ -1104,13 +1507,38 @@ const styles = StyleSheet.create({
     ...Shadow.md,
   },
   liaFloatGrad: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+    overflow: 'hidden',
   },
-  liaFloatIcon: { fontSize: 20 },
+  liaFloatLogo: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+  },
+  uploadOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 100,
+  },
+  imagePreviewOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.94)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: 12,
+  },
+  imagePreview: {
+    width: '100%',
+    height: '100%',
+  },
 
   // Panel adjuntos — grid 2 columnas
   attachPanel: {
@@ -1160,16 +1588,13 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: 20,
-    backgroundColor: Colors.bgTertiary,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 2,
   },
-  attachBtnIcon: {
-    fontSize: 26,
-    color: Colors.textSecondary,
-    lineHeight: 30,
-    fontWeight: '300',
+  attachBtnActive: {
+    backgroundColor: 'rgba(0,180,230,0.12)',
   },
   // Campo texto
   inputWrapper: {
@@ -1186,11 +1611,15 @@ const styles = StyleSheet.create({
   emojiBtn: {
     width: 36,
     height: 36,
+    borderRadius: 18,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: 4,
   },
-  emojiBtnIcon: { fontSize: 22 },
+  emojiBtnActive: {
+    backgroundColor: 'rgba(0,180,230,0.12)',
+  },
+  emojiBtnIcon: { fontSize: 22, opacity: 0.85 },
   // Micrófono
   micBtn: {
     width: 44,
@@ -1211,4 +1640,28 @@ const styles = StyleSheet.create({
   },
   sendBtnDisabled: { backgroundColor: Colors.border },
   sendBtnIcon: { color: Colors.white, fontSize: 16 },
+
+  // Grabación de audio
+  recordingBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    flex: 1,
+  },
+  cancelRecBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: Colors.errorBg,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  cancelRecText: { fontSize: 14, color: Colors.error, fontWeight: '700' },
+  recordingPulse: {
+    flex: 1, flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: Colors.errorBg,
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
+  },
+  recordingDot: {
+    width: 8, height: 8, borderRadius: 4,
+    backgroundColor: Colors.error,
+  },
+  recordingTime: { fontSize: 14, fontWeight: '700', color: Colors.error },
 });
