@@ -18,6 +18,7 @@ import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
+import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
 import {
   loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
@@ -291,6 +292,25 @@ export default function MensajeriaScreen() {
     const { subscribeToUserChats } = require('../../src/supabase');
     const unsub = subscribeToUserChats(currentUserId, loadChats);
     return unsub;
+  }, [currentUserId]);
+
+  // Cuando el usuario actual cambia su avatar/nombre, actualizar su participante en todos los chats
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      if (!patch.avatar_url && !patch.full_name) return;
+      setChats(prev => prev.map(chat => ({
+        ...chat,
+        participants: chat.participants.map(p =>
+          p.user_id === currentUserId
+            ? {
+                ...p,
+                ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+                ...(patch.full_name ? { full_name: patch.full_name } : {}),
+              }
+            : p,
+        ),
+      })));
+    });
   }, [currentUserId]);
 
   const onRefresh = () => { setRefreshing(true); loadChats(); };
