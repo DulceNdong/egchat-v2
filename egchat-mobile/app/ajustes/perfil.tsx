@@ -65,13 +65,23 @@ function PhotoRow({
 }) {
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const [imgError, setImgError] = React.useState(false);
+
+  // Reset error state cuando cambia la URL
+  React.useEffect(() => { setImgError(false); }, [avatarUrl]);
+
   return (
     <TouchableOpacity style={styles.photoRow} onPress={onPress} activeOpacity={0.7}>
       <Text style={[styles.rowLabel, { color: C.textPrimary }]}>{label}</Text>
       <View style={styles.photoRight}>
         <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.thumb}>
-          {avatarUrl ? (
-            <Image source={{ uri: avatarUrl }} style={styles.thumbImg} />
+          {avatarUrl && !imgError ? (
+            <Image
+              key={avatarUrl}
+              source={{ uri: avatarUrl }}
+              style={styles.thumbImg}
+              onError={() => setImgError(true)}
+            />
           ) : (
             <Text style={styles.thumbInitials}>{initials}</Text>
           )}
@@ -257,41 +267,67 @@ export default function PerfilScreen() {
 
   const uploadPhoto = async (uri: string) => {
     setUploadingPhoto(true);
+
+    // ── Mostrar inmediatamente la imagen local (funciona en web y nativo) ──
+    setUser(prev => prev ? { ...prev, avatar_url: uri } : prev);
+    emitProfileUpdated({ avatar_url: uri });
+
     try {
       const token = await getToken();
       const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
-      const formData = new FormData();
-      formData.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as unknown as Blob);
+
+      let uploadBody: FormData | null = null;
+
+      // En web el URI puede ser blob: o data: — usar fetch para convertir a Blob
+      try {
+        const blobRes = await fetch(uri);
+        const blob = await blobRes.blob();
+        const fd = new FormData();
+        fd.append('avatar', blob, 'avatar.jpg');
+        uploadBody = fd;
+      } catch {
+        // En nativo usamos la sintaxis RN
+        const fd = new FormData();
+        fd.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as unknown as Blob);
+        uploadBody = fd;
+      }
+
       const res = await fetch(`${BASE}/api/user/avatar`, {
         method: 'POST',
-        body: formData,
+        body: uploadBody,
         headers: { Authorization: `Bearer ${token}` },
       });
+
       if (res.ok) {
         const payload = await res.json().catch(() => ({}));
         const returnedUrl = payload.avatar_url || payload.url || payload.file_url;
         const absoluteUrl = typeof returnedUrl === 'string' && returnedUrl.startsWith('/')
           ? `${BASE}${returnedUrl}` : returnedUrl;
-        const placeholder = !absoluteUrl || String(absoluteUrl).includes('egchat-api.onrender.com/static/avatars/');
-        const profileAvatarUrl = placeholder ? uri : absoluteUrl;
-        if (!placeholder) {
-          try { await authAPI.updateProfile({ avatar_url: profileAvatarUrl }); }
-          catch { await userAPI.updateProfile({ avatar_url: profileAvatarUrl }); }
+        const isPlaceholder = !absoluteUrl || String(absoluteUrl).includes('/static/avatars/undefined');
+
+        // Si el servidor devuelve una URL real, usar esa; si no, mantener el URI local
+        const finalUrl = isPlaceholder ? uri : (absoluteUrl || uri);
+
+        if (!isPlaceholder) {
+          try { await authAPI.updateProfile({ avatar_url: finalUrl }); }
+          catch { await userAPI.updateProfile({ avatar_url: finalUrl }); }
         }
-        await saveLocalAvatar(user?.id, uri);
-        const displayUrl = cacheBustAvatarUrl(
-          (await mergePersistentAvatar({ id: user?.id, avatar_url: profileAvatarUrl }))?.avatar_url || profileAvatarUrl,
-        );
+
+        // Actualizar con URL final (con cache-bust para forzar recarga)
+        const displayUrl = cacheBustAvatarUrl(finalUrl) || uri;
         setUser(prev => prev ? { ...prev, avatar_url: displayUrl } : prev);
         emitProfileUpdated({ avatar_url: displayUrl });
-      } else {
         await saveLocalAvatar(user?.id, uri);
-        const persistent = (await mergePersistentAvatar({ id: user?.id, avatar_url: uri }))?.avatar_url || uri;
-        setUser(prev => prev ? { ...prev, avatar_url: persistent } : prev);
-        emitProfileUpdated({ avatar_url: persistent });
+        toast.success('✓ Foto actualizada');
+      } else {
+        // Error de servidor — la imagen local ya está visible, solo guardar localmente
+        await saveLocalAvatar(user?.id, uri);
+        toast.success('✓ Foto guardada localmente');
       }
     } catch {
-      toast.error('No se pudo actualizar la foto');
+      // Error de red — la imagen local ya se mostró arriba
+      await saveLocalAvatar(user?.id, uri).catch(() => {});
+      toast.info('Foto guardada. Se sincronizará cuando haya conexión.');
     } finally {
       setUploadingPhoto(false);
     }

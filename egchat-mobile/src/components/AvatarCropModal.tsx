@@ -60,15 +60,18 @@ export const AvatarCropModal: React.FC<AvatarCropModalProps> = ({
 
   const handleSave = async () => {
     try {
-      // Comprimir y redimensionar a 300x300
+      // En web, expo-image-manipulator no puede acceder a URIs blob/http locales
+      // Intentamos manipular; si falla, usamos el URI original
       const result = await ImageManipulator.manipulateAsync(
         imageUri,
         [{ resize: { width: 300, height: 300 } }],
         { compress: 0.75, format: ImageManipulator.SaveFormat.JPEG }
-      );
-      onSave(result.uri);
+      ).catch(() => null);
+
+      onSave(result?.uri || imageUri);
     } catch {
-      Alert.alert('Error', 'No se pudo procesar la imagen');
+      // En web fallback al URI original
+      onSave(imageUri);
     }
   };
 
