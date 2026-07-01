@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Animated, Image,
+  View, Text, TouchableOpacity, StyleSheet, Animated,
 } from 'react-native';
+import { SpinningLogo } from '../src/components/SpinningLogo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
@@ -18,22 +19,13 @@ const FEATURES = [
 const FLAGS = ['🇬🇶', '🇨🇲', '🇬🇦', '🇨🇬', '🇪🇸', '🇫🇷', '🇬🇧', '🇺🇸'];
 
 export default function WelcomeScreen() {
-  const spinAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   useEffect(() => {
-    // Logo spin — 10 segundos por vuelta (velocidad agradable)
-    Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 10000, useNativeDriver: true })
-    ).start();
-
-    // Fade in
     Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-  }, []);
-
-  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+  }, [fadeAnim]);
 
   return (
     <LinearGradient
@@ -48,16 +40,8 @@ export default function WelcomeScreen() {
         <View style={styles.logoSection}>
           {/* Anillo exterior giratorio */}
           <View style={styles.logoRing}>
-            {/* El círculo recorta la imagen */}
             <View style={styles.logoBox}>
-              <Animated.Image
-                source={require('../assets/logo-transparent.png')}
-                style={[
-                  styles.logo,
-                  { transform: [{ scale: 1.6 }, { rotate: spin }] },
-                ]}
-                resizeMode="contain"
-              />
+              <SpinningLogo size={88} glow={false} />
             </View>
           </View>
 

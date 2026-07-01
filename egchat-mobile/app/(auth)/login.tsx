@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   Platform,
   TouchableOpacity,
   StyleSheet,
-  Animated,
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -23,6 +22,7 @@ import {
   saveBiometricCredentials, getBiometricType,
 } from '../../src/biometrics';
 import { authAPI } from '../../src/api';
+import { SpinningLogo } from '../../src/components/SpinningLogo';
 
 // Países igual que la web
 const COUNTRIES = [
@@ -51,15 +51,6 @@ export default function LoginScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
-  // Animación del logo (spin igual que la web)
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  React.useEffect(() => {
-    Animated.loop(
-      Animated.timing(spinAnim, { toValue: 1, duration: 20000, useNativeDriver: true })
-    ).start();
-  }, []);
-  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
-
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
   const fullPhone = countryCode + phone.replace(/\s/g, '');
 
@@ -79,11 +70,7 @@ export default function LoginScreen() {
           {/* ── Header con logo (igual que la web) ── */}
           <View style={styles.header}>
             <View style={styles.logoBox}>
-              <Animated.Image
-                source={require('../../assets/logo-transparent.png')}
-                style={[styles.logoImg, { transform: [{ rotate: spin }] }]}
-                resizeMode="contain"
-              />
+              <SpinningLogo size={72} glow={false} />
             </View>
 
             {/* Banderas de países */}

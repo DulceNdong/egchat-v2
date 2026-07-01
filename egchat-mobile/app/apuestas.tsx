@@ -1,97 +1,354 @@
-import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Linking } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import {
+  View, Text, TouchableOpacity, StyleSheet, ScrollView,
+  Modal, Pressable, TextInput, Linking, Alert,
+} from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
-import { useThemeContext } from '../src/theme/ThemeContext';
-import { DarkColors } from '../src/theme/darkMode';
+import { walletAPI } from '../src/api';
+import { COMPANIES, type Company, type BetSlipItem, type Match } from '../src/data/apuestasData';
+import { toast } from '../src/components/Toast';
 
-const GAMES = [
-  { icon: '⚽', name: 'Apuestas deportivas', desc: 'Fútbol, baloncesto, tenis y más', color: '#22c55e', available: true },
-  { icon: '🎰', name: 'Casino online', desc: 'Ruleta, blackjack, tragaperras', color: '#F59E0B', available: true },
-  { icon: '🎱', name: 'Lotería Nacional', desc: 'Lotería oficial de Guinea Ecuatorial', color: '#6366F1', available: true },
-  { icon: '🃏', name: 'Poker', desc: 'Texas Hold\'em y variantes', color: '#EF4444', available: false },
-  { icon: '🎲', name: 'Bingo', desc: 'Bingo online en tiempo real', color: '#EC4899', available: false },
-];
-
-const DISCLAIMER = '⚠️ El juego puede crear adicción. Juega con responsabilidad. Solo mayores de 18 años. Si tienes problemas con el juego, llama al +240 333 09 99 99.';
+const DISCLAIMER = '⚠️ El juego puede crear adicción. Solo mayores de 18 años. Juega con responsabilidad.';
 
 export default function ApuestasScreen() {
-  const { isDark } = useThemeContext();
-  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const openGame = (game: typeof GAMES[0]) => {
-    if (!game.available) { Alert.alert('Próximamente', `${game.name} estará disponible pronto.`); return; }
-    Alert.alert(game.icon + ' ' + game.name, 'Serás redirigido al operador de juego autorizado.\n\n' + DISCLAIMER, [{ text: 'Cancelar', style: 'cancel' }, { text: 'Continuar', onPress: () => {} }]);
+  const [balance, setBalance] = useState(0);
+  const [company, setCompany] = useState<Company | null>(null);
+  const [sportId, setSportId] = useState('futbol');
+  const [betSlip, setBetSlip] = useState<BetSlipItem[]>([]);
+  const [showSlip, setShowSlip] = useState(false);
+  const [result, setResult] = useState<{ win: boolean; payout: number } | null>(null);
+  const [casinoAmt, setCasinoAmt] = useState('');
+  const [casinoRes, setCasinoRes] = useState<{ win: boolean; payout: number } | null>(null);
+  const [lotSel, setLotSel] = useState<string | null>(null);
+
+  useEffect(() => {
+    walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
+  }, []);
+
+  const totalStake = betSlip.reduce((s, b) => s + (parseInt(b.stake, 10) || 0), 0);
+  const totalPayout = betSlip.reduce((s, b) => s + Math.floor((parseInt(b.stake, 10) || 0) * b.odds), 0);
+
+  const addBet = (match: Match, pick: string, odds: number) => {
+    setBetSlip(prev => {
+      const ex = prev.findIndex(b => b.id === match.id);
+      const item: BetSlipItem = {
+        id: match.id,
+        matchLabel: `${match.home} vs ${match.away}`,
+        pick, odds,
+        stake: ex >= 0 ? prev[ex].stake : '',
+      };
+      if (ex >= 0) { const n = [...prev]; n[ex] = item; return n; }
+      return [...prev, item];
+    });
+    setShowSlip(true);
   };
-  return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
-      <View style={[styles.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
-        </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>🎰 Apuestas y Juegos</Text>
-      </View>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
-        <View style={styles.disclaimer}><Text style={styles.disclaimerText}>{DISCLAIMER}</Text></View>
-        {GAMES.map(g => (
-          <TouchableOpacity key={g.name} style={[styles.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }, !g.available && styles.cardDisabled]} onPress={() => openGame(g)} activeOpacity={0.7}>
-            <View style={[styles.iconBox, { backgroundColor: g.color + '20' }]}><Text style={styles.icon}>{g.icon}</Text></View>
-            <View style={styles.info}>
-              <Text style={[styles.name, { color: C.textPrimary }]}>{g.name}</Text>
-              <Text style={[styles.desc, { color: C.textTertiary }]}>{g.desc}</Text>
+
+  const placeBets = () => {
+    if (totalStake <= 0 || totalStake > balance) {
+      Alert.alert('Error', 'Saldo insuficiente o importe inválido');
+      return;
+    }
+    const win = Math.random() > 0.45;
+    setResult({ win, payout: win ? totalPayout : 0 });
+    setBalance(b => b - totalStake + (win ? totalPayout : 0));
+    setBetSlip([]);
+    setShowSlip(false);
+    toast[win ? 'success' : 'info'](win ? `¡Ganaste ${totalPayout.toLocaleString()} XAF!` : 'Apuesta no acertada');
+  };
+
+  const playCasino = () => {
+    const n = parseInt(casinoAmt, 10);
+    if (!n || n < (company?.minBet || 200) || n > balance) {
+      Alert.alert('Error', 'Importe inválido o saldo insuficiente');
+      return;
+    }
+    const mults = [0, 0, 0.5, 1.5, 2, 3, 5, 10];
+    const mult = mults[Math.floor(Math.random() * mults.length)];
+    const payout = Math.floor(n * mult);
+    setCasinoRes({ win: mult > 1, payout });
+    setBalance(b => b - n + payout);
+    setCasinoAmt('');
+  };
+
+  const playLottery = (price: number) => {
+    if (price > balance) { Alert.alert('Error', 'Saldo insuficiente'); return; }
+    const win = Math.random() > 0.8;
+    const prize = win ? [500, 1000, 5000, 10000][Math.floor(Math.random() * 4)] : 0;
+    setBalance(b => b - price + prize);
+    toast[win ? 'success' : 'info'](win ? `¡Premio ${prize.toLocaleString()} XAF!` : 'Sin premio esta vez');
+  };
+
+  const goBack = () => {
+    setCompany(null);
+    setBetSlip([]);
+    setResult(null);
+    setCasinoRes(null);
+    setLotSel(null);
+  };
+
+  // ── Hub de operadores ──
+  if (!company) {
+    return (
+      <SafeAreaView style={s.container} edges={['top']}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <Text style={s.backIcon}>‹</Text>
+          </TouchableOpacity>
+          <View style={{ flex: 1 }}>
+            <Text style={s.title}>Juegos & Apuestas</Text>
+            <Text style={s.subtitle}>5 plataformas licenciadas</Text>
+          </View>
+          <View style={s.balancePill}>
+            <Text style={s.balanceLabel}>SALDO</Text>
+            <Text style={s.balanceVal}>{balance.toLocaleString()} XAF</Text>
+          </View>
+        </View>
+        <View style={s.promoBanner}>
+          <Text style={{ fontSize: 32 }}>🏆</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={s.promoTitle}>+120 eventos en vivo ahora</Text>
+            <Text style={s.promoSub}>Premier League · Champions · NBA · UFC</Text>
+          </View>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          <Text style={s.disclaimer}>{DISCLAIMER}</Text>
+          {COMPANIES.map(co => (
+            <View key={co.id} style={s.coCard}>
+              <TouchableOpacity style={s.coTop} onPress={() => { setCompany(co); setSportId(co.sports?.[0]?.id || 'futbol'); }}>
+                <View style={[s.coLogo, { backgroundColor: co.color + '22' }]}>
+                  <Text style={{ fontSize: 22, fontWeight: '900', color: co.color }}>
+                    {co.name.slice(0, 2).toUpperCase()}
+                  </Text>
+                </View>
+                <View style={{ flex: 1 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                    <Text style={s.coName}>{co.name}</Text>
+                    <Text style={s.licensed}>✓ LICENCIADO</Text>
+                  </View>
+                  <Text style={s.coTag}>{co.tagline}</Text>
+                  <Text style={[s.coBonus, { color: co.color }]}>🎁 {co.bonus}</Text>
+                </View>
+                <Text style={s.chevron}>›</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[s.coLink, { borderColor: co.color + '40' }]} onPress={() => Linking.openURL(co.url)}>
+                <Text style={[s.coLinkText, { color: co.color }]}>Abrir sitio oficial</Text>
+              </TouchableOpacity>
             </View>
-            {g.available ? <Text style={styles.badge}>Disponible</Text> : <Text style={[styles.badgeSoon, { backgroundColor: C.bgTertiary, color: C.textTertiary }]}>Pronto</Text>}
+          ))}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  const sport = company.sports?.find(sp => sp.id === sportId);
+
+  // ── Deportes ──
+  if (company.type === 'sports' && sport) {
+    return (
+      <SafeAreaView style={s.container} edges={['top']}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={goBack} style={s.backBtn}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
+          <Text style={[s.title, { flex: 1 }]}>{company.name}</Text>
+          <View style={s.balancePill}>
+            <Text style={s.balanceVal}>{balance.toLocaleString()} XAF</Text>
+          </View>
+        </View>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.sportTabs} contentContainerStyle={{ gap: 8, paddingHorizontal: 16 }}>
+          {company.sports!.map(sp => (
+            <TouchableOpacity key={sp.id} style={[s.sportChip, sportId === sp.id && { backgroundColor: company.color }]} onPress={() => setSportId(sp.id)}>
+              <Text style={[s.sportChipText, sportId === sp.id && { color: '#fff' }]}>{sp.icon} {sp.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: betSlip.length ? 100 : 40 }}>
+          {sport.matches.map(match => (
+            <View key={match.id} style={s.matchCard}>
+              <View style={s.matchHead}>
+                <Text style={s.league}>{match.league}</Text>
+                {match.live && <Text style={s.liveBadge}>● EN VIVO {match.score}</Text>}
+                <Text style={s.matchTime}>{match.time}</Text>
+              </View>
+              <Text style={s.matchTeams}>{match.home} vs {match.away}</Text>
+              <View style={s.oddsRow}>
+                <TouchableOpacity style={s.oddBtn} onPress={() => addBet(match, '1', match.odds1)}>
+                  <Text style={s.oddLabel}>1</Text>
+                  <Text style={s.oddVal}>{match.odds1}</Text>
+                </TouchableOpacity>
+                {match.oddsX != null && (
+                  <TouchableOpacity style={s.oddBtn} onPress={() => addBet(match, 'X', match.oddsX!)}>
+                    <Text style={s.oddLabel}>X</Text>
+                    <Text style={s.oddVal}>{match.oddsX}</Text>
+                  </TouchableOpacity>
+                )}
+                <TouchableOpacity style={s.oddBtn} onPress={() => addBet(match, '2', match.odds2)}>
+                  <Text style={s.oddLabel}>2</Text>
+                  <Text style={s.oddVal}>{match.odds2}</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          ))}
+        </ScrollView>
+        {betSlip.length > 0 && (
+          <TouchableOpacity style={[s.slipFab, { backgroundColor: company.color }]} onPress={() => setShowSlip(true)}>
+            <Text style={s.slipFabText}>🎫 Cupón ({betSlip.length}) · {totalStake.toLocaleString()} XAF</Text>
+          </TouchableOpacity>
+        )}
+        <BetSlipModal visible={showSlip} items={betSlip} totalStake={totalStake} totalPayout={totalPayout}
+          onClose={() => setShowSlip(false)} onStakeChange={(id, stake) => setBetSlip(p => p.map(b => b.id === id ? { ...b, stake } : b))}
+          onPlace={placeBets} onRemove={id => setBetSlip(p => p.filter(b => b.id !== id))} />
+        <ResultModal visible={!!result} win={result?.win} payout={result?.payout || 0} onClose={() => setResult(null)} />
+      </SafeAreaView>
+    );
+  }
+
+  // ── Casino ──
+  if (company.type === 'casino') {
+    return (
+      <SafeAreaView style={s.container} edges={['top']}>
+        <View style={s.header}>
+          <TouchableOpacity onPress={goBack} style={s.backBtn}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
+          <Text style={[s.title, { flex: 1 }]}>{company.name}</Text>
+        </View>
+        <ScrollView contentContainerStyle={{ padding: 16 }}>
+          {company.casino?.map(g => (
+            <View key={g.id} style={s.matchCard}>
+              <Text style={{ fontSize: 28 }}>{g.icon}</Text>
+              <View style={{ flex: 1 }}>
+                <Text style={s.coName}>{g.name}</Text>
+                <Text style={s.coTag}>RTP {g.rtp}</Text>
+              </View>
+            </View>
+          ))}
+          <TextInput style={s.input} value={casinoAmt} onChangeText={setCasinoAmt} placeholder="Importe (XAF)" keyboardType="numeric" placeholderTextColor="#666" />
+          <TouchableOpacity style={[s.primaryBtn, { backgroundColor: company.color }]} onPress={playCasino}>
+            <Text style={s.primaryBtnText}>Jugar</Text>
+          </TouchableOpacity>
+          {casinoRes && (
+            <Text style={{ textAlign: 'center', marginTop: 16, color: casinoRes.win ? '#22c55e' : '#ef4444', fontWeight: '700' }}>
+              {casinoRes.win ? `¡Ganaste ${casinoRes.payout.toLocaleString()} XAF!` : 'Sin premio'}
+            </Text>
+          )}
+        </ScrollView>
+      </SafeAreaView>
+    );
+  }
+
+  // ── Lotería ──
+  return (
+    <SafeAreaView style={s.container} edges={['top']}>
+      <View style={s.header}>
+        <TouchableOpacity onPress={goBack} style={s.backBtn}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
+        <Text style={[s.title, { flex: 1 }]}>{company.name}</Text>
+      </View>
+      <ScrollView contentContainerStyle={{ padding: 16 }}>
+        {company.lottery?.map(l => (
+          <TouchableOpacity key={l.id} style={s.matchCard} onPress={() => playLottery(l.price)}>
+            <Text style={{ fontSize: 28 }}>{l.icon}</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={s.coName}>{l.name}</Text>
+              <Text style={s.coTag}>Bote: {l.jackpot}</Text>
+            </View>
+            <Text style={[s.oddVal, { color: company.color }]}>{l.price} XAF</Text>
           </TouchableOpacity>
         ))}
-        <TouchableOpacity style={[styles.helpBtn, { backgroundColor: C.bgSecondary, borderColor: C.border }]} onPress={() => Linking.openURL('tel:+240333099999')}>
-          <Text style={[styles.helpBtnText, { color: C.textSecondary }]}>🆘 Ayuda con el juego responsable</Text>
-        </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, gap: Spacing.sm,
+function BetSlipModal({ visible, items, totalStake, totalPayout, onClose, onStakeChange, onPlace, onRemove }: {
+  visible: boolean; items: BetSlipItem[]; totalStake: number; totalPayout: number;
+  onClose: () => void; onStakeChange: (id: string, stake: string) => void;
+  onPlace: () => void; onRemove: (id: string) => void;
+}) {
+  return (
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={s.modalOverlay} onPress={onClose}>
+        <Pressable style={s.modalSheet} onPress={() => {}}>
+          <Text style={s.modalTitle}>Cupón de apuestas</Text>
+          {items.map(b => (
+            <View key={b.id} style={s.slipRow}>
+              <View style={{ flex: 1 }}>
+                <Text style={s.coName}>{b.matchLabel}</Text>
+                <Text style={s.coTag}>{b.pick} @ {b.odds}</Text>
+              </View>
+              <TextInput style={s.stakeInput} value={b.stake} onChangeText={v => onStakeChange(b.id, v)} keyboardType="numeric" placeholder="0" />
+              <TouchableOpacity onPress={() => onRemove(b.id)}><Text>✕</Text></TouchableOpacity>
+            </View>
+          ))}
+          <Text style={s.coTag}>Total: {totalStake.toLocaleString()} XAF · Ganancia pot.: {totalPayout.toLocaleString()} XAF</Text>
+          <TouchableOpacity style={s.primaryBtn} onPress={onPlace}><Text style={s.primaryBtnText}>Apostar</Text></TouchableOpacity>
+        </Pressable>
+      </Pressable>
+    </Modal>
+  );
+}
+
+function ResultModal({ visible, win, payout, onClose }: { visible: boolean; win?: boolean; payout: number; onClose: () => void }) {
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View style={[s.modalOverlay, { justifyContent: 'center' }]}>
+        <View style={[s.modalSheet, { margin: 24 }]}>
+          <Text style={{ fontSize: 48, textAlign: 'center' }}>{win ? '🎉' : '😔'}</Text>
+          <Text style={[s.modalTitle, { textAlign: 'center' }]}>
+            {win ? `¡Ganaste ${payout.toLocaleString()} XAF!` : 'Apuesta no acertada'}
+          </Text>
+          <TouchableOpacity style={s.primaryBtn} onPress={onClose}><Text style={s.primaryBtnText}>Cerrar</Text></TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#0f0f13' },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 8, gap: 10 },
+  backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.08)', alignItems: 'center', justifyContent: 'center' },
+  backIcon: { fontSize: 28, color: '#fff', lineHeight: 32 },
+  title: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
+  balancePill: { backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 5 },
+  balanceLabel: { fontSize: 9, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
+  balanceVal: { fontSize: 13, fontWeight: '800', color: '#facc15' },
+  promoBanner: {
+    flexDirection: 'row', alignItems: 'center', gap: 12, marginHorizontal: 16, marginBottom: 8,
+    borderRadius: 16, padding: 14, backgroundColor: '#1e3a8a',
   },
-  backBtn: { padding: Spacing.sm },
-  backIcon: { fontSize: 28, color: Colors.textPrimary, lineHeight: 32 },
-  title: { ...Typography.headerTitle, color: Colors.textPrimary },
-  content: { padding: Spacing.md, gap: Spacing.sm },
-  disclaimer: {
-    backgroundColor: '#FEF3C7', borderRadius: BorderRadius.lg,
-    padding: Spacing.md, borderWidth: 1, borderColor: '#F59E0B',
-  },
-  disclaimerText: { fontSize: FontSize.xs, color: '#92400E', lineHeight: 18 },
-  card: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, gap: Spacing.md,
-    borderWidth: 1, borderColor: Colors.borderLight, ...Shadow.sm,
-  },
-  cardDisabled: { opacity: 0.5 },
-  iconBox: { width: 52, height: 52, borderRadius: BorderRadius.md, alignItems: 'center', justifyContent: 'center' },
-  icon: { fontSize: 26 },
-  info: { flex: 1 },
-  name: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-  desc: { fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 2 },
-  badge: {
-    fontSize: FontSize.xs, color: '#22c55e', fontWeight: FontWeight.bold,
-    backgroundColor: '#dcfce7', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  badgeSoon: {
-    fontSize: FontSize.xs, color: Colors.textTertiary, fontWeight: FontWeight.bold,
-    backgroundColor: Colors.bgTertiary, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 3,
-  },
-  helpBtn: {
-    backgroundColor: Colors.bgSecondary, borderRadius: BorderRadius.lg,
-    padding: Spacing.md, alignItems: 'center',
-    borderWidth: 1, borderColor: Colors.border, marginTop: Spacing.md,
-  },
-  helpBtnText: { fontSize: FontSize.sm, color: Colors.textSecondary },
+  promoTitle: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  promoSub: { fontSize: 11, color: 'rgba(255,255,255,0.6)' },
+  disclaimer: { fontSize: 11, color: '#fbbf24', marginBottom: 12, lineHeight: 16 },
+  coCard: { marginBottom: 10, borderRadius: 16, overflow: 'hidden', backgroundColor: '#1a1a24' },
+  coTop: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 14 },
+  coLogo: { width: 52, height: 52, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  coName: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  licensed: { fontSize: 9, color: '#00c8a0', fontWeight: '700', backgroundColor: 'rgba(0,200,160,0.15)', paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6 },
+  coTag: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  coBonus: { fontSize: 10, fontWeight: '700', marginTop: 4 },
+  chevron: { fontSize: 22, color: 'rgba(255,255,255,0.3)' },
+  coLink: { borderTopWidth: 1, padding: 12, alignItems: 'center' },
+  coLinkText: { fontSize: 12, fontWeight: '700' },
+  sportTabs: { maxHeight: 44, marginBottom: 8 },
+  sportChip: { paddingHorizontal: 14, paddingVertical: 8, borderRadius: 20, backgroundColor: '#1a1a24' },
+  sportChipText: { color: '#fff', fontWeight: '600', fontSize: 13 },
+  matchCard: { backgroundColor: '#1a1a24', borderRadius: 14, padding: 14, marginBottom: 10, flexDirection: 'row', alignItems: 'center', gap: 12, flexWrap: 'wrap' },
+  matchHead: { flexDirection: 'row', width: '100%', justifyContent: 'space-between', marginBottom: 4 },
+  league: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  liveBadge: { fontSize: 11, color: '#ef4444', fontWeight: '700' },
+  matchTime: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  matchTeams: { fontSize: 15, fontWeight: '700', color: '#fff', width: '100%', marginBottom: 8 },
+  oddsRow: { flexDirection: 'row', gap: 8, width: '100%' },
+  oddBtn: { flex: 1, backgroundColor: '#252530', borderRadius: 10, padding: 10, alignItems: 'center' },
+  oddLabel: { fontSize: 11, color: 'rgba(255,255,255,0.5)' },
+  oddVal: { fontSize: 15, fontWeight: '800', color: '#fff' },
+  slipFab: { position: 'absolute', bottom: 24, left: 16, right: 16, borderRadius: 14, padding: 14, alignItems: 'center' },
+  slipFabText: { color: '#fff', fontWeight: '700' },
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#1a1a24', borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 32 },
+  modalTitle: { fontSize: 17, fontWeight: '700', color: '#fff', marginBottom: 16 },
+  slipRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
+  stakeInput: { width: 70, backgroundColor: '#252530', borderRadius: 8, padding: 8, color: '#fff', textAlign: 'center' },
+  input: { backgroundColor: '#252530', borderRadius: 12, padding: 14, color: '#fff', marginBottom: 12 },
+  primaryBtn: { backgroundColor: '#00c8a0', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
+  primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });

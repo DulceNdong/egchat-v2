@@ -35,6 +35,8 @@ export const BorderRadius = {
   md: 12,   // --radius-md — inputs, botones
   lg: 16,   // --radius-lg — cards
   xl: 20,   // --radius-xl — modales, sheets
+  '2xl': 24,
+  '3xl': 32,
   full: 999, // circular
 
   // Burbujas de chat

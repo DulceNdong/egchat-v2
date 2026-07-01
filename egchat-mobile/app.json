@@ -8,7 +8,12 @@
     "userInterfaceStyle": "automatic",
     "ios": {
       "bundleIdentifier": "com.egchat.app",
-      "supportsTablet": false
+      "supportsTablet": false,
+      "infoPlist": {
+        "NSCameraUsageDescription": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
+        "NSMicrophoneUsageDescription": "EGCHAT necesita el micrófono para llamadas de voz y video.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
     },
     "android": {
       "package": "com.egchat.app",
@@ -29,10 +34,13 @@
     },
     "plugins": [
       "expo-router",
+      "expo-dev-client",
       [
         "expo-camera",
         {
-          "cameraPermission": "EGCHAT necesita la camara para fotos de perfil."
+          "cameraPermission": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
+          "microphonePermission": "EGCHAT necesita el micrófono para llamadas de voz y video.",
+          "recordAudioAndroid": true
         }
       ],
       [
@@ -65,7 +73,7 @@
     },
     "scheme": "egchat",
     "extra": {
-      "apiUrl": "https://chat2-0x2c.onrender.com",
+      "apiUrl": "https://egchat-api.onrender.com",
       "router": {
         "origin": false
       },

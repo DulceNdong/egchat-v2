@@ -1,111 +1,95 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Switch, TouchableOpacity } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React, { useEffect, useState, useCallback } from 'react';
+import { View, Text, TouchableOpacity, Linking, Alert } from 'react-native';
 import { router } from 'expo-router';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/theme';
-
-const KEY = 'egchat_notif_settings';
-
-const DEFAULT = {
-  mensajes: true,
-  llamadas: true,
-  grupos: true,
-  sonido: true,
-  vibracion: true,
-  preview: true,
-};
+import * as Notifications from 'expo-notifications';
+import {
+  SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsToggleRow, SettingsRow,
+} from '../../src/components/settings/SettingsUI';
+import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
+import { getSoundSettings, saveSoundSettings } from '../../src/hooks/useSounds';
+import { registerForPushNotifications } from '../../src/notifications';
+import { Colors } from '../../src/theme';
 
 export default function NotificacionesScreen() {
-  const [settings, setSettings] = useState(DEFAULT);
+  const [msgs, setMsgs] = useState(true);
+  const [groups, setGroups] = useState(true);
+  const [calls, setCalls] = useState(true);
+  const [stories, setStories] = useState(false);
+  const [preview, setPreview] = useState(true);
+  const [pushGranted, setPushGranted] = useState(false);
+  const [volume, setVolume] = useState(0.7);
+  const [vibration, setVibration] = useState(true);
 
   useEffect(() => {
-    AsyncStorage.getItem(KEY).then(v => {
-      if (v) setSettings({ ...DEFAULT, ...JSON.parse(v) });
-    });
+    getCfgBool(CFG.notifMessages, true).then(setMsgs);
+    getCfgBool(CFG.notifGroups, true).then(setGroups);
+    getCfgBool(CFG.notifCalls, true).then(setCalls);
+    getCfgBool(CFG.notifStories, false).then(setStories);
+    getCfgBool(CFG.notifPreview, true).then(setPreview);
+    Notifications.getPermissionsAsync().then(({ status }) => setPushGranted(status === 'granted'));
+    getSoundSettings().then(s => { setVolume(s.volume); setVibration(s.vibrationEnabled); });
   }, []);
 
-  const toggle = async (key: keyof typeof DEFAULT) => {
-    const next = { ...settings, [key]: !settings[key] };
-    setSettings(next);
-    await AsyncStorage.setItem(KEY, JSON.stringify(next));
-  };
+  const activatePush = useCallback(async () => {
+    const { status } = await Notifications.getPermissionsAsync();
+    if (status === 'denied') {
+      Alert.alert('Bloqueadas', 'Actívalas en Ajustes del sistema.', [
+        { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
+      return;
+    }
+    const token = await registerForPushNotifications();
+    const next = await Notifications.getPermissionsAsync();
+    setPushGranted(next.status === 'granted');
+    if (token) Alert.alert('✅', 'Notificaciones push activadas');
+  }, []);
 
-  const Row = ({ label, sub, k }: { label: string; sub?: string; k: keyof typeof DEFAULT }) => (
-    <View style={styles.row}>
-      <View style={styles.rowInfo}>
-        <Text style={styles.rowLabel}>{label}</Text>
-        {sub && <Text style={styles.rowSub}>{sub}</Text>}
-      </View>
-      <Switch
-        value={settings[k]}
-        onValueChange={() => toggle(k)}
-        trackColor={{ false: Colors.border, true: Colors.accent }}
-        thumbColor={Colors.white}
-      />
-    </View>
-  );
+  const pushStatus = pushGranted ? '✅ Activadas' : '⏳ Sin configurar';
 
   return (
-    <SafeAreaView style={styles.container} edges={['top']}>
-      <View style={styles.header}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Text style={styles.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={styles.title}>Notificaciones</Text>
-      </View>
-      <ScrollView>
-        <Text style={styles.section}>ALERTAS</Text>
-        <View style={styles.card}>
-          <Row label="Mensajes" sub="Nuevos mensajes recibidos" k="mensajes" />
-          <View style={styles.divider} />
-          <Row label="Llamadas" sub="Llamadas entrantes" k="llamadas" />
-          <View style={styles.divider} />
-          <Row label="Grupos" sub="Actividad en grupos" k="grupos" />
+    <SettingsLayout title="Notificaciones">
+      <SettingsSection label="Permiso del sistema" />
+      <SettingsCard>
+        <View style={{ paddingHorizontal: 16, paddingVertical: 14, flexDirection: 'row', alignItems: 'center', gap: 12 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ fontSize: 15, fontWeight: '600' }}>Notificaciones push</Text>
+            <Text style={{ fontSize: 12, color: pushGranted ? Colors.accent : '#8e8e93', marginTop: 2 }}>{pushStatus}</Text>
+          </View>
+          {!pushGranted && (
+            <TouchableOpacity onPress={activatePush} style={{ backgroundColor: Colors.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 }}>
+              <Text style={{ color: '#fff', fontWeight: '600', fontSize: 14 }}>Activar</Text>
+            </TouchableOpacity>
+          )}
         </View>
+      </SettingsCard>
 
-        <Text style={styles.section}>SONIDO Y VIBRACIÓN</Text>
-        <View style={styles.card}>
-          <Row label="Sonido" sub="Reproducir tono al recibir" k="sonido" />
-          <View style={styles.divider} />
-          <Row label="Vibración" sub="Vibrar al recibir notificación" k="vibracion" />
-        </View>
+      <SettingsSection label="Mensajes y grupos" />
+      <SettingsCard>
+        <SettingsToggleRow label="Mensajes privados" value={msgs} onValueChange={v => { setMsgs(v); setCfgBool(CFG.notifMessages, v); }} />
+        <SettingsDivider />
+        <SettingsToggleRow label="Grupos" value={groups} onValueChange={v => { setGroups(v); setCfgBool(CFG.notifGroups, v); }} />
+        <SettingsDivider />
+        <SettingsToggleRow label="Vista previa del mensaje" value={preview} onValueChange={v => { setPreview(v); setCfgBool(CFG.notifPreview, v); }} />
+      </SettingsCard>
 
-        <Text style={styles.section}>PRIVACIDAD</Text>
-        <View style={styles.card}>
-          <Row label="Vista previa" sub="Mostrar texto en la notificación" k="preview" />
-        </View>
-      </ScrollView>
-    </SafeAreaView>
+      <SettingsSection label="Llamadas y estados" />
+      <SettingsCard>
+        <SettingsToggleRow label="Llamadas entrantes" value={calls} onValueChange={v => { setCalls(v); setCfgBool(CFG.notifCalls, v); }} />
+        <SettingsDivider />
+        <SettingsToggleRow label="Historias / Estados" value={stories} onValueChange={v => { setStories(v); setCfgBool(CFG.notifStories, v); }} />
+      </SettingsCard>
+
+      <SettingsSection label="Sonidos rápidos" />
+      <SettingsCard>
+        <SettingsRow label="Volumen" value={`${Math.round(volume * 100)}%`} onPress={() => router.push('/ajustes/sonidos' as any)} />
+        <SettingsDivider />
+        <SettingsToggleRow
+          label="Vibración"
+          value={vibration}
+          onValueChange={v => { setVibration(v); saveSoundSettings({ vibrationEnabled: v }); }}
+        />
+      </SettingsCard>
+    </SettingsLayout>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  header: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, gap: Spacing.sm,
-  },
-  backBtn: { padding: Spacing.sm },
-  backIcon: { fontSize: 28, color: Colors.textPrimary, lineHeight: 32 },
-  title: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary },
-  section: {
-    fontSize: FontSize.xs, fontWeight: FontWeight.semibold,
-    color: Colors.textTertiary, marginTop: Spacing.lg,
-    marginBottom: Spacing.sm, marginHorizontal: Spacing.screenPadding,
-  },
-  card: {
-    backgroundColor: Colors.bgSecondary, borderRadius: BorderRadius.lg,
-    marginHorizontal: Spacing.screenPadding, overflow: 'hidden',
-  },
-  row: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingVertical: Spacing.md, paddingHorizontal: Spacing.md,
-  },
-  rowInfo: { flex: 1 },
-  rowLabel: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
-  rowSub: { fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 2 },
-  divider: { height: 1, backgroundColor: Colors.borderLight, marginLeft: Spacing.md },
-});

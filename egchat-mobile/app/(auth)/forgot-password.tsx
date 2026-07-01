@@ -47,7 +47,7 @@ export default function ForgotPasswordScreen() {
     if (!phone.trim()) { setError('Introduce tu número de teléfono'); return; }
     setLoading(true); setError('');
     try {
-      await authAPI.sendVerificationCode(fullPhone);
+      await authAPI.sendVerification(fullPhone);
       setRecoverStep(2);
     } catch (e: any) {
       setError(e.message || 'Error al enviar el código');

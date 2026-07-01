@@ -7,7 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
-import { chatAPI, contactsAPI } from '../src/api';
+import { chatAPI, contactsAPI, walletAPI, authAPI } from '../src/api';
+import { parseEgchatPayQr } from '../src/utils/walletQr';
 import { Colors, FontSize, FontWeight, BorderRadius, Spacing } from '../src/theme';
 
 const { width: W } = Dimensions.get('window');
@@ -75,9 +76,77 @@ export default function QRScannerScreen() {
     Vibration.vibrate(100);
 
     try {
+      const payQr = parseEgchatPayQr(data);
+      if (payQr?.userId) {
+        const amountNum = payQr.amount ? parseInt(payQr.amount, 10) : 0;
+        Alert.alert(
+          '💸 Pago EGCHAT',
+          [
+            payQr.concept ? `Concepto: ${payQr.concept}` : null,
+            amountNum > 0 ? `Importe: ${amountNum.toLocaleString()} XAF` : 'Sin monto fijo — indica el importe en Cartera',
+          ].filter(Boolean).join('\n'),
+          [
+            { text: 'Cancelar', style: 'cancel', onPress: () => { setScanned(false); setProcessing(false); } },
+            {
+              text: amountNum > 0 ? 'Pagar ahora' : 'Abrir Cartera',
+              onPress: async () => {
+                try {
+                  if (amountNum > 0) {
+                    const me = await authAPI.me();
+                    if (me?.id === payQr.userId) {
+                      Alert.alert('Error', 'No puedes pagarte a ti mismo');
+                      return;
+                    }
+                    await walletAPI.transfer(payQr.userId!, amountNum, payQr.concept || 'Pago QR');
+                    Alert.alert('✅ Pago realizado', `${amountNum.toLocaleString()} XAF enviados`);
+                    router.back();
+                  } else {
+                    router.replace('/(tabs)/monedero' as any);
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error', e?.message || 'No se pudo completar el pago');
+                  setScanned(false);
+                } finally {
+                  setProcessing(false);
+                }
+              },
+            },
+          ],
+        );
+        return;
+      }
+
       // Intentar parsear como QR de contacto EGCHAT
       let parsed: any = null;
       try { parsed = JSON.parse(data); } catch {}
+
+      if (data.includes('egchat-v2.vercel.app/add') || data.includes('egchat.app/add')) {
+        try {
+          const url = new URL(data.startsWith('http') ? data : `https://${data}`);
+          const id = url.searchParams.get('id');
+          const phone = url.searchParams.get('phone') || '';
+          const name = url.searchParams.get('name') || 'Contacto';
+          if (id) {
+            Alert.alert('👤 Contacto EGCHAT', `¿Añadir a ${name}?`, [
+              { text: 'Cancelar', style: 'cancel', onPress: () => { setScanned(false); setProcessing(false); } },
+              {
+                text: 'Añadir y chatear',
+                onPress: async () => {
+                  try {
+                    await contactsAPI.add(id, phone, name);
+                    const chat = await chatAPI.createPrivate(id, phone);
+                    router.replace(`/chat/${chat.id}` as any);
+                  } catch (e: any) {
+                    Alert.alert('Error', e.message || 'No se pudo añadir');
+                    setScanned(false);
+                  } finally { setProcessing(false); }
+                },
+              },
+            ]);
+            return;
+          }
+        } catch { /* fall through */ }
+      }
 
       if (parsed?.type === 'contact' && parsed?.app === 'EGCHAT' && parsed?.user) {
         // QR de contacto EGCHAT — añadir y abrir chat

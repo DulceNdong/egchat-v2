@@ -3,29 +3,78 @@
 // Idéntico al web pero adaptado a React Native
 // ══════════════════════════════════════════════════════════════════
 import * as SecureStore from 'expo-secure-store';
+import SessionManager from './sessionManager';
 
 const BASE = (() => {
   const url = (process.env.EXPO_PUBLIC_API_URL || '').trim();
-  if (!url) return 'https://chat2-0x2c.onrender.com';
+  if (!url) return 'https://egchat-api.onrender.com';
   return url.replace(/\/$/, '');
 })();
 
 // ── Token seguro (SecureStore en lugar de AsyncStorage) ───────────
 const TOKEN_KEY = 'egchat_token';
+const sessionManager = SessionManager.getInstance();
 
 export const getToken = () => SecureStore.getItemAsync(TOKEN_KEY);
 export const setToken = (t: string) => SecureStore.setItemAsync(TOKEN_KEY, t);
-export const clearToken = () => SecureStore.deleteItemAsync(TOKEN_KEY);
+export const clearToken = async () => {
+  await sessionManager.clearSession();
+};
 
 // ── Callback global para manejar 401 (se setea desde _layout.tsx) ─
 let onUnauthorized: (() => void) | null = null;
 export const setUnauthorizedHandler = (fn: () => void) => { onUnauthorized = fn; };
 
+export const getApiBase = () => BASE;
+
+/** Rutas de auth: un 401 es credencial incorrecta, no sesión expirada */
+const AUTH_PUBLIC_PATHS = [
+  '/api/auth/login',
+  '/api/auth/register',
+  '/api/auth/check-phone',
+  '/api/auth/reset-password',
+  '/api/auth/verify-code',
+  '/api/auth/send-verification',
+];
+
+const isAuthPublicPath = (path: string) =>
+  AUTH_PUBLIC_PATHS.some(p => path.startsWith(p));
+
+const CONNECTION_ERROR =
+  'No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.';
+
+function toFriendlyNetworkError(err: any): Error {
+  if (
+    err?.name === 'AbortError'
+    || err?.name === 'TypeError'
+    || String(err?.message || '').toLowerCase().includes('network')
+    || String(err?.message || '').toLowerCase().includes('fetch')
+  ) {
+    return new Error(CONNECTION_ERROR);
+  }
+  return err instanceof Error ? err : new Error(String(err?.message || CONNECTION_ERROR));
+}
+
+/** Despierta Render (plan gratis) antes de login — evita timeout en el primer intento */
+export async function wakeServer(maxAttempts = 3): Promise<boolean> {
+  for (let i = 0; i < maxAttempts; i++) {
+    try {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      const res = await fetch(`${BASE}/health`, { signal: controller.signal });
+      clearTimeout(timer);
+      if (res.ok) return true;
+    } catch {}
+    await new Promise(r => setTimeout(r, 2000 * (i + 1)));
+  }
+  return false;
+}
+
 // ── Cliente HTTP base con timeout y reintentos ────────────────────
 async function request<T>(
   path: string,
   options: RequestInit = {},
-  retries = 2
+  retries = 3
 ): Promise<T> {
   const token = await getToken();
   const method = (options.method || 'GET').toUpperCase();
@@ -36,8 +85,8 @@ async function request<T>(
     ...(options.headers as Record<string, string> || {}),
   };
 
-  // Timeout adaptativo igual que la web
-  const timeoutMs = method === 'GET' ? 15000 : 20000;
+  // Render gratis puede tardar ~30–50 s al despertar
+  const timeoutMs = method === 'GET' ? 25000 : 40000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -49,8 +98,13 @@ async function request<T>(
     });
     clearTimeout(timeoutId);
 
-    // 401 — sesión expirada
     if (res.status === 401) {
+      const err = await res.json().catch(() => ({ message: 'No autorizado' }));
+      const message = err.message || 'No autorizado';
+      // Login/registro: devolver mensaje real (ej. credenciales incorrectas)
+      if (isAuthPublicPath(path)) {
+        throw new Error(message);
+      }
       await clearToken();
       onUnauthorized?.();
       throw new Error('Sesión expirada. Inicia sesión de nuevo.');
@@ -64,16 +118,15 @@ async function request<T>(
     return res.json();
   } catch (err: any) {
     clearTimeout(timeoutId);
-    // Reintentar en errores de red (no en 4xx)
     const isNetwork = err.name === 'AbortError'
       || err.name === 'TypeError'
       || err.message?.includes('fetch')
       || err.message?.includes('Network');
     if (isNetwork && retries > 0) {
-      await new Promise(r => setTimeout(r, (3 - retries) * 1500));
+      await new Promise(r => setTimeout(r, (4 - retries) * 2000));
       return request<T>(path, options, retries - 1);
     }
-    throw err;
+    throw toFriendlyNetworkError(err);
   }
 }
 
@@ -90,7 +143,10 @@ const del  = <T>(path: string) => request<T>(path, { method: 'DELETE' });
 export const authAPI = {
   login: async (phone: string, password: string) => {
     const res = await post<{ token: string; user: any }>('/api/auth/login', { phone, password });
-    if (res.token) await setToken(res.token);
+    if (res.token) {
+      await setToken(res.token);
+      await sessionManager.saveSession(res.user, res.token);
+    }
     return res;
   },
 
@@ -101,7 +157,10 @@ export const authAPI = {
     avatar_url?: string;
   }) => {
     const res = await post<{ token: string; user: any }>('/api/auth/register', data);
-    if (res.token) await setToken(res.token);
+    if (res.token) {
+      await setToken(res.token);
+      await sessionManager.saveSession(res.user, res.token);
+    }
     return res;
   },
 
@@ -110,7 +169,18 @@ export const authAPI = {
     await clearToken();
   },
 
-  me: () => get<any>('/api/auth/me'),
+  me: async () => {
+    try {
+      const user = await get<any>('/api/auth/me');
+      const token = await getToken();
+      if (token) await sessionManager.saveSession(user, token);
+      return user;
+    } catch (err) {
+      const cached = await sessionManager.getUser();
+      if (cached) return cached;
+      throw err;
+    }
+  },
 
   updateProfile: (data: { full_name?: string; avatar_url?: string }) =>
     put<any>('/api/auth/profile', data),
@@ -153,6 +223,38 @@ export const chatAPI = {
     get<any[]>(`/api/contacts/search?q=${encodeURIComponent(query)}`),
   deleteMessage: (messageId: string) => del<void>(`/api/messages/${messageId}`),
   deleteMessageForMe: (messageId: string) => del<void>(`/api/messages/${messageId}/for-me`),
+  sendTyping: (chatId: string) => post<void>(`/api/chats/${chatId}/typing`, {}),
+  stopTyping: (chatId: string) => del<void>(`/api/chats/${chatId}/typing`),
+
+  uploadFile: async (chatId: string, uri: string, fileName: string, mimeType: string) => {
+    const token = await getToken();
+    const formData = new FormData();
+    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    try {
+      const res = await fetch(`${BASE}/api/chats/${chatId}/upload`, {
+        method: 'POST',
+        body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (res.status === 401) {
+        await clearToken();
+        onUnauthorized?.();
+        throw new Error('Sesión expirada');
+      }
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message || `Error ${res.status}`);
+      }
+      return res.json() as Promise<{ file_url: string }>;
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
+    }
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -177,9 +279,27 @@ export const walletAPI = {
 // ══════════════════════════════════════════════════════════════════
 export const contactsAPI = {
   getAll: () => get<any[]>('/api/contacts'),
+  getFavorites: () => get<any[]>('/api/contacts/favorites'),
+  favorite: (contactId: string) => post<any>(`/api/contacts/${contactId}/favorite`, {}),
+  unfavorite: (contactId: string) => del<void>(`/api/contacts/${contactId}/favorite`),
   add: (contact_user_id?: string, phone?: string, name?: string) =>
     post<any>('/api/contacts', { contact_user_id, phone, nickname: name }),
   remove: (id: string) => del<void>(`/api/contacts/${id}`),
+};
+
+// ══════════════════════════════════════════════════════════════════
+// LLAMADAS (señalización WebRTC)
+// ══════════════════════════════════════════════════════════════════
+export const callAPI = {
+  offer: (data: { callId: string; offer: object; targetUserId: string; type: string }) =>
+    post<{ ok: boolean }>('/api/call/offer', data),
+  answer: (data: { callId: string; answer: object }) =>
+    post<{ ok: boolean }>('/api/call/answer', data),
+  get: (callId: string) => get<any>(`/api/call/${callId}`),
+  end: (callId: string) => del<{ ok: boolean }>(`/api/call/${callId}`),
+  incoming: (userId: string) => get<any[]>(`/api/call/incoming/${userId}`),
+  ice: (data: { callId: string; candidate: object; role: string }) =>
+    post<{ ok: boolean }>('/api/call/ice', data),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -209,9 +329,23 @@ setInterval(keepAlive, 4 * 60 * 1000);
 // ══════════════════════════════════════════════════════════════════
 export const storiesAPI = {
   getAll: () => get<any[]>('/api/stories'),
-  create: (data: { media_url: string; type: string; caption?: string }) =>
+  create: (data: { media: Array<{ url: string; type?: string; caption?: string }> | string; type?: string }) =>
     post<any>('/api/stories', data),
   delete: (id: string) => del<void>(`/api/stories/${id}`),
+  registerView: (storyId: string) => post<void>(`/api/stories/${storyId}/view`, {}),
+};
+
+export const cemacAPI = {
+  getRates: () => get<any>('/api/cemac/rates'),
+  getTransfers: () => get<any[]>('/api/cemac/transfers'),
+  createTransfer: (data: {
+    from_country: string;
+    to_country: string;
+    beneficiary_name: string;
+    beneficiary_account: string;
+    amount: number;
+    external_id?: string;
+  }) => post<any>('/api/cemac/transfers', data),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -230,6 +364,24 @@ export const serviciosAPI = {
     post<any>('/api/servicios/dgi/consultar', { nif }),
   pagarDGI: (nif: string, amount: number, referencia: string) =>
     post<any>('/api/servicios/dgi/pagar', { nif, importe: amount, referencia }),
+  enviarPaquete: (data: any) =>
+    post<any>('/api/servicios/correos/enviar', data),
+};
+
+export const superAPI = {
+  getSupermarkets: (city?: string) => get<any[]>(`/supermarkets${city ? `?city=${city}` : ''}`),
+  getProducts: (smId: string, catId?: string) => get<any[]>(`/supermarkets/${smId}/products${catId ? `?cat=${catId}` : ''}`),
+  createOrder: (order: any) => post<{ orderId: string; status: string; total?: number }>('/supermarkets/orders', order),
+  getOrders: () => get<any[]>('/supermarkets/orders'),
+  getOrderById: (id: string) => get<any>(`/supermarkets/orders/${id}`),
+};
+
+export const saludAPI = {
+  getHospitals: (city?: string) => get<any[]>(`/salud/hospitales${city ? `?city=${city}` : ''}`),
+  getPharmacies: (city?: string) => get<any[]>(`/salud/farmacias${city ? `?city=${city}` : ''}`),
+  requestCita: (data: any) => post<{ citaId: string }>('/salud/citas', data),
+  getMedicamentos: (query: string) => get<any[]>(`/salud/medicamentos?q=${encodeURIComponent(query)}`),
+  orderMeds: (order: any) => post<{ orderId: string }>('/salud/medicamentos/pedido', order),
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -247,4 +399,6 @@ export const taxiAPI = {
   }),
   cancelRide: (rideId: string) => post<any>(`/api/taxi/${rideId}/cancel`, {}),
   getRideStatus: (rideId: string) => get<any>(`/api/taxi/${rideId}/status`),
+  rateDriver: (rideId: string, rating: number) =>
+    post<any>(`/api/taxi/${rideId}/rate`, { rating }),
 };

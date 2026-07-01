@@ -13,12 +13,17 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width: SW, height: SH } = Dimensions.get('window');
 const INIT_X = SW - 70;
 const INIT_Y = SH - 200;
-const BTN = 46;
+const BTN = 32;
+const HOME_ROUTE = '/(tabs)';
 
 export const FloatingHomeButton = () => {
   const pathname = usePathname();
-  // Ocultar en mensajería (home) — igual que la web
-  if (pathname === '/(tabs)/mensajeria' || pathname === '/') return null;
+  // Ocultar solo en home principal — permitir en mensajería
+  if (
+    pathname === HOME_ROUTE ||
+    pathname === '/index' ||
+    pathname === '/'
+  ) return null;
   return <DraggableButton />;
 };
 
@@ -26,12 +31,15 @@ const DraggableButton = () => {
   const pan = useRef(new Animated.ValueXY({ x: INIT_X, y: INIT_Y })).current;
   const isDragging = useRef(false);
   const currentPos = useRef({ x: INIT_X, y: INIT_Y });
+  const navigateHome = () => {
+    router.replace(HOME_ROUTE as any);
+  };
 
   pan.addListener(v => { currentPos.current = v; });
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5,
 
       onPanResponderGrant: () => {
@@ -47,6 +55,10 @@ const DraggableButton = () => {
 
       onPanResponderRelease: () => {
         pan.flattenOffset();
+        if (!isDragging.current) {
+          navigateHome();
+          return;
+        }
         const rawX = currentPos.current.x;
         const rawY = currentPos.current.y;
         // Snap al borde más cercano
@@ -64,7 +76,7 @@ const DraggableButton = () => {
 
   return (
     <Animated.View
-      style={[st.container, { left: pan.x, top: pan.y }]}
+      style={[st.container, { transform: pan.getTranslateTransform() }]}
       {...panResponder.panHandlers}
     >
       {/* LinearGradient directamente como contenedor circular — sin fondo blanco */}
@@ -75,11 +87,11 @@ const DraggableButton = () => {
         style={st.gradient}
       >
         <Pressable
-          onPress={() => { if (!isDragging.current) router.replace('/(tabs)/mensajeria' as any); }}
+          onPress={navigateHome}
           style={st.pressable}
           android_ripple={{ color: 'rgba(255,255,255,0.3)', borderless: true, radius: BTN / 2 }}
         >
-          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none"
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none"
             stroke="#ffffff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <Path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
             <Polyline points="9 22 9 12 15 12 15 22" />

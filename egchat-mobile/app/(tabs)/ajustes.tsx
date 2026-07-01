@@ -1,179 +1,112 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// EGCHAT — Hub de Configuración (paridad con ConfiguracionView web v2.5.5)
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  Alert, Image, ActivityIndicator, Modal, Pressable, Share,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
-import QRCode from 'react-native-qrcode-svg';
-import { authAPI, getToken } from '../../src/api';
-import { EGButton, EGInput, EGCard, EGAvatar } from '../../src/components/ui';
+import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
+import { authAPI } from '../../src/api';
+import { mergePersistentAvatar } from '../../src/utils/profileEvents';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
-import {
-  Colors, Typography, Spacing, BorderRadius,
-  FontSize, FontWeight, Shadow,
-} from '../../src/theme';
+import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { SettingsSearch, SettingsSection, SettingsCard, SettingsDivider, SettingsRow } from '../../src/components/settings/SettingsUI';
+import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
-import type { ThemeMode } from '../../src/theme';
+import { DarkColors } from '../../src/theme/darkMode';
 
-interface User {
-  id: string;
-  phone: string;
-  full_name: string;
-  avatar_url?: string;
-  app_version?: string;
-}
+type MenuItem = { label: string; route: string; value?: string };
 
-// ── SettingsItem ──────────────────────────────────────────────────
-const SettingsItem = ({
-  icon, label, sub, onPress, danger = false,
-}: {
-  icon: string;
-  label: string;
-  sub?: string;
-  onPress?: () => void;
-  danger?: boolean;
-}) => (
-  <TouchableOpacity
-    onPress={onPress}
-    style={styles.settingsItem}
-    activeOpacity={0.7}
-  >
-    <Text style={styles.settingsIcon}>{icon}</Text>
-    <View style={styles.settingsInfo}>
-      <Text style={[styles.settingsLabel, danger && { color: Colors.errorText }]}>{label}</Text>
-      {sub && <Text style={styles.settingsSub}>{sub}</Text>}
-    </View>
-    <Text style={styles.settingsArrow}>›</Text>
-  </TouchableOpacity>
+const ALL_ROWS: MenuItem[] = [
+  { label: 'Perfil', route: '/ajustes/perfil' },
+  { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
+  { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
+  { label: 'Notificaciones', route: '/ajustes/notificaciones' },
+  { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
+  { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
+  { label: 'Almacenamiento', route: '/ajustes/almacenamiento' },
+  { label: 'Sonidos y notificaciones', route: '/ajustes/sonidos' },
+  { label: 'Chat', route: '/ajustes/chat' },
+  { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
+  { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
+  { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
+  { label: 'Registro de actividad', route: '/ajustes/actividad' },
+  { label: 'Comentarios', route: '/ajustes/comentarios' },
+  { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
+];
+
+const SECTIONS: { title: string; items: MenuItem[] }[] = [
+  {
+    title: 'Cuenta',
+    items: [
+      { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
+      { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
+    ],
+  },
+  {
+    title: 'General',
+    items: [
+      { label: 'Notificaciones', route: '/ajustes/notificaciones' },
+      { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
+      { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
+      { label: 'Almacenamiento', route: '/ajustes/almacenamiento' },
+      { label: 'Sonidos y notificaciones', route: '/ajustes/sonidos' },
+    ],
+  },
+  {
+    title: 'Funciones',
+    items: [
+      { label: 'Chat', route: '/ajustes/chat' },
+      { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
+      { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
+      { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
+    ],
+  },
+  {
+    title: 'Ayuda e información',
+    items: [
+      { label: 'Registro de actividad', route: '/ajustes/actividad' },
+      { label: 'Comentarios', route: '/ajustes/comentarios' },
+      { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
+    ],
+  },
+];
+
+const IconGear = () => (
+  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" strokeWidth={1.5} strokeLinecap="round">
+    <Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+    <Circle cx="12" cy="12" r="3" />
+  </Svg>
 );
 
-// ── Pantalla principal ────────────────────────────────────────────
 export default function AjustesScreen() {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<{ full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [editing, setEditing] = useState(false);
-  const [editedName, setEditedName] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [uploadingPhoto, setUploadingPhoto] = useState(false);
-  const [nameError, setNameError] = useState('');
-  const [showQR, setShowQR] = useState(false);
+  const [search, setSearch] = useState('');
+  const [storageUsed] = useState(() => Math.round(Math.random() * 200 + 50));
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
-  const { isDark, mode, setMode } = useThemeContext();
-  const C = isDark ? require('../../src/theme/darkMode').DarkColors : Colors;
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
-  // Cargar perfil
   useEffect(() => {
-    const loadProfile = async () => {
-      try {
-        const data = await authAPI.me();
-        setUser(data);
-        setEditedName(data.full_name || '');
-      } catch {
-        // Si falla la API, dejamos user en null
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadProfile();
+    authAPI.me()
+      .then(data => mergePersistentAvatar(data))
+      .then(setUser)
+      .catch(() => {})
+      .finally(() => setLoading(false));
   }, []);
 
-  // Cambiar foto — cámara o galería
-  const pickPhoto = useCallback(async () => {
-    Alert.alert('Foto de perfil', '¿Cómo quieres añadir tu foto?', [
-      {
-        text: '📷 Cámara',
-        onPress: async () => {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') {
-            Alert.alert('Permiso requerido', 'Necesitamos acceso a tu cámara.');
-            return;
-          }
-          const result = await ImagePicker.launchCameraAsync({
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          });
-          if (!result.canceled && result.assets[0]) uploadPhoto(result.assets[0].uri);
-        },
-      },
-      {
-        text: '🖼️ Galería',
-        onPress: async () => {
-          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') {
-            Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.');
-            return;
-          }
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true,
-            aspect: [1, 1],
-            quality: 0.8,
-          });
-          if (!result.canceled && result.assets[0]) uploadPhoto(result.assets[0].uri);
-        },
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  }, []);
+  const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return null;
+    return ALL_ROWS.filter(r => r.label.toLowerCase().includes(q));
+  }, [search]);
 
-  const uploadPhoto = useCallback(async (uri: string) => {
-    setUploadingPhoto(true);
-    try {
-      const token = await getToken();
-      const BASE = process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com';
-      const formData = new FormData();
-      formData.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any);
-
-      const res = await fetch(`${BASE}/api/user/avatar`, {
-        method: 'POST',
-        body: formData,
-        headers: { Authorization: `Bearer ${token}` },
-      });
-
-      if (res.ok) {
-        const { avatar_url } = await res.json();
-        await authAPI.updateProfile({ avatar_url });
-        setUser(prev => prev ? { ...prev, avatar_url } : prev);
-      } else {
-        // Fallback: mostrar localmente sin subir
-        setUser(prev => prev ? { ...prev, avatar_url: uri } : prev);
-      }
-    } catch {
-      Alert.alert('Error', 'No se pudo actualizar la foto.');
-    } finally {
-      setUploadingPhoto(false);
-    }
-  }, []);
-
-  // Guardar nombre
-  const saveName = useCallback(async () => {
-    const trimmed = editedName.trim();
-    if (trimmed.length < 2) {
-      setNameError('El nombre debe tener al menos 2 caracteres');
-      return;
-    }
-    setNameError('');
-    setSaving(true);
-    try {
-      await authAPI.updateProfile({ full_name: trimmed });
-      setUser(prev => prev ? { ...prev, full_name: trimmed } : prev);
-      setEditing(false);
-      Alert.alert('✅', 'Nombre actualizado correctamente');
-    } catch {
-      Alert.alert('Error', 'No se pudo actualizar el nombre.');
-    } finally {
-      setSaving(false);
-    }
-  }, [editedName]);
-
-  // Logout
   const logout = useCallback(() => {
     Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
       { text: 'Cancelar', style: 'cancel' },
@@ -188,448 +121,171 @@ export default function AjustesScreen() {
     ]);
   }, []);
 
-  if (loading) {
-    return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color={Colors.accent} />
-      </View>
-    );
-  }
+  const navigate = (route: string) => router.push(route as any);
 
-  const initials = user?.full_name
-    ?.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || 'EG';
+  const renderMenuCard = (items: MenuItem[]) => (
+    <SettingsCard>
+      {items.map((item, i) => (
+        <React.Fragment key={item.route}>
+          <SettingsRow
+            label={item.label}
+            value={item.label === 'Almacenamiento' ? `${storageUsed} MB` : item.value}
+            onPress={() => navigate(item.route)}
+          />
+          {i < items.length - 1 && <SettingsDivider />}
+        </React.Fragment>
+      ))}
+    </SettingsCard>
+  );
+
+  const initials = user?.full_name?.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || 'U';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['bottom', 'left', 'right']}>
+      <EGChatHeader
+        temp={24}
+        city="Malabo"
+        weatherCondition="cloudy"
+        unreadCount={notifications.filter(n => !n.read).length}
+        notificationsOpen={showNotifications}
+        menuOpen={showMenu}
+        onWeatherPress={() => setShowWeather(true)}
+        onNotificationsPress={() => {
+          setShowNotifications(true);
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }}
+        onMenuPress={() => setShowMenu(true)}
+      />
 
-        {/* ── Header con gradiente ── */}
-        <LinearGradient
-          colors={['#00C8A0', '#00B4E6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-          style={styles.header}
+      <View style={[styles.bar, { backgroundColor: C.bgPrimary }]}>
+        <View style={styles.barTitle}>
+          <IconGear />
+          <Text style={[styles.barText, { color: C.textPrimary }]}>Configuración</Text>
+        </View>
+        <TouchableOpacity
+          style={[styles.closeBtn, { backgroundColor: isDark ? C.bgTertiary : 'rgba(243,244,246,0.85)', borderColor: C.borderLight }]}
+          onPress={() => router.push('/(tabs)/index' as any)}
         >
-          <View style={styles.headerLogo}>
-            <View style={styles.logoWrap}>
-              <Image
-                source={require('../../assets/icon.png')}
-                style={styles.logoImg}
-                resizeMode="cover"
-              />
-            </View>
-            <Text style={styles.logoText}>EG</Text>
-            <Text style={styles.logoText}>CHAT</Text>
-          </View>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-            <TouchableOpacity
-              style={styles.headerIconBtn}
-              onPress={() => setShowWeather(true)}
-              activeOpacity={0.8}
-            >
-              <Text style={{ color: '#fff', fontSize: 12, fontWeight: '600' }}>☁️ 27°</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.headerIconBtn}
-              onPress={() => {
-                setShowNotifications(true);
-                setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-              }}
-              activeOpacity={0.8}
-            >
-              <Text style={{ fontSize: 16 }}>🔔</Text>
-              {notifications.some(n => !n.read) && (
-                <View style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' }} />
-              )}
-            </TouchableOpacity>
-            <Text style={styles.headerTitle}>Ajustes</Text>
-          </View>
-        </LinearGradient>
+          <Svg width={16} height={16} viewBox="0 0 24 24" stroke={C.textPrimary} strokeWidth={2.5} strokeLinecap="round">
+            <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
 
-        {/* ── Perfil Card ── */}
-        <EGCard style={styles.profileCard}>
-          {/* Avatar con botón de cámara */}
-          <View style={styles.avatarContainer}>
-            <TouchableOpacity onPress={pickPhoto} activeOpacity={0.8} disabled={uploadingPhoto}>
-              {user?.avatar_url ? (
-                <Image source={{ uri: user.avatar_url }} style={styles.avatar} />
-              ) : (
-                <View style={[styles.avatar, styles.avatarFallback]}>
-                  <Text style={styles.avatarInitials}>{initials}</Text>
-                </View>
-              )}
-              <View style={styles.cameraBadge}>
-                {uploadingPhoto
-                  ? <ActivityIndicator size="small" color={Colors.white} />
-                  : <Text style={styles.cameraIcon}>📷</Text>
-                }
-              </View>
-            </TouchableOpacity>
-          </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <SettingsSearch value={search} onChangeText={setSearch} />
 
-          {/* Nombre y teléfono */}
-          {!editing ? (
-            <>
-              <Text style={styles.userName}>{user?.full_name || 'Sin nombre'}</Text>
-              <Text style={styles.userPhone}>{user?.phone || ''}</Text>
-
-              <View style={styles.profileActions}>
-                <EGButton
-                  title="Editar perfil"
-                  onPress={() => { setEditing(true); setEditedName(user?.full_name || ''); }}
-                  style={styles.editBtn}
-                />
-                <TouchableOpacity
-                  style={styles.qrBtn}
-                  onPress={() => setShowQR(true)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.qrBtnText}>📲 Compartir QR</Text>
-                </TouchableOpacity>
-              </View>
-            </>
+        {filtered ? (
+          filtered.length === 0 ? (
+            <Text style={{ textAlign: 'center', padding: 32, color: C.textTertiary }}>Sin resultados</Text>
           ) : (
-            /* ── Formulario edición ── */
-            <View style={styles.editForm}>
-              <EGInput
-                label="Nombre completo"
-                value={editedName}
-                onChangeText={setEditedName}
-                placeholder="Tu nombre"
-                autoCapitalize="words"
-                error={nameError}
-                returnKeyType="done"
-                onSubmitEditing={saveName}
-              />
-              <View style={styles.editActions}>
-                <EGButton
-                  title={saving ? 'Guardando...' : 'Guardar'}
-                  onPress={saveName}
-                  loading={saving}
-                  style={{ flex: 1 }}
-                />
-                <EGButton
-                  title="Cancelar"
-                  onPress={() => { setEditing(false); setNameError(''); }}
-                  variant="outline"
-                  style={{ flex: 1 }}
-                />
+            renderMenuCard(filtered)
+          )
+        ) : (
+          <>
+            <TouchableOpacity
+              style={[styles.hero, { backgroundColor: isDark ? '#161b22' : '#fff' }]}
+              onPress={() => navigate('/ajustes/perfil')}
+              activeOpacity={0.8}
+            >
+              <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.heroAvatar}>
+                {user?.avatar_url ? (
+                  <Image source={{ uri: user.avatar_url }} style={styles.heroImg} />
+                ) : loading ? (
+                  <ActivityIndicator color="#fff" />
+                ) : (
+                  <Text style={styles.heroInitials}>{initials}</Text>
+                )}
+              </LinearGradient>
+              <View style={styles.heroInfo}>
+                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Usuario'}</Text>
+                <Text style={[styles.heroSub, { color: C.textTertiary }]}>
+                  {user?.phone || ''}{user?.email ? ` · ${user.email}` : ''}
+                </Text>
               </View>
-            </View>
-          )}
-        </EGCard>
-
-        {/* ── Tema ── */}
-        <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.textTertiary }]}>APARIENCIA</Text>
-          <EGCard style={[styles.optionsCard, { backgroundColor: C.bgSecondary }]}>
-            {(['light', 'system', 'dark'] as ThemeMode[]).map((m, i, arr) => (
-              <React.Fragment key={m}>
-                <TouchableOpacity
-                  style={styles.settingsItem}
-                  onPress={() => setMode(m)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.settingsIcon}>
-                    {m === 'light' ? '☀️' : m === 'dark' ? '🌙' : '📱'}
-                  </Text>
-                  <View style={styles.settingsInfo}>
-                    <Text style={[styles.settingsLabel, { color: C.textPrimary }]}>
-                      {m === 'light' ? 'Claro' : m === 'dark' ? 'Oscuro' : 'Sistema'}
-                    </Text>
-                  </View>
-                  {mode === m && <Text style={{ color: Colors.accent, fontSize: 18 }}>✓</Text>}
-                </TouchableOpacity>
-                {i < arr.length - 1 && <View style={styles.divider} />}
-              </React.Fragment>
-            ))}
-          </EGCard>
-        </View>
-
-        {/* ── Opciones ── */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>CUENTA</Text>
-          <EGCard style={styles.optionsCard}>
-            <SettingsItem icon="🔔" label="Notificaciones" sub="Gestionar alertas" />
-            <View style={styles.divider} />
-            <SettingsItem icon="🔒" label="Privacidad y Seguridad" sub="Configurar privacidad" />
-            <View style={styles.divider} />
-            <SettingsItem icon="🌐" label="Idioma" sub="Español" />
-          </EGCard>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>INFORMACIÓN</Text>
-          <EGCard style={styles.optionsCard}>
-            <SettingsItem icon="ℹ️" label="Acerca de EGCHAT" sub="Versión 1.0.0" />
-            <View style={styles.divider} />
-            <SettingsItem icon="📋" label="Términos y condiciones" />
-            <View style={styles.divider} />
-            <SettingsItem icon="🛡️" label="Política de privacidad" />
-            <View style={styles.divider} />
-            <SettingsItem icon="📷" label="Escanear QR" onPress={() => router.push('/_qr-scanner' as any)} />
-          </EGCard>
-        </View>
-
-        {/* ── Cerrar sesión ── */}
-        <View style={styles.section}>
-          <EGCard style={styles.optionsCard}>
-            <TouchableOpacity onPress={logout} style={styles.logoutItem} activeOpacity={0.7}>
-              <Text style={styles.logoutText}>🚪 Cerrar sesión</Text>
+              <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
             </TouchableOpacity>
-          </EGCard>
-        </View>
 
-        <Text style={styles.version}>EGCHAT v1.0.0 · Guinea Ecuatorial</Text>
+            {SECTIONS.map(section => (
+              <View key={section.title}>
+                <SettingsSection label={section.title} />
+                {renderMenuCard(
+                  section.items.map(item =>
+                    item.label === 'Almacenamiento'
+                      ? { ...item, value: `${storageUsed} MB` }
+                      : item,
+                  ),
+                )}
+              </View>
+            ))}
+
+            <View style={{ height: 16 }} />
+            <SettingsCard>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => Alert.alert('Próximamente', 'Cambiar de cuenta estará disponible pronto.')}>
+                <Text style={styles.actionGreen}>Cambiar de cuenta</Text>
+              </TouchableOpacity>
+            </SettingsCard>
+            <View style={{ height: 12 }} />
+            <SettingsCard>
+              <TouchableOpacity style={styles.actionBtn} onPress={logout}>
+                <Text style={styles.actionRed}>Cerrar sesión</Text>
+              </TouchableOpacity>
+            </SettingsCard>
+          </>
+        )}
       </ScrollView>
 
-      {/* ── QR Modal ── */}
-      <Modal visible={showQR} transparent animationType="fade" onRequestClose={() => setShowQR(false)}>
-        <Pressable style={styles.qrOverlay} onPress={() => setShowQR(false)}>
-          <Pressable style={styles.qrCard} onPress={() => {}}>
-            <Text style={styles.qrTitle}>Tu QR Personal</Text>
-            <Text style={styles.qrSub}>Comparte este código para que otros te agreguen</Text>
-            <View style={styles.qrBox}>
-              <QRCode
-                value={JSON.stringify({
-                  type: 'contact',
-                  app: 'EGCHAT',
-                  user: { id: user?.id, phone: user?.phone, name: user?.full_name },
-                })}
-                size={180}
-                color={Colors.textPrimary}
-                backgroundColor={Colors.white}
-              />
-            </View>
-            <Text style={styles.qrName}>{user?.full_name}</Text>
-            <Text style={styles.qrPhone}>{user?.phone}</Text>
-            <TouchableOpacity
-              style={styles.shareBtn}
-              onPress={() => Share.share({ message: `Agrégame en EGCHAT: ${user?.phone}` })}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.shareBtnText}>📤 Compartir</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.closeQrBtn} onPress={() => setShowQR(false)}>
-              <Text style={styles.closeQrText}>Cerrar</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Pressable>
-      </Modal>
-
-      {/* ── Paneles del header ── */}
       <NotificationsPanel
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
         onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
         onClearAll={() => setNotifications([])}
-        onNotifPress={(n) => {
-          setNotifications(prev => prev.filter(x => x.id !== n.id));
-          setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
-        }}
+        onNotifPress={() => setShowNotifications(false)}
       />
       <HamburgerMenu
         visible={showMenu}
         onClose={() => setShowMenu(false)}
-        user={user ? { full_name: user.full_name, avatar_url: user.avatar_url, phone: user.phone } : null}
+        user={user ? { full_name: user.full_name || '', avatar_url: user.avatar_url, phone: user.phone } : null}
       />
-      <WeatherModal
-        visible={showWeather}
-        onClose={() => setShowWeather(false)}
-        temp="27°"
-        city="Malabo"
-        condition="cloudy"
-      />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="26°" city="Malabo" condition="cloudy" />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: Colors.bgPrimary },
-
-  // Header
-  header: {
+  container: { flex: 1 },
+  bar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.screenPadding,
-    paddingVertical: Spacing.md,
+    paddingVertical: 10,
   },
-  headerLogo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  logoWrap: {
+  barTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  barText: { fontSize: 16, fontWeight: '600' },
+  closeBtn: {
     width: 32, height: 32, borderRadius: 16,
-    overflow: 'hidden',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
+    alignItems: 'center', justifyContent: 'center', borderWidth: 1,
   },
-  logoImg: { width: 32, height: 32, borderRadius: 16 },
-  logoText: {
-    fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: -0.5,
-  },
-  headerTitle: {
-    fontSize: 18, fontWeight: '700', color: '#fff',
-  },
-  headerIconBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-
-  // Profile card
-  profileCard: {
-    margin: Spacing.screenPadding,
-    alignItems: 'center',
-    paddingVertical: Spacing.xl,
-  },
-  avatarContainer: { marginBottom: Spacing.md },
-  avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    borderWidth: 3,
-    borderColor: Colors.accent,
-  },
-  avatarFallback: {
-    backgroundColor: Colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  avatarInitials: {
-    fontSize: 36,
-    fontWeight: FontWeight.bold,
-    color: Colors.accent,
-  },
-  cameraBadge: {
-    position: 'absolute',
-    bottom: 2,
-    right: 2,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Shadow.sm,
-  },
-  cameraIcon: { fontSize: 14 },
-  userName: {
-    ...Typography.headerTitle,
-    color: Colors.textPrimary,
-    marginBottom: 4,
-    textAlign: 'center',
-  },
-  userPhone: {
-    ...Typography.subtitle,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-    textAlign: 'center',
-  },
-  profileActions: { width: '100%', gap: Spacing.sm },
-  editBtn: { marginTop: 0 },
-  qrBtn: {
-    backgroundColor: '#00B4E6',
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.sm + 2,
-    alignItems: 'center',
-  },
-  qrBtnText: { color: Colors.white, fontSize: FontSize.base, fontWeight: FontWeight.semibold },
-
-  // Edit form
-  editForm: { width: '100%', marginTop: Spacing.sm },
-  editActions: { flexDirection: 'row', gap: Spacing.sm },
-
-  // Sections
-  section: { paddingHorizontal: Spacing.screenPadding, marginBottom: Spacing.sm },
-  sectionTitle: {
-    ...Typography.sectionTitle,
-    color: Colors.textTertiary,
-    marginBottom: Spacing.sm,
-    marginLeft: 4,
-  },
-  optionsCard: { padding: 0, overflow: 'hidden' },
-
-  // Settings item
-  settingsItem: {
+  hero: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.listItemPaddingV,
-    paddingHorizontal: Spacing.listItemPaddingH,
-    gap: Spacing.md,
+    gap: 14,
+    paddingHorizontal: Spacing.screenPadding,
+    paddingVertical: 14,
+    marginBottom: 1,
   },
-  settingsIcon: { fontSize: 20, width: 28, textAlign: 'center' },
-  settingsInfo: { flex: 1 },
-  settingsLabel: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textPrimary,
+  heroAvatar: {
+    width: 56, height: 56, borderRadius: 28,
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  settingsSub: {
-    fontSize: FontSize.sm,
-    color: Colors.textTertiary,
-    marginTop: 2,
-  },
-  settingsArrow: { fontSize: 20, color: Colors.border },
-
-  // Divider
-  divider: { height: 1, backgroundColor: Colors.borderLight, marginLeft: Spacing.listItemPaddingH + 28 + Spacing.md },
-
-  // Logout
-  logoutItem: {
-    paddingVertical: Spacing.listItemPaddingV,
-    paddingHorizontal: Spacing.listItemPaddingH,
-    alignItems: 'center',
-  },
-  logoutText: {
-    fontSize: FontSize.base,
-    fontWeight: FontWeight.semibold,
-    color: Colors.errorText,
-  },
-
-  // Version
-  version: {
-    textAlign: 'center',
-    color: Colors.textTertiary,
-    fontSize: FontSize.xs,
-    marginVertical: Spacing.xl,
-  },
-
-  // QR Modal
-  qrOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-  qrCard: {
-    backgroundColor: Colors.bgSecondary,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
-    width: 300,
-    alignItems: 'center',
-    ...Shadow.lg,
-  },
-  qrTitle: { ...Typography.headerTitle, color: Colors.textPrimary, marginBottom: 4 },
-  qrSub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center', marginBottom: Spacing.lg },
-  qrBox: {
-    padding: Spacing.md,
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.md,
-    ...Shadow.sm,
-  },
-  qrName: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: 2 },
-  qrPhone: { fontSize: FontSize.sm, color: Colors.textSecondary, marginBottom: Spacing.lg },
-  shareBtn: {
-    backgroundColor: Colors.accent,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.xl,
-    marginBottom: Spacing.sm,
-    width: '100%',
-    alignItems: 'center',
-  },
-  shareBtnText: { color: Colors.white, fontWeight: FontWeight.semibold, fontSize: FontSize.base },
-  closeQrBtn: { paddingVertical: Spacing.sm },
-  closeQrText: { color: Colors.textSecondary, fontSize: FontSize.sm },
+  heroImg: { width: '100%', height: '100%' },
+  heroInitials: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  heroInfo: { flex: 1 },
+  heroName: { fontSize: 17, fontWeight: '600' },
+  heroSub: { fontSize: 13, marginTop: 2 },
+  actionBtn: { paddingVertical: 15, alignItems: 'center' },
+  actionGreen: { fontSize: 16, fontWeight: '500', color: '#07c160' },
+  actionRed: { fontSize: 16, fontWeight: '500', color: '#ef4444' },
 });

@@ -9,7 +9,9 @@ import { authAPI, setUnauthorizedHandler } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { useWebRTC } from '../src/hooks/useWebRTC';
+import { ToastContainer } from '../src/components/Toast';
 import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
+import { trackUserPresence } from '../src/supabase';
 
 function StatusBarController() {
   const { isDark } = useThemeContext();
@@ -20,6 +22,7 @@ export default function RootLayout() {
   const [checking, setChecking] = useState(true);
   const notifCleanup = useRef<(() => void) | null>(null);
   const incomingCleanup = useRef<(() => void) | null>(null);
+  const presenceCleanup = useRef<(() => void) | null>(null);
   const { pollIncoming } = useWebRTC();
   const navigationRef = useNavigationContainerRef();
 
@@ -40,6 +43,10 @@ export default function RootLayout() {
         if (isAuth) {
           try {
             const me = await authAPI.me();
+            if (me?.id) {
+              presenceCleanup.current?.();
+              presenceCleanup.current = trackUserPresence(me.id);
+            }
             router.replace('/(tabs)'); // → Home Dashboard (index.tsx)
 
             // Notificaciones y llamadas solo en nativo
@@ -109,6 +116,7 @@ export default function RootLayout() {
     return () => {
       notifCleanup.current?.();
       incomingCleanup.current?.();
+      presenceCleanup.current?.();
     };
   }, []);
 
@@ -139,6 +147,8 @@ export default function RootLayout() {
             <Stack.Screen name="mitaxi" options={{ presentation: 'modal' }} />
             <Stack.Screen name="new-chat" options={{ presentation: 'modal' }} />
             <Stack.Screen name="welcome" />
+            <Stack.Screen name="ajustes" />
+            <Stack.Screen name="historial-completo" options={{ presentation: 'modal' }} />
           </Stack>
 
           {/* ── Botón Home flotante draggable (igual que la versión web) ── */}
@@ -149,6 +159,8 @@ export default function RootLayout() {
               <ActivityIndicator size="large" color={Colors.accent} />
             </View>
           )}
+          {/* Toast notifications globales */}
+          <ToastContainer />
         </ThemeProvider>
       </SafeAreaProvider>
     </GestureHandlerRootView>

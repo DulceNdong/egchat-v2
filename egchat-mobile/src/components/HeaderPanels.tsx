@@ -8,6 +8,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, Alert, Image, Animated, Dimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Rect, Polyline, Polygon } from 'react-native-svg';
 import { router } from 'expo-router';
 import { authAPI } from '../api';
@@ -239,22 +240,23 @@ const np = StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════
-// MENÚ HAMBURGUESA — Drawer lateral desde la derecha
-// Fiel a la imagen: avatar grande, iconos SVG morados, subtítulos
+// MENÚ HAMBURGUESA — Dropdown top-right (paridad renderMenuPanel web)
 // ══════════════════════════════════════════════════════════════════
 const SCREEN_W = Dimensions.get('window').width;
-const DRAWER_W = Math.min(SCREEN_W * 0.82, 340);
-const ICON_COLOR = '#5B4FCF'; // morado de la imagen
+const MENU_PANEL_W = 220;
+const ICON_COLOR = '#374151';
 
 // ── Iconos SVG del menú ───────────────────────────────────────────
 const MenuIcon = ({ name }: { name: string }) => {
   const c = name === 'salir' ? '#EF4444' : ICON_COLOR;
-  const s = { width: 22, height: 22 };
+  const s = { width: 18, height: 18 };
   switch (name) {
     case 'perfil':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><Circle cx="12" cy="7" r="4"/></Svg>;
     case 'nuevo-contacto':
-      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Line x1="12" y1="5" x2="12" y2="19"/><Line x1="5" y1="12" x2="19" y2="12"/></Svg>;
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Line x1="19" y1="8" x2="19" y2="14"/><Line x1="22" y1="11" x2="16" y2="11"/></Svg>;
+    case 'ayuda':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Circle cx="12" cy="12" r="10"/><Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><Line x1="12" y1="17" x2="12.01" y2="17"/></Svg>;
     case 'crear-grupo':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>;
     case 'contactos':
@@ -278,27 +280,28 @@ export const HamburgerMenu = ({
   visible,
   onClose,
   user,
+  headerHeight = 56,
 }: {
   visible: boolean;
   onClose: () => void;
   user?: { full_name?: string; avatar_url?: string; phone?: string } | null;
+  headerHeight?: number;
 }) => {
-  const slideAnim = useRef(new Animated.Value(DRAWER_W)).current;
-  const fadeAnim  = useRef(new Animated.Value(0)).current;
+  const insets = useSafeAreaInsets();
+  const scaleAnim = useRef(new Animated.Value(0.92)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(slideAnim, { toValue: 0,        duration: 260, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 1,        duration: 220, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
       ]).start();
     } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, { toValue: DRAWER_W, duration: 220, useNativeDriver: true }),
-        Animated.timing(fadeAnim,  { toValue: 0,        duration: 180, useNativeDriver: true }),
-      ]).start();
+      scaleAnim.setValue(0.92);
+      opacityAnim.setValue(0);
     }
-  }, [visible]);
+  }, [visible, scaleAnim, opacityAnim]);
 
   const initials = user?.full_name
     ?.split(' ').filter(Boolean).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('') || 'EG';
@@ -312,6 +315,7 @@ export const HamburgerMenu = ({
     { id: 'notificaciones', label: 'Notificaciones',       sub: 'Gestionar alertas'         },
     { id: 'privacidad',     label: 'Privacidad',           sub: 'Configurar privacidad'     },
     { id: 'ajustes',        label: 'Ajustes',              sub: 'Configuración de la app'   },
+    { id: 'ayuda',          label: 'Ayuda y soporte',      sub: 'Centro de ayuda'           },
     { id: 'salir',          label: 'Cerrar sesión',        sub: 'Salir de tu cuenta'        },
   ];
 
@@ -319,14 +323,15 @@ export const HamburgerMenu = ({
     onClose();
     setTimeout(() => {
       switch (id) {
-        case 'perfil':         router.push('/(tabs)/ajustes' as any); break;
+        case 'perfil':         router.push('/ajustes/perfil' as any); break;
         case 'nuevo-contacto': router.push('/contacts' as any); break;
         case 'crear-grupo':    router.push('/new-chat' as any); break;
         case 'contactos':      router.push('/contacts' as any); break;
         case 'mensajes-arch':  router.push('/(tabs)/mensajeria' as any); break;
         case 'notificaciones': router.push('/(tabs)/ajustes' as any); break;
-        case 'privacidad':     router.push('/(tabs)/ajustes' as any); break;
+        case 'privacidad':     router.push('/ajustes/security' as any); break;
         case 'ajustes':        router.push('/(tabs)/ajustes' as any); break;
+        case 'ayuda':          router.push('/(tabs)/ajustes' as any); break;
         case 'salir':
           Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
             { text: 'Cancelar', style: 'cancel' },
@@ -337,22 +342,28 @@ export const HamburgerMenu = ({
           ]);
           break;
       }
-    }, 200);
+    }, 120);
   };
 
   if (!visible) return null;
 
+  const panelTop = insets.top + headerHeight;
+
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose} statusBarTranslucent>
       <View style={hm.root}>
-        {/* Overlay oscuro */}
-        <Animated.View style={[hm.overlay, { opacity: fadeAnim }]}>
-          <Pressable style={StyleSheet.absoluteFill} onPress={onClose} />
-        </Animated.View>
-
-        {/* Panel deslizante */}
-        <Animated.View style={[hm.panel, { transform: [{ translateX: slideAnim }] }]}>
-          {/* ── Header usuario ── */}
+        <Pressable style={hm.overlay} onPress={onClose} />
+        <Animated.View
+          style={[
+            hm.panel,
+            {
+              top: panelTop,
+              opacity: opacityAnim,
+              transform: [{ scale: scaleAnim }],
+              maxWidth: SCREEN_W * 0.72,
+            },
+          ]}
+        >
           <View style={hm.userHeader}>
             {user?.avatar_url ? (
               <Image source={{ uri: user.avatar_url }} style={hm.avatar} />
@@ -367,8 +378,7 @@ export const HamburgerMenu = ({
             </View>
           </View>
 
-          {/* ── Items ── */}
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false}>
+          <ScrollView showsVerticalScrollIndicator={false} bounces={false} style={hm.scroll}>
             {items.map((item, i) => (
               <TouchableOpacity
                 key={item.id}
@@ -387,7 +397,6 @@ export const HamburgerMenu = ({
                 </View>
               </TouchableOpacity>
             ))}
-            <View style={{ height: 24 }} />
           </ScrollView>
         </Animated.View>
       </View>
@@ -396,72 +405,59 @@ export const HamburgerMenu = ({
 };
 
 const hm = StyleSheet.create({
-  root: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-  },
+  root: { flex: 1 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.3)',
   },
   panel: {
-    width: DRAWER_W,
-    height: '100%',
-    backgroundColor: '#F7F8FA',
+    position: 'absolute',
+    right: 8,
+    width: MENU_PANEL_W,
+    maxHeight: '75%',
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: -6, height: 0 },
-    shadowOpacity: 0.18,
-    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.22,
+    shadowRadius: 16,
     elevation: 24,
   },
-  // Header usuario
   userHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingHorizontal: 20,
-    paddingTop: 56,
-    paddingBottom: 20,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#F0F2F5',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    backgroundColor: '#00c8a0',
   },
-  avatar: { width: 52, height: 52, borderRadius: 26 },
+  avatar: { width: 38, height: 38, borderRadius: 19 },
   avatarFallback: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.brand,
+    width: 38, height: 38, borderRadius: 19,
+    backgroundColor: 'rgba(255,255,255,0.25)',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.7)',
     alignItems: 'center', justifyContent: 'center',
   },
-  avatarText: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  avatarText: { fontSize: 14, fontWeight: '800', color: '#fff' },
   userInfo: { flex: 1, minWidth: 0 },
-  userName: { fontSize: 17, fontWeight: '700', color: '#111827' },
-  userStatus: { fontSize: 13, color: Colors.brand, fontWeight: '600', marginTop: 2 },
-
-  // Items
+  userName: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  userStatus: { fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '600', marginTop: 2 },
+  scroll: { flexGrow: 0 },
   item: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 16,
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
+    gap: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 9,
+    backgroundColor: 'transparent',
   },
-  itemBorder: {
-    borderBottomWidth: StyleSheet.hairlineWidth,
-    borderBottomColor: '#F0F2F5',
-  },
-  iconWrap: {
-    width: 40, height: 40,
-    borderRadius: 12,
-    backgroundColor: '#F3F0FF',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  itemText: { flex: 1 },
-  itemLabel: { fontSize: 15, fontWeight: '700', color: '#111827', lineHeight: 20 },
-  itemSub: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  itemBorder: { borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
+  iconWrap: { flexShrink: 0 },
+  itemText: { flex: 1, minWidth: 0 },
+  itemLabel: { fontSize: 12, fontWeight: '600', color: '#111827', lineHeight: 16 },
+  itemSub: { fontSize: 10, color: '#9CA3AF', marginTop: 1 },
 });
 
 // ══════════════════════════════════════════════════════════════════

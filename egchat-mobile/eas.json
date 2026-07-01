@@ -13,8 +13,9 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://chat2-0x2c.onrender.com"
-      }
+        "EXPO_PUBLIC_API_URL": "https://egchat-api.onrender.com"
+      },
+      "ios": {}
     },
     "preview": {
       "distribution": "internal",
@@ -24,8 +25,9 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://chat2-0x2c.onrender.com"
-      }
+        "EXPO_PUBLIC_API_URL": "https://egchat-api.onrender.com"
+      },
+      "ios": {}
     },
     "production": {
       "distribution": "store",
@@ -34,8 +36,9 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://chat2-0x2c.onrender.com"
-      }
+        "EXPO_PUBLIC_API_URL": "https://egchat-api.onrender.com"
+      },
+      "ios": {}
     }
   },
   "submit": {

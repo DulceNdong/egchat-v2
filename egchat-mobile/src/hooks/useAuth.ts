@@ -4,7 +4,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
-import { authAPI, clearToken } from '../api';
+import { authAPI, clearToken, wakeServer } from '../api';
 
 interface User {
   id: string;
@@ -46,6 +46,7 @@ export const useAuth = () => {
     const cleanPhone = phone.replace(/[\s\-]/g, '');
     setLoading(true);
     try {
+      await wakeServer();
       const res = await authAPI.login(cleanPhone, password);
       if (!res?.token && !res?.user) {
         setError('Respuesta inesperada del servidor.');
@@ -57,12 +58,20 @@ export const useAuth = () => {
     } catch (e: any) {
       const msg = e.message || '';
       console.log('[Login error]', msg);
-      if (msg.includes('credenciales') || msg.includes('401') || msg.includes('Credenciales') || msg.includes('incorrectos') || msg.includes('invalid')) {
+      if (
+        msg.includes('credenciales') || msg.includes('Credenciales')
+        || msg.includes('incorrectos') || msg.includes('invalid')
+        || msg.includes('No autorizado')
+      ) {
         setError('Teléfono o contraseña incorrectos.');
       } else if (msg.includes('Sesión expirada')) {
         setError('Sesión expirada. Inténtalo de nuevo.');
-      } else if (msg.includes('fetch') || msg.includes('network') || msg.includes('Network') || msg.includes('AbortError')) {
-        setError('Sin conexión. Verifica tu internet e intenta de nuevo.');
+      } else if (
+        msg.includes('No se pudo conectar al servidor')
+        || msg.includes('fetch') || msg.includes('network')
+        || msg.includes('Network') || msg.includes('AbortError')
+      ) {
+        setError('No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.');
       } else if (msg.includes('500')) {
         setError('Error del servidor. Intenta en unos minutos.');
       } else {
@@ -81,6 +90,7 @@ export const useAuth = () => {
   }) => {
     setLoading(true);
     try {
+      await wakeServer();
       const res = await authAPI.register(data);
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
       router.replace('/(tabs)'); // → Home Dashboard

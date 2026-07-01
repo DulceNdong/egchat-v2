@@ -1,0 +1,117 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as FileSystem from 'expo-file-system/legacy';
+
+export type ProfileUpdatePatch = {
+  id?: string;
+  full_name?: string;
+  phone?: string;
+  email?: string;
+  avatar_url?: string;
+  country?: string;
+  address?: string;
+};
+
+type ProfileUpdateListener = (patch: ProfileUpdatePatch) => void;
+
+const listeners = new Set<ProfileUpdateListener>();
+const AVATAR_CACHE_PREFIX = 'egchat_profile_avatar:';
+const AVATAR_DIR = 'egchat-profile-avatars/';
+
+export const cacheBustAvatarUrl = (url?: string, version = Date.now()) => {
+  if (!url || url.startsWith('file:') || url.startsWith('data:')) return url;
+  const [withoutHash, hash] = url.split('#');
+  const clean = withoutHash.replace(/([?&])egchatAvatarVersion=\d+(&?)/, (_, prefix, tail) =>
+    tail ? prefix : '',
+  );
+  const separator = clean.includes('?') ? '&' : '?';
+  return `${clean}${separator}egchatAvatarVersion=${version}${hash ? `#${hash}` : ''}`;
+};
+
+export const emitProfileUpdated = (patch: ProfileUpdatePatch) => {
+  listeners.forEach(listener => listener(patch));
+};
+
+export const onProfileUpdated = (listener: ProfileUpdateListener) => {
+  listeners.add(listener);
+  return () => {
+    listeners.delete(listener);
+  };
+};
+
+export const isBrokenAvatarUrl = (url?: string | null) =>
+  !url || String(url).includes('egchat-api.onrender.com/static/avatars/');
+
+const getAvatarExtension = (uri: string) => {
+  const clean = uri.split('?')[0].split('#')[0];
+  const ext = clean.includes('.') ? clean.split('.').pop()?.toLowerCase() : undefined;
+  return ext && ['jpg', 'jpeg', 'png', 'webp'].includes(ext) ? ext : 'jpg';
+};
+
+export const persistAvatarFile = async (userId: string | undefined, avatarUrl?: string) => {
+  if (!userId || !avatarUrl) return avatarUrl;
+  if (!FileSystem.documentDirectory) return avatarUrl;
+  if (avatarUrl.startsWith(`${FileSystem.documentDirectory}${AVATAR_DIR}`)) return avatarUrl;
+
+  const dir = `${FileSystem.documentDirectory}${AVATAR_DIR}`;
+  const dirInfo = await FileSystem.getInfoAsync(dir);
+  if (!dirInfo.exists) {
+    await FileSystem.makeDirectoryAsync(dir, { intermediates: true });
+  }
+
+  const destination = `${dir}${userId}.${getAvatarExtension(avatarUrl)}`;
+  const oldInfo = await FileSystem.getInfoAsync(destination);
+
+  if (avatarUrl.startsWith('file:')) {
+    if (oldInfo.exists) {
+      await FileSystem.deleteAsync(destination, { idempotent: true });
+    }
+    await FileSystem.copyAsync({ from: avatarUrl, to: destination });
+    return destination;
+  }
+
+  if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
+    if (oldInfo.exists) {
+      return destination;
+    }
+    try {
+      const result = await FileSystem.downloadAsync(avatarUrl, destination);
+      return result.uri;
+    } catch {
+      return avatarUrl;
+    }
+  }
+
+  return avatarUrl;
+};
+
+export const saveLocalAvatar = async (userId: string | undefined, avatarUrl?: string) => {
+  if (!userId || !avatarUrl) return;
+  const persistentAvatar = await persistAvatarFile(userId, avatarUrl);
+  if (persistentAvatar) {
+    await AsyncStorage.setItem(`${AVATAR_CACHE_PREFIX}${userId}`, persistentAvatar);
+  }
+};
+
+export const getLocalAvatar = async (userId: string | undefined) => {
+  if (!userId) return undefined;
+  return AsyncStorage.getItem(`${AVATAR_CACHE_PREFIX}${userId}`);
+};
+
+export const mergePersistentAvatar = async <T extends { id?: string; avatar_url?: string | null }>(
+  user: T | null | undefined,
+) => {
+  if (!user?.id) return user;
+  const localAvatar = await getLocalAvatar(user.id);
+  if (localAvatar && localAvatar.startsWith(FileSystem.documentDirectory)) {
+    return { ...user, avatar_url: localAvatar };
+  }
+  if (localAvatar && isBrokenAvatarUrl(user.avatar_url)) {
+    return { ...user, avatar_url: localAvatar };
+  }
+  if (user.avatar_url && !isBrokenAvatarUrl(user.avatar_url)) {
+    await saveLocalAvatar(user.id, cacheBustAvatarUrl(user.avatar_url));
+    const savedAvatar = await getLocalAvatar(user.id);
+    return { ...user, avatar_url: savedAvatar || cacheBustAvatarUrl(user.avatar_url) };
+  }
+  return user;
+};

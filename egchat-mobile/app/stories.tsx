@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, ActivityIndicator, Image, Dimensions,
   Animated, PanResponder, Alert,
 } from 'react-native';
@@ -13,6 +13,9 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import { storiesAPI, authAPI } from '../src/api';
+import { Ionicons } from '@expo/vector-icons';
+import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
+import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
 import { EGAvatar } from '../src/components/ui';
 import {
   Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
@@ -23,23 +26,7 @@ import { DarkColors } from '../src/theme/darkMode';
 const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000; // ms por historia
 
-// ── Tipos ─────────────────────────────────────────────────────────
-interface StoryItem {
-  id: string;
-  media_url: string;
-  type: 'image' | 'video';
-  caption?: string;
-  created_at: string;
-  user?: { id: string; full_name: string; avatar_url?: string };
-}
-
-interface StoryGroup {
-  userId: string;
-  userName: string;
-  userAvatar?: string;
-  stories: StoryItem[];
-  seen: boolean;
-}
+type StoryTab = 'recientes' | 'vistos' | 'dulce';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const timeAgo = (dateStr: string) => {
@@ -85,11 +72,12 @@ const pv = StyleSheet.create({
 // VISOR DE HISTORIA — pantalla completa
 // ══════════════════════════════════════════════════════════════════
 const StoryViewer = ({
-  groups, startGroupIndex, onClose,
+  groups, startGroupIndex, onClose, onStoryView,
 }: {
   groups: StoryGroup[];
   startGroupIndex: number;
   onClose: () => void;
+  onStoryView?: (group: StoryGroup) => void;
 }) => {
   const [groupIdx, setGroupIdx] = useState(startGroupIndex);
   const [storyIdx, setStoryIdx] = useState(0);
@@ -114,6 +102,7 @@ const StoryViewer = ({
 
   useEffect(() => {
     startProgress();
+    if (group && onStoryView) onStoryView(group);
     return () => { timerRef.current?.stop(); };
   }, [groupIdx, storyIdx]);
 
@@ -238,13 +227,24 @@ const sv = StyleSheet.create({
 // ══════════════════════════════════════════════════════════════════
 export default function StoriesScreen() {
   const [groups, setGroups] = useState<StoryGroup[]>([]);
-  const [myStories, setMyStories] = useState<StoryItem[]>([]);
+  const [myGroup, setMyGroup] = useState<StoryGroup | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
+  const [activeTab, setActiveTab] = useState<StoryTab>('recientes');
+  const [espacios, setEspacios] = useState(ESPACIOS);
+  const [activeEspacio, setActiveEspacio] = useState<Espacio | null>(null);
+  const [myAvatarUrl, setMyAvatarUrl] = useState<string | undefined>();
+  const [myStoryMenu, setMyStoryMenu] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const UI = { bg: '#fff', text: '#111', sub: '#888', border: '#f0f0f0', rowBorder: '#f9f9f9', brand: '#00c8a0' };
+
+  const myStories = myGroup?.stories || [];
+  const recentGroups = groups.filter(g => !g.seen);
+  const seenGroups = groups.filter(g => g.seen);
+  const displayedGroups = activeTab === 'recientes' ? recentGroups : seenGroups;
 
   const loadStories = useCallback(async () => {
     try {
@@ -253,41 +253,40 @@ export default function StoriesScreen() {
         authAPI.me(),
       ]);
 
-      const userId = data.status === 'fulfilled' ? '' : '';
       const meId = me.status === 'fulfilled' ? me.value?.id || '' : '';
       setCurrentUserId(meId);
+      if (me.status === 'fulfilled') setMyAvatarUrl(me.value?.avatar_url || me.value?.avatarUrl);
 
       if (data.status === 'fulfilled' && Array.isArray(data.value)) {
-        const raw: StoryItem[] = data.value;
-
-        // Agrupar por usuario
-        const map = new Map<string, StoryGroup>();
-        raw.forEach(s => {
-          const uid = s.user?.id || 'unknown';
-          if (!map.has(uid)) {
-            map.set(uid, {
-              userId: uid,
-              userName: s.user?.full_name || 'Usuario',
-              userAvatar: s.user?.avatar_url,
-              stories: [],
-              seen: false,
-            });
-          }
-          map.get(uid)!.stories.push(s);
-        });
-
-        const allGroups = Array.from(map.values());
-        const mine = allGroups.find(g => g.userId === meId);
-        const others = allGroups.filter(g => g.userId !== meId);
-
-        setMyStories(mine?.stories || []);
-        setGroups(others);
+        const parsed = parseStoriesResponse(data.value, meId);
+        setMyGroup(parsed.myGroup);
+        setGroups(parsed.groups);
       }
     } catch {}
     finally { setLoading(false); }
   }, []);
 
+  const markViewed = useCallback((group: StoryGroup) => {
+    if (group.storyId) storiesAPI.registerView(group.storyId).catch(() => {});
+    setGroups(prev => prev.map(g => g.userId === group.userId ? { ...g, seen: true } : g));
+  }, []);
+
+  const toggleFollow = (id: string) => {
+    setEspacios(prev => prev.map(e => e.id === id ? { ...e, following: !e.following } : e));
+  };
+
   useEffect(() => { loadStories(); }, []);
+
+  const pickFromGallery = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.All,
+      allowsEditing: true,
+      quality: 0.85,
+    });
+    if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
+  };
 
   const addStory = async () => {
     Alert.alert('Añadir estado', '¿Cómo quieres añadir tu estado?', [
@@ -319,7 +318,7 @@ export default function StoriesScreen() {
   const uploadStory = async (uri: string) => {
     setUploading(true);
     try {
-      await storiesAPI.create({ media_url: uri, type: 'image' });
+      await storiesAPI.create({ media: [{ url: uri, type: 'image' }] });
       await loadStories();
     } catch { Alert.alert('Error', 'No se pudo publicar el estado'); }
     finally { setUploading(false); }
@@ -337,36 +336,41 @@ export default function StoriesScreen() {
     ]);
   };
 
-  // Construir lista completa para el visor (mi estado primero)
   const allGroupsForViewer: StoryGroup[] = [
-    ...(myStories.length > 0 ? [{
-      userId: currentUserId,
-      userName: 'Mi estado',
-      userAvatar: undefined,
-      stories: myStories,
-      seen: false,
-    }] : []),
+    ...(myGroup ? [{ ...myGroup, userName: 'Mi estado' }] : []),
     ...groups,
   ];
 
-  return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
-      {/* Header */}
-      <LinearGradient
-        colors={['#00C8A0', '#00B4E6']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-        style={st.header}
-      >
-        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7}>
-          <Text style={st.backIcon}>‹</Text>
-        </TouchableOpacity>
-        <Text style={st.headerTitle}>Estados</Text>
-        <TouchableOpacity onPress={addStory} style={st.addBtn} disabled={uploading} activeOpacity={0.8}>
-          {uploading
-            ? <ActivityIndicator size="small" color="#fff" />
-            : <Text style={st.addBtnText}>+</Text>}
-        </TouchableOpacity>
+  const StoryAvatar = ({ group, size = 46 }: { group: StoryGroup; size?: number }) => {
+    const inner = size - 4;
+    const ring = group.seen ? (
+      <View style={[st.ringGray, { padding: 2.5, borderRadius: size / 2 }]}>
+        <View style={[st.avatarInner, { width: inner, height: inner, borderRadius: inner / 2, backgroundColor: group.avatarColor }]}>
+          {group.userAvatar
+            ? <Image source={{ uri: group.userAvatar }} style={{ width: inner, height: inner, borderRadius: inner / 2 }} />
+            : <Text style={st.avatarInitials}>{initialsFor(group.userName)}</Text>}
+        </View>
+      </View>
+    ) : (
+      <LinearGradient colors={['#00c8a0', '#00b4e6']} style={{ padding: 2.5, borderRadius: size / 2 }}>
+        <View style={[st.avatarInner, { width: inner, height: inner, borderRadius: inner / 2, backgroundColor: group.avatarColor }]}>
+          {group.userAvatar
+            ? <Image source={{ uri: group.userAvatar }} style={{ width: inner - 4, height: inner - 4, borderRadius: (inner - 4) / 2 }} />
+            : <Text style={st.avatarInitials}>{initialsFor(group.userName)}</Text>}
+        </View>
       </LinearGradient>
+    );
+    return ring;
+  };
+
+  return (
+    <SafeAreaView style={[st.container, { backgroundColor: UI.bg }]} edges={['top']}>
+      <View style={[st.headerWhite, { borderBottomColor: UI.border }]}>
+        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7}>
+          <Text style={[st.backIcon, { color: UI.brand }]}>‹</Text>
+        </TouchableOpacity>
+        <Text style={[st.headerTitleDark, { color: UI.text }]}>Estados</Text>
+      </View>
 
       {loading ? (
         <View style={st.center}>
@@ -380,123 +384,220 @@ export default function StoriesScreen() {
           showsVerticalScrollIndicator={false}
           ListHeaderComponent={
             <>
-              {/* ── Mi estado ── */}
-              <View style={[st.section, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-                <Text style={[st.sectionLabel, { color: C.textTertiary }]}>MI ESTADO</Text>
-                <TouchableOpacity
-                  style={st.myStoryRow}
-                  onPress={myStories.length > 0
-                    ? () => setViewingGroup(0)
-                    : addStory}
-                  activeOpacity={0.75}
-                >
-                  <View style={[st.myStoryRing, myStories.length > 0 && st.myStoryRingActive]}>
-                    <View style={st.myStoryAvatar}>
-                      <Text style={st.myStoryAvatarText}>👤</Text>
+              <View style={[st.tabsRow, { backgroundColor: UI.bg, borderBottomColor: UI.border }]}>
+                {([
+                  { id: 'recientes' as StoryTab, label: `Recientes (${recentGroups.length})` },
+                  { id: 'vistos' as StoryTab, label: `Vistos (${seenGroups.length})` },
+                  { id: 'dulce' as StoryTab, label: '✦ Espacio Dulce' },
+                ]).map(t => (
+                  <TouchableOpacity key={t.id} style={[st.tab, activeTab === t.id && st.tabActive]} onPress={() => setActiveTab(t.id)}>
+                    <Text style={[st.tabText, { color: activeTab === t.id ? UI.brand : '#888' }, activeTab === t.id && st.tabTextActive]}>
+                      {t.label}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+
+              {activeTab === 'dulce' ? (
+                <View style={{ padding: 16 }}>
+                  <Text style={[st.dulceLive, { color: Colors.brand }]}>● En vivo — Espacio Dulce</Text>
+                  <Text style={[st.sectionLabel, { color: C.textTertiary, paddingHorizontal: 0 }]}>CANALES</Text>
+                  <View style={st.espGrid}>
+                    {espacios.filter(e => e.type === 'publico').map(esp => (
+                      <TouchableOpacity key={esp.id} style={[st.espCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => setActiveEspacio(esp)}>
+                        <View style={[st.espBanner, { backgroundColor: esp.coverColor }]}>
+                          <Text style={{ fontSize: 28 }}>{esp.emoji}</Text>
+                        </View>
+                        <Text style={[st.espName, { color: C.textPrimary }]} numberOfLines={1}>{esp.name}</Text>
+                        <Text style={[st.espFollowers, { color: C.textTertiary }]}>{formatFollowers(esp.followers)} seguidores</Text>
+                        <TouchableOpacity style={[st.espFollowBtn, esp.following && st.espFollowing]} onPress={() => toggleFollow(esp.id)}>
+                          <Text style={[st.espFollowText, esp.following && { color: C.textSecondary }]}>{esp.following ? 'Siguiendo' : 'Seguir'}</Text>
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                  <Text style={[st.sectionLabel, { color: C.textTertiary, paddingHorizontal: 0, marginTop: 12 }]}>COMUNIDADES</Text>
+                  <View style={st.espGrid}>
+                    {espacios.filter(e => e.type === 'comunidad').map(esp => (
+                      <TouchableOpacity key={esp.id} style={[st.espCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => setActiveEspacio(esp)}>
+                        <View style={[st.espBanner, { backgroundColor: esp.coverColor }]}>
+                          <Text style={{ fontSize: 28 }}>{esp.emoji}</Text>
+                        </View>
+                        <Text style={[st.espName, { color: C.textPrimary }]} numberOfLines={1}>{esp.name}</Text>
+                        <Text style={[st.espFollowers, { color: C.textTertiary }]}>{formatFollowers(esp.followers)} miembros</Text>
+                        <TouchableOpacity style={[st.espFollowBtn, esp.following && st.espFollowing]} onPress={() => toggleFollow(esp.id)}>
+                          <Text style={[st.espFollowText, esp.following && { color: C.textSecondary }]}>{esp.following ? 'Unido' : 'Unirse'}</Text>
+                        </TouchableOpacity>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              ) : (
+              <>
+              {activeTab === 'recientes' && (
+              <View style={[st.myStatusWrap, { borderBottomColor: '#f5f5f5' }]}>
+                <View style={st.myStatusRow}>
+                  <TouchableOpacity onPress={() => myStories.length > 0 ? setViewingGroup(0) : addStory()} activeOpacity={0.75}>
+                    <View style={st.myAvatarWrap}>
+                      <View style={[st.myAvatarCircle, myStories.length > 0 && { backgroundColor: UI.brand }]}>
+                        {myAvatarUrl
+                          ? <Image source={{ uri: myAvatarUrl }} style={st.myAvatarImg} />
+                          : <Text style={{ fontSize: 17, fontWeight: '700', color: myStories.length ? '#fff' : '#9ca3af' }}>👤</Text>}
+                      </View>
                       <View style={st.myStoryAddBadge}>
                         {uploading
                           ? <ActivityIndicator size="small" color="#fff" />
-                          : <Text style={st.myStoryAddIcon}>{myStories.length > 0 ? '✓' : '+'}</Text>}
+                          : <Ionicons name="add" size={10} color="#fff" />}
                       </View>
                     </View>
-                  </View>
-                  <View style={st.myStoryInfo}>
-                    <Text style={[st.myStoryName, { color: C.textPrimary }]}>Mi estado</Text>
-                    <Text style={[st.myStorySub, { color: C.textSecondary }]}>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={{ flex: 1 }} onPress={() => myStories.length > 0 ? setViewingGroup(0) : addStory()} activeOpacity={0.75}>
+                    <Text style={[st.myStoryName, { color: UI.text }]}>Mi estado</Text>
+                    <Text style={[st.myStorySub, { color: UI.sub }]}>
                       {myStories.length > 0
-                        ? `${myStories.length} ${myStories.length === 1 ? 'foto' : 'fotos'} · ${timeAgo(myStories[0].created_at)}`
-                        : 'Toca para añadir un estado'}
+                        ? `${myStories.length} publicación${myStories.length > 1 ? 'es' : ''} · ${timeAgo(myStories[0].created_at)}`
+                        : 'Toca para añadir estado'}
                     </Text>
+                  </TouchableOpacity>
+                  <View style={st.actionIcons}>
+                    {([
+                      { icon: 'image-outline' as const, color: '#a855f7', onPress: pickFromGallery },
+                      { icon: 'film-outline' as const, color: '#f59e0b', onPress: addStory },
+                      { icon: 'videocam-outline' as const, color: '#06b6d4', onPress: addStory },
+                      { icon: 'radio-outline' as const, color: '#ef4444', onPress: () => Alert.alert('En vivo', 'Próximamente') },
+                    ]).map((b, i) => (
+                      <TouchableOpacity key={i} onPress={b.onPress} style={st.actionIconBtn}>
+                        <Ionicons name={b.icon} size={20} color={b.color} />
+                      </TouchableOpacity>
+                    ))}
+                    <View>
+                      <TouchableOpacity onPress={() => setMyStoryMenu(v => !v)} style={st.actionIconBtn}>
+                        <Ionicons name="ellipsis-vertical" size={18} color="#aaa" />
+                      </TouchableOpacity>
+                    </View>
                   </View>
-                  {myStories.length > 0 && (
-                    <TouchableOpacity
-                      onPress={() => deleteStory(myStories[myStories.length - 1].id)}
-                      style={st.deleteBtn}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={st.deleteBtnText}>🗑️</Text>
-                    </TouchableOpacity>
-                  )}
-                </TouchableOpacity>
-              </View>
-
-              {/* ── Estados recientes ── */}
-              {groups.length > 0 && (
-                <View style={[st.section, { backgroundColor: C.bgSecondary }]}>
-                  <Text style={[st.sectionLabel, { color: C.textTertiary }]}>RECIENTES</Text>
-                  {groups.map((group, i) => (
-                    <TouchableOpacity
-                      key={group.userId}
-                      style={[
-                        st.storyRow,
-                        i < groups.length - 1 && [st.storyRowBorder, { borderBottomColor: C.borderLight }],
-                      ]}
-                      onPress={() => setViewingGroup(myStories.length > 0 ? i + 1 : i)}
-                      activeOpacity={0.75}
-                    >
-                      <View style={[st.storyRing, !group.seen && st.storyRingUnseen]}>
-                        <EGAvatar src={group.userAvatar} name={group.userName} size={52} />
-                      </View>
-                      <View style={st.storyInfo}>
-                        <Text style={[st.storyName, { color: C.textPrimary }]}>{group.userName}</Text>
-                        <Text style={[st.storySub, { color: C.textSecondary }]}>
-                          {group.stories.length} {group.stories.length === 1 ? 'foto' : 'fotos'}
-                          {' · '}{timeAgo(group.stories[0].created_at)}
-                        </Text>
-                      </View>
-                      <Text style={[st.storyArrow, { color: C.border }]}>›</Text>
-                    </TouchableOpacity>
-                  ))}
                 </View>
+              </View>
               )}
 
-              {/* Empty state */}
-              {groups.length === 0 && myStories.length === 0 && (
-                <View style={st.empty}>
-                  <Text style={st.emptyIcon}>📸</Text>
-                  <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Sin estados aún</Text>
-                  <Text style={[st.emptySub, { color: C.textSecondary }]}>
-                    Comparte una foto con tus contactos
-                  </Text>
-                  <TouchableOpacity style={st.emptyBtn} onPress={addStory} activeOpacity={0.8}>
-                    <Text style={st.emptyBtnText}>Añadir estado</Text>
-                  </TouchableOpacity>
+              {displayedGroups.length > 0 ? (
+                <View style={{ backgroundColor: UI.bg }}>
+                  {displayedGroups.map((group, i) => {
+                    const globalIdx = groups.findIndex(g => g.userId === group.userId);
+                    return (
+                    <TouchableOpacity
+                      key={group.userId}
+                      style={[st.storyRowFlat, i < displayedGroups.length - 1 && { borderBottomColor: UI.rowBorder }]}
+                      onPress={() => setViewingGroup(myGroup ? globalIdx + 1 : globalIdx)}
+                      activeOpacity={0.75}
+                    >
+                      <StoryAvatar group={group} />
+                      <View style={st.storyInfo}>
+                        <Text style={[st.storyName, { color: group.seen ? '#555' : UI.text, fontWeight: group.seen ? '400' : '600' }]}>
+                          {group.userName}
+                        </Text>
+                        <View style={st.storyMeta}>
+                          <Text style={st.storyMetaText}>hace {timeAgo(group.stories[0].created_at)}</Text>
+                          <Text style={st.storyMetaDot}>·</Text>
+                          <Ionicons name="eye-outline" size={12} color="#aaa" />
+                          <Text style={st.storyMetaText}> {group.views}</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  );})}
                 </View>
+              ) : (
+                <View style={st.emptyFlat}>
+                  <Text style={{ color: '#bbb', fontSize: 13 }}>
+                    {activeTab === 'recientes' ? 'No hay estados nuevos' : 'No has visto ningún estado aún'}
+                  </Text>
+                </View>
+              )}
+              </>
               )}
             </>
           }
         />
       )}
 
-      {/* Visor de historia */}
+      <Modal visible={myStoryMenu} transparent animationType="fade" onRequestClose={() => setMyStoryMenu(false)}>
+        <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
+          <View style={st.menuCardFloat}>
+            <TouchableOpacity style={st.menuItem} onPress={() => { pickFromGallery(); setMyStoryMenu(false); }}>
+              <Ionicons name="image-outline" size={16} color="#a855f7" />
+              <Text style={st.menuItemText}>Subir foto/video</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={st.menuItem} onPress={() => { addStory(); setMyStoryMenu(false); }}>
+              <Ionicons name="add" size={16} color={UI.brand} />
+              <Text style={st.menuItemText}>Añadir estado</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={st.menuItem} onPress={() => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); }}>
+              <Ionicons name="eye-outline" size={16} color="#555" />
+              <Text style={st.menuItemText}>Ver mi estado</Text>
+            </TouchableOpacity>
+            {myGroup?.storyId && myStories.length > 0 && (
+              <TouchableOpacity style={[st.menuItem, { borderBottomWidth: 0 }]} onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }}>
+                <Ionicons name="trash-outline" size={16} color="#e53935" />
+                <Text style={[st.menuItemText, { color: '#e53935' }]}>Eliminar todo</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </Pressable>
+      </Modal>
+
       {viewingGroup !== null && allGroupsForViewer.length > 0 && (
         <StoryViewer
           groups={allGroupsForViewer}
           startGroupIndex={viewingGroup}
-          onClose={() => setViewingGroup(null)}
+          onClose={() => { setViewingGroup(null); loadStories(); }}
+          onStoryView={markViewed}
         />
       )}
+
+      <Modal visible={!!activeEspacio} animationType="slide" onRequestClose={() => setActiveEspacio(null)}>
+        <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
+          <View style={[st.espModalHeader, { backgroundColor: activeEspacio?.coverColor || Colors.brand }]}>
+            <TouchableOpacity onPress={() => setActiveEspacio(null)} style={st.backBtn}>
+              <Text style={st.backIcon}>‹</Text>
+            </TouchableOpacity>
+            <Text style={st.espModalTitle}>{activeEspacio?.emoji} {activeEspacio?.name}</Text>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <Text style={[st.espModalDesc, { color: C.textSecondary }]}>{activeEspacio?.description}</Text>
+            {activeEspacio?.posts.map(p => (
+              <View key={p.id} style={[st.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
+                <View style={st.postHead}>
+                  <View style={[st.postAvatar, { backgroundColor: p.color }]}>
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{p.avatar.slice(0, 2)}</Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[st.storyName, { color: C.textPrimary }]}>{p.author}</Text>
+                    <Text style={[st.storySub, { color: C.textSecondary }]}>{p.time}{p.isOfficial ? ' · Oficial' : ''}</Text>
+                  </View>
+                </View>
+                <Text style={[st.postText, { color: C.textPrimary }]}>{p.text}</Text>
+                <Text style={[st.storySub, { color: C.textTertiary, marginTop: 8 }]}>❤️ {p.likes} · 💬 {p.comments}</Text>
+              </View>
+            ))}
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
 
 const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  container: { flex: 1, backgroundColor: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  header: {
+  headerWhite: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 12, paddingVertical: 12, gap: 8,
+    paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12,
+    backgroundColor: '#fff', borderBottomWidth: 1,
   },
-  backBtn: { padding: 6 },
-  backIcon: { fontSize: 28, color: '#fff', lineHeight: 32 },
-  headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#fff' },
-  addBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.25)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  addBtnText: { fontSize: 22, color: '#fff', lineHeight: 26 },
+  headerTitleDark: { flex: 1, fontSize: 18, fontWeight: '700' },
+  backBtn: { padding: 4, marginLeft: -4 },
+  backIcon: { fontSize: 28, lineHeight: 32 },
 
   section: {
     backgroundColor: Colors.bgSecondary,
@@ -508,53 +609,55 @@ const st = StyleSheet.create({
     letterSpacing: 0.8, paddingHorizontal: 16, paddingVertical: 8,
   },
 
-  // Mi estado
-  myStoryRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
+  myStatusWrap: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, backgroundColor: '#fff' },
+  myStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
+  myAvatarWrap: { position: 'relative' },
+  myAvatarCircle: {
+    width: 50, height: 50, borderRadius: 25,
+    backgroundColor: '#e5e7eb',
+    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
   },
-  myStoryRing: {
-    width: 60, height: 60, borderRadius: 30,
-    borderWidth: 2.5, borderColor: Colors.border,
-    alignItems: 'center', justifyContent: 'center',
-    padding: 2,
-  },
-  myStoryRingActive: { borderColor: Colors.brand },
-  myStoryAvatar: {
-    width: 52, height: 52, borderRadius: 26,
-    backgroundColor: Colors.bgTertiary,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  myStoryAvatarText: { fontSize: 26 },
+  myAvatarImg: { width: 50, height: 50, borderRadius: 25 },
   myStoryAddBadge: {
     position: 'absolute', bottom: 0, right: 0,
     width: 20, height: 20, borderRadius: 10,
-    backgroundColor: Colors.brand,
+    backgroundColor: '#00c8a0',
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: Colors.bgSecondary,
+    borderWidth: 2, borderColor: '#fff',
   },
-  myStoryAddIcon: { fontSize: 12, color: '#fff', fontWeight: '900', lineHeight: 14 },
-  myStoryInfo: { flex: 1 },
-  myStoryName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  myStorySub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  deleteBtn: { padding: 8 },
-  deleteBtnText: { fontSize: 18 },
+  myStoryName: { fontSize: 15, fontWeight: '600' },
+  myStorySub: { fontSize: 12, marginTop: 1 },
+  actionIcons: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  actionIconBtn: { padding: 6, borderRadius: 20 },
+  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.08)' },
+  menuCardFloat: {
+    position: 'absolute', right: 16, top: 130,
+    backgroundColor: '#fff', borderRadius: 12, minWidth: 180,
+    borderWidth: 1, borderColor: '#f0f0f0',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 8,
+  },
+  menuItem: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 13, paddingHorizontal: 16,
+    borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
+  },
+  menuItemText: { fontSize: 14, color: '#111' },
 
-  // Otros estados
-  storyRow: {
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingVertical: 12, gap: 12,
+  ringGray: { backgroundColor: '#e5e7eb' },
+  avatarInner: { alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', overflow: 'hidden' },
+  avatarInitials: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  storyRowFlat: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 16, paddingVertical: 10,
+    borderBottomWidth: 1, backgroundColor: '#fff',
   },
-  storyRowBorder: { borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
-  storyRing: {
-    borderWidth: 2.5, borderColor: Colors.border,
-    borderRadius: 30, padding: 2,
-  },
-  storyRingUnseen: { borderColor: Colors.brand },
-  storyInfo: { flex: 1 },
-  storyName: { fontSize: 15, fontWeight: '700', color: Colors.textPrimary },
-  storySub: { fontSize: 12, color: Colors.textSecondary, marginTop: 2 },
-  storyArrow: { fontSize: 22, color: Colors.border },
+  storyInfo: { flex: 1, minWidth: 0 },
+  storyName: { fontSize: 15 },
+  storyMeta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
+  storyMetaText: { fontSize: 12, color: '#aaa' },
+  storyMetaDot: { color: '#ccc', fontSize: 12 },
+  storySub: { fontSize: 12, marginTop: 2 },
+  emptyFlat: { paddingVertical: 40, paddingHorizontal: 16, alignItems: 'center' },
 
   // Empty
   empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
@@ -566,4 +669,26 @@ const st = StyleSheet.create({
     paddingVertical: 12, paddingHorizontal: 28,
   },
   emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+
+  tabsRow: { flexDirection: 'row', borderBottomWidth: 2 },
+  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', marginBottom: -2 },
+  tabActive: { borderBottomWidth: 2, borderBottomColor: '#00c8a0' },
+  tabText: { fontSize: 12, fontWeight: '600' },
+  tabTextActive: { fontWeight: '800' },
+  dulceLive: { fontSize: 12, fontWeight: '700', marginBottom: 12, padding: 10, backgroundColor: 'rgba(0,200,160,0.1)', borderRadius: 10 },
+  espGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  espCard: { width: '47%', borderRadius: 14, borderWidth: 1, overflow: 'hidden', paddingBottom: 10 },
+  espBanner: { height: 64, alignItems: 'center', justifyContent: 'center' },
+  espName: { fontSize: 13, fontWeight: '700', paddingHorizontal: 10, marginTop: 8 },
+  espFollowers: { fontSize: 11, paddingHorizontal: 10, marginTop: 2 },
+  espFollowBtn: { marginHorizontal: 10, marginTop: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: Colors.brand, alignItems: 'center' },
+  espFollowing: { backgroundColor: Colors.bgTertiary },
+  espFollowText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  espModalHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
+  espModalTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff' },
+  espModalDesc: { fontSize: 13, marginBottom: 16, lineHeight: 20 },
+  postCard: { borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1 },
+  postHead: { flexDirection: 'row', gap: 10, marginBottom: 10 },
+  postAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  postText: { fontSize: 14, lineHeight: 20 },
 });

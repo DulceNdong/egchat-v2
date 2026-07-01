@@ -6,25 +6,36 @@ npm install -g eas-cli
 eas login   # cuenta: reddington120
 ```
 
-## 1. APK de desarrollo (Expo Dev Client)
+## 1. Build de desarrollo (Expo Dev Client)
 Para probar con react-native-webrtc (llamadas reales):
 ```bash
 cd egchat-mobile
+# Android dev client
 eas build --profile development --platform android
+# iOS dev client
+eas build --profile development --platform ios
 ```
-Instala el APK en el teléfono y luego usa `expo start --dev-client`.
+Instala el APK/IPA en el teléfono y luego usa `expo start --dev-client`.
 
-## 2. APK de preview (Release, distribución interna)
-APK firmado listo para instalar directamente:
+## 2. Build de preview (Release, distribución interna)
+APK o IPA listo para instalar directamente:
 ```bash
+cd egchat-mobile
+# Android preview
 eas build --profile preview --platform android
+# iOS preview
+eas build --profile preview --platform ios
 ```
-Descarga el APK desde expo.dev y compártelo por WhatsApp/Drive.
+Descarga el artefacto desde expo.dev y compártelo por WhatsApp/Drive.
 
-## 3. AAB de producción (Google Play)
-Bundle para subir a Play Store:
+## 3. Build de producción
+Bundle para subir a tiendas:
 ```bash
+cd egchat-mobile
+# Android App Bundle
 eas build --profile production --platform android
+# iOS archive
+eas build --profile production --platform ios
 ```
 
 ## 4. Subir a Play Store (internal track)
@@ -48,4 +59,11 @@ expo start --clear
 ## Notas
 - `react-native-webrtc` solo funciona en builds nativos (no Expo Go)
 - Las llamadas de audio/video requieren perfil `development` o `preview`
+- Tras instalar dependencias: `npm install` en `egchat-mobile/`
 - Push notifications FCM funcionan en todos los perfiles
+
+## Llamadas WebRTC (audio/video real)
+1. `npm install` (incluye `react-native-webrtc`)
+2. `eas build --profile development --platform android`
+3. Instalar APK y ejecutar `npx expo start --dev-client`
+4. En Expo Go seguirás viendo solo señalización (modo demostración)

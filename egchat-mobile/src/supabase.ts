@@ -4,6 +4,7 @@
 
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import type { ChatMessage } from './types/chat';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://dptpdifjqgzccjauhodq.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
@@ -25,20 +26,22 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
 // ── Suscripción a mensajes nuevos en un chat ──────────────────────
 export const subscribeToChat = (
   chatId: string,
-  onNewMessage: (message: any) => void
+  onNewMessage: (message: ChatMessage, event: 'INSERT' | 'UPDATE' | 'DELETE') => void
 ) => {
   const channel = supabase
     .channel(`chat:${chatId}`)
     .on(
       'postgres_changes',
       {
-        event: 'INSERT',
+        event: '*',
         schema: 'public',
         table: 'messages',
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
-        onNewMessage(payload.new);
+        const event = payload.eventType as 'INSERT' | 'UPDATE' | 'DELETE';
+        const message = event === 'DELETE' ? payload.old : payload.new;
+        onNewMessage(message as ChatMessage, event);
       }
     )
     .subscribe();
@@ -79,5 +82,111 @@ export const subscribeToUserChats = (
 
   return () => {
     supabase.removeChannel(channel);
+  };
+};
+
+const getPresenceUserIds = (state: Record<string, Array<{ user_id?: string }>>) =>
+  Object.entries(state).flatMap(([key, presences]) =>
+    presences.map(presence => presence.user_id || key),
+  );
+
+const getOnlineUsersChannel = () =>
+  supabase.getChannels().find(channel =>
+    String((channel as { topic?: string }).topic || '').endsWith('online-users'),
+  );
+
+export const trackUserPresence = (userId: string) => {
+  const channel = supabase.channel('online-users', {
+    config: {
+      presence: {
+        key: userId,
+      },
+    },
+  });
+
+  channel.subscribe((status) => {
+    if (status === 'SUBSCRIBED') {
+      channel.track({
+        user_id: userId,
+        online_at: new Date().toISOString(),
+      });
+    }
+  });
+
+  return () => {
+    channel.untrack();
+    supabase.removeChannel(channel);
+  };
+};
+
+export const subscribeToOnlineUsers = (
+  onSync: (onlineUserIds: string[]) => void,
+) => {
+  const readPresence = () => {
+    const channel = getOnlineUsersChannel();
+    if (!channel) {
+      onSync([]);
+      return;
+    }
+
+    onSync(getPresenceUserIds(
+      channel.presenceState() as Record<string, Array<{ user_id?: string }>>,
+    ));
+  };
+
+  readPresence();
+  const interval = setInterval(readPresence, 3000);
+
+  return () => {
+    clearInterval(interval);
+  };
+};
+
+export const createChatTypingChannel = (
+  chatId: string,
+  currentUserId: string,
+  onTyping: (isTyping: boolean, userId: string) => void,
+) => {
+  const channel = supabase
+    .channel(`chat-typing:${chatId}`, {
+      config: {
+        broadcast: {
+          self: false,
+        },
+      },
+    })
+    .on('broadcast', { event: 'typing' }, ({ payload }) => {
+      const userId = String(payload?.user_id || '');
+      if (!userId || userId === currentUserId) return;
+      onTyping(!!payload?.is_typing, userId);
+    });
+
+  channel.subscribe();
+
+  return {
+    sendTyping: (isTyping: boolean) =>
+      channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: {
+          chat_id: chatId,
+          user_id: currentUserId,
+          is_typing: isTyping,
+          ts: Date.now(),
+        },
+      }),
+    unsubscribe: () => {
+      channel.send({
+        type: 'broadcast',
+        event: 'typing',
+        payload: {
+          chat_id: chatId,
+          user_id: currentUserId,
+          is_typing: false,
+          ts: Date.now(),
+        },
+      });
+      supabase.removeChannel(channel);
+    },
   };
 };

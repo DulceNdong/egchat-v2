@@ -17,13 +17,21 @@ import {
   Image,
   Dimensions,
   PanResponder,
+  Alert,
+  Linking,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
 import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { EGChatHeader, WeatherCondition } from '../../src/components/EGChatHeader';
+import { HomeNoticiasModal, HomeIdDigitalModal } from '../../src/components/home/HomeModals';
+import { HOME_NEWS } from '../../src/data/homeNews';
+import { fetchLiveHomeNews } from '../../src/services/newsRss';
+import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
 } from '../../src/theme';
@@ -32,6 +40,7 @@ import { DarkColors } from '../../src/theme/darkMode';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface UserProfile {
+  id?: string;
   full_name?: string;
   phone?: string;
   avatar_url?: string;
@@ -39,21 +48,6 @@ interface UserProfile {
 }
 
 // ── Iconos SVG inline ─────────────────────────────────────────────
-const IconBell = ({ color = '#fff', size = 20 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-    <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-    <Path d="M13.73 21a2 2 0 0 1-3.46 0"/>
-  </Svg>
-);
-
-const IconMenu = ({ color = '#fff', size = 20 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
-    <Line x1="3" y1="6" x2="21" y2="6"/>
-    <Line x1="3" y1="12" x2="21" y2="12"/>
-    <Line x1="3" y1="18" x2="21" y2="18"/>
-  </Svg>
-);
-
 const IconEye = ({ color = 'rgba(255,255,255,0.7)', size = 18 }: { color?: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
     <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
@@ -158,23 +152,23 @@ const SvgIcon = ({ id, color = '#00C8A0', size = 24 }: { id: string; color?: str
 
 // ── TODOS los servicios del FAB + ─────────────────────────────────
 const FAB_SERVICES = [
-  { id: 'mensajes',     label: 'Mensajes',     route: '/mensajeria',       color: '#00B4E6' },
+  { id: 'mensajes',     label: 'Mensajes',     route: '/(tabs)/mensajeria', color: '#00B4E6' },
   { id: 'cartera',      label: 'Cartera',      route: '/(tabs)/monedero',  color: '#00C8A0' },
   { id: 'mitaxi',       label: 'MiTaxi',       route: '/mitaxi',           color: '#f59e0b' },
-  { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios', color: '#eab308' },
-  { id: 'agua',         label: 'Agua',         route: '/(tabs)/servicios', color: '#3b82f6' },
-  { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios', color: '#8b5cf6' },
-  { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios', color: '#06b6d4' },
-  { id: 'tv',           label: 'Canales TV',   route: '/(tabs)/servicios', color: '#ec4899' },
-  { id: 'bancos',       label: 'Bancos',       route: '/bancos',           color: '#1d4ed8' },
-  { id: 'salud',        label: 'Salud',        route: '/seguros-salud',    color: '#ef4444' },
-  { id: 'impuestos',    label: 'Impuestos',    route: '/(tabs)/servicios', color: '#64748b' },
-  { id: 'correos',      label: 'Correos',      route: '/(tabs)/servicios', color: '#f97316' },
-  { id: 'seguros',      label: 'Seguros',      route: '/seguros-salud',    color: '#10b981' },
-  { id: 'super',        label: 'Supermercado', route: '/supermercados',    color: '#84cc16' },
-  { id: 'restaurantes', label: 'Restaurantes', route: '/(tabs)/servicios', color: '#f43f5e' },
-  { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios', color: '#0ea5e9' },
-  { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios', color: '#d97706' },
+  { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios?service=electricidad', color: '#eab308' },
+  { id: 'agua',         label: 'Agua',         route: '/(tabs)/servicios?service=agua', color: '#3b82f6' },
+  { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios?service=internet', color: '#8b5cf6' },
+  { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios?service=recarga', color: '#06b6d4' },
+  { id: 'tv',           label: 'Canales TV',   route: '/(tabs)/servicios?service=tv', color: '#ec4899' },
+  { id: 'bancos',       label: 'Bancos',       route: '/(tabs)/servicios?service=bancos',       color: '#1d4ed8' },
+  { id: 'salud',        label: 'Salud',        route: '/(tabs)/servicios?service=salud',        color: '#ef4444' },
+  { id: 'impuestos',    label: 'Impuestos',    route: '/(tabs)/servicios?service=impuestos',    color: '#64748b' },
+  { id: 'correos',      label: 'Correos',      route: '/(tabs)/servicios?service=correos',      color: '#f97316' },
+  { id: 'seguros',      label: 'Seguros',      route: '/(tabs)/servicios?service=seguros',      color: '#10b981' },
+  { id: 'super',        label: 'Supermercado', route: '/(tabs)/servicios?service=supermercado', color: '#84cc16' },
+  { id: 'restaurantes', label: 'Restaurantes', route: '/(tabs)/servicios?service=restaurantes', color: '#f43f5e' },
+  { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos', color: '#0ea5e9' },
+  { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios?service=gasolineras', color: '#d97706' },
   { id: 'cemac',        label: 'Zona CEMAC',   route: '/cemac',            color: '#00C8A0' },
   { id: 'ocio',         label: 'Ocio',         route: '/ocio',             color: '#a855f7' },
   { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',         color: '#6366f1' },
@@ -200,10 +194,13 @@ export default function HomeScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [newsCount] = useState(8);
+  const [showNews, setShowNews] = useState(false);
+  const [showIdDigital, setShowIdDigital] = useState(false);
+  const [liveNews, setLiveNews] = useState(HOME_NEWS);
   const [fabOpen, setFabOpen] = useState(false);
-  const [temp] = useState('27°');
-  const [city] = useState('Malabo');
+  const [temp, setTemp] = useState(24);
+  const [city, setCity] = useState('Malabo');
+  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>('cloudy');
 
   // ── Estados de los paneles del header ───────────────────────────
   const [showNotifications, setShowNotifications] = useState(false);
@@ -223,7 +220,7 @@ export default function HomeScreen() {
 
   // ── LIA arrastrable ─────────────────────────────────────────────
   const { width: SW, height: SH } = Dimensions.get('window');
-  const LIA_SIZE = 60;
+  const LIA_SIZE = 36;
   // Posición inicial: esquina inferior derecha
   const liaPan = useRef(new Animated.ValueXY({
     x: SW - LIA_SIZE - Spacing.lg,
@@ -234,7 +231,7 @@ export default function HomeScreen() {
 
   const liaPanResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponder: () => false,
       onMoveShouldSetPanResponder: (_, gs) =>
         Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4,
       onPanResponderGrant: () => {
@@ -262,8 +259,6 @@ export default function HomeScreen() {
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const insets = useSafeAreaInsets();
-
   // ── Animación LIA pulso ─────────────────────────────────────────
   useEffect(() => {
     Animated.loop(
@@ -286,7 +281,16 @@ export default function HomeScreen() {
         setCurrency(balData.value?.currency || 'XAF');
       }
       if (userData.status === 'fulfilled') {
-        setUser(userData.value);
+        setUser(await mergePersistentAvatar(userData.value));
+      } else {
+        // Fallback: cargar usuario desde sesión persistida (p. ej. SecureStore/AsyncStorage)
+        try {
+          const SessionManager = (await import('../../src/sessionManager')).default;
+          const saved = await SessionManager.getInstance().getUser();
+          if (saved) setUser(await mergePersistentAvatar(saved));
+        } catch {
+          // ignore
+        }
       }
     } catch {}
     finally {
@@ -296,6 +300,35 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => { loadData(); }, []);
+
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      setUser(prev => prev ? { ...prev, ...patch } : prev);
+    });
+  }, []);
+
+  useEffect(() => {
+    fetchLiveHomeNews().then(setLiveNews).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      try {
+        const res = await fetch(
+          'https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current_weather=true',
+        );
+        const data = await res.json();
+        const t = Math.round(data?.current_weather?.temperature ?? 24);
+        const code = data?.current_weather?.weathercode ?? 0;
+        setTemp(t);
+        let cond: WeatherCondition = 'cloudy';
+        if (code === 0) cond = 'sunny';
+        else if (code >= 51 && code <= 67) cond = 'rain';
+        setWeatherCondition(cond);
+      } catch {}
+    };
+    fetchWeather();
+  }, []);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
@@ -347,6 +380,17 @@ export default function HomeScreen() {
     setTimeout(() => router.push(route as any), 220);
   };
 
+  const openSendMoney = () => {
+    Alert.alert('Enviar dinero', '¿Cómo quieres enviar?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
+      { text: 'Elegir contacto', onPress: () => router.push('/contacts' as any) },
+      { text: 'Mi Cartera', onPress: () => router.push('/(tabs)/monedero' as any) },
+    ]);
+  };
+
+  // news preview removed
+
   if (loading) {
     return (
       <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
@@ -358,58 +402,20 @@ export default function HomeScreen() {
   return (
     <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['bottom', 'left', 'right']}>
 
-      {/* ════════════════════════════════════════════════════════
-          HEADER — Logo + Temperatura + Campanita + Menú
-      ════════════════════════════════════════════════════════ */}
-      <LinearGradient
-        colors={['#00C8A0', '#00B4E6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={[st.header, { paddingTop: insets.top + Spacing.sm }]}
-      >
-        {/* Logo real de la app */}
-        <View style={st.headerLogo}>
-          <View style={st.logoImgWrap}>
-            <Image
-              source={require('../../assets/logo-transparent.png')}
-              style={st.logoImg}
-              resizeMode="contain"
-            />
-          </View>
-          <Text style={st.logoText}>EG</Text>
-          <Text style={st.logoTextBold}>CHAT</Text>
-        </View>
-
-        {/* Acciones derechas */}
-        <View style={st.headerRight}>
-          {/* Temperatura */}
-          <TouchableOpacity style={st.headerPill} activeOpacity={0.8} onPress={() => setShowWeather(true)}>
-            <Text style={st.headerPillText}>☁️ {temp} {city}</Text>
-          </TouchableOpacity>
-
-          {/* Campanita */}
-          <TouchableOpacity
-            style={st.headerIconBtn}
-            activeOpacity={0.8}
-            onPress={() => {
-              setShowNotifications(true);
-              setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            }}
-          >
-            <IconBell color="#fff" size={20} />
-            {notifications.some(n => !n.read) && <View style={st.notifBadge} />}
-          </TouchableOpacity>
-
-          {/* Tres barras */}
-          <TouchableOpacity
-            style={st.headerIconBtn}
-            activeOpacity={0.8}
-            onPress={() => setShowMenu(true)}
-          >
-            <IconMenu color="#fff" size={20} />
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      <EGChatHeader
+        temp={`${temp}°`}
+        city={city}
+        weatherCondition={weatherCondition}
+        unreadCount={notifications.filter(n => !n.read).length}
+        notificationsOpen={showNotifications}
+        menuOpen={showMenu}
+        onWeatherPress={() => setShowWeather(true)}
+        onNotificationsPress={() => {
+          setShowNotifications(true);
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }}
+        onMenuPress={() => setShowMenu(true)}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -459,7 +465,7 @@ export default function HomeScreen() {
             <TouchableOpacity
               style={st.balanceBtn}
               activeOpacity={0.85}
-              onPress={() => router.push('/(tabs)/monedero' as any)}
+              onPress={openSendMoney}
             >
               <IconSend color={Colors.brand} size={15} />
               <Text style={st.balanceBtnText}>ENVIAR</Text>
@@ -475,7 +481,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[st.infoCard, { backgroundColor: C.bgSecondary }]}
             activeOpacity={0.8}
-            onPress={() => router.push('/(tabs)/ajustes' as any)}
+            onPress={() => setShowIdDigital(true)}
           >
             <View style={st.infoCardIcon}>
               <Text style={st.infoCardEmoji}>🪪</Text>
@@ -483,7 +489,7 @@ export default function HomeScreen() {
             <View style={st.infoCardText}>
               <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>ID Digital</Text>
               <Text style={[st.infoCardSub, { color: Colors.accent }]}>
-                {user ? '✓ Verificado' : 'Sin verificar'}
+                {user?.verified ? '✓ Verificado' : user ? 'Cuenta activa' : 'Sin verificar'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -492,6 +498,7 @@ export default function HomeScreen() {
           <TouchableOpacity
             style={[st.infoCard, { backgroundColor: C.bgSecondary }]}
             activeOpacity={0.8}
+            onPress={() => setShowNews(true)}
           >
             <View style={st.infoCardIcon}>
               <Text style={st.infoCardEmoji}>📰</Text>
@@ -499,11 +506,13 @@ export default function HomeScreen() {
             <View style={st.infoCardText}>
               <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>Noticias</Text>
               <Text style={[st.infoCardSub, { color: C.textSecondary }]}>
-                {newsCount} nuevas
+                {liveNews.length} titulares
               </Text>
             </View>
           </TouchableOpacity>
         </View>
+
+        {/* Noticias preview removed per request */}
 
         {/* ════════════════════════════════════════════════════════
             APPS — Estados, Juegos, Cemac, MiTaxi
@@ -640,11 +649,7 @@ export default function HomeScreen() {
             end={{ x: 1, y: 1 }}
             style={st.liaBtnGradient}
           >
-            <Image
-              source={require('../../assets/logo-transparent.png')}
-              style={st.liaLogoImg}
-              resizeMode="contain"
-            />
+            <SpinningLogo size={36} glow={false} />
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
@@ -695,9 +700,19 @@ export default function HomeScreen() {
       <WeatherModal
         visible={showWeather}
         onClose={() => setShowWeather(false)}
-        temp={temp}
+        temp={`${temp}°`}
         city={city}
-        condition="cloudy"
+        condition={weatherCondition}
+      />
+
+      <HomeNoticiasModal visible={showNews} onClose={() => setShowNews(false)} />
+      <HomeIdDigitalModal
+        visible={showIdDigital}
+        onClose={() => setShowIdDigital(false)}
+        userName={user?.full_name || 'Usuario'}
+        userPhone={user?.phone || ''}
+        userId={user?.id || ''}
+        verified={user?.verified}
       />
 
     </SafeAreaView>
@@ -707,7 +722,7 @@ export default function HomeScreen() {
 // ══════════════════════════════════════════════════════════════════
 // ESTILOS
 // ══════════════════════════════════════════════════════════════════
-const LIA_BTN_SIZE = 60;
+const LIA_BTN_SIZE = 36;
 const st = StyleSheet.create({
   container: {
     flex: 1,
@@ -891,6 +906,43 @@ const st = StyleSheet.create({
     marginTop: 2,
   },
 
+  newsPreviewSection: {
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.lg,
+  },
+  newsPreviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  newsVerTodo: {
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.semibold as '600',
+    color: Colors.brand,
+  },
+  newsPreviewRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: Spacing.md,
+    paddingHorizontal: Spacing.md,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1,
+    marginBottom: Spacing.xs,
+  },
+  newsPreviewDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#ef4444',
+  },
+  newsPreviewTitle: {
+    flex: 1,
+    fontSize: FontSize.sm,
+    fontWeight: FontWeight.medium as '500',
+  },
+
   // ── APPS section ─────────────────────────────────────────────────
   appsSection: {
     marginHorizontal: Spacing.lg,
@@ -988,7 +1040,6 @@ const st = StyleSheet.create({
     width: LIA_BTN_SIZE,
     height: LIA_BTN_SIZE,
     borderRadius: LIA_BTN_SIZE / 2,
-    transform: [{ scale: 1.5 }],
   },
 
   // ── FAB + central ────────────────────────────────────────────────

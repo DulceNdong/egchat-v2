@@ -57,7 +57,27 @@ export default function ContactsScreen() {
     ]);
   }, []);
 
-  const openChat = useCallback(async (userId: string) => {
+  const getRealUser = (item: any) => item?.user || item;
+  const getRealUserId = (item: any) => item?.contact_user_id || item?.user?.id || item?.id;
+  const getDisplayName = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.full_name || item?.full_name || item?.name || item?.nickname || 'Usuario';
+  };
+  const getDisplayPhone = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.phone || item?.phone || '';
+  };
+  const getDisplayAvatar = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.avatar_url || item?.avatar_url || '';
+  };
+
+  const openChat = useCallback(async (contact: any) => {
+    const userId = getRealUserId(contact);
+    if (!userId) {
+      Alert.alert('Contacto incompleto', 'Este contacto no tiene usuario asociado.');
+      return;
+    }
     try {
       const chat = await chatAPI.createPrivate(userId);
       router.replace(`/chat/${chat.id}` as any);
@@ -66,8 +86,8 @@ export default function ContactsScreen() {
 
   const filtered = query
     ? contacts.filter(c =>
-        (c.full_name || c.name || '').toLowerCase().includes(query.toLowerCase()) ||
-        (c.phone || '').includes(query)
+        getDisplayName(c).toLowerCase().includes(query.toLowerCase()) ||
+        getDisplayPhone(c).includes(query)
       )
     : contacts;
 
@@ -102,15 +122,15 @@ export default function ContactsScreen() {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={item => item.id}
+          keyExtractor={item => getRealUserId(item) || item.id}
           renderItem={({ item }) => (
-            <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => openChat(item.contact_user_id || item.id)} onLongPress={() => removeContact(item.id, item.full_name || item.name || 'Contacto')} activeOpacity={0.7}>
-              <EGAvatar src={item.avatar_url} name={item.full_name || item.name || '?'} size={46} />
+            <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => openChat(item)} onLongPress={() => removeContact(item.id, getDisplayName(item) || 'Contacto')} activeOpacity={0.7}>
+              <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
               <View style={styles.info}>
-                <Text style={[styles.name, { color: C.textPrimary }]}>{item.full_name || item.name || 'Usuario'}</Text>
-                <Text style={[styles.phone, { color: C.textTertiary }]}>{item.phone || ''}</Text>
+                <Text style={[styles.name, { color: C.textPrimary }]}>{getDisplayName(item)}</Text>
+                <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
               </View>
-              <TouchableOpacity onPress={() => openChat(item.contact_user_id || item.id)} style={styles.chatBtn}>
+              <TouchableOpacity onPress={() => openChat(item)} style={styles.chatBtn}>
                 <Text style={styles.chatBtnIcon}>💬</Text>
               </TouchableOpacity>
             </TouchableOpacity>

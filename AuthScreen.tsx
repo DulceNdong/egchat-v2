@@ -128,6 +128,7 @@ export default function AuthScreen({onAuth}:Props) {
       // Registrar sin avatar primero (evita payload grande)
       const r=await authAPI.register({full_name:name,phone:fullPhone,password:pass,avatar_url:undefined});
       localStorage.setItem('user_name',name);
+      let savedAvatar = '';
       // Subir avatar después del registro si existe
       if(avatar){
         try{
@@ -136,12 +137,24 @@ export default function AuthScreen({onAuth}:Props) {
           const blob=await res.blob();
           const file=new File([blob],'avatar.jpg',{type:'image/jpeg'});
           const up=await (await import('./api')).userAPI.uploadAvatar(file);
-          if(up?.avatar_url) localStorage.setItem('user_avatar',up.avatar_url);
-          else localStorage.setItem('user_avatar',avatar);
+          if(up?.avatar_url) savedAvatar = up.avatar_url;
+          else savedAvatar = avatar;
         }catch{
-          localStorage.setItem('user_avatar',avatar);
+          savedAvatar = avatar;
         }
       }
+      const profile = {
+        id: r.user?.id || '',
+        name,
+        phone: fullPhone,
+        avatar: (name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
+        avatarUrl: savedAvatar,
+        avatar_url: savedAvatar,
+      };
+      if (savedAvatar) {
+        localStorage.setItem('user_avatar', savedAvatar);
+      }
+      localStorage.setItem('egchat_user_profile', JSON.stringify(profile));
       onAuth(r.user);
     }
     catch(e:any){

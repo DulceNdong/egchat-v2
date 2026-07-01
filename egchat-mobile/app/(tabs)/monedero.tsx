@@ -1,13 +1,21 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
-  TextInput, Image, Animated,
+  TextInput, Animated,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Line, Polyline, Rect, Circle, Polygon } from 'react-native-svg';
-import { walletAPI } from '../../src/api';
+import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
+import QRCode from 'react-native-qrcode-svg';
+import { router } from 'expo-router';
+import { walletAPI, authAPI } from '../../src/api';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
+import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
+import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
+import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -41,12 +49,6 @@ const getTxDesc = (tx: any) => {
   };
   return map[tx.type] || '';
 };
-
-// ── Cuentas bancarias ─────────────────────────────────────────────
-const INITIAL_BANK_ACCOUNTS = [
-  { id: '1', bank: 'BANGE', type: 'Corriente', balance: 45200 },
-  { id: '2', bank: 'CCEI Bank', type: 'Ahorros', balance: 80000 },
-];
 
 // ── Iconos SVG (idénticos a la web) ──────────────────────────────
 const IcoRecibir = ({ color = '#0E5F8A' }: { color?: string }) => (
@@ -228,37 +230,20 @@ const SectionHead = ({
 
 // ── Modal QR (Recibir / Pagar) ────────────────────────────────────
 const QRModal = ({
-  visible, type, balance, onClose,
-}: { visible: boolean; type: 'receive' | 'pay'; balance: number; onClose: () => void }) => {
+  visible, type, balance, userId, userName, userPhone, onClose,
+}: {
+  visible: boolean; type: 'receive' | 'pay'; balance: number;
+  userId: string; userName: string; userPhone: string; onClose: () => void;
+}) => {
   const [amount, setAmount] = useState('');
   const [concept, setConcept] = useState('');
   const isReceive = type === 'receive';
   const gradient: [string, string] = isReceive ? ['#00c8a0', '#059669'] : ['#00b4e6', '#2563eb'];
   const title = isReceive ? 'Recibir dinero' : 'Realizar pago';
   const sub = isReceive ? 'Muestra este QR para recibir' : 'Genera tu QR de cobro';
-
-  // QR simulado (cuadrícula 9×9)
-  const QR_CELLS = [
-    [1,1,1,1,1,1,1,0,0,0,1,0,1,1,1,1,1,1,1],
-    [1,0,0,0,0,0,1,0,1,0,0,0,1,0,0,0,0,0,1],
-    [1,0,1,1,1,0,1,0,0,1,0,1,1,0,1,1,1,0,1],
-    [1,0,1,1,1,0,1,0,1,0,1,0,1,0,1,1,1,0,1],
-    [1,0,0,0,0,0,1,0,0,1,0,1,1,0,0,0,0,0,1],
-    [1,1,1,1,1,1,1,0,1,0,1,0,1,1,1,1,1,1,1],
-    [0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,0],
-    [1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,0,1,0],
-    [0,1,0,0,1,0,1,0,1,0,0,1,0,1,0,0,1,0,1],
-    [1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,0],
-    [0,1,0,1,0,0,1,0,1,0,1,0,0,1,0,1,0,0,1],
-    [1,0,1,0,1,1,0,1,0,1,0,1,1,0,1,0,1,1,0],
-    [0,0,0,0,0,0,0,0,1,0,1,1,0,0,0,0,0,0,0],
-    [1,1,1,1,1,1,1,0,0,1,0,0,1,0,1,0,1,0,1],
-    [1,0,0,0,0,0,1,0,1,0,1,0,0,1,0,1,0,1,0],
-    [1,0,1,1,1,0,1,0,0,1,0,1,1,0,1,0,1,0,1],
-    [1,0,1,1,1,0,1,0,1,0,1,0,0,1,0,1,0,1,0],
-    [1,0,0,0,0,0,1,0,0,1,0,1,1,0,1,0,1,0,1],
-    [1,1,1,1,1,1,1,0,1,0,1,0,0,1,0,1,0,1,0],
-  ];
+  const qrValue = userId
+    ? (isReceive ? buildReceiveQr(userId) : buildPayQr(userId, amount, concept))
+    : 'egchat://pay/pending';
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -275,18 +260,16 @@ const QRModal = ({
           </LinearGradient>
 
           <View style={s.qrBody}>
-            {/* QR grid */}
-            <View style={s.qrGrid}>
-              {QR_CELLS.map((row, ri) => (
-                <View key={ri} style={{ flexDirection: 'row' }}>
-                  {row.map((cell, ci) => (
-                    <View key={ci} style={[s.qrCell, { backgroundColor: cell ? '#0d0d0d' : 'transparent' }]} />
-                  ))}
-                </View>
-              ))}
+            <View style={s.qrCodeWrap}>
+              {userId ? (
+                <QRCode value={qrValue} size={200} backgroundColor="#fff" color="#0d0d0d" />
+              ) : (
+                <ActivityIndicator color="#00c8a0" />
+              )}
             </View>
 
-            <Text style={s.qrName}>Mi Monedero EGCHAT</Text>
+            <Text style={s.qrName}>{userName || 'Mi Monedero EGCHAT'}</Text>
+            {!!userPhone && <Text style={s.qrPhone}>{userPhone}</Text>}
             <Text style={s.qrBalance}>{fmt(balance)} XAF disponibles</Text>
 
             {!isReceive && (
@@ -308,6 +291,14 @@ const QRModal = ({
                 />
               </View>
             )}
+
+            <TouchableOpacity
+              style={s.qrScanBtn}
+              onPress={() => { onClose(); router.push('/_qr-scanner' as any); }}
+              activeOpacity={0.85}
+            >
+              <Text style={s.qrScanBtnText}>Escanear QR de pago</Text>
+            </TouchableOpacity>
 
             <TouchableOpacity onPress={onClose} activeOpacity={0.85}>
               <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrCloseFullBtn}>
@@ -592,9 +583,23 @@ const RetiroModal = ({
   const doWithdraw = async (method: string, destination: string) => {
     setLoading(true);
     try {
+      const checkResult = await checkLimitForTransaction('withdrawal', amountNum);
+      if (!checkResult.allowed) {
+        Alert.alert('Límite excedido', checkResult.reason || 'No puedes realizar esta operación.');
+        setLoading(false);
+        return;
+      }
+      if (checkResult.requiresPin && !data.pin) {
+        Alert.alert('PIN requerido', 'Para esta operación necesitas ingresar tu PIN de seguridad.');
+        setLoading(false);
+        return;
+      }
       await walletAPI.withdraw(amountNum, method, destination);
+      await updateLimitForTransaction('withdrawal', amountNum);
       onSuccess();
-    } catch {}
+    } catch (error) {
+      console.warn('withdraw error', error);
+    }
     setStep('success');
     setLoading(false);
   };
@@ -904,17 +909,30 @@ const HistorialModal = ({
 export default function MonederoScreen() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
-  const [bankAccounts, setBankAccounts] = useState(INITIAL_BANK_ACCOUNTS);
+  const [bankAccounts, setBankAccounts] = useState(DEFAULT_BANK_ACCOUNTS);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [balanceVisible, setBalanceVisible] = useState(false);
+  const [balanceRevealed, setBalanceRevealed] = useState(false);
+  const [balanceRevealing, setBalanceRevealing] = useState(false);
+  const [userId, setUserId] = useState('');
+  const [userName, setUserName] = useState('');
+  const [userPhone, setUserPhone] = useState('');
+  const [user, setUser] = useState<any>(null);
+  const zipAnim = useRef(new Animated.Value(0)).current;
 
   const [showQR, setShowQR] = useState(false);
   const [qrType, setQrType] = useState<'receive'|'pay'>('receive');
   const [showRecarga, setShowRecarga] = useState(false);
   const [showRetiro, setShowRetiro] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
-  const [showHistorial, setShowHistorial] = useState(false);
+  const [pendingTransfers, setPendingTransfers] = useState<Array<{
+    id: string; from: string; to: string; amount: number;
+    status: 'pending' | 'cancelled'; expiresAt: number;
+  }>>([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showWeather, setShowWeather] = useState(false);
+  const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
@@ -931,7 +949,43 @@ export default function MonederoScreen() {
     finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    loadData();
+    loadBankAccounts().then(setBankAccounts);
+    authAPI.me().then(async me => {
+      const profile = await mergePersistentAvatar(me);
+      setUser(profile);
+      setUserId(profile?.id || '');
+      setUserName(profile?.full_name || 'Usuario');
+      setUserPhone(profile?.phone || '');
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      setUser((prev: any) => prev ? { ...prev, ...patch } : prev);
+      if (patch.full_name) setUserName(patch.full_name);
+      if (patch.phone) setUserPhone(patch.phone);
+    });
+  }, []);
+
+  const revealBalance = useCallback(() => {
+    if (balanceRevealed || balanceRevealing) return;
+    setBalanceRevealing(true);
+    Animated.timing(zipAnim, { toValue: 1, duration: 1100, useNativeDriver: true }).start(() => {
+      setBalanceRevealed(true);
+      setBalanceRevealing(false);
+    });
+  }, [balanceRevealed, balanceRevealing, zipAnim]);
+
+  const hideBalance = useCallback(() => {
+    zipAnim.setValue(0);
+    setBalanceRevealed(false);
+    setBalanceRevealing(false);
+  }, [zipAnim]);
+
+  const overlayOpacity = zipAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
+
   const onRefresh = () => { setRefreshing(true); loadData(); };
 
   if (loading) {
@@ -945,12 +999,23 @@ export default function MonederoScreen() {
   const recentTx = transactions.slice(0, 8);
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['top']}>
+    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['bottom', 'left', 'right']}>
 
       {/* ── Header ── */}
-      <View style={s.pageHeader}>
-        <Text style={s.pageTitle}>Mi Cartera</Text>
-      </View>
+      <EGChatHeader
+        temp={27}
+        city="Malabo"
+        weatherCondition="cloudy"
+        unreadCount={notifications.filter(n => !n.read).length}
+        notificationsOpen={showNotifications}
+        menuOpen={showMenu}
+        onWeatherPress={() => setShowWeather(true)}
+        onNotificationsPress={() => {
+          setShowNotifications(true);
+          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+        }}
+        onMenuPress={() => setShowMenu(true)}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -966,19 +1031,29 @@ export default function MonederoScreen() {
           >
             <Text style={s.balanceCardLabel}>MONEDERO EGCHAT</Text>
 
-            {/* Saldo con revelar/ocultar */}
-            <TouchableOpacity onPress={() => setBalanceVisible(v => !v)} activeOpacity={0.85} style={s.balanceRevealBtn}>
-              {balanceVisible ? (
-                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6 }}>
-                  <Text style={s.balanceAmount}>{fmt(balance)}</Text>
-                  <Text style={s.balanceCurrency}>XAF</Text>
-                </View>
-              ) : (
-                <View style={s.balanceHidden}>
-                  <Text style={s.balanceHiddenText}>🔒  Toca para revelar</Text>
-                </View>
+            {/* Saldo con animación de revelado (paridad web) */}
+            <View style={s.balanceRevealBtn}>
+              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, opacity: balanceRevealed ? 1 : 0.15 }}>
+                <Text style={s.balanceAmount}>{fmt(balance)}</Text>
+                <Text style={s.balanceCurrency}>XAF</Text>
+              </View>
+              {!balanceRevealed && (
+                <Animated.View
+                  style={[s.balanceOverlay, { opacity: balanceRevealing ? overlayOpacity : 1 }]}
+                >
+                  <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
+                    <Text style={s.balanceHiddenText}>
+                      {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
+                    </Text>
+                  </TouchableOpacity>
+                </Animated.View>
               )}
-            </TouchableOpacity>
+              {balanceRevealed && (
+                <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
+                  <Text style={s.balanceHideText}>Ocultar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
             <Text style={s.balanceSubLabel}>Saldo disponible</Text>
 
             {/* 4 botones de acción */}
@@ -1027,10 +1102,50 @@ export default function MonederoScreen() {
           ))}
         </View>
 
+        {/* ── Transferencias pendientes ── */}
+        {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
+          <>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: '#b45309' }]}>TRANSFERENCIAS PENDIENTES</Text>
+            </View>
+            <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
+              {pendingTransfers.filter(t => t.status === 'pending').map((transfer, i, arr) => (
+                <View key={transfer.id}>
+                  <View style={s.pendingRow}>
+                    <View style={s.pendingIcon}>
+                      <Text>⏱</Text>
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.bankName, { color: C.textPrimary }]}>
+                        {transfer.from} → {transfer.to}
+                      </Text>
+                      <Text style={[s.bankType, { color: C.textSecondary }]}>
+                        Expira en {Math.max(0, Math.ceil((transfer.expiresAt - Date.now()) / 60000))} min
+                      </Text>
+                    </View>
+                    <Text style={[s.pendingAmount, { color: '#b45309' }]}>
+                      {fmt(transfer.amount)} XAF
+                    </Text>
+                    <TouchableOpacity
+                      style={s.cancelPendingBtn}
+                      onPress={() => setPendingTransfers(prev =>
+                        prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' as const } : t),
+                      )}
+                    >
+                      <Text style={s.cancelPendingText}>Cancelar</Text>
+                    </TouchableOpacity>
+                  </View>
+                  {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                </View>
+              ))}
+            </View>
+          </>
+        )}
+
         {/* ── Historial de Transferencias ── */}
         <View style={s.sectionHeader}>
           <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
-          <TouchableOpacity onPress={() => setShowHistorial(true)} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => router.push('/historial-completo' as any)} activeOpacity={0.7}>
             <Text style={s.verTodo}>Ver todo →</Text>
           </TouchableOpacity>
         </View>
@@ -1048,7 +1163,9 @@ export default function MonederoScreen() {
                   {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
                 </View>
                 <View style={s.txInfo}>
-                  <Text style={[s.txLabel, { color: C.textPrimary }]}>{getTxLabel(tx)}</Text>
+                  <Text style={[s.txLabel, { color: C.textPrimary }]}>
+                    {isCredit(tx.type) ? '↙️ Recibido' : '↗️ Enviado'}
+                  </Text>
                   <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
                   <Text style={[s.txDate, { color: C.textTertiary }]}>
                     {formatDate(tx.created_at || tx.date || new Date().toISOString())}
@@ -1068,12 +1185,38 @@ export default function MonederoScreen() {
       </ScrollView>
 
       {/* ── Modales ── */}
-      <QRModal visible={showQR} type={qrType} balance={balance} onClose={() => setShowQR(false)} />
+      <NotificationsPanel
+        visible={showNotifications}
+        onClose={() => setShowNotifications(false)}
+        notifications={notifications}
+        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
+        onClearAll={() => setNotifications([])}
+        onNotifPress={(n) => {
+          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          setShowNotifications(false);
+          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+        }}
+      />
+      <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="27°" city="Malabo" condition="cloudy" />
+
+      <QRModal
+        visible={showQR}
+        type={qrType}
+        balance={balance}
+        userId={userId}
+        userName={userName}
+        userPhone={userPhone}
+        onClose={() => setShowQR(false)}
+      />
       <RecargaModal visible={showRecarga} balance={balance} onClose={() => setShowRecarga(false)} onSuccess={loadData} />
       <RetiroModal  visible={showRetiro}  balance={balance} onClose={() => setShowRetiro(false)}  onSuccess={loadData} />
       <AddBankModal visible={showAddBank} onClose={() => setShowAddBank(false)}
-        onAdd={acc => setBankAccounts(p => [...p, acc])} />
-      <HistorialModal visible={showHistorial} transactions={transactions} onClose={() => setShowHistorial(false)} />
+        onAdd={acc => {
+          const next = [...bankAccounts, acc];
+          setBankAccounts(next);
+          saveBankAccounts(next);
+        }} />
     </SafeAreaView>
   );
 }
@@ -1084,18 +1227,21 @@ const s = StyleSheet.create({
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
-  pageHeader:  { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
+  pageHeader:  { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 8, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#F0F2F5' },
   pageTitle:   { fontSize: 17, fontWeight: '700', color: '#1A2B4A' },
 
   // Balance card
   balanceCardWrap: { padding: 14 },
   balanceCard:     { borderRadius: 20, padding: 20, shadowColor: '#0E5F8A', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.25, shadowRadius: 12, elevation: 8 },
   balanceCardLabel:{ fontSize: 13, color: 'rgba(255,255,255,0.7)', fontWeight: '700', letterSpacing: 1, textTransform: 'uppercase', marginBottom: 6 },
-  balanceRevealBtn:{ marginBottom: 4 },
+  balanceRevealBtn:{ marginBottom: 4, minHeight: 42, justifyContent: 'center' },
   balanceAmount:   { fontSize: 30, fontWeight: '800', color: '#fff', letterSpacing: -1 },
   balanceCurrency: { fontSize: 14, fontWeight: '600', color: 'rgba(255,255,255,0.65)' },
-  balanceHidden:   { backgroundColor: 'rgba(8,20,50,0.75)', borderRadius: 8, paddingHorizontal: 14, paddingVertical: 8, alignSelf: 'flex-start' },
+  balanceOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(8,20,50,0.82)', borderRadius: 8, justifyContent: 'center' },
+  balanceOverlayTouch: { paddingHorizontal: 14, paddingVertical: 10 },
   balanceHiddenText:{ fontSize: 13, color: 'rgba(255,255,255,0.75)', fontWeight: '600' },
+  balanceHideBtn:  { position: 'absolute', top: 0, right: 0, padding: 4 },
+  balanceHideText: { fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '600' },
   balanceSubLabel: { fontSize: 13, color: 'rgba(255,255,255,0.55)', fontWeight: '600', marginBottom: 18 },
 
   // Action buttons
@@ -1125,6 +1271,21 @@ const s = StyleSheet.create({
   bankBalance:   { fontSize: 13, fontWeight: '800', color: '#0d0d0d' },
   bankCurrency:  { fontSize: 11, color: '#6b7280', fontWeight: '600' },
 
+  pendingRow: {
+    flexDirection: 'row', alignItems: 'center', padding: 12, gap: 10,
+    backgroundColor: 'rgba(180,83,9,0.04)',
+  },
+  pendingIcon: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(180,83,9,0.08)', alignItems: 'center', justifyContent: 'center',
+  },
+  pendingAmount: { fontSize: 13, fontWeight: '600' },
+  cancelPendingBtn: {
+    backgroundColor: 'rgba(248,113,113,0.1)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.25)',
+    borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4,
+  },
+  cancelPendingText: { fontSize: 11, fontWeight: '600', color: '#f87171' },
+
   // Transactions
   txCard:        { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
   txIconWrap:    { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'transparent' },
@@ -1147,102 +1308,36 @@ const s = StyleSheet.create({
   sheet:         { backgroundColor: '#F7F8FA', borderTopLeftRadius: 20, borderTopRightRadius: 20, maxHeight: '90%', paddingBottom: 40 },
   handle:        { width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB', alignSelf: 'center', marginTop: 10, marginBottom: 4 },
   sheetTitle:    { fontSize: 17, fontWeight: '700', color: '#111827', textAlign: 'center', paddingHorizontal: 16, paddingTop: 8 },
-  sheetSub:      { fontSize: 11, color: '#9CA3AF', textAlign: 'center', marginBottom: 4 },
-  sheetBody:     { padding: 16, gap: 10 },
-
   // Section head in modals
-  sectionHead:   { borderRadius: 14, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 14, marginBottom: 6 },
-  sectionHeadIcon:{ width: 48, height: 48, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  sectionHeadTitle:{ fontSize: 15, fontWeight: '800', color: '#fff' },
-  sectionHeadSub:{ fontSize: 11, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-
   // Methods label
   methodsLabel:  { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 4 },
 
   // Method buttons
-  methodBtn:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 14, padding: 14, gap: 12, borderWidth: 1, borderColor: '#F0F2F5', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1 },
   methodIconWrap:{ width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  methodText:    { flex: 1 },
-  methodLabel:   { fontSize: 14, fontWeight: '700', color: '#111827' },
-  methodSub:     { fontSize: 11, color: '#9CA3AF', marginTop: 2 },
-  methodArrow:   { fontSize: 20, color: '#D1D5DB' },
-
   // Info box
-  infoBox:       { backgroundColor: '#EFF5FD', borderRadius: 12, padding: 14, borderWidth: 1, borderColor: '#BFDBFE', gap: 4 },
-  infoRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 4, borderBottomWidth: 1, borderBottomColor: '#DBEAFE' },
-  infoLabel:     { fontSize: 11, color: '#6B7280' },
-  infoValue:     { fontSize: 11, fontWeight: '700', color: '#1B3A6B' },
-
   // Quick amounts
-  quickRow:      { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  quickBtn:      { flex: 1, minWidth: '22%', paddingVertical: 10, borderRadius: 10, backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#F0F2F5', alignItems: 'center' },
-  quickBtnActive:{ backgroundColor: '#FFFBEB', borderColor: '#F59E0B' },
-  quickBtnText:  { fontSize: 12, fontWeight: '700', color: '#374151' },
-  quickBtnTextActive:{ color: '#92400E' },
-
   // Field
-  fieldWrap:     { gap: 4 },
-  fieldLabel:    { fontSize: 12, fontWeight: '600', color: '#374151' },
-  fieldInput:    { backgroundColor: '#fff', borderRadius: 10, borderWidth: 1, borderColor: '#F0F2F5', paddingHorizontal: 14, paddingVertical: 12, fontSize: 14, color: '#111827' },
-
   // Code input
-  codeHint:      { fontSize: 11, fontWeight: '700', color: '#6B7280', textTransform: 'uppercase', letterSpacing: 0.5 },
-  codeInput:     { backgroundColor: '#fff', borderRadius: 12, borderWidth: 1.5, borderColor: '#F0F2F5', paddingHorizontal: 14, paddingVertical: 14, fontSize: 20, fontWeight: '800', color: '#111827', textAlign: 'center', letterSpacing: 4 },
-
   // Agent card
-  agentCard:     { flexDirection: 'row', alignItems: 'center', backgroundColor: '#fff', borderRadius: 12, padding: 12, gap: 10, borderWidth: 1, borderColor: '#F0F2F5' },
   agentIconWrap: { width: 40, height: 40, borderRadius: 10, backgroundColor: '#F5F3FF', alignItems: 'center', justifyContent: 'center' },
-  agentName:     { fontSize: 12, fontWeight: '700', color: '#111827' },
-  agentInfo:     { fontSize: 10, color: '#9CA3AF', marginTop: 2 },
-
   // Confirm card
   confirmCard:   { backgroundColor: '#fff', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#F0F2F5' },
-  confirmRow:    { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 7, borderBottomWidth: 1, borderBottomColor: '#F3F4F6' },
-  confirmLabel:  { fontSize: 12, color: '#6B7280' },
-  confirmValue:  { fontSize: 12, fontWeight: '700', color: '#111827' },
-
   // Alert
   alertBox:      { backgroundColor: '#FEF2F2', borderRadius: 10, padding: 12, borderWidth: 1, borderColor: '#FECACA' },
   alertText:     { fontSize: 11, color: '#C0392B', fontWeight: '600' },
 
   // Primary button
-  primaryBtn:    { backgroundColor: '#00c8a0', borderRadius: 12, padding: 14, alignItems: 'center' },
-  primaryBtnDisabled:{ backgroundColor: '#E5E7EB' },
-  primaryBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
   withdrawBtn:   { backgroundColor: '#C0392B' },
-  backBtn:       { alignItems: 'center', paddingVertical: 10 },
-  backBtnText:   { fontSize: 13, color: '#9CA3AF', fontWeight: '600' },
-
   // QR mini box
   qrMiniBox:     { width: 80, height: 80, borderRadius: 16, backgroundColor: '#F0FDF9', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
 
   // Success
-  successWrap:   { alignItems: 'center', paddingVertical: 24, gap: 12 },
-  successCircle: { width: 80, height: 80, borderRadius: 40, alignItems: 'center', justifyContent: 'center', shadowColor: '#00c8a0', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.3, shadowRadius: 16, elevation: 8 },
-  successTitle:  { fontSize: 20, fontWeight: '900', color: '#111827' },
-  successSub:    { fontSize: 13, color: '#9CA3AF', textAlign: 'center', paddingHorizontal: 16, lineHeight: 20 },
   refCard:       { width: '100%', backgroundColor: '#F0FDF9', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: '#A7F3D0' },
   refLabel:      { fontSize: 11, fontWeight: '700', color: '#065F46', textTransform: 'uppercase', letterSpacing: 0.5, marginBottom: 6 },
   refCode:       { fontSize: 14, fontWeight: '800', color: '#111827', fontVariant: ['tabular-nums'] },
   refBalanceRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 10, paddingTop: 10, borderTopWidth: 1, borderTopColor: '#D1FAE5' },
   refBalanceLabel:{ fontSize: 12, color: '#6B7280' },
   refBalanceValue:{ fontSize: 16, fontWeight: '900', color: '#00c8a0' },
-
-  // QR Modal
-  qrOverlay:     { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
-  qrCard:        { width: '85%', maxWidth: 320, borderRadius: 24, overflow: 'hidden', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.25, shadowRadius: 30, elevation: 20 },
-  qrHeader:      { padding: 18, flexDirection: 'row', alignItems: 'flex-start' },
-  qrHeaderTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
-  qrHeaderSub:   { fontSize: 13, color: 'rgba(255,255,255,0.75)', marginTop: 2 },
-  qrCloseBtn:    { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
-  qrBody:        { padding: 18, alignItems: 'center', gap: 12 },
-  qrGrid:        { backgroundColor: '#fff', padding: 10, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(0,200,160,0.2)' },
-  qrCell:        { width: 9, height: 9, borderRadius: 1 },
-  qrName:        { fontSize: 13, fontWeight: '700', color: '#0d0d0d' },
-  qrBalance:     { fontSize: 12, color: '#6b7280' },
-  qrInput:       { width: '100%', backgroundColor: '#F9FAFB', borderWidth: 1, borderColor: '#E5E7EB', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 10, fontSize: 14, color: '#0d0d0d' },
-  qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 40 },
-  qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
 
   // Historial modal
   histOverlay:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.4)' },
@@ -1327,10 +1422,14 @@ const s = StyleSheet.create({
   qrHeaderSub:   { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginTop: 2 },
   qrCloseBtn:    { width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   qrBody:        { padding: 20, alignItems: 'center', gap: 12 },
+  qrCodeWrap:    { backgroundColor: '#fff', padding: 12, borderRadius: 12, borderWidth: 2, borderColor: 'rgba(0,200,160,0.2)' },
   qrGrid:        { backgroundColor: '#fff', padding: 8, borderRadius: 8, borderWidth: 1, borderColor: '#E5E7EB' },
   qrCell:        { width: 10, height: 10 },
   qrName:        { fontSize: 14, fontWeight: '700', color: '#111827' },
+  qrPhone:       { fontSize: 12, color: '#6b7280', marginTop: 2 },
   qrBalance:     { fontSize: 12, color: '#6B7280' },
+  qrScanBtn:     { width: '100%', paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,180,230,0.35)', borderRadius: 10 },
+  qrScanBtnText: { fontSize: 13, fontWeight: '700', color: '#00b4e6' },
   qrInput:       { width: '100%', backgroundColor: '#F7F8FA', borderRadius: 10, padding: 12, fontSize: 14, color: '#111827', borderWidth: 1, borderColor: '#E5E7EB' },
   qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32, marginTop: 4 },
   qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },

@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
 
 // ── Configurar cómo se muestran las notificaciones en primer plano ──────────
@@ -18,6 +18,8 @@ Notifications.setNotificationHandler({
     const data = notification.request.content.data as any;
     return {
       shouldShowAlert: true,
+      shouldShowBanner: true,
+      shouldShowList: true,
       shouldPlaySound: true,
       shouldSetBadge: true,
       // Llamadas: prioridad máxima y no se auto-descartan
@@ -29,7 +31,7 @@ Notifications.setNotificationHandler({
 });
 
 // ── Tarea en segundo plano para notificaciones recibidas con app cerrada ────
-TaskManager.defineTask(BACKGROUND_TASK, ({ data, error }) => {
+TaskManager.defineTask(BACKGROUND_TASK, async ({ data, error }) => {
   if (error) { console.error('BG notification error:', error); return; }
   // La notificación ya fue mostrada por FCM — aquí podemos hacer lógica extra
   console.log('BG notification received:', data);
@@ -146,7 +148,7 @@ export async function syncTokenWithServer(expoPushToken: string) {
 // ── Escuchar notificaciones recibidas (app en primer plano) ─────────────────
 export function setupNotificationListeners(
   onMessage: (chatId: string) => void,
-  onCall: (callData: { callId: string; callerName: string; callType: string }) => void
+  onCall: (callData: { callId: string; callerName: string; callType: string; offer?: object }) => void
 ) {
   // Notificación recibida con app abierta
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
@@ -156,6 +158,7 @@ export function setupNotificationListeners(
         callId: data.callId,
         callerName: data.callerName,
         callType: data.callType || 'audio',
+        offer: data.offer,
       });
     }
   });
@@ -171,6 +174,7 @@ export function setupNotificationListeners(
         callId: data.callId,
         callerName: data.callerName,
         callType: data.callType || 'audio',
+        offer: data.offer,
       });
     } else if (data?.chatId) {
       onMessage(data.chatId);

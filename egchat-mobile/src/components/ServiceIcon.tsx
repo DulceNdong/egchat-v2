@@ -255,6 +255,16 @@ export const ServiceIcon = ({ name, size = 28, color = '#374151' }: Props) => {
         </Svg>
       );
 
+    case 'taxi':
+      return (
+        <Svg {...props}>
+          <Path d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2" />
+          <Circle cx="7.5" cy="17" r="2.5" />
+          <Circle cx="16.5" cy="17" r="2.5" />
+          <Path d="M7 9h10" />
+        </Svg>
+      );
+
     case 'noticias':
       return (
         <Svg {...props}>

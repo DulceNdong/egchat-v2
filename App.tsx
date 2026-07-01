@@ -666,7 +666,9 @@ const App: React.FC = () => {
           id: p.id || '', name: p.name || 'Usuario', email: p.email || '',
           phone: p.phone || '', country: p.country || 'Guinea Ecuatorial',
           city: p.city || '', address: p.address || '',
-          avatar: p.avatar || 'U', avatarUrl: p.avatarUrl || localStorage.getItem('user_avatar') || '',
+          avatar: p.avatar || 'U',
+          avatarUrl: p.avatarUrl || p.avatar_url || localStorage.getItem('user_avatar') || '',
+          avatar_url: p.avatarUrl || p.avatar_url || localStorage.getItem('user_avatar') || '',
           joinDate: p.joinDate || new Date().toLocaleDateString('es-ES'),
           verificationStatus: 'pending', twoFactorEnabled: false, notificationsEnabled: true,
         };
@@ -9422,6 +9424,7 @@ const App: React.FC = () => {
           phone: u.phone || '',
           avatar: (u.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
           avatarUrl: savedAvatar,
+          avatar_url: savedAvatar,
         };
         setUserProfile((prev: any) => ({ ...prev, ...profile }));
         // Guardar en localStorage para persistencia offline
@@ -9556,11 +9559,17 @@ const App: React.FC = () => {
   if (!isAuthenticated) return <AuthScreen onAuth={(user) => {
     if (user) {
       const savedAvatar = localStorage.getItem('user_avatar') || user.avatar_url || '';
-      setUserProfile((prev: any) => ({
-        ...prev, id: user.id||prev.id, name: user.full_name||prev.name, phone: user.phone||prev.phone,
+      const profile = {
+        ...user,
+        id: user.id || '',
+        name: user.full_name || '',
+        phone: user.phone || '',
         avatar: (user.full_name||'U').split(' ').map((w:string)=>w[0]).join('').slice(0,2).toUpperCase(),
         avatarUrl: savedAvatar,
-      }));
+        avatar_url: savedAvatar,
+      };
+      setUserProfile((prev: any) => ({ ...prev, ...profile }));
+      localStorage.setItem('egchat_user_profile', JSON.stringify(profile));
       // Mostrar modal de importación de contactos solo en el primer registro
       const isNewRegistration = !localStorage.getItem('egchat_contacts_imported');
       if (isNewRegistration) {
@@ -10528,7 +10537,11 @@ const App: React.FC = () => {
           onClose={() => setAvatarCropUrl(null)}
           onSave={(croppedUrl) => {
             localStorage.setItem('user_avatar', croppedUrl);
-            setUserProfile((p: any) => ({ ...p, avatarUrl: croppedUrl }));
+            setUserProfile((p: any) => {
+              const updated = { ...p, avatarUrl: croppedUrl, avatar_url: croppedUrl };
+              localStorage.setItem('egchat_user_profile', JSON.stringify(updated));
+              return updated;
+            });
             setAvatarCropUrl(null);
           }}
         />

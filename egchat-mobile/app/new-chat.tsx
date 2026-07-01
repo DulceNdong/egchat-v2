@@ -35,10 +35,30 @@ export default function NewChatScreen() {
     finally { setLoading(false); }
   }, []);
 
+  const getRealUser = (item: any) => item?.user || item;
+  const getRealUserId = (item: any) => item?.contact_user_id || item?.user?.id || item?.id;
+  const getDisplayName = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.full_name || item?.full_name || item?.name || item?.nickname || 'Usuario';
+  };
+  const getDisplayPhone = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.phone || item?.phone || '';
+  };
+  const getDisplayAvatar = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.avatar_url || item?.avatar_url || '';
+  };
+
   const startChat = useCallback(async (user: any) => {
-    setCreating(user.id);
+    const realUserId = getRealUserId(user);
+    if (!realUserId) {
+      Alert.alert('Contacto incompleto', 'Este contacto no tiene usuario asociado.');
+      return;
+    }
+    setCreating(realUserId);
     try {
-      const chat = await chatAPI.createPrivate(user.id);
+      const chat = await chatAPI.createPrivate(realUserId);
       router.replace(`/chat/${chat.id}` as any);
     } catch (e: any) {
       Alert.alert('Error', e.message || 'No se pudo crear el chat');
@@ -51,15 +71,15 @@ export default function NewChatScreen() {
     <TouchableOpacity
       style={styles.item}
       onPress={() => startChat(item)}
-      disabled={creating === item.id}
+      disabled={creating === getRealUserId(item)}
       activeOpacity={0.7}
     >
-      <EGAvatar src={item.avatar_url} name={item.full_name || item.name || '?'} size={46} />
+      <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
       <View style={styles.info}>
-        <Text style={styles.name}>{item.full_name || item.name || 'Usuario'}</Text>
-        <Text style={styles.phone}>{item.phone || ''}</Text>
+        <Text style={styles.name}>{getDisplayName(item)}</Text>
+        <Text style={styles.phone}>{getDisplayPhone(item)}</Text>
       </View>
-      {creating === item.id
+      {creating === getRealUserId(item)
         ? <ActivityIndicator size="small" color={Colors.accent} />
         : <Text style={styles.arrow}>›</Text>}
     </TouchableOpacity>
@@ -96,15 +116,15 @@ export default function NewChatScreen() {
       )}
       <FlatList
         data={displayList}
-        keyExtractor={item => item.id}
+        keyExtractor={item => getRealUserId(item) || item.id}
         renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => startChat(item)} disabled={creating === item.id} activeOpacity={0.7}>
-            <EGAvatar src={item.avatar_url} name={item.full_name || item.name || '?'} size={46} />
+          <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => startChat(item)} disabled={creating === getRealUserId(item)} activeOpacity={0.7}>
+            <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
             <View style={styles.info}>
-              <Text style={[styles.name, { color: C.textPrimary }]}>{item.full_name || item.name || 'Usuario'}</Text>
-              <Text style={[styles.phone, { color: C.textTertiary }]}>{item.phone || ''}</Text>
+              <Text style={[styles.name, { color: C.textPrimary }]}>{getDisplayName(item)}</Text>
+              <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
             </View>
-            {creating === item.id ? <ActivityIndicator size="small" color={Colors.accent} /> : <Text style={[styles.arrow, { color: C.border }]}>›</Text>}
+            {creating === getRealUserId(item) ? <ActivityIndicator size="small" color={Colors.accent} /> : <Text style={[styles.arrow, { color: C.border }]}>›</Text>}
           </TouchableOpacity>
         )}
         ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: C.borderLight }]} />}
