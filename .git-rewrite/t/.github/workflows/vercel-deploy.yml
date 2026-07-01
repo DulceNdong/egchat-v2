@@ -1,0 +1,34 @@
+name: Deploy to Vercel
+
+on:
+  workflow_dispatch:
+
+jobs:
+  vercel:
+    name: Vercel deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '20.x'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build frontend
+        run: npm run build:pwa
+
+      - name: Deploy to Vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          DEPLOYMENT_URL=$(npx vercel --prod --token $VERCEL_TOKEN --confirm 2>&1 | grep -oP 'https://egchat-v2-[^\s]+\.vercel\.app' | tail -1)
+          echo "Deployed to: $DEPLOYMENT_URL"
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            npx vercel alias set "$DEPLOYMENT_URL" egchat-v2.vercel.app --token $VERCEL_TOKEN
+            echo "Alias egchat-v2.vercel.app → $DEPLOYMENT_URL"
+          fi

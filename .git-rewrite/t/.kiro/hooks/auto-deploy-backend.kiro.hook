@@ -1,0 +1,19 @@
+{
+  "enabled": true,
+  "name": "Auto Deploy Backend",
+  "description": "Automatically commits and pushes backend changes to GitHub when server/index.js is saved, triggering Render redeploy",
+  "version": "1",
+  "when": {
+    "type": "fileEdited",
+    "patterns": [
+      "server/index.js"
+    ]
+  },
+  "then": {
+    "type": "runCommand",
+    "command": "cd server && git add index.js && git commit -m \"auto: update backend\" && git push origin main",
+    "timeout": 60
+  },
+  "workspaceFolderName": "EGCHAT_BACKUP_20260320",
+  "shortName": "auto-deploy-backend"
+}
