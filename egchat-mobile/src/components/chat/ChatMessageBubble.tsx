@@ -130,6 +130,9 @@ export interface ChatMessageBubbleProps {
   isGroup: boolean;
   myAvatar?: string;
   myName?: string;
+  // Datos del otro participante para cuando sender no viene del servidor
+  otherName?: string;
+  otherAvatar?: string;
   replyPreview?: { author: string; text: string };
   showReadReceipts?: boolean;
   highlight?: boolean;
@@ -144,6 +147,8 @@ export const ChatMessageBubble = React.memo(({
   isGroup,
   myAvatar,
   myName,
+  otherName,
+  otherAvatar,
   replyPreview,
   showReadReceipts = true,
   highlight,
@@ -179,12 +184,13 @@ export const ChatMessageBubble = React.memo(({
       );
     }
 
-    const senderName = message.sender?.full_name || '?';
+    const senderName = message.sender?.full_name || otherName || 'Usuario';
+    const senderAvatar = message.sender?.avatar_url || (!message.sender ? otherAvatar : undefined);
     const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00b4e6'];
     return (
       <View style={s.avatarCol}>
         <LinearGradient colors={gradColors as [string, string]} style={s.avatarRing}>
-          <EGAvatar src={message.sender?.avatar_url} name={senderName} size={36} />
+          <EGAvatar src={senderAvatar} name={senderName} size={36} />
         </LinearGradient>
       </View>
     );
