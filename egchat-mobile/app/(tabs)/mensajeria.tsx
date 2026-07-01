@@ -91,8 +91,17 @@ const getLastMessageText = (msg?: Chat['last_message']) => {
 const getParticipantName = (participant?: Chat['participants'][number]) =>
   participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
 
-const getParticipantAvatar = (participant?: Chat['participants'][number]) =>
-  participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url || '';
+const isValidAvatarUrl = (url?: string | null): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  !url.includes('egchat-api.onrender.com/static/avatars/');
+
+const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
+  const raw =
+    participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url;
+  return isValidAvatarUrl(raw) ? raw : undefined;
+};
 
 const sortChatsByActivity = (items: Chat[] = []) =>
   [...items].sort((a, b) => {

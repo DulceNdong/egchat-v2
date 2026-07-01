@@ -78,8 +78,17 @@ const getDateLabel = (dateStr: string) => {
 const getParticipantName = (participant?: any) =>
   participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
 
-const getParticipantAvatar = (participant?: any) =>
-  participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url || '';
+const isValidAvatarUrl = (url?: string | null): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  !url.includes('egchat-api.onrender.com/static/avatars/');
+
+const getParticipantAvatar = (participant?: any) => {
+  const raw =
+    participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url;
+  return isValidAvatarUrl(raw) ? raw : undefined;
+};
 
 const getParticipantPhone = (participant?: any) =>
   participant?.phone || participant?.users?.phone || participant?.user?.phone || '';

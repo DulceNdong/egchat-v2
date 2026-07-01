@@ -21,6 +21,13 @@ interface EGAvatarProps {
   size?: number;
 }
 
+// URL válida: no vacía, no de servidor antiguo roto
+const isValidAvatarUrl = (url?: string | null): url is string =>
+  !!url &&
+  url.trim().length > 0 &&
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  !url.includes('egchat-api.onrender.com/static/avatars/');
+
 export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
   const [imgError, setImgError] = useState(false);
 
@@ -34,13 +41,14 @@ export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
   const fontSize = size * 0.35;
   const bgColor = nameToColor(name || '?');
 
-  // Mostrar imagen si hay src válido y no hubo error de carga
-  if (src && !imgError) {
+  // Mostrar imagen solo si la URL es válida y no tuvo error de carga
+  if (isValidAvatarUrl(src) && !imgError) {
     return (
       <Image
         source={{ uri: src }}
         style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
         onError={() => setImgError(true)}
+        onLoad={() => {}} // forzar re-render si cambia la URL
       />
     );
   }

@@ -185,7 +185,14 @@ export const ChatMessageBubble = React.memo(({
     }
 
     const senderName = message.sender?.full_name || otherName || 'Usuario';
-    const senderAvatar = message.sender?.avatar_url || (!message.sender ? otherAvatar : undefined);
+    // Usar avatar del sender si es válido; si sender existe pero no tiene avatar, caer a otherAvatar
+    const rawSenderAvatar = message.sender?.avatar_url;
+    const isValidSenderAvatar =
+      !!rawSenderAvatar &&
+      rawSenderAvatar.trim().length > 0 &&
+      (rawSenderAvatar.startsWith('http://') || rawSenderAvatar.startsWith('https://') || rawSenderAvatar.startsWith('file://')) &&
+      !rawSenderAvatar.includes('egchat-api.onrender.com/static/avatars/');
+    const senderAvatar = isValidSenderAvatar ? rawSenderAvatar : otherAvatar;
     const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00b4e6'];
     return (
       <View style={s.avatarCol}>
