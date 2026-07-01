@@ -268,7 +268,7 @@ export default function PerfilScreen() {
   const uploadPhoto = async (uri: string) => {
     setUploadingPhoto(true);
 
-    // ── Mostrar inmediatamente la imagen local (funciona en web y nativo) ──
+    // ── Mostrar inmediatamente la imagen local ──
     setUser(prev => prev ? { ...prev, avatar_url: uri } : prev);
     emitProfileUpdated({ avatar_url: uri });
 
@@ -276,58 +276,59 @@ export default function PerfilScreen() {
       const token = await getToken();
       const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
 
-      let uploadBody: FormData | null = null;
-
-      // En web el URI puede ser blob: o data: — usar fetch para convertir a Blob
+      // Convertir URI a base64
+      let base64Data: string | null = null;
       try {
         const blobRes = await fetch(uri);
         const blob = await blobRes.blob();
-        const fd = new FormData();
-        fd.append('avatar', blob, 'avatar.jpg');
-        uploadBody = fd;
+        base64Data = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
       } catch {
-        // En nativo usamos la sintaxis RN
-        const fd = new FormData();
-        fd.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as unknown as Blob);
-        uploadBody = fd;
+        // En nativo usar expo-file-system
+        try {
+          const { readAsStringAsync, EncodingType } = await import('expo-file-system');
+          base64Data = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
+        } catch { /* skip */ }
+      }
+
+      const payload: Record<string, string> = {};
+      if (base64Data) {
+        payload.avatar_base64 = base64Data;
       }
 
       const res = await fetch(`${BASE}/api/user/avatar`, {
         method: 'POST',
-        body: uploadBody,
-        headers: { Authorization: `Bearer ${token}` },
+        body: JSON.stringify(payload),
+        headers: {
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'application/json',
+        },
       });
 
       if (res.ok) {
-        const payload = await res.json().catch(() => ({}));
-        const returnedUrl = payload.avatar_url || payload.url || payload.file_url;
-        const absoluteUrl = typeof returnedUrl === 'string' && returnedUrl.startsWith('/')
-          ? `${BASE}${returnedUrl}` : returnedUrl;
-        const isPlaceholder = !absoluteUrl || String(absoluteUrl).includes('/static/avatars/undefined');
-
-        // Si el servidor devuelve una URL real, usar esa; si no, mantener el URI local
-        const finalUrl = isPlaceholder ? uri : (absoluteUrl || uri);
-
-        if (!isPlaceholder) {
-          try { await authAPI.updateProfile({ avatar_url: finalUrl }); }
-          catch { await userAPI.updateProfile({ avatar_url: finalUrl }); }
+        const data = await res.json().catch(() => ({}));
+        const serverUrl = data.avatar_url;
+        const finalUrl = serverUrl || uri;
+        // Sincronizar con /api/auth/profile también
+        if (serverUrl) {
+          try { await authAPI.updateProfile({ avatar_url: serverUrl }); } catch { /* ok */ }
         }
-
-        // Actualizar con URL final (con cache-bust para forzar recarga)
         const displayUrl = cacheBustAvatarUrl(finalUrl) || uri;
         setUser(prev => prev ? { ...prev, avatar_url: displayUrl } : prev);
         emitProfileUpdated({ avatar_url: displayUrl });
         await saveLocalAvatar(user?.id, uri);
         toast.success('✓ Foto actualizada');
       } else {
-        // Error de servidor — la imagen local ya está visible, solo guardar localmente
         await saveLocalAvatar(user?.id, uri);
-        toast.success('✓ Foto guardada localmente');
+        toast.success('✓ Foto guardada');
       }
     } catch {
-      // Error de red — la imagen local ya se mostró arriba
       await saveLocalAvatar(user?.id, uri).catch(() => {});
-      toast.info('Foto guardada. Se sincronizará cuando haya conexión.');
+      toast.info('Foto guardada. Se sincronizará con conexión.');
     } finally {
       setUploadingPhoto(false);
     }
