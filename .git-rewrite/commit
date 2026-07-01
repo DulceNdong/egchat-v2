@@ -1,6 +1,0 @@
-tree 1f2de94cf0477a7cd05cfcfa382a967bdcf1ebd7
-parent 29884ace51d4d93dd88c30032dba8c743835c692
-author patronbernardo111-stack <patron.bernardo111@gmail.com> 1778265348 +0100
-committer patronbernardo111-stack <patron.bernardo111@gmail.com> 1778265348 +0100
-
-deploy: auto build and push
