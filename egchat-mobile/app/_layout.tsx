@@ -5,6 +5,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { View, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
+import * as Linking from 'expo-linking';
 import { authAPI, setUnauthorizedHandler } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
@@ -12,6 +13,24 @@ import { useWebRTC } from '../src/hooks/useWebRTC';
 import { ToastContainer } from '../src/components/Toast';
 import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
 import { trackUserPresence } from '../src/supabase';
+
+// ── Handler de deep links: egchat://chat/ID, egchat://user/ID ─────
+function handleDeepLink(url: string | null) {
+  if (!url) return;
+  try {
+    const parsed = Linking.parse(url);
+    // egchat://chat/[chatId]
+    if (parsed.path?.startsWith('chat/')) {
+      const chatId = parsed.path.replace('chat/', '');
+      if (chatId) setTimeout(() => router.push(`/chat/${chatId}` as any), 300);
+    }
+    // egchat://user/[userId] — abrir chat o perfil
+    if (parsed.path?.startsWith('user/')) {
+      const userId = parsed.path.replace('user/', '');
+      if (userId) setTimeout(() => router.push(`/contacts?userId=${userId}` as any), 300);
+    }
+  } catch { /* ignore malformed URLs */ }
+}
 
 function StatusBarController() {
   const { isDark } = useThemeContext();
@@ -117,7 +136,13 @@ export default function RootLayout() {
 
     init();
 
+    // ── Deep links: URL abierta mientras la app estaba cerrada ────
+    Linking.getInitialURL().then(handleDeepLink);
+    // URL abierta mientras la app estaba en background/foreground
+    const linkingSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+
     return () => {
+      linkingSub.remove();
       notifCleanup.current?.();
       incomingCleanup.current?.();
       presenceCleanup.current?.();
