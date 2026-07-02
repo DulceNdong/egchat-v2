@@ -150,7 +150,7 @@ const SvgIcon = ({ id, color = '#00C8A0', size = 24 }: { id: string; color?: str
   }
 };
 
-// ── Servicios del FAB + (sin correos, impuestos, cartera, mensajes, bancos, agua) ──
+// ── Servicios del FAB + (sin correos, impuestos, cartera, mensajes, bancos, agua, cemac) ──
 const FAB_SERVICES = [
   { id: 'mitaxi',       label: 'MiTaxi',       route: '/mitaxi',                                color: '#f59e0b' },
   { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios?service=electricidad', color: '#eab308' },
@@ -163,7 +163,6 @@ const FAB_SERVICES = [
   { id: 'restaurantes', label: 'Restaurantes', route: '/(tabs)/servicios?service=restaurantes', color: '#f43f5e' },
   { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos',       color: '#0ea5e9' },
   { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios?service=gasolineras',  color: '#d97706' },
-  { id: 'cemac',        label: 'Zona CEMAC',   route: '/cemac',                                 color: '#00C8A0' },
   { id: 'ocio',         label: 'Ocio',         route: '/ocio',                                  color: '#a855f7' },
   { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',                              color: '#6366f1' },
 ];
@@ -985,11 +984,11 @@ const st = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(30, 30, 46, 0.82)',
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(0,200,160,0.6)',
+    borderColor: 'rgba(255,255,255,0.12)',
     overflow: 'hidden',
   },
   fabRadialEmoji: {
