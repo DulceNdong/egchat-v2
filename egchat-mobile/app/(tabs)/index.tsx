@@ -550,7 +550,7 @@ export default function HomeScreen() {
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
         const FAB_CX = SW / 2;
-        const FAB_BOTTOM = 68 + 30; // bottom del centro del FAB
+        const FAB_BOTTOM = 110 + 30; // bottom del centro del FAB
         const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
@@ -1033,7 +1033,7 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    bottom: 68,
+    bottom: 110,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,
