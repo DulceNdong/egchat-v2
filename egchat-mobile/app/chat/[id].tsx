@@ -30,6 +30,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { ContactProfileModal } from '../../src/components/ContactProfileModal';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
+import { PhotoEditorModal } from '../../src/components/PhotoEditorModal';
 import {
   pickImageFromLibrary, pickImageFromCamera, pickVideo, pickFile,
   getCurrentLocationLabel, uploadAndSend,
@@ -172,6 +173,7 @@ export default function ChatScreen() {
   const [showProfile, setShowProfile] = useState(false);
   const [cropUri, setCropUri] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [photoEditUri, setPhotoEditUri] = useState<string | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showReadReceipts, setShowReadReceipts] = useState(true);
   const [wallpaperId, setWallpaperId] = useState('default');
@@ -680,14 +682,14 @@ export default function ChatScreen() {
           text: 'Cámara',
           onPress: async () => {
             const asset = await pickImageFromCamera();
-            if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
+            if (asset) setPhotoEditUri(asset.uri);
           },
         },
         {
           text: 'Galería',
           onPress: async () => {
             const asset = await pickImageFromLibrary();
-            if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
+            if (asset) setPhotoEditUri(asset.uri);
           },
         },
         { text: 'Cancelar', style: 'cancel' },
@@ -1274,6 +1276,23 @@ export default function ChatScreen() {
           imageUri={cropUri}
           onClose={() => setCropUri(null)}
           onSave={uploadChatAvatar}
+        />
+      ) : null}
+      {/* Editor de fotos antes de enviar */}
+      {photoEditUri && chatId ? (
+        <PhotoEditorModal
+          visible
+          photoUri={photoEditUri}
+          chatId={chatId}
+          onClose={() => setPhotoEditUri(null)}
+          onSend={async (_cId, caption, editedUri) => {
+            setPhotoEditUri(null);
+            setShowAttach(false);
+            await sendMedia(
+              { uri: editedUri, fileName: 'photo.jpg', mimeType: 'image/jpeg' },
+              { text: caption || '📷 Foto', type: 'image' },
+            );
+          }}
         />
       ) : null}
       {uploadingAvatar && (
