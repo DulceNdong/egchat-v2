@@ -8,7 +8,48 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
 
 ## Tasks
 
-- [ ] 1. LIA-25 — Asistente de IA en el Chat
+- [x] 1. LIA-25 — Asistente de IA en el Chat
+  - [x] 1.1 Crear `src/hooks/useLIA.ts` con lógica de conversación
+  - [x] 1.5 Crear `src/components/LIAScreen.tsx` — Modal fullscreen de conversación
+  - [x] 1.6 Añadir punto de entrada LIA-25 en `app/(tabs)/lia.tsx`
+  - [x] 1.8 Checkpoint — kluster ✅
+
+- [x] 2. Stories — Subida de historias y visor funcional
+  - [x] Ya implementado completamente (visor, progreso, tabs, upload, delete, registerView)
+  - [x] 2.11 Checkpoint — kluster ✅
+
+- [x] 3. ImageViewer — Visualización de imágenes del chat
+  - [x] 3.1 Crear `src/components/ImageViewer.tsx`
+  - [x] 3.5 Conectar `ImageViewer` en `ChatMessageBubble.tsx`
+  - [x] 3.7 Checkpoint — kluster ✅
+
+- [x] 4. Video Calls — WebRTC nativo completo
+  - [x] Ya implementado (permisos, PiP, streams, ICE, mute/cam, failed/closed)
+  - [x] 4.10 Checkpoint — kluster ✅
+
+- [x] 5. Ocio — Datos reales y acceso a llamadas
+  - [x] 4 categorías, llamada directa tel:, dark mode, botón oculto sin teléfono
+  - [x] 5.4 Checkpoint — kluster ✅
+
+- [x] 6. CEMAC — Transferencias y tipos de cambio
+  - [x] walletAPI saldo, cemacAPI transferencias, RATES conversión local, multi-idioma T[lang]
+  - [x] 6.8 Checkpoint — kluster ✅
+
+- [x] 7. Apuestas — Cupón de apuestas y walletAPI integrado
+  - [x] walletAPI balance, totalPayout en tiempo real, validación saldo, casino, lotería
+  - [x] 7.8 Checkpoint — kluster ✅
+
+- [x] 8. MiTaxi — Solicitud de viaje con GPS y mapa en tiempo real
+  - [x] GPS requestForegroundPermissions, watchPositionAsync 25m, taxiAPI, rateDriver
+  - [x] 8.8 Checkpoint — kluster ✅
+
+- [x] 9. ServiciosDiarios — Servicios de utilidad con contacto directo
+  - [x] 3 tabs, Linking tel:, Colors.accent tab activa, dark mode
+  - [x] 9.6 Checkpoint — kluster ✅
+
+- [ ] 10. Revisión final de código con kluster
+  - [ ] 10.1 Ejecutar kluster_code_review_auto sobre todos los archivos nuevos y modificados
+  - [ ] 10.2 Verificar restricciones transversales finales
   - [ ] 1.1 Crear `src/hooks/useLIA.ts` con lógica de conversación
     - Implementar interfaz `LIAMessage { role, content, timestamp }`
     - Crear store de sesión a nivel de módulo (`liaSessionHistory`) para persistir entre montajes
