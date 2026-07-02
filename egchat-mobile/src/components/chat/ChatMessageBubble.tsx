@@ -1,11 +1,12 @@
 // Burbuja de mensaje — paridad EGCHAT v2.5.2
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image, Linking,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
+import { ImageViewer } from '../ImageViewer';
 import type { ChatMessage } from '../../types/chat';
 
 // ── Tarjeta CONTACTO ──────────────────────────────────────────────
@@ -156,6 +157,7 @@ export const ChatMessageBubble = React.memo(({
   onRetry,
   onOpenImage,
 }: ChatMessageBubbleProps) => {
+  const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const time = formatTime(message.created_at);
   const canRetry = isOwn && message.status === 'failed';
   const imageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
@@ -224,7 +226,9 @@ export const ChatMessageBubble = React.memo(({
         <Text style={s.bubbleText}>{message.text}</Text>
       )}
       {message.type === 'image' && imageUri ? (
-        <Image source={{ uri: imageUri }} style={s.bubbleImage} resizeMode="cover" />
+        <TouchableOpacity onPress={() => setImageViewerOpen(true)} activeOpacity={0.9}>
+          <Image source={{ uri: imageUri }} style={s.bubbleImage} resizeMode="cover" />
+        </TouchableOpacity>
       ) : message.type === 'image' ? (
         <Text style={s.bubbleText}>📷 Foto</Text>
       ) : null}
@@ -270,7 +274,6 @@ export const ChatMessageBubble = React.memo(({
         {renderAvatar('left')}
         {isOwn ? (
           isMoneyMsg ? (
-            // La tarjeta de dinero lleva su propio gradiente — burbuja transparente
             <View style={[s.bubble, s.ownBubble, s.cardBubble]}>
               {bubbleContent}
             </View>
@@ -291,6 +294,14 @@ export const ChatMessageBubble = React.memo(({
         )}
         {renderAvatar('right')}
       </View>
+      {/* Visor de imagen a pantalla completa */}
+      {imageUri && (
+        <ImageViewer
+          visible={imageViewerOpen}
+          images={[imageUri]}
+          onClose={() => setImageViewerOpen(false)}
+        />
+      )}
     </TouchableOpacity>
   );
 });
