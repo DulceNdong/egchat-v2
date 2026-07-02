@@ -34,9 +34,13 @@ export default function RootLayout() {
     const init = async () => {
       // Polling hasta que el NavigationContainer esté listo
       let attempts = 0;
-      while (!navigationRef.isReady() && attempts < 50) {
-        await new Promise(r => setTimeout(r, 50));
+      while (!navigationRef.isReady() && attempts < 100) {
+        await new Promise(r => setTimeout(r, 100));
         attempts++;
+      }
+      // Espera extra en web estático para que el bundle termine de parsear
+      if (Platform.OS === 'web') {
+        await new Promise(r => setTimeout(r, 500));
       }
       try {
         const isAuth = await authAPI.isAuthenticated();
