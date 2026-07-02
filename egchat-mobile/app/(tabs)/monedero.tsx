@@ -12,6 +12,7 @@ import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { CardsScreen } from '../../src/components/services/CardsScreen';
 import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
 import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
@@ -925,6 +926,7 @@ export default function MonederoScreen() {
   const [showRecarga, setShowRecarga] = useState(false);
   const [showRetiro, setShowRetiro] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
+  const [showCards, setShowCards] = useState(false);
   const [pendingTransfers, setPendingTransfers] = useState<Array<{
     id: string; from: string; to: string; amount: number;
     status: 'pending' | 'cancelled'; expiresAt: number;
@@ -1102,6 +1104,28 @@ export default function MonederoScreen() {
           ))}
         </View>
 
+        {/* ── Mis Tarjetas ── */}
+        <View style={s.sectionHeader}>
+          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
+          <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
+            <Text style={s.addBtnText}>+</Text>
+          </TouchableOpacity>
+        </View>
+        <TouchableOpacity
+          style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
+          onPress={() => setShowCards(true)}
+          activeOpacity={0.75}
+        >
+          <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
+            <Text style={s.cardPreviewIcon}>💳</Text>
+          </LinearGradient>
+          <View style={{ flex: 1 }}>
+            <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
+            <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
+          </View>
+          <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
+        </TouchableOpacity>
+
         {/* ── Transferencias pendientes ── */}
         {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
           <>
@@ -1217,6 +1241,20 @@ export default function MonederoScreen() {
           setBankAccounts(next);
           saveBankAccounts(next);
         }} />
+      {/* Modal Mis Tarjetas */}
+      <Modal visible={showCards} animationType="slide" onRequestClose={() => setShowCards(false)}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#f5f5f5' }} edges={['top']}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', padding: 16, backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f0f0' }}>
+            <TouchableOpacity onPress={() => setShowCards(false)} style={{ marginRight: 12 }}>
+              <Text style={{ fontSize: 24, color: '#374151' }}>‹</Text>
+            </TouchableOpacity>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A2B4A', flex: 1 }}>Mis Tarjetas</Text>
+          </View>
+          <ScrollView contentContainerStyle={{ padding: 16 }}>
+            <CardsScreen bank={{ id: 'egchat', name: 'EGCHAT Pay', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGCHAT Wallet', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [], accounts: [] }} />
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -1255,6 +1293,8 @@ const s = StyleSheet.create({
   sectionTitle:  { fontSize: 13, fontWeight: '800', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 0.5 },
   addBtn:        { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(52,211,153,0.15)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)', alignItems: 'center', justifyContent: 'center' },
   addBtnText:    { fontSize: 18, fontWeight: '700', color: '#00c8a0', lineHeight: 22 },
+  cardPreviewGrad: { width: 44, height: 44, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+  cardPreviewIcon: { fontSize: 22 },
   verTodo:       { fontSize: 13, color: '#00c8a0', fontWeight: '600' },
 
   // Card container
