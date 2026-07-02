@@ -6,7 +6,7 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, ActivityIndicator, Image, Dimensions,
-  Animated, PanResponder, Alert,
+  Animated, PanResponder, Alert, TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -71,6 +71,8 @@ const pv = StyleSheet.create({
 // ══════════════════════════════════════════════════════════════════
 // VISOR DE HISTORIA — pantalla completa
 // ══════════════════════════════════════════════════════════════════
+const REACTIONS = ['❤️', '🔥', '😂', '😮', '👏', '💯'];
+
 const StoryViewer = ({
   groups, startGroupIndex, onClose, onStoryView,
 }: {
@@ -81,6 +83,10 @@ const StoryViewer = ({
 }) => {
   const [groupIdx, setGroupIdx] = useState(startGroupIndex);
   const [storyIdx, setStoryIdx] = useState(0);
+  const [showReactions, setShowReactions] = useState(false);
+  const [sentReaction, setSentReaction] = useState<string | null>(null);
+  const [replyText, setReplyText] = useState('');
+  const [showReply, setShowReply] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
   const timerRef = useRef<ReturnType<typeof Animated.timing> | null>(null);
   const paused = useRef(false);
@@ -88,12 +94,21 @@ const StoryViewer = ({
   const group = groups[groupIdx];
   const story = group?.stories[storyIdx];
 
+  // Tiempo restante (24h desde creación)
+  const timeRemaining = (dateStr: string) => {
+    const created = new Date(dateStr).getTime();
+    const remaining = 24 * 3600000 - (Date.now() - created);
+    if (remaining <= 0) return 'Expirado';
+    const h = Math.floor(remaining / 3600000);
+    const m = Math.floor((remaining % 3600000) / 60000);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  };
+
   const startProgress = useCallback(() => {
+    if (paused.current) return;
     progress.setValue(0);
     timerRef.current = Animated.timing(progress, {
-      toValue: 1,
-      duration: STORY_DURATION,
-      useNativeDriver: false,
+      toValue: 1, duration: STORY_DURATION, useNativeDriver: false,
     });
     timerRef.current.start(({ finished }) => {
       if (finished && !paused.current) goNext();
@@ -101,10 +116,25 @@ const StoryViewer = ({
   }, [groupIdx, storyIdx]);
 
   useEffect(() => {
+    setShowReactions(false);
+    setSentReaction(null);
+    setShowReply(false);
+    setReplyText('');
+    paused.current = false;
     startProgress();
     if (group && onStoryView) onStoryView(group);
     return () => { timerRef.current?.stop(); };
   }, [groupIdx, storyIdx]);
+
+  // Pausar al abrir reacciones o reply
+  useEffect(() => {
+    if (showReactions || showReply) {
+      paused.current = true;
+      timerRef.current?.stop();
+    } else if (!paused.current) {
+      startProgress();
+    }
+  }, [showReactions, showReply]);
 
   const goNext = useCallback(() => {
     timerRef.current?.stop();
@@ -129,45 +159,48 @@ const StoryViewer = ({
     }
   }, [groupIdx, storyIdx]);
 
+  const sendReaction = (emoji: string) => {
+    setSentReaction(emoji);
+    setShowReactions(false);
+    paused.current = false;
+    setTimeout(() => { setSentReaction(null); startProgress(); }, 1500);
+  };
+
+  const sendReply = () => {
+    if (replyText.trim()) {
+      setReplyText('');
+      setShowReply(false);
+      paused.current = false;
+      startProgress();
+    }
+  };
+
   if (!group || !story) return null;
 
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <View style={sv.container}>
         {/* Imagen / video */}
-        <Image
-          source={{ uri: story.media_url }}
-          style={sv.media}
-          resizeMode="cover"
-        />
+        <Image source={{ uri: story.media_url }} style={sv.media} resizeMode="cover" />
 
-        {/* Gradiente superior */}
-        <LinearGradient
-          colors={['rgba(0,0,0,0.6)', 'transparent']}
-          style={sv.topGradient}
-        />
-
-        {/* Gradiente inferior */}
-        <LinearGradient
-          colors={['transparent', 'rgba(0,0,0,0.5)']}
-          style={sv.bottomGradient}
-        />
+        {/* Gradientes */}
+        <LinearGradient colors={['rgba(0,0,0,0.6)', 'transparent']} style={sv.topGradient} />
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={sv.bottomGradient} />
 
         {/* Barras de progreso */}
         <View style={sv.progressWrap}>
-          <ProgressBar
-            total={group.stories.length}
-            current={storyIdx}
-            progress={progress}
-          />
+          <ProgressBar total={group.stories.length} current={storyIdx} progress={progress} />
         </View>
 
-        {/* Header — avatar + nombre + tiempo + cerrar */}
+        {/* Header */}
         <View style={sv.header}>
           <EGAvatar src={group.userAvatar} name={group.userName} size={38} />
           <View style={sv.headerInfo}>
             <Text style={sv.headerName}>{group.userName}</Text>
-            <Text style={sv.headerTime}>{timeAgo(story.created_at)}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+              <Text style={sv.headerTime}>{timeAgo(story.created_at)}</Text>
+              <Text style={sv.headerTimeLeft}>· {timeRemaining(story.created_at)} restante</Text>
+            </View>
           </View>
           <TouchableOpacity onPress={onClose} style={sv.closeBtn} activeOpacity={0.7}>
             <Text style={sv.closeIcon}>✕</Text>
@@ -181,11 +214,72 @@ const StoryViewer = ({
           </View>
         ) : null}
 
-        {/* Zonas táctiles: izquierda = anterior, derecha = siguiente */}
-        <View style={sv.touchZones}>
-          <TouchableOpacity style={sv.touchLeft} onPress={goPrev} activeOpacity={1} />
-          <TouchableOpacity style={sv.touchRight} onPress={goNext} activeOpacity={1} />
+        {/* Reacción enviada (feedback visual) */}
+        {sentReaction && (
+          <View style={sv.reactionSent}>
+            <Text style={{ fontSize: 48 }}>{sentReaction}</Text>
+          </View>
+        )}
+
+        {/* Panel de reacciones */}
+        {showReactions && (
+          <View style={sv.reactionsPanel}>
+            {REACTIONS.map(emoji => (
+              <TouchableOpacity key={emoji} onPress={() => sendReaction(emoji)} style={sv.reactionBtn} activeOpacity={0.7}>
+                <Text style={{ fontSize: 28 }}>{emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
+
+        {/* Barra inferior: responder + reaccionar */}
+        <View style={sv.bottomBar}>
+          {showReply ? (
+            <View style={sv.replyRow}>
+              <TextInput
+                style={sv.replyInput}
+                value={replyText}
+                onChangeText={setReplyText}
+                placeholder={`Responder a ${group.userName}...`}
+                placeholderTextColor="rgba(255,255,255,0.5)"
+                autoFocus
+                onSubmitEditing={sendReply}
+                returnKeyType="send"
+              />
+              <TouchableOpacity onPress={sendReply} style={sv.replySendBtn} activeOpacity={0.8}>
+                <Text style={{ color: '#fff', fontSize: 16 }}>➤</Text>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={() => { setShowReply(false); paused.current = false; startProgress(); }} style={sv.replyCloseBtn}>
+                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <View style={sv.replyRow}>
+              <TouchableOpacity
+                style={sv.replyPlaceholder}
+                onPress={() => { setShowReply(true); setShowReactions(false); }}
+                activeOpacity={0.8}
+              >
+                <Text style={sv.replyPlaceholderText}>Responder...</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                onPress={() => setShowReactions(v => !v)}
+                style={sv.reactBtn}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 22 }}>😊</Text>
+              </TouchableOpacity>
+            </View>
+          )}
         </View>
+
+        {/* Zonas táctiles */}
+        {!showReactions && !showReply && (
+          <View style={sv.touchZones}>
+            <TouchableOpacity style={sv.touchLeft} onPress={goPrev} activeOpacity={1} />
+            <TouchableOpacity style={sv.touchRight} onPress={goNext} activeOpacity={1} />
+          </View>
+        )}
       </View>
     </Modal>
   );
@@ -195,7 +289,7 @@ const sv = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#000' },
   media: { ...StyleSheet.absoluteFillObject },
   topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 160, zIndex: 1 },
-  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 120, zIndex: 1 },
+  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 180, zIndex: 1 },
   progressWrap: { position: 'absolute', top: 48, left: 0, right: 0, zIndex: 2 },
   header: {
     position: 'absolute', top: 64, left: 12, right: 12,
@@ -204,18 +298,56 @@ const sv = StyleSheet.create({
   headerInfo: { flex: 1 },
   headerName: { fontSize: 14, fontWeight: '700', color: '#fff' },
   headerTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 },
+  headerTimeLeft: { fontSize: 10, color: 'rgba(255,255,255,0.45)' },
   closeBtn: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: 'rgba(0,0,0,0.4)',
     alignItems: 'center', justifyContent: 'center',
   },
   closeIcon: { fontSize: 16, color: '#fff', fontWeight: '700' },
-  captionWrap: {
-    position: 'absolute', bottom: 60, left: 16, right: 16, zIndex: 2,
-  },
+  captionWrap: { position: 'absolute', bottom: 100, left: 16, right: 16, zIndex: 2 },
   caption: {
     fontSize: 15, color: '#fff', fontWeight: '500',
     textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  // Reacciones
+  reactionSent: {
+    position: 'absolute', alignSelf: 'center', top: '40%', zIndex: 10,
+  },
+  reactionsPanel: {
+    position: 'absolute', bottom: 80, left: 16, right: 16,
+    flexDirection: 'row', justifyContent: 'space-around',
+    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 40,
+    paddingVertical: 10, paddingHorizontal: 8, zIndex: 10,
+  },
+  reactionBtn: { padding: 4 },
+  // Barra inferior
+  bottomBar: {
+    position: 'absolute', bottom: 20, left: 12, right: 12, zIndex: 4,
+  },
+  replyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  replyPlaceholder: {
+    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
+    borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10,
+  },
+  replyPlaceholderText: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
+  replyInput: {
+    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
+    borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10,
+    color: '#fff', fontSize: 14, backgroundColor: 'rgba(0,0,0,0.3)',
+  },
+  replySendBtn: {
+    width: 40, height: 40, borderRadius: 20,
+    backgroundColor: '#00c8a0', alignItems: 'center', justifyContent: 'center',
+  },
+  replyCloseBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
+  },
+  reactBtn: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
   },
   touchZones: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 3 },
   touchLeft: { flex: 1 },
