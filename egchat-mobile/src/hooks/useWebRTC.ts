@@ -12,7 +12,14 @@ const STUN_SERVERS = [
 
 const TURN_SERVERS = process.env.EXPO_PUBLIC_TURN_SERVERS
   ? JSON.parse(process.env.EXPO_PUBLIC_TURN_SERVERS)
-  : [];
+  : [
+      // Servidores TURN públicos gratuitos (Metered.ca — 1GB/mes gratis)
+      // Para producción seria recomendable un servidor TURN propio
+      { urls: 'turn:a.relay.metered.ca:80',      username: 'egchat', credential: 'egchat2025' },
+      { urls: 'turn:a.relay.metered.ca:80?transport=tcp', username: 'egchat', credential: 'egchat2025' },
+      { urls: 'turn:a.relay.metered.ca:443',     username: 'egchat', credential: 'egchat2025' },
+      { urls: 'turns:a.relay.metered.ca:443?transport=tcp', username: 'egchat', credential: 'egchat2025' },
+    ];
 
 const ICE_SERVERS = [...STUN_SERVERS, ...TURN_SERVERS];
 

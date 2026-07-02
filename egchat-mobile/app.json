@@ -30,7 +30,12 @@
         "android.permission.ACCESS_COARSE_LOCATION",
         "android.permission.ACCESS_FINE_LOCATION"
       ],
-      "googleServicesFile": "./google-services.json"
+      "googleServicesFile": "./google-services.json",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw"
+        }
+      }
     },
     "plugins": [
       "expo-router",
