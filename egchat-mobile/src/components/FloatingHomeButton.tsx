@@ -13,17 +13,19 @@ import { LinearGradient } from 'expo-linear-gradient';
 const { width: SW, height: SH } = Dimensions.get('window');
 const INIT_X = SW - 70;
 const INIT_Y = SH - 200;
-const BTN = 32;
+const BTN = 44;
 const HOME_ROUTE = '/(tabs)';
 
 export const FloatingHomeButton = () => {
   const pathname = usePathname();
-  // Ocultar solo en home principal — permitir en mensajería
-  if (
-    pathname === HOME_ROUTE ||
+  // Ocultar en home principal (cualquier variante de ruta)
+  const isHome =
+    pathname === '/(tabs)' ||
+    pathname === '/(tabs)/' ||
+    pathname === '/(tabs)/index' ||
     pathname === '/index' ||
-    pathname === '/'
-  ) return null;
+    pathname === '/';
+  if (isHome) return null;
   return <DraggableButton />;
 };
 
