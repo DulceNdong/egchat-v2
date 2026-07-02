@@ -25,9 +25,16 @@ CREATE POLICY "Users manage own push tokens" ON expo_push_tokens
 ALTER TABLE stories ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '[]';
 ALTER TABLE stories ADD COLUMN IF NOT EXISTS replies JSONB DEFAULT '[]';
 
--- 4. Índice de presencia online
-CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
-CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen);
+-- 4. Índice de presencia online (solo si la columna existe)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='status') THEN
+    CREATE INDEX IF NOT EXISTS idx_users_status ON users(status);
+  END IF;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='last_seen') THEN
+    CREATE INDEX IF NOT EXISTS idx_users_last_seen ON users(last_seen);
+  END IF;
+END $$;
 
 -- 5. Índice de mensajes por chat (rendimiento)
 CREATE INDEX IF NOT EXISTS idx_messages_chat_created ON messages(chat_id, created_at DESC);
