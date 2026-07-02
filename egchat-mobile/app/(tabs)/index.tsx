@@ -150,28 +150,22 @@ const SvgIcon = ({ id, color = '#00C8A0', size = 24 }: { id: string; color?: str
   }
 };
 
-// ── TODOS los servicios del FAB + ─────────────────────────────────
+// ── Servicios del FAB + (sin correos, impuestos, cartera, mensajes, bancos, agua) ──
 const FAB_SERVICES = [
-  { id: 'mensajes',     label: 'Mensajes',     route: '/(tabs)/mensajeria', color: '#00B4E6' },
-  { id: 'cartera',      label: 'Cartera',      route: '/(tabs)/monedero',  color: '#00C8A0' },
-  { id: 'mitaxi',       label: 'MiTaxi',       route: '/mitaxi',           color: '#f59e0b' },
+  { id: 'mitaxi',       label: 'MiTaxi',       route: '/mitaxi',                                color: '#f59e0b' },
   { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios?service=electricidad', color: '#eab308' },
-  { id: 'agua',         label: 'Agua',         route: '/(tabs)/servicios?service=agua', color: '#3b82f6' },
-  { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios?service=internet', color: '#8b5cf6' },
-  { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios?service=recarga', color: '#06b6d4' },
-  { id: 'tv',           label: 'Canales TV',   route: '/(tabs)/servicios?service=tv', color: '#ec4899' },
-  { id: 'bancos',       label: 'Bancos',       route: '/(tabs)/servicios?service=bancos',       color: '#1d4ed8' },
+  { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios?service=internet',     color: '#8b5cf6' },
+  { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios?service=recarga',      color: '#06b6d4' },
+  { id: 'tv',           label: 'Canales TV',   route: '/(tabs)/servicios?service=tv',           color: '#ec4899' },
   { id: 'salud',        label: 'Salud',        route: '/(tabs)/servicios?service=salud',        color: '#ef4444' },
-  { id: 'impuestos',    label: 'Impuestos',    route: '/(tabs)/servicios?service=impuestos',    color: '#64748b' },
-  { id: 'correos',      label: 'Correos',      route: '/(tabs)/servicios?service=correos',      color: '#f97316' },
   { id: 'seguros',      label: 'Seguros',      route: '/(tabs)/servicios?service=seguros',      color: '#10b981' },
   { id: 'super',        label: 'Supermercado', route: '/(tabs)/servicios?service=supermercado', color: '#84cc16' },
   { id: 'restaurantes', label: 'Restaurantes', route: '/(tabs)/servicios?service=restaurantes', color: '#f43f5e' },
-  { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos', color: '#0ea5e9' },
-  { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios?service=gasolineras', color: '#d97706' },
-  { id: 'cemac',        label: 'Zona CEMAC',   route: '/cemac',            color: '#00C8A0' },
-  { id: 'ocio',         label: 'Ocio',         route: '/ocio',             color: '#a855f7' },
-  { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',         color: '#6366f1' },
+  { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos',       color: '#0ea5e9' },
+  { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios?service=gasolineras',  color: '#d97706' },
+  { id: 'cemac',        label: 'Zona CEMAC',   route: '/cemac',                                 color: '#00C8A0' },
+  { id: 'ocio',         label: 'Ocio',         route: '/ocio',                                  color: '#a855f7' },
+  { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',                              color: '#6366f1' },
 ];
 
 // ── Componente AppIcon (grid home) ────────────────────────────────
@@ -339,11 +333,12 @@ export default function HomeScreen() {
       Animated.timing(fabRotate, { toValue: 1, duration: 250, useNativeDriver: true }),
       Animated.timing(fabOverlayOpacity, { toValue: 1, duration: 200, useNativeDriver: true }),
       ...fabItemAnims.map((anim, i) =>
-        Animated.timing(anim, {
+        Animated.spring(anim, {
           toValue: 1,
-          duration: 200,
-          delay: i * 18,
+          delay: i * 30,
           useNativeDriver: true,
+          tension: 180,
+          friction: 10,
         })
       ),
     ]).start();
@@ -354,7 +349,7 @@ export default function HomeScreen() {
       Animated.timing(fabRotate, { toValue: 0, duration: 200, useNativeDriver: true }),
       Animated.timing(fabOverlayOpacity, { toValue: 0, duration: 180, useNativeDriver: true }),
       ...fabItemAnims.map(anim =>
-        Animated.timing(anim, { toValue: 0, duration: 150, useNativeDriver: true })
+        Animated.timing(anim, { toValue: 0, duration: 130, useNativeDriver: true })
       ),
     ]).start(() => setFabOpen(false));
   };
@@ -549,43 +544,30 @@ export default function HomeScreen() {
       )}
 
       {/* ════════════════════════════════════════════════════════
-          FAB RADIAL — 360° completos, 2 anillos concéntricos
-          Posicionamiento absoluto desde el centro del FAB
+          FAB RADIAL — un solo anillo, distribuido en 360°
+          Efecto bloom: escala + opacidad con spring
       ════════════════════════════════════════════════════════ */}
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
-        // Centro del FAB en coordenadas de pantalla
-        const FAB_CX = SW / 2;          // centro horizontal
-        const FAB_BOTTOM = 68 + 30;     // bottom del centro del FAB (bottom:68 + radio:30)
-        const ITEM_SIZE = 48;
+        const FAB_CX = SW / 2;
+        const FAB_BOTTOM = 68 + 30; // bottom del centro del FAB
+        const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
-        const RING1_COUNT = 10;
-        const RING2_COUNT = FAB_SERVICES.length - RING1_COUNT;
-        const R1 = 110;
-        const R2 = 200;
+        const COUNT = FAB_SERVICES.length;
+        const R = 130; // radio único del anillo
 
         return FAB_SERVICES.map((svc, i) => {
-          const isRing2 = i >= RING1_COUNT;
-          const ringIdx = isRing2 ? i - RING1_COUNT : i;
-          const ringCount = isRing2 ? RING2_COUNT : RING1_COUNT;
-          const R = isRing2 ? R2 : R1;
-
           // 360° uniformes, empezando desde arriba (-90°)
-          const angleDeg = -90 + (360 / ringCount) * ringIdx;
+          const angleDeg = -90 + (360 / COUNT) * i;
           const angleRad = (angleDeg * Math.PI) / 180;
 
-          // Posición final del centro del ítem
           const finalX = FAB_CX + Math.cos(angleRad) * R - ITEM_HALF;
           const finalY = FAB_BOTTOM + Math.sin(angleRad) * R * -1 - ITEM_HALF;
 
-          // Animar desde el centro del FAB hacia la posición final
-          const animLeft = fabItemAnims[i].interpolate({
+          // Posición final fija (no animamos left/bottom para usar solo useNativeDriver)
+          const scale = fabItemAnims[i].interpolate({
             inputRange: [0, 1],
-            outputRange: [FAB_CX - ITEM_HALF, finalX],
-          });
-          const animBottom = fabItemAnims[i].interpolate({
-            inputRange: [0, 1],
-            outputRange: [FAB_BOTTOM - ITEM_HALF, finalY],
+            outputRange: [0.2, 1],
           });
 
           return (
@@ -593,21 +575,27 @@ export default function HomeScreen() {
               key={svc.id}
               style={{
                 position: 'absolute',
-                left: animLeft,
-                bottom: animBottom,
+                left: finalX,
+                bottom: finalY,
                 width: ITEM_SIZE,
                 alignItems: 'center',
                 zIndex: 25,
                 opacity: fabItemAnims[i],
+                transform: [{ scale }],
               }}
-              pointerEvents="box-none"
+              pointerEvents={fabOpen ? 'box-none' : 'none'}
             >
               <TouchableOpacity
-                style={[st.fabRadialBtn, { borderColor: svc.color + '80' }]}
+                style={[st.fabRadialBtn, {
+                  borderColor: svc.color + '90',
+                  width: ITEM_SIZE,
+                  height: ITEM_SIZE,
+                  borderRadius: ITEM_SIZE / 2,
+                }]}
                 onPress={() => navigateFab(svc.route)}
-                activeOpacity={0.8}
+                activeOpacity={0.75}
               >
-                <SvgIcon id={svc.id} color={svc.color} size={22} />
+                <SvgIcon id={svc.id} color={svc.color} size={24} />
               </TouchableOpacity>
               <Animated.Text
                 style={[st.fabRadialLabel, { opacity: fabItemAnims[i] }]}
