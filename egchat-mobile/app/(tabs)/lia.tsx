@@ -1,35 +1,70 @@
+// ══════════════════════════════════════════════════════════════════
+// EGCHAT — LIA-25 Asistente IA (paridad con versión web)
+// - Avatar gradiente EGCHAT (no emoji)
+// - Historial persistente en sesión
+// - Sugerencias rápidas con íconos SVG
+// - Error con botón Reintentar
+// - Texto a voz con expo-speech
+// - Dark mode
+// ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, Image,
+  Animated, ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import { router } from 'expo-router';
+import Svg, { Path, Line, Polygon, Rect, Circle, Polyline } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import { liaAPI } from '../../src/api';
 import {
-  Colors, Typography, Spacing, BorderRadius,
-  FontSize, FontWeight, Shadow,
+  Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 
-interface Msg {
+// ── Store de sesión a nivel de módulo (persiste entre montajes) ───
+interface LIAMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   time: string;
 }
 
+const WELCOME: LIAMessage = {
+  id: '0',
+  role: 'assistant',
+  content: '¡Hola! Soy Lia-25, tu asistente inteligente de EGCHAT. ¿En qué puedo ayudarte hoy?',
+  time: '00:00',
+};
+
+let sessionHistory: LIAMessage[] = [WELCOME];
+
+// ── Helpers ───────────────────────────────────────────────────────
+const formatTime = () => {
+  const d = new Date();
+  return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+};
+
+// ── Sugerencias iniciales ─────────────────────────────────────────
 const SUGGESTIONS = [
-  '¿Cuál es mi saldo?',
-  'Noticias de hoy',
-  'Pedir un taxi',
-  'Enviar dinero',
-  'Centros de salud',
-  'Clima en Malabo',
+  { color: '#00C8A0', text: '¿Cuál es mi saldo?',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth="1.8" strokeLinecap="round"><Rect x="2" y="5" width="20" height="14" rx="2"/><Line x1="2" y1="10" x2="22" y2="10"/><Circle cx="12" cy="15" r="2"/></Svg> },
+  { color: '#6B5BD6', text: 'Resumen de actividad',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.8" strokeLinecap="round"><Line x1="18" y1="20" x2="18" y2="10"/><Line x1="12" y1="20" x2="12" y2="4"/><Line x1="6" y1="20" x2="6" y2="14"/></Svg> },
+  { color: '#F59E0B', text: 'Noticias de hoy',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round"><Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2"/><Path d="M4 11h8"/><Path d="M4 7h4"/><Rect x="2" y="9" width="4" height="12" rx="1"/></Svg> },
+  { color: '#00B4E6', text: '¿Cómo está el tiempo?',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00B4E6" strokeWidth="1.8" strokeLinecap="round"><Path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"/></Svg> },
+  { color: '#00C8A0', text: 'Enviar dinero',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth="1.8" strokeLinecap="round"><Line x1="22" y1="2" x2="11" y2="13"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg> },
+  { color: '#EF4444', text: 'Centros de salud',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"><Path d="M22 12h-4l-3 9L9 3l-3 9H2"/></Svg> },
+  { color: '#F59E0B', text: 'Pedir un taxi',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round"><Path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5a2 2 0 0 1-2 2h-2"/><Circle cx="7" cy="17" r="2"/><Circle cx="17" cy="17" r="2"/></Svg> },
+  { color: '#6B5BD6', text: 'Supermercados',
+    icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.8" strokeLinecap="round"><Path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><Line x1="3" y1="6" x2="21" y2="6"/></Svg> },
 ];
 
 const QUICK_CHIPS = [
@@ -42,30 +77,31 @@ const QUICK_CHIPS = [
   { icon: '☀️', text: 'Clima' },
 ];
 
-const formatTime = () => {
-  const d = new Date();
-  return `${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
-};
-
-// ── Burbuja de mensaje ────────────────────────────────────────────
-const MessageBubble = React.memo(({ msg }: { msg: Msg }) => {
-  const isUser = msg.role === 'user';
-  return (
-    <View style={[styles.bubbleWrapper, isUser ? styles.userWrapper : styles.aiWrapper]}>
-      {!isUser && (
-        <View style={styles.aiAvatar}>
-          <Text style={styles.aiAvatarText}>🤖</Text>
-        </View>
-      )}
-      <View style={[styles.bubble, isUser ? styles.userBubble : styles.aiBubble]}>
-        <Text style={[styles.bubbleText, isUser ? styles.userText : styles.aiText]}>
-          {msg.content}
-        </Text>
-        <Text style={[styles.bubbleTime, isUser && styles.userTime]}>{msg.time}</Text>
-      </View>
-    </View>
-  );
-});
+// ── Avatar LIA ────────────────────────────────────────────────────
+const LiaAvatar = ({ size = 36, speaking = false }: { size?: number; speaking?: boolean }) => (
+  <LinearGradient
+    colors={['#00C8A0', '#00B4E6']}
+    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+    style={[{
+      width: size, height: size, borderRadius: size / 2,
+      alignItems: 'center', justifyContent: 'center',
+      ...(speaking ? {
+        shadowColor: '#00C8A0',
+        shadowOffset: { width: 0, height: 0 },
+        shadowOpacity: 0.6,
+        shadowRadius: 8,
+        elevation: 8,
+      } : {}),
+    }]}
+  >
+    <Svg width={size * 0.56} height={size * 0.56} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
+      <Rect x="3" y="6" width="18" height="13" rx="3"/><Path d="M3 10h18"/>
+      <Circle cx="8.5" cy="14" r="1.2" fill="#fff" stroke="none"/>
+      <Circle cx="15.5" cy="14" r="1.2" fill="#fff" stroke="none"/>
+      <Path d="M9 17c.83.63 1.94 1 3 1s2.17-.37 3-1"/>
+    </Svg>
+  </LinearGradient>
+);
 
 // ── Typing indicator ──────────────────────────────────────────────
 const TypingDots = () => {
@@ -86,30 +122,26 @@ const TypingDots = () => {
     });
   }, []);
   return (
-    <View style={styles.typingWrapper}>
-      <View style={styles.aiAvatar}>
-        <Text style={styles.aiAvatarText}>🤖</Text>
-      </View>
-      <View style={styles.aiBubble}>
-        <View style={styles.typingDots}>
-          {dots.map((dot, i) => (
-            <Animated.View key={i} style={[styles.dot, { transform: [{ translateY: dot }] }]} />
-          ))}
-        </View>
+    <View style={s.typingRow}>
+      <LiaAvatar size={28} />
+      <View style={s.typingBubble}>
+        {dots.map((dot, i) => (
+          <Animated.View key={i} style={[s.dot, { transform: [{ translateY: dot }] }]} />
+        ))}
       </View>
     </View>
   );
 };
 
-// ── Pantalla principal ────────────────────────────────────────────
+// ══════════════════════════════════════════════════════════════════
 export default function LiaScreen() {
-  const [messages, setMessages] = useState<Msg[]>([
-    { id: '0', role: 'assistant', content: '¡Hola! Soy Lia-25, tu asistente inteligente de EGCHAT. ¿En qué puedo ayudarte hoy?', time: formatTime() },
-  ]);
+  const [messages, setMessages] = useState<LIAMessage[]>(() => [...sessionHistory]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [lastMsg, setLastMsg] = useState('');
   const [speaking, setSpeaking] = useState(false);
-  const [showChips, setShowChips] = useState(false);
+  const [showChips, setShowChips] = useState(sessionHistory.length > 1);
   const listRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const { isDark } = useThemeContext();
@@ -126,26 +158,38 @@ export default function LiaScreen() {
     if (!msg || loading) return;
 
     setInput('');
+    setError(null);
+    setLastMsg(msg);
     const time = formatTime();
-    const userMsg: Msg = { id: Date.now().toString(), role: 'user', content: msg, time };
-    setMessages(prev => [...prev, userMsg]);
+    const userMsg: LIAMessage = { id: Date.now().toString(), role: 'user', content: msg, time };
+
+    setMessages(prev => {
+      const next = [...prev, userMsg];
+      sessionHistory = next;
+      return next;
+    });
     setLoading(true);
 
-    // Animación botón enviar
     Animated.sequence([
       Animated.spring(sendScale, { toValue: 0.85, useNativeDriver: true, speed: 50 }),
       Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30 }),
     ]).start();
 
     try {
-      const history = messages.slice(-6).map(m => ({ role: m.role, content: m.content }));
+      // Enviar últimos 6 mensajes como historial de contexto
+      const history = sessionHistory.slice(-7, -1).map(m => ({ role: m.role, content: m.content }));
       const res = await liaAPI.chat(msg, history);
-      const aiMsg: Msg = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
-      setMessages(prev => [...prev, aiMsg]);
+      const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
+
+      setMessages(prev => {
+        const next = [...prev, aiMsg];
+        sessionHistory = next;
+        return next;
+      });
       setShowChips(true);
 
-      // Leer en voz alta
-      if (res.reply.length < 200) {
+      // Leer en voz alta si el texto es corto
+      if (res.reply.length < 250) {
         setSpeaking(true);
         Speech.speak(res.reply, {
           language: 'es-ES',
@@ -154,112 +198,139 @@ export default function LiaScreen() {
           onError: () => setSpeaking(false),
         });
       }
-    } catch {
-      setMessages(prev => [...prev, {
-        id: (Date.now() + 1).toString(),
-        role: 'assistant',
-        content: 'Lo siento, no puedo conectarme ahora. Inténtalo de nuevo.',
-        time,
-      }]);
+    } catch (err: any) {
+      const message = err?.message || 'No se pudo conectar con LIA-25. Inténtalo de nuevo.';
+      setError(message);
     } finally {
       setLoading(false);
     }
-  }, [input, loading, messages]);
+  }, [input, loading, sendScale]);
+
+  const retry = useCallback(() => {
+    if (lastMsg) send(lastMsg);
+  }, [lastMsg, send]);
 
   const stopSpeaking = () => {
     Speech.stop();
     setSpeaking(false);
   };
 
+  const isFirstVisit = messages.length <= 1 && !loading && !showChips;
+
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
-      {/* ── Header con gradiente EGCHAT ── */}
-      <LinearGradient
-        colors={['#00C8A0', '#00B4E6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-        style={styles.header}
-      >
-        <View style={styles.headerLeft}>
-          <View style={styles.liaAvatarWrap}>
-            <Text style={styles.liaAvatarEmoji}>🧠</Text>
-            <View style={styles.onlineDot} />
-          </View>
-          <View style={styles.headerInfo}>
-            <Text style={styles.headerName}>Lia-25</Text>
-            <Text style={styles.headerStatus}>
-              {loading ? '● Escribiendo...' : '● Asistente inteligente'}
+    <SafeAreaView style={[s.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
+
+      {/* ── Header ── */}
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+        <View style={s.headerLeft}>
+          <LiaAvatar size={40} speaking={speaking} />
+          <View>
+            <Text style={s.headerName}>Lia-25</Text>
+            <Text style={s.headerSub}>
+              {loading ? '● Escribiendo...' : speaking ? '🔊 Hablando...' : '● Asistente inteligente'}
             </Text>
           </View>
         </View>
         {speaking && (
-          <TouchableOpacity onPress={stopSpeaking} style={styles.speakBtn} activeOpacity={0.8}>
-            <Text style={styles.speakBtnText}>🔊 Parar</Text>
+          <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
+            <Text style={s.stopBtnText}>■ Parar</Text>
           </TouchableOpacity>
         )}
       </LinearGradient>
 
-      {/* ── Mensajes ── */}
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+
+        {/* ── Lista de mensajes ── */}
         <FlatList
           ref={listRef}
           data={messages}
           keyExtractor={item => item.id}
+          contentContainerStyle={s.list}
+          showsVerticalScrollIndicator={false}
+          onContentSizeChange={scrollToEnd}
           renderItem={({ item }) => {
             const isUser = item.role === 'user';
             return (
-              <View style={[styles.bubbleWrapper, isUser ? styles.userWrapper : styles.aiWrapper]}>
-                {!isUser && (
-                  <View style={[styles.aiAvatar, { backgroundColor: C.accentLight }]}>
-                    <Text style={styles.aiAvatarText}>🤖</Text>
-                  </View>
-                )}
+              <View style={[s.row, isUser ? s.rowUser : s.rowAI]}>
+                {!isUser && <LiaAvatar size={28} />}
                 <View style={[
-                  styles.bubble,
+                  s.bubble,
                   isUser
-                    ? styles.userBubble
-                    : [styles.aiBubble, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }],
+                    ? s.bubbleUser
+                    : [s.bubbleAI, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }],
                 ]}>
-                  <Text style={[styles.bubbleText, isUser ? styles.userText : { color: C.textPrimary }]}>
+                  <Text style={[s.bubbleText, isUser ? s.textUser : { color: C.textPrimary }]}>
                     {item.content}
                   </Text>
-                  <Text style={[styles.bubbleTime, isUser && styles.userTime]}>{item.time}</Text>
+                  <Text style={[s.timeText, isUser && s.timeUser]}>{item.time}</Text>
                 </View>
               </View>
             );
           }}
-          contentContainerStyle={styles.list}
-          showsVerticalScrollIndicator={false}
-          onContentSizeChange={scrollToEnd}
           ListFooterComponent={loading ? <TypingDots /> : null}
         />
 
-        {messages.length <= 1 && !loading && (
-          <View style={styles.suggestions}>
-            {SUGGESTIONS.map(s => (
-              <TouchableOpacity key={s} style={[styles.chip, { backgroundColor: C.bgSecondary, borderColor: C.border }]} onPress={() => send(s)} activeOpacity={0.7}>
-                <Text style={[styles.chipText, { color: C.textSecondary }]}>{s}</Text>
-              </TouchableOpacity>
-            ))}
+        {/* ── Banner de error con reintentar ── */}
+        {error && (
+          <View style={s.errorBanner}>
+            <Text style={s.errorText}>⚠️ {error}</Text>
+            <TouchableOpacity onPress={retry} style={s.retryBtn} activeOpacity={0.8}>
+              <Text style={s.retryText}>Reintentar</Text>
+            </TouchableOpacity>
           </View>
         )}
 
-        {showChips && messages.length > 1 && (
-          <View style={styles.quickChipsRow}>
+        {/* ── Sugerencias iniciales con íconos SVG ── */}
+        {isFirstVisit && (
+          <View style={s.suggestionsWrap}>
+            <Text style={[s.welcomeTitle, { color: C.textPrimary }]}>¿En qué puedo ayudarte?</Text>
+            <View style={s.suggestionsGrid}>
+              {SUGGESTIONS.map((sg, i) => (
+                <TouchableOpacity
+                  key={i}
+                  style={[s.suggestionChip, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
+                  onPress={() => send(sg.text)}
+                  activeOpacity={0.7}
+                >
+                  <View style={[s.suggestionIcon, { backgroundColor: sg.color + '18' }]}>
+                    {sg.icon}
+                  </View>
+                  <Text style={[s.suggestionText, { color: C.textSecondary }]} numberOfLines={2}>
+                    {sg.text}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── Chips rápidos post-respuesta ── */}
+        {showChips && !isFirstVisit && (
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            style={s.chipsScroll}
+            contentContainerStyle={s.chipsRow}
+          >
             {QUICK_CHIPS.map(c => (
-              <TouchableOpacity key={c.text} style={[styles.quickChip, { backgroundColor: C.bgSecondary, borderColor: C.border }]} onPress={() => send(c.text)} activeOpacity={0.7}>
-                <Text style={styles.quickChipIcon}>{c.icon}</Text>
-                <Text style={[styles.quickChipText, { color: C.textSecondary }]}>{c.text}</Text>
+              <TouchableOpacity
+                key={c.text}
+                style={[s.quickChip, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
+                onPress={() => send(c.text)}
+                activeOpacity={0.7}
+              >
+                <Text style={s.quickChipIcon}>{c.icon}</Text>
+                <Text style={[s.quickChipText, { color: C.textSecondary }]}>{c.text}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </ScrollView>
         )}
 
-        {/* ── Input ── */}
-        <View style={[styles.inputBar, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
-          <View style={[styles.inputWrapper, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
+        {/* ── Barra de input ── */}
+        <View style={[s.inputBar, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
+          <View style={[s.inputWrap, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
             <TextInput
-              style={[styles.input, { color: C.textPrimary }]}
+              style={[s.input, { color: C.textPrimary }]}
               value={input}
               onChangeText={setInput}
               placeholder="Pregunta a Lia-25..."
@@ -272,12 +343,15 @@ export default function LiaScreen() {
           </View>
           <Animated.View style={{ transform: [{ scale: sendScale }] }}>
             <TouchableOpacity
-              style={[styles.sendBtn, (!input.trim() || loading) && styles.sendBtnDisabled]}
+              style={[s.sendBtn, (!input.trim() || loading) && s.sendBtnOff]}
               onPress={() => send()}
               disabled={!input.trim() || loading}
               activeOpacity={0.8}
             >
-              <Text style={styles.sendIcon}>➤</Text>
+              {loading
+                ? <ActivityIndicator size="small" color="#fff" />
+                : <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={input.trim() ? '#fff' : '#9CA3AF'} strokeWidth="2.5" strokeLinecap="round"><Line x1="22" y1="2" x2="11" y2="13"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>
+              }
             </TouchableOpacity>
           </Animated.View>
         </View>
@@ -286,152 +360,111 @@ export default function LiaScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
+const s = StyleSheet.create({
+  container: { flex: 1 },
 
   // Header
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: Spacing.listItemPaddingH,
-    paddingVertical: Spacing.md,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 12,
   },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md },
-  liaAvatarWrap: { position: 'relative' },
-  liaAvatarEmoji: { fontSize: 32 },
-  onlineDot: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#fff',
-    borderWidth: 2, borderColor: Colors.brand,
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  headerName: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.85)', fontWeight: '500', marginTop: 1 },
+  stopBtn: {
+    backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16,
+    paddingHorizontal: 12, paddingVertical: 5,
   },
-  headerInfo: { flex: 1 },
-  headerName: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: '#fff' },
-  headerStatus: { fontSize: FontSize.sm, color: 'rgba(255,255,255,0.8)', fontWeight: FontWeight.medium },
-  speakBtn: {
-    backgroundColor: 'rgba(255,255,255,0.2)',
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.xs,
-  },
-  speakBtnText: { fontSize: FontSize.sm, color: '#fff', fontWeight: FontWeight.semibold },
+  stopBtnText: { fontSize: 12, color: '#fff', fontWeight: '700' },
 
-  // Messages
-  list: { padding: Spacing.md, gap: Spacing.sm, paddingBottom: Spacing.lg },
+  // List
+  list: { padding: 12, paddingBottom: 4, gap: 8 },
+  row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
+  rowUser: { justifyContent: 'flex-end' },
+  rowAI: { justifyContent: 'flex-start' },
 
-  bubbleWrapper: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm },
-  userWrapper: { justifyContent: 'flex-end' },
-  aiWrapper: { justifyContent: 'flex-start' },
-
-  aiAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: Colors.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
-  aiAvatarText: { fontSize: 16 },
-
-  bubble: {
-    maxWidth: '78%',
-    borderRadius: 18,
-    paddingVertical: Spacing.sm + 2,
-    paddingHorizontal: Spacing.md,
-  },
-  userBubble: {
+  bubble: { maxWidth: '78%', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14 },
+  bubbleUser: {
     backgroundColor: Colors.accent,
     borderBottomRightRadius: 4,
   },
-  aiBubble: {
-    backgroundColor: Colors.bgSecondary,
+  bubbleAI: {
     borderBottomLeftRadius: 4,
     borderWidth: 1,
-    borderColor: Colors.borderLight,
     ...Shadow.sm,
   },
-  bubbleText: { fontSize: FontSize.base, lineHeight: 22 },
-  userText: { color: Colors.white },
-  aiText: { color: Colors.textPrimary },
-  bubbleTime: { fontSize: FontSize.xs, color: 'rgba(0,0,0,0.3)', marginTop: 4, textAlign: 'right' },
-  userTime: { color: 'rgba(255,255,255,0.6)' },
+  bubbleText: { fontSize: 14, lineHeight: 21 },
+  textUser: { color: '#fff' },
+  timeText: { fontSize: 10, color: 'rgba(0,0,0,0.3)', marginTop: 4, textAlign: 'right' },
+  timeUser: { color: 'rgba(255,255,255,0.6)' },
 
   // Typing
-  typingWrapper: { flexDirection: 'row', alignItems: 'flex-end', gap: Spacing.sm, marginTop: Spacing.sm },
-  typingDots: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingVertical: Spacing.sm, paddingHorizontal: Spacing.md },
+  typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 4 },
+  typingBubble: {
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingVertical: 12, paddingHorizontal: 14,
+    backgroundColor: Colors.bgSecondary, borderRadius: 18, borderBottomLeftRadius: 4,
+    borderWidth: 1, borderColor: Colors.borderLight,
+  },
   dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: Colors.textTertiary },
 
-  // Suggestions
-  suggestions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
+  // Error banner
+  errorBanner: {
+    margin: 12, padding: 12, backgroundColor: '#FEF2F2',
+    borderRadius: 12, borderWidth: 1, borderColor: '#FECACA',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 8,
   },
-  chip: {
-    backgroundColor: Colors.bgSecondary,
-    borderRadius: 20,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    borderWidth: 1,
-    borderColor: Colors.border,
+  errorText: { flex: 1, fontSize: 13, color: '#DC2626', lineHeight: 18 },
+  retryBtn: {
+    backgroundColor: '#DC2626', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 6,
   },
-  chipText: { fontSize: FontSize.sm, fontWeight: FontWeight.semibold, color: Colors.textSecondary },
+  retryText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
-  // Quick chips (post-respuesta)
-  quickChipsRow: {
-    flexDirection: 'row',
-    paddingHorizontal: Spacing.md,
-    paddingBottom: Spacing.sm,
-    gap: Spacing.sm,
+  // Sugerencias iniciales
+  suggestionsWrap: { paddingHorizontal: 12, paddingBottom: 8 },
+  welcomeTitle: { fontSize: 13, fontWeight: '600', color: Colors.textSecondary, marginBottom: 8, textAlign: 'center' },
+  suggestionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, justifyContent: 'center' },
+  suggestionChip: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    borderWidth: 1, borderRadius: 12,
+    paddingHorizontal: 12, paddingVertical: 8,
+    width: '47%',
   },
+  suggestionIcon: {
+    width: 32, height: 32, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  suggestionText: { flex: 1, fontSize: 12, fontWeight: '500', lineHeight: 16 },
+
+  // Quick chips
+  chipsScroll: { flexGrow: 0, marginBottom: 4 },
+  chipsRow: { paddingHorizontal: 12, gap: 8 },
   quickChip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    backgroundColor: Colors.bgSecondary,
-    borderRadius: 20,
-    paddingHorizontal: Spacing.sm + 2,
-    paddingVertical: Spacing.xs + 2,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 6,
     borderWidth: 1,
-    borderColor: Colors.border,
   },
   quickChipIcon: { fontSize: 12 },
-  quickChipText: { fontSize: FontSize.xs, fontWeight: FontWeight.semibold, color: Colors.textSecondary },
+  quickChipText: { fontSize: 11, fontWeight: '600' },
 
   // Input
   inputBar: {
-    flexDirection: 'row',
-    alignItems: 'flex-end',
-    gap: Spacing.sm,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: Spacing.sm,
-    backgroundColor: Colors.bgSecondary,
+    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
+    paddingHorizontal: 12, paddingVertical: 8,
     borderTopWidth: 1,
-    borderTopColor: Colors.borderLight,
   },
-  inputWrapper: {
-    flex: 1,
-    backgroundColor: Colors.bgTertiary,
-    borderRadius: 22,
-    paddingHorizontal: Spacing.md,
+  inputWrap: {
+    flex: 1, borderRadius: 22,
+    paddingHorizontal: 14,
     paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-    minHeight: 44,
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
+    minHeight: 44, justifyContent: 'center', borderWidth: 1,
   },
-  input: { fontSize: FontSize.base, color: Colors.textPrimary, maxHeight: 100, padding: 0 },
+  input: { fontSize: 14, maxHeight: 100, padding: 0 },
   sendBtn: {
-    width: 44, height: 44,
-    borderRadius: 22,
+    width: 44, height: 44, borderRadius: 22,
     backgroundColor: Colors.accent,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  sendBtnDisabled: { backgroundColor: Colors.border },
-  sendIcon: { color: Colors.white, fontSize: 16 },
+  sendBtnOff: { backgroundColor: Colors.border },
 });
