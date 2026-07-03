@@ -187,6 +187,7 @@ export default function ChatScreen() {
   const [isPinned, setIsPinned] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
+  const [mediaPickerMode, setMediaPickerMode] = useState<'photo' | 'video' | null>(null);
   const flatListRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -745,32 +746,15 @@ export default function ChatScreen() {
 
     // ── FOTO ─────────────────────────────────────────────────────
     if (action === 'photo') {
-      // En web Alert no funciona bien — ir directo a selector de archivos
-      if (typeof document !== 'undefined') {
-        const asset = await pickImageFromLibrary();
-        if (asset) setPhotoEditUri(asset.uri);
-        return;
-      }
-      Alert.alert('Foto', '¿Cómo quieres añadir la foto?', [
-        { text: '📷 Cámara', onPress: async () => { const a = await pickImageFromCamera(); if (a) setPhotoEditUri(a.uri); } },
-        { text: '🖼️ Galería', onPress: async () => { const a = await pickImageFromLibrary(); if (a) setPhotoEditUri(a.uri); } },
-        { text: 'Cancelar', style: 'cancel' },
-      ]);
+      setShowAttach(false);
+      setMediaPickerMode('photo');
       return;
     }
 
     // ── VIDEO ─────────────────────────────────────────────────────
     if (action === 'video') {
-      if (typeof document !== 'undefined') {
-        const asset = await pickVideo();
-        if (asset) await sendMedia(asset, { text: asset.fileName, type: 'video' });
-        return;
-      }
-      Alert.alert('Video', '¿Cómo quieres añadir el video?', [
-        { text: '🎥 Grabar', onPress: async () => { const a = await pickVideoFromCamera(); if (a) await sendMedia(a, { text: a.fileName, type: 'video' }); } },
-        { text: '📁 Galería', onPress: async () => { const a = await pickVideo(); if (a) await sendMedia(a, { text: a.fileName, type: 'video' }); } },
-        { text: 'Cancelar', style: 'cancel' },
-      ]);
+      setShowAttach(false);
+      setMediaPickerMode('video');
       return;
     }
     if (action === 'file') {
@@ -1217,8 +1201,18 @@ export default function ChatScreen() {
           />
         )}
 
-        {/* Panel adjuntos — se muestra encima del input */}
-        {showAttach && <ChatAttachPanel onAction={handleAttachAction} />}
+        {/* Panel adjuntos — overlay que cierra al tocar fuera */}
+        {showAttach && (
+          <>
+            <Pressable
+              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
+              onPress={() => setShowAttach(false)}
+            />
+            <View style={{ zIndex: 11 }}>
+              <ChatAttachPanel onAction={handleAttachAction} />
+            </View>
+          </>
+        )}
         {showEmojis && (
           <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
         )}
@@ -1310,6 +1304,90 @@ export default function ChatScreen() {
         onClose={() => setShowContactPicker(false)}
         onSelect={handleShareContact}
       />
+
+      {/* ── Bottom-sheet selector Foto / Video ── */}
+      <Modal
+        visible={!!mediaPickerMode}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setMediaPickerMode(null)}
+      >
+        <Pressable style={mpStyles.overlay} onPress={() => setMediaPickerMode(null)}>
+          <Pressable style={mpStyles.sheet} onPress={e => e.stopPropagation()}>
+            {/* Handle */}
+            <View style={mpStyles.handle} />
+            <Text style={mpStyles.title}>
+              {mediaPickerMode === 'photo' ? '📷 Añadir foto' : '🎥 Añadir video'}
+            </Text>
+
+            {/* Opción Cámara */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setMediaPickerMode(null);
+                if (mediaPickerMode === 'photo') {
+                  const a = await pickImageFromCamera();
+                  if (a) setPhotoEditUri(a.uri);
+                } else {
+                  const a = await pickVideoFromCamera();
+                  if (a) await sendMedia(a, { text: a.fileName, type: 'video' });
+                }
+              }}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#fff3e0' }]}>
+                <Text style={mpStyles.optionEmoji}>📷</Text>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={mpStyles.optionLabel}>
+                  {mediaPickerMode === 'photo' ? 'Hacer una foto' : 'Grabar un video'}
+                </Text>
+                <Text style={mpStyles.optionSub}>Abrir la cámara ahora</Text>
+              </View>
+              <Text style={mpStyles.chevron}>›</Text>
+            </TouchableOpacity>
+
+            {/* Separador */}
+            <View style={mpStyles.divider} />
+
+            {/* Opción Galería */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              activeOpacity={0.7}
+              onPress={async () => {
+                setMediaPickerMode(null);
+                if (mediaPickerMode === 'photo') {
+                  const a = await pickImageFromLibrary();
+                  if (a) setPhotoEditUri(a.uri);
+                } else {
+                  const a = await pickVideo();
+                  if (a) await sendMedia(a, { text: a.fileName, type: 'video' });
+                }
+              }}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#e8f5e9' }]}>
+                <Text style={mpStyles.optionEmoji}>🖼️</Text>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={mpStyles.optionLabel}>
+                  {mediaPickerMode === 'photo' ? 'Elegir de la galería' : 'Elegir de la galería'}
+                </Text>
+                <Text style={mpStyles.optionSub}>Seleccionar desde el dispositivo</Text>
+              </View>
+              <Text style={mpStyles.chevron}>›</Text>
+            </TouchableOpacity>
+
+            {/* Botón cancelar */}
+            <TouchableOpacity
+              style={mpStyles.cancelBtn}
+              onPress={() => setMediaPickerMode(null)}
+              activeOpacity={0.7}
+            >
+              <Text style={mpStyles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
       <ContactProfileModal
         visible={showProfile}
         contact={{
@@ -1785,4 +1863,57 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
   },
   recordingTime: { fontSize: 14, fontWeight: '700', color: Colors.error },
+});
+
+// ── Estilos Modal Selector Foto/Video ─────────────────────────────
+const mpStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    justifyContent: 'flex-end',
+  },
+  sheet: {
+    backgroundColor: '#fff',
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    paddingBottom: 34,
+    paddingTop: 8,
+    paddingHorizontal: 16,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: '#e5e7eb',
+    alignSelf: 'center',
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 16, fontWeight: '700', color: '#111827',
+    textAlign: 'center', marginBottom: 20,
+  },
+  option: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    paddingVertical: 14,
+    paddingHorizontal: 4,
+  },
+  optionIcon: {
+    width: 48, height: 48, borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+  },
+  optionEmoji: { fontSize: 24 },
+  optionText: { flex: 1 },
+  optionLabel: { fontSize: 15, fontWeight: '600', color: '#111827' },
+  optionSub: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  chevron: { fontSize: 24, color: '#d1d5db', fontWeight: '300' },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#f3f4f6', marginHorizontal: 4 },
+  cancelBtn: {
+    marginTop: 12,
+    paddingVertical: 14,
+    borderRadius: 12,
+    backgroundColor: '#f9fafb',
+    alignItems: 'center',
+  },
+  cancelText: { fontSize: 15, fontWeight: '600', color: '#6b7280' },
 });
