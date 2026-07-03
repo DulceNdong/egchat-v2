@@ -538,7 +538,7 @@ const normalizeChatParticipant = (part = {}) => {
 const getChatParticipants = async (chatId) => {
   const { data } = await supabase
     .from('chat_participants')
-    .select('chat_id, user_id, users(id, phone, full_name, avatar_url)')
+    .select('chat_id, user_id, users!user_id(id, phone, full_name, avatar_url)')
     .eq('chat_id', chatId);
   return (data || []).map(normalizeChatParticipant);
 };
@@ -571,7 +571,7 @@ app.get('/api/chats', auth, async (req, res) => {
 
     const [{ data: participants }, { data: messages }] = await Promise.all([
       supabase.from('chat_participants')
-        .select('chat_id, user_id, users(id, phone, full_name, avatar_url)')
+        .select('chat_id, user_id, users!user_id(id, phone, full_name, avatar_url)')
         .in('chat_id', chatIds),
       supabase.from('messages')
         .select('id, text, type, created_at, sender_id, chat_id')
@@ -631,7 +631,7 @@ app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
 
     const { data: messages } = await supabase
       .from('messages')
-      .select('id, text, type, created_at, sender_id, status, reply_to, file_url, users:sender_id(id, full_name, avatar_url)')
+      .select('id, text, type, created_at, sender_id, status, reply_to, file_url, users:sender_id!sender_id(id, full_name, avatar_url)')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: false })
       .range(from, from + limit - 1);
