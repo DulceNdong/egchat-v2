@@ -274,7 +274,19 @@ export default function ChatScreen() {
         ]);
 
         const current = chats.find((c: any) => c.id === chatId);
-        if (current) setChat(current);
+        if (current) {
+          setChat(current);
+          // Enriquecer participantes con datos completos del endpoint dedicado
+          try {
+            const enrichedParticipants = await fetch(
+              `${(process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com')}/api/chats/${chatId}/participants`,
+              { headers: { Authorization: `Bearer ${await (await import('../../src/api')).getToken()}` } }
+            ).then(r => r.json()).catch(() => null);
+            if (Array.isArray(enrichedParticipants) && enrichedParticipants.length > 0) {
+              setChat((prev: any) => prev ? { ...prev, participants: enrichedParticipants } : prev);
+            }
+          } catch {}
+        }
 
         const msgList = normalizeMessages(msgs || []);
         setMessages(msgList);
