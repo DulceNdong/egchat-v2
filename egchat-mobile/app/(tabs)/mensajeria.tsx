@@ -95,12 +95,20 @@ const getParticipantName = (participant?: Chat['participants'][number]) =>
 const isValidAvatarUrl = (url?: string | null): url is string =>
   !!url &&
   url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
+  (
+    url.startsWith('http://') ||
+    url.startsWith('https://') ||
+    url.startsWith('file://')
+  ) &&
   !url.includes('egchat-api.onrender.com/static/avatars/');
 
 const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
+  // Buscar en todos los niveles posibles de la respuesta del backend
   const raw =
-    participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url;
+    participant?.avatar_url ||
+    participant?.users?.avatar_url ||
+    participant?.user?.avatar_url ||
+    (participant as any)?.users?.[0]?.avatar_url;
   return isValidAvatarUrl(raw) ? raw : undefined;
 };
 
