@@ -137,69 +137,88 @@ const vd = StyleSheet.create({
   ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 });
 
-// ── Tarjeta AUDIO — estilo WhatsApp (web: <audio> HTML5, nativo: expo-av) ────
-const BARS = [0.3, 0.5, 0.8, 0.6, 1.0, 0.7, 0.4, 0.9, 0.5, 0.8, 0.6, 0.3, 0.7, 1.0, 0.5, 0.4, 0.9, 0.6, 0.8, 0.3, 0.5, 0.7, 1.0, 0.4, 0.6, 0.9, 0.5, 0.3, 0.8, 0.6];
-
-// Limpia nombre de archivo: quita emoji, hash técnico y tamaño " (X MB)"
-const cleanAudioName = (text: string, fallback: string) => {
-  let name = (text || '').replace(/^🎵\s*/, '').replace(/\s*\(\d+(\.\d+)?\s*(MB|KB|GB|B)\)/i, '').trim();
-  if (!name) return fallback;
-  const base = name.split('.')[0];
-  if (/^[a-z0-9_\-]{20,}$/i.test(base)) return fallback; // hash técnico
-  return name;
+// ── Helpers audio ─────────────────────────────────────────────────
+// Parsea "Artista - Canción.mp3" o "Canción.mp3"
+const parseTrackInfo = (raw: string) => {
+  const clean = (raw || '')
+    .replace(/^🎵\s*/, '')
+    .replace(/\s*\(\d+(\.\d+)?\s*(MB|KB|GB|B)\)/i, '')
+    .replace(/\.[a-z0-9]{2,4}$/i, '')
+    .trim();
+  const isHash = /^[a-z0-9_\-]{20,}$/i.test(clean);
+  if (isHash || !clean) return { title: 'Sin título', artist: 'Artista desconocido' };
+  const sep = clean.match(/\s[-–]\s/) ? clean.match(/\s[-–]\s/)![0] : null;
+  if (sep) {
+    const parts = clean.split(sep);
+    return { title: parts[1]?.trim() || clean, artist: parts[0]?.trim() || 'Artista desconocido' };
+  }
+  return { title: clean, artist: 'Artista desconocido' };
 };
 
-const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
-  const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [position, setPosition] = useState(0);
-  const soundRef = useRef<Audio.Sound | null>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-  const isWeb = typeof document !== 'undefined';
+// Colores de portada generados por hash del título
+const COVER_PALETTES: [string, string][] = [
+  ['#667eea', '#764ba2'], ['#f093fb', '#f5576c'], ['#4facfe', '#00f2fe'],
+  ['#43e97b', '#38f9d7'], ['#fa709a', '#fee140'], ['#a18cd1', '#fbc2eb'],
+  ['#ffecd2', '#fcb69f'], ['#ff9a9e', '#fecfef'], ['#a1c4fd', '#c2e9fb'],
+  ['#fd7043', '#ff8a65'],
+];
+const getCoverGradient = (title: string): [string, string] => {
+  let hash = 0;
+  for (let i = 0; i < title.length; i++) hash = title.charCodeAt(i) + ((hash << 5) - hash);
+  return COVER_PALETTES[Math.abs(hash) % COVER_PALETTES.length];
+};
 
-  const rawText = message.text || message.file_url?.split('/').pop() || '';
-  const fileName = cleanAudioName(rawText, 'Audio');
-  const ext = (rawText.split('.').pop()?.toLowerCase().replace(/\s.*$/, '') || 'mp3').substring(0, 4);
-  const url = message.file_url || '';
+// ── MusicCard — tarjeta de música estilo Apple Music ──────────────
+const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const [playing, setPlaying]   = useState(false);
+  const [progress, setProgress] = useState(0);   // 0–1
+  const [duration, setDuration] = useState(0);   // segundos
+  const [position, setPosition] = useState(0);   // segundos
+  const soundRef    = useRef<Audio.Sound | null>(null);
+  const audioElRef  = useRef<HTMLAudioElement | null>(null);
+  const spinAnim    = useRef(new Animated.Value(0)).current;
+  const isWeb       = typeof document !== 'undefined';
 
-  const formatDur = (ms: number) => {
-    const s = Math.floor(ms / 1000);
-    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
-  };
+  const rawText          = message.text || message.file_url?.split('/').pop() || '';
+  const { title, artist } = parseTrackInfo(rawText);
+  const [gradA, gradB]   = getCoverGradient(title);
+  const url              = message.file_url || '';
 
-  // Pulso animado
+  const fmtTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  // Disco giratorio cuando reproduce
   useEffect(() => {
     if (playing) {
-      Animated.loop(Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
-      ])).start();
+      Animated.loop(
+        Animated.timing(spinAnim, { toValue: 1, duration: 4000, useNativeDriver: true })
+      ).start();
     } else {
-      pulseAnim.stopAnimation();
-      pulseAnim.setValue(1);
+      spinAnim.stopAnimation();
     }
   }, [playing]);
+  const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
-  // Web: crear elemento <audio> oculto al montar
+  // Web: elemento <audio> oculto
   useEffect(() => {
     if (!isWeb || !url) return;
-    const el = new window.Audio(url);
+    const el = new (window as any).Audio(url) as HTMLAudioElement;
     el.preload = 'metadata';
-    el.onloadedmetadata = () => setDuration(el.duration * 1000);
+    el.onloadedmetadata = () => setDuration(el.duration);
     el.ontimeupdate = () => {
-      setPosition(el.currentTime * 1000);
+      setPosition(el.currentTime);
       setProgress(el.duration ? el.currentTime / el.duration : 0);
     };
-    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
+    el.onended = () => {
+      setPlaying(false); setProgress(0); setPosition(0);
+      el.currentTime = 0;
+    };
     audioElRef.current = el;
     return () => { el.pause(); el.src = ''; audioElRef.current = null; };
   }, [isWeb, url]);
 
   const togglePlay = useCallback(async () => {
     if (!url) return;
-    // ── WEB ──
     if (isWeb) {
       const el = audioElRef.current;
       if (!el) return;
@@ -207,26 +226,25 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       else { el.play().catch(() => {}); setPlaying(true); }
       return;
     }
-    // ── NATIVO ──
     try {
       if (soundRef.current) {
-        const status = await soundRef.current.getStatusAsync();
-        if (status.isLoaded) {
-          if (status.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
-          else { await soundRef.current.playAsync(); setPlaying(true); }
+        const st = await soundRef.current.getStatusAsync();
+        if (st.isLoaded) {
+          if (st.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
+          else              { await soundRef.current.playAsync();  setPlaying(true);  }
           return;
         }
       }
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const { sound } = await Audio.Sound.createAsync(
-        { uri: url },
-        { shouldPlay: true },
-        (status) => {
-          if (!status.isLoaded) return;
-          setDuration(status.durationMillis || 0);
-          setPosition(status.positionMillis || 0);
-          setProgress(status.durationMillis ? (status.positionMillis || 0) / status.durationMillis : 0);
-          if (status.didJustFinish) {
+        { uri: url }, { shouldPlay: true },
+        (st) => {
+          if (!st.isLoaded) return;
+          const dur = (st.durationMillis || 0) / 1000;
+          const pos = (st.positionMillis || 0) / 1000;
+          setDuration(dur); setPosition(pos);
+          setProgress(dur ? pos / dur : 0);
+          if (st.didJustFinish) {
             setPlaying(false); setProgress(0); setPosition(0);
             sound.setPositionAsync(0).catch(() => {});
           }
@@ -237,42 +255,80 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
     } catch {}
   }, [url, playing, isWeb]);
 
-  useEffect(() => {
-    return () => { soundRef.current?.unloadAsync().catch(() => {}); };
-  }, []);
+  useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
 
-  const accent = isOwn ? '#00c8a0' : '#00b4e6';
-  const accentFade = isOwn ? 'rgba(0,200,160,0.18)' : 'rgba(0,180,230,0.18)';
-  const barFill = isOwn ? '#00c8a0' : '#00b4e6';
-  const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
+  // Seek al tocar la barra de progreso (web)
+  const handleSeek = useCallback((ratio: number) => {
+    if (isWeb && audioElRef.current) {
+      audioElRef.current.currentTime = ratio * audioElRef.current.duration;
+    }
+  }, [isWeb]);
+
+  const initials = title.slice(0, 2).toUpperCase();
 
   return (
-    <View style={au.card}>
-      <TouchableOpacity onPress={togglePlay} activeOpacity={0.8} style={au.btnWrap}>
-        <Animated.View style={[au.btn, { backgroundColor: accentFade, transform: [{ scale: pulseAnim }] }]}>
-          <View style={[au.btnInner, { backgroundColor: accent }]}>
-            {playing ? (
-              <View style={au.pauseIcon}>
-                <View style={[au.pauseBar, { backgroundColor: '#fff' }]} />
-                <View style={[au.pauseBar, { backgroundColor: '#fff' }]} />
-              </View>
-            ) : (
-              <View style={[au.playIcon, { borderLeftColor: '#fff' }]} />
-            )}
-          </View>
-        </Animated.View>
-      </TouchableOpacity>
-      <View style={au.right}>
-        <View style={au.waveRow}>
-          {BARS.map((h, i) => {
-            const filled = progress > 0 && i / BARS.length < progress;
-            return <View key={i} style={[au.bar, { height: Math.max(4, h * 26), backgroundColor: filled ? barFill : barEmpty }]} />;
-          })}
+    <View style={mc.card}>
+      {/* Portada de álbum */}
+      <View style={mc.cover}>
+        <LinearGradient colors={[gradA, gradB]} style={mc.coverGrad}>
+          <Animated.View style={[mc.disc, { transform: [{ rotate: spin }] }]}>
+            <LinearGradient colors={['#1a1a2e', '#16213e']} style={mc.discInner}>
+              <View style={mc.discHole} />
+            </LinearGradient>
+          </Animated.View>
+          <Text style={mc.coverInitials}>{initials}</Text>
+        </LinearGradient>
+        {/* Badge musical */}
+        <View style={mc.badge}>
+          <Text style={mc.badgeNote}>♪</Text>
         </View>
-        <View style={au.metaRow}>
-          <Text style={au.audioName} numberOfLines={1}>{fileName}</Text>
-          <Text style={[au.audioDur, { color: accent }]}>
-            {playing && position > 0 ? formatDur(position) : duration > 0 ? formatDur(duration) : ext.toUpperCase()}
+      </View>
+
+      {/* Info + controles */}
+      <View style={mc.right}>
+        {/* Título y artista */}
+        <View style={mc.titleRow}>
+          <Text style={mc.title} numberOfLines={1}>{title}</Text>
+          <Text style={mc.artist} numberOfLines={1}>{artist}</Text>
+        </View>
+
+        {/* Barra de progreso */}
+        <TouchableOpacity
+          style={mc.progressTrack}
+          activeOpacity={0.8}
+          onPress={(e) => {
+            if (!isWeb) return;
+            // @ts-ignore
+            const rect = e.nativeEvent.target?.getBoundingClientRect?.();
+            if (rect) handleSeek((e.nativeEvent.pageX - rect.left) / rect.width);
+          }}
+        >
+          <View style={[mc.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
+          <View style={[mc.progressThumb, { left: `${Math.round(progress * 100)}%` as any }]} />
+        </TouchableOpacity>
+
+        {/* Tiempo + botón play */}
+        <View style={mc.controls}>
+          <Text style={mc.timeText}>
+            {position > 0 ? fmtTime(position) : '0:00'}
+          </Text>
+          <TouchableOpacity onPress={togglePlay} style={mc.playBtn} activeOpacity={0.85}>
+            <LinearGradient
+              colors={isOwn ? ['#00c8a0', '#00b4e6'] : ['#667eea', '#764ba2']}
+              style={mc.playBtnGrad}
+            >
+              {playing ? (
+                <View style={mc.pauseWrap}>
+                  <View style={mc.pauseBar} />
+                  <View style={mc.pauseBar} />
+                </View>
+              ) : (
+                <View style={mc.playTriangle} />
+              )}
+            </LinearGradient>
+          </TouchableOpacity>
+          <Text style={mc.timeText}>
+            {duration > 0 ? fmtTime(duration) : '--:--'}
           </Text>
         </View>
       </View>
@@ -280,20 +336,90 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
   );
 };
 
-const au = StyleSheet.create({
-  card: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 220, maxWidth: 280, paddingVertical: 4 },
-  btnWrap: { flexShrink: 0 },
-  btn: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
-  btnInner: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  playIcon: { width: 0, height: 0, borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 13, borderTopColor: 'transparent', borderBottomColor: 'transparent', marginLeft: 3 },
-  pauseIcon: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  pauseBar: { width: 3, height: 14, borderRadius: 2 },
+const mc = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    gap: 12,
+    minWidth: 240,
+    maxWidth: 300,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  // Portada
+  cover: { position: 'relative', width: 72, height: 72, flexShrink: 0 },
+  coverGrad: {
+    width: 72, height: 72, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    overflow: 'hidden',
+  },
+  disc: {
+    position: 'absolute',
+    width: 50, height: 50, borderRadius: 25,
+    alignItems: 'center', justifyContent: 'center',
+    opacity: 0.35,
+  },
+  discInner: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
+  discHole: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.6)' },
+  coverInitials: {
+    fontSize: 22, fontWeight: '900', color: 'rgba(255,255,255,0.9)',
+    textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+  },
+  badge: {
+    position: 'absolute', bottom: -4, right: -4,
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: '#1DB954',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fff',
+  },
+  badgeNote: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  // Info
   right: { flex: 1, gap: 6 },
-  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 28 },
-  bar: { width: 3, borderRadius: 2 },
-  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  audioName: { fontSize: 12, color: '#374151', fontWeight: '600', flex: 1, marginRight: 6 },
-  audioDur: { fontSize: 11, fontWeight: '700' },
+  titleRow: { gap: 2 },
+  title: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
+  artist: { fontSize: 12, color: '#6b7280', fontWeight: '500' },
+  // Progreso
+  progressTrack: {
+    height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.10)',
+    position: 'relative', overflow: 'visible',
+  },
+  progressFill: {
+    height: 4, borderRadius: 2,
+    backgroundColor: '#1DB954',
+    position: 'absolute', left: 0, top: 0,
+  },
+  progressThumb: {
+    width: 10, height: 10, borderRadius: 5,
+    backgroundColor: '#1DB954',
+    position: 'absolute', top: -3,
+    marginLeft: -5,
+    shadowColor: '#1DB954',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.6,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  // Controles
+  controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  timeText: { fontSize: 10, color: '#9ca3af', fontWeight: '600', minWidth: 32 },
+  playBtn: { marginHorizontal: 4 },
+  playBtnGrad: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 4,
+    elevation: 4,
+  },
+  playTriangle: {
+    width: 0, height: 0,
+    borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 13,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: '#fff',
+    marginLeft: 3,
+  },
+  pauseWrap: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  pauseBar: { width: 3, height: 14, borderRadius: 2, backgroundColor: '#fff' },
 });
 
 // ── Tarjeta CONTACTO ──────────────────────────────────────────────
@@ -523,7 +649,7 @@ export const ChatMessageBubble = React.memo(({
         <VideoCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'audio' && (
-        <AudioCard message={message} isOwn={isOwn} />
+        <MusicCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'file' && (
         <TouchableOpacity
