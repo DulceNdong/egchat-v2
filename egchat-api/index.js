@@ -73,7 +73,7 @@ const corsOptions = {
     return callback(new Error('CORS policy: origin not allowed'));
   },
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'Cache-Control', 'X-Auth-Token'],
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
 };
 
@@ -1024,41 +1024,49 @@ app.get('/api/chats/:chatId/participants', auth, async (req, res) => {
   try {
     const { chatId } = req.params;
 
+    // Verificar acceso
     const { data: myPart } = await supabase
       .from('chat_participants')
       .select('id')
       .eq('chat_id', chatId)
       .eq('user_id', req.user.id)
-      .single();
+      .maybeSingle();
 
     if (!myPart) return res.status(403).json({ message: 'No tienes acceso a este chat' });
 
-    const { data: chat } = await supabase
-      .from('chats')
-      .select('created_by')
-      .eq('id', chatId)
-      .single();
-
-    const creatorId = chat?.created_by?.toString();
-
-    const { data: parts } = await supabase
+    // Obtener IDs de participantes
+    const { data: parts, error: partsError } = await supabase
       .from('chat_participants')
-      .select('user_id, users:user_id(id, full_name, phone, avatar_url)')
+      .select('user_id')
       .eq('chat_id', chatId);
 
-    if (!parts) return res.json([]);
+    if (partsError) throw partsError;
+    if (!parts || parts.length === 0) return res.json([]);
+
+    // Obtener info completa de usuarios en consulta separada (más robusto que FK join)
+    const userIds = parts.map(p => p.user_id);
+    const { data: users, error: usersError } = await supabase
+      .from('users')
+      .select('id, full_name, phone, avatar_url, online_status, last_seen')
+      .in('id', userIds);
+
+    if (usersError) throw usersError;
+
+    const usersMap = {};
+    (users || []).forEach(u => { usersMap[String(u.id)] = u; });
 
     const members = parts.map(p => {
-      const u = p.users || {};
-      const uid = p.user_id?.toString();
+      const uid = String(p.user_id);
+      const u = usersMap[uid] || {};
       return {
         id: uid,
         user_id: uid,
         full_name: u.full_name || '',
         phone: u.phone || '',
         avatar_url: u.avatar_url || '',
-        online_status: false,
-        role: uid === creatorId ? 'admin' : 'member',
+        online_status: u.online_status || false,
+        last_seen: u.last_seen || null,
+        role: uid === String(req.user.id) ? 'admin' : 'member',
       };
     });
 
@@ -3550,54 +3558,7 @@ app.post('/api/chats/:chatId/participants', auth, async (req, res) => {
     res.json({ message: 'Participante añadido' });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
-
-// Obtener lista de participantes de un grupo con información completa
-app.get('/api/chats/:chatId/participants', auth, async (req, res) => {
-  try {
-    const { chatId } = req.params;
-
-    // Obtener todos los participantes con su información de usuario
-    const { data: participants, error } = await supabase
-      .from('chat_participants')
-      .select('user_id')
-      .eq('chat_id', chatId);
-
-    if (error) throw error;
-    if (!participants || participants.length === 0) return res.json([]);
-
-    // Obtener info de usuarios
-    const userIds = participants.map(p => p.user_id);
-    const { data: users, error: usersError } = await supabase
-      .from('users')
-      .select('id, phone, full_name, avatar_url, online_status, last_seen')
-      .in('id', userIds);
-
-    if (usersError) throw usersError;
-
-    const usersMap = {};
-    (users || []).forEach(u => { usersMap[u.id] = u; });
-
-    const formattedParticipants = participants.map(p => {
-      const u = usersMap[p.user_id] || {};
-      return {
-        id: p.user_id,
-        user_id: p.user_id,
-        phone: u.phone,
-        full_name: u.full_name,
-        avatar_url: u.avatar_url,
-        online_status: u.online_status,
-        last_seen: u.last_seen,
-        role: p.user_id === req.user.id ? 'admin' : 'member',
-        joined_at: p.joined_at
-      };
-    });
-
-    res.json(formattedParticipants);
-  } catch (e) {
-    console.error('Get participants error:', e);
-    res.status(500).json({ message: e.message });
-  }
-});
+// Nota: GET /api/chats/:chatId/participants está definido arriba (única implementación)
 
 // Guardar fondo de chat personalizado (individual por usuario, no afecta a otros)
 app.post('/api/chats/:chatId/wallpaper', auth, async (req, res) => {

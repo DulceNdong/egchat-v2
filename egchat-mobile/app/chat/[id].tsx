@@ -275,8 +275,6 @@ export default function ChatScreen() {
 
         const current = chats.find((c: any) => c.id === chatId);
         if (current) {
-          // Log para diagnóstico
-          console.log('[CHAT PARTICIPANTS]', JSON.stringify(current.participants?.slice(0,2)));
           setChat(current);
           // Enriquecer participantes con datos completos del endpoint dedicado
           try {
@@ -286,12 +284,11 @@ export default function ChatScreen() {
               `${BASE}/api/chats/${chatId}/participants`,
               { headers: { Authorization: `Bearer ${token}` } }
             ).then(r => r.json()).catch(() => null);
-            console.log('[ENRICHED PARTICIPANTS]', JSON.stringify(enrichedParticipants?.slice(0,2)));
             if (Array.isArray(enrichedParticipants) && enrichedParticipants.length > 0) {
               setChat((prev: any) => prev ? { ...prev, participants: enrichedParticipants } : prev);
             }
           } catch (e) {
-            console.log('[ENRICH ERROR]', e);
+            // silent — enriquecimiento opcional
           }
         }
 
