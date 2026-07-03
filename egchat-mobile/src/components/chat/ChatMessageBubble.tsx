@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
+import Svg, { Path, Rect, Polygon } from 'react-native-svg';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ImageViewer } from '../ImageViewer';
@@ -137,77 +138,84 @@ const vd = StyleSheet.create({
   ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 });
 
-// ── Tarjeta LLAMADA — estilo moderno ─────────────────────────────
+// ── Tarjeta LLAMADA — compacta y profesional (sin fondos de color) ──
+
+const PhoneIcon = ({ color, size = 16 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.79a16 16 0 0 0 6.29 6.29l1.86-1.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+  </Svg>
+);
+
+const VideoIcon = ({ color, size = 16 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Polygon points="23 7 16 12 23 17 23 7"/>
+    <Rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+  </Svg>
+);
+
+const ArrowDownLeft = ({ color, size = 12 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M17 7L7 17M17 17H7V7"/>
+  </Svg>
+);
+
+const ArrowUpRight = ({ color, size = 12 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M7 17L17 7M7 7h10v10"/>
+  </Svg>
+);
+
 const CallCard = ({ message, isOwn, onCallback }: {
   message: ChatMessage; isOwn: boolean; onCallback?: () => void;
 }) => {
   const txt = message.text || '';
+  const isVideo   = txt.includes('📹') || txt.toLowerCase().includes('video');
+  const isPerdida = txt.toLowerCase().includes('perdida') || txt.toLowerCase().includes('missed');
+  const isSaliente= txt.toLowerCase().includes('saliente') || txt.toLowerCase().includes('outgoing');
 
-  // Detectar tipo de llamada
-  const isVideo    = txt.includes('📹') || txt.includes('video') || txt.toLowerCase().includes('video');
-  const isPerdida  = txt.toLowerCase().includes('perdida') || txt.toLowerCase().includes('missed');
-  const isSaliente = txt.toLowerCase().includes('saliente') || txt.toLowerCase().includes('outgoing');
-
-  // Extraer duración si viene en el texto  e.g. "(2:34)"
   const durMatch = txt.match(/\((\d+:\d+)\)/);
   const duration = durMatch ? durMatch[1] : null;
 
-  // Colores y estado
-  const stateColor = isPerdida ? '#ef4444' : isSaliente ? '#00c8a0' : '#3b82f6';
-  const bgColor    = isPerdida ? 'rgba(239,68,68,0.08)' : isSaliente ? 'rgba(0,200,160,0.08)' : 'rgba(59,130,246,0.08)';
-  const label      = isPerdida
+  const iconColor = isPerdida ? '#ef4444' : isOwn ? '#00c8a0' : '#6b7280';
+  const arrowColor = isPerdida ? '#ef4444' : isSaliente ? '#00c8a0' : '#6b7280';
+  const labelColor = isPerdida ? '#ef4444' : '#111827';
+
+  const label = isPerdida
     ? (isVideo ? 'Videollamada perdida' : 'Llamada perdida')
     : isSaliente
       ? (isVideo ? 'Videollamada saliente' : 'Llamada saliente')
       : (isVideo ? 'Videollamada entrante' : 'Llamada entrante');
 
-  const arrow = isPerdida ? '↙' : isSaliente ? '↗' : '↙';
-  const arrowColor = isPerdida ? '#ef4444' : isSaliente ? '#00c8a0' : '#3b82f6';
-
   return (
-    <View style={[cl.card, { backgroundColor: bgColor }]}>
-      {/* Icono de llamada */}
-      <View style={[cl.iconBox, { backgroundColor: stateColor + '22' }]}>
-        {isVideo ? (
-          // Icono video
-          <View style={cl.videoIcon}>
-            <View style={[cl.videoRect, { backgroundColor: stateColor }]} />
-            <View style={[cl.videoTriangle, { borderLeftColor: stateColor }]} />
-          </View>
-        ) : (
-          // Icono teléfono SVG simplificado
-          <View style={[cl.phoneIcon, { borderColor: stateColor }]}>
-            <Text style={[cl.phoneEmoji, { color: stateColor }]}>
-              {isPerdida ? '📵' : '📞'}
-            </Text>
-          </View>
-        )}
-        {/* Flecha de dirección */}
-        <View style={[cl.arrowBadge, { backgroundColor: arrowColor }]}>
-          <Text style={cl.arrowText}>{arrow}</Text>
+    <View style={cl.card}>
+      {/* Ícono SVG + flecha dirección */}
+      <View style={cl.iconWrap}>
+        {isVideo
+          ? <VideoIcon color={iconColor} size={18} />
+          : <PhoneIcon color={iconColor} size={18} />}
+        <View style={cl.arrowWrap}>
+          {isSaliente
+            ? <ArrowUpRight color={arrowColor} size={10} />
+            : <ArrowDownLeft color={arrowColor} size={10} />}
         </View>
       </View>
 
-      {/* Info */}
+      {/* Texto */}
       <View style={cl.info}>
-        <Text style={[cl.label, { color: isPerdida ? '#ef4444' : '#111827' }]} numberOfLines={1}>
-          {label}
-        </Text>
-        {duration && (
-          <View style={cl.durRow}>
-            <Text style={cl.durDot}>⏱</Text>
-            <Text style={cl.durText}>{duration}</Text>
-          </View>
-        )}
-        {!duration && isPerdida && (
-          <Text style={cl.missedHint}>Toca para devolver la llamada</Text>
-        )}
+        <Text style={[cl.label, { color: labelColor }]}>{label}</Text>
+        {duration
+          ? <Text style={cl.sub}>{duration}</Text>
+          : isPerdida
+            ? <Text style={[cl.sub, { color: '#ef4444' }]}>Toca ↗ para devolver</Text>
+            : null}
       </View>
 
-      {/* Botón rellamar */}
+      {/* Botón rellamar — solo ícono, sin fondo de color */}
       {onCallback && (
-        <TouchableOpacity onPress={onCallback} style={[cl.callBtn, { backgroundColor: stateColor }]} activeOpacity={0.8}>
-          <Text style={cl.callBtnIcon}>{isVideo ? '📹' : '📞'}</Text>
+        <TouchableOpacity onPress={onCallback} style={cl.callBtn} activeOpacity={0.6} hitSlop={8}>
+          {isVideo
+            ? <VideoIcon color={isOwn ? '#00c8a0' : '#3b82f6'} size={20} />
+            : <PhoneIcon color={isOwn ? '#00c8a0' : '#3b82f6'} size={20} />}
         </TouchableOpacity>
       )}
     </View>
@@ -219,50 +227,31 @@ const cl = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 10,
-    minWidth: 200,
-    maxWidth: 270,
-    paddingVertical: 10,
-    paddingHorizontal: 4,
-    borderRadius: 10,
+    minWidth: 180,
+    maxWidth: 260,
+    paddingVertical: 6,
+    paddingHorizontal: 2,
   },
-  iconBox: {
-    width: 44, height: 44, borderRadius: 22,
-    alignItems: 'center', justifyContent: 'center',
-    position: 'relative', flexShrink: 0,
-  },
-  phoneIcon: { alignItems: 'center', justifyContent: 'center' },
-  phoneEmoji: { fontSize: 20 },
-  videoIcon: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  videoRect: { width: 18, height: 13, borderRadius: 3 },
-  videoTriangle: {
-    width: 0, height: 0,
-    borderTopWidth: 6, borderBottomWidth: 6, borderLeftWidth: 9,
-    borderTopColor: 'transparent', borderBottomColor: 'transparent',
-  },
-  arrowBadge: {
-    position: 'absolute', bottom: -2, right: -2,
-    width: 16, height: 16, borderRadius: 8,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#fff',
-  },
-  arrowText: { fontSize: 9, color: '#fff', fontWeight: '900', lineHeight: 12 },
-  info: { flex: 1, gap: 3 },
-  label: { fontSize: 14, fontWeight: '700', lineHeight: 18 },
-  durRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  durDot: { fontSize: 11 },
-  durText: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
-  missedHint: { fontSize: 11, color: '#ef4444', fontWeight: '500' },
-  callBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    alignItems: 'center', justifyContent: 'center',
+  iconWrap: {
+    position: 'relative',
+    width: 28,
+    height: 28,
+    alignItems: 'center',
+    justifyContent: 'center',
     flexShrink: 0,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 4,
-    elevation: 3,
   },
-  callBtnIcon: { fontSize: 16 },
+  arrowWrap: {
+    position: 'absolute',
+    bottom: -1,
+    right: -4,
+  },
+  info: { flex: 1, gap: 1 },
+  label: { fontSize: 13, fontWeight: '600', lineHeight: 17 },
+  sub: { fontSize: 11, color: '#9ca3af', fontWeight: '500' },
+  callBtn: {
+    padding: 4,
+    flexShrink: 0,
+  },
 });
 
 
