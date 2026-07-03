@@ -307,22 +307,33 @@ export default function ChatScreen() {
   useEffect(() => {
     if (!chatId || !currentUserId) return;
 
-    let lastMsgId = '';
     let pollInterval: ReturnType<typeof setInterval> | null = null;
     let realtimeWorking = false;
 
-    // Intentar Realtime primero
     const unsubscribe = subscribeToChat(chatId, (newMsg, event) => {
-      realtimeWorking = true; // si llega algo, Realtime funciona
+      realtimeWorking = true;
       if (event === 'DELETE') {
         setMessages(prev => prev.filter(message => message.id !== newMsg.id));
         return;
       }
       if (newMsg.sender_id !== currentUserId) {
-        const enriched = normalizeMessage(newMsg);
-        setMessages(prev => mergeMessages(prev, [enriched]));
+        // Enriquecer con datos del sender del chat actual
+        setChat(currentChat => {
+          const participant = currentChat?.participants?.find(
+            (p: any) => p.user_id === newMsg.sender_id
+          );
+          const enriched = normalizeMessage({
+            ...newMsg,
+            sender: newMsg.sender || (participant ? {
+              id: participant.user_id,
+              full_name: participant.full_name || '',
+              avatar_url: participant.avatar_url || '',
+            } : undefined),
+          });
+          setMessages(prev => mergeMessages(prev, [enriched]));
+          return currentChat;
+        });
         if (event === 'INSERT') {
-          lastMsgId = newMsg.id;
           chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
         }
         setIsTyping(false);
@@ -331,7 +342,7 @@ export default function ChatScreen() {
       }
     });
 
-    // Polling de respaldo cada 2s — si Realtime no responde en 5s, activamos polling
+    // Si Realtime no responde en 5s, polling cada 2s
     const realtimeCheck = setTimeout(() => {
       if (!realtimeWorking) {
         pollInterval = setInterval(async () => {
