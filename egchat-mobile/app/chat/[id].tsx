@@ -1101,6 +1101,11 @@ export default function ChatScreen() {
           onLongPress={handleLongPress}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}
+          onCallback={() => {
+            // Detectar si fue videollamada o llamada de audio
+            const isVideo = item.text?.includes('📹') || item.text?.toLowerCase().includes('video');
+            goToCall(isVideo ? 'video' : 'audio');
+          }}
         />
       </>
     );
