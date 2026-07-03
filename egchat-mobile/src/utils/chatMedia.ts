@@ -58,6 +58,22 @@ async function prepareImageAsset(asset: ImagePicker.ImagePickerAsset): Promise<P
 }
 
 export async function pickImageFromLibrary(): Promise<PickedAsset | null> {
+  // En web usar input HTML directamente
+  if (typeof document !== 'undefined') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        const uri = URL.createObjectURL(file);
+        resolve({ uri, fileName: file.name, mimeType: file.type, size: file.size });
+      };
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+  }
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     toast.error('Permiso requerido', 'Activa el acceso a la galería');
@@ -72,6 +88,23 @@ export async function pickImageFromLibrary(): Promise<PickedAsset | null> {
 }
 
 export async function pickImageFromCamera(): Promise<PickedAsset | null> {
+  // En web usar input con capture
+  if (typeof document !== 'undefined') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      (input as any).capture = 'environment';
+      input.onchange = async () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        const uri = URL.createObjectURL(file);
+        resolve({ uri, fileName: file.name, mimeType: file.type, size: file.size });
+      };
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+  }
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
     toast.error('Permiso requerido', 'Activa el acceso a la cámara');
@@ -83,6 +116,22 @@ export async function pickImageFromCamera(): Promise<PickedAsset | null> {
 }
 
 export async function pickVideo(): Promise<PickedAsset | null> {
+  if (typeof document !== 'undefined') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'video/*';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        if (rejectLargeAsset(file.size, MAX_VIDEO_BYTES)) { resolve(null); return; }
+        const uri = URL.createObjectURL(file);
+        resolve({ uri, fileName: file.name, mimeType: file.type, size: file.size });
+      };
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+  }
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     toast.error('Permiso requerido', 'Activa el acceso a la galería');
@@ -172,7 +221,24 @@ export async function pickVideoFromCamera(): Promise<PickedAsset | null> {
 }
 
 export async function pickDocument(): Promise<PickedAsset | null> {
-  // Usar ImagePicker con MediaTypeOptions.All como fallback hasta instalar expo-document-picker
+  // En web usar input HTML con accept */*
+  if (typeof document !== 'undefined') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '*/*';
+      input.onchange = () => {
+        const file = input.files?.[0];
+        if (!file) { resolve(null); return; }
+        if (rejectLargeAsset(file.size, MAX_FILE_BYTES)) { resolve(null); return; }
+        const uri = URL.createObjectURL(file);
+        resolve({ uri, fileName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size });
+      };
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
+  }
+  // Nativo: usar ImagePicker como fallback
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
     toast.error('Permiso requerido', 'Activa el acceso a archivos');

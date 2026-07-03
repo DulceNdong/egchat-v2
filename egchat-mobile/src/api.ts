@@ -249,7 +249,23 @@ export const chatAPI = {
   uploadFile: async (chatId: string, uri: string, fileName: string, mimeType: string) => {
     const token = await getToken();
     const formData = new FormData();
-    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+
+    // En web (blob: o http: local), necesitamos obtener el blob real
+    if (Platform.OS === 'web' || uri.startsWith('blob:') || uri.startsWith('data:')) {
+      try {
+        const response = await fetch(uri);
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: mimeType });
+        formData.append('file', file, fileName);
+      } catch {
+        // Fallback: adjuntar como blob directo
+        formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+      }
+    } else {
+      // Nativo: usar el objeto {uri, name, type} que React Native entiende
+      formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+    }
+
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 60000);
     try {
