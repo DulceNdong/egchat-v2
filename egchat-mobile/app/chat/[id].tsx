@@ -763,12 +763,12 @@ export default function ChatScreen() {
     if (action === 'video') {
       if (typeof document !== 'undefined') {
         const asset = await pickVideo();
-        if (asset) await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
+        if (asset) await sendMedia(asset, { text: asset.fileName, type: 'video' });
         return;
       }
       Alert.alert('Video', '¿Cómo quieres añadir el video?', [
-        { text: '🎥 Grabar', onPress: async () => { const a = await pickVideoFromCamera(); if (a) await sendMedia(a, { text: `🎥 ${a.fileName}`, type: 'video' }); } },
-        { text: '📁 Galería', onPress: async () => { const a = await pickVideo(); if (a) await sendMedia(a, { text: `🎥 ${a.fileName}`, type: 'video' }); } },
+        { text: '🎥 Grabar', onPress: async () => { const a = await pickVideoFromCamera(); if (a) await sendMedia(a, { text: a.fileName, type: 'video' }); } },
+        { text: '📁 Galería', onPress: async () => { const a = await pickVideo(); if (a) await sendMedia(a, { text: a.fileName, type: 'video' }); } },
         { text: 'Cancelar', style: 'cancel' },
       ]);
       return;
@@ -856,14 +856,15 @@ export default function ChatScreen() {
     if (!chatId) return;
     const name = contact.full_name || contact.name || 'Contacto';
     const phone = contact.phone || '';
-    const msgText = `👤 ${name}\n📞 ${phone}`;
+    // Formato: nombre en primera línea, teléfono en segunda (sin emojis extra)
+    const msgText = `${name}\n${phone}`;
     const tempId = createTempMessageId();
     pushOptimistic({
       id: tempId, text: msgText, type: 'contact', sender_id: currentUserId,
       status: 'pending', created_at: new Date().toISOString(),
     });
     try {
-      const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+      const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'contact' });
       replaceOptimistic(tempId, sent);
       toast.success('Contacto compartido');
     } catch {

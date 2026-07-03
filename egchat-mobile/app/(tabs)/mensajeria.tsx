@@ -79,13 +79,20 @@ const formatTime = (dateStr: string) => {
 const getLastMessageText = (msg?: Chat['last_message']) => {
   if (!msg) return 'Sin mensajes';
   const txt = msg.text || '';
-  if (txt.includes('Llamada perdida')) return 'Llamada perdida';
-  if (txt.includes('Transferencia') || txt.includes('💸')) return txt.split('\n')[0] || '💸 Transferencia';
+  if (txt.includes('Llamada perdida')) return '📞 Llamada perdida';
+  if (txt.includes('Transferencia') || txt.includes('💸')) return '💸 Transferencia';
+  if (msg.type === 'image' || txt.startsWith('📷')) return '📷 Foto';
+  if (msg.type === 'video' || txt.startsWith('🎥')) return '🎥 Video';
+  if (msg.type === 'audio' || txt.startsWith('🎵')) return '🎵 Audio';
+  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return '📄 Archivo';
+  // Ubicación — puede tener URL larga, mostrar solo el label
+  if (msg.type === 'location' || txt.startsWith('📍')) return '📍 Ubicación';
+  // Contacto compartido — mostrar solo nombre, no el teléfono
+  if (msg.type === 'contact' || txt.startsWith('👤')) {
+    const name = txt.replace(/^👤\s*/, '').split('\n')[0].trim();
+    return `👤 ${name || 'Contacto'}`;
+  }
   if (msg.type === 'text') return txt;
-  if (msg.type === 'image') return '📷 Foto';
-  if (msg.type === 'video') return '🎥 Video';
-  if (msg.type === 'audio') return '🎵 Audio';
-  if (msg.type === 'file') return '📄 Archivo';
   return txt || 'Mensaje';
 };
 

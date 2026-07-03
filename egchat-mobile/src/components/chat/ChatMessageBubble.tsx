@@ -10,6 +10,133 @@ import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ImageViewer } from '../ImageViewer';
 import type { ChatMessage } from '../../types/chat';
 
+// ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
+const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const [playing, setPlaying] = useState(false);
+  const [ready, setReady] = useState(false);
+  const videoRef = useRef<any>(null);
+
+  const url = message.file_url || '';
+  // Nombre limpio: quitar prefijo 🎥, hash técnico → mostrar "Video"
+  const rawName = (message.text || '').replace(/^🎥\s*/, '').trim();
+  const isHashName = /^[a-z0-9]{20,}/i.test(rawName.split('.')[0]);
+  const fileName = isHashName ? 'Video' : (rawName || 'Video');
+  const ext = rawName.split('.').pop()?.toLowerCase() || 'mp4';
+
+  const togglePlay = async () => {
+    if (!videoRef.current) return;
+    try {
+      if (playing) {
+        await videoRef.current.pauseAsync();
+      } else {
+        await videoRef.current.playAsync();
+      }
+      setPlaying(p => !p);
+    } catch {}
+  };
+
+  // En web: usar elemento <video> nativo
+  if (typeof document !== 'undefined') {
+    return (
+      <View style={vd.card}>
+        <View style={vd.videoBox}>
+          {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
+          {/* @ts-ignore */}
+          <video
+            src={url}
+            controls
+            style={{ width: '100%', maxWidth: 260, borderRadius: 10, display: 'block', maxHeight: 180, backgroundColor: '#000' }}
+            preload="metadata"
+          />
+        </View>
+        <View style={vd.meta}>
+          <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
+          <Text style={vd.ext}>{ext.toUpperCase()}</Text>
+        </View>
+      </View>
+    );
+  }
+
+  // En nativo: miniatura oscura con botón play + expo-av Video
+  const { Video } = require('expo-av');
+  return (
+    <View style={vd.card}>
+      <TouchableOpacity onPress={togglePlay} activeOpacity={0.9} style={vd.videoBox}>
+        <Video
+          ref={videoRef}
+          source={{ uri: url }}
+          style={vd.video}
+          resizeMode="cover"
+          shouldPlay={false}
+          isMuted={false}
+          onReadyForDisplay={() => setReady(true)}
+          onPlaybackStatusUpdate={(s: any) => {
+            if (s.didJustFinish) { setPlaying(false); }
+          }}
+        />
+        {/* Overlay oscuro cuando no reproduce */}
+        {!playing && (
+          <View style={vd.overlay}>
+            <View style={vd.playBtn}>
+              <View style={vd.playTriangle} />
+            </View>
+          </View>
+        )}
+        {!ready && !playing && (
+          <View style={[vd.overlay, { justifyContent: 'center', alignItems: 'center' }]}>
+            <View style={vd.playBtn}>
+              <View style={vd.playTriangle} />
+            </View>
+          </View>
+        )}
+      </TouchableOpacity>
+      <View style={vd.meta}>
+        <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
+        <Text style={[vd.ext, { color: isOwn ? '#00c8a0' : '#00b4e6' }]}>{ext.toUpperCase()}</Text>
+      </View>
+    </View>
+  );
+};
+
+const vd = StyleSheet.create({
+  card: { minWidth: 200, maxWidth: 260 },
+  videoBox: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#000', position: 'relative', marginBottom: 6 },
+  video: { width: 260, height: 160 },
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.35)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playBtn: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: 'rgba(255,255,255,0.92)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.3,
+    shadowRadius: 6,
+    elevation: 6,
+  },
+  playTriangle: {
+    width: 0,
+    height: 0,
+    borderTopWidth: 9,
+    borderBottomWidth: 9,
+    borderLeftWidth: 16,
+    borderTopColor: 'transparent',
+    borderBottomColor: 'transparent',
+    borderLeftColor: '#111',
+    marginLeft: 4,
+  },
+  meta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 2 },
+  name: { fontSize: 12, fontWeight: '600', color: '#374151', flex: 1, marginRight: 6 },
+  ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
+});
+
 // ── Tarjeta AUDIO — estilo WhatsApp ──────────────────────────────
 const BARS = [0.3, 0.5, 0.8, 0.6, 1.0, 0.7, 0.4, 0.9, 0.5, 0.8, 0.6, 0.3, 0.7, 1.0, 0.5, 0.4, 0.9, 0.6, 0.8, 0.3, 0.5, 0.7, 1.0, 0.4, 0.6, 0.9, 0.5, 0.3, 0.8, 0.6];
 
@@ -387,7 +514,7 @@ export const ChatMessageBubble = React.memo(({
         <Text style={s.bubbleText}>📷 Foto</Text>
       ) : null}
       {message.type === 'video' && (
-        <Text style={s.bubbleText}>{message.text || '🎥 Video'}</Text>
+        <VideoCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'audio' && (
         <AudioCard message={message} isOwn={isOwn} />
