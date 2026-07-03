@@ -137,7 +137,135 @@ const vd = StyleSheet.create({
   ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 });
 
-// ── Helpers audio ─────────────────────────────────────────────────
+// ── Tarjeta LLAMADA — estilo moderno ─────────────────────────────
+const CallCard = ({ message, isOwn, onCallback }: {
+  message: ChatMessage; isOwn: boolean; onCallback?: () => void;
+}) => {
+  const txt = message.text || '';
+
+  // Detectar tipo de llamada
+  const isVideo    = txt.includes('📹') || txt.includes('video') || txt.toLowerCase().includes('video');
+  const isPerdida  = txt.toLowerCase().includes('perdida') || txt.toLowerCase().includes('missed');
+  const isSaliente = txt.toLowerCase().includes('saliente') || txt.toLowerCase().includes('outgoing');
+
+  // Extraer duración si viene en el texto  e.g. "(2:34)"
+  const durMatch = txt.match(/\((\d+:\d+)\)/);
+  const duration = durMatch ? durMatch[1] : null;
+
+  // Colores y estado
+  const stateColor = isPerdida ? '#ef4444' : isSaliente ? '#00c8a0' : '#3b82f6';
+  const bgColor    = isPerdida ? 'rgba(239,68,68,0.08)' : isSaliente ? 'rgba(0,200,160,0.08)' : 'rgba(59,130,246,0.08)';
+  const label      = isPerdida
+    ? (isVideo ? 'Videollamada perdida' : 'Llamada perdida')
+    : isSaliente
+      ? (isVideo ? 'Videollamada saliente' : 'Llamada saliente')
+      : (isVideo ? 'Videollamada entrante' : 'Llamada entrante');
+
+  const arrow = isPerdida ? '↙' : isSaliente ? '↗' : '↙';
+  const arrowColor = isPerdida ? '#ef4444' : isSaliente ? '#00c8a0' : '#3b82f6';
+
+  return (
+    <View style={[cl.card, { backgroundColor: bgColor }]}>
+      {/* Icono de llamada */}
+      <View style={[cl.iconBox, { backgroundColor: stateColor + '22' }]}>
+        {isVideo ? (
+          // Icono video
+          <View style={cl.videoIcon}>
+            <View style={[cl.videoRect, { backgroundColor: stateColor }]} />
+            <View style={[cl.videoTriangle, { borderLeftColor: stateColor }]} />
+          </View>
+        ) : (
+          // Icono teléfono SVG simplificado
+          <View style={[cl.phoneIcon, { borderColor: stateColor }]}>
+            <Text style={[cl.phoneEmoji, { color: stateColor }]}>
+              {isPerdida ? '📵' : '📞'}
+            </Text>
+          </View>
+        )}
+        {/* Flecha de dirección */}
+        <View style={[cl.arrowBadge, { backgroundColor: arrowColor }]}>
+          <Text style={cl.arrowText}>{arrow}</Text>
+        </View>
+      </View>
+
+      {/* Info */}
+      <View style={cl.info}>
+        <Text style={[cl.label, { color: isPerdida ? '#ef4444' : '#111827' }]} numberOfLines={1}>
+          {label}
+        </Text>
+        {duration && (
+          <View style={cl.durRow}>
+            <Text style={cl.durDot}>⏱</Text>
+            <Text style={cl.durText}>{duration}</Text>
+          </View>
+        )}
+        {!duration && isPerdida && (
+          <Text style={cl.missedHint}>Toca para devolver la llamada</Text>
+        )}
+      </View>
+
+      {/* Botón rellamar */}
+      {onCallback && (
+        <TouchableOpacity onPress={onCallback} style={[cl.callBtn, { backgroundColor: stateColor }]} activeOpacity={0.8}>
+          <Text style={cl.callBtnIcon}>{isVideo ? '📹' : '📞'}</Text>
+        </TouchableOpacity>
+      )}
+    </View>
+  );
+};
+
+const cl = StyleSheet.create({
+  card: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    minWidth: 200,
+    maxWidth: 270,
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    borderRadius: 10,
+  },
+  iconBox: {
+    width: 44, height: 44, borderRadius: 22,
+    alignItems: 'center', justifyContent: 'center',
+    position: 'relative', flexShrink: 0,
+  },
+  phoneIcon: { alignItems: 'center', justifyContent: 'center' },
+  phoneEmoji: { fontSize: 20 },
+  videoIcon: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  videoRect: { width: 18, height: 13, borderRadius: 3 },
+  videoTriangle: {
+    width: 0, height: 0,
+    borderTopWidth: 6, borderBottomWidth: 6, borderLeftWidth: 9,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+  },
+  arrowBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 16, height: 16, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#fff',
+  },
+  arrowText: { fontSize: 9, color: '#fff', fontWeight: '900', lineHeight: 12 },
+  info: { flex: 1, gap: 3 },
+  label: { fontSize: 14, fontWeight: '700', lineHeight: 18 },
+  durRow: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  durDot: { fontSize: 11 },
+  durText: { fontSize: 12, color: '#6b7280', fontWeight: '600' },
+  missedHint: { fontSize: 11, color: '#ef4444', fontWeight: '500' },
+  callBtn: {
+    width: 36, height: 36, borderRadius: 18,
+    alignItems: 'center', justifyContent: 'center',
+    flexShrink: 0,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  callBtnIcon: { fontSize: 16 },
+});
+
+
 // Detecta si es mensaje de voz (grabado en app) vs canción compartida
 const isVoiceMessage = (msg: ChatMessage): boolean => {
   const text = msg.text || '';
@@ -721,6 +849,7 @@ export interface ChatMessageBubbleProps {
   onLongPress: (msg: ChatMessage) => void;
   onRetry?: (msg: ChatMessage) => void;
   onOpenImage?: (uri: string) => void;
+  onCallback?: () => void;
 }
 
 export const ChatMessageBubble = React.memo(({
@@ -737,6 +866,7 @@ export const ChatMessageBubble = React.memo(({
   onLongPress,
   onRetry,
   onOpenImage,
+  onCallback,
 }: ChatMessageBubbleProps) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const time = formatTime(message.created_at);
@@ -746,12 +876,16 @@ export const ChatMessageBubble = React.memo(({
   const showUploadState = isOwn && message.status === 'pending' && !!message.uploadState;
   const uploadPercent = Math.max(5, Math.min(99, Math.round((message.uploadProgress || 0.05) * 100)));
 
-  const isMoneyMsg = message.text?.startsWith('💸') || message.type === 'money';
+  const isMoneyMsg   = message.text?.startsWith('💸') || message.type === 'money';
   const isContactMsg = message.type === 'contact'
     || (message.type === 'text' && !!message.text?.startsWith('👤'));
   const isLocationMsg = message.type === 'location'
     || (message.type === 'text' && !!message.text?.startsWith('📍'));
-  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg;
+  const isCallMsg = message.type === 'call'
+    || (message.type === 'text' && !!(
+      message.text?.includes('Llamada') || message.text?.includes('llamada')
+    ));
+  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg;
 
   const renderAvatar = (side: 'left' | 'right') => {
     if (side === 'left' && isOwn) return null;
@@ -798,6 +932,7 @@ export const ChatMessageBubble = React.memo(({
         </View>
       )}
       {/* Tarjetas especiales */}
+      {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
       {isContactMsg && !!message.text && <ContactCard text={message.text} isOwn={isOwn} />}
       {isLocationMsg && !!message.text && <LocationCard text={message.text} isOwn={isOwn} />}
       {isMoneyMsg && !!message.text && <MoneyCard text={message.text} />}
