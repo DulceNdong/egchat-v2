@@ -473,6 +473,27 @@ app.post('/api/auth/reset-password', async (req, res) => {
 // CHAT / MENSAJERÁA COMPLETA
 // ========================================================================
 
+const normalizeChatParticipant = (part = {}) => {
+  const user = Array.isArray(part.users) ? part.users[0] : (part.users || part.user || {});
+  return {
+    chat_id: part.chat_id,
+    user_id: part.user_id || user.id,
+    full_name: part.full_name || user.full_name || '',
+    phone: part.phone || user.phone || '',
+    avatar_url: part.avatar_url || user.avatar_url || '',
+    user,
+    users: user,
+  };
+};
+
+const getChatParticipants = async (chatId) => {
+  const { data } = await supabase
+    .from('chat_participants')
+    .select('chat_id, user_id, users(id, phone, full_name, avatar_url)')
+    .eq('chat_id', chatId);
+  return (data || []).map(normalizeChatParticipant);
+};
+
 // Obtener todos los chats del usuario
 app.get('/api/chats', auth, async (req, res) => {
   try {
@@ -512,7 +533,7 @@ app.get('/api/chats', auth, async (req, res) => {
     const participantsByChat = (participants || []).reduce((acc, part) => {
       const chatId = part.chat_id;
       if (!acc[chatId]) acc[chatId] = [];
-      acc[chatId].push(part);
+      acc[chatId].push(normalizeChatParticipant(part));
       return acc;
     }, {});
 
@@ -690,7 +711,12 @@ app.post('/api/chats/private', auth, async (req, res) => {
         .single();
 
       if (existing) {
-        return res.json(existing);
+        return res.json({
+          ...existing,
+          participants: await getChatParticipants(existing.id),
+          last_message: null,
+          unread_count: 0
+        });
       }
     }
 
