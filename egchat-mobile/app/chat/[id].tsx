@@ -776,7 +776,7 @@ export default function ChatScreen() {
     if (action === 'file') {
       const asset = await pickDocument();
       if (asset) {
-        await sendMedia(asset, { text: `📄 ${asset.fileName}`, type: 'file' });
+        await sendMedia(asset, { text: asset.fileName, type: 'file' });
       }
       return;
     }
@@ -807,7 +807,7 @@ export default function ChatScreen() {
     if (action === 'music') {
       const asset = await pickDocument();
       if (asset) {
-        await sendMedia(asset, { text: `🎵 ${asset.fileName}`, type: 'audio' });
+        await sendMedia(asset, { text: asset.fileName, type: 'audio' });
       }
       return;
     }

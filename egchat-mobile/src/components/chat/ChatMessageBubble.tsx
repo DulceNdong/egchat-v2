@@ -251,10 +251,32 @@ export const ChatMessageBubble = React.memo(({
             }
           }}
           activeOpacity={0.7}
+          style={s.fileCard}
         >
-          <Text style={[s.bubbleText, { color: '#00b4e6', textDecorationLine: 'underline' }]}>
-            📄 {message.text || message.file_url?.split('/').pop() || 'Archivo'}
-          </Text>
+          {(() => {
+            // Obtener nombre limpio del archivo (quitar emoji si ya viene en text)
+            const rawName = message.text || message.file_url?.split('/').pop() || 'Archivo';
+            const fileName = rawName.replace(/^📄\s*/, '').replace(/^📁\s*/, '').trim();
+            const ext = fileName.split('.').pop()?.toLowerCase() || '';
+            const isWord = ['doc', 'docx'].includes(ext);
+            const isPdf = ext === 'pdf';
+            const isExcel = ['xls', 'xlsx'].includes(ext);
+            const isPpt = ['ppt', 'pptx'].includes(ext);
+            const isImage = ['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext);
+            const fileIcon = isPdf ? '📕' : isWord ? '📘' : isExcel ? '📗' : isPpt ? '📙' : isImage ? '🖼️' : '📄';
+            const fileColor = isPdf ? '#e53e3e' : isWord ? '#2b5ce6' : isExcel ? '#1d6f42' : isPpt ? '#d04a02' : '#6b7280';
+            return (
+              <View style={s.fileInner}>
+                <View style={[s.fileIconBox, { backgroundColor: fileColor + '18' }]}>
+                  <Text style={s.fileIconText}>{fileIcon}</Text>
+                </View>
+                <View style={s.fileInfo}>
+                  <Text style={s.fileName} numberOfLines={2}>{fileName}</Text>
+                  <Text style={[s.fileExt, { color: fileColor }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                </View>
+              </View>
+            );
+          })()}
         </TouchableOpacity>
       )}
       <View style={s.meta}>
@@ -401,4 +423,42 @@ const s = StyleSheet.create({
   uploadFill: { height: 3, backgroundColor: '#00c8a0', borderRadius: 2 },
   uploadText: { fontSize: 11, color: '#9ca3af', textAlign: 'right' },
   retryHint: { fontSize: 11, color: '#ef4444', fontWeight: '600', marginTop: 3, textAlign: 'right' },
+  // ── Tarjeta archivo ──
+  fileCard: {
+    minWidth: 200,
+    maxWidth: 260,
+  },
+  fileInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingVertical: 4,
+  },
+  fileIconBox: {
+    width: 44,
+    height: 44,
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+    flexShrink: 0,
+  },
+  fileIconText: {
+    fontSize: 24,
+  },
+  fileInfo: {
+    flex: 1,
+    minWidth: 0,
+  },
+  fileName: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#111827',
+    lineHeight: 18,
+  },
+  fileExt: {
+    fontSize: 11,
+    fontWeight: '700',
+    marginTop: 2,
+    letterSpacing: 0.5,
+  },
 });
