@@ -290,19 +290,26 @@ export default function ChatScreen() {
     saveCache(`chat_messages_${chatId}`, messages);
   }, [chatId, messages, saveCache]);
 
-  // Supabase Realtime
+  // Supabase Realtime + polling de respaldo (por si Realtime no está habilitado)
   useEffect(() => {
     if (!chatId || !currentUserId) return;
+
+    let lastMsgId = '';
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+    let realtimeWorking = false;
+
+    // Intentar Realtime primero
     const unsubscribe = subscribeToChat(chatId, (newMsg, event) => {
+      realtimeWorking = true; // si llega algo, Realtime funciona
       if (event === 'DELETE') {
         setMessages(prev => prev.filter(message => message.id !== newMsg.id));
         return;
       }
-
       if (newMsg.sender_id !== currentUserId) {
         const enriched = normalizeMessage(newMsg);
         setMessages(prev => mergeMessages(prev, [enriched]));
         if (event === 'INSERT') {
+          lastMsgId = newMsg.id;
           chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
         }
         setIsTyping(false);
@@ -310,7 +317,25 @@ export default function ChatScreen() {
         setMessages(prev => mergeMessages(prev, [newMsg]));
       }
     });
-    return unsubscribe;
+
+    // Polling de respaldo cada 2s — si Realtime no responde en 5s, activamos polling
+    const realtimeCheck = setTimeout(() => {
+      if (!realtimeWorking) {
+        pollInterval = setInterval(async () => {
+          try {
+            const fresh = await chatAPI.getMessages(chatId, 1, 20);
+            if (!fresh?.length) return;
+            setMessages(prev => mergeMessages(prev, normalizeMessages(fresh)));
+          } catch {}
+        }, 2000);
+      }
+    }, 5000);
+
+    return () => {
+      unsubscribe();
+      clearTimeout(realtimeCheck);
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [chatId, currentUserId]);
 
   useEffect(() => {

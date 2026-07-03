@@ -11,13 +11,33 @@ const BASE = (() => {
   return url.replace(/\/$/, '');
 })();
 
-// ── Token seguro (SecureStore en lugar de AsyncStorage) ───────────
+// ── Token seguro (SecureStore en nativo, localStorage en web) ──────
 const TOKEN_KEY = 'egchat_token';
 const sessionManager = SessionManager.getInstance();
 
-export const getToken = () => SecureStore.getItemAsync(TOKEN_KEY);
-export const setToken = (t: string) => SecureStore.setItemAsync(TOKEN_KEY, t);
-export const clearToken = async () => {
+import { Platform } from 'react-native';
+
+export const getToken = async (): Promise<string | null> => {
+  if (Platform.OS === 'web') {
+    try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+  }
+  try { return await SecureStore.getItemAsync(TOKEN_KEY); } catch { return null; }
+};
+
+export const setToken = async (t: string): Promise<void> => {
+  if (Platform.OS === 'web') {
+    try { localStorage.setItem(TOKEN_KEY, t); return; } catch {}
+  }
+  try { await SecureStore.setItemAsync(TOKEN_KEY, t); } catch {}
+};
+
+export const clearToken = async (): Promise<void> => {
+  // Limpiar en todos los storages posibles
+  if (Platform.OS === 'web') {
+    try { localStorage.removeItem(TOKEN_KEY); } catch {}
+    try { localStorage.removeItem('egchat_session'); } catch {}
+    try { sessionStorage.clear(); } catch {}
+  }
   await sessionManager.clearSession();
 };
 

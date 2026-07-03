@@ -298,9 +298,27 @@ export default function MensajeriaScreen() {
 
   useEffect(() => {
     if (!currentUserId) return;
+    let realtimeWorking = false;
+    let pollInterval: ReturnType<typeof setInterval> | null = null;
+
     const { subscribeToUserChats } = require('../../src/supabase');
-    const unsub = subscribeToUserChats(currentUserId, loadChats);
-    return unsub;
+    const unsub = subscribeToUserChats(currentUserId, () => {
+      realtimeWorking = true;
+      loadChats();
+    });
+
+    // Si Realtime no funciona en 5s, polling cada 3s
+    const realtimeCheck = setTimeout(() => {
+      if (!realtimeWorking) {
+        pollInterval = setInterval(loadChats, 3000);
+      }
+    }, 5000);
+
+    return () => {
+      unsub();
+      clearTimeout(realtimeCheck);
+      if (pollInterval) clearInterval(pollInterval);
+    };
   }, [currentUserId]);
 
   // Cuando el usuario actual cambia su avatar/nombre, actualizar su participante en todos los chats

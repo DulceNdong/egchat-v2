@@ -336,8 +336,12 @@ export const HamburgerMenu = ({
           Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
             { text: 'Cancelar', style: 'cancel' },
             { text: 'Cerrar sesión', style: 'destructive', onPress: async () => {
-              await authAPI.logout();
-              router.replace('/(auth)/login' as any);
+              try { await authAPI.logout(); } catch {}
+              if (typeof window !== 'undefined' && window.location) {
+                window.location.href = '/';
+              } else {
+                router.replace('/(auth)/login' as any);
+              }
             }},
           ]);
           break;

@@ -114,8 +114,13 @@ export default function AjustesScreen() {
         text: 'Cerrar sesión',
         style: 'destructive',
         onPress: async () => {
-          await authAPI.logout();
-          router.replace('/(auth)/login');
+          try { await authAPI.logout(); } catch {}
+          // En web forzamos recarga completa para limpiar todo el estado
+          if (typeof window !== 'undefined' && window.location) {
+            window.location.href = '/';
+          } else {
+            router.replace('/(auth)/login');
+          }
         },
       },
     ]);
