@@ -4974,7 +4974,21 @@ if (require.main === module) {
     console.log(`   Auth:   POST /api/auth/register | /api/auth/login`);
     console.log(`   Wallet: GET  /api/wallet/balance | POST /api/wallet/deposit`);
     console.log(`   Lia-25: POST /api/lia/chat\n`);
-    // Crear tabla call_sessions si no existe
+    // Crear bucket chat-files si no existe (para avatares y archivos)
+    try {
+      const { data: buckets } = await supabase.storage.listBuckets();
+      const exists = (buckets || []).some(b => b.name === 'chat-files');
+      if (!exists) {
+        const { error: bErr } = await supabase.storage.createBucket('chat-files', { public: true });
+        if (bErr) console.log('Bucket ya existe o error:', bErr.message);
+        else console.log('✅ Bucket chat-files creado');
+      } else {
+        console.log('✅ Bucket chat-files OK');
+      }
+    } catch (e) {
+      console.log('Bucket check error:', e.message);
+    }
+
     try {
       await supabase.rpc('exec_sql', { sql: `
         CREATE TABLE IF NOT EXISTS call_sessions (
