@@ -40,10 +40,10 @@ export function useChatStream(
     const BASE = getApiBase();
     const url = `${BASE}/api/chat/stream?_t=${encodeURIComponent(token)}`;
 
-    // Usar XHR con streaming (funciona en React Native y web)
+    // Usar XHR con streaming — sin header cache-control (causa CORS)
     const xhr = new XMLHttpRequest();
     xhr.open('GET', url, true);
-    xhr.setRequestHeader('Cache-Control', 'no-cache');
+    // NO añadir Cache-Control — causa error CORS en preflight
 
     let lastIndex = 0;
 
