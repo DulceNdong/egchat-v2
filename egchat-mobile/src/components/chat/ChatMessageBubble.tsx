@@ -137,20 +137,31 @@ const vd = StyleSheet.create({
   ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
 });
 
-// ── Tarjeta AUDIO — estilo WhatsApp ──────────────────────────────
+// ── Tarjeta AUDIO — estilo WhatsApp (web: <audio> HTML5, nativo: expo-av) ────
 const BARS = [0.3, 0.5, 0.8, 0.6, 1.0, 0.7, 0.4, 0.9, 0.5, 0.8, 0.6, 0.3, 0.7, 1.0, 0.5, 0.4, 0.9, 0.6, 0.8, 0.3, 0.5, 0.7, 1.0, 0.4, 0.6, 0.9, 0.5, 0.3, 0.8, 0.6];
+
+// Limpia nombre de archivo: quita emoji, hash técnico y tamaño " (X MB)"
+const cleanAudioName = (text: string, fallback: string) => {
+  let name = (text || '').replace(/^🎵\s*/, '').replace(/\s*\(\d+(\.\d+)?\s*(MB|KB|GB|B)\)/i, '').trim();
+  if (!name) return fallback;
+  const base = name.split('.')[0];
+  if (/^[a-z0-9_\-]{20,}$/i.test(base)) return fallback; // hash técnico
+  return name;
+};
 
 const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
   const [playing, setPlaying] = useState(false);
-  const [progress, setProgress] = useState(0); // 0–1
-  const [duration, setDuration] = useState(0); // ms
-  const [position, setPosition] = useState(0); // ms
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
   const soundRef = useRef<Audio.Sound | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
   const pulseAnim = useRef(new Animated.Value(1)).current;
+  const isWeb = typeof document !== 'undefined';
 
-  const fileName = (message.text || message.file_url?.split('/').pop() || 'Audio')
-    .replace(/^🎵\s*/, '').trim();
-  const ext = fileName.split('.').pop()?.toLowerCase() || 'mp3';
+  const rawText = message.text || message.file_url?.split('/').pop() || '';
+  const fileName = cleanAudioName(rawText, 'Audio');
+  const ext = (rawText.split('.').pop()?.toLowerCase().replace(/\s.*$/, '') || 'mp3').substring(0, 4);
   const url = message.file_url || '';
 
   const formatDur = (ms: number) => {
@@ -158,38 +169,54 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
     return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
   };
 
-  // Pulso animado mientras reproduce
+  // Pulso animado
   useEffect(() => {
     if (playing) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
-          Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
-        ])
-      ).start();
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+      ])).start();
     } else {
       pulseAnim.stopAnimation();
       pulseAnim.setValue(1);
     }
   }, [playing]);
 
+  // Web: crear elemento <audio> oculto al montar
+  useEffect(() => {
+    if (!isWeb || !url) return;
+    const el = new window.Audio(url);
+    el.preload = 'metadata';
+    el.onloadedmetadata = () => setDuration(el.duration * 1000);
+    el.ontimeupdate = () => {
+      setPosition(el.currentTime * 1000);
+      setProgress(el.duration ? el.currentTime / el.duration : 0);
+    };
+    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
+    audioElRef.current = el;
+    return () => { el.pause(); el.src = ''; audioElRef.current = null; };
+  }, [isWeb, url]);
+
   const togglePlay = useCallback(async () => {
     if (!url) return;
+    // ── WEB ──
+    if (isWeb) {
+      const el = audioElRef.current;
+      if (!el) return;
+      if (playing) { el.pause(); setPlaying(false); }
+      else { el.play().catch(() => {}); setPlaying(true); }
+      return;
+    }
+    // ── NATIVO ──
     try {
       if (soundRef.current) {
         const status = await soundRef.current.getStatusAsync();
         if (status.isLoaded) {
-          if (status.isPlaying) {
-            await soundRef.current.pauseAsync();
-            setPlaying(false);
-          } else {
-            await soundRef.current.playAsync();
-            setPlaying(true);
-          }
+          if (status.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
+          else { await soundRef.current.playAsync(); setPlaying(true); }
           return;
         }
       }
-      // Cargar y reproducir
       await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
       const { sound } = await Audio.Sound.createAsync(
         { uri: url },
@@ -200,9 +227,7 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           setPosition(status.positionMillis || 0);
           setProgress(status.durationMillis ? (status.positionMillis || 0) / status.durationMillis : 0);
           if (status.didJustFinish) {
-            setPlaying(false);
-            setProgress(0);
-            setPosition(0);
+            setPlaying(false); setProgress(0); setPosition(0);
             sound.setPositionAsync(0).catch(() => {});
           }
         }
@@ -210,13 +235,10 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       soundRef.current = sound;
       setPlaying(true);
     } catch {}
-  }, [url]);
+  }, [url, playing, isWeb]);
 
-  // Cleanup al desmontar
   useEffect(() => {
-    return () => {
-      soundRef.current?.unloadAsync().catch(() => {});
-    };
+    return () => { soundRef.current?.unloadAsync().catch(() => {}); };
   }, []);
 
   const accent = isOwn ? '#00c8a0' : '#00b4e6';
@@ -226,43 +248,27 @@ const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
 
   return (
     <View style={au.card}>
-      {/* Botón play/pause */}
       <TouchableOpacity onPress={togglePlay} activeOpacity={0.8} style={au.btnWrap}>
         <Animated.View style={[au.btn, { backgroundColor: accentFade, transform: [{ scale: pulseAnim }] }]}>
           <View style={[au.btnInner, { backgroundColor: accent }]}>
             {playing ? (
-              // Pause icon
               <View style={au.pauseIcon}>
                 <View style={[au.pauseBar, { backgroundColor: '#fff' }]} />
                 <View style={[au.pauseBar, { backgroundColor: '#fff' }]} />
               </View>
             ) : (
-              // Play icon
               <View style={[au.playIcon, { borderLeftColor: '#fff' }]} />
             )}
           </View>
         </Animated.View>
       </TouchableOpacity>
-
-      {/* Forma de onda + info */}
       <View style={au.right}>
-        {/* Barras de onda */}
         <View style={au.waveRow}>
           {BARS.map((h, i) => {
             const filled = progress > 0 && i / BARS.length < progress;
-            return (
-              <View
-                key={i}
-                style={[
-                  au.bar,
-                  { height: Math.max(4, h * 26), backgroundColor: filled ? barFill : barEmpty },
-                ]}
-              />
-            );
+            return <View key={i} style={[au.bar, { height: Math.max(4, h * 26), backgroundColor: filled ? barFill : barEmpty }]} />;
           })}
         </View>
-
-        {/* Nombre + duración */}
         <View style={au.metaRow}>
           <Text style={au.audioName} numberOfLines={1}>{fileName}</Text>
           <Text style={[au.audioDur, { color: accent }]}>
