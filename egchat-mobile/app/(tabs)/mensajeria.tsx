@@ -283,8 +283,28 @@ export default function MensajeriaScreen() {
         getFavoriteGroupIds(),
       ]);
       const sortedChats = sortChatsByActivity(data || []);
-      setChats(sortedChats);
-      saveCache('chat_list', sortedChats);
+
+      // Enriquecer participantes que tengan full_name vacío
+      const enriched = await Promise.all(sortedChats.map(async (chat) => {
+        const needsEnrich = chat.participants?.some(
+          (p: any) => !p.full_name && p.user_id
+        );
+        if (!needsEnrich) return chat;
+        try {
+          const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+          const token = await (await import('../../src/api')).getToken();
+          const parts = await fetch(`${BASE}/api/chats/${chat.id}/participants`, {
+            headers: { Authorization: `Bearer ${token}` }
+          }).then(r => r.json()).catch(() => null);
+          if (Array.isArray(parts) && parts.length > 0) {
+            return { ...chat, participants: parts };
+          }
+        } catch {}
+        return chat;
+      }));
+
+      setChats(enriched);
+      saveCache('chat_list', enriched);
       setFavoriteContacts(favContacts || []);
       setFavoriteGroupIds(favGroups);
     } catch {
