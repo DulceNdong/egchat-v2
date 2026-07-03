@@ -32,7 +32,8 @@ import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
 import { PhotoEditorModal } from '../../src/components/PhotoEditorModal';
 import {
-  pickImageFromLibrary, pickImageFromCamera, pickVideo, pickFile,
+  pickImageFromLibrary, pickImageFromCamera, pickVideo, pickVideoFromCamera,
+  pickDocument, pickContact, pickFile,
   getCurrentLocationLabel, uploadAndSend,
 } from '../../src/utils/chatMedia';
 import { haptics } from '../../src/hooks/useHaptics';
@@ -746,14 +747,27 @@ export default function ChatScreen() {
       return;
     }
     if (action === 'video') {
-      const asset = await pickVideo();
-      if (asset) {
-        await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
-      }
+      Alert.alert('Video', '¿Cómo quieres añadir el video?', [
+        {
+          text: '🎥 Grabar',
+          onPress: async () => {
+            const asset = await pickVideoFromCamera();
+            if (asset) await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
+          },
+        },
+        {
+          text: '📁 Galería',
+          onPress: async () => {
+            const asset = await pickVideo();
+            if (asset) await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
+          },
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
       return;
     }
     if (action === 'file') {
-      const asset = await pickFile();
+      const asset = await pickDocument();
       if (asset) {
         await sendMedia(asset, { text: `📄 ${asset.fileName}`, type: 'file' });
       }
@@ -761,19 +775,57 @@ export default function ChatScreen() {
     }
     if (action === 'contact') {
       setShowAttach(false);
-      setShowContactPicker(true);
+      // Ofrecer contactos EGCHAT + dispositivo
+      Alert.alert('Compartir contacto', '¿De dónde quieres elegir?', [
+        {
+          text: '📱 Contactos del teléfono',
+          onPress: async () => {
+            const result = await pickContact();
+            if (!result) return;
+            if (result.name === '__LIST__') {
+              // Mostrar lista de contactos del dispositivo
+              try {
+                const deviceContacts = JSON.parse(result.phone);
+                if (!deviceContacts?.length) {
+                  toast.info('Sin contactos en el dispositivo');
+                  return;
+                }
+                // Usar el primer contacto con teléfono como demo; en producción mostrar un picker
+                const first = deviceContacts.find((c: any) => c.phoneNumbers?.length);
+                if (first) {
+                  const phone = first.phoneNumbers?.[0]?.number || '';
+                  const name = first.name || 'Contacto';
+                  const msgText = `👤 ${name}\n📞 ${phone}`;
+                  const tempId = createTempMessageId();
+                  pushOptimistic({ id: tempId, text: msgText, type: 'contact', sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+                  try {
+                    const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+                    replaceOptimistic(tempId, sent);
+                  } catch { failOptimistic(tempId); }
+                }
+              } catch {}
+            }
+          },
+        },
+        {
+          text: '👥 Contactos EGCHAT',
+          onPress: () => setShowContactPicker(true),
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
       return;
     }
     if (action === 'location') {
+      setShowAttach(false);
+      toast.info('GPS', 'Obteniendo tu ubicación...');
       const { lat, lng, label } = await getCurrentLocationLabel();
-      const directionsUrl = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-      const msgText = `📍 ${label}\n${directionsUrl}`;
+      const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+      const msgText = `📍 ${label}\n${mapsUrl}`;
       const tempId = createTempMessageId();
       pushOptimistic({
         id: tempId, text: msgText, type: 'location', sender_id: currentUserId,
         status: 'pending', created_at: new Date().toISOString(),
       });
-      setShowAttach(false);
       try {
         const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
         replaceOptimistic(tempId, sent);
@@ -783,7 +835,7 @@ export default function ChatScreen() {
       return;
     }
     if (action === 'music') {
-      const asset = await pickFile();
+      const asset = await pickDocument();
       if (asset) {
         await sendMedia(asset, { text: `🎵 ${asset.fileName}`, type: 'audio' });
       }
