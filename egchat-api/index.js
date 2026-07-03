@@ -536,11 +536,27 @@ const normalizeChatParticipant = (part = {}) => {
 };
 
 const getChatParticipants = async (chatId) => {
-  const { data } = await supabase
+  const { data: parts } = await supabase
     .from('chat_participants')
-    .select('chat_id, user_id, users!user_id(id, phone, full_name, avatar_url)')
+    .select('chat_id, user_id')
     .eq('chat_id', chatId);
-  return (data || []).map(normalizeChatParticipant);
+  if (!parts || parts.length === 0) return [];
+  const userIds = parts.map(p => p.user_id);
+  const { data: users } = await supabase.from('users').select('id, phone, full_name, avatar_url').in('id', userIds);
+  const usersById = {};
+  (users || []).forEach(u => { usersById[String(u.id)] = u; });
+  return parts.map(part => {
+    const u = usersById[String(part.user_id)] || {};
+    return {
+      chat_id: part.chat_id,
+      user_id: part.user_id,
+      full_name: u.full_name || '',
+      phone: u.phone || '',
+      avatar_url: u.avatar_url || '',
+      user: u,
+      users: u,
+    };
+  });
 };
 
 // Obtener todos los chats del usuario
@@ -569,9 +585,9 @@ app.get('/api/chats', auth, async (req, res) => {
 
     if (!chats) return res.json([]);
 
-    const [{ data: participants }, { data: messages }] = await Promise.all([
+    const [{ data: rawParticipants }, { data: messages }] = await Promise.all([
       supabase.from('chat_participants')
-        .select('chat_id, user_id, users!user_id(id, phone, full_name, avatar_url)')
+        .select('chat_id, user_id')
         .in('chat_id', chatIds),
       supabase.from('messages')
         .select('id, text, type, created_at, sender_id, chat_id')
@@ -579,10 +595,28 @@ app.get('/api/chats', auth, async (req, res) => {
         .order('created_at', { ascending: false })
     ]);
 
-    const participantsByChat = (participants || []).reduce((acc, part) => {
+    // Obtener info de usuarios en consulta separada (más robusto que FK join)
+    const allUserIds = [...new Set((rawParticipants || []).map(p => p.user_id))];
+    const { data: usersData } = allUserIds.length > 0
+      ? await supabase.from('users').select('id, phone, full_name, avatar_url').in('id', allUserIds)
+      : { data: [] };
+
+    const usersById = {};
+    (usersData || []).forEach(u => { usersById[String(u.id)] = u; });
+
+    const participantsByChat = (rawParticipants || []).reduce((acc, part) => {
       const chatId = part.chat_id;
       if (!acc[chatId]) acc[chatId] = [];
-      acc[chatId].push(normalizeChatParticipant(part));
+      const u = usersById[String(part.user_id)] || {};
+      acc[chatId].push({
+        chat_id: chatId,
+        user_id: part.user_id,
+        full_name: u.full_name || '',
+        phone: u.phone || '',
+        avatar_url: u.avatar_url || '',
+        user: u,
+        users: u,
+      });
       return acc;
     }, {});
 
@@ -631,7 +665,7 @@ app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
 
     const { data: messages } = await supabase
       .from('messages')
-      .select('id, text, type, created_at, sender_id, status, reply_to, file_url, users:sender_id!sender_id(id, full_name, avatar_url)')
+      .select('id, text, type, created_at, sender_id, status, reply_to, file_url')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: false })
       .range(from, from + limit - 1);
@@ -645,12 +679,19 @@ app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
     const deletedIds = new Set((deletions || []).map((d) => d.message_id));
     const filtered = (messages || []).filter(m => !deletedIds.has(m.id));
 
+    // Obtener info de senders en consulta separada (más robusto que FK join)
+    const senderIds = [...new Set(filtered.map(m => m.sender_id).filter(Boolean))];
+    const { data: senders } = senderIds.length > 0
+      ? await supabase.from('users').select('id, full_name, avatar_url').in('id', senderIds)
+      : { data: [] };
+    const sendersById = {};
+    (senders || []).forEach(u => { sendersById[String(u.id)] = u; });
+
     // Normalizar sender para que el cliente lo use directamente
     const normalized = filtered.map(m => {
-      const senderUser = Array.isArray(m.users) ? m.users[0] : (m.users || {});
+      const senderUser = sendersById[String(m.sender_id)] || {};
       return {
         ...m,
-        users: undefined,
         sender: senderUser?.id ? {
           id: senderUser.id,
           full_name: senderUser.full_name || '',
@@ -3630,14 +3671,26 @@ app.get('/api/notifications', auth, async (req, res) => {
     if (!chatIds.length) return res.json([]);
 
     const { data: msgs } = await supabase.from('messages')
-      .select('id, text, chat_id, sender_id, created_at, users!sender_id(full_name, avatar_url)')
+      .select('id, text, chat_id, sender_id, created_at')
       .in('chat_id', chatIds)
       .neq('sender_id', req.user.id)
       .eq('status', 'sent')
       .order('created_at', { ascending: false })
       .limit(20);
 
-    res.json(msgs || []);
+    // Obtener senders en consulta separada
+    const senderIds = [...new Set((msgs || []).map(m => m.sender_id).filter(Boolean))];
+    const { data: senders } = senderIds.length > 0
+      ? await supabase.from('users').select('id, full_name, avatar_url').in('id', senderIds)
+      : { data: [] };
+    const sendersById = {};
+    (senders || []).forEach(u => { sendersById[String(u.id)] = u; });
+    const msgsWithSender = (msgs || []).map(m => ({
+      ...m,
+      users: sendersById[String(m.sender_id)] || null,
+    }));
+
+    res.json(msgsWithSender);
   } catch (e) { res.json([]); }
 });
 
