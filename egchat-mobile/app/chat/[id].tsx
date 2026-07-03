@@ -275,17 +275,24 @@ export default function ChatScreen() {
 
         const current = chats.find((c: any) => c.id === chatId);
         if (current) {
+          // Log para diagnóstico
+          console.log('[CHAT PARTICIPANTS]', JSON.stringify(current.participants?.slice(0,2)));
           setChat(current);
           // Enriquecer participantes con datos completos del endpoint dedicado
           try {
+            const token = await (await import('../../src/api')).getToken();
+            const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
             const enrichedParticipants = await fetch(
-              `${(process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com')}/api/chats/${chatId}/participants`,
-              { headers: { Authorization: `Bearer ${await (await import('../../src/api')).getToken()}` } }
+              `${BASE}/api/chats/${chatId}/participants`,
+              { headers: { Authorization: `Bearer ${token}` } }
             ).then(r => r.json()).catch(() => null);
+            console.log('[ENRICHED PARTICIPANTS]', JSON.stringify(enrichedParticipants?.slice(0,2)));
             if (Array.isArray(enrichedParticipants) && enrichedParticipants.length > 0) {
               setChat((prev: any) => prev ? { ...prev, participants: enrichedParticipants } : prev);
             }
-          } catch {}
+          } catch (e) {
+            console.log('[ENRICH ERROR]', e);
+          }
         }
 
         const msgList = normalizeMessages(msgs || []);
