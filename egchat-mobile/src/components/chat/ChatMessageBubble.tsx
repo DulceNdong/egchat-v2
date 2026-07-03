@@ -1,13 +1,167 @@
 // Burbuja de mensaje — paridad EGCHAT v2.5.2
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Image, Linking,
+  View, Text, TouchableOpacity, StyleSheet, Image, Linking, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { Audio } from 'expo-av';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ImageViewer } from '../ImageViewer';
 import type { ChatMessage } from '../../types/chat';
+
+// ── Tarjeta AUDIO — estilo WhatsApp ──────────────────────────────
+const BARS = [0.3, 0.5, 0.8, 0.6, 1.0, 0.7, 0.4, 0.9, 0.5, 0.8, 0.6, 0.3, 0.7, 1.0, 0.5, 0.4, 0.9, 0.6, 0.8, 0.3, 0.5, 0.7, 1.0, 0.4, 0.6, 0.9, 0.5, 0.3, 0.8, 0.6];
+
+const AudioCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const [playing, setPlaying] = useState(false);
+  const [progress, setProgress] = useState(0); // 0–1
+  const [duration, setDuration] = useState(0); // ms
+  const [position, setPosition] = useState(0); // ms
+  const soundRef = useRef<Audio.Sound | null>(null);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  const fileName = (message.text || message.file_url?.split('/').pop() || 'Audio')
+    .replace(/^🎵\s*/, '').trim();
+  const ext = fileName.split('.').pop()?.toLowerCase() || 'mp3';
+  const url = message.file_url || '';
+
+  const formatDur = (ms: number) => {
+    const s = Math.floor(ms / 1000);
+    return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+  };
+
+  // Pulso animado mientras reproduce
+  useEffect(() => {
+    if (playing) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.15, duration: 600, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.0, duration: 600, useNativeDriver: true }),
+        ])
+      ).start();
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
+  }, [playing]);
+
+  const togglePlay = useCallback(async () => {
+    if (!url) return;
+    try {
+      if (soundRef.current) {
+        const status = await soundRef.current.getStatusAsync();
+        if (status.isLoaded) {
+          if (status.isPlaying) {
+            await soundRef.current.pauseAsync();
+            setPlaying(false);
+          } else {
+            await soundRef.current.playAsync();
+            setPlaying(true);
+          }
+          return;
+        }
+      }
+      // Cargar y reproducir
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url },
+        { shouldPlay: true },
+        (status) => {
+          if (!status.isLoaded) return;
+          setDuration(status.durationMillis || 0);
+          setPosition(status.positionMillis || 0);
+          setProgress(status.durationMillis ? (status.positionMillis || 0) / status.durationMillis : 0);
+          if (status.didJustFinish) {
+            setPlaying(false);
+            setProgress(0);
+            setPosition(0);
+            sound.setPositionAsync(0).catch(() => {});
+          }
+        }
+      );
+      soundRef.current = sound;
+      setPlaying(true);
+    } catch {}
+  }, [url]);
+
+  // Cleanup al desmontar
+  useEffect(() => {
+    return () => {
+      soundRef.current?.unloadAsync().catch(() => {});
+    };
+  }, []);
+
+  const accent = isOwn ? '#00c8a0' : '#00b4e6';
+  const accentFade = isOwn ? 'rgba(0,200,160,0.18)' : 'rgba(0,180,230,0.18)';
+  const barFill = isOwn ? '#00c8a0' : '#00b4e6';
+  const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
+
+  return (
+    <View style={au.card}>
+      {/* Botón play/pause */}
+      <TouchableOpacity onPress={togglePlay} activeOpacity={0.8} style={au.btnWrap}>
+        <Animated.View style={[au.btn, { backgroundColor: accentFade, transform: [{ scale: pulseAnim }] }]}>
+          <View style={[au.btnInner, { backgroundColor: accent }]}>
+            {playing ? (
+              // Pause icon
+              <View style={au.pauseIcon}>
+                <View style={[au.pauseBar, { backgroundColor: '#fff' }]} />
+                <View style={[au.pauseBar, { backgroundColor: '#fff' }]} />
+              </View>
+            ) : (
+              // Play icon
+              <View style={[au.playIcon, { borderLeftColor: '#fff' }]} />
+            )}
+          </View>
+        </Animated.View>
+      </TouchableOpacity>
+
+      {/* Forma de onda + info */}
+      <View style={au.right}>
+        {/* Barras de onda */}
+        <View style={au.waveRow}>
+          {BARS.map((h, i) => {
+            const filled = progress > 0 && i / BARS.length < progress;
+            return (
+              <View
+                key={i}
+                style={[
+                  au.bar,
+                  { height: Math.max(4, h * 26), backgroundColor: filled ? barFill : barEmpty },
+                ]}
+              />
+            );
+          })}
+        </View>
+
+        {/* Nombre + duración */}
+        <View style={au.metaRow}>
+          <Text style={au.audioName} numberOfLines={1}>{fileName}</Text>
+          <Text style={[au.audioDur, { color: accent }]}>
+            {playing && position > 0 ? formatDur(position) : duration > 0 ? formatDur(duration) : ext.toUpperCase()}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+};
+
+const au = StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 220, maxWidth: 280, paddingVertical: 4 },
+  btnWrap: { flexShrink: 0 },
+  btn: { width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center' },
+  btnInner: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  playIcon: { width: 0, height: 0, borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 13, borderTopColor: 'transparent', borderBottomColor: 'transparent', marginLeft: 3 },
+  pauseIcon: { flexDirection: 'row', gap: 4, alignItems: 'center' },
+  pauseBar: { width: 3, height: 14, borderRadius: 2 },
+  right: { flex: 1, gap: 6 },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 28 },
+  bar: { width: 3, borderRadius: 2 },
+  metaRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  audioName: { fontSize: 12, color: '#374151', fontWeight: '600', flex: 1, marginRight: 6 },
+  audioDur: { fontSize: 11, fontWeight: '700' },
+});
 
 // ── Tarjeta CONTACTO ──────────────────────────────────────────────
 const ContactCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
@@ -236,7 +390,7 @@ export const ChatMessageBubble = React.memo(({
         <Text style={s.bubbleText}>{message.text || '🎥 Video'}</Text>
       )}
       {message.type === 'audio' && (
-        <Text style={s.bubbleText}>{message.text || '🎵 Audio'}</Text>
+        <AudioCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'file' && (
         <TouchableOpacity
