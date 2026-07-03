@@ -1,6 +1,8 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Contacts from 'expo-contacts';
 import { chatAPI } from '../api';
 import { toast } from '../components/Toast';
 
@@ -147,6 +149,72 @@ export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: str
 export function formatFileSize(bytes: number): string {
   if (bytes >= 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`;
   return `${(bytes / 1024).toFixed(1)} KB`;
+}
+
+export async function pickVideoFromCamera(): Promise<PickedAsset | null> {
+  const { status } = await ImagePicker.requestCameraPermissionsAsync();
+  if (status !== 'granted') {
+    toast.error('Permiso requerido', 'Activa el acceso a la cámara');
+    return null;
+  }
+  const result = await ImagePicker.launchCameraAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Videos,
+    videoMaxDuration: 60,
+    quality: 0.8,
+  });
+  if (result.canceled || !result.assets[0]) return null;
+  const a = result.assets[0];
+  if (rejectLargeAsset(a.fileSize, MAX_VIDEO_BYTES)) return null;
+  return {
+    uri: a.uri,
+    fileName: a.fileName || 'video.mp4',
+    mimeType: a.mimeType || 'video/mp4',
+    size: a.fileSize,
+  };
+}
+
+export async function pickDocument(): Promise<PickedAsset | null> {
+  try {
+    const result = await DocumentPicker.getDocumentAsync({
+      type: '*/*',
+      copyToCacheDirectory: true,
+      multiple: false,
+    });
+    if (result.canceled || !result.assets?.[0]) return null;
+    const a = result.assets[0];
+    if (rejectLargeAsset(a.size, MAX_FILE_BYTES)) return null;
+    return {
+      uri: a.uri,
+      fileName: a.name || 'document',
+      mimeType: a.mimeType || 'application/octet-stream',
+      size: a.size,
+    };
+  } catch {
+    toast.error('Error', 'No se pudo seleccionar el archivo');
+    return null;
+  }
+}
+
+export async function pickContact(): Promise<{ name: string; phone: string } | null> {
+  try {
+    const { status } = await Contacts.requestPermissionsAsync();
+    if (status !== 'granted') {
+      toast.error('Permiso requerido', 'Activa el acceso a los contactos');
+      return null;
+    }
+    const { data } = await Contacts.getContactsAsync({
+      fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
+    });
+    if (!data.length) {
+      toast.info('Sin contactos', 'No hay contactos en el dispositivo');
+      return null;
+    }
+    // Retorna la lista para que el componente muestre el selector
+    return { name: '__LIST__', phone: JSON.stringify(data.slice(0, 200)) };
+  } catch {
+    toast.error('Error', 'No se pudo acceder a los contactos');
+    return null;
+  }
 }
 
 export async function uploadAndSend(
