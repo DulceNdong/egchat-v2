@@ -239,7 +239,23 @@ export const ChatMessageBubble = React.memo(({
         <Text style={s.bubbleText}>{message.text || '🎵 Audio'}</Text>
       )}
       {message.type === 'file' && (
-        <Text style={s.bubbleText}>{message.text || `📄 ${message.file_url?.split('/').pop() || 'Archivo'}`}</Text>
+        <TouchableOpacity
+          onPress={() => {
+            const url = message.file_url;
+            if (url) {
+              if (typeof window !== 'undefined') {
+                window.open(url, '_blank');
+              } else {
+                Linking.openURL(url).catch(() => {});
+              }
+            }
+          }}
+          activeOpacity={0.7}
+        >
+          <Text style={[s.bubbleText, { color: '#00b4e6', textDecorationLine: 'underline' }]}>
+            📄 {message.text || message.file_url?.split('/').pop() || 'Archivo'}
+          </Text>
+        </TouchableOpacity>
       )}
       <View style={s.meta}>
         <Text style={s.time}>{time}</Text>

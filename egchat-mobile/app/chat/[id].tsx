@@ -726,42 +726,33 @@ export default function ChatScreen() {
 
   const handleAttachAction = useCallback(async (action: AttachAction) => {
     if (!chatId) return;
+
+    // ── FOTO ─────────────────────────────────────────────────────
     if (action === 'photo') {
-      Alert.alert('Foto', '¿Cómo quieres enviar la foto?', [
-        {
-          text: 'Cámara',
-          onPress: async () => {
-            const asset = await pickImageFromCamera();
-            if (asset) setPhotoEditUri(asset.uri);
-          },
-        },
-        {
-          text: 'Galería',
-          onPress: async () => {
-            const asset = await pickImageFromLibrary();
-            if (asset) setPhotoEditUri(asset.uri);
-          },
-        },
+      // En web Alert no funciona bien — ir directo a selector de archivos
+      if (typeof document !== 'undefined') {
+        const asset = await pickImageFromLibrary();
+        if (asset) setPhotoEditUri(asset.uri);
+        return;
+      }
+      Alert.alert('Foto', '¿Cómo quieres añadir la foto?', [
+        { text: '📷 Cámara', onPress: async () => { const a = await pickImageFromCamera(); if (a) setPhotoEditUri(a.uri); } },
+        { text: '🖼️ Galería', onPress: async () => { const a = await pickImageFromLibrary(); if (a) setPhotoEditUri(a.uri); } },
         { text: 'Cancelar', style: 'cancel' },
       ]);
       return;
     }
+
+    // ── VIDEO ─────────────────────────────────────────────────────
     if (action === 'video') {
+      if (typeof document !== 'undefined') {
+        const asset = await pickVideo();
+        if (asset) await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
+        return;
+      }
       Alert.alert('Video', '¿Cómo quieres añadir el video?', [
-        {
-          text: '🎥 Grabar',
-          onPress: async () => {
-            const asset = await pickVideoFromCamera();
-            if (asset) await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
-          },
-        },
-        {
-          text: '📁 Galería',
-          onPress: async () => {
-            const asset = await pickVideo();
-            if (asset) await sendMedia(asset, { text: `🎥 ${asset.fileName}`, type: 'video' });
-          },
-        },
+        { text: '🎥 Grabar', onPress: async () => { const a = await pickVideoFromCamera(); if (a) await sendMedia(a, { text: `🎥 ${a.fileName}`, type: 'video' }); } },
+        { text: '📁 Galería', onPress: async () => { const a = await pickVideo(); if (a) await sendMedia(a, { text: `🎥 ${a.fileName}`, type: 'video' }); } },
         { text: 'Cancelar', style: 'cancel' },
       ]);
       return;
