@@ -522,14 +522,16 @@ app.post('/api/auth/reset-password', async (req, res) => {
 
 const normalizeChatParticipant = (part = {}) => {
   const user = Array.isArray(part.users) ? part.users[0] : (part.users || part.user || {});
+  // Priorizar avatar del join users, luego del campo directo
+  const avatar_url = user.avatar_url || part.avatar_url || '';
   return {
     chat_id: part.chat_id,
     user_id: part.user_id || user.id,
     full_name: part.full_name || user.full_name || '',
     phone: part.phone || user.phone || '',
-    avatar_url: part.avatar_url || user.avatar_url || '',
-    user,
-    users: user,
+    avatar_url,
+    user: { ...user, avatar_url },
+    users: { ...user, avatar_url },
   };
 };
 
@@ -629,7 +631,7 @@ app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
 
     const { data: messages } = await supabase
       .from('messages')
-      .select('id, text, type, created_at, sender_id, status, reply_to, file_url')
+      .select('id, text, type, created_at, sender_id, status, reply_to, file_url, users:sender_id(id, full_name, avatar_url)')
       .eq('chat_id', chatId)
       .order('created_at', { ascending: false })
       .range(from, from + limit - 1);
@@ -643,7 +645,21 @@ app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
     const deletedIds = new Set((deletions || []).map((d) => d.message_id));
     const filtered = (messages || []).filter(m => !deletedIds.has(m.id));
 
-    res.json(filtered.reverse());
+    // Normalizar sender para que el cliente lo use directamente
+    const normalized = filtered.map(m => {
+      const senderUser = Array.isArray(m.users) ? m.users[0] : (m.users || {});
+      return {
+        ...m,
+        users: undefined,
+        sender: senderUser?.id ? {
+          id: senderUser.id,
+          full_name: senderUser.full_name || '',
+          avatar_url: senderUser.avatar_url || '',
+        } : undefined,
+      };
+    });
+
+    res.json(normalized.reverse());
   } catch (e) {
     console.error('Get messages error:', e.message);
     res.json([]);
@@ -671,6 +687,19 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
 
     await supabase.from('chats').update({ updated_at: new Date().toISOString() }).eq('id', chatId);
 
+    // Obtener datos del sender para incluir en el evento
+    const { data: senderData } = await supabase
+      .from('users').select('id, full_name, avatar_url').eq('id', req.user.id).single();
+
+    const messageWithSender = {
+      ...message,
+      sender: senderData ? {
+        id: senderData.id,
+        full_name: senderData.full_name || '',
+        avatar_url: senderData.avatar_url || '',
+      } : undefined,
+    };
+
     // Emitir evento en tiempo real a todos los participantes del chat
     try {
       const { data: parts } = await supabase
@@ -678,15 +707,12 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
         .select('user_id')
         .eq('chat_id', chatId);
       const targetUsers = (parts || []).map((p) => p.user_id);
-      emitToUsers(targetUsers, { type: 'new_message', chatId, message });
+      emitToUsers(targetUsers, { type: 'new_message', chatId, message: messageWithSender });
       emitToUsers(targetUsers, { type: 'chat_updated', chatId, ts: Date.now() });
 
       // Enviar Web Push a usuarios que no son el remitente
       const otherUsers = targetUsers.filter(uid => String(uid) !== String(req.user.id));
-      // Obtener nombre del remitente
-      const { data: sender } = await supabase
-        .from('users').select('full_name').eq('id', req.user.id).single();
-      const senderName = sender?.full_name || 'Alguien';
+      const senderName = senderData?.full_name || 'Alguien';
       const pushPayload = {
         title: senderName,
         body: message.type === 'text' ? (message.text || 'Nuevo mensaje') : '📎 Archivo adjunto',
@@ -698,7 +724,7 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
       await Promise.allSettled(otherUsers.map(uid => sendPushToUser(uid, pushPayload)));
     } catch {}
 
-    res.status(201).json(message);
+    res.status(201).json(messageWithSender);
   } catch (e) {
     console.error('Send message error:', e.message);
     res.status(500).json({ message: e.message });
