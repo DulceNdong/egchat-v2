@@ -775,44 +775,7 @@ export default function ChatScreen() {
     }
     if (action === 'contact') {
       setShowAttach(false);
-      // Ofrecer contactos EGCHAT + dispositivo
-      Alert.alert('Compartir contacto', '¿De dónde quieres elegir?', [
-        {
-          text: '📱 Contactos del teléfono',
-          onPress: async () => {
-            const result = await pickContact();
-            if (!result) return;
-            if (result.name === '__LIST__') {
-              // Mostrar lista de contactos del dispositivo
-              try {
-                const deviceContacts = JSON.parse(result.phone);
-                if (!deviceContacts?.length) {
-                  toast.info('Sin contactos en el dispositivo');
-                  return;
-                }
-                // Usar el primer contacto con teléfono como demo; en producción mostrar un picker
-                const first = deviceContacts.find((c: any) => c.phoneNumbers?.length);
-                if (first) {
-                  const phone = first.phoneNumbers?.[0]?.number || '';
-                  const name = first.name || 'Contacto';
-                  const msgText = `👤 ${name}\n📞 ${phone}`;
-                  const tempId = createTempMessageId();
-                  pushOptimistic({ id: tempId, text: msgText, type: 'contact', sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
-                  try {
-                    const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
-                    replaceOptimistic(tempId, sent);
-                  } catch { failOptimistic(tempId); }
-                }
-              } catch {}
-            }
-          },
-        },
-        {
-          text: '👥 Contactos EGCHAT',
-          onPress: () => setShowContactPicker(true),
-        },
-        { text: 'Cancelar', style: 'cancel' },
-      ]);
+      setShowContactPicker(true);
       return;
     }
     if (action === 'location') {

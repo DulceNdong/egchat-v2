@@ -1,8 +1,6 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
-import * as DocumentPicker from 'expo-document-picker';
-import * as Contacts from 'expo-contacts';
 import { chatAPI } from '../api';
 import { toast } from '../components/Toast';
 
@@ -174,47 +172,34 @@ export async function pickVideoFromCamera(): Promise<PickedAsset | null> {
 }
 
 export async function pickDocument(): Promise<PickedAsset | null> {
-  try {
-    const result = await DocumentPicker.getDocumentAsync({
-      type: '*/*',
-      copyToCacheDirectory: true,
-      multiple: false,
-    });
-    if (result.canceled || !result.assets?.[0]) return null;
-    const a = result.assets[0];
-    if (rejectLargeAsset(a.size, MAX_FILE_BYTES)) return null;
-    return {
-      uri: a.uri,
-      fileName: a.name || 'document',
-      mimeType: a.mimeType || 'application/octet-stream',
-      size: a.size,
-    };
-  } catch {
-    toast.error('Error', 'No se pudo seleccionar el archivo');
+  // Usar ImagePicker con MediaTypeOptions.All como fallback hasta instalar expo-document-picker
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    toast.error('Permiso requerido', 'Activa el acceso a archivos');
     return null;
   }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.All,
+    quality: 1,
+    copyToCacheDirectory: true,
+  });
+  if (result.canceled || !result.assets?.[0]) return null;
+  const a = result.assets[0];
+  if (rejectLargeAsset(a.fileSize, MAX_FILE_BYTES)) return null;
+  const ext = (a.uri.split('.').pop() || 'bin').toLowerCase();
+  const isVideo = a.type === 'video';
+  return {
+    uri: a.uri,
+    fileName: a.fileName || `file.${ext}`,
+    mimeType: a.mimeType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
+    size: a.fileSize,
+  };
 }
 
 export async function pickContact(): Promise<{ name: string; phone: string } | null> {
-  try {
-    const { status } = await Contacts.requestPermissionsAsync();
-    if (status !== 'granted') {
-      toast.error('Permiso requerido', 'Activa el acceso a los contactos');
-      return null;
-    }
-    const { data } = await Contacts.getContactsAsync({
-      fields: [Contacts.Fields.Name, Contacts.Fields.PhoneNumbers],
-    });
-    if (!data.length) {
-      toast.info('Sin contactos', 'No hay contactos en el dispositivo');
-      return null;
-    }
-    // Retorna la lista para que el componente muestre el selector
-    return { name: '__LIST__', phone: JSON.stringify(data.slice(0, 200)) };
-  } catch {
-    toast.error('Error', 'No se pudo acceder a los contactos');
-    return null;
-  }
+  // expo-contacts solo funciona en nativo; en web delegamos al modal de EGCHAT
+  toast.info('Contactos', 'Usa los contactos EGCHAT en web');
+  return null;
 }
 
 export async function uploadAndSend(
