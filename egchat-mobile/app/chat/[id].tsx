@@ -1088,6 +1088,8 @@ export default function ChatScreen() {
           isGroup={isGroup}
           myAvatar={myProfile.avatar_url}
           myName={myProfile.full_name}
+          otherName={chatName}
+          otherAvatar={chatAvatar}
           replyPreview={getReplyPreview(item)}
           showReadReceipts={showReadReceipts}
           highlight={searchHit}
