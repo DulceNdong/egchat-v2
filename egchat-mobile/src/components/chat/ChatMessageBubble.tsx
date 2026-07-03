@@ -138,7 +138,175 @@ const vd = StyleSheet.create({
 });
 
 // ── Helpers audio ─────────────────────────────────────────────────
-// Parsea "Artista - Canción.mp3" o "Canción.mp3"
+// Detecta si es mensaje de voz (grabado en app) vs canción compartida
+const isVoiceMessage = (msg: ChatMessage): boolean => {
+  const text = msg.text || '';
+  const url  = msg.file_url || '';
+  // Grabación de voz: nombre es audio.m4a / audio.wav, o texto tiene "Audio (Xs)"
+  if (/audio\.(m4a|wav|ogg|aac|opus)$/i.test(url)) return true;
+  if (/^🎵\s*Audio\s*(\(\d+s\))?$/i.test(text.trim())) return true;
+  if (/^audio\.(m4a|wav|ogg|aac|opus)$/i.test(text.trim())) return true;
+  return false;
+};
+
+const SPEED_STEPS = [1, 1.5, 2] as const;
+type SpeedStep = typeof SPEED_STEPS[number];
+
+// ── VoiceCard — mensaje de voz con velocidad ──────────────────────
+const VOICE_BARS = [0.3,0.5,0.8,0.6,1.0,0.7,0.4,0.9,0.5,0.8,0.6,0.3,0.7,1.0,0.5,0.4,0.9,0.6,0.8,0.3,0.5,0.7,1.0,0.4,0.6,0.9,0.5,0.3,0.8,0.6];
+
+const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const [playing, setPlaying]   = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [speed, setSpeed]       = useState<SpeedStep>(1);
+  const soundRef   = useRef<Audio.Sound | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
+  const pulseAnim  = useRef(new Animated.Value(1)).current;
+  const isWeb      = typeof document !== 'undefined';
+  const url        = message.file_url || '';
+
+  const fmtTime = (s: number) =>
+    `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+
+  // Pulso
+  useEffect(() => {
+    if (playing) {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.12, duration: 500, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1.0,  duration: 500, useNativeDriver: true }),
+      ])).start();
+    } else { pulseAnim.stopAnimation(); pulseAnim.setValue(1); }
+  }, [playing]);
+
+  // Web: Audio element
+  useEffect(() => {
+    if (!isWeb || !url) return;
+    const el = new (window as any).Audio(url) as HTMLAudioElement;
+    el.preload = 'metadata';
+    el.playbackRate = speed;
+    el.onloadedmetadata = () => setDuration(el.duration);
+    el.ontimeupdate = () => {
+      setPosition(el.currentTime);
+      setProgress(el.duration ? el.currentTime / el.duration : 0);
+    };
+    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
+    audioElRef.current = el;
+    return () => { el.pause(); el.src = ''; audioElRef.current = null; };
+  }, [isWeb, url]);
+
+  // Cambiar velocidad en web
+  useEffect(() => {
+    if (isWeb && audioElRef.current) audioElRef.current.playbackRate = speed;
+  }, [isWeb, speed]);
+
+  const togglePlay = useCallback(async () => {
+    if (!url) return;
+    if (isWeb) {
+      const el = audioElRef.current;
+      if (!el) return;
+      if (playing) { el.pause(); setPlaying(false); }
+      else { el.play().catch(() => {}); setPlaying(true); }
+      return;
+    }
+    try {
+      if (soundRef.current) {
+        const st = await soundRef.current.getStatusAsync();
+        if (st.isLoaded) {
+          if (st.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
+          else              { await soundRef.current.setRateAsync(speed, true); await soundRef.current.playAsync(); setPlaying(true); }
+          return;
+        }
+      }
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      const { sound } = await Audio.Sound.createAsync(
+        { uri: url }, { shouldPlay: true, rate: speed, shouldCorrectPitch: true },
+        (st) => {
+          if (!st.isLoaded) return;
+          const dur = (st.durationMillis || 0) / 1000;
+          const pos = (st.positionMillis || 0) / 1000;
+          setDuration(dur); setPosition(pos);
+          setProgress(dur ? pos / dur : 0);
+          if (st.didJustFinish) { setPlaying(false); setProgress(0); setPosition(0); sound.setPositionAsync(0).catch(() => {}); }
+        }
+      );
+      soundRef.current = sound;
+      setPlaying(true);
+    } catch {}
+  }, [url, playing, isWeb, speed]);
+
+  // Cambiar velocidad en nativo mientras reproduce
+  const cycleSpeed = useCallback(async () => {
+    const idx  = SPEED_STEPS.indexOf(speed);
+    const next = SPEED_STEPS[(idx + 1) % SPEED_STEPS.length];
+    setSpeed(next);
+    if (!isWeb && soundRef.current) {
+      try { await soundRef.current.setRateAsync(next, true); } catch {}
+    }
+  }, [speed, isWeb]);
+
+  useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
+
+  const accent   = isOwn ? '#00c8a0' : '#00b4e6';
+  const barFill  = isOwn ? '#00c8a0' : '#00b4e6';
+  const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
+
+  return (
+    <View style={vc.card}>
+      {/* Botón play/pause */}
+      <TouchableOpacity onPress={togglePlay} activeOpacity={0.8}>
+        <Animated.View style={[vc.btn, { backgroundColor: accent, transform: [{ scale: pulseAnim }] }]}>
+          {playing ? (
+            <View style={vc.pauseWrap}>
+              <View style={[vc.pauseBar, { backgroundColor: '#fff' }]} />
+              <View style={[vc.pauseBar, { backgroundColor: '#fff' }]} />
+            </View>
+          ) : (
+            <View style={vc.playTriangle} />
+          )}
+        </Animated.View>
+      </TouchableOpacity>
+
+      {/* Onda + info */}
+      <View style={vc.mid}>
+        <View style={vc.waveRow}>
+          {VOICE_BARS.map((h, i) => {
+            const filled = progress > 0 && i / VOICE_BARS.length < progress;
+            return <View key={i} style={[vc.bar, { height: Math.max(3, h * 24), backgroundColor: filled ? barFill : barEmpty }]} />;
+          })}
+        </View>
+        <View style={vc.timeRow}>
+          <Text style={vc.timeText}>
+            {playing && position > 0 ? fmtTime(position) : duration > 0 ? fmtTime(duration) : '0:00'}
+          </Text>
+        </View>
+      </View>
+
+      {/* Botón velocidad */}
+      <TouchableOpacity onPress={cycleSpeed} style={[vc.speedBtn, { borderColor: accent }]} activeOpacity={0.7}>
+        <Text style={[vc.speedText, { color: accent }]}>{speed}×</Text>
+      </TouchableOpacity>
+    </View>
+  );
+};
+
+const vc = StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 220, maxWidth: 280, paddingVertical: 4 },
+  btn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  playTriangle: { width: 0, height: 0, borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 12, borderTopColor: 'transparent', borderBottomColor: 'transparent', borderLeftColor: '#fff', marginLeft: 3 },
+  pauseWrap: { flexDirection: 'row', gap: 3 },
+  pauseBar: { width: 3, height: 13, borderRadius: 2 },
+  mid: { flex: 1, gap: 4 },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26 },
+  bar: { width: 3, borderRadius: 2 },
+  timeRow: { flexDirection: 'row' },
+  timeText: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
+  speedBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5, flexShrink: 0, minWidth: 42, alignItems: 'center' },
+  speedText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+});
+
+
 const parseTrackInfo = (raw: string) => {
   const clean = (raw || '')
     .replace(/^🎵\s*/, '')
@@ -649,7 +817,9 @@ export const ChatMessageBubble = React.memo(({
         <VideoCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'audio' && (
-        <MusicCard message={message} isOwn={isOwn} />
+        isVoiceMessage(message)
+          ? <VoiceCard message={message} isOwn={isOwn} />
+          : <MusicCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'file' && (
         <TouchableOpacity
