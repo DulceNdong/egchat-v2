@@ -338,11 +338,14 @@ export const userAPI = {
   updateProfile: (data: any) => put<any>('/api/user/profile', data),
 };
 
-// Keep-alive para que Render no duerma (igual que la web)
+// Keep-alive agresivo para que Render no duerma nunca (plan gratuito duerme a los 15 min)
 const keepAlive = async () => {
-  try { await fetch(`${BASE}/health`); } catch {}
+  try { await fetch(`${BASE}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined }); } catch {}
 };
-setInterval(keepAlive, 4 * 60 * 1000);
+// Cada 90 segundos — muy por debajo del límite de 15 min de Render
+setInterval(keepAlive, 90 * 1000);
+// También al iniciar por si el servidor estaba dormido
+keepAlive();
 
 // ══════════════════════════════════════════════════════════════════
 // STORIES
