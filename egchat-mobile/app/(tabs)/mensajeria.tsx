@@ -19,6 +19,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
+import { useChatStream } from '../../src/hooks/useChatStream';
 import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
 import {
   loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
@@ -250,6 +251,13 @@ export default function MensajeriaScreen() {
   const { isDark } = useThemeContext();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+
+  // ── SSE Stream — actualizar lista de chats al instante ────────────
+  useChatStream(currentUserId || undefined, (event) => {
+    if (event.type === 'new_message' || event.type === 'chat_updated') {
+      loadChats();
+    }
+  });
 
   const getChatMeta = useCallback((chat: Chat) => {
     const other = chat.participants.find(p => p.user_id !== currentUserId);

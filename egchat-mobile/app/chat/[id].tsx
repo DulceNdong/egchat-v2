@@ -40,6 +40,7 @@ import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
 import { useOffline } from '../../src/hooks/useOffline';
 import { toast } from '../../src/components/Toast';
 import { createChatTypingChannel, subscribeToChat, subscribeToOnlineUsers } from '../../src/supabase';
+import { useChatStream } from '../../src/hooks/useChatStream';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -201,6 +202,18 @@ export default function ChatScreen() {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
     return () => clearAllMessageStatusTimers();
   }, []);
+
+  // ── SSE Stream — mensajes instantáneos desde el backend ──────────
+  useChatStream(currentUserId || undefined, (event) => {
+    if (event.type === 'new_message' && event.chatId === chatId && event.message) {
+      const msg = event.message;
+      if (msg.sender_id === currentUserId) return; // ya lo tenemos optimista
+      const enriched = normalizeMessage(msg);
+      setMessages(prev => mergeMessages(prev, [enriched]));
+      chatAPI.markAsRead(chatId, msg.id).catch(() => {});
+      setIsTyping(false);
+    }
+  });
 
   useEffect(() => {
     if (!chatId) return;
