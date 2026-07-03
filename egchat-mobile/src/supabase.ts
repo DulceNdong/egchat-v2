@@ -29,7 +29,7 @@ export const subscribeToChat = (
   onNewMessage: (message: ChatMessage, event: 'INSERT' | 'UPDATE' | 'DELETE') => void
 ) => {
   const channel = supabase
-    .channel(`chat:${chatId}`)
+    .channel(`chat:${chatId}:${Date.now()}`)
     .on(
       'postgres_changes',
       {
@@ -43,10 +43,15 @@ export const subscribeToChat = (
         const message = event === 'DELETE' ? payload.old : payload.new;
         onNewMessage(message as ChatMessage, event);
       }
-    )
-    .subscribe();
+    );
 
-  // Retorna función para desuscribirse
+  // IMPORTANTE: subscribe() debe llamarse DESPUÉS de todos los .on()
+  channel.subscribe((status) => {
+    if (status === 'CHANNEL_ERROR') {
+      console.warn('[Supabase] Error en canal chat:', chatId);
+    }
+  });
+
   return () => {
     supabase.removeChannel(channel);
   };
@@ -58,7 +63,7 @@ export const subscribeToUserChats = (
   onChatUpdated: () => void
 ) => {
   const channel = supabase
-    .channel(`user-chats:${userId}`)
+    .channel(`user-chats:${userId}:${Date.now()}`)
     .on(
       'postgres_changes',
       {
@@ -77,8 +82,9 @@ export const subscribeToUserChats = (
         table: 'chats',
       },
       () => onChatUpdated()
-    )
-    .subscribe();
+    );
+
+  channel.subscribe();
 
   return () => {
     supabase.removeChannel(channel);
