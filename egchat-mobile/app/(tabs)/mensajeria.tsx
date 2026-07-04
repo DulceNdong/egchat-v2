@@ -20,6 +20,7 @@ import { router } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { useChatStream } from '../../src/hooks/useChatStream';
+import { useSharedContent } from '../../src/native/ShareExtension';
 import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
 import {
   loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
@@ -271,6 +272,14 @@ export default function MensajeriaScreen() {
   useChatStream(currentUserId || undefined, (event) => {
     if (event.type === 'new_message' || event.type === 'chat_updated') {
       loadChats();
+    }
+  });
+
+  // ── Recibir contenido compartido desde otras apps ─────────────────
+  useSharedContent((content) => {
+    if (content.uri || content.text) {
+      (global as any).__egchat_shared_content = content;
+      toast.info('📎 Contenido recibido', 'Selecciona el chat donde enviarlo');
     }
   });
 

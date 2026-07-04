@@ -27,6 +27,8 @@ class MainApplication : Application(), ReactApplication {
               add(CallPackage())
               // Módulo notificaciones ricas con imagen
               add(RichNotificationPackage())
+              // Módulo compartir desde otras apps
+              add(SharePackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
