@@ -21,6 +21,7 @@ import { chatAPI, authAPI, contactsAPI } from '../../src/api';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { useChatStream } from '../../src/hooks/useChatStream';
 import { useSharedContent } from '../../src/native/ShareExtension';
+import { HomeWidget } from '../../src/native/HomeWidget';
 import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
 import {
   loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
@@ -321,6 +322,24 @@ export default function MensajeriaScreen() {
 
       setChats(enriched);
       saveCache('chat_list', enriched);
+
+      // Actualizar widget de pantalla de inicio con últimos chats
+      HomeWidget.update(enriched.map(c => {
+        const other = c.participants.find((p: any) => p.user_id !== currentUserId);
+        const name = c.type === 'private'
+          ? (other?.full_name || other?.users?.full_name || 'Usuario')
+          : (c.name || 'Grupo');
+        const avatar = c.type === 'private'
+          ? (other?.avatar_url || other?.users?.avatar_url || '')
+          : (c.avatar_url || '');
+        return {
+          id: c.id,
+          name,
+          lastMsg: c.last_message?.text || '',
+          unread: c.unread_count || 0,
+          avatar,
+        };
+      }));
       setFavoriteContacts(favContacts || []);
       setFavoriteGroupIds(favGroups);
     } catch {

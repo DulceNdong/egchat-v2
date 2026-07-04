@@ -29,6 +29,8 @@ class MainApplication : Application(), ReactApplication {
               add(RichNotificationPackage())
               // Módulo compartir desde otras apps
               add(SharePackage())
+              // Módulo widget pantalla de inicio
+              add(WidgetPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

@@ -1,4 +1,5 @@
 <resources>
   <string name="app_name">EGCHAT</string>
   <string name="expo_runtime_version">1.0.0</string>
+  <string name="widget_description">Muestra tus últimos chats con mensajes no leídos</string>
 </resources>
