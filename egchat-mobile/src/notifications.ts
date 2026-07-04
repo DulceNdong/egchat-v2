@@ -8,6 +8,7 @@ import Constants from 'expo-constants';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
+import { RichNotifications } from './native/RichNotifications';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
@@ -159,6 +160,16 @@ export function setupNotificationListeners(
         callerName: data.callerName,
         callType: data.callType || 'audio',
         offer: data.offer,
+      });
+    } else if (data?.chatId && Platform.OS === 'android') {
+      // Mostrar notificación rica nativa cuando la app está en primer plano
+      RichNotifications.show({
+        chatId: data.chatId,
+        senderName: data.senderName || notification.request.content.title || 'EGChat',
+        senderAvatar: data.senderAvatar || '',
+        messageText: notification.request.content.body || '',
+        messageType: data.messageType || 'text',
+        imageUrl: data.imageUrl || '',
       });
     }
   });

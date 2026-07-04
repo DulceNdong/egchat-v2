@@ -25,6 +25,8 @@ class MainApplication : Application(), ReactApplication {
             PackageList(this).packages.apply {
               // Módulo nativo de llamadas EGChat
               add(CallPackage())
+              // Módulo notificaciones ricas con imagen
+              add(RichNotificationPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

@@ -770,13 +770,27 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
       // Enviar Web Push a usuarios que no son el remitente
       const otherUsers = targetUsers.filter(uid => String(uid) !== String(req.user.id));
       const senderName = senderData?.full_name || 'Alguien';
+      const msgType = message.type || 'text';
+      const bodyText = msgType === 'text'
+        ? (message.text || 'Nuevo mensaje')
+        : msgType === 'image' ? '📷 Foto'
+        : msgType === 'audio' ? '🎵 Mensaje de voz'
+        : msgType === 'video' ? '🎥 Video'
+        : '📎 Archivo adjunto';
+
       const pushPayload = {
         title: senderName,
-        body: message.type === 'text' ? (message.text || 'Nuevo mensaje') : '📎 Archivo adjunto',
-        icon: '/favicon.svg',
+        body: bodyText,
+        icon: senderData?.avatar_url || '/favicon.svg',
         tag: `chat-${chatId}`,
         url: '/',
         chatId,
+        // Datos para notificaciones ricas nativas
+        senderName,
+        senderAvatar: senderData?.avatar_url || '',
+        messageType: msgType,
+        imageUrl: msgType === 'image' ? (message.file_url || '') : '',
+        'mutable-content': 1,
       };
       await Promise.allSettled(otherUsers.map(uid => sendPushToUser(uid, pushPayload)));
     } catch {}
@@ -4551,7 +4565,17 @@ const sendPushToUser = async (userId, payload) => {
         badge: 1,
         channelId: isCall ? 'egchat-calls' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
-        data: payload,
+        data: {
+          ...payload,
+          // iOS: mutable-content=1 activa UNNotificationServiceExtension
+          // para añadir imagen antes de mostrar la notif
+          'mutable-content': 1,
+          imageUrl: payload.imageUrl || payload.icon || '',
+          senderName: payload.senderName || payload.callerName || '',
+          senderAvatar: payload.senderAvatar || payload.icon || '',
+          messageType: payload.messageType || 'text',
+          chatId: payload.chatId || '',
+        },
         // Llamadas: TTL de 120s para dar tiempo a desbloquear el teléfono
         ...(isCall ? { ttl: 120, expiration: Math.floor(Date.now() / 1000) + 120 } : {}),
       }));
