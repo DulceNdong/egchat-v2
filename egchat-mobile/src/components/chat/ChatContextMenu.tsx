@@ -28,6 +28,7 @@ export function ChatContextMenu({
   onDelete: () => void;
   onDeleteForMe: () => void;
   onEphemeral?: () => void;
+  onPin?: () => void;
   onReaction: (emoji: string) => void;
 }) {
   if (!message) return null;
@@ -48,6 +49,7 @@ export function ChatContextMenu({
               { label: 'Copiar', onPress: onCopy },
               { label: 'Responder', onPress: onReply },
               { label: 'Destacar', onPress: onStar },
+              { label: '📌 Fijar mensaje', onPress: () => { onPin?.(); onClose(); }, danger: false },
               ...(isOwn ? [
                 { label: 'Eliminar para todos', onPress: onDelete, danger: true },
                 { label: '⏱ Mensaje efímero (30s)', onPress: () => { onEphemeral?.(); onClose(); }, danger: false },

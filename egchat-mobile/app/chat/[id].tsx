@@ -44,6 +44,8 @@ import { toast } from '../../src/components/Toast';
 import { createChatTypingChannel, subscribeToChat, subscribeToOnlineUsers } from '../../src/supabase';
 import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
+import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
+import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -189,6 +191,8 @@ export default function ChatScreen() {
   const [showStarredModal, setShowStarredModal] = useState(false);
   const [isPinned, setIsPinned] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [isIncognito, setIsIncognito] = useState(false);
+  const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [mediaPickerMode, setMediaPickerMode] = useState<'photo' | 'video' | null>(null);
   const flatListRef = useRef<FlatList>(null);
@@ -239,6 +243,8 @@ export default function ChatScreen() {
       } catch { /* ignore */ }
     });
     AsyncStorage.getItem(`egchat_muted_${chatId}`).then(v => setIsMuted(v === '1'));
+    isIncognitoChat(chatId).then(setIsIncognito);
+    getPinnedMessages(chatId).then(setPinnedMessages);
   }, [chatId]);
 
   const applyMessageStatus = useCallback((messageId: string, status: Message['status']) => {
@@ -1017,6 +1023,19 @@ export default function ChatScreen() {
     },
     {
       section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isIncognito ? '#8b5cf6' : IC} strokeWidth={1.8}><Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" strokeLinecap="round"/><Path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" strokeLinecap="round"/><Line x1="1" y1="1" x2="23" y2="23" strokeLinecap="round"/></Svg>,
+      label: isIncognito ? 'Desactivar incógnito' : '🕵️ Modo incógnito',
+      color: isIncognito ? '#8b5cf6' : IC,
+      onPress: async () => {
+        const next = !isIncognito;
+        await setIncognitoMode(chatId, next);
+        setIsIncognito(next);
+        setDrawerVisible(false);
+        toast.info(next ? '🕵️ Incógnito activado' : 'Incógnito desactivado');
+      },
+    },
+    {
+      section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Rect x="3" y="3" width="18" height="18" rx="2"/><Line x1="3" y1="9" x2="21" y2="9" strokeLinecap="round"/><Line x1="9" y1="21" x2="9" y2="9" strokeLinecap="round"/></Svg>,
       label: 'Fondo de pantalla',
       color: IC,
@@ -1208,6 +1227,37 @@ export default function ChatScreen() {
         />
       )}
 
+      {/* Barra de mensaje fijado */}
+      {pinnedMessages.length > 0 && (
+        <TouchableOpacity
+          style={styles.pinnedBar}
+          onPress={() => {
+            const first = pinnedMessages[pinnedMessages.length - 1];
+            const msg = messages.find(m => m.id === first.id);
+            if (msg) flatListRef.current?.scrollToItem({ item: msg, animated: true });
+          }}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.pinnedIcon}>📌</Text>
+          <View style={styles.pinnedContent}>
+            <Text style={styles.pinnedName}>{pinnedMessages[pinnedMessages.length - 1].senderName}</Text>
+            <Text style={styles.pinnedText} numberOfLines={1}>
+              {pinnedMessages[pinnedMessages.length - 1].text}
+            </Text>
+          </View>
+          {pinnedMessages.length > 1 && (
+            <Text style={styles.pinnedCount}>{pinnedMessages.length}</Text>
+          )}
+        </TouchableOpacity>
+      )}
+
+      {/* Badge incógnito */}
+      {isIncognito && (
+        <View style={styles.incognitoBadge}>
+          <Text style={styles.incognitoText}>🕵️ Modo incógnito</Text>
+        </View>
+      )}
+
       <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <View style={styles.chatBg}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
@@ -1376,14 +1426,29 @@ export default function ChatScreen() {
         onEphemeral={() => {
           if (!contextMsg) return;
           const msgId = contextMsg.id;
-          const chatIdLocal = chatId;
           // Borrar visualmente después de 30 segundos
           setTimeout(() => {
             setMessages(prev => prev.filter(m => m.id !== msgId));
-            // Borrar del servidor también
             chatAPI.deleteMessage(msgId).catch(() => {});
           }, 30000);
           toast.info('⏱ Efímero', 'El mensaje se borrará en 30 segundos');
+        }}
+        onPin={() => {
+          if (!contextMsg || !chatId) return;
+          const senderName = contextMsg.sender_id === currentUserId
+            ? (myProfile.full_name || 'Yo')
+            : chatName;
+          pinMessage(chatId, {
+            id: contextMsg.id,
+            text: contextMsg.text || '📎 Adjunto',
+            senderName,
+            pinnedAt: new Date().toISOString(),
+          }).then(ok => {
+            if (ok) {
+              getPinnedMessages(chatId).then(setPinnedMessages);
+              toast.info('📌 Mensaje fijado');
+            }
+          });
         }}
       />
       <ChatWallpaperModal
@@ -1983,6 +2048,27 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.error,
   },
   recordingTime: { fontSize: 14, fontWeight: '700', color: Colors.error },
+  // Mensajes fijados
+  pinnedBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(0,200,160,0.08)', paddingHorizontal: 14, paddingVertical: 8,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(0,200,160,0.15)',
+  },
+  pinnedIcon: { fontSize: 14 },
+  pinnedContent: { flex: 1 },
+  pinnedName: { fontSize: 11, fontWeight: '700', color: '#00c8a0' },
+  pinnedText: { fontSize: 12, color: '#6b7280' },
+  pinnedCount: {
+    fontSize: 11, fontWeight: '700', color: '#fff',
+    backgroundColor: '#00c8a0', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1,
+  },
+  // Modo incógnito
+  incognitoBadge: {
+    backgroundColor: 'rgba(139,92,246,0.12)', paddingHorizontal: 14, paddingVertical: 6,
+    borderBottomWidth: 1, borderBottomColor: 'rgba(139,92,246,0.2)',
+    alignItems: 'center',
+  },
+  incognitoText: { fontSize: 12, color: '#8b5cf6', fontWeight: '600' },
 });
 
 // ── Estilos Modal Selector Foto/Video ─────────────────────────────
