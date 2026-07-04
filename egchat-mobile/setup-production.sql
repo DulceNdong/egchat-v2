@@ -39,6 +39,17 @@ END $$;
 -- 5. Índice de mensajes por chat (rendimiento)
 CREATE INDEX IF NOT EXISTS idx_messages_chat_created ON messages(chat_id, created_at DESC);
 
+-- 6. Realtime — agregar tabla messages solo si no está ya en la publicación
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_publication_tables
+    WHERE pubname = 'supabase_realtime' AND tablename = 'messages'
+  ) THEN
+    ALTER PUBLICATION supabase_realtime ADD TABLE messages;
+  END IF;
+END $$;
+
 -- Verificar tablas críticas
 SELECT table_name FROM information_schema.tables
 WHERE table_schema = 'public'
