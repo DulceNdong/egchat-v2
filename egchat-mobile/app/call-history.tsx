@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Polygon, Rect, Line } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
-import { chatAPI, getToken, getApiBase } from '../src/api';
+import { chatAPI, getToken, getApiBase, authAPI } from '../src/api';
 
 type CallFilter = 'all' | 'missed' | 'outgoing' | 'incoming';
 
@@ -60,13 +60,61 @@ export default function CallHistoryScreen() {
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<CallFilter>('all');
+  const [currentUserId, setCurrentUserId] = useState<string>('');
+
+  useEffect(() => {
+    authAPI.getProfile()
+      .then((p: any) => {
+        const uid = p?.id || '';
+        setCurrentUserId(uid);
+        loadCallHistory();
+      })
+      .catch(() => loadCallHistory());
+  }, []);
+
+  // Extrae el nombre real del otro participante en un chat privado
+  const getContactName = (chat: any, userId: string): string => {
+    if (chat.type === 'group') return chat.name || 'Grupo';
+    const other = (chat.participants || []).find((p: any) => p.user_id !== userId);
+    return (
+      other?.full_name ||
+      other?.users?.full_name ||
+      other?.user?.full_name ||
+      chat.name ||
+      'Sin nombre'
+    );
+  };
+
+  const getContactAvatar = (chat: any, userId: string): string | undefined => {
+    if (chat.type === 'group') return chat.avatar_url;
+    const other = (chat.participants || []).find((p: any) => p.user_id !== userId);
+    const raw = other?.avatar_url || other?.users?.avatar_url || other?.user?.avatar_url;
+    if (!raw || !raw.startsWith('http')) return undefined;
+    return raw;
+  };
+
+  const getContactUserId = (chat: any, userId: string, senderId: string): string => {
+    // Si el mensaje lo envió el usuario actual, el contacto es el otro participante
+    if (senderId === userId) {
+      const other = (chat.participants || []).find((p: any) => p.user_id !== userId);
+      return other?.user_id || senderId;
+    }
+    return senderId;
+  };
 
   useEffect(() => { loadCallHistory(); }, []);
 
   const loadCallHistory = async () => {
     setLoading(true);
     try {
-      // Obtener mensajes de tipo llamada de todos los chats
+      // Obtener userId actual si aún no está cargado
+      let userId = currentUserId;
+      if (!userId) {
+        const profile = await authAPI.getProfile().catch(() => null);
+        userId = profile?.id || '';
+        if (userId) setCurrentUserId(userId);
+      }
+
       const chats = await chatAPI.getChats();
       const records: CallRecord[] = [];
 
@@ -80,9 +128,10 @@ export default function CallHistoryScreen() {
           records.push({
             id: msg.id,
             callId: msg.id,
-            contactName: chat.name || 'Usuario',
-            contactUserId: msg.sender_id || '',
-            type: txt.includes('📹') || txt.includes('video') ? 'video' : 'audio',
+            contactName: getContactName(chat, userId),
+            contactAvatar: getContactAvatar(chat, userId),
+            contactUserId: getContactUserId(chat, userId, msg.sender_id || ''),
+            type: txt.includes('📹') || txt.toLowerCase().includes('video') ? 'video' : 'audio',
             direction: txt.includes('saliente') ? 'outgoing'
               : txt.includes('perdida') ? 'missed' : 'incoming',
             duration: undefined,
