@@ -385,6 +385,33 @@ export default function ChatScreen() {
     return subscribeToOnlineUsers(setOnlineUserIds);
   }, [currentUserId]);
 
+  // Fallback: consultar online_status del otro usuario cada 15s
+  // (por si Supabase Presence no funciona en web)
+  useEffect(() => {
+    if (!otherParticipant?.user_id || isGroup) return;
+    const uid = String(otherParticipant.user_id);
+
+    const check = async () => {
+      try {
+        const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+        const token = await getToken();
+        const res = await fetch(`${BASE}/api/users/${uid}`, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        const user = await res.json();
+        if (user?.online_status) {
+          setOnlineUserIds(prev => prev.includes(uid) ? prev : [...prev, uid]);
+        } else {
+          setOnlineUserIds(prev => prev.filter(id => id !== uid));
+        }
+      } catch {}
+    };
+
+    check();
+    const interval = setInterval(check, 15000);
+    return () => clearInterval(interval);
+  }, [otherParticipant?.user_id, isGroup]);
+
   useEffect(() => {
     if (!chatId || !currentUserId) return;
 
@@ -925,7 +952,7 @@ export default function ChatScreen() {
     : '...';
   const chatAvatar = isGroup ? chat?.avatar_url : getParticipantAvatar(otherParticipant);
   const otherPhone = getParticipantPhone(otherParticipant);
-  const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(otherParticipant.user_id);
+  const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(String(otherParticipant.user_id));
   const chatSubtitle = isGroup
     ? `${chat?.participants?.length || 0} miembros`
     : isOtherOnline ? 'En línea' : 'Desconectado';
@@ -1314,10 +1341,13 @@ export default function ChatScreen() {
       >
         <Pressable style={mpStyles.overlay} onPress={() => setMediaPickerMode(null)}>
           <Pressable style={mpStyles.sheet} onPress={e => e.stopPropagation()}>
-            {/* Handle */}
-            <View style={mpStyles.handle} />
+            {/* Handle arrastrable */}
+            <TouchableOpacity onPress={() => setMediaPickerMode(null)} style={mpStyles.handleWrap} activeOpacity={0.7}>
+              <View style={mpStyles.handle} />
+            </TouchableOpacity>
+
             <Text style={mpStyles.title}>
-              {mediaPickerMode === 'photo' ? '📷 Añadir foto' : '🎥 Añadir video'}
+              {mediaPickerMode === 'photo' ? 'Añadir foto' : 'Añadir video'}
             </Text>
 
             {/* Opción Cámara */}
@@ -1336,7 +1366,10 @@ export default function ChatScreen() {
               }}
             >
               <View style={[mpStyles.optionIcon, { backgroundColor: '#fff3e0' }]}>
-                <Text style={mpStyles.optionEmoji}>📷</Text>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+                  <Circle cx="12" cy="13" r="4"/>
+                </Svg>
               </View>
               <View style={mpStyles.optionText}>
                 <Text style={mpStyles.optionLabel}>
@@ -1344,10 +1377,9 @@ export default function ChatScreen() {
                 </Text>
                 <Text style={mpStyles.optionSub}>Abrir la cámara ahora</Text>
               </View>
-              <Text style={mpStyles.chevron}>›</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={2} strokeLinecap="round"><Path d="M9 18l6-6-6-6"/></Svg>
             </TouchableOpacity>
 
-            {/* Separador */}
             <View style={mpStyles.divider} />
 
             {/* Opción Galería */}
@@ -1366,15 +1398,17 @@ export default function ChatScreen() {
               }}
             >
               <View style={[mpStyles.optionIcon, { backgroundColor: '#e8f5e9' }]}>
-                <Text style={mpStyles.optionEmoji}>🖼️</Text>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#22c55e" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="3" y="3" width="18" height="18" rx="3"/>
+                  <Circle cx="8.5" cy="8.5" r="1.5"/>
+                  <Polyline points="21 15 16 10 5 21"/>
+                </Svg>
               </View>
               <View style={mpStyles.optionText}>
-                <Text style={mpStyles.optionLabel}>
-                  {mediaPickerMode === 'photo' ? 'Elegir de la galería' : 'Elegir de la galería'}
-                </Text>
+                <Text style={mpStyles.optionLabel}>Elegir de la galería</Text>
                 <Text style={mpStyles.optionSub}>Seleccionar desde el dispositivo</Text>
               </View>
-              <Text style={mpStyles.chevron}>›</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={2} strokeLinecap="round"><Path d="M9 18l6-6-6-6"/></Svg>
             </TouchableOpacity>
 
             {/* Botón cancelar */}
@@ -1874,46 +1908,51 @@ const mpStyles = StyleSheet.create({
   },
   sheet: {
     backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
+    borderTopLeftRadius: 24,
+    borderTopRightRadius: 24,
     paddingBottom: 34,
-    paddingTop: 8,
-    paddingHorizontal: 16,
+    paddingTop: 0,
+    paddingHorizontal: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.12,
+    shadowRadius: 16,
+    elevation: 20,
+  },
+  handleWrap: {
+    alignItems: 'center',
+    paddingVertical: 14,
   },
   handle: {
-    width: 36, height: 4, borderRadius: 2,
-    backgroundColor: '#e5e7eb',
-    alignSelf: 'center',
-    marginBottom: 16,
+    width: 40, height: 4, borderRadius: 2,
+    backgroundColor: '#d1d5db',
   },
   title: {
-    fontSize: 16, fontWeight: '700', color: '#111827',
+    fontSize: 17, fontWeight: '700', color: '#111827',
     textAlign: 'center', marginBottom: 20,
   },
   option: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 14,
-    paddingVertical: 14,
-    paddingHorizontal: 4,
+    gap: 16,
+    paddingVertical: 16,
+    paddingHorizontal: 0,
   },
   optionIcon: {
-    width: 48, height: 48, borderRadius: 14,
+    width: 52, height: 52, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
     flexShrink: 0,
   },
-  optionEmoji: { fontSize: 24 },
   optionText: { flex: 1 },
-  optionLabel: { fontSize: 15, fontWeight: '600', color: '#111827' },
-  optionSub: { fontSize: 12, color: '#9ca3af', marginTop: 2 },
-  chevron: { fontSize: 24, color: '#d1d5db', fontWeight: '300' },
-  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#f3f4f6', marginHorizontal: 4 },
+  optionLabel: { fontSize: 16, fontWeight: '600', color: '#111827' },
+  optionSub: { fontSize: 13, color: '#9ca3af', marginTop: 3 },
+  divider: { height: StyleSheet.hairlineWidth, backgroundColor: '#f3f4f6' },
   cancelBtn: {
-    marginTop: 12,
-    paddingVertical: 14,
-    borderRadius: 12,
+    marginTop: 16,
+    paddingVertical: 16,
+    borderRadius: 14,
     backgroundColor: '#f9fafb',
     alignItems: 'center',
   },
-  cancelText: { fontSize: 15, fontWeight: '600', color: '#6b7280' },
+  cancelText: { fontSize: 16, fontWeight: '600', color: '#6b7280' },
 });

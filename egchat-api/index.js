@@ -405,7 +405,25 @@ app.get('/api/auth/me', auth, async (req, res) => {
   const { data: user } = await supabase
     .from('users').select('id, phone, full_name, avatar_url, created_at').eq('id', req.user.id).single();
   if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+  // Marcar como online
+  supabase.from('users').update({ online_status: true, last_seen: new Date().toISOString() }).eq('id', req.user.id).then(() => {});
   res.json({ ...user, app_version: APP_VERSION });
+});
+
+// Heartbeat — el cliente llama esto cada 30s para mantenerse "online"
+app.post('/api/auth/heartbeat', auth, async (req, res) => {
+  if (!String(req.user.id || '').startsWith('local-')) {
+    supabase.from('users').update({ online_status: true, last_seen: new Date().toISOString() }).eq('id', req.user.id).then(() => {});
+  }
+  res.json({ ok: true });
+});
+
+// Marcar offline al cerrar sesión
+app.post('/api/auth/logout', auth, async (req, res) => {
+  if (!String(req.user.id || '').startsWith('local-')) {
+    supabase.from('users').update({ online_status: false, last_seen: new Date().toISOString() }).eq('id', req.user.id).then(() => {});
+  }
+  res.json({ message: 'Sesión cerrada' });
 });
 
 app.put('/api/auth/profile', auth, async (req, res) => {
@@ -423,8 +441,6 @@ app.put('/api/auth/profile', auth, async (req, res) => {
     res.status(500).json({ message: e.message });
   }
 });
-
-app.post('/api/auth/logout', auth, (req, res) => res.json({ message: 'Sesión cerrada' }));
 
 // ── Recuperación de contraseña ────────────────────────────────────────────────
 // Almacén temporal en memoria: { phone -> { code, expiresAt } }

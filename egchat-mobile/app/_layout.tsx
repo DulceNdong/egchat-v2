@@ -69,6 +69,26 @@ export default function RootLayout() {
             if (me?.id) {
               presenceCleanup.current?.();
               presenceCleanup.current = trackUserPresence(me.id);
+
+              // Heartbeat cada 30s para mantener online_status activo en DB
+              const { getToken, getApiBase } = await import('../src/api');
+              const heartbeatFn = async () => {
+                try {
+                  const token = await getToken();
+                  const base = getApiBase();
+                  await fetch(`${base}/api/auth/heartbeat`, {
+                    method: 'POST',
+                    headers: { Authorization: `Bearer ${token}` },
+                  });
+                } catch {}
+              };
+              heartbeatFn(); // inmediato
+              const heartbeatTimer = setInterval(heartbeatFn, 30000);
+              const prevCleanup = presenceCleanup.current;
+              presenceCleanup.current = () => {
+                clearInterval(heartbeatTimer);
+                prevCleanup?.();
+              };
             }
             router.replace('/(tabs)'); // → Home Dashboard (index.tsx)
 
