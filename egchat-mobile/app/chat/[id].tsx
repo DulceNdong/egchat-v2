@@ -46,6 +46,7 @@ import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
 import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
+import { translateText } from '../../src/services/translator';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -546,6 +547,20 @@ export default function ChatScreen() {
   }, [contextMsg, starredIds, persistStarred]);
 
   const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
+  const [translatedMessages, setTranslatedMessages] = useState<Record<string, string>>({});
+
+  const handleTranslate = useCallback(async () => {
+    if (!contextMsg?.text) return;
+    setContextVisible(false);
+    toast.info('🌐 Traduciendo...');
+    const translated = await translateText(contextMsg.text, 'es');
+    if (translated !== contextMsg.text) {
+      setTranslatedMessages(prev => ({ ...prev, [contextMsg.id]: translated }));
+      toast.success('Traducido', translated.slice(0, 50) + (translated.length > 50 ? '...' : ''));
+    } else {
+      toast.info('Ya está en español o no se pudo traducir');
+    }
+  }, [contextMsg]);
 
   const handleReaction = useCallback((emoji: string) => {
     if (!contextMsg || !chatId) return;
@@ -1423,6 +1438,7 @@ export default function ChatScreen() {
         onDelete={handleDelete}
         onDeleteForMe={handleDeleteForMe}
         onReaction={handleReaction}
+        onTranslate={handleTranslate}
         onEphemeral={() => {
           if (!contextMsg) return;
           const msgId = contextMsg.id;

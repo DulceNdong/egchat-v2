@@ -29,6 +29,7 @@ export function ChatContextMenu({
   onDeleteForMe: () => void;
   onEphemeral?: () => void;
   onPin?: () => void;
+  onTranslate?: () => void;
   onReaction: (emoji: string) => void;
 }) {
   if (!message) return null;
@@ -47,6 +48,7 @@ export function ChatContextMenu({
           <View style={s.menu}>
             {[
               { label: 'Copiar', onPress: onCopy },
+              { label: '🌐 Traducir', onPress: () => { onTranslate?.(); onClose(); }, danger: false },
               { label: 'Responder', onPress: onReply },
               { label: 'Destacar', onPress: onStar },
               { label: '📌 Fijar mensaje', onPress: () => { onPin?.(); onClose(); }, danger: false },

@@ -35,6 +35,8 @@ class MainApplication : Application(), ReactApplication {
               add(AudioRecorderPackage())
               // Módulo face filters AR
               add(FaceFilterPackage())
+              // Módulo respuesta rapida desde notificacion
+              add(QuickReplyPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"

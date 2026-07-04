@@ -247,6 +247,7 @@ export default function MensajeriaScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentUserId, setCurrentUserId] = useState('');
   const [globalResults, setGlobalResults] = useState<Array<{ chatId: string; chatName: string; messageText: string; messageTime: string }>>([]);
   const [searchingGlobal, setSearchingGlobal] = useState(false);
   const [filter, setFilter] = useState<FilterType>('individual');
