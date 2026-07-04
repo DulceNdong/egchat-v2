@@ -537,8 +537,19 @@ export default function ChatScreen() {
     toast.info('Destacado', starredIds.includes(contextMsg.id) ? 'Quitado de destacados' : 'Mensaje destacado');
   }, [contextMsg, starredIds, persistStarred]);
 
+  const [messageReactions, setMessageReactions] = useState<Record<string, Record<string, number>>>({});
+
   const handleReaction = useCallback((emoji: string) => {
     if (!contextMsg || !chatId) return;
+    const msgId = contextMsg.id;
+    // Actualizar reacciones locales con animación
+    setMessageReactions(prev => {
+      const current = prev[msgId] || {};
+      const count = (current[emoji] || 0) + 1;
+      return { ...prev, [msgId]: { ...current, [emoji]: count } };
+    });
+    setContextVisible(false);
+    // Enviar al servidor como mensaje de texto
     const reactText = `${emoji} reaccionaste a: ${(contextMsg.text || '').slice(0, 40)}`;
     chatAPI.sendMessage(chatId, { text: reactText, type: 'text' }).catch(() => {});
   }, [contextMsg, chatId]);
@@ -1114,6 +1125,7 @@ export default function ChatScreen() {
           replyPreview={getReplyPreview(item)}
           showReadReceipts={showReadReceipts}
           highlight={searchHit}
+          reactions={messageReactions[item.id]}
           onLongPress={handleLongPress}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}

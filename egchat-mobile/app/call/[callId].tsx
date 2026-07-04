@@ -12,6 +12,8 @@ import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
 import { LiveActivity } from '../../src/native/LiveActivity';
 import { NativeCallKit } from '../../src/native/CallKit';
 import { Audio } from 'expo-av';
+import { FaceFilterOverlay } from '../../src/components/FaceFilterOverlay';
+import { FILTERS, type FilterId } from '../../src/native/FaceFilter';
 
 const ACCENT = '#00c8a0';
 
@@ -38,6 +40,9 @@ export default function CallScreen() {
   const insets = useSafeAreaInsets();
   const [duration, setDuration] = useState(0);
   const [speakerOn, setSpeakerOn] = useState(true);
+  const [activeFilter, setActiveFilter] = useState<FilterId>('none');
+  const [showFilters, setShowFilters] = useState(false);
+  const [videoSize, setVideoSize] = useState({ width: 300, height: 400 });
 
   // Routing de audio real al altavoz
   const toggleSpeaker = useCallback(async () => {
@@ -320,24 +325,34 @@ export default function CallScreen() {
             </LinearGradient>
           </TouchableOpacity>
 
-          {/* Cámara o altavoz */}
+          {/* Cámara o altavoz + botón filtros */}
           {isVideo ? (
-            <TouchableOpacity
-              style={[s.ctrlBtn, isCamOff && s.ctrlBtnDanger]}
-              onPress={toggleCamera}
-              activeOpacity={0.8}
-            >
-              {isCamOff ? (
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-                  <Line x1="1" y1="1" x2="23" y2="23"/>
-                  <Path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"/>
-                </Svg>
-              ) : (
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-                  <Polygon points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/>
-                </Svg>
-              )}
-            </TouchableOpacity>
+            <View style={{ flexDirection: 'row', gap: 8 }}>
+              <TouchableOpacity
+                style={[s.ctrlBtn, isCamOff && s.ctrlBtnDanger]}
+                onPress={toggleCamera}
+                activeOpacity={0.8}
+              >
+                {isCamOff ? (
+                  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                    <Line x1="1" y1="1" x2="23" y2="23"/>
+                    <Path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34m-7.72-2.06a4 4 0 1 1-5.56-5.56"/>
+                  </Svg>
+                ) : (
+                  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                    <Polygon points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/>
+                  </Svg>
+                )}
+              </TouchableOpacity>
+              {/* Botón filtros AR */}
+              <TouchableOpacity
+                style={[s.ctrlBtn, showFilters && s.ctrlBtnActive]}
+                onPress={() => setShowFilters(v => !v)}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 18 }}>✨</Text>
+              </TouchableOpacity>
+            </View>
           ) : (
             <TouchableOpacity
               style={[s.ctrlBtn, speakerOn && s.ctrlBtnActive]}
@@ -352,7 +367,33 @@ export default function CallScreen() {
             </TouchableOpacity>
           )}
         </View>
+
+        {/* Selector de filtros AR — solo en videollamada */}
+        {isVideo && showFilters && (
+          <View style={s.filtersRow}>
+            {FILTERS.map(f => (
+              <TouchableOpacity
+                key={f.id}
+                style={[s.filterChip, activeFilter === f.id && s.filterChipActive]}
+                onPress={() => { setActiveFilter(f.id); setShowFilters(false); }}
+                activeOpacity={0.8}
+              >
+                <Text style={s.filterEmoji}>{f.emoji}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        )}
       </SafeAreaView>
+
+      {/* Overlay de face filter sobre el video */}
+      {isVideo && activeFilter !== 'none' && (
+        <FaceFilterOverlay
+          faces={[]}
+          filterId={activeFilter}
+          width={videoSize.width}
+          height={videoSize.height}
+        />
+      )}
     </View>
   );
 }
@@ -481,4 +522,27 @@ const s = StyleSheet.create({
     shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 6 },
     shadowOpacity: 0.5, shadowRadius: 12, elevation: 12,
   },
+  // Face filters
+  filtersRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 10,
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    backgroundColor: 'rgba(0,0,0,0.4)',
+    borderRadius: 20,
+    marginHorizontal: 20,
+    marginBottom: 6,
+  },
+  filterChip: {
+    width: 44, height: 44, borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.2)',
+  },
+  filterChipActive: {
+    backgroundColor: 'rgba(0,200,160,0.4)',
+    borderColor: '#00c8a0',
+  },
+  filterEmoji: { fontSize: 20 },
 });

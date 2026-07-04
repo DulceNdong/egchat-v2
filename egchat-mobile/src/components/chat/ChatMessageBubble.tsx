@@ -839,6 +839,7 @@ export interface ChatMessageBubbleProps {
   onRetry?: (msg: ChatMessage) => void;
   onOpenImage?: (uri: string) => void;
   onCallback?: () => void;
+  reactions?: Record<string, number>;
 }
 
 export const ChatMessageBubble = React.memo(({
@@ -856,6 +857,7 @@ export const ChatMessageBubble = React.memo(({
   onRetry,
   onOpenImage,
   onCallback,
+  reactions,
 }: ChatMessageBubbleProps) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
@@ -1043,13 +1045,13 @@ export const ChatMessageBubble = React.memo(({
       </View>
 
       {/* Reacciones bajo la burbuja */}
-      {Object.keys(localReactions).length > 0 && (
+      {(reactions && Object.keys(reactions).length > 0) || Object.keys(localReactions).length > 0 ? (
         <View style={[s.reactionsRow, isOwn ? s.reactionsOwn : s.reactionsTheir]}>
-          {Object.entries(localReactions).map(([emoji, count]) => (
-            <ReactionBubble key={emoji} emoji={emoji} count={count} isOwn={isOwn} />
+          {Object.entries({ ...reactions, ...localReactions }).map(([emoji, count]) => (
+            <ReactionBubble key={emoji} emoji={emoji} count={count as number} isOwn={isOwn} />
           ))}
         </View>
-      )}
+      ) : null}
 
       {/* Pop de emoji al reaccionar */}
       {popEmoji && (
