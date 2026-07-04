@@ -10,9 +10,9 @@ export interface MiniApp {
   id: string;
   name: string;
   description: string;
-  icon: string;       // emoji
-  color: string;      // color de fondo del icono
-  url: string;        // URL de la mini-app
+  icon: string;         // nombre del icono SVG (ver MiniAppIcon)
+  accentColor: string;  // color del icono y acento
+  url: string;
   category: MiniAppCategory;
   permissions: MiniAppPermission[];
   verified: boolean;
@@ -20,27 +20,24 @@ export interface MiniApp {
 }
 
 export const MINI_APPS: MiniApp[] = [
-  // ── Transporte ──────────────────────────────────────────────────
   {
     id: 'mitaxi',
     name: 'MiTaxi GQ',
-    description: 'Pide un taxi en Guinea Ecuatorial con GPS en tiempo real',
-    icon: '🚕',
-    color: '#fef3c7',
+    description: 'Pide un taxi con GPS en tiempo real',
+    icon: 'taxi',
+    accentColor: '#f59e0b',
     url: 'https://egchat-v2.vercel.app/mitaxi',
     category: 'transport',
     permissions: ['location', 'payment'],
     verified: true,
     developer: 'EGChat',
   },
-
-  // ── Servicios ───────────────────────────────────────────────────
   {
     id: 'seguros',
     name: 'Seguros GQ',
-    description: 'Contrata seguros de salud, vida y vehículo',
-    icon: '🛡️',
-    color: '#dbeafe',
+    description: 'Seguros de salud, vida y vehículo',
+    icon: 'shield',
+    accentColor: '#3b82f6',
     url: 'https://egchat-v2.vercel.app/seguros-salud',
     category: 'services',
     permissions: ['payment'],
@@ -50,9 +47,9 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'cemac',
     name: 'CEMAC Pay',
-    description: 'Transferencias internacionales zona CEMAC',
-    icon: '🏦',
-    color: '#dcfce7',
+    description: 'Transferencias zona CEMAC al instante',
+    icon: 'bank',
+    accentColor: '#10b981',
     url: 'https://egchat-v2.vercel.app/cemac',
     category: 'finance',
     permissions: ['payment'],
@@ -63,36 +60,32 @@ export const MINI_APPS: MiniApp[] = [
     id: 'supermercado',
     name: 'Supermercado',
     description: 'Compra online con entrega a domicilio',
-    icon: '🛒',
-    color: '#fce7f3',
+    icon: 'cart',
+    accentColor: '#ec4899',
     url: 'https://egchat-v2.vercel.app/supermercados',
     category: 'shopping',
     permissions: ['location', 'payment'],
     verified: true,
     developer: 'EGChat',
   },
-
-  // ── Gobierno ────────────────────────────────────────────────────
   {
     id: 'servicios_gov',
     name: 'Servicios Gov',
-    description: 'Trámites gubernamentales: agua, luz, impuestos',
-    icon: '🏛️',
-    color: '#e0e7ff',
+    description: 'Trámites: agua, luz, impuestos',
+    icon: 'government',
+    accentColor: '#6366f1',
     url: 'https://egchat-v2.vercel.app/servicios-diarios',
     category: 'government',
     permissions: ['payment'],
     verified: true,
     developer: 'Gobierno GQ',
   },
-
-  // ── Entretenimiento ─────────────────────────────────────────────
   {
     id: 'apuestas',
     name: 'Apuestas GQ',
     description: 'Apuestas deportivas y loterías',
-    icon: '🎰',
-    color: '#fef9c3',
+    icon: 'trophy',
+    accentColor: '#8b5cf6',
     url: 'https://egchat-v2.vercel.app/apuestas',
     category: 'entertainment',
     permissions: ['payment'],
@@ -102,9 +95,9 @@ export const MINI_APPS: MiniApp[] = [
   {
     id: 'ocio',
     name: 'Ocio & Eventos',
-    description: 'Eventos, conciertos y actividades en GQ',
-    icon: '🎭',
-    color: '#fce7f3',
+    description: 'Eventos y actividades en Guinea Ecuatorial',
+    icon: 'star',
+    accentColor: '#f97316',
     url: 'https://egchat-v2.vercel.app/ocio',
     category: 'entertainment',
     permissions: [],
