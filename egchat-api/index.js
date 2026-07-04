@@ -442,6 +442,24 @@ app.put('/api/auth/profile', auth, async (req, res) => {
   }
 });
 
+// ── Cifrado E2E — claves públicas ─────────────────────────────────────────────
+app.post('/api/auth/e2e-key', auth, async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    if (!publicKey) return res.status(400).json({ message: 'publicKey requerida' });
+    await supabase.from('users').update({ e2e_public_key: publicKey }).eq('id', req.user.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/users/:userId/e2e-key', auth, async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('users').select('e2e_public_key').eq('id', req.params.userId).single();
+    res.json({ publicKey: data?.e2e_public_key || null });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
 // ── Login QR desde PC ────────────────────────────────────────────────────────
 // Almacén en memoria: sessionId → { token, userId, expiresAt, confirmed }
 const qrSessions = new Map();
