@@ -944,7 +944,7 @@ export const ChatMessageBubble = React.memo(({
           <Image source={{ uri: imageUri }} style={s.bubbleImage} resizeMode="cover" />
         </TouchableOpacity>
       ) : message.type === 'image' ? (
-        <Text style={s.bubbleText}>📷 Foto</Text>
+        <Text style={s.bubbleText}>Foto</Text>
       ) : null}
       {message.type === 'video' && (
         <VideoCard message={message} isOwn={isOwn} />
