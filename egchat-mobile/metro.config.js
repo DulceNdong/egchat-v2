@@ -32,12 +32,12 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 // ── Optimizaciones de velocidad ───────────────────────────────────
-// Excluir carpetas pesadas del watcher
+// Excluir solo carpetas del proyecto, NO node_modules
 config.watchFolders = [];
 config.resolver.blockList = [
-  /android\/.*/,
-  /ios\/.*/,
-  /dist\/.*/,
+  new RegExp(`^${path.resolve(__dirname, 'android').replace(/\\/g, '\\\\')}.*`),
+  new RegExp(`^${path.resolve(__dirname, 'ios').replace(/\\/g, '\\\\')}.*`),
+  new RegExp(`^${path.resolve(__dirname, 'dist').replace(/\\/g, '\\\\')}.*`),
   /\.git\/.*/,
 ];
 
