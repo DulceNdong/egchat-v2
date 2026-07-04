@@ -7,7 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import Svg, { Path, Rect, Polygon } from 'react-native-svg';
 import { EGAvatar } from '../ui';
-import { MessageStatusIndicator } from './MessageStatusIndicator';
+import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
 import { ImageViewer } from '../ImageViewer';
 import type { ChatMessage } from '../../types/chat';
 
@@ -858,6 +858,8 @@ export const ChatMessageBubble = React.memo(({
   onCallback,
 }: ChatMessageBubbleProps) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
+  const [popEmoji, setPopEmoji] = useState<string | null>(null);
   const time = formatTime(message.created_at);
   const canRetry = isOwn && message.status === 'failed';
   const imageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
@@ -1039,6 +1041,23 @@ export const ChatMessageBubble = React.memo(({
         )}
         {renderAvatar('right')}
       </View>
+
+      {/* Reacciones bajo la burbuja */}
+      {Object.keys(localReactions).length > 0 && (
+        <View style={[s.reactionsRow, isOwn ? s.reactionsOwn : s.reactionsTheir]}>
+          {Object.entries(localReactions).map(([emoji, count]) => (
+            <ReactionBubble key={emoji} emoji={emoji} count={count} isOwn={isOwn} />
+          ))}
+        </View>
+      )}
+
+      {/* Pop de emoji al reaccionar */}
+      {popEmoji && (
+        <View style={[s.popWrap, isOwn ? { right: 60 } : { left: 60 }]}>
+          <ReactionPopAnimation emoji={popEmoji} onDone={() => setPopEmoji(null)} />
+        </View>
+      )}
+
       {/* Visor de imagen a pantalla completa */}
       {imageUri && (
         <ImageViewer
@@ -1130,6 +1149,11 @@ const s = StyleSheet.create({
   uploadFill: { height: 3, backgroundColor: '#00c8a0', borderRadius: 2 },
   uploadText: { fontSize: 11, color: '#9ca3af', textAlign: 'right' },
   retryHint: { fontSize: 11, color: '#ef4444', fontWeight: '600', marginTop: 3, textAlign: 'right' },
+  // Reacciones bajo la burbuja
+  reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 2, marginHorizontal: 6 },
+  reactionsOwn:  { justifyContent: 'flex-end',   paddingRight: 44 },
+  reactionsTheir:{ justifyContent: 'flex-start',  paddingLeft: 44 },
+  popWrap: { position: 'absolute', top: 0, zIndex: 50 },
   // ── Tarjeta archivo ──
   fileCard: {
     minWidth: 200,
