@@ -19,21 +19,14 @@
 import React, { useRef, useState, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Platform, Alert,
+  ActivityIndicator, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import Svg, { Path, Line } from 'react-native-svg';
-
-// WebView solo en nativo
-let WebView: any = null;
-try {
-  if (Platform.OS !== 'web') {
-    WebView = require('react-native-webview').WebView;
-  }
-} catch {}
+import { WebView } from './WebViewCompat';
 
 export interface MiniAppProps {
   url: string;
@@ -200,19 +193,6 @@ export function MiniAppRuntime({
       console.warn('[MiniApp Bridge] Error:', e.message);
     }
   }, [onPayment, onShareToChat, onClose, sendResponse, initialTitle]);
-
-  if (!WebView) {
-    return (
-      <View style={s.root}>
-        <View style={s.noWebView}>
-          <Text style={s.noWebViewText}>
-            Las mini-apps requieren una build nativa (EAS Build).{'\n'}
-            No están disponibles en el navegador web.
-          </Text>
-        </View>
-      </View>
-    );
-  }
 
   return (
     <View style={s.root}>
