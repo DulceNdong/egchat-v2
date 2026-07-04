@@ -93,10 +93,11 @@ const IconClose = ({ color = '#fff', size = 22 }: { color?: string; size?: numbe
 
 // ── APPS principales (grid visible en home) ───────────────────────
 const HOME_APPS = [
-  { id: 'estados',  label: 'Estados',  route: '/stories',  color: '#00B4E6' },
-  { id: 'apuestas', label: 'Juegos',   route: '/apuestas', color: '#8b5cf6' },
-  { id: 'cemac',    label: 'Cemac',    route: '/cemac',    color: '#00C8A0' },
-  { id: 'mitaxi',   label: 'MiTaxi',   route: '/mitaxi',   color: '#f59e0b' },
+  { id: 'estados',   label: 'Estados',    route: '/stories',    color: '#00B4E6' },
+  { id: 'apuestas',  label: 'Juegos',     route: '/apuestas',   color: '#8b5cf6' },
+  { id: 'cemac',     label: 'Cemac',      route: '/cemac',      color: '#00C8A0' },
+  { id: 'mitaxi',    label: 'MiTaxi',     route: '/mitaxi',     color: '#f59e0b' },
+  { id: 'miniapps',  label: 'Mini-Apps',  route: '/mini-apps',  color: '#ec4899' },
 ];
 
 // ── Iconos SVG para APPS y FAB — idénticos a la versión web ──────
