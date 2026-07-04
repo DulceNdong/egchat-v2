@@ -61,6 +61,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     items: [
       { label: 'Chat', route: '/ajustes/chat' },
       { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
+      { label: '📞 Historial de llamadas', route: '/call-history' },
       { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
       { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
     ],
