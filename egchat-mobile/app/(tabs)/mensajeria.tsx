@@ -78,24 +78,56 @@ const formatTime = (dateStr: string) => {
   return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
 };
 
-const getLastMessageText = (msg?: Chat['last_message']) => {
-  if (!msg) return 'Sin mensajes';
+type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'call-out' | 'video-call' | null; label: string };
+
+const getLastMessageInfo = (msg?: Chat['last_message']): LastMsgInfo => {
+  if (!msg) return { icon: null, label: 'Sin mensajes' };
   const txt = msg.text || '';
-  if (txt.includes('Llamada perdida')) return '📞 Llamada perdida';
-  if (txt.includes('Transferencia') || txt.includes('💸')) return '💸 Transferencia';
-  if (msg.type === 'image' || txt.startsWith('📷')) return '📷 Foto';
-  if (msg.type === 'video' || txt.startsWith('🎥')) return '🎥 Video';
-  if (msg.type === 'audio' || txt.startsWith('🎵')) return '🎵 Audio';
-  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return '📄 Archivo';
-  // Ubicación — puede tener URL larga, mostrar solo el label
-  if (msg.type === 'location' || txt.startsWith('📍')) return '📍 Ubicación';
-  // Contacto compartido — mostrar solo nombre, no el teléfono
+  if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: 'Llamada perdida' };
+  if (txt.includes('VideoLlamada') || txt.includes('Videollamada')) return { icon: 'video-call', label: txt.replace(/VideoLlamada|Videollamada/gi, 'Videollamada') };
+  if (txt.includes('Llamada')) return { icon: 'call-out', label: txt };
+  if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: 'Transferencia' };
+  if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: 'Foto' };
+  if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: 'Video' };
+  if (msg.type === 'audio' || txt.startsWith('🎵')) return { icon: 'audio', label: 'Audio' };
+  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: 'Archivo' };
+  if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: 'Ubicación' };
   if (msg.type === 'contact' || txt.startsWith('👤')) {
     const name = txt.replace(/^👤\s*/, '').split('\n')[0].trim();
-    return `👤 ${name || 'Contacto'}`;
+    return { icon: 'contact', label: name || 'Contacto' };
   }
-  if (msg.type === 'text') return txt;
-  return txt || 'Mensaje';
+  // texto plano — quitar emojis residuales al inicio
+  const clean = txt.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/u, '').trim();
+  return { icon: null, label: clean || txt || 'Mensaje' };
+};
+
+// Icono vectorial limpio para el último mensaje
+const LastMsgIcon = ({ type, color }: { type: LastMsgInfo['icon']; color: string }) => {
+  if (!type) return null;
+  const props = { width: 13, height: 13, viewBox: '0 0 24 24', fill: 'none', stroke: color, strokeWidth: 1.8, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (type) {
+    case 'phone-missed':
+      return <Svg {...props}><Path d="M10.68 13.31a16 16 0 0 0 3.41 2.6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7 2 2 0 0 1 1.72 2v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A2 2 0 0 1 10.68 13.31z"/><Path d="M23 1L17 7"/><Path d="M17 1l6 6"/></Svg>;
+    case 'call-out':
+      return <Svg {...props}><Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Svg>;
+    case 'video-call':
+    case 'video':
+      return <Svg {...props}><Polyline points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></Svg>;
+    case 'image':
+      return <Svg {...props}><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>;
+    case 'audio':
+      return <Svg {...props}><Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><Path d="M19 10v2a7 7 0 0 1-14 0v-2"/><Line x1="12" y1="19" x2="12" y2="23"/><Line x1="8" y1="23" x2="16" y2="23"/></Svg>;
+    case 'file':
+      return <Svg {...props}><Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><Polyline points="14 2 14 8 20 8"/></Svg>;
+    case 'location':
+      return <Svg {...props}><Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><Circle cx="12" cy="10" r="3"/></Svg>;
+    case 'contact':
+      return <Svg {...props}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><Circle cx="12" cy="7" r="4"/></Svg>;
+    case 'money':
+      return <Svg {...props}><Rect x="2" y="5" width="20" height="14" rx="2"/><Line x1="2" y1="10" x2="22" y2="10"/></Svg>;
+    default:
+      return null;
+  }
 };
 
 const getParticipantName = (participant?: Chat['participants'][number]) =>
@@ -173,9 +205,10 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
     ? (getParticipantName(other) || 'Usuario')
     : (chat.name || 'Grupo');
   const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
-  const lastMsg = getLastMessageText(chat.last_message);
+  const msgInfo = getLastMessageInfo(chat.last_message);
   const time = formatTime(chat.updated_at);
   const hasUnread = chat.unread_count > 0;
+  const msgIconColor = hasUnread ? Colors.primary : Colors.textTertiary;
 
   const body = (
     <>
@@ -186,7 +219,14 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
           {time ? <Text style={[st.chatTime, hasUnread && st.chatTimeUnread]}>{time}</Text> : null}
         </View>
         <View style={st.chatRow}>
-          <Text style={st.chatMsg} numberOfLines={1}>{lastMsg}</Text>
+          <View style={st.chatMsgRow}>
+            {msgInfo.icon && (
+              <View style={st.chatMsgIcon}>
+                <LastMsgIcon type={msgInfo.icon} color={msgIconColor} />
+              </View>
+            )}
+            <Text style={st.chatMsg} numberOfLines={1}>{msgInfo.label}</Text>
+          </View>
           {hasUnread && (
             <View style={st.badge}>
               <Text style={st.badgeText}>{chat.unread_count > 99 ? '99+' : chat.unread_count}</Text>
@@ -1156,7 +1196,9 @@ const st = StyleSheet.create({
   chatName: { ...Typography.chatName, flex: 1, marginRight: Spacing.sm },
   chatTime: { ...Typography.timestamp, color: Colors.textTertiary },
   chatTimeUnread: { color: Colors.accent, fontWeight: FontWeight.semibold },
-  chatMsg: { ...Typography.subtitle, color: Colors.textSecondary, flex: 1, marginRight: Spacing.sm },
+  chatMsg: { ...Typography.subtitle, color: Colors.textSecondary, flex: 1 },
+  chatMsgRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: Spacing.sm },
+  chatMsgIcon: { marginRight: 4, opacity: 0.7 },
   badge: {
     backgroundColor: Colors.accent, borderRadius: BorderRadius.badge,
     minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
