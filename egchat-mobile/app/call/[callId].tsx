@@ -9,6 +9,8 @@ import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Path, Line, Rect, Polygon, Polyline } from 'react-native-svg';
 import { EGAvatar } from '../../src/components/ui';
 import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
+import { LiveActivity } from '../../src/native/LiveActivity';
+import { NativeCallKit } from '../../src/native/CallKit';
 
 const ACCENT = '#00c8a0';
 
@@ -81,12 +83,23 @@ export default function CallScreen() {
   useEffect(() => {
     if (callState === 'connected') {
       timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+      // Iniciar Live Activity en iOS cuando la llamada se conecta
+      LiveActivity.startCall(callId, name, isVideo);
+      // Cerrar notificación nativa de llamada entrante (si estaba visible)
+      NativeCallKit.dismissIncomingCall();
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
   }, [callState]);
 
   useEffect(() => {
-    if (callState === 'ended') setTimeout(() => router.back(), 800);
+    if (callState === 'ended') {
+      // Terminar Live Activity al colgar
+      LiveActivity.endCall();
+      NativeCallKit.endCall(callId);
+      setTimeout(() => router.back(), 800);
+    }
   }, [callState]);
 
   const formatDuration = (s: number) => {
