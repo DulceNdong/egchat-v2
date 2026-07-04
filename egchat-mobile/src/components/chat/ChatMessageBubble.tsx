@@ -8,6 +8,7 @@ import { Audio } from 'expo-av';
 import Svg, { Path, Rect, Polygon } from 'react-native-svg';
 import { EGAvatar } from '../ui';
 import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
+import { PollMessage, parsePoll } from './PollMessage';
 import { ImageViewer } from '../ImageViewer';
 import type { ChatMessage } from '../../types/chat';
 
@@ -878,7 +879,9 @@ export const ChatMessageBubble = React.memo(({
     || (message.type === 'text' && !!(
       message.text?.includes('Llamada') || message.text?.includes('llamada')
     ));
-  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg;
+  const pollData = message.type === 'poll' || message.text?.startsWith('📊')
+    ? parsePoll(message.text || '') : null;
+  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg || !!pollData;
 
   const renderAvatar = (side: 'left' | 'right') => {
     if (side === 'left' && isOwn) return null;
@@ -926,6 +929,7 @@ export const ChatMessageBubble = React.memo(({
       )}
       {/* Tarjetas especiales */}
       {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
+      {pollData     && <PollMessage poll={pollData} currentUserId={''} isOwn={isOwn} onVote={() => {}} />}
       {isContactMsg && !!message.text && <ContactCard text={message.text} isOwn={isOwn} />}
       {isLocationMsg && !!message.text && <LocationCard text={message.text} isOwn={isOwn} />}
       {isMoneyMsg && !!message.text && <MoneyCard text={message.text} />}

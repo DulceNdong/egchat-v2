@@ -58,6 +58,13 @@
         android:resource="@xml/widget_chat_info"/>
     </receiver>
 
+    <!-- Respuesta rapida desde notificacion -->
+    <receiver android:name=".QuickReplyReceiver" android:exported="false">
+      <intent-filter>
+        <action android:name="com.egchat.app.QUICK_REPLY"/>
+      </intent-filter>
+    </receiver>
+
     <activity android:name=".MainActivity"
       android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
       android:launchMode="singleTask"
