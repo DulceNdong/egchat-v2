@@ -80,12 +80,18 @@ const formatTime = (dateStr: string) => {
 
 type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'call-out' | 'video-call' | null; label: string };
 
+// Elimina todos los emojis de un string
+const stripEmojis = (s: string) =>
+  s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
+
 const getLastMessageInfo = (msg?: Chat['last_message']): LastMsgInfo => {
   if (!msg) return { icon: null, label: 'Sin mensajes' };
   const txt = msg.text || '';
   if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: 'Llamada perdida' };
-  if (txt.includes('VideoLlamada') || txt.includes('Videollamada')) return { icon: 'video-call', label: txt.replace(/VideoLlamada|Videollamada/gi, 'Videollamada') };
-  if (txt.includes('Llamada')) return { icon: 'call-out', label: txt };
+  if (txt.includes('VideoLlamada') || txt.includes('Videollamada') || txt.includes('video') && txt.includes('aliente'))
+    return { icon: 'video-call', label: stripEmojis(txt).replace(/videollamada/gi, 'Videollamada') || 'Videollamada saliente' };
+  if (txt.includes('Llamada') || txt.toLowerCase().includes('llamada'))
+    return { icon: 'call-out', label: stripEmojis(txt) || 'Llamada' };
   if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: 'Transferencia' };
   if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: 'Foto' };
   if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: 'Video' };
@@ -93,12 +99,10 @@ const getLastMessageInfo = (msg?: Chat['last_message']): LastMsgInfo => {
   if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: 'Archivo' };
   if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: 'Ubicación' };
   if (msg.type === 'contact' || txt.startsWith('👤')) {
-    const name = txt.replace(/^👤\s*/, '').split('\n')[0].trim();
+    const name = stripEmojis(txt).split('\n')[0].trim();
     return { icon: 'contact', label: name || 'Contacto' };
   }
-  // texto plano — quitar emojis residuales al inicio
-  const clean = txt.replace(/^[\u{1F300}-\u{1FAFF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}\s]+/u, '').trim();
-  return { icon: null, label: clean || txt || 'Mensaje' };
+  return { icon: null, label: stripEmojis(txt) || txt || 'Mensaje' };
 };
 
 // Icono vectorial limpio para el último mensaje
