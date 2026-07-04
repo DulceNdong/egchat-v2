@@ -10,6 +10,7 @@ import { router } from 'expo-router';
 import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { authAPI } from '../../src/api';
 import { mergePersistentAvatar } from '../../src/utils/profileEvents';
+import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SettingsSearch, SettingsSection, SettingsCard, SettingsDivider, SettingsRow } from '../../src/components/settings/SettingsUI';
@@ -82,13 +83,14 @@ const IconGear = () => (
 );
 
 export default function AjustesScreen() {
-  const [user, setUser] = useState<{ full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
+  const [user, setUser] = useState<{ id?: string; full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [storageUsed] = useState(() => Math.round(Math.random() * 200 + 50));
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
@@ -211,6 +213,17 @@ export default function AjustesScreen() {
               <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
             </TouchableOpacity>
 
+            {/* Botón cambiar cuenta */}
+            <TouchableOpacity
+              style={[styles.switchAccountBtn, { borderColor: C.borderLight }]}
+              onPress={() => setShowAccountSwitcher(true)}
+              activeOpacity={0.7}
+            >
+              <Text style={[styles.switchAccountText, { color: C.textSecondary }]}>
+                👤 Cambiar cuenta
+              </Text>
+            </TouchableOpacity>
+
             {SECTIONS.map(section => (
               <View key={section.title}>
                 <SettingsSection label={section.title} />
@@ -254,6 +267,13 @@ export default function AjustesScreen() {
         user={user ? { full_name: user.full_name || '', avatar_url: user.avatar_url, phone: user.phone } : null}
       />
       <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="26°" city="Malabo" condition="cloudy" />
+      <AccountSwitcher
+        visible={showAccountSwitcher}
+        currentAccountId={user?.id || ''}
+        onClose={() => setShowAccountSwitcher(false)}
+        onSwitch={(id) => { setShowAccountSwitcher(false); authAPI.me().then(setUser); }}
+        onAddAccount={() => router.push('/(auth)/login' as any)}
+      />
     </SafeAreaView>
   );
 }
@@ -287,6 +307,12 @@ const styles = StyleSheet.create({
   },
   heroImg: { width: '100%', height: '100%' },
   heroInitials: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  switchAccountBtn: {
+    flexDirection: 'row', justifyContent: 'center',
+    paddingVertical: 10, marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth,
+  },
+  switchAccountText: { fontSize: 14, fontWeight: '600' },
   heroInfo: { flex: 1 },
   heroName: { fontSize: 17, fontWeight: '600' },
   heroSub: { fontSize: 13, marginTop: 2 },
