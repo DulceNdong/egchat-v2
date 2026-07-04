@@ -442,6 +442,76 @@ app.put('/api/auth/profile', auth, async (req, res) => {
   }
 });
 
+// ── Login QR desde PC ────────────────────────────────────────────────────────
+// Almacén en memoria: sessionId → { token, userId, expiresAt, confirmed }
+const qrSessions = new Map();
+
+// PC llama esto para generar un QR
+app.post('/api/auth/qr-create', async (req, res) => {
+  const sessionId = require('crypto').randomBytes(16).toString('hex');
+  qrSessions.set(sessionId, {
+    token: null,
+    userId: null,
+    confirmed: false,
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutos
+  });
+  // Limpiar sesiones expiradas
+  for (const [id, s] of qrSessions.entries()) {
+    if (s.expiresAt < Date.now()) qrSessions.delete(id);
+  }
+  res.json({
+    sessionId,
+    qrData: `egchat://qr-login/${sessionId}`,
+    expiresIn: 300,
+  });
+});
+
+// App móvil escanea el QR y confirma la sesión
+app.post('/api/auth/qr-confirm', auth, async (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) return res.status(400).json({ message: 'sessionId requerido' });
+
+  const session = qrSessions.get(sessionId);
+  if (!session) return res.status(404).json({ message: 'QR no encontrado o expirado' });
+  if (session.expiresAt < Date.now()) {
+    qrSessions.delete(sessionId);
+    return res.status(410).json({ message: 'QR expirado' });
+  }
+
+  // Generar token de sesión para el PC
+  const pcToken = jwt.sign(
+    { id: req.user.id, phone: req.user.phone, via: 'qr' },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+
+  session.token   = pcToken;
+  session.userId  = req.user.id;
+  session.confirmed = true;
+  qrSessions.set(sessionId, session);
+
+  res.json({ ok: true, message: 'Sesión confirmada desde el móvil' });
+});
+
+// PC hace polling para saber si el QR fue escaneado
+app.get('/api/auth/qr-status/:sessionId', async (req, res) => {
+  const session = qrSessions.get(req.params.sessionId);
+  if (!session) return res.json({ status: 'expired' });
+  if (session.expiresAt < Date.now()) {
+    qrSessions.delete(req.params.sessionId);
+    return res.json({ status: 'expired' });
+  }
+  if (session.confirmed) {
+    const token = session.token;
+    const userId = session.userId;
+    qrSessions.delete(req.params.sessionId); // Usar solo una vez
+    const { data: user } = await supabase
+      .from('users').select('id, phone, full_name, avatar_url').eq('id', userId).single();
+    return res.json({ status: 'confirmed', token, user });
+  }
+  res.json({ status: 'pending' });
+});
+
 // ── Recuperación de contraseña ────────────────────────────────────────────────
 // Almacén temporal en memoria: { phone -> { code, expiresAt } }
 const resetCodes = new Map();

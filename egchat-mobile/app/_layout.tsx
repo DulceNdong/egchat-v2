@@ -20,6 +20,12 @@ function handleDeepLink(url: string | null) {
   if (!url) return;
   try {
     const parsed = Linking.parse(url);
+    // egchat://qr-login/[sessionId] — confirmar login desde PC
+    if (parsed.path?.startsWith('qr-login/')) {
+      const sessionId = parsed.path.replace('qr-login/', '');
+      if (sessionId) setTimeout(() => router.push(`/_qr-login?sessionId=${sessionId}` as any), 300);
+      return;
+    }
     // egchat://chat/[chatId]
     if (parsed.path?.startsWith('chat/')) {
       const chatId = parsed.path.replace('chat/', '');
