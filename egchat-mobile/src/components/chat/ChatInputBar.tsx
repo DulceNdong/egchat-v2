@@ -16,6 +16,7 @@ export interface ChatInputBarProps {
   onChangeText: (v: string) => void;
   onToggleAttach: () => void;
   onToggleEmojis: () => void;
+  onToggleStickers?: () => void;
   onSend: () => void;
   onStartRecording: () => void;
   onCancelRecording: () => void;
@@ -33,6 +34,7 @@ export function ChatInputBar({
   onChangeText,
   onToggleAttach,
   onToggleEmojis,
+  onToggleStickers,
   onSend,
   onStartRecording,
   onCancelRecording,
@@ -83,6 +85,12 @@ export function ChatInputBar({
           <Line x1="15" y1="9" x2="15.01" y2="9"/>
         </Svg>
       </TouchableOpacity>
+
+      {onToggleStickers && (
+        <TouchableOpacity style={s.emojiBtn} onPress={onToggleStickers} activeOpacity={0.8}>
+          <Text style={{ fontSize: 20 }}>🎭</Text>
+        </TouchableOpacity>
+      )}
 
       {isRecording ? (
         <View style={s.recordingRow}>

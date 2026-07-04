@@ -13,6 +13,7 @@ import { chatAPI, authAPI, getToken } from '../../src/api';
 import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
 import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPickerModal';
 import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
+import { StickerPanel } from '../../src/components/chat/StickerPanel';
 import { QuickTransferModal } from '../../src/components/chat/QuickTransferModal';
 import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuPanel';
 import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
@@ -170,6 +171,7 @@ export default function ChatScreen() {
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showStickers, setShowStickers] = useState(false);
   const [showQuickTransfer, setShowQuickTransfer] = useState(false);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
@@ -1282,6 +1284,36 @@ export default function ChatScreen() {
         {showEmojis && (
           <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
         )}
+        {showStickers && (
+          <StickerPanel
+            onSelect={async (url) => {
+              setShowStickers(false);
+              // Enviar sticker como mensaje de imagen GIF
+              const tempId = createTempMessageId();
+              pushOptimistic({
+                id: tempId,
+                text: '🎭 Sticker',
+                type: 'image',
+                imageUrl: url,
+                file_url: url,
+                sender_id: currentUserId,
+                status: 'pending',
+                created_at: new Date().toISOString(),
+              });
+              try {
+                const sent = await chatAPI.sendMessage(chatId!, {
+                  text: '🎭 Sticker',
+                  type: 'image',
+                  file_url: url,
+                });
+                replaceOptimistic(tempId, { ...sent, imageUrl: url, file_url: url });
+              } catch {
+                failOptimistic(tempId);
+              }
+            }}
+            onClose={() => setShowStickers(false)}
+          />
+        )}
 
         <ChatInputBar
           text={text}
@@ -1293,10 +1325,13 @@ export default function ChatScreen() {
           sendScale={sendScale}
           onChangeText={handleTextChange}
           onToggleAttach={() => {
-            setShowAttach(v => { const n = !v; if (n) setShowEmojis(false); return n; });
+            setShowAttach(v => { const n = !v; if (n) { setShowEmojis(false); setShowStickers(false); } return n; });
           }}
           onToggleEmojis={() => {
-            setShowEmojis(v => { const n = !v; if (n) setShowAttach(false); return n; });
+            setShowEmojis(v => { const n = !v; if (n) { setShowAttach(false); setShowStickers(false); } return n; });
+          }}
+          onToggleStickers={() => {
+            setShowStickers(v => { const n = !v; if (n) { setShowAttach(false); setShowEmojis(false); } return n; });
           }}
           onSend={sendMessage}
           onStartRecording={async () => {
