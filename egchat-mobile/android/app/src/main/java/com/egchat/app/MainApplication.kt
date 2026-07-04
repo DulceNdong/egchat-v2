@@ -31,6 +31,8 @@ class MainApplication : Application(), ReactApplication {
               add(SharePackage())
               // Módulo widget pantalla de inicio
               add(WidgetPackage())
+              // Módulo grabación audio de alta calidad
+              add(AudioRecorderPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
