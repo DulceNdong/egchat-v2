@@ -11,6 +11,7 @@ import { EGAvatar } from '../../src/components/ui';
 import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
 import { LiveActivity } from '../../src/native/LiveActivity';
 import { NativeCallKit } from '../../src/native/CallKit';
+import { Audio } from 'expo-av';
 
 const ACCENT = '#00c8a0';
 
@@ -37,6 +38,22 @@ export default function CallScreen() {
   const insets = useSafeAreaInsets();
   const [duration, setDuration] = useState(0);
   const [speakerOn, setSpeakerOn] = useState(true);
+
+  // Routing de audio real al altavoz
+  const toggleSpeaker = useCallback(async () => {
+    const next = !speakerOn;
+    setSpeakerOn(next);
+    if (Platform.OS !== 'web') {
+      try {
+        await Audio.setAudioModeAsync({
+          allowsRecordingIOS: false,
+          playsInSilentModeIOS: true,
+          shouldDuckAndroid: false,
+          playThroughEarpieceAndroid: !next, // false=altavoz, true=auricular
+        });
+      } catch {}
+    }
+  }, [speakerOn]);
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dotAnims = useRef([0, 1, 2].map(() => new Animated.Value(0.4))).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -324,7 +341,7 @@ export default function CallScreen() {
           ) : (
             <TouchableOpacity
               style={[s.ctrlBtn, speakerOn && s.ctrlBtnActive]}
-              onPress={() => setSpeakerOn(v => !v)}
+              onPress={toggleSpeaker}
               activeOpacity={0.8}
             >
               <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">

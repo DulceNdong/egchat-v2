@@ -42,6 +42,7 @@ import { useOffline } from '../../src/hooks/useOffline';
 import { toast } from '../../src/components/Toast';
 import { createChatTypingChannel, subscribeToChat, subscribeToOnlineUsers } from '../../src/supabase';
 import { useChatStream } from '../../src/hooks/useChatStream';
+import { playMessageReceived } from '../../src/hooks/useSounds';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -209,11 +210,12 @@ export default function ChatScreen() {
   useChatStream(currentUserId || undefined, (event) => {
     if (event.type === 'new_message' && event.chatId === chatId && event.message) {
       const msg = event.message;
-      if (msg.sender_id === currentUserId) return; // ya lo tenemos optimista
+      if (msg.sender_id === currentUserId) return;
       const enriched = normalizeMessage(msg);
       setMessages(prev => mergeMessages(prev, [enriched]));
       chatAPI.markAsRead(chatId, msg.id).catch(() => {});
       setIsTyping(false);
+      playMessageReceived(); // ← sonido de mensaje recibido
     }
   });
 
@@ -353,6 +355,7 @@ export default function ChatScreen() {
         });
         if (event === 'INSERT') {
           chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
+          playMessageReceived(); // ← sonido en mensajes via Realtime
         }
         setIsTyping(false);
       } else if (event === 'UPDATE') {
@@ -1301,6 +1304,18 @@ export default function ChatScreen() {
         onDelete={handleDelete}
         onDeleteForMe={handleDeleteForMe}
         onReaction={handleReaction}
+        onEphemeral={() => {
+          if (!contextMsg) return;
+          const msgId = contextMsg.id;
+          const chatIdLocal = chatId;
+          // Borrar visualmente después de 30 segundos
+          setTimeout(() => {
+            setMessages(prev => prev.filter(m => m.id !== msgId));
+            // Borrar del servidor también
+            chatAPI.deleteMessage(msgId).catch(() => {});
+          }, 30000);
+          toast.info('⏱ Efímero', 'El mensaje se borrará en 30 segundos');
+        }}
       />
       <ChatWallpaperModal
         visible={showWallpaperModal}

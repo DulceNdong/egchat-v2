@@ -27,6 +27,7 @@ export function ChatContextMenu({
   onStar: () => void;
   onDelete: () => void;
   onDeleteForMe: () => void;
+  onEphemeral?: () => void;
   onReaction: (emoji: string) => void;
 }) {
   if (!message) return null;
@@ -47,7 +48,10 @@ export function ChatContextMenu({
               { label: 'Copiar', onPress: onCopy },
               { label: 'Responder', onPress: onReply },
               { label: 'Destacar', onPress: onStar },
-              ...(isOwn ? [{ label: 'Eliminar para todos', onPress: onDelete, danger: true }] : []),
+              ...(isOwn ? [
+                { label: 'Eliminar para todos', onPress: onDelete, danger: true },
+                { label: '⏱ Mensaje efímero (30s)', onPress: () => { onEphemeral?.(); onClose(); }, danger: false },
+              ] : []),
               { label: 'Eliminar para mí', onPress: onDeleteForMe, danger: true },
             ].map((item, i, arr) => (
               <TouchableOpacity

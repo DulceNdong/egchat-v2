@@ -247,7 +247,8 @@ export default function MensajeriaScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentUserId, setCurrentUserId] = useState('');
+  const [globalResults, setGlobalResults] = useState<Array<{ chatId: string; chatName: string; messageText: string; messageTime: string }>>([]);
+  const [searchingGlobal, setSearchingGlobal] = useState(false);
   const [filter, setFilter] = useState<FilterType>('individual');
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -275,6 +276,33 @@ export default function MensajeriaScreen() {
       loadChats();
     }
   });
+
+  // ── Búsqueda global en mensajes ────────────────────────────────
+  useEffect(() => {
+    if (!searchQuery.trim() || searchQuery.length < 2) {
+      setGlobalResults([]);
+      return;
+    }
+    const timer = setTimeout(async () => {
+      setSearchingGlobal(true);
+      try {
+        const q = searchQuery.toLowerCase();
+        const results: typeof globalResults = [];
+        for (const chat of chats) {
+          const other = chat.participants.find((p: any) => p.user_id !== currentUserId);
+          const chatName = chat.type === 'private'
+            ? (getParticipantName(other) || 'Usuario')
+            : (chat.name || 'Grupo');
+          const lastText = chat.last_message?.text || '';
+          if (chatName.toLowerCase().includes(q) || lastText.toLowerCase().includes(q)) {
+            results.push({ chatId: chat.id, chatName, messageText: lastText, messageTime: '' });
+          }
+        }
+        setGlobalResults(results);
+      } finally { setSearchingGlobal(false); }
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery, chats, currentUserId]);
 
   // ── Recibir contenido compartido desde otras apps ─────────────────
   useSharedContent((content) => {
