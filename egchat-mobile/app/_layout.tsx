@@ -13,6 +13,7 @@ import { useWebRTC } from '../src/hooks/useWebRTC';
 import { ToastContainer } from '../src/components/Toast';
 import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
 import { trackUserPresence } from '../src/supabase';
+import { NativeCallKit } from '../src/native/CallKit';
 
 // ── Handler de deep links: egchat://chat/ID, egchat://user/ID ─────
 function handleDeepLink(url: string | null) {
@@ -115,23 +116,56 @@ export default function RootLayout() {
 
               if (me?.id) {
                 incomingCleanup.current = pollIncoming(me.id, (call) => {
-                  Alert.alert(`📞 Llamada entrante`, `${call.callerName || 'Alguien'} te está llamando`, [
-                    { text: 'Rechazar', style: 'destructive', onPress: () => {} },
-                    {
-                      text: 'Aceptar',
-                      onPress: () => router.push({
-                        pathname: '/call/[callId]',
-                        params: {
-                          callId: call.callId,
-                          targetName: call.callerName || 'Usuario',
-                          targetAvatar: call.callerAvatar || '',
-                          callType: call.type || 'audio',
-                          role: 'callee',
-                          offer: call.offer ? JSON.stringify(call.offer) : undefined,
-                        },
-                      } as any),
-                    },
-                  ]);
+                  // ── Mostrar llamada nativa (Android: notificación full-screen, iOS: CallKit) ──
+                  NativeCallKit.showIncomingCall(
+                    call.callerName || 'Usuario',
+                    call.callerAvatar || '',
+                    call.callId,
+                    call.type === 'video',
+                  );
+
+                  // Escuchar respuesta del usuario desde la notificación nativa
+                  const unAnswer = NativeCallKit.onAnswer((cid) => {
+                    if (cid !== call.callId) return;
+                    unAnswer(); unReject();
+                    router.push({
+                      pathname: '/call/[callId]',
+                      params: {
+                        callId: call.callId,
+                        targetName: call.callerName || 'Usuario',
+                        targetAvatar: call.callerAvatar || '',
+                        callType: call.type || 'audio',
+                        role: 'callee',
+                        offer: call.offer ? JSON.stringify(call.offer) : undefined,
+                      }
+                    } as any);
+                  });
+
+                  const unReject = NativeCallKit.onReject((cid) => {
+                    if (cid !== call.callId) return;
+                    unAnswer(); unReject();
+                  });
+
+                  // Fallback Alert en web
+                  if (Platform.OS === 'web') {
+                    Alert.alert(`📞 Llamada entrante`, `${call.callerName || 'Alguien'} te está llamando`, [
+                      { text: 'Rechazar', style: 'destructive', onPress: () => {} },
+                      {
+                        text: 'Aceptar',
+                        onPress: () => router.push({
+                          pathname: '/call/[callId]',
+                          params: {
+                            callId: call.callId,
+                            targetName: call.callerName || 'Usuario',
+                            targetAvatar: call.callerAvatar || '',
+                            callType: call.type || 'audio',
+                            role: 'callee',
+                            offer: call.offer ? JSON.stringify(call.offer) : undefined,
+                          }
+                        } as any),
+                      },
+                    ]);
+                  }
                 });
               }
 
