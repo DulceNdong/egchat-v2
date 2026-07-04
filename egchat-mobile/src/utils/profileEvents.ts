@@ -38,8 +38,15 @@ export const onProfileUpdated = (listener: ProfileUpdateListener) => {
   };
 };
 
-export const isBrokenAvatarUrl = (url?: string | null) =>
-  !url || String(url).includes('egchat-api.onrender.com/static/avatars/');
+export const isBrokenAvatarUrl = (url?: string | null) => {
+  if (!url) return true;
+  const s = String(url);
+  // URLs de Render/static son efímeras (Render borra archivos en cada reinicio)
+  if (s.includes('egchat-api.onrender.com/static/avatars/')) return true;
+  // URLs de Supabase Storage son permanentes → no están rotas
+  if (s.includes('.supabase.co/storage/')) return false;
+  return false;
+};
 
 const getAvatarExtension = (uri: string) => {
   const clean = uri.split('?')[0].split('#')[0];

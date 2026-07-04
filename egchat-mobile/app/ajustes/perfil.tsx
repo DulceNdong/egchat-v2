@@ -8,7 +8,8 @@ import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Rect, Line, Circle, Polyline } from 'react-native-svg';
-import { authAPI, getToken, userAPI } from '../../src/api';
+import { authAPI, userAPI } from '../../src/api';
+import { uploadAvatarToSupabase } from '../../src/utils/avatarStorage';
 import { cacheBustAvatarUrl, emitProfileUpdated, mergePersistentAvatar, saveLocalAvatar } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
 import { ProfileQRSheet } from '../../src/components/profile/ProfileQRSheet';
@@ -273,58 +274,27 @@ export default function PerfilScreen() {
     emitProfileUpdated({ avatar_url: uri });
 
     try {
-      const token = await getToken();
-      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+      const userId = user?.id;
+      if (!userId) throw new Error('Usuario no identificado');
 
-      // Convertir URI a base64
-      let base64Data: string | null = null;
-      try {
-        const blobRes = await fetch(uri);
-        const blob = await blobRes.blob();
-        base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      } catch {
-        // En nativo usar expo-file-system
+      // ── 1. Subir a Supabase Storage (URL permanente) ──────────
+      const supabaseUrl = await uploadAvatarToSupabase(userId, uri);
+
+      if (supabaseUrl) {
+        // ── 2. Sincronizar la URL con el servidor Render ──────────
         try {
-          const { readAsStringAsync, EncodingType } = await import('expo-file-system');
-          base64Data = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
-        } catch { /* skip */ }
-      }
+          await authAPI.updateProfile({ avatar_url: supabaseUrl });
+        } catch { /* no crítico — la URL ya está guardada en Supabase */ }
 
-      const payload: Record<string, string> = {};
-      if (base64Data) {
-        payload.avatar_base64 = base64Data;
-      }
-
-      const res = await fetch(`${BASE}/api/user/avatar`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const serverUrl = data.avatar_url;
-        const finalUrl = serverUrl || uri;
-        // Sincronizar con /api/auth/profile también
-        if (serverUrl) {
-          try { await authAPI.updateProfile({ avatar_url: serverUrl }); } catch { /* ok */ }
-        }
-        const displayUrl = cacheBustAvatarUrl(finalUrl) || uri;
-        setUser(prev => prev ? { ...prev, avatar_url: displayUrl } : prev);
-        emitProfileUpdated({ avatar_url: displayUrl });
-        await saveLocalAvatar(user?.id, uri);
+        // ── 3. Actualizar estado local ────────────────────────────
+        setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
+        emitProfileUpdated({ avatar_url: supabaseUrl });
+        await saveLocalAvatar(userId, supabaseUrl);
         toast.success('✓ Foto actualizada');
       } else {
-        await saveLocalAvatar(user?.id, uri);
-        toast.success('✓ Foto guardada');
+        // ── Fallback: guardar solo en local si Supabase falla ─────
+        await saveLocalAvatar(userId, uri);
+        toast.info('Foto guardada localmente. Se sincronizará con conexión.');
       }
     } catch {
       await saveLocalAvatar(user?.id, uri).catch(() => {});
