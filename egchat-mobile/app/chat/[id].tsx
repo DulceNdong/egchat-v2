@@ -1140,6 +1140,28 @@ export default function ChatScreen() {
   };
 
   const goToCall = (callType: 'audio' | 'video') => {
+    // Si es chat grupal → llamada grupal
+    if (isGroup && chat?.participants?.length > 2) {
+      const otherIds = chat.participants
+        .filter((p: any) => p.user_id !== currentUserId)
+        .map((p: any) => p.user_id);
+      const names: Record<string, string> = {};
+      chat.participants.forEach((p: any) => {
+        names[p.user_id] = p.full_name || p.user_id;
+      });
+      router.push({
+        pathname: '/group-call',
+        params: {
+          groupId: `group_${chatId}_${Date.now()}`,
+          myUserId: currentUserId,
+          participantIds: JSON.stringify(otherIds),
+          callType,
+          participantNames: JSON.stringify(names),
+        },
+      } as any);
+      return;
+    }
+    // Chat privado → llamada 1:1
     router.push({
       pathname: '/call/[callId]',
       params: {

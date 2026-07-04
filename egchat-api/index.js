@@ -4325,7 +4325,7 @@ app.get('/api/turn-token', auth, async (req, res) => {
 
 // Iniciar llamada — caller envía offer + push al destinatario
 app.post('/api/call/offer', auth, async (req, res) => {
-  const { callId, offer, targetUserId, type } = req.body;
+  const { callId, offer, targetUserId, type, groupId } = req.body;
   if (!callId || !offer) return res.status(400).json({ error: 'callId y offer requeridos' });
   try {
     await supabase.from('call_sessions').upsert({
@@ -4340,9 +4340,10 @@ app.post('/api/call/offer', auth, async (req, res) => {
       ended: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      ...(groupId ? { group_id: groupId } : {}),
     }, { onConflict: 'call_id' });
 
-    // Enviar push de llamada entrante al destinatario
+    // Push al destinatario con info de llamada grupal si aplica
     if (targetUserId) {
       try {
         const { data: caller } = await supabase
