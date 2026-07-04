@@ -33,6 +33,8 @@ class MainApplication : Application(), ReactApplication {
               add(WidgetPackage())
               // Módulo grabación audio de alta calidad
               add(AudioRecorderPackage())
+              // Módulo face filters AR
+              add(FaceFilterPackage())
             }
 
           override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
