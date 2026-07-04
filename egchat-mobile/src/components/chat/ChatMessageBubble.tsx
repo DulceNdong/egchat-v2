@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import Svg, { Path, Rect, Polygon } from 'react-native-svg';
 import { EGAvatar } from '../ui';
+import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
 import { PollMessage, parsePoll } from './PollMessage';
 import { ImageViewer } from '../ImageViewer';
