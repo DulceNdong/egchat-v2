@@ -388,8 +388,10 @@ export default function ChatScreen() {
   // Fallback: consultar online_status del otro usuario cada 15s
   // (por si Supabase Presence no funciona en web)
   useEffect(() => {
-    if (!otherParticipant?.user_id || isGroup) return;
-    const uid = String(otherParticipant.user_id);
+    const _isGroup = chat?.type === 'group';
+    const _otherParticipant = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    if (!_otherParticipant?.user_id || _isGroup) return;
+    const uid = String(_otherParticipant.user_id);
 
     const check = async () => {
       try {
@@ -410,7 +412,7 @@ export default function ChatScreen() {
     check();
     const interval = setInterval(check, 15000);
     return () => clearInterval(interval);
-  }, [otherParticipant?.user_id, isGroup]);
+  }, [chat, currentUserId]);
 
   useEffect(() => {
     if (!chatId || !currentUserId) return;
