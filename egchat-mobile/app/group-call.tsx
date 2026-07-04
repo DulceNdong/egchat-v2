@@ -13,6 +13,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Path, Polygon, Rect, Line } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
 import { useGroupCall } from '../src/hooks/useGroupCall';
+import { useSFUGroupCall, MAX_SFU_PARTICIPANTS } from '../src/hooks/useSFUGroupCall';
 
 const ACCENT = '#00c8a0';
 

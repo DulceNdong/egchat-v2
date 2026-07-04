@@ -5095,8 +5095,109 @@ app.get('/api/noticias/gobierno', async (req, res) => {
 });
 
 if (require.main === module) {
-  app.listen(PORT, async () => {
-    console.log(`\n😎 EGCHAT API + Supabase en http://localhost:${PORT}`);
+  // ── Servidor HTTP + WebSocket SFU ──────────────────────────────
+  const http = require('http');
+  const { WebSocketServer } = require('ws');
+
+  const httpServer = http.createServer(app);
+
+  // Salas SFU: roomId → Map<userId, { ws, userId, name, avatar }>
+  const sfuRooms = new Map();
+
+  const wss = new WebSocketServer({ server: httpServer, path: '/api/call/sfu-ws' });
+
+  wss.on('connection', (ws, req) => {
+    const url    = new URL(req.url, 'http://localhost');
+    const roomId = url.searchParams.get('roomId') || '';
+    const token  = url.searchParams.get('token') || '';
+
+    let myUserId = '';
+    let myName   = 'Usuario';
+
+    // Verificar token
+    try { const decoded = verifyToken(token); myUserId = String(decoded.id); }
+    catch { ws.close(4001, 'Token inválido'); return; }
+
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        switch (msg.type) {
+
+          case 'join': {
+            myName = msg.name || 'Usuario';
+            const avatar = msg.avatar || '';
+
+            if (!sfuRooms.has(roomId)) sfuRooms.set(roomId, new Map());
+            const room = sfuRooms.get(roomId);
+
+            // Enviar estado actual de la sala al nuevo participante
+            const currentParticipants = [...room.values()].map(p => ({
+              userId: p.userId, name: p.name, avatar: p.avatar,
+            }));
+            ws.send(JSON.stringify({ type: 'room_state', participants: currentParticipants }));
+
+            // Notificar a todos de la llegada
+            room.forEach(p => {
+              if (p.ws.readyState === p.ws.OPEN) {
+                p.ws.send(JSON.stringify({
+                  type: 'participant_joined', userId: myUserId, name: myName, avatar,
+                }));
+              }
+            });
+
+            room.set(myUserId, { ws, userId: myUserId, name: myName, avatar });
+            break;
+          }
+
+          case 'offer':
+          case 'answer':
+          case 'ice': {
+            const room = sfuRooms.get(roomId);
+            const target = room?.get(msg.to);
+            if (target?.ws?.readyState === target.ws.OPEN) {
+              target.ws.send(JSON.stringify({ ...msg, from: myUserId }));
+            }
+            break;
+          }
+
+          case 'mute_update': {
+            const room = sfuRooms.get(roomId);
+            room?.forEach(p => {
+              if (p.userId !== myUserId && p.ws.readyState === p.ws.OPEN) {
+                p.ws.send(JSON.stringify({
+                  type: 'mute_update', userId: myUserId,
+                  isMuted: msg.isMuted, isCamOff: msg.isCamOff,
+                }));
+              }
+            });
+            break;
+          }
+
+          case 'leave': handleLeave(); break;
+        }
+      } catch {}
+    });
+
+    function handleLeave() {
+      const room = sfuRooms.get(roomId);
+      if (!room) return;
+      room.delete(myUserId);
+      room.forEach(p => {
+        if (p.ws.readyState === p.ws.OPEN) {
+          p.ws.send(JSON.stringify({ type: 'participant_left', userId: myUserId }));
+        }
+      });
+      if (room.size === 0) sfuRooms.delete(roomId);
+    }
+
+    ws.on('close', handleLeave);
+    ws.on('error', handleLeave);
+  });
+
+  httpServer.listen(PORT, async () => {
+    console.log(`\n😎 EGCHAT API + WebSocket SFU en http://localhost:${PORT}`);
+    console.log(`   SFU WebSocket: ws://localhost:${PORT}/api/call/sfu-ws`);
+    console.log(`   Max participantes por sala: 9`);
     console.log(`   Supabase: ${process.env.SUPABASE_URL ? '✅ Conectado' : '❌ Sin configurar'}`);
     // Iniciar scheduler de noticias del gobierno
     startGovNewsScheduler();
