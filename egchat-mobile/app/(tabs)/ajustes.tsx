@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
-import { authAPI } from '../../src/api';
+import { authAPI, clearToken } from '../../src/api';
 import { mergePersistentAvatar } from '../../src/utils/profileEvents';
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
@@ -117,8 +117,11 @@ export default function AjustesScreen() {
         text: 'Cerrar sesión',
         style: 'destructive',
         onPress: async () => {
+          // 1. Llamar logout al servidor (marcar offline)
           try { await authAPI.logout(); } catch {}
-          // En web forzamos recarga completa para limpiar todo el estado
+          // 2. Limpiar token local (web + nativo)
+          try { await clearToken(); } catch {}
+          // 3. Redirigir al login
           if (typeof window !== 'undefined' && window.location) {
             window.location.href = '/';
           } else {
