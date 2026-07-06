@@ -418,12 +418,76 @@ app.post('/api/auth/heartbeat', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Registro de actividad del usuario
+app.get('/api/auth/activity', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const activity = [];
+    const now = new Date();
+
+    // Último login (del campo last_login en users)
+    const { data: user } = await supabase.from('users').select('last_login, created_at').eq('id', userId).single();
+    if (user?.last_login) {
+      activity.push({ id: 'login_1', type: 'login', action: 'Inicio de sesión', description: 'Sesión activa en este dispositivo', timestamp: user.last_login });
+    }
+
+    // Transacciones recientes
+    const { data: txs } = await supabase.from('transactions').select('id, type, amount, description, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+    (txs || []).forEach(tx => {
+      activity.push({ id: `tx_${tx.id}`, type: 'transaction', action: tx.type === 'transfer' ? 'Transferencia' : tx.type === 'deposit' ? 'Recarga' : 'Pago', description: tx.description || `${tx.amount} XAF`, timestamp: tx.created_at });
+    });
+
+    // Mensajes enviados recientes (como indicador de actividad de chat)
+    const { data: msgs } = await supabase.from('messages').select('id, created_at, chat_id').eq('sender_id', userId).order('created_at', { ascending: false }).limit(3);
+    if (msgs && msgs.length > 0) {
+      activity.push({ id: 'chat_1', type: 'chat', action: 'Mensajes enviados', description: `${msgs.length} mensajes recientes`, timestamp: msgs[0].created_at });
+    }
+
+    // Ordenar por fecha
+    activity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    res.json(activity.slice(0, 20));
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 // Marcar offline al cerrar sesión
 app.post('/api/auth/logout', auth, async (req, res) => {
   if (!String(req.user.id || '').startsWith('local-')) {
     supabase.from('users').update({ online_status: false, last_seen: new Date().toISOString() }).eq('id', req.user.id).then(() => {});
   }
   res.json({ message: 'Sesión cerrada' });
+});
+
+// Cambiar contraseña
+app.post('/api/auth/change-password', auth, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) return res.status(400).json({ message: 'Contraseñas requeridas' });
+    if (newPassword.length < 6) return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    const { data: user } = await supabase.from('users').select('password_hash').eq('id', req.user.id).single();
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+    const valid = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!valid) return res.status(401).json({ message: 'Contraseña actual incorrecta' });
+    const hash = await bcrypt.hash(newPassword, 10);
+    await supabase.from('users').update({ password_hash: hash }).eq('id', req.user.id);
+    res.json({ ok: true, message: 'Contraseña actualizada' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// Enviar feedback/comentarios
+app.post('/api/feedback', auth, async (req, res) => {
+  try {
+    const { category, message } = req.body;
+    if (!message?.trim()) return res.status(400).json({ message: 'Mensaje requerido' });
+    await supabase.from('feedback').insert({
+      user_id: req.user.id,
+      category: category || 'General',
+      message: message.trim(),
+      created_at: new Date().toISOString(),
+    }).then(() => {}).catch(() => {});
+    res.json({ ok: true, message: 'Feedback recibido' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/auth/profile', auth, async (req, res) => {

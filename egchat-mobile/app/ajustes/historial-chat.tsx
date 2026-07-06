@@ -1,40 +1,127 @@
 import React, { useEffect, useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, ActivityIndicator, Platform } from 'react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
+import { exportBackup, importBackup } from '../../src/services/chatBackup';
+import { authAPI } from '../../src/api';
+import { toast } from '../../src/components/Toast';
 
 export default function HistorialChatScreen() {
   const [backupWifi, setBackupWifi] = useState(true);
+  const [exporting, setExporting] = useState(false);
+  const [importing, setImporting] = useState(false);
 
   useEffect(() => {
     getCfgBool(CFG.backupWifi, true).then(setBackupWifi);
   }, []);
 
+  const handleExport = async () => {
+    Alert.prompt
+      ? Alert.prompt('Exportar backup', 'Crea una contraseña para proteger el backup:', async (pwd) => {
+          if (!pwd) return;
+          setExporting(true);
+          const me = await authAPI.me().catch(() => null);
+          const ok = await exportBackup(me?.id || 'user', pwd);
+          setExporting(false);
+          if (!ok) toast.error('Error', 'No se pudo exportar el backup');
+        })
+      : Alert.alert('Exportar backup', 'El backup se guardará con contraseña "egchat123" por defecto en este dispositivo.', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Exportar', onPress: async () => {
+            setExporting(true);
+            const me = await authAPI.me().catch(() => null);
+            const ok = await exportBackup(me?.id || 'user', 'egchat123');
+            setExporting(false);
+            if (ok) toast.success('✓ Backup exportado');
+            else toast.error('Error', 'No se pudo exportar');
+          }},
+        ]);
+  };
+
+  const handleImport = async () => {
+    if (Platform.OS === 'web') { Alert.alert('No disponible', 'La importación de backup está disponible solo en la app nativa.'); return; }
+    try {
+      const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
+      if (result.canceled) return;
+      const file = result.assets?.[0];
+      if (!file?.uri) return;
+      Alert.prompt
+        ? Alert.prompt('Importar backup', 'Introduce la contraseña del backup:', async (pwd) => {
+            if (!pwd) return;
+            setImporting(true);
+            const res = await importBackup(file.uri, pwd);
+            setImporting(false);
+            if (res.ok) toast.success('✓ Backup importado correctamente');
+            else Alert.alert('Error', res.message || 'Contraseña incorrecta');
+          })
+        : Alert.alert('Importar backup', 'Ingresa la contraseña del backup', [
+            { text: 'Cancelar', style: 'cancel' },
+            { text: 'Importar con "egchat123"', onPress: async () => {
+              setImporting(true);
+              const res = await importBackup(file.uri, 'egchat123');
+              setImporting(false);
+              if (res.ok) toast.success('✓ Backup importado');
+              else Alert.alert('Error', res.message || 'Contraseña incorrecta');
+            }},
+          ]);
+    } catch { toast.error('Error', 'No se pudo leer el archivo'); }
+  };
+
+  const clearLocalMessages = () => {
+    Alert.alert('Limpiar caché', '¿Borrar todos los mensajes almacenados localmente? Los mensajes del servidor se descargarán al abrir cada chat.', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Limpiar', style: 'destructive', onPress: async () => {
+        const keys = await AsyncStorage.getAllKeys();
+        const chatKeys = keys.filter(k => k.startsWith('chat_messages_'));
+        await AsyncStorage.multiRemove(chatKeys);
+        toast.success(`✓ ${chatKeys.length} chats limpiados`);
+      }},
+    ]);
+  };
+
   return (
     <SettingsLayout title="Historial de chat">
-      <SettingsSection label="Copia de seguridad" />
+      <SettingsSection label="Copia de seguridad cifrada" />
       <SettingsCard>
-        <SettingsRow label="Copia en la nube" value="Automática" onPress={() => Alert.alert('Próximamente', 'La copia en la nube estará disponible pronto.')} />
+        <SettingsRow
+          label={exporting ? 'Exportando...' : 'Exportar backup (.egbackup)'}
+          onPress={exporting ? undefined : handleExport}
+        />
         <SettingsDivider />
-        <SettingsRow label="Frecuencia" value="Diaria" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow
+          label={importing ? 'Importando...' : 'Importar backup'}
+          onPress={importing ? undefined : handleImport}
+        />
         <SettingsDivider />
-        <SettingsToggleRow label="Solo con Wi-Fi" value={backupWifi} onValueChange={v => { setBackupWifi(v); setCfgBool(CFG.backupWifi, v); }} />
+        <SettingsToggleRow
+          label="Solo con Wi-Fi"
+          value={backupWifi}
+          onValueChange={v => { setBackupWifi(v); setCfgBool(CFG.backupWifi, v); }}
+        />
       </SettingsCard>
 
-      <SettingsSection label="Acciones" />
+      <SettingsSection label="Gestión local" />
       <SettingsCard>
-        <SettingsRow label="Exportar chat" onPress={() => Alert.alert('Exportar', 'Selecciona un chat para exportarlo.')} />
-        <SettingsDivider />
-        <SettingsRow label="Borrar mensajes eliminados" onPress={() => Alert.alert('✓', 'Mensajes eliminados limpiados.')} />
+        <SettingsRow
+          label="Limpiar caché de mensajes"
+          onPress={clearLocalMessages}
+        />
         <SettingsDivider />
         <SettingsRow
           label="Eliminar todos los chats"
           danger
-          onPress={() => Alert.alert('Eliminar chats', '¿Eliminar todos los chats locales?', [
+          onPress={() => Alert.alert('Eliminar chats', '¿Eliminar todos los chats locales? Esta acción no se puede deshacer.', [
             { text: 'Cancelar', style: 'cancel' },
-            { text: 'Eliminar', style: 'destructive', onPress: () => Alert.alert('✓', 'Chats locales eliminados') },
+            { text: 'Eliminar', style: 'destructive', onPress: async () => {
+              const keys = await AsyncStorage.getAllKeys();
+              const toRemove = keys.filter(k => k.startsWith('chat_') || k.startsWith('egchat_starred') || k.startsWith('egchat_pinned'));
+              await AsyncStorage.multiRemove(toRemove);
+              toast.success('✓ Chats locales eliminados');
+            }},
           ])}
         />
       </SettingsCard>
