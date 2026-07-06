@@ -442,6 +442,27 @@ app.put('/api/auth/profile', auth, async (req, res) => {
   }
 });
 
+// ── Verificar/crear buckets de storage ───────────────────────────
+app.post('/api/storage/init', auth, async (_req, res) => {
+  try {
+    const results = [];
+    for (const bucketName of ['chat-files', 'avatars']) {
+      const { data: list } = await supabase.storage.listBuckets();
+      const exists = (list || []).some(b => b.name === bucketName);
+      if (!exists) {
+        const { error } = await supabase.storage.createBucket(bucketName, { public: true });
+        results.push({ bucket: bucketName, created: !error, error: error?.message });
+      } else {
+        await supabase.storage.updateBucket(bucketName, { public: true }).catch(() => {});
+        results.push({ bucket: bucketName, created: false, exists: true });
+      }
+    }
+    res.json({ ok: true, results });
+  } catch (e: any) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ── Cifrado E2E — claves públicas ─────────────────────────────────────────────
 app.post('/api/auth/e2e-key', auth, async (req, res) => {
   try {
@@ -5204,16 +5225,26 @@ if (require.main === module) {
     console.log(`   Auth:   POST /api/auth/register | /api/auth/login`);
     console.log(`   Wallet: GET  /api/wallet/balance | POST /api/wallet/deposit`);
     console.log(`   Lia-25: POST /api/lia/chat\n`);
-    // Crear bucket chat-files si no existe (para avatares y archivos)
+    // Crear buckets si no existen (avatares + archivos de chat)
     try {
       const { data: buckets } = await supabase.storage.listBuckets();
-      const exists = (buckets || []).some(b => b.name === 'chat-files');
-      if (!exists) {
-        const { error: bErr } = await supabase.storage.createBucket('chat-files', { public: true });
-        if (bErr) console.log('Bucket ya existe o error:', bErr.message);
-        else console.log('✅ Bucket chat-files creado');
-      } else {
-        console.log('✅ Bucket chat-files OK');
+      const bucketList = buckets || [];
+
+      for (const bucketName of ['chat-files', 'avatars']) {
+        const exists = bucketList.some(b => b.name === bucketName);
+        if (!exists) {
+          const { error: bErr } = await supabase.storage.createBucket(bucketName, {
+            public: true,
+            allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'audio/m4a', 'application/octet-stream'],
+            fileSizeLimit: 52428800, // 50MB
+          });
+          if (bErr) console.log(`Bucket ${bucketName} ya existe o error:`, bErr.message);
+          else console.log(`✅ Bucket ${bucketName} creado`);
+        } else {
+          // Asegurar que sea público
+          await supabase.storage.updateBucket(bucketName, { public: true }).catch(() => {});
+          console.log(`✅ Bucket ${bucketName} OK (público)`);
+        }
       }
     } catch (e) {
       console.log('Bucket check error:', e.message);

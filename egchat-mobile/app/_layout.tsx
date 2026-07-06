@@ -77,6 +77,17 @@ export default function RootLayout() {
               presenceCleanup.current?.();
               presenceCleanup.current = trackUserPresence(me.id);
 
+              // Inicializar buckets de storage si no existen
+              try {
+                const { getToken, getApiBase } = await import('../src/api');
+                const token = await getToken();
+                const base  = getApiBase();
+                await fetch(`${base}/api/storage/init`, {
+                  method: 'POST',
+                  headers: { Authorization: `Bearer ${token}` },
+                }).catch(() => {});
+              } catch {}
+
               // Heartbeat cada 30s para mantener online_status activo en DB
               const { getToken, getApiBase } = await import('../src/api');
               const heartbeatFn = async () => {
