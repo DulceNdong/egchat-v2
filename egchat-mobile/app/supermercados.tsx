@@ -25,7 +25,7 @@ export default function SupermercadosScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>🛒 Supermercados</Text>
+        <Text style={[styles.title, { color: C.textPrimary }]}>Supermercados</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>CATEGORÍAS</Text>

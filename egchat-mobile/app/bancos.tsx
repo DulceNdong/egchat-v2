@@ -25,7 +25,7 @@ export default function BancosScreen() {
         <TouchableOpacity onPress={() => selected ? setSelected(null) : router.back()} style={styles.backBtn}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>{selected ? selected.name : '🏦 Bancos'}</Text>
+        <Text style={[styles.title, { color: C.textPrimary }]}>{selected ? selected.name : 'Bancos'}</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {!selected ? (

@@ -166,7 +166,9 @@ export default function RootLayout() {
                   // Fallback Alert en web
                   if (Platform.OS === 'web') {
                     Alert.alert(`📞 Llamada entrante`, `${call.callerName || 'Alguien'} te está llamando`, [
-                      { text: 'Rechazar', style: 'destructive', onPress: () => {} },
+                      { text: 'Rechazar', style: 'destructive', onPress: () => {
+                        NativeCallKit.rejectCall(call.callId);
+                      } },
                       {
                         text: 'Aceptar',
                         onPress: () => router.push({

@@ -22,7 +22,7 @@ export default function MiniAppPlayerScreen() {
 
   const handlePayment = (amount: number, description: string) => {
     toast.info('💳 Pago', `${description} — ${amount} XAF`);
-    router.push('/(tabs)/cartera' as any);
+    router.push('/(tabs)/monedero' as any);
   };
 
   const handleShare = (content: string) => {

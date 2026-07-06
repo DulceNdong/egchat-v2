@@ -146,6 +146,8 @@ const SvgIcon = ({ id, color = '#00C8A0', size = 24 }: { id: string; color?: str
       return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Path d="M3 22V6a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v16"/><Path d="M17 22V11l4-4v15"/><Line x1="3" y1="22" x2="21" y2="22"/><Line x1="7" y1="10" x2="11" y2="10"/></Svg>;
     case 'ocio':
       return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></Svg>;
+    case 'miniapps':
+      return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Rect x="3" y="3" width="7" height="7" rx="1"/><Rect x="14" y="3" width="7" height="7" rx="1"/><Rect x="3" y="14" width="7" height="7" rx="1"/><Rect x="14" y="14" width="7" height="7" rx="1"/></Svg>;
     default:
       return <Svg width={s} height={s} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round"><Circle cx="12" cy="12" r="10"/></Svg>;
   }
