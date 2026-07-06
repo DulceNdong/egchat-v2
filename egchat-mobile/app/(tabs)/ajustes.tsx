@@ -111,25 +111,28 @@ export default function AjustesScreen() {
   }, [search]);
 
   const logout = useCallback(() => {
-    Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: async () => {
-          // 1. Llamar logout al servidor (marcar offline)
-          try { await authAPI.logout(); } catch {}
-          // 2. Limpiar token local (web + nativo)
-          try { await clearToken(); } catch {}
-          // 3. Redirigir al login
-          if (typeof window !== 'undefined' && window.location) {
-            window.location.href = '/';
-          } else {
-            router.replace('/(auth)/login');
-          }
-        },
-      },
-    ]);
+    const doLogout = async () => {
+      try { await authAPI.logout(); } catch {}
+      try { await clearToken(); } catch {}
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.href = '/';
+      } else {
+        router.replace('/(auth)/login');
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      // Web: usar confirm nativo del navegador (siempre funciona)
+      if (window.confirm('¿Cerrar sesión en EGChat?')) {
+        doLogout();
+      }
+    } else {
+      // Nativo: usar Alert
+      Alert.alert('Cerrar sesión', '¿Estás seguro?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cerrar sesión', style: 'destructive', onPress: doLogout },
+      ]);
+    }
   }, []);
 
   const navigate = (route: string) => router.push(route as any);

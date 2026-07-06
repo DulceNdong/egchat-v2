@@ -90,7 +90,7 @@ export function SettingsRow({
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
   const content = (
     <>
-      <Text style={[styles.rowLabel, { color: danger ? '#ef4444' : C.textPrimary }]}>{label}</Text>
+      <Text style={[styles.rowLabel, { color: danger ? '#ef4444' : C.textPrimary }]} suppressHighlighting>{label}</Text>
       {right ?? (
         <View style={styles.rowRight}>
           {value ? <Text style={[styles.rowValue, { color: C.textTertiary }]}>{value}</Text> : null}
