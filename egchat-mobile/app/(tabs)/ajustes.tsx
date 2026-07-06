@@ -216,13 +216,20 @@ export default function AjustesScreen() {
 
             {/* Botón cambiar cuenta */}
             <TouchableOpacity
-              style={[styles.switchAccountBtn, { borderColor: C.borderLight }]}
+              style={styles.switchAccountBtn}
               onPress={() => setShowAccountSwitcher(true)}
               activeOpacity={0.7}
             >
-              <Text style={[styles.switchAccountText, { color: C.textSecondary }]}>
-                👤 Cambiar cuenta
-              </Text>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <Circle cx="9" cy="7" r="4"/>
+                <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </Svg>
+              <Text style={[styles.switchAccountText, { color: C.textTertiary }]}>Cambiar cuenta</Text>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
+                <Path d="M9 18l6-6-6-6"/>
+              </Svg>
             </TouchableOpacity>
 
             {SECTIONS.map(section => (
@@ -309,11 +316,11 @@ const styles = StyleSheet.create({
   heroImg: { width: '100%', height: '100%' },
   heroInitials: { fontSize: 20, fontWeight: '700', color: '#fff' },
   switchAccountBtn: {
-    flexDirection: 'row', justifyContent: 'center',
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     paddingVertical: 10, marginTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)',
   },
-  switchAccountText: { fontSize: 14, fontWeight: '600' },
+  switchAccountText: { fontSize: 13, fontWeight: '500' },
   heroInfo: { flex: 1 },
   heroName: { fontSize: 17, fontWeight: '600' },
   heroSub: { fontSize: 13, marginTop: 2 },

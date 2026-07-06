@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 
 export type ProfileUpdatePatch = {
@@ -122,6 +123,18 @@ export const mergePersistentAvatar = async <T extends { id?: string; avatar_url?
   user: T | null | undefined,
 ) => {
   if (!user?.id) return user;
+
+  // En web: no usamos FileSystem — devolver avatar_url directamente de Supabase
+  if (Platform.OS === 'web') {
+    if (user.avatar_url && !isBrokenAvatarUrl(user.avatar_url)) {
+      return { ...user, avatar_url: cacheBustAvatarUrl(user.avatar_url) };
+    }
+    // Intentar recuperar del AsyncStorage (guardado como URL, no como file://)
+    const stored = await AsyncStorage.getItem(`${AVATAR_CACHE_PREFIX}${user.id}`);
+    if (stored && stored.startsWith('http')) return { ...user, avatar_url: stored };
+    return user;
+  }
+
   const localAvatar = await getLocalAvatar(user.id);
   if (localAvatar && localAvatar.startsWith(FileSystem.documentDirectory)) {
     return { ...user, avatar_url: localAvatar };
