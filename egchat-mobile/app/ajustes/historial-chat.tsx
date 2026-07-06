@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, ActivityIndicator, Platform } from 'react-native';
-import * as DocumentPicker from 'expo-document-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
@@ -43,32 +42,7 @@ export default function HistorialChatScreen() {
   };
 
   const handleImport = async () => {
-    if (Platform.OS === 'web') { Alert.alert('No disponible', 'La importación de backup está disponible solo en la app nativa.'); return; }
-    try {
-      const result = await DocumentPicker.getDocumentAsync({ type: '*/*' });
-      if (result.canceled) return;
-      const file = result.assets?.[0];
-      if (!file?.uri) return;
-      Alert.prompt
-        ? Alert.prompt('Importar backup', 'Introduce la contraseña del backup:', async (pwd) => {
-            if (!pwd) return;
-            setImporting(true);
-            const res = await importBackup(file.uri, pwd);
-            setImporting(false);
-            if (res.ok) toast.success('✓ Backup importado correctamente');
-            else Alert.alert('Error', res.message || 'Contraseña incorrecta');
-          })
-        : Alert.alert('Importar backup', 'Ingresa la contraseña del backup', [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Importar con "egchat123"', onPress: async () => {
-              setImporting(true);
-              const res = await importBackup(file.uri, 'egchat123');
-              setImporting(false);
-              if (res.ok) toast.success('✓ Backup importado');
-              else Alert.alert('Error', res.message || 'Contraseña incorrecta');
-            }},
-          ]);
-    } catch { toast.error('Error', 'No se pudo leer el archivo'); }
+    Alert.alert('Importar backup', 'La importación de backup está disponible solo en la app nativa (Android/iOS). Instala la app desde la tienda para usar esta función.');
   };
 
   const clearLocalMessages = () => {
