@@ -481,7 +481,11 @@ export default function HomeScreen() {
             onPress={() => setShowIdDigital(true)}
           >
             <View style={st.infoCardIcon}>
-              <Text style={st.infoCardEmoji}>🪪</Text>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                <Rect x="2" y="4" width="20" height="16" rx="2"/>
+                <Path d="M8 10a2 2 0 1 0 4 0 2 2 0 0 0-4 0"/>
+                <Path d="M14 10h4M14 14h4M8 14h4"/>
+              </Svg>
             </View>
             <View style={st.infoCardText}>
               <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>ID Digital</Text>
@@ -498,7 +502,10 @@ export default function HomeScreen() {
             onPress={() => setShowNews(true)}
           >
             <View style={st.infoCardIcon}>
-              <Text style={st.infoCardEmoji}>📰</Text>
+              <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+                <Path d="M18 14h-8M15 18h-5M10 6h8v4h-8z"/>
+              </Svg>
             </View>
             <View style={st.infoCardText}>
               <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>Noticias</Text>

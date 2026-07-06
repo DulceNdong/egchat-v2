@@ -185,7 +185,20 @@ export default function CemacScreen() {
             {filtered.length === 0 && <Text style={s.empty}>{t.noResults}</Text>}
             <View style={s.grid}>
               {filtered.map(sv => (
-                <TouchableOpacity key={sv.id} style={s.svcCard} onPress={() => sv.id === 's1' && setTransferOpen(true)}>
+                <TouchableOpacity key={sv.id} style={s.svcCard} onPress={() => {
+                  if (sv.id === 's1') { setTransferOpen(true); return; }
+                  if (sv.id === 's2') { router.push('/_qr-scanner' as any); return; }
+                  // Servicios s3-s8: navegar a servicios de la app principal
+                  const routeMap: Record<string, string> = {
+                    's3': '/(tabs)/servicios?service=supermercado',
+                    's4': '/(tabs)/servicios?service=recarga',
+                    's5': '/(tabs)/servicios?service=electricidad',
+                    's6': '/(tabs)/servicios?service=agua',
+                    's7': '/(tabs)/servicios?service=seguros',
+                    's8': '/(tabs)/servicios?service=impuestos',
+                  };
+                  if (routeMap[sv.id]) router.push(routeMap[sv.id] as any);
+                }}>
                   <View style={[s.svcIcon, { backgroundColor: sv.bg }]}>
                     <Text style={{ fontSize: 22 }}>{sv.icon}</Text>
                   </View>
