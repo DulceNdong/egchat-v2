@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, Alert, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow,
 } from '../../src/components/settings/SettingsUI';
@@ -17,9 +18,9 @@ export default function AcercaScreen() {
   return (
     <SettingsLayout title="Acerca de EGCHAT">
       <View style={styles.hero}>
-        <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.logo}>
-          <Text style={{ fontSize: 32 }}>💬</Text>
-        </LinearGradient>
+        <View style={styles.logoWrap}>
+          <SpinningLogo size={90} glow={true} />
+        </View>
         <Text style={styles.appName}>EGCHAT</Text>
         <Text style={styles.version}>Versión 2.5.5</Text>
       </View>
@@ -50,7 +51,7 @@ export default function AcercaScreen() {
 
 const styles = StyleSheet.create({
   hero: { alignItems: 'center', paddingVertical: 32, backgroundColor: '#fff' },
-  logo: { width: 80, height: 80, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  logoWrap: { marginBottom: 14 },
   appName: { fontSize: 22, fontWeight: '700' },
   version: { fontSize: 14, color: '#8e8e93', marginTop: 4 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },
