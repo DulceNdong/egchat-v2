@@ -1,17 +1,48 @@
+# Dependencias (EAS las instala en el servidor)
 node_modules
+
+# Builds anteriores y outputs
+dist
+dist-web
+android/app/build
+android/build
+android/.gradle
+ios/build
+**/build
+
+# Módulos nativos iOS pre-compilados
+ios-native-modules
+
+# Expo caché
 .expo
 .expo-shared
-dist
+
+# Logs y archivos de debug
 *.log
+build-log*.txt
+build-log*.txt.decoded.txt
+expo-start*.log
+expo-web*.log
+error-context.txt
+error-lines.txt
+
+# Archivos temporales y dev
 *.tmp
 *.zip
+qr_data.txt
+qr.html
+expo-go-qr.png
+expo-go-current-qr.png
+
+# Scripts solo para macOS/Windows local
+build-mac.sh
+prepare-xcode-mac.sh
+build-android-apk.bat
+open-firewall.bat
+start-react-native-web.bat
+decodeBuildLog.js
+
+# IDEs
 .vscode
 .idea
 .gradle
-android/.gradle
-android/app/build
-android/build
-ios/build
-**/build
-yarn-error.log
-npm-debug.log*
