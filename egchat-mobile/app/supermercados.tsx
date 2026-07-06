@@ -31,7 +31,7 @@ export default function SupermercadosScreen() {
         <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>CATEGORÍAS</Text>
         <View style={styles.grid}>
           {CATEGORIES.map(cat => (
-            <TouchableOpacity key={cat} style={[styles.catChip, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => Alert.alert('Próximamente', 'Compra online disponible pronto')} activeOpacity={0.7}>
+            <TouchableOpacity key={cat} style={[styles.catChip, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => Alert.alert(cat, `Explora la sección de ${cat.toLowerCase()} en los supermercados de Malabo y Bata.`)} activeOpacity={0.7}>
               <Text style={[styles.catText, { color: C.textPrimary }]}>{cat}</Text>
             </TouchableOpacity>
           ))}

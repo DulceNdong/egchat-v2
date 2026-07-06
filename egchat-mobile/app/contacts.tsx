@@ -110,7 +110,9 @@ export default function ContactsScreen() {
         </TouchableOpacity>
       </View>
       <View style={[styles.searchBar, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
-        <Text style={styles.searchIcon}>🔍</Text>
+        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
+          <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
+        </Svg>
         <TextInput style={[styles.searchInput, { color: C.textPrimary }]} value={query} onChangeText={setQuery} placeholder="Buscar contacto..." placeholderTextColor={C.textTertiary} />
       </View>
 
