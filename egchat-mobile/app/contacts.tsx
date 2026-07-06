@@ -10,6 +10,7 @@ import { EGAvatar } from '../src/components/ui';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import Svg, { Path, Circle } from 'react-native-svg';
 
 export default function ContactsScreen() {
   const [contacts, setContacts] = useState<any[]>([]);
@@ -81,7 +82,9 @@ export default function ContactsScreen() {
     try {
       const chat = await chatAPI.createPrivate(userId);
       router.replace(`/chat/${chat.id}` as any);
-    } catch {}
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'No se pudo abrir el chat');
+    }
   }, []);
 
   const filtered = query
@@ -131,7 +134,9 @@ export default function ContactsScreen() {
                 <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
               </View>
               <TouchableOpacity onPress={() => openChat(item)} style={styles.chatBtn}>
-                <Text style={styles.chatBtnIcon}>💬</Text>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={Colors.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </Svg>
               </TouchableOpacity>
             </TouchableOpacity>
           )}
