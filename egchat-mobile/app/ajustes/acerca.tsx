@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow,
@@ -38,11 +38,11 @@ export default function AcercaScreen() {
 
       <SettingsSection label="Legal" />
       <SettingsCard>
-        <SettingsRow label="Términos de servicio" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow label="Términos de servicio" onPress={() => Linking.openURL('https://egchat-v2.vercel.app/terms').catch(() => {})} />
         <SettingsDivider />
-        <SettingsRow label="Política de privacidad" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow label="Política de privacidad" onPress={() => Linking.openURL('https://egchat-v2.vercel.app/privacy').catch(() => {})} />
         <SettingsDivider />
-        <SettingsRow label="Licencias de código abierto" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow label="Licencias de código abierto" onPress={() => Alert.alert('Licencias', 'React Native (MIT), Expo (MIT), Supabase (Apache 2.0), TweetNaCl (Public Domain)')} />
       </SettingsCard>
     </SettingsLayout>
   );

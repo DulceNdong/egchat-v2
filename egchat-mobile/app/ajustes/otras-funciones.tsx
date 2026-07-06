@@ -34,7 +34,7 @@ export default function OtrasFuncionesScreen() {
 
       <SettingsSection label="IA y experimental" />
       <SettingsCard>
-        <SettingsRow label="🤖 LIA-25 — Asistente IA" onPress={() => router.push('/(tabs)/lia' as any)} />
+        <SettingsRow label="LIA-25 — Asistente IA" onPress={() => router.push('/(tabs)/lia' as any)} />
         <SettingsDivider />
         <SettingsRow label="Modo offline" value="Próximamente" />
       </SettingsCard>
