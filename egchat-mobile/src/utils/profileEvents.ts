@@ -77,8 +77,14 @@ export const persistAvatarFile = async (userId: string | undefined, avatarUrl?: 
   }
 
   if (avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://')) {
-    if (oldInfo.exists) {
+    // Si la URL tiene un cache-buster nuevo, forzar re-descarga
+    const hasNewVersion = avatarUrl.includes('egchatAvatarVersion=');
+    if (oldInfo.exists && !hasNewVersion) {
       return destination;
+    }
+    // Borrar el archivo viejo si existe para forzar la descarga del nuevo
+    if (oldInfo.exists) {
+      await FileSystem.deleteAsync(destination, { idempotent: true });
     }
     try {
       const result = await FileSystem.downloadAsync(avatarUrl, destination);
@@ -93,6 +99,14 @@ export const persistAvatarFile = async (userId: string | undefined, avatarUrl?: 
 
 export const saveLocalAvatar = async (userId: string | undefined, avatarUrl?: string) => {
   if (!userId || !avatarUrl) return;
+  // Borrar archivo local anterior para forzar descarga de la nueva foto
+  const dir = `${FileSystem.documentDirectory}${AVATAR_DIR}`;
+  const exts = ['jpg', 'jpeg', 'png', 'webp'];
+  for (const ext of exts) {
+    const oldPath = `${dir}${userId}.${ext}`;
+    const info = await FileSystem.getInfoAsync(oldPath);
+    if (info.exists) await FileSystem.deleteAsync(oldPath, { idempotent: true });
+  }
   const persistentAvatar = await persistAvatarFile(userId, avatarUrl);
   if (persistentAvatar) {
     await AsyncStorage.setItem(`${AVATAR_CACHE_PREFIX}${userId}`, persistentAvatar);
