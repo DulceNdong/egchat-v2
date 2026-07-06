@@ -2,7 +2,6 @@
   <string name="app_name">EGCHAT</string>
   <string name="expo_runtime_version">1.0.0</string>
   <string name="widget_description">Muestra tus últimos chats con mensajes no leídos</string>
-  <!-- Atajos de icono -->
   <string name="shortcut_new_chat_short">Nuevo chat</string>
   <string name="shortcut_new_chat_long">Iniciar nuevo chat</string>
   <string name="shortcut_stories_short">Historias</string>

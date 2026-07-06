@@ -35,51 +35,28 @@
     <meta-data android:name="expo.modules.updates.EXPO_RUNTIME_VERSION" android:value="@string/expo_runtime_version"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_CHECK_ON_LAUNCH" android:value="ALWAYS"/>
     <meta-data android:name="expo.modules.updates.EXPO_UPDATES_LAUNCH_WAIT_MS" android:value="0"/>
-    <!-- Receiver para acciones de llamada (Contestar/Rechazar) desde notificación -->
-    <receiver
-      android:name=".CallActionReceiver"
-      android:exported="false">
+    <receiver android:name=".CallActionReceiver" android:exported="false">
       <intent-filter>
         <action android:name="com.egchat.app.ANSWER_CALL"/>
         <action android:name="com.egchat.app.REJECT_CALL"/>
       </intent-filter>
     </receiver>
-
-    <!-- Widget de pantalla de inicio -->
-    <receiver
-      android:name=".ChatWidgetProvider"
-      android:exported="true"
-      android:label="EGChat">
+    <receiver android:name=".ChatWidgetProvider" android:exported="true" android:label="EGChat">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/widget_chat_info"/>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_chat_info"/>
     </receiver>
-
-    <!-- Respuesta rapida desde notificacion -->
     <receiver android:name=".QuickReplyReceiver" android:exported="false">
       <intent-filter>
         <action android:name="com.egchat.app.QUICK_REPLY"/>
       </intent-filter>
     </receiver>
-
-    <activity android:name=".MainActivity"
-      android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode"
-      android:launchMode="singleTask"
-      android:windowSoftInputMode="adjustResize"
-      android:theme="@style/Theme.App.SplashScreen"
-      android:exported="true"
-      android:screenOrientation="portrait">
+    <activity android:name=".MainActivity" android:configChanges="keyboard|keyboardHidden|orientation|screenSize|screenLayout|uiMode" android:launchMode="singleTask" android:windowSoftInputMode="adjustResize" android:theme="@style/Theme.App.SplashScreen" android:exported="true" android:screenOrientation="portrait">
       <intent-filter>
         <action android:name="android.intent.action.MAIN"/>
         <category android:name="android.intent.category.LAUNCHER"/>
       </intent-filter>
-      <!-- Atajos de icono (long-press) -->
-      <meta-data
-        android:name="android.app.shortcuts"
-        android:resource="@xml/shortcuts"/>
       <intent-filter>
         <action android:name="android.intent.action.VIEW"/>
         <category android:name="android.intent.category.DEFAULT"/>
@@ -87,37 +64,31 @@
         <data android:scheme="egchat"/>
         <data android:scheme="exp+egchat"/>
       </intent-filter>
-      <!-- Compartir imagen desde otras apps -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="image/*"/>
       </intent-filter>
-      <!-- Compartir video -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="video/*"/>
       </intent-filter>
-      <!-- Compartir audio -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="audio/*"/>
       </intent-filter>
-      <!-- Compartir cualquier archivo -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="*/*"/>
       </intent-filter>
-      <!-- Compartir texto (URL, enlace, etc.) -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="text/plain"/>
       </intent-filter>
-      <!-- Compartir múltiples archivos -->
       <intent-filter>
         <action android:name="android.intent.action.SEND_MULTIPLE"/>
         <category android:name="android.intent.category.DEFAULT"/>
@@ -128,6 +99,7 @@
         <category android:name="android.intent.category.DEFAULT"/>
         <data android:mimeType="*/*"/>
       </intent-filter>
+      <meta-data android:name="android.app.shortcuts" android:resource="@xml/shortcuts"/>
     </activity>
   </application>
 </manifest>
