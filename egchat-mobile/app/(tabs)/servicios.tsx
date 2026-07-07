@@ -33,7 +33,6 @@ const SERVICE_SECTIONS = [
       { id: 'recarga',      svgIcon: 'recharge',      label: 'Recarga Tel.',  color: '#07C160' },
       { id: 'internet',     svgIcon: 'world',         label: 'Internet',      color: '#1485EE' },
       { id: 'tv',           svgIcon: 'services',      label: 'Canales',       color: '#8B5CF6' },
-      { id: 'barcos',       svgIcon: 'barco',         label: 'Barcos',        color: '#0EA5E9' },
     ],
   },
   {
@@ -70,6 +69,7 @@ const SERVICE_SECTIONS = [
       { id: 'restaurantes', svgIcon: 'restaurante',   label: 'Restaurante',   color: '#C47D2A' },
       { id: 'hotel',        svgIcon: 'hotel',         label: 'Hotel',         color: '#1485EE' },
       { id: 'vuelos',       svgIcon: 'vuelos',        label: 'Vuelos',        color: '#6B5BD6' },
+      { id: 'barcos',       svgIcon: 'barco',         label: 'Barcos',        color: '#0EA5E9' },
       { id: 'gasolineras',  svgIcon: 'gasolinera',    label: 'Gasolinera',    color: '#C47D2A' },
       { id: 'tienda',       svgIcon: 'tienda',        label: 'Tienda',        color: '#2E9E6B' },
       { id: 'lavanderia',   svgIcon: 'lavanderia',    label: 'Lavandería',    color: '#1485EE' },
