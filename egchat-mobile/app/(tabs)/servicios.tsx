@@ -33,6 +33,7 @@ const SERVICE_SECTIONS = [
       { id: 'recarga',      svgIcon: 'recharge',      label: 'Recarga Tel.',  color: '#07C160' },
       { id: 'internet',     svgIcon: 'world',         label: 'Internet',      color: '#1485EE' },
       { id: 'tv',           svgIcon: 'services',      label: 'Canales',       color: '#8B5CF6' },
+      { id: 'barcos',       svgIcon: 'barco',         label: 'Barcos',        color: '#0EA5E9' },
     ],
   },
   {
@@ -293,6 +294,7 @@ export default function ServiciosScreen() {
     ocio: '/ocio',
     apuestas: '/apuestas',
     lia: '/(tabs)/lia',
+    barcos: '/barcos',
     ajustes: '/(tabs)/ajustes',
     historial: '/historial-completo',
     actividad: '/ajustes/actividad',
