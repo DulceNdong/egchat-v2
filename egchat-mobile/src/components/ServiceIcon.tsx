@@ -315,6 +315,19 @@ export const ServiceIcon = ({ name, size = 28, color = '#374151' }: Props) => {
         </Svg>
       );
 
+    // ── Barco / Ferry ─────────────────────────────────────────────
+    case 'barco':
+      return (
+        <Svg {...props}>
+          <Path d="M2 21c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2s2.5 2 5 2 2.5-2 5-2c1.3 0 1.9.5 2.5 1" strokeLinecap="round"/>
+          <Path d="M19.38 20A11.6 11.6 0 0 0 21 14l-9-4-9 4c0 2.3.58 4.36 1.62 6" strokeLinecap="round"/>
+          <Path d="M10 9.9V14" strokeLinecap="round"/>
+          <Path d="M14 9.9V14" strokeLinecap="round"/>
+          <Path d="M12 4v6" strokeLinecap="round"/>
+          <Path d="M10 4h4" strokeLinecap="round"/>
+        </Svg>
+      );
+
     // ── Fallback ─────────────────────────────────────────────────
     default:
       return (
