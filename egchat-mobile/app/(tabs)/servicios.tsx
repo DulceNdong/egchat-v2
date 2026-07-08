@@ -325,7 +325,7 @@ export default function ServiciosScreen() {
   }, [params.service]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#F7F8FA' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#F0F2F5' }]} edges={['bottom', 'left', 'right']}>
       <EGChatHeader
         temp={27}
         city="Malabo"
@@ -346,9 +346,9 @@ export default function ServiciosScreen() {
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00C8A0" colors={['#00C8A0']} />}
       >
         {SERVICE_SECTIONS.map(section => (
-          <View key={section.id} style={styles.sectionWrapper}>
+          <View key={section.id} style={[styles.sectionWrapper, { backgroundColor: C.bgSecondary }]}>
             <View style={styles.sectionHeaderWeb}>
-              <Text style={styles.sectionTitleWeb}>{section.title}</Text>
+              <Text style={[styles.sectionTitleWeb, { color: C.textTertiary }]}>{section.title.toUpperCase()}</Text>
             </View>
             <View style={styles.sectionCardWeb}>
               <View style={styles.grid}>
@@ -359,15 +359,18 @@ export default function ServiciosScreen() {
                     onPress={() => openService(s.id)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.serviceIconBox, { borderColor: s.color + '30' }]}>
+                    <View style={[styles.serviceIconBox, {
+                      backgroundColor: s.color + '14',
+                      borderColor: s.color + '28',
+                    }]}>
                       <ServiceIcon name={s.svgIcon} size={26} color={s.color} />
                     </View>
-                    <Text style={styles.serviceLabel} numberOfLines={1}>{s.label}</Text>
+                    <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
-            <View style={styles.sectionSpacer} />
+            <View style={[styles.sectionSpacer, { backgroundColor: isDark ? '#0d1117' : '#F0F2F5' }]} />
           </View>
         ))}
 
@@ -463,11 +466,11 @@ const styles = StyleSheet.create({
   },
 
   // Secciones (estilo web)
-  sectionWrapper: { backgroundColor: '#FFFFFF' },
-  sectionHeaderWeb: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  sectionTitleWeb: { fontSize: 13, fontWeight: '500', color: '#9CA3AF' },
-  sectionCardWeb: { paddingHorizontal: 8, paddingVertical: 4 },
-  sectionSpacer: { height: 8, backgroundColor: '#F7F8FA' },
+  sectionWrapper: {},
+  sectionHeaderWeb: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 2 },
+  sectionTitleWeb: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8 },
+  sectionCardWeb: { paddingHorizontal: 6, paddingVertical: 4 },
+  sectionSpacer: { height: 10 },
 
   // Grid de servicios (4 columnas como la web)
   grid: {
@@ -476,21 +479,21 @@ const styles = StyleSheet.create({
   serviceItem: {
     width: '25%',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: 12,
     paddingHorizontal: 4,
-    gap: Spacing.xs,
+    gap: 6,
   },
   serviceIconBox: {
-    width: 52, height: 52, borderRadius: 14,
+    width: 54, height: 54, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', borderWidth: 1.5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+    borderWidth: 1.5,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
   },
   serviceEmoji: { fontSize: 26 },
   serviceLabel: {
-    fontSize: 11, fontWeight: '500',
-    color: '#374151', textAlign: 'center',
-    lineHeight: 14, maxWidth: 58,
+    fontSize: 11, fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14, maxWidth: 60,
   },
 
   // Modal bottom sheet
