@@ -115,7 +115,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
                   onPress={() => { if (phone) { setPkg(p); setScreen('confirm'); } }}
                   activeOpacity={phone ? 0.7 : 1}
                 >
-                  <View style={[s.pkgIcon, { backgroundColor: color + '12' }]}>
+                  <View style={[s.pkgIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
                     {Ico.mobile(color)}
                   </View>
                   <Text style={s.pkgName} numberOfLines={2}>{p.name}</Text>

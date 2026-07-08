@@ -58,14 +58,14 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
     >
       {view === 'airlines' && airlines.map(a => (
         <TouchableOpacity key={a.id} style={st.airlineRow} onPress={() => { setAirline(a); setView('routes'); }} activeOpacity={0.85}>
-          <View style={[st.iataBox, { backgroundColor: a.color + '18' }]}>
+          <View style={[st.iataBox, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
             <Text style={[st.iata, { color: a.color }]}>{a.iata}</Text>
           </View>
           <View style={{ flex: 1 }}>
             <Text style={st.airlineName}>{a.nombre}</Text>
             <Text style={st.airlineSub}>{a.pais}</Text>
           </View>
-          <View style={[st.routeBadge, { backgroundColor: a.color + '15' }]}>
+          <View style={[st.routeBadge, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
             <Text style={[st.routeBadgeText, { color: a.color }]}>{a.rutas.length} rutas</Text>
           </View>
           <Text style={st.chevron}>›</Text>

@@ -104,7 +104,7 @@ export const LogoThumb = ({ name, color, size = 40 }: { name: string; color: str
   return (
     <View style={{
       width: size, height: size, borderRadius: r,
-      backgroundColor: color + '15', borderWidth: 1.5, borderColor: color + '30',
+      backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
       alignItems: 'center', justifyContent: 'center',
     }}>
       <View style={{
@@ -144,7 +144,7 @@ export const OperatorGrid = ({
     <View style={sh.opGrid}>
       {items.map(op => (
         <TouchableOpacity key={op.id} style={sh.opCell} onPress={() => onSelect(op.id)} activeOpacity={0.7}>
-          <View style={[sh.opLogo, { backgroundColor: op.color + '14' }]}>
+          <View style={[sh.opLogo, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
             <View style={[sh.opLogoInner, { backgroundColor: op.color }]}>
               <Text style={sh.opInitials}>{op.name.slice(0, 2).toUpperCase()}</Text>
             </View>

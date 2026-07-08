@@ -983,7 +983,7 @@ export const ChatMessageBubble = React.memo(({
             const fileColor = isPdf ? '#e53e3e' : isWord ? '#2b5ce6' : isExcel ? '#1d6f42' : isPpt ? '#d04a02' : '#6b7280';
             return (
               <View style={s.fileInner}>
-                <View style={[s.fileIconBox, { backgroundColor: fileColor + '18' }]}>
+                <View style={[s.fileIconBox, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                   <Text style={s.fileIconText}>{fileIcon}</Text>
                 </View>
                 <View style={s.fileInfo}>

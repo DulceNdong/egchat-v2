@@ -104,7 +104,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
             </View>
           ) : filtered.map(b => (
             <TouchableOpacity key={b.id} style={s.billRow} onPress={() => { setSelected(b); setScreen('detail'); }}>
-              <View style={[s.billIcon, { backgroundColor: b.color + '12' }]}>
+              <View style={[s.billIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
                 <Text style={{ fontSize: 22 }}>{b.icon}</Text>
               </View>
               <View style={{ flex: 1 }}>
@@ -151,7 +151,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       {screen === 'detail' && selected && (
         <View>
           <View style={s.detailCard}>
-            <View style={[s.billIcon, { backgroundColor: selected.color + '12', width: 56, height: 56 }]}>
+            <View style={[s.billIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)', width: 56, height: 56 }]}>
               <Text style={{ fontSize: 28 }}>{selected.icon}</Text>
             </View>
             <Text style={s.detailName}>{selected.service}</Text>

@@ -192,7 +192,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
         <View>
           {SUPERMARKETS.filter(s => !cityId || s.ciudad_id === cityId).map(sm => (
             <TouchableOpacity key={sm.id} style={st.storeRow} onPress={() => openStore(sm)} activeOpacity={0.85}>
-              <View style={[st.storeLogo, { backgroundColor: sm.color + '18' }]}>
+              <View style={[st.storeLogo, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                 <Text style={[st.storeLogoText, { color: sm.color }]}>{sm.logo}</Text>
               </View>
               <View style={{ flex: 1 }}>

@@ -109,7 +109,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
             <View style={st.pkgGrid}>
               {coPkgs.map(p => (
                 <TouchableOpacity key={p.id} style={st.pkgCell} onPress={() => { setPkg(p); setScreen('detail'); }} activeOpacity={0.7}>
-                  <View style={[st.pkgIcon, { backgroundColor: color + '12' }]}>{Ico.tv(color)}</View>
+                  <View style={[st.pkgIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>{Ico.tv(color)}</View>
                   <Text style={st.pkgName} numberOfLines={2}>{p.name}</Text>
                   <Text style={[st.pkgPrice, { color }]}>{p.price}</Text>
                   <Text style={st.pkgType}>{p.type}</Text>
@@ -135,7 +135,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
             <Text style={st.channelsTitle}>Canales incluidos:</Text>
             <View style={st.channelsWrap}>
               {pkg.channels.map((ch, i) => (
-                <View key={i} style={[st.channelTag, { backgroundColor: color + '18' }]}>
+                <View key={i} style={[st.channelTag, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
                   <Text style={[st.channelText, { color }]}>{ch}</Text>
                 </View>
               ))}
