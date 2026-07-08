@@ -101,7 +101,7 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
             <View style={s.accountsWrap}>
               {b.accounts.map((acc, i) => (
                 <View key={i} style={s.accRow}>
-                  <View style={[s.accIcon, { backgroundColor: b.color + '12' }]}>
+                  <View style={[s.accIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                     <Text style={{ fontSize: 14 }}>{acc.type.includes('Ahorro') ? '💰' : '💳'}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
@@ -114,13 +114,13 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
                   </View>
                 </View>
               ))}
-              <View style={[s.accRow, s.cardRow, { borderColor: b.color + '25' }]}>
-                <View style={[s.accIcon, { backgroundColor: b.color + '12' }]}><Text>💳</Text></View>
+              <View style={[s.accRow, s.cardRow, { borderColor: 'rgba(0,0,0,0.08)' }]}>
+                <View style={[s.accIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}><Text>💳</Text></View>
                 <View style={{ flex: 1 }}>
                   <Text style={s.accType}>Tarjeta de Débito</Text>
                   <Text style={s.accNum}>**** 4521 — Vence 12/28</Text>
                 </View>
-                <View style={[s.activeBadge, { backgroundColor: b.color + '12' }]}>
+                <View style={[s.activeBadge, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                   <Text style={[s.activeText, { color: b.color }]}>Activa</Text>
                 </View>
               </View>
@@ -128,7 +128,7 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
           ) : (
             <View style={s.noAcc}>
               <Text style={s.noAccText}>Sin cuentas activas</Text>
-              <TouchableOpacity style={[s.verBtn, { backgroundColor: b.color + '12' }]} onPress={() => { setBank(b); setScreen('detail'); }}>
+              <TouchableOpacity style={[s.verBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' }]} onPress={() => { setBank(b); setScreen('detail'); }}>
                 <Text style={[s.verText, { color: b.color }]}>+ Abrir cuenta</Text>
               </TouchableOpacity>
             </View>
