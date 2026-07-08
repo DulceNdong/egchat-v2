@@ -4,6 +4,7 @@ import {
   View, Text, TextInput, TouchableOpacity, StyleSheet, ActivityIndicator, Animated,
 } from 'react-native';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
+import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 
 export interface ChatInputBarProps {
   text: string;
@@ -12,6 +13,7 @@ export interface ChatInputBarProps {
   showEmojis: boolean;
   isRecording: boolean;
   durationFormatted: string;
+  amplitude?: number;       // 0-32768 para el visualizador de onda
   sendScale: Animated.Value;
   onChangeText: (v: string) => void;
   onToggleAttach: () => void;
@@ -30,6 +32,7 @@ export function ChatInputBar({
   showEmojis,
   isRecording,
   durationFormatted,
+  amplitude = 0,
   sendScale,
   onChangeText,
   onToggleAttach,
@@ -97,10 +100,11 @@ export function ChatInputBar({
           <TouchableOpacity onPress={onCancelRecording} style={s.recCancel}>
             <Text style={s.recCancelText}>✕</Text>
           </TouchableOpacity>
-          <View style={s.recPulse}>
-            <View style={s.recDot} />
-            <Text style={s.recTime}>{durationFormatted}</Text>
+          {/* Visualizador de onda */}
+          <View style={s.waveContainer}>
+            <AudioWaveformVisualizer amplitude={amplitude} color="#ef4444" height={40} />
           </View>
+          <Text style={s.recTime}>{durationFormatted}</Text>
           <TouchableOpacity onPress={onStopRecording} style={s.micRec}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round">
               <Line x1="22" y1="2" x2="11" y2="13"/>
@@ -176,14 +180,13 @@ const s = StyleSheet.create({
     backgroundColor: '#ef4444',
     alignItems: 'center', justifyContent: 'center',
   },
-  recordingRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  recordingRow: { flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 },
+  waveContainer: { flex: 1, height: 44 },
   recCancel: {
     width: 32, height: 32, borderRadius: 16,
     backgroundColor: 'rgba(0,0,0,0.12)',
     alignItems: 'center', justifyContent: 'center',
   },
   recCancelText: { fontSize: 14, color: '#374151', fontWeight: '700' },
-  recPulse: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
-  recTime: { fontSize: 13, fontWeight: '700', color: '#ef4444' },
+  recTime: { fontSize: 13, fontWeight: '700', color: '#ef4444', minWidth: 38, textAlign: 'center' },
 });
