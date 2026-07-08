@@ -359,10 +359,7 @@ export default function ServiciosScreen() {
                     onPress={() => openService(s.id)}
                     activeOpacity={0.7}
                   >
-                    <View style={[styles.serviceIconBox, {
-                      backgroundColor: s.color + '14',
-                      borderColor: s.color + '28',
-                    }]}>
+                    <View style={styles.serviceIconBox}>
                       <ServiceIcon name={s.svgIcon} size={26} color={s.color} />
                     </View>
                     <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
@@ -486,8 +483,9 @@ const styles = StyleSheet.create({
   serviceIconBox: {
     width: 54, height: 54, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.08, shadowRadius: 6, elevation: 2,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.07)',
+    backgroundColor: 'transparent',
   },
   serviceEmoji: { fontSize: 26 },
   serviceLabel: {

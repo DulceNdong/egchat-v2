@@ -112,23 +112,34 @@ export function SettingsRow({
 
 export function SettingsToggleRow({
   label,
+  description,
   value,
   onValueChange,
 }: {
   label: string;
+  description?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
   return (
     <SettingsRow
       label={label}
       right={
-        <Switch
-          value={value}
-          onValueChange={onValueChange}
-          trackColor={{ false: '#d1d5db', true: Colors.accent }}
-          thumbColor="#fff"
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {description ? (
+            <Text style={{ fontSize: 12, color: C.textTertiary, maxWidth: 120, textAlign: 'right' }} numberOfLines={1}>
+              {description}
+            </Text>
+          ) : null}
+          <Switch
+            value={value}
+            onValueChange={onValueChange}
+            trackColor={{ false: '#d1d5db', true: Colors.accent }}
+            thumbColor="#fff"
+          />
+        </View>
       }
     />
   );

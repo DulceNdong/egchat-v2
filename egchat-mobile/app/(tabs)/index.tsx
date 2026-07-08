@@ -173,7 +173,7 @@ const FAB_SERVICES = [
 // ── Componente AppIcon (grid home) ────────────────────────────────
 const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; color: string; onPress: () => void }) => (
   <TouchableOpacity style={st.appItem} onPress={onPress} activeOpacity={0.75}>
-    <View style={[st.appIconBox, { backgroundColor: color + '18', borderColor: color + '35' }]}>
+    <View style={st.appIconBox}>
       <SvgIcon id={id} color={color} size={30} />
     </View>
     <Text style={st.appLabel}>{label}</Text>
@@ -539,7 +539,7 @@ export default function HomeScreen() {
             { id: 'cartera',  label: 'Cartera',  color: '#6366f1', route: '/(tabs)/monedero' },
           ].map(s => (
             <TouchableOpacity key={s.id} style={st.shortcutItem} onPress={() => router.push(s.route as any)} activeOpacity={0.75}>
-              <View style={[st.shortcutIcon, { backgroundColor: s.color + '18', borderColor: s.color + '30' }]}>
+              <View style={st.shortcutIcon}>
                 <SvgIcon id={s.id} color={s.color} size={22} />
               </View>
               <Text style={[st.shortcutLabel, { color: C.textSecondary }]}>{s.label}</Text>
@@ -625,7 +625,6 @@ export default function HomeScreen() {
             >
               <TouchableOpacity
                 style={[st.fabRadialBtn, {
-                  borderColor: svc.color + '90',
                   width: ITEM_SIZE,
                   height: ITEM_SIZE,
                   borderRadius: ITEM_SIZE / 2,
@@ -990,7 +989,9 @@ const st = StyleSheet.create({
     borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'transparent',
   },
   shortcutLabel: {
     fontSize: 11,
@@ -1023,11 +1024,12 @@ const st = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 20,
-    backgroundColor: Colors.bgSecondary,
+    backgroundColor: 'transparent',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    ...Shadow.md,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
+    ...Shadow.sm,
   },
   appLabel: {
     fontSize: FontSize.xs,
@@ -1051,11 +1053,11 @@ const st = StyleSheet.create({
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: 'rgba(30, 30, 46, 0.82)',
+    backgroundColor: 'rgba(255,255,255,0.96)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.08)',
     overflow: 'hidden',
   },
   fabRadialEmoji: {
@@ -1064,18 +1066,10 @@ const st = StyleSheet.create({
   fabRadialLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#ffffff',
+    color: '#111827',
     textAlign: 'center',
     marginTop: 4,
     maxWidth: 68,
-    paddingHorizontal: 4,
-    paddingVertical: 1,
-    borderRadius: 4,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    overflow: 'hidden',
-    textShadowColor: 'rgba(0,0,0,0.8)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
   },
 
   // ── LIA-25 flotante arrastrable ──────────────────────────────────

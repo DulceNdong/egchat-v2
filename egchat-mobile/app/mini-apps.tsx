@@ -79,14 +79,14 @@ export default function MiniAppsScreen() {
               {featured.map(app => (
                 <TouchableOpacity key={app.id} style={s.featCard} onPress={() => openApp(app)} activeOpacity={0.85}>
                   {/* Icono grande sin fondo */}
-                  <View style={[s.featIconWrap, { borderColor: app.accentColor + '30' }]}>
+                  <View style={[s.featIconWrap, { borderColor: 'rgba(0,0,0,0.07)' }]}>
                     <MiniAppIcon name={app.icon} color={app.accentColor} size={36} />
                   </View>
                   <Text style={s.featName}>{app.name}</Text>
                   <Text style={s.featDesc} numberOfLines={2}>{app.description}</Text>
                   {app.verified && (
-                    <View style={[s.featVerified, { backgroundColor: app.accentColor }]}>
-                      <Text style={s.featVerifiedText}>Verificada</Text>
+                    <View style={s.featVerified}>
+                      <Text style={[s.featVerifiedText, { color: app.accentColor }]}>✓ Verificada</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -134,7 +134,7 @@ export default function MiniAppsScreen() {
                   <View style={s.rowTitleRow}>
                     <Text style={s.rowName}>{app.name}</Text>
                     {app.verified && (
-                      <View style={[s.badge, { backgroundColor: app.accentColor + '18' }]}>
+                      <View style={s.badge}>
                         <Text style={[s.badgeText, { color: app.accentColor }]}>✓ Verificada</Text>
                       </View>
                     )}
@@ -193,12 +193,19 @@ const s = StyleSheet.create({
   featIconWrap: {
     width: 60, height: 60, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, marginBottom: 4,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)',
+    marginBottom: 4,
+    backgroundColor: 'transparent',
   },
   featName: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
   featDesc: { fontSize: 11, color: '#94a3b8', lineHeight: 15 },
-  featVerified: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, marginTop: 4 },
-  featVerifiedText: { fontSize: 10, color: '#fff', fontWeight: '700' },
+  featVerified: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: 8, paddingVertical: 3,
+    borderRadius: 6, marginTop: 4,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
+  },
+  featVerifiedText: { fontSize: 10, fontWeight: '700' },
 
   // Categorías
   catRow: { marginHorizontal: -16 },
@@ -222,12 +229,14 @@ const s = StyleSheet.create({
   rowIcon: {
     width: 52, height: 52, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, flexShrink: 0,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)',
+    flexShrink: 0,
+    backgroundColor: 'transparent',
   },
   rowInfo: { flex: 1, gap: 3 },
   rowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   rowName: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6 },
+  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
   badgeText: { fontSize: 10, fontWeight: '700' },
   rowDesc: { fontSize: 12, color: '#94a3b8' },
   rowDev: { fontSize: 11, color: '#cbd5e1', fontWeight: '500' },

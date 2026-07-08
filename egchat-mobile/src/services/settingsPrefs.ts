@@ -58,4 +58,6 @@ export const CFG = {
   saveDataCall: 'cfg_save_data_call',
   muteCallUnknown: 'cfg_mute_call_unknown',
   backupWifi: 'cfg_backup_wifi',
+  autoTranslate: 'cfg_auto_translate',
+  onlineStatus: 'cfg_online_status',
 } as const;
