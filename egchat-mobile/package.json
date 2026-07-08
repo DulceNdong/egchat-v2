@@ -75,6 +75,9 @@
   "engines": {
     "node": ">=20.0.0 <21.0.0"
   },
+  "volta": {
+    "node": "20.18.0"
+  },
   "expo": {
     "doctor": {
       "appConfigFieldsNotSyncedCheck": {
