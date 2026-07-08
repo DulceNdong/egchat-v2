@@ -20,8 +20,10 @@
     "preview": {
       "distribution": "internal",
       "channel": "preview",
+      "image": "default",
       "android": {
         "buildType": "apk",
+        "image": "sdk-54",
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
