@@ -72,6 +72,9 @@
     "uuid": "^11.0.0",
     "whatwg-fetch": "3.6.2"
   },
+  "engines": {
+    "node": ">=20.0.0 <21.0.0"
+  },
   "expo": {
     "doctor": {
       "appConfigFieldsNotSyncedCheck": {
