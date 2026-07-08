@@ -132,7 +132,7 @@ export const NotificationsPanel = ({
                 activeOpacity={0.7}
               >
                 {/* Icono tipo */}
-                <View style={[np.iconWrap, { backgroundColor: colorForType(n.type) + '18', borderColor: colorForType(n.type) + '30' }]}>
+                <View style={np.iconWrap}>
                   <IconForType type={n.type} />
                 </View>
                 {/* Texto */}
@@ -220,7 +220,9 @@ const np = StyleSheet.create({
   iconWrap: {
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, flexShrink: 0,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'transparent',
+    flexShrink: 0,
   },
   itemText: { flex: 1, minWidth: 0 },
   itemTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textPrimary, marginBottom: 2 },
