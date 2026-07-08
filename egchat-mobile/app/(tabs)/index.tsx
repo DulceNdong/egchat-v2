@@ -173,8 +173,8 @@ const FAB_SERVICES = [
 // ── Componente AppIcon (grid home) ────────────────────────────────
 const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; color: string; onPress: () => void }) => (
   <TouchableOpacity style={st.appItem} onPress={onPress} activeOpacity={0.75}>
-    <View style={[st.appIconBox, { borderColor: color + '30' }]}>
-      <SvgIcon id={id} color={color} size={32} />
+    <View style={[st.appIconBox, { backgroundColor: color + '18', borderColor: color + '35' }]}>
+      <SvgIcon id={id} color={color} size={30} />
     </View>
     <Text style={st.appLabel}>{label}</Text>
   </TouchableOpacity>
@@ -426,11 +426,21 @@ export default function HomeScreen() {
             BANNER SALDO DISPONIBLE
         ════════════════════════════════════════════════════════ */}
         <LinearGradient
-          colors={['#1a3a5c', '#0d2d4a', '#0a2240']}
+          colors={['#0d2d4a', '#1a3a5c', '#0e4a6e']}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}
           style={st.balanceBanner}
         >
+          {/* Nombre usuario */}
+          <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+            <Text style={{ fontSize: 13, color: 'rgba(255,255,255,0.65)', fontWeight: '500' }}>
+              {user?.full_name ? `Hola, ${user.full_name.split(' ')[0]}` : 'Mi Monedero'}
+            </Text>
+            <View style={{ backgroundColor: 'rgba(0,200,160,0.2)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 3, borderWidth: 1, borderColor: 'rgba(0,200,160,0.35)' }}>
+              <Text style={{ fontSize: 10, color: '#00C8A0', fontWeight: '700', letterSpacing: 0.5 }}>EGCHAT PAY</Text>
+            </View>
+          </View>
+
           <Text style={st.balanceTitle}>SALDO DISPONIBLE</Text>
 
           {/* Saldo con puntos y ojo */}
@@ -517,6 +527,25 @@ export default function HomeScreen() {
         </View>
 
         {/* Noticias preview removed per request */}
+
+        {/* ════════════════════════════════════════════════════════
+            ATAJOS RÁPIDOS — Recarga, Taxi, Mensajes, Cartera
+        ════════════════════════════════════════════════════════ */}
+        <View style={[st.shortcutsRow, { backgroundColor: C.bgSecondary }]}>
+          {[
+            { id: 'recarga',  label: 'Recarga',  color: '#07C160', route: '/(tabs)/servicios?service=recarga' },
+            { id: 'mitaxi',   label: 'Taxi',     color: '#F59E0B', route: '/mitaxi' },
+            { id: 'mensajes', label: 'Chat',     color: '#00B4E6', route: '/(tabs)/mensajeria' },
+            { id: 'cartera',  label: 'Cartera',  color: '#6366f1', route: '/(tabs)/monedero' },
+          ].map(s => (
+            <TouchableOpacity key={s.id} style={st.shortcutItem} onPress={() => router.push(s.route as any)} activeOpacity={0.75}>
+              <View style={[st.shortcutIcon, { backgroundColor: s.color + '18', borderColor: s.color + '30' }]}>
+                <SvgIcon id={s.id} color={s.color} size={22} />
+              </View>
+              <Text style={[st.shortcutLabel, { color: C.textSecondary }]}>{s.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
 
         {/* ════════════════════════════════════════════════════════
             APPS — Estados, Juegos, Cemac, MiTaxi
@@ -940,6 +969,35 @@ const st = StyleSheet.create({
     fontWeight: FontWeight.medium as '500',
   },
 
+  // ── Atajos rápidos ──────────────────────────────────────────────
+  shortcutsRow: {
+    flexDirection: 'row',
+    marginHorizontal: Spacing.lg,
+    marginTop: Spacing.md,
+    borderRadius: BorderRadius.lg,
+    paddingVertical: 14,
+    paddingHorizontal: 8,
+    ...Shadow.sm,
+  },
+  shortcutItem: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 6,
+  },
+  shortcutIcon: {
+    width: 46,
+    height: 46,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+  },
+  shortcutLabel: {
+    fontSize: 11,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+
   // ── APPS section ─────────────────────────────────────────────────
   appsSection: {
     marginHorizontal: Spacing.lg,
@@ -962,14 +1020,13 @@ const st = StyleSheet.create({
     gap: Spacing.sm,
   },
   appIconBox: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
+    width: 68,
+    height: 68,
+    borderRadius: 20,
     backgroundColor: Colors.bgSecondary,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 1.5,
-    borderColor: 'rgba(0,200,160,0.2)',
     ...Shadow.md,
   },
   appLabel: {

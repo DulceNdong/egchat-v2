@@ -177,9 +177,19 @@ export default function CallHistoryScreen() {
         <SafeAreaView edges={['top']}>
           <View style={s.headerRow}>
             <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
-              <Line x1="19" y1="12" x2="5" y2="12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"/>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <Line x1="19" y1="12" x2="5" y2="12"/>
+                <Path d="M12 19l-7-7 7-7"/>
+              </Svg>
             </TouchableOpacity>
-            <Text style={s.title}>Llamadas</Text>
+            <Text style={s.title}>Historial de llamadas</Text>
+            <TouchableOpacity onPress={loadCallHistory} style={s.back} hitSlop={10}>
+              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M23 4v6h-6"/>
+                <Path d="M1 20v-6h6"/>
+                <Path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+              </Svg>
+            </TouchableOpacity>
           </View>
         </SafeAreaView>
       </LinearGradient>
@@ -246,26 +256,40 @@ export default function CallHistoryScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#fff' },
-  header: { paddingBottom: 12 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingTop: 4 },
-  back: { padding: 4 },
-  title: { fontSize: 18, fontWeight: '700', color: '#fff' },
-  filters: { flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: '#f3f4f6' },
-  chip: { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16, backgroundColor: '#f3f4f6' },
-  chipActive: { backgroundColor: '#00c8a0' },
+  root: { flex: 1, backgroundColor: '#f8f9fa' },
+  header: { paddingBottom: 14 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6 },
+  back: { padding: 6, borderRadius: 20 },
+  title: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1, textAlign: 'center', marginHorizontal: 8 },
+  filters: {
+    flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#fff', borderBottomWidth: 1, borderBottomColor: '#f0f2f5',
+  },
+  chip: {
+    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
+    backgroundColor: '#f3f4f6', borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  chipActive: { backgroundColor: '#00c8a0', borderColor: '#00c8a0' },
   chipText: { fontSize: 12, fontWeight: '600', color: '#6b7280' },
   chipTextActive: { color: '#fff' },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f9fafb' },
+  row: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    backgroundColor: '#fff', marginBottom: 1,
+  },
   info: { flex: 1, gap: 4 },
   name: { fontSize: 15, fontWeight: '600', color: '#111827' },
   meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   dir: { fontSize: 12, fontWeight: '600' },
   dur: { fontSize: 12, color: '#9ca3af' },
   right: { alignItems: 'flex-end', gap: 8 },
-  time: { fontSize: 12, color: '#9ca3af' },
-  callBtn: { padding: 4 },
-  empty: { alignItems: 'center', paddingTop: 60, gap: 12 },
-  emptyIcon: { fontSize: 48 },
+  time: { fontSize: 11, color: '#9ca3af', fontWeight: '500' },
+  callBtn: {
+    padding: 8, borderRadius: 20,
+    backgroundColor: 'rgba(0,200,160,0.1)',
+    borderWidth: 1, borderColor: 'rgba(0,200,160,0.25)',
+  },
+  empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
+  emptyIcon: { fontSize: 56 },
   emptyText: { fontSize: 15, color: '#9ca3af', fontWeight: '500' },
 });

@@ -1,180 +1,330 @@
+// ══════════════════════════════════════════════════════════════════
+// EGCHAT — Welcome Screen v3 (diseño premium)
+// ══════════════════════════════════════════════════════════════════
 import React, { useEffect, useRef } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Animated,
+  View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions,
 } from 'react-native';
 import { SpinningLogo } from '../src/components/SpinningLogo';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
-import { useThemeContext } from '../src/theme/ThemeContext';
-import { DarkColors } from '../src/theme/darkMode';
+import Svg, { Path, Circle, Line, Polyline, Rect, Polygon } from 'react-native-svg';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 
+const { width: W } = Dimensions.get('window');
+
+// ── Features con iconos SVG ───────────────────────────────────────
 const FEATURES = [
-  { icon: '💬', title: 'Chats Tiempo Real',  sub: 'Mensajes instantáneos' },
-  { icon: '💳', title: 'Pagos Seguros XAF',  sub: 'Transferencias rápidas' },
-  { icon: '🤖', title: 'IA Lia-25',          sub: 'Asistente 24/7' },
+  {
+    color: '#07C160',
+    bg: '#e8f8ee',
+    title: 'Mensajes en tiempo real',
+    sub: 'Chats seguros con cifrado E2E',
+    icon: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#07C160" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        <Line x1="9" y1="10" x2="15" y2="10"/><Line x1="9" y1="14" x2="13" y2="14"/>
+      </Svg>
+    ),
+  },
+  {
+    color: '#00B4E6',
+    bg: '#e0f7ff',
+    title: 'Pagos y cartera XAF',
+    sub: 'Transferencias instantáneas seguras',
+    icon: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#00B4E6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <Rect x="2" y="5" width="20" height="14" rx="2"/>
+        <Line x1="2" y1="10" x2="22" y2="10"/>
+        <Circle cx="12" cy="15" r="2"/>
+      </Svg>
+    ),
+  },
+  {
+    color: '#8B5CF6',
+    bg: '#ede9fe',
+    title: 'Lia-25 — IA Asistente',
+    sub: 'Tu asistente inteligente 24/7',
+    icon: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <Rect x="3" y="6" width="18" height="13" rx="3"/>
+        <Path d="M3 10h18"/>
+        <Circle cx="8.5" cy="14" r="1.2" fill="#8B5CF6" stroke="none"/>
+        <Circle cx="15.5" cy="14" r="1.2" fill="#8B5CF6" stroke="none"/>
+      </Svg>
+    ),
+  },
+  {
+    color: '#F59E0B',
+    bg: '#fef9e7',
+    title: 'Servicios locales GQ',
+    sub: 'Taxi, recarga, bancos y más',
+    icon: (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+        <Rect x="3" y="3" width="7" height="7" rx="1.5"/>
+        <Rect x="14" y="3" width="7" height="7" rx="1.5"/>
+        <Rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        <Rect x="3" y="14" width="7" height="7" rx="1.5"/>
+      </Svg>
+    ),
+  },
 ];
 
 const FLAGS = ['🇬🇶', '🇨🇲', '🇬🇦', '🇨🇬', '🇪🇸', '🇫🇷', '🇬🇧', '🇺🇸'];
 
+// ── Feature card ──────────────────────────────────────────────────
+const FeatureCard = ({
+  item, delay,
+}: { item: typeof FEATURES[0]; delay: number }) => {
+  const anim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(anim, {
+      toValue: 1, delay, useNativeDriver: true,
+      tension: 60, friction: 10,
+    }).start();
+  }, []);
+  return (
+    <Animated.View style={{
+      opacity: anim,
+      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
+    }}>
+      <View style={[st.featureCard, { borderLeftColor: item.color }]}>
+        <View style={[st.featureIconBox, { backgroundColor: item.bg }]}>
+          {item.icon}
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={st.featureTitle}>{item.title}</Text>
+          <Text style={st.featureSub}>{item.sub}</Text>
+        </View>
+      </View>
+    </Animated.View>
+  );
+};
+
+// ══════════════════════════════════════════════════════════════════
 export default function WelcomeScreen() {
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const { isDark } = useThemeContext();
-  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const headerAnim = useRef(new Animated.Value(0)).current;
+  const buttonsAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.timing(fadeAnim, { toValue: 1, duration: 800, useNativeDriver: true }).start();
-  }, [fadeAnim]);
+    Animated.stagger(200, [
+      Animated.spring(headerAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
+      Animated.spring(buttonsAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
+    ]).start();
+  }, []);
 
   return (
     <LinearGradient
-      colors={['#d4eef7', '#c8eee0', '#d4eef7']}
+      colors={['#0d2d4a', '#0a3d5e', '#06283d']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{ flex: 1 }}
     >
-    <SafeAreaView style={styles.container}>
-      <Animated.View style={[styles.content, { opacity: fadeAnim }]}>
-        {/* Logo */}
-        <View style={styles.logoSection}>
-          {/* Anillo exterior giratorio */}
-          <View style={styles.logoRing}>
-            <View style={styles.logoBox}>
-              <SpinningLogo size={88} glow={false} />
+      <SafeAreaView style={st.container}>
+
+        {/* ── Top: Logo + nombre ── */}
+        <Animated.View style={[st.header, {
+          opacity: headerAnim,
+          transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) }],
+        }]}>
+          {/* Anillo decorativo */}
+          <View style={st.logoRingOuter}>
+            <View style={st.logoRingInner}>
+              <SpinningLogo size={90} glow />
             </View>
           </View>
+
+          <Text style={st.appName}>
+            <Text style={{ color: '#00C8A0' }}>EG</Text>
+            <Text style={{ color: '#ffffff' }}>CHAT</Text>
+          </Text>
+          <Text style={st.tagline}>La app de Guinea Ecuatorial</Text>
 
           {/* Banderas */}
-          <View style={styles.flagsRow}>
-            {FLAGS.map((f, i) => <Text key={i} style={styles.flag}>{f}</Text>)}
+          <View style={st.flagsRow}>
+            {FLAGS.map((f, i) => (
+              <Text key={i} style={st.flag}>{f}</Text>
+            ))}
           </View>
+        </Animated.View>
 
-          <Text style={styles.tagline}>Tu plataforma de pagos y servicios</Text>
-        </View>
-
-        {/* Features */}
-        <View style={styles.featuresCard}>
-          {FEATURES.map((f, i) => (
-            <View key={i} style={[styles.featureItem, i < FEATURES.length - 1 && styles.featureItemBorder]}>
-              <View style={styles.featureIconBox}>
-                <Text style={styles.featureIcon}>{f.icon}</Text>
-              </View>
-              <View>
-                <Text style={styles.featureTitle}>{f.title}</Text>
-                <Text style={styles.featureSub}>{f.sub}</Text>
-              </View>
-            </View>
+        {/* ── Features (4 cards) ── */}
+        <View style={st.features}>
+          {FEATURES.map((item, i) => (
+            <FeatureCard key={i} item={item} delay={300 + i * 100} />
           ))}
         </View>
 
-        {/* Botones */}
-        <View style={styles.buttons}>
+        {/* ── Botones ── */}
+        <Animated.View style={[st.buttons, {
+          opacity: buttonsAnim,
+          transform: [{ translateY: buttonsAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
+        }]}>
+          {/* Crear cuenta */}
           <TouchableOpacity
-            style={styles.btnPrimary}
+            activeOpacity={0.88}
             onPress={() => router.push('/(auth)/register' as any)}
-            activeOpacity={0.85}
           >
-            <Text style={styles.btnPrimaryText}>👤  Crear Cuenta</Text>
+            <LinearGradient
+              colors={['#00C8A0', '#00B4E6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 0 }}
+              style={st.btnPrimary}
+            >
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+                <Circle cx="12" cy="7" r="4"/>
+              </Svg>
+              <Text style={st.btnPrimaryText}>Crear cuenta gratis</Text>
+            </LinearGradient>
           </TouchableOpacity>
 
+          {/* Ya tengo cuenta */}
           <TouchableOpacity
-            style={styles.btnSecondary}
-            onPress={() => router.push('/(auth)/login' as any)}
+            style={st.btnSecondary}
             activeOpacity={0.85}
+            onPress={() => router.push('/(auth)/login' as any)}
           >
-            <Text style={styles.btnSecondaryText}>→  Ya tengo cuenta</Text>
+            <Text style={st.btnSecondaryText}>Ya tengo cuenta  →</Text>
           </TouchableOpacity>
-        </View>
 
-        <Text style={styles.version}>v1.0.0 · Guinea Ecuatorial</Text>
-      </Animated.View>
-    </SafeAreaView>
+          <Text style={st.legal}>
+            Al continuar aceptas los{' '}
+            <Text style={{ color: '#00C8A0' }}>Términos de servicio</Text>
+            {' '}y la{' '}
+            <Text style={{ color: '#00C8A0' }}>Política de privacidad</Text>
+          </Text>
+        </Animated.View>
+
+      </SafeAreaView>
     </LinearGradient>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: 'transparent' },
-  content: { flex: 1, paddingHorizontal: Spacing.screenPadding, justifyContent: 'space-between', paddingVertical: Spacing.xl },
+const st = StyleSheet.create({
+  container: {
+    flex: 1,
+    paddingHorizontal: 24,
+    paddingTop: 8,
+    paddingBottom: 24,
+    justifyContent: 'space-between',
+  },
 
-  // Logo
-  logoSection: { alignItems: 'center', gap: Spacing.md },
-
-  // Anillo exterior decorativo
-  logoRing: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
-    borderWidth: 3,
-    borderColor: 'rgba(0,200,160,0.5)',
+  // Header
+  header: { alignItems: 'center', gap: 10, paddingTop: 8 },
+  logoRingOuter: {
+    width: 168,
+    height: 168,
+    borderRadius: 84,
+    borderWidth: 2,
+    borderColor: 'rgba(0,200,160,0.4)',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: 'rgba(0,200,160,0.08)',
-    ...Shadow.lg,
+    backgroundColor: 'rgba(0,200,160,0.06)',
+    shadowColor: '#00C8A0',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+    elevation: 10,
   },
-  // Círculo que recorta la imagen — overflow hidden es clave
-  logoBox: {
-    width: 156,
-    height: 156,
-    borderRadius: 78,
+  logoRingInner: {
+    width: 140,
+    height: 140,
+    borderRadius: 70,
     overflow: 'hidden',
-    backgroundColor: '#00C8A0',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // Imagen base — el scale va en el JSX junto con el rotate animado
-  logo: {
-    width: 156,
-    height: 156,
+  appName: {
+    fontSize: 36,
+    fontWeight: '900',
+    letterSpacing: -1,
+    marginTop: 6,
   },
-
-  flagsRow: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'center', gap: 4 },
-  flag: { fontSize: 22 },
-  tagline: { fontSize: FontSize.sm, color: '#555', fontWeight: FontWeight.medium },
+  tagline: {
+    fontSize: 14,
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '500',
+    letterSpacing: 0.3,
+  },
+  flagsRow: {
+    flexDirection: 'row',
+    gap: 4,
+    flexWrap: 'wrap',
+    justifyContent: 'center',
+    marginTop: 4,
+  },
+  flag: { fontSize: 20 },
 
   // Features
-  featuresCard: {
-    backgroundColor: 'rgba(255,255,255,0.85)',
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
-    gap: 0,
-    ...Shadow.md,
+  features: { gap: 8, paddingVertical: 4 },
+  featureCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    borderRadius: 14,
+    padding: 14,
+    borderLeftWidth: 3,
   },
-  featureItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: 14 },
-  featureItemBorder: { borderBottomWidth: 1, borderBottomColor: '#f0f0f0' },
   featureIconBox: {
-    width: 44, height: 44,
+    width: 44,
+    height: 44,
     borderRadius: 12,
-    backgroundColor: '#e8f8ee',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.5,
-    borderColor: '#07C160',
   },
-  featureIcon: { fontSize: 22 },
-  featureTitle: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: '#111' },
-  featureSub: { fontSize: FontSize.sm, color: '#888' },
+  featureTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#ffffff',
+    marginBottom: 2,
+  },
+  featureSub: {
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.55)',
+    fontWeight: '400',
+  },
 
   // Buttons
-  buttons: { gap: Spacing.md },
+  buttons: { gap: 12 },
   btnPrimary: {
-    backgroundColor: '#07C160',
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg,
+    borderRadius: 16,
+    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    ...Shadow.md,
+    justifyContent: 'center',
+    gap: 10,
+    shadowColor: '#00C8A0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 12,
+    elevation: 8,
   },
-  btnPrimaryText: { color: Colors.white, fontSize: FontSize.lg, fontWeight: FontWeight.bold },
+  btnPrimaryText: {
+    color: '#fff',
+    fontSize: 16,
+    fontWeight: '800',
+    letterSpacing: 0.3,
+  },
   btnSecondary: {
-    backgroundColor: Colors.white,
-    borderRadius: BorderRadius.lg,
-    padding: Spacing.lg - 1,
+    borderRadius: 16,
+    paddingVertical: 15,
     alignItems: 'center',
     borderWidth: 1.5,
-    borderColor: Colors.border,
+    borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  btnSecondaryText: { color: Colors.textPrimary, fontSize: FontSize.lg, fontWeight: FontWeight.semibold },
-
-  version: { textAlign: 'center', fontSize: FontSize.xs, color: '#999' },
+  btnSecondaryText: {
+    color: 'rgba(255,255,255,0.85)',
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  legal: {
+    textAlign: 'center',
+    fontSize: 11,
+    color: 'rgba(255,255,255,0.35)',
+    lineHeight: 16,
+  },
 });

@@ -134,16 +134,18 @@ const s = StyleSheet.create({
   bar: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    backgroundColor: '#d1d3d9',
+    backgroundColor: '#f8f9fa',
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.10)',
-    paddingHorizontal: 8,
+    borderTopColor: 'rgba(0,0,0,0.07)',
+    paddingHorizontal: 10,
     paddingVertical: 8,
+    paddingBottom: 10,
     gap: 6,
   },
   plusBtn: {
-    width: 40, height: 40, borderRadius: 20,
+    width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(0,180,230,0.08)',
   },
   field: {
     flex: 1,
