@@ -364,6 +364,40 @@ export default function MensajeriaScreen() {
     return { name, avatar, other };
   }, [currentUserId]);
 
+  // ── Diagnóstico de sesión ──────────────────────────────────────
+  const [diagInfo, setDiagInfo] = useState<{token: string; userId: string; chatsRaw: number; error: string} | null>(null);
+
+  useEffect(() => {
+    const runDiag = async () => {
+      try {
+        const { getToken } = await import('../../src/api');
+        const token = await getToken();
+        let userId = '';
+        try {
+          const parts = token?.split('.') || [];
+          if (parts.length === 3) {
+            const pad = parts[1].length % 4;
+            const b64 = parts[1] + (pad ? '='.repeat(4 - pad) : '');
+            const payload = JSON.parse(atob(b64.replace(/-/g, '+').replace(/_/g, '/')));
+            userId = payload?.id || payload?.sub || '';
+          }
+        } catch {}
+        let chatsRaw = 0;
+        let error = '';
+        try {
+          const res = await fetch('https://egchat-api.onrender.com/api/chats', {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          const data = await res.json();
+          chatsRaw = Array.isArray(data) ? data.length : -1;
+          if (!Array.isArray(data)) error = JSON.stringify(data).slice(0, 100);
+        } catch (e: any) { error = e.message; }
+        setDiagInfo({ token: token ? token.slice(0, 30) + '...' : 'NINGUNO', userId, chatsRaw, error });
+      } catch (e: any) { setDiagInfo({ token: 'ERROR', userId: '', chatsRaw: -1, error: e.message }); }
+    };
+    runDiag();
+  }, []);
+
   // ── Carga ───────────────────────────────────────────────────────
   const loadChats = useCallback(async (userId?: string) => {
     const uid = userId || currentUserId;
@@ -723,6 +757,18 @@ export default function MensajeriaScreen() {
 
 <View style={st.contentArea}>
         <View style={st.fixedContent}>
+
+          {/* ── DIAGNÓSTICO TEMPORAL ── */}
+          {diagInfo && (
+            <View style={{ backgroundColor: '#1e293b', padding: 10, margin: 8, borderRadius: 8 }}>
+              <Text style={{ color: '#94a3b8', fontSize: 10, fontFamily: 'monospace' }}>
+                🔑 Token: {diagInfo.token}{'\n'}
+                👤 UserID en JWT: {diagInfo.userId || 'vacío'}{'\n'}
+                💬 Chats en API: {diagInfo.chatsRaw}{'\n'}
+                {diagInfo.error ? `❌ Error: ${diagInfo.error}` : '✅ Sin errores de red'}
+              </Text>
+            </View>
+          )}
           {/* ══════════════════════════════════════════════════════
               CONTACTOS FAVORITOS
           ══════════════════════════════════════════════════════ */}
