@@ -18,25 +18,21 @@ const HOME_ROUTE = '/(tabs)';
 
 export const FloatingHomeButton = () => {
   const pathname = usePathname();
-  // Ocultar en home principal y en auth/login/splash
-  const isHome =
-    pathname === '/(tabs)' ||
-    pathname === '/(tabs)/' ||
-    pathname === '/(tabs)/index' ||
-    pathname === '/index' ||
-    pathname === '/' ||
-    pathname === '' ||
-    // tabs con sub-rutas de index
-    /^\/(tabs)(\/index)?\/?$/.test(pathname);
 
-  const isAuthScreen =
+  // Ocultar en cualquier tab (mensajería, servicios, monedero, lia, ajustes, index)
+  const isInsideTabs = pathname.includes('/(tabs)') || pathname.startsWith('/tabs');
+
+  // Ocultar en auth, welcome, llamadas y splash
+  const isAuthOrSystem =
     pathname.includes('/(auth)') ||
     pathname.includes('/login') ||
     pathname.includes('/welcome') ||
-    pathname === '/call' ||
-    pathname.includes('/call/');
+    pathname.includes('/call/') ||
+    pathname === '/' ||
+    pathname === '' ||
+    pathname === '/index';
 
-  if (isHome || isAuthScreen) return null;
+  if (isInsideTabs || isAuthOrSystem) return null;
   return <DraggableButton />;
 };
 
