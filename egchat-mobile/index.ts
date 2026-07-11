@@ -1,3 +1,1 @@
-import 'react-native-gesture-handler';
-
-export { default } from './src/navigation/NativeApp';
+import 'expo-router/entry';
