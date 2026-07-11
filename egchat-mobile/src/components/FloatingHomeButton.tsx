@@ -19,20 +19,24 @@ const HOME_ROUTE = '/(tabs)';
 export const FloatingHomeButton = () => {
   const pathname = usePathname();
 
-  // Ocultar en cualquier tab (mensajería, servicios, monedero, lia, ajustes, index)
-  const isInsideTabs = pathname.includes('/(tabs)') || pathname.startsWith('/tabs');
-
-  // Ocultar en auth, welcome, llamadas y splash
-  const isAuthOrSystem =
-    pathname.includes('/(auth)') ||
-    pathname.includes('/login') ||
-    pathname.includes('/welcome') ||
-    pathname.includes('/call/') ||
+  // Ocultar SOLO en la pantalla home (mensajería es el tab principal)
+  const isHome =
+    pathname === '/(tabs)/mensajeria' ||
+    pathname === '/(tabs)' ||
+    pathname === '/(tabs)/' ||
+    pathname === '/(tabs)/index' ||
     pathname === '/' ||
     pathname === '' ||
     pathname === '/index';
 
-  if (isInsideTabs || isAuthOrSystem) return null;
+  // Ocultar en auth, welcome, llamadas
+  const isAuthOrSystem =
+    pathname.includes('/(auth)') ||
+    pathname.includes('/login') ||
+    pathname.includes('/welcome') ||
+    pathname.includes('/call/');
+
+  if (isHome || isAuthOrSystem) return null;
   return <DraggableButton />;
 };
 
