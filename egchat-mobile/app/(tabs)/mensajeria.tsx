@@ -318,7 +318,7 @@ export default function MensajeriaScreen() {
   // ── SSE Stream — actualizar lista de chats al instante ────────────
   useChatStream(currentUserId || undefined, (event) => {
     if (event.type === 'new_message' || event.type === 'chat_updated') {
-      loadChats();
+      loadChats(currentUserId);
     }
   });
 
@@ -364,36 +364,15 @@ export default function MensajeriaScreen() {
     return { name, avatar, other };
   }, [currentUserId]);
 
-  const [debugInfo, setDebugInfo] = useState<string[]>([]);
-  const addDebug = (line: string) => setDebugInfo(prev => [...prev, line]);
-
   // ── Carga ───────────────────────────────────────────────────────
-  const loadChats = useCallback(async () => {
+  const loadChats = useCallback(async (userId?: string) => {
+    const uid = userId || currentUserId;
     try {
-      addDebug('Iniciando carga de chats...');
-      const apiModule = await import('../../src/api');
-      const token = await apiModule.getToken();
-      addDebug(token ? `Token presente: ${token.slice(0,20)}...` : 'Token AUSENTE');
-      
-      let userId = '';
-      try {
-        const payload = JSON.parse(atob(token.split('.')[1] || ''));
-        userId = payload?.id || '';
-        addDebug(`User ID en token: ${userId || 'vacío'}`);
-      } catch {
-        addDebug('No se pudo decodificar el token');
-      }
-      
       const [data, favContacts, favGroups] = await Promise.all([
         chatAPI.getChats(),
         contactsAPI.getFavorites().catch(() => []),
         getFavoriteGroupIds(),
       ]);
-      addDebug(`Chats recibidos: ${Array.isArray(data) ? data.length : 'null/undefined'}`);
-      if (!Array.isArray(data) || data.length === 0) {
-        addDebug('⚠️ Backend devolvió lista vacía o error');
-        addDebug(`userId actual: ${currentUserId || 'vacío'}`);
-      }
       const sortedChats = sortChatsByActivity(data || []);
 
       // Enriquecer participantes que tengan full_name vacío
@@ -420,7 +399,7 @@ export default function MensajeriaScreen() {
 
       // Actualizar widget de pantalla de inicio con últimos chats
       HomeWidget.update(enriched.map(c => {
-        const other = c.participants.find((p: any) => p.user_id !== currentUserId);
+        const other = c.participants.find((p: any) => p.user_id !== uid);
         const name = c.type === 'private'
           ? (other?.full_name || other?.users?.full_name || 'Usuario')
           : (c.name || 'Grupo');
@@ -451,10 +430,20 @@ export default function MensajeriaScreen() {
   }, [readCache, saveCache, currentUserId]);
 
   useEffect(() => {
-    loadChats();
+    const init = async () => {
+      try {
+        // Primero obtener el userId, luego cargar chats con él
+        const me = await authAPI.me().catch(() => null);
+        const uid = me?.id || '';
+        if (uid) setCurrentUserId(uid);
+        await loadChats(uid);
+      } finally {
+        // noop
+      }
+    };
+    init();
     loadArchivedChats().then(setArchivedChats);
     getArchivePassword().then(setArchivePasswordState);
-    authAPI.me().then(me => setCurrentUserId(me?.id || '')).catch(() => {});
     fetch('https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current=temperature_2m,weather_code&timezone=auto')
       .then(r => r.json())
       .then(d => {
@@ -476,13 +465,13 @@ export default function MensajeriaScreen() {
     const { subscribeToUserChats } = require('../../src/supabase');
     const unsub = subscribeToUserChats(currentUserId, () => {
       realtimeWorking = true;
-      loadChats();
+      loadChats(currentUserId);
     });
 
     // Si Realtime no funciona en 5s, polling cada 3s
     const realtimeCheck = setTimeout(() => {
       if (!realtimeWorking) {
-        pollInterval = setInterval(loadChats, 3000);
+        pollInterval = setInterval(() => loadChats(currentUserId), 3000);
       }
     }, 5000);
 
@@ -512,7 +501,7 @@ export default function MensajeriaScreen() {
     });
   }, [currentUserId]);
 
-  const onRefresh = () => { setRefreshing(true); loadChats(); };
+  const onRefresh = () => { setRefreshing(true); loadChats(currentUserId); };
 
   const openChat = useCallback((chat: Chat | ArchivedChat) => {
     router.push(`/chat/${chat.id}` as any);
@@ -557,7 +546,7 @@ export default function MensajeriaScreen() {
     const nextArchived = archivedChats.filter(c => c.id !== chat.id);
     await saveArchivedChats(nextArchived);
     setArchivedChats(nextArchived);
-    await loadChats();
+    await loadChats(currentUserId);
     toast.info('Chat desarchivado');
   }, [archivedChats, loadChats]);
 
@@ -792,14 +781,6 @@ export default function MensajeriaScreen() {
           </View>
         </View>
 
-        {debugInfo.length > 0 && (
-          <View style={{ backgroundColor: 'rgba(0,0,0,0.08)', paddingHorizontal: 12, paddingVertical: 8 }}>
-            <Text style={{ fontSize: 11, color: '#374151', fontWeight: '700', marginBottom: 4 }}>DEBUG</Text>
-            {debugInfo.map((line, i) => (
-              <Text key={i} style={{ fontSize: 11, color: '#374151' }}>{line}</Text>
-            ))}
-          </View>
-        )}
 
         {/* ══════════════════════════════════════════════════════
             LISTA DE CHATS
