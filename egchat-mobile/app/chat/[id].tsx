@@ -224,6 +224,19 @@ export default function ChatScreen() {
       setIsTyping(false);
       playMessageReceived(); // ← sonido de mensaje recibido
     }
+
+    if (event.type === 'typing' && event.chatId === chatId) {
+      const typing = Boolean(event.isTyping);
+      setIsTyping(typing);
+      if (typing) {
+        if (remoteTypingTimer.current) clearTimeout(remoteTypingTimer.current);
+        remoteTypingTimer.current = setTimeout(() => setIsTyping(false), 3500);
+      }
+    }
+
+    if (event.type === 'read' && event.chatId === chatId && event.messageId) {
+      setMessages(prev => prev.map(m => (m.id === event.messageId ? { ...m, status: 'read' } : m)));
+    }
   });
 
   useEffect(() => {
@@ -347,7 +360,7 @@ export default function ChatScreen() {
       }
       if (newMsg.sender_id !== currentUserId) {
         // Enriquecer con datos del sender del chat actual
-        setChat(currentChat => {
+        setChat((currentChat: any) => {
           const participant = currentChat?.participants?.find(
             (p: any) => p.user_id === newMsg.sender_id
           );

@@ -12,22 +12,35 @@
  * }
  */
 import nacl from 'tweetnacl';
-import { encodeBase64, decodeBase64, encodeUTF8, decodeUTF8 } from 'tweetnacl-util';
+import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
 import * as FileSystem from 'expo-file-system';
-import * as Sharing from 'expo-sharing';
 import { chatAPI } from '../api';
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+const fileSystem = FileSystem as typeof FileSystem & {
+  documentDirectory?: string | null;
+  cacheDirectory?: string | null;
+};
+
+function utf8ToBytes(value: string): Uint8Array {
+  return textEncoder.encode(value);
+}
+
+function bytesToUtf8(value: Uint8Array): string {
+  return textDecoder.decode(value);
+}
 
 // Derivar clave de 32 bytes desde contraseña (simple hash)
 function deriveKey(password: string): Uint8Array {
-  const pw = encodeUTF8(password.padEnd(32, '0').slice(0, 32));
-  return pw;
+  return utf8ToBytes(password.padEnd(32, '0').slice(0, 32));
 }
 
 /** Cifra el backup con la contraseña del usuario */
 export function encryptBackup(data: object, password: string): string {
   const key   = deriveKey(password);
   const nonce = nacl.randomBytes(nacl.secretbox.nonceLength);
-  const msg   = encodeUTF8(JSON.stringify(data));
+  const msg   = utf8ToBytes(JSON.stringify(data));
   const box   = nacl.secretbox(msg, nonce, key);
   const combined = new Uint8Array(nonce.length + box.length);
   combined.set(nonce);
@@ -44,7 +57,7 @@ export function decryptBackup(ciphertext: string, password: string): object | nu
     const box      = combined.slice(nacl.secretbox.nonceLength);
     const msg      = nacl.secretbox.open(box, nonce, key);
     if (!msg) return null;
-    return JSON.parse(decodeUTF8(msg));
+    return JSON.parse(bytesToUtf8(msg));
   } catch { return null; }
 }
 
@@ -67,19 +80,13 @@ export async function exportBackup(userId: string, password: string): Promise<bo
 
     const encrypted  = encryptBackup(backupData, password);
     const fileName   = `egchat-backup-${Date.now()}.egbackup`;
-    const filePath   = `${FileSystem.documentDirectory}${fileName}`;
+    const baseDir    = fileSystem.documentDirectory ?? fileSystem.cacheDirectory ?? '';
+    const filePath   = `${baseDir}${fileName}`;
 
     await FileSystem.writeAsStringAsync(filePath, encrypted, {
-      encoding: FileSystem.EncodingType.UTF8,
+      encoding: 'utf8',
     });
 
-    const canShare = await Sharing.isAvailableAsync();
-    if (canShare) {
-      await Sharing.shareAsync(filePath, {
-        mimeType: 'application/octet-stream',
-        dialogTitle: 'Guardar backup de EGChat',
-      });
-    }
     return true;
   } catch { return false; }
 }

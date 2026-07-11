@@ -212,7 +212,7 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
   const msgInfo = getLastMessageInfo(chat.last_message);
   const time = formatTime(chat.updated_at);
   const hasUnread = chat.unread_count > 0;
-  const msgIconColor = hasUnread ? Colors.primary : Colors.textTertiary;
+  const msgIconColor = hasUnread ? Colors.accent : Colors.textTertiary;
 
   const body = (
     <>
@@ -364,14 +364,36 @@ export default function MensajeriaScreen() {
     return { name, avatar, other };
   }, [currentUserId]);
 
+  const [debugInfo, setDebugInfo] = useState<string[]>([]);
+  const addDebug = (line: string) => setDebugInfo(prev => [...prev, line]);
+
   // ── Carga ───────────────────────────────────────────────────────
   const loadChats = useCallback(async () => {
     try {
+      addDebug('Iniciando carga de chats...');
+      const apiModule = await import('../../src/api');
+      const token = await apiModule.getToken();
+      addDebug(token ? `Token presente: ${token.slice(0,20)}...` : 'Token AUSENTE');
+      
+      let userId = '';
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1] || ''));
+        userId = payload?.id || '';
+        addDebug(`User ID en token: ${userId || 'vacío'}`);
+      } catch {
+        addDebug('No se pudo decodificar el token');
+      }
+      
       const [data, favContacts, favGroups] = await Promise.all([
         chatAPI.getChats(),
         contactsAPI.getFavorites().catch(() => []),
         getFavoriteGroupIds(),
       ]);
+      addDebug(`Chats recibidos: ${Array.isArray(data) ? data.length : 'null/undefined'}`);
+      if (!Array.isArray(data) || data.length === 0) {
+        addDebug('⚠️ Backend devolvió lista vacía o error');
+        addDebug(`userId actual: ${currentUserId || 'vacío'}`);
+      }
       const sortedChats = sortChatsByActivity(data || []);
 
       // Enriquecer participantes que tengan full_name vacío
@@ -415,12 +437,18 @@ export default function MensajeriaScreen() {
       }));
       setFavoriteContacts(favContacts || []);
       setFavoriteGroupIds(favGroups);
-    } catch {
+    } catch (e: any) {
       const cachedChats = await readCache<Chat[]>('chat_list');
-      if (cachedChats?.length) setChats(sortChatsByActivity(cachedChats));
+      if (cachedChats?.length) {
+        setChats(sortChatsByActivity(cachedChats));
+        toast.info('Mostrando chats guardados offline');
+      } else {
+        const msg = e?.message || 'Error cargando chats';
+        toast.error(msg);
+      }
     }
     finally { setLoading(false); setRefreshing(false); }
-  }, [readCache, saveCache]);
+  }, [readCache, saveCache, currentUserId]);
 
   useEffect(() => {
     loadChats();
@@ -704,191 +732,205 @@ export default function MensajeriaScreen() {
         </TouchableOpacity>
       </View>
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
-        }
-        stickyHeaderIndices={[2]} // los filtros se quedan fijos al hacer scroll
-      >
-        {/* ══════════════════════════════════════════════════════
-            CONTACTOS FAVORITOS
-        ══════════════════════════════════════════════════════ */}
-        <FavoriteSection title="Contactos Favoritos" empty="No tienes contactos favoritos aún" C={C}>
-          {favoriteContacts.map((contact: any) => {
-            const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
-            const avatar = contact.avatar_url || contact.user?.avatar_url;
-            return (
-              <FavoriteChip
-                key={contact.id || contact.contact_user_id}
-                name={name}
-                avatar={avatar}
-                onPress={() => openFavoriteContact(contact)}
-              />
-            );
-          })}
-        </FavoriteSection>
-
-        <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
-          {favoriteGroupChats.map(chat => {
-            const { name, avatar } = getChatMeta(chat);
-            return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
-          })}
-        </FavoriteSection>
-
-        {/* ══════════════════════════════════════════════════════
-            FILTROS — Individual | Grupos | Dinero (sticky)
-        ══════════════════════════════════════════════════════ */}
-        <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.filtersRow}>
-            {([
-              { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
-              { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
-              { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
-              { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
-            ]).map(f => {
-              const active = filter === f.id;
-              const iconColor = active ? '#fff' : '#374151';
-              const isArchive = f.id === 'archivar';
+<View style={st.contentArea}>
+        <View style={st.fixedContent}>
+          {/* ══════════════════════════════════════════════════════
+              CONTACTOS FAVORITOS
+          ══════════════════════════════════════════════════════ */}
+          <FavoriteSection title="Contactos Favoritos" empty="No tienes contactos favoritos aún" C={C}>
+            {favoriteContacts.map((contact: any) => {
+              const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
+              const avatar = contact.avatar_url || contact.user?.avatar_url;
               return (
-                <TouchableOpacity
-                  key={f.id}
-                  style={[
-                    st.filterChip,
-                    active && (isArchive ? st.filterChipArchive : st.filterChipActive),
-                  ]}
-                  onPress={() => handleFilterPress(f.id)}
-                  activeOpacity={0.75}
-                >
-                  <f.Icon color={iconColor} />
-                  <Text style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
-                </TouchableOpacity>
+                <FavoriteChip
+                  key={contact.id || contact.contact_user_id}
+                  name={name}
+                  avatar={avatar}
+                  onPress={() => openFavoriteContact(contact)}
+                />
               );
             })}
-          </ScrollView>
+          </FavoriteSection>
+
+          <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
+            {favoriteGroupChats.map(chat => {
+              const { name, avatar } = getChatMeta(chat);
+              return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
+            })}
+          </FavoriteSection>
+
+          {/* ══════════════════════════════════════════════════════
+              FILTROS — Individual | Grupos | Dinero
+          ══════════════════════════════════════════════════════ */}
+          <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.filtersRow}>
+              {([
+                { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
+                { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
+                { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
+                { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
+              ]).map(f => {
+                const active = filter === f.id;
+                const iconColor = active ? '#fff' : '#374151';
+                const isArchive = f.id === 'archivar';
+                return (
+                  <TouchableOpacity
+                    key={f.id}
+                    style={[
+                      st.filterChip,
+                      active && (isArchive ? st.filterChipArchive : st.filterChipActive),
+                    ]}
+                    onPress={() => handleFilterPress(f.id)}
+                    activeOpacity={0.75}
+                  >
+                    <f.Icon color={iconColor} />
+                    <Text style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          </View>
         </View>
+
+        {debugInfo.length > 0 && (
+          <View style={{ backgroundColor: 'rgba(0,0,0,0.08)', paddingHorizontal: 12, paddingVertical: 8 }}>
+            <Text style={{ fontSize: 11, color: '#374151', fontWeight: '700', marginBottom: 4 }}>DEBUG</Text>
+            {debugInfo.map((line, i) => (
+              <Text key={i} style={{ fontSize: 11, color: '#374151' }}>{line}</Text>
+            ))}
+          </View>
+        )}
 
         {/* ══════════════════════════════════════════════════════
             LISTA DE CHATS
         ══════════════════════════════════════════════════════ */}
-        {loading ? (
-          <View style={st.center}>
-            <ActivityIndicator size="large" color={Colors.brand} />
-          </View>
-        ) : filter === 'archivar' && !archiveUnlocked ? (
-          <View style={st.center}>
-            <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-            <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
-            <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>
-              Introduce tu contraseña para ver chats archivados
-            </Text>
-            <TouchableOpacity
-              style={st.archiveUnlockBtn}
-              onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
-            >
-              <Text style={st.archiveUnlockBtnText}>
-                {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        ) : filter === 'archivar' && archiveUnlocked ? (
-          <View style={{ paddingHorizontal: 8 }}>
-            <View style={st.archiveSubTabs}>
-              {(['individual', 'group'] as ArchiveSubFilter[]).map(sub => (
-                <TouchableOpacity
-                  key={sub}
-                  style={[st.archiveSubTab, archiveSubFilter === sub && st.archiveSubTabActive]}
-                  onPress={() => setArchiveSubFilter(sub)}
-                >
-                  <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
-                    {sub === 'individual' ? 'Individuales' : 'Grupos'}
-                  </Text>
-                </TouchableOpacity>
-              ))}
+        <ScrollView
+          style={st.listScroll}
+          contentContainerStyle={st.listScrollContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
+          }
+        >
+          {loading ? (
+            <View style={st.center}>
+              <ActivityIndicator size="large" color={Colors.brand} />
             </View>
-            {filteredArchived.length === 0 ? (
-              <View style={st.center}>
-                <Text style={{ fontSize: 32 }}>📦</Text>
-                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
-                  Sin {archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados
-                </Text>
-                <Text style={[st.emptySub, { color: C.textSecondary }]}>
-                  Desliza un chat a la izquierda para archivarlo
-                </Text>
-              </View>
-            ) : filteredArchived.map(chat => {
-              const name = chat.name || chat.title || 'Chat';
-              return (
-                <TouchableOpacity
-                  key={chat.id}
-                  style={st.archivedRow}
-                  onPress={() => openChat(chat)}
-                  activeOpacity={0.7}
-                >
-                  <EGAvatar src={chat.avatar_url || chat.avatarUrl} name={name} size={46} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={st.archivedName} numberOfLines={1}>{name}</Text>
-                    <Text style={st.archivedSub}>Archivado</Text>
-                  </View>
-                  <TouchableOpacity style={st.restoreBtn} onPress={() => unarchiveChat(chat)}>
-                    <Text style={st.restoreBtnText}>Restaurar</Text>
-                  </TouchableOpacity>
-                </TouchableOpacity>
-              );
-            })}
-            <View style={{ height: 100 }} />
-          </View>
-        ) : filtered.length === 0 ? (
-          <View style={st.center}>
-            <Text style={st.emptyIcon}>{filter === 'dinero' ? '💸' : '💬'}</Text>
-            <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
-              {filter === 'dinero'
-                ? 'Sin transferencias recientes'
-                : searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
-            </Text>
-            <Text style={[st.emptySub, { color: C.textSecondary }]}>
-              {filter === 'dinero'
-                ? 'Los chats con movimientos XAF aparecerán aquí'
-                : searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
-            </Text>
-            {filter === 'dinero' && (
+          ) : filter === 'archivar' && !archiveUnlocked ? (
+            <View style={st.center}>
+              <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
+              <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
+              <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}> 
+                Introduce tu contraseña para ver chats archivados
+              </Text>
               <TouchableOpacity
-                style={st.dineroCta}
-                onPress={() => router.push('/(tabs)/monedero' as any)}
-                activeOpacity={0.85}
+                style={st.archiveUnlockBtn}
+                onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
               >
-                <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.dineroCtaGrad}>
-                  <Text style={st.dineroCtaText}>Abrir Mi Cartera</Text>
-                </LinearGradient>
+                <Text style={st.archiveUnlockBtnText}>
+                  {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+                </Text>
               </TouchableOpacity>
-            )}
-          </View>
-        ) : (
-          <View>
-            {filtered.map((item, i) => (
-              <View key={item.id}>
-                <SwipeChatItem
-                  onOpen={() => openChat(item)}
-                  onArchive={() => archiveChat(item)}
-                  onDelete={() => deleteChatLocal(item.id)}
-                  onMarkUnread={() => toast.info('Marcado como no leído')}
-                >
-                  <ChatItem
-                    chat={item}
-                    currentUserId={currentUserId}
-                    staticRow
-                    onLongPress={() => handleChatLongPress(item)}
-                  />
-                </SwipeChatItem>
-                {i < filtered.length - 1 && (
-                  <View style={[st.separator, { backgroundColor: C.borderLight }]} />
-                )}
+            </View>
+          ) : filter === 'archivar' && archiveUnlocked ? (
+            <View style={{ paddingHorizontal: 8 }}>
+              <View style={st.archiveSubTabs}>
+                {(['individual', 'group'] as ArchiveSubFilter[]).map(sub => (
+                  <TouchableOpacity
+                    key={sub}
+                    style={[st.archiveSubTab, archiveSubFilter === sub && st.archiveSubTabActive]}
+                    onPress={() => setArchiveSubFilter(sub)}
+                  >
+                    <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
+                      {sub === 'individual' ? 'Individuales' : 'Grupos'}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
               </View>
-            ))}
-            <View style={{ height: 100 }} />
-          </View>
-        )}
-      </ScrollView>
+              {filteredArchived.length === 0 ? (
+                <View style={st.center}>
+                  <Text style={{ fontSize: 32 }}>📦</Text>
+                  <Text style={[st.emptyTitle, { color: C.textPrimary }]}> 
+                    Sin {archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados
+                  </Text>
+                  <Text style={[st.emptySub, { color: C.textSecondary }]}> 
+                    Desliza un chat a la izquierda para archivarlo
+                  </Text>
+                </View>
+              ) : filteredArchived.map(chat => {
+                const name = chat.name || chat.title || 'Chat';
+                return (
+                  <TouchableOpacity
+                    key={chat.id}
+                    style={st.archivedRow}
+                    onPress={() => openChat(chat)}
+                    activeOpacity={0.7}
+                  >
+                    <EGAvatar src={chat.avatar_url || chat.avatarUrl} name={name} size={46} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={st.archivedName} numberOfLines={1}>{name}</Text>
+                      <Text style={st.archivedSub}>Archivado</Text>
+                    </View>
+                    <TouchableOpacity style={st.restoreBtn} onPress={() => unarchiveChat(chat)}>
+                      <Text style={st.restoreBtnText}>Restaurar</Text>
+                    </TouchableOpacity>
+                  </TouchableOpacity>
+                );
+              })}
+              <View style={{ height: 100 }} />
+            </View>
+          ) : filtered.length === 0 ? (
+            <View style={st.center}>
+              <Text style={st.emptyIcon}>{filter === 'dinero' ? '💸' : '💬'}</Text>
+              <Text style={[st.emptyTitle, { color: C.textPrimary }]}> 
+                {filter === 'dinero'
+                  ? 'Sin transferencias recientes'
+                  : searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
+              </Text>
+              <Text style={[st.emptySub, { color: C.textSecondary }]}> 
+                {filter === 'dinero'
+                  ? 'Los chats con movimientos XAF aparecerán aquí'
+                  : searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
+              </Text>
+              {filter === 'dinero' && (
+                <TouchableOpacity
+                  style={st.dineroCta}
+                  onPress={() => router.push('/(tabs)/monedero' as any)}
+                  activeOpacity={0.85}
+                >
+                  <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.dineroCtaGrad}>
+                    <Text style={st.dineroCtaText}>Abrir Mi Cartera</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <View>
+              {filtered.map((item, i) => (
+                <View key={item.id}>
+                  <SwipeChatItem
+                    onOpen={() => openChat(item)}
+                    onArchive={() => archiveChat(item)}
+                    onDelete={() => deleteChatLocal(item.id)}
+                    onMarkUnread={() => toast.info('Marcado como no leído')}
+                  >
+                    <ChatItem
+                      chat={item}
+                      currentUserId={currentUserId}
+                      staticRow
+                      onLongPress={() => handleChatLongPress(item)}
+                    />
+                  </SwipeChatItem>
+                  {i < filtered.length - 1 && (
+                    <View style={[st.separator, { backgroundColor: C.borderLight }]} />
+                  )}
+                </View>
+              ))}
+              <View style={{ height: 100 }} />
+            </View>
+          )}
+        </ScrollView>
+      </View>
 
       {/* ══════════════════════════════════════════════════════════
           FAB REFRESH — botón circular verde abajo derecha
@@ -1024,6 +1066,10 @@ export default function MensajeriaScreen() {
 // ══════════════════════════════════════════════════════════════════
 const st = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  contentArea: { flex: 1 },
+  fixedContent: { flexShrink: 0 },
+  listScroll: { flex: 1 },
+  listScrollContent: { paddingBottom: 100 },
 
   // ── Header ──────────────────────────────────────────────────────
   header: {

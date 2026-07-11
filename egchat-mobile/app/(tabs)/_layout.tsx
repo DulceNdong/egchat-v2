@@ -29,15 +29,14 @@ const NavIcon = ({ name, color, focused, size = 24 }: { name: string; color: str
         </Svg>
       );
 
-    // Cartera — billetera moderna
+    // Cartera — icono clásico de cartera
     case 'wallet':
       return (
         <Svg width={s} height={s} viewBox="0 0 24 24" fill={focused ? color + '22' : 'none'} stroke={color} strokeWidth={sw} strokeLinecap="round" strokeLinejoin="round">
-          <Path d="M20 12V22H4V12"/>
-          <Path d="M22 7H2v5h20V7z"/>
-          <Path d="M12 22V7"/>
-          <Path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/>
-          <Path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/>
+          <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+          <Path d="M3 10h17"/>
+          <Path d="M14 10V7a2 2 0 0 0-2-2H7a2 2 0 0 0-2 2v1"/>
+          <Circle cx="17" cy="14" r="1.5"/>
         </Svg>
       );
 

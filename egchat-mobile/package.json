@@ -64,6 +64,7 @@
     "@babel/core": "^7.25.0",
     "@types/react": "~19.1.10",
     "qrcode": "^1.5.4",
+    "regjsparser": "^0.13.1",
     "typescript": "^5.3.0"
   },
   "overrides": {

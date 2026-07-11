@@ -3,6 +3,7 @@
 // Idéntico al web pero adaptado a React Native
 // ══════════════════════════════════════════════════════════════════
 import * as SecureStore from 'expo-secure-store';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import SessionManager from './sessionManager';
 
 const BASE = (() => {
@@ -88,6 +89,43 @@ export async function wakeServer(maxAttempts = 3): Promise<boolean> {
     await new Promise(r => setTimeout(r, 2000 * (i + 1)));
   }
   return false;
+}
+
+const STORIES_STORAGE_KEY = 'egchat_local_stories_v1';
+
+async function readLocalStories(): Promise<any[]> {
+  try {
+    if (Platform.OS === 'web') {
+      if (typeof window === 'undefined' || !window.localStorage) return [];
+      const raw = window.localStorage.getItem(STORIES_STORAGE_KEY);
+      return raw ? JSON.parse(raw) : [];
+    }
+    const raw = await AsyncStorage.getItem(STORIES_STORAGE_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+async function writeLocalStories(stories: any[]): Promise<void> {
+  try {
+    const payload = JSON.stringify(stories);
+    if (Platform.OS === 'web') {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(STORIES_STORAGE_KEY, payload);
+      }
+      return;
+    }
+    await AsyncStorage.setItem(STORIES_STORAGE_KEY, payload);
+  } catch {}
+}
+
+async function getLocalUser() {
+  try {
+    const cached = await sessionManager.getUser();
+    if (cached?.id) return cached;
+  } catch {}
+  return { id: 'local-user', full_name: 'Yo', avatar_url: '' };
 }
 
 // ── Cliente HTTP base con timeout y reintentos ────────────────────
@@ -327,14 +365,14 @@ export const contactsAPI = {
 // LLAMADAS (señalización WebRTC)
 // ══════════════════════════════════════════════════════════════════
 export const callAPI = {
-  offer: (data: { callId: string; offer: object; targetUserId: string; type: string }) =>
+  offer: (data: { callId: string; offer: object; targetUserId: string; type: string; groupId?: string }) =>
     post<{ ok: boolean }>('/api/call/offer', data),
   answer: (data: { callId: string; answer: object }) =>
     post<{ ok: boolean }>('/api/call/answer', data),
   get: (callId: string) => get<any>(`/api/call/${callId}`),
   end: (callId: string) => del<{ ok: boolean }>(`/api/call/${callId}`),
   incoming: (userId: string) => get<any[]>(`/api/call/incoming/${userId}`),
-  ice: (data: { callId: string; candidate: object; role: string }) =>
+  ice: (data: { callId: string; candidate: object; role: string; targetUserId?: string }) =>
     post<{ ok: boolean }>('/api/call/ice', data),
 };
 
@@ -366,12 +404,111 @@ keepAlive();
 // ══════════════════════════════════════════════════════════════════
 // STORIES
 // ══════════════════════════════════════════════════════════════════
+const buildLocalStory = async (data: { media: Array<{ url: string; type?: string; caption?: string }> | string; type?: string }, fallbackUser?: any) => {
+  const user = fallbackUser || await getLocalUser();
+  const media = Array.isArray(data.media)
+    ? data.media.map((item: any) => typeof item === 'string' ? { url: item, type: data.type || 'image' } : item)
+    : [{ url: String(data.media), type: data.type || 'image' }];
+
+  const story = {
+    id: `local-${Date.now()}`,
+    userId: user.id || 'local-user',
+    userName: user.full_name || 'Mi estado',
+    avatarUrl: user.avatar_url || '',
+    media,
+    views: 0,
+    reactions: [],
+    replies: [],
+    seen: false,
+    publishedAt: Date.now(),
+    expiresAt: Date.now() + 24 * 3600 * 1000,
+    isMe: true,
+  };
+
+  const next = [story, ...(await readLocalStories())].slice(0, 20);
+  await writeLocalStories(next);
+  return story;
+};
+
 export const storiesAPI = {
-  getAll: () => get<any[]>('/api/stories'),
-  create: (data: { media: Array<{ url: string; type?: string; caption?: string }> | string; type?: string }) =>
-    post<any>('/api/stories', data),
-  delete: (id: string) => del<void>(`/api/stories/${id}`),
-  registerView: (storyId: string) => post<void>(`/api/stories/${storyId}/view`, {}),
+  getAll: async () => {
+    try {
+      const remote = await get<any[]>('/api/stories');
+      if (Array.isArray(remote) && remote.length > 0) {
+        await writeLocalStories(remote);
+        return remote;
+      }
+      const local = await readLocalStories();
+      return local.length > 0 ? local : [];
+    } catch {
+      return readLocalStories();
+    }
+  },
+  create: async (data: { media: Array<{ url: string; type?: string; caption?: string }> | string; type?: string }) => {
+    try {
+      const remote = await post<any>('/api/stories', data);
+      if (remote && (remote.id || remote.media)) {
+        const user = await getLocalUser();
+        const story = {
+          id: remote.id || `local-${Date.now()}`,
+          userId: user.id || 'local-user',
+          userName: user.full_name || 'Mi estado',
+          avatarUrl: user.avatar_url || '',
+          media: remote.media || (Array.isArray(data.media) ? data.media : [{ url: String(data.media), type: data.type || 'image' }]),
+          views: 0,
+          reactions: [],
+          replies: [],
+          seen: false,
+          publishedAt: Date.now(),
+          expiresAt: Date.now() + 24 * 3600 * 1000,
+          isMe: true,
+        };
+        const next = [story, ...(await readLocalStories())].slice(0, 20);
+        await writeLocalStories(next);
+        return story;
+      }
+      return remote;
+    } catch {
+      return buildLocalStory(data);
+    }
+  },
+  delete: async (id: string) => {
+    try {
+      return await del<void>(`/api/stories/${id}`);
+    } catch {
+      const stories = (await readLocalStories()).filter((s: any) => s.id !== id);
+      await writeLocalStories(stories);
+      return;
+    }
+  },
+  registerView: async (storyId: string) => {
+    try {
+      return await post<void>(`/api/stories/${storyId}/view`, {});
+    } catch {
+      const stories = await readLocalStories();
+      const next = stories.map((s: any) => s.id === storyId ? { ...s, views: (s.views || 0) + 1, seen: true } : s);
+      await writeLocalStories(next);
+      return;
+    }
+  },
+  reply: async (storyId: string, text: string) => {
+    try {
+      return await post<any>(`/api/stories/${storyId}/reply`, { text });
+    } catch {
+      const stories = await readLocalStories();
+      const next = stories.map((s: any) => s.id === storyId ? {
+        ...s,
+        replies: [...(s.replies || []), {
+          id: `local-reply-${Date.now()}`,
+          storyId,
+          text,
+          createdAt: new Date().toISOString(),
+        }],
+      } : s);
+      await writeLocalStories(next);
+      return { ok: true, replies: next.find((s: any) => s.id === storyId)?.replies || [] };
+    }
+  },
 };
 
 export const cemacAPI = {

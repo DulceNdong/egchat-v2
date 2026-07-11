@@ -10,7 +10,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { taxiAPI, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
-import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap';
+import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap.native';
 import {
   MALABO_CENTER, MITAXI_PLACE_NAMES, MapCoord,
   findPlaceCoords, isCurrentLocationLabel,
@@ -350,7 +350,7 @@ export default function MiTaxiScreen() {
   return (
             <TouchableOpacity
               key={r.id}
-              style={[s.rideChip, { borderColor: active ? r.color : BORDER, backgroundColor: active ? r.color + '15' : CARD }]}
+              style={[s.rideChip, { borderColor: active ? r.color : BORDER, backgroundColor: active ? 'rgba(0,0,0,0.04)' : CARD }]}
               onPress={() => setSelected(r)}
               activeOpacity={0.85}
             >
@@ -363,7 +363,7 @@ export default function MiTaxiScreen() {
         })}
       </ScrollView>
 
-      <View style={[s.summaryBar, { backgroundColor: selected.color + '12', borderColor: selected.color + '30' }]}>
+      <View style={[s.summaryBar, { backgroundColor: 'transparent', borderColor: 'rgba(0,0,0,0.08)' }]}>
         <View style={{ flex: 1 }}>
           <Text style={[s.summaryTitle, { color: selected.color }]}>{selected.name} · {selected.sub}</Text>
           <Text style={s.summaryDesc}>{selected.desc}</Text>

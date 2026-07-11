@@ -119,6 +119,7 @@ CREATE TABLE IF NOT EXISTS stories (
   type TEXT DEFAULT 'text',
   views INTEGER DEFAULT 0,
   reactions JSONB DEFAULT '[]',
+  replies JSONB DEFAULT '[]',
   expires_at TIMESTAMPTZ NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );

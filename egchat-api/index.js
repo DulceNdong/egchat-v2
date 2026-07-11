@@ -522,7 +522,7 @@ app.post('/api/storage/init', auth, async (_req, res) => {
       }
     }
     res.json({ ok: true, results });
-  } catch (e: any) {
+  } catch (e) {
     res.status(500).json({ message: e.message });
   }
 });
@@ -4206,11 +4206,17 @@ const ensureStoriesTable = async () => {
           type TEXT DEFAULT 'text',
           views INTEGER DEFAULT 0,
           reactions JSONB DEFAULT '[]',
+          replies JSONB DEFAULT '[]',
           expires_at TIMESTAMPTZ NOT NULL,
           created_at TIMESTAMPTZ DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
         CREATE INDEX IF NOT EXISTS idx_stories_expires_at ON stories(expires_at);`
+      }).catch(() => {});
+    } else if (!error) {
+      await supabase.rpc('exec_sql', {
+        sql: `ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '[]';
+              ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS replies JSONB DEFAULT '[]';`
       }).catch(() => {});
     }
   } catch {}
@@ -4297,6 +4303,7 @@ app.get('/api/stories', auth, async (req, res) => {
         media: Array.isArray(media) ? media : [],
         views: s.views || 0,
         reactions: s.reactions || [],
+        replies: s.replies || [],
         seen: false,
         publishedAt: new Date(s.created_at).getTime(),
         expiresAt: new Date(s.expires_at).getTime(),
@@ -4344,7 +4351,7 @@ app.post('/api/stories', auth, async (req, res) => {
     } else {
       const { data, error } = await supabase
         .from('stories')
-        .insert({ user_id: req.user.id, media: newSlides, type, views: 0, expires_at: expiresAt })
+        .insert({ user_id: req.user.id, media: newSlides, type, views: 0, reactions: [], replies: [], expires_at: expiresAt })
         .select()
         .single();
       if (error) throw error;
@@ -4394,6 +4401,40 @@ app.post('/api/stories/:storyId/view', auth, async (req, res) => {
     if (s) await supabase.from('stories').update({ views: (s.views || 0) + 1 }).eq('id', req.params.storyId);
     res.json({ ok: true });
   } catch (e) { res.json({ ok: false }); }
+});
+
+app.post('/api/stories/:storyId/reply', auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ message: 'text requerido' });
+
+    const { data: story, error: storyErr } = await supabase
+      .from('stories')
+      .select('id, user_id, replies')
+      .eq('id', req.params.storyId)
+      .single();
+
+    if (storyErr || !story) return res.status(404).json({ message: 'Story no encontrada' });
+
+    const replies = Array.isArray(story.replies) ? story.replies : [];
+    const replyPayload = {
+      id: `reply-${Date.now()}`,
+      storyId: req.params.storyId,
+      userId: req.user.id,
+      text: text.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedReplies = [...replies, replyPayload];
+    const { error: updateErr } = await supabase
+      .from('stories')
+      .update({ replies: updatedReplies })
+      .eq('id', req.params.storyId);
+
+    if (updateErr) throw updateErr;
+
+    res.json({ ok: true, reply: replyPayload, replies: updatedReplies });
+  } catch (e) { res.status(500).json({ message: e.message || 'No se pudo guardar la respuesta' }); }
 });
 
 app.post('/api/stories/:storyId/react', auth, async (req, res) => {
@@ -5176,6 +5217,78 @@ app.get('/api/noticias/gobierno', async (req, res) => {
   } catch (e) {
     // En caso de error total, devolver fallback
     res.json({ noticias: NOTICIAS_FALLBACK.map((n, i) => ({ id: `gov-fb-${i}`, ...n, scrapedAt: Date.now() })), fromCache: false, updatedAt: Date.now() });
+  }
+});
+
+const RSS_FEEDS_PROXY = [
+  { url: 'https://lagacetadeguinea.com/feed/', source: 'La Gaceta de Guinea' },
+  { url: 'https://www.guineaecuatorialpress.com/feed/', source: 'Guinea Ecuatorial Press' },
+];
+
+function stripXmlText(str) {
+  return String(str || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .trim();
+}
+
+function parseRssItems(xml, source) {
+  const items = [];
+  const blocks = xml.split(/<item[\s>]/i).slice(1);
+  for (let index = 0; index < blocks.length && items.length < 12; index++) {
+    const block = blocks[index];
+    const titleMatch = block.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/i) || block.match(/<title>([\s\S]*?)<\/title>/i);
+    const linkMatch = block.match(/<link>([\s\S]*?)<\/link>/i);
+    const pubMatch = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i) || block.match(/<dc:date>([\s\S]*?)<\/dc:date>/i);
+    const title = titleMatch ? stripXmlText(titleMatch[1]) : '';
+    if (!title || title.length < 4) continue;
+    let time = 'Reciente';
+    if (pubMatch) {
+      const date = new Date(pubMatch[1].trim());
+      if (!Number.isNaN(date.getTime())) {
+        const hours = Math.round((Date.now() - date.getTime()) / 3600000);
+        time = hours < 1 ? 'Hace un momento' : hours < 24 ? `Hace ${hours} h` : 'Ayer';
+      }
+    }
+    items.push({
+      id: `rss-${source}-${index}`,
+      title,
+      source,
+      time,
+      url: linkMatch ? stripXmlText(linkMatch[1]) : undefined,
+    });
+  }
+  return items;
+}
+
+async function fetchRssFeed(feed) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(feed.url, {
+      headers: { Accept: 'application/rss+xml, application/xml, text/xml', 'User-Agent': 'Mozilla/5.0 (compatible; EGChatProxy/1.0)' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return [];
+    const xml = await res.text();
+    return parseRssItems(xml, feed.source);
+  } catch (err) {
+    return [];
+  }
+}
+
+app.get('/api/news/rss', async (req, res) => {
+  try {
+    const results = await Promise.allSettled(RSS_FEEDS_PROXY.map(fetchRssFeed));
+    const news = results
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    const uniqueNews = news.filter((item, idx, arr) => arr.findIndex(x => x.title === item.title) === idx).slice(0, 12);
+    return res.json({ news: uniqueNews });
+  } catch (e) {
+    return res.json({ news: [] });
   }
 });
 

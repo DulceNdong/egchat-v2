@@ -7,8 +7,7 @@
     android:enabled="true"
     android:icon="@drawable/ic_shortcut_chat"
     android:shortcutShortLabel="@string/shortcut_new_chat_short"
-    android:shortcutLongLabel="@string/shortcut_new_chat_long"
-    android:rank="0">
+    android:shortcutLongLabel="@string/shortcut_new_chat_long">
     <intent
       android:action="android.intent.action.VIEW"
       android:targetPackage="com.egchat.app"
@@ -23,8 +22,7 @@
     android:enabled="true"
     android:icon="@drawable/ic_shortcut_stories"
     android:shortcutShortLabel="@string/shortcut_stories_short"
-    android:shortcutLongLabel="@string/shortcut_stories_long"
-    android:rank="1">
+    android:shortcutLongLabel="@string/shortcut_stories_long">
     <intent
       android:action="android.intent.action.VIEW"
       android:targetPackage="com.egchat.app"
@@ -38,8 +36,7 @@
     android:enabled="true"
     android:icon="@drawable/ic_shortcut_qr"
     android:shortcutShortLabel="@string/shortcut_qr_short"
-    android:shortcutLongLabel="@string/shortcut_qr_long"
-    android:rank="2">
+    android:shortcutLongLabel="@string/shortcut_qr_long">
     <intent
       android:action="android.intent.action.VIEW"
       android:targetPackage="com.egchat.app"

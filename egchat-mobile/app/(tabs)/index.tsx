@@ -159,13 +159,13 @@ const FAB_SERVICES = [
   { id: 'electricidad', label: 'Electricidad', route: '/(tabs)/servicios?service=electricidad', color: '#FDE68A' },
   { id: 'internet',     label: 'Internet',     route: '/(tabs)/servicios?service=internet',     color: '#C4B5FD' },
   { id: 'recarga',      label: 'Recarga',      route: '/(tabs)/servicios?service=recarga',      color: '#67E8F9' },
-  { id: 'tv',           label: 'Canales TV',   route: '/(tabs)/servicios?service=tv',           color: '#F9A8D4' },
+  { id: 'tv',           label: 'TV',           route: '/(tabs)/servicios?service=tv',           color: '#F9A8D4' },
   { id: 'salud',        label: 'Salud',        route: '/(tabs)/servicios?service=salud',        color: '#FCA5A5' },
   { id: 'seguros',      label: 'Seguros',      route: '/(tabs)/servicios?service=seguros',      color: '#6EE7B7' },
-  { id: 'super',        label: 'Supermercado', route: '/(tabs)/servicios?service=supermercado', color: '#BEF264' },
-  { id: 'restaurantes', label: 'Restaurantes', route: '/(tabs)/servicios?service=restaurantes', color: '#FDA4AF' },
+  { id: 'super',        label: 'Super',        route: '/(tabs)/servicios?service=supermercado', color: '#BEF264' },
+  { id: 'restaurantes', label: 'Rest. ',       route: '/(tabs)/servicios?service=restaurantes', color: '#FDA4AF' },
   { id: 'vuelos',       label: 'Vuelos',       route: '/(tabs)/servicios?service=vuelos',       color: '#7DD3FC' },
-  { id: 'gasolineras',  label: 'Gasolineras',  route: '/(tabs)/servicios?service=gasolineras',  color: '#FCD34D' },
+  { id: 'gasolineras',  label: 'Gasolina',     route: '/(tabs)/servicios?service=gasolineras',  color: '#FCD34D' },
   { id: 'ocio',         label: 'Ocio',         route: '/ocio',                                  color: '#D8B4FE' },
   { id: 'apuestas',     label: 'Apuestas',     route: '/apuestas',                              color: '#A5B4FC' },
 ];
@@ -174,9 +174,9 @@ const FAB_SERVICES = [
 const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; color: string; onPress: () => void }) => (
   <TouchableOpacity style={st.appItem} onPress={onPress} activeOpacity={0.75}>
     <View style={st.appIconBox}>
-      <SvgIcon id={id} color={color} size={30} />
+      <SvgIcon id={id} color={color} size={28} />
     </View>
-    <Text style={st.appLabel}>{label}</Text>
+    <Text style={[st.appLabel, { fontSize: 10.5 }]}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -414,14 +414,7 @@ export default function HomeScreen() {
         onMenuPress={() => setShowMenu(true)}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
-        }
-        contentContainerStyle={st.scrollContent}
-      >
-
+<View style={st.fixedContent}>
         {/* ════════════════════════════════════════════════════════
             BANNER SALDO DISPONIBLE
         ════════════════════════════════════════════════════════ */}
@@ -525,47 +518,32 @@ export default function HomeScreen() {
             </View>
           </TouchableOpacity>
         </View>
+      </View>
 
-        {/* Noticias preview removed per request */}
-
-        {/* ════════════════════════════════════════════════════════
-            ATAJOS RÁPIDOS — Recarga, Taxi, Mensajes, Cartera
-        ════════════════════════════════════════════════════════ */}
-        <View style={[st.shortcutsRow, { backgroundColor: C.bgSecondary }]}>
-          {[
-            { id: 'recarga',  label: 'Recarga',  color: '#07C160', route: '/(tabs)/servicios?service=recarga' },
-            { id: 'mitaxi',   label: 'Taxi',     color: '#F59E0B', route: '/mitaxi' },
-            { id: 'mensajes', label: 'Chat',     color: '#00B4E6', route: '/(tabs)/mensajeria' },
-            { id: 'cartera',  label: 'Cartera',  color: '#6366f1', route: '/(tabs)/monedero' },
-          ].map(s => (
-            <TouchableOpacity key={s.id} style={st.shortcutItem} onPress={() => router.push(s.route as any)} activeOpacity={0.75}>
-              <View style={st.shortcutIcon}>
-                <SvgIcon id={s.id} color={s.color} size={22} />
-              </View>
-              <Text style={[st.shortcutLabel, { color: C.textSecondary }]}>{s.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* ════════════════════════════════════════════════════════
-            APPS — Estados, Juegos, Cemac, MiTaxi
-        ════════════════════════════════════════════════════════ */}
-        <View style={st.appsSection}>
-          <Text style={[st.sectionLabel, { color: C.textSecondary }]}>APPS</Text>
-          <View style={st.appsGrid}>
-            {HOME_APPS.map(app => (
-              <AppIcon
-                key={app.id}
-                id={app.id}
-                label={app.label}
-                color={app.color}
-                onPress={() => router.push(app.route as any)}
-              />
-            ))}
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
+        }
+        contentContainerStyle={st.scrollContent}
+      >
+        <View style={st.fixedContent}>
+          <View style={[st.appsSection, { backgroundColor: C.bgSecondary }]}> 
+            <Text style={[st.sectionLabel, { color: C.textSecondary }]}>SERVICIOS DUTTI</Text>
+            <View style={st.appsGrid}>
+              {HOME_APPS.map(app => (
+                <AppIcon
+                  key={app.id}
+                  id={app.id}
+                  label={app.label}
+                  color={app.color}
+                  onPress={() => router.push(app.route as any)}
+                />
+              ))}
+            </View>
           </View>
         </View>
 
-        {/* Espacio inferior para que el FAB no tape contenido */}
         <View style={{ height: 120 }} />
       </ScrollView>
 
@@ -588,7 +566,7 @@ export default function HomeScreen() {
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
         const FAB_CX = SW / 2;
-        const FAB_BOTTOM = 160 + 30; // bottom del centro del FAB
+        const FAB_BOTTOM = 160; // bottom del centro del FAB
         const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
@@ -634,12 +612,28 @@ export default function HomeScreen() {
               >
                 <SvgIcon id={svc.id} color={svc.color} size={24} />
               </TouchableOpacity>
-              <Animated.Text
-                style={[st.fabRadialLabel, { opacity: fabItemAnims[i] }]}
-                numberOfLines={1}
+              <Animated.View
+                style={{
+                  marginTop: 6,
+                  paddingHorizontal: 10,
+                  paddingVertical: 4,
+                  borderRadius: 999,
+                  backgroundColor: 'rgba(255,255,255,0.84)',
+                  borderWidth: 1,
+                  borderColor: 'rgba(255,255,255,0.9)',
+                  opacity: fabItemAnims[i],
+                  minWidth: 84,
+                  maxWidth: 100,
+                  alignSelf: 'center',
+                }}
               >
-                {svc.label}
-              </Animated.Text>
+                <Animated.Text
+                  style={st.fabRadialLabel}
+                  numberOfLines={1}
+                >
+                  {svc.label}
+                </Animated.Text>
+              </Animated.View>
             </Animated.View>
           );
         });
@@ -758,8 +752,12 @@ const st = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  fixedContent: {
+    paddingBottom: Spacing.sm,
+  },
   scrollContent: {
-    paddingBottom: Spacing.lg,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.xl,
   },
 
   // ── Header ──────────────────────────────────────────────────────
@@ -968,41 +966,15 @@ const st = StyleSheet.create({
     fontWeight: FontWeight.medium as '500',
   },
 
-  // ── Atajos rápidos ──────────────────────────────────────────────
-  shortcutsRow: {
-    flexDirection: 'row',
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: 14,
-    paddingHorizontal: 8,
-    ...Shadow.sm,
-  },
-  shortcutItem: {
-    flex: 1,
-    alignItems: 'center',
-    gap: 6,
-  },
-  shortcutIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    backgroundColor: 'transparent',
-  },
-  shortcutLabel: {
-    fontSize: 11,
-    fontWeight: '600',
-    textAlign: 'center',
-  },
-
   // ── APPS section ─────────────────────────────────────────────────
   appsSection: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.xl,
+    marginTop: Spacing.sm,
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.sm,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.06)',
+    ...Shadow.sm,
   },
   sectionLabel: {
     fontSize: FontSize.xs,
@@ -1013,29 +985,51 @@ const st = StyleSheet.create({
   },
   appsGrid: {
     flexDirection: 'row',
-    gap: Spacing.md,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    gap: 6,
   },
   appItem: {
     flex: 1,
     alignItems: 'center',
-    gap: Spacing.sm,
+    gap: 4,
+    paddingVertical: 6,
+    paddingHorizontal: 3,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.16)',
+    shadowColor: '#ffffff',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 0,
   },
   appIconBox: {
-    width: 68,
-    height: 68,
-    borderRadius: 20,
-    backgroundColor: 'transparent',
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    backgroundColor: 'rgba(255,255,255,0.22)',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
-    ...Shadow.sm,
+    borderWidth: 1.2,
+    borderColor: 'rgba(255,255,255,0.35)',
+    padding: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.16,
+    shadowRadius: 4,
+    elevation: 3,
   },
   appLabel: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: Colors.textPrimary,
+    fontSize: 10.2,
+    fontWeight: FontWeight.bold as '700',
+    color: '#000000',
     textAlign: 'center',
+    letterSpacing: 0.2,
+    textShadowColor: 'rgba(255,255,255,0.55)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
 
   // ── FAB overlay ──────────────────────────────────────────────────
@@ -1050,26 +1044,31 @@ const st = StyleSheet.create({
 
   // ── FAB radial items ─────────────────────────────────────────────
   fabRadialBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.96)',
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#ffffff',
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.08)',
+    borderWidth: 1.4,
+    borderColor: 'rgba(0,0,0,0.15)',
     overflow: 'hidden',
+    shadowColor: '#000000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 5,
   },
   fabRadialEmoji: {
     fontSize: 22,
   },
   fabRadialLabel: {
-    fontSize: 10,
-    fontWeight: '700',
+    fontSize: 9.5,
+    fontWeight: '800',
     color: '#111827',
     textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 68,
+    maxWidth: 96,
+    lineHeight: 11,
   },
 
   // ── LIA-25 flotante arrastrable ──────────────────────────────────
@@ -1098,7 +1097,7 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    bottom: 160,
+    bottom: 150,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,

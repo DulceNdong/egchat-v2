@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Polygon, Rect, Line } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
-import { chatAPI, getToken, getApiBase, authAPI } from '../src/api';
+import { chatAPI, userAPI } from '../src/api';
 
 type CallFilter = 'all' | 'missed' | 'outgoing' | 'incoming';
 
@@ -63,7 +63,7 @@ export default function CallHistoryScreen() {
   const [currentUserId, setCurrentUserId] = useState<string>('');
 
   useEffect(() => {
-    authAPI.getProfile()
+    userAPI.getProfile()
       .then((p: any) => {
         const uid = p?.id || '';
         setCurrentUserId(uid);
@@ -110,7 +110,7 @@ export default function CallHistoryScreen() {
       // Obtener userId actual si aún no está cargado
       let userId = currentUserId;
       if (!userId) {
-        const profile = await authAPI.getProfile().catch(() => null);
+        const profile = await userAPI.getProfile().catch(() => null);
         userId = profile?.id || '';
         if (userId) setCurrentUserId(userId);
       }

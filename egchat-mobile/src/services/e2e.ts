@@ -12,9 +12,20 @@
  * Solo ve el mensaje cifrado (base64) y las claves públicas.
  */
 import nacl from 'tweetnacl';
-import { encodeBase64, decodeBase64, encodeUTF8, decodeUTF8 } from 'tweetnacl-util';
+import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
 import * as SecureStore from 'expo-secure-store';
 import { getToken, getApiBase } from '../api';
+
+const textEncoder = new TextEncoder();
+const textDecoder = new TextDecoder();
+
+function utf8ToBytes(value: string): Uint8Array {
+  return textEncoder.encode(value);
+}
+
+function bytesToUtf8(value: Uint8Array): string {
+  return textDecoder.decode(value);
+}
 
 const PRIVATE_KEY_STORE = 'egchat_e2e_private_key';
 const PUBLIC_KEY_STORE  = 'egchat_e2e_public_key';
@@ -88,7 +99,7 @@ export function encryptMessage(
   myPrivateKey: string,
 ): string {
   const nonce       = nacl.randomBytes(nacl.box.nonceLength);
-  const messageUint = encodeUTF8(message);
+  const messageUint = utf8ToBytes(message);
   const theirKey    = decodeBase64(theirPublicKey);
   const myKey       = decodeBase64(myPrivateKey);
 
@@ -124,7 +135,7 @@ export function decryptMessage(
     const decrypted = nacl.box.open(encrypted, nonce, theirKey, myKey);
     if (!decrypted) return null;
 
-    return decodeUTF8(decrypted);
+    return bytesToUtf8(decrypted);
   } catch { return null; }
 }
 

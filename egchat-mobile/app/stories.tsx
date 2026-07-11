@@ -6,13 +6,13 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, ActivityIndicator, Image, Dimensions,
-  Animated, PanResponder, Alert, TextInput,
+  Animated, PanResponder, Alert, TextInput, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { storiesAPI, authAPI } from '../src/api';
+import { pickImageFromCamera, pickImageFromLibrary, pickVideo, pickVideoFromCamera } from '../src/utils/chatMedia';
 import { Ionicons } from '@expo/vector-icons';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
 import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
@@ -166,12 +166,17 @@ const StoryViewer = ({
     setTimeout(() => { setSentReaction(null); startProgress(); }, 1500);
   };
 
-  const sendReply = () => {
-    if (replyText.trim()) {
+  const sendReply = async () => {
+    const text = replyText.trim();
+    if (!text) return;
+    try {
+      await storiesAPI.reply(group.storyId, text);
       setReplyText('');
       setShowReply(false);
       paused.current = false;
       startProgress();
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar la respuesta');
     }
   };
 
@@ -409,52 +414,103 @@ export default function StoriesScreen() {
 
   useEffect(() => { loadStories(); }, []);
 
+  const uploadStory = async (uri: string, type: 'image' | 'video' = 'image') => {
+    setUploading(true);
+    try {
+      await storiesAPI.create({ media: [{ url: uri, type }] });
+      await loadStories();
+    } catch { Alert.alert('Error', 'No se pudo publicar el estado'); }
+    finally { setUploading(false); }
+  };
+
+  const createTextStatus = async () => {
+    const svg = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920">
+        <rect width="1080" height="1920" fill="#00c8a0" />
+        <circle cx="260" cy="320" r="180" fill="rgba(255,255,255,0.16)" />
+        <circle cx="860" cy="1560" r="260" fill="rgba(255,255,255,0.12)" />
+        <rect x="140" y="220" width="800" height="1480" rx="56" fill="rgba(255,255,255,0.16)" stroke="rgba(255,255,255,0.3)" stroke-width="6" />
+        <text x="540" y="820" text-anchor="middle" font-family="Arial, sans-serif" font-size="92" font-weight="700" fill="#ffffff">Nuevo estado</text>
+        <text x="540" y="950" text-anchor="middle" font-family="Arial, sans-serif" font-size="54" font-weight="500" fill="rgba(255,255,255,0.9)">Publicado desde EGChat</text>
+      </svg>`;
+    const dataUri = `data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`;
+    await uploadStory(dataUri, 'image');
+  };
+
   const pickFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
+    try {
+      const asset = await pickImageFromLibrary();
+      if (!asset) return;
+      await uploadStory(asset.uri, asset.mimeType?.includes('video') ? 'video' : 'image');
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir la galería');
+    }
   };
 
   const addStory = async () => {
     Alert.alert('Añadir estado', '¿Cómo quieres añadir tu estado?', [
       {
-        text: '📷 Cámara',
+        text: '� Texto rápido',
         onPress: async () => {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu cámara.'); return; }
-          const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85 });
-          if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
+          try {
+            await createTextStatus();
+          } catch {
+            Alert.alert('Error', 'No se pudo crear el estado');
+          }
+        },
+      },
+      {
+        text: '�📷 Cámara',
+        onPress: async () => {
+          try {
+            const asset = await pickImageFromCamera();
+            if (!asset) return;
+            await uploadStory(asset.uri, 'image');
+          } catch {
+            Alert.alert('Error', 'No se pudo abrir la cámara');
+          }
         },
       },
       {
         text: '🖼️ Galería',
         onPress: async () => {
-          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true, quality: 0.85,
-          });
-          if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
+          try {
+            const asset = await pickImageFromLibrary();
+            if (!asset) return;
+            await uploadStory(asset.uri, 'image');
+          } catch {
+            Alert.alert('Error', 'No se pudo abrir la galería');
+          }
+        },
+      },
+      {
+        text: '🎥 Video',
+        onPress: async () => {
+          try {
+            const asset = await pickVideo();
+            if (!asset) return;
+            await uploadStory(asset.uri, 'video');
+          } catch {
+            Alert.alert('Error', 'No se pudo abrir el selector de video');
+          }
+        },
+      },
+      {
+        text: '📹 Video cámara',
+        onPress: async () => {
+          try {
+            const asset = await pickVideoFromCamera();
+            if (!asset) return;
+            await uploadStory(asset.uri, 'video');
+          } catch {
+            Alert.alert('Error', 'No se pudo abrir la cámara de video');
+          }
         },
       },
       { text: 'Cancelar', style: 'cancel' },
     ]);
   };
 
-  const uploadStory = async (uri: string) => {
-    setUploading(true);
-    try {
-      await storiesAPI.create({ media: [{ url: uri, type: 'image' }] });
-      await loadStories();
-    } catch { Alert.alert('Error', 'No se pudo publicar el estado'); }
-    finally { setUploading(false); }
-  };
 
   const deleteStory = (storyId: string) => {
     Alert.alert('Eliminar estado', '¿Eliminar este estado?', [
@@ -655,7 +711,7 @@ export default function StoriesScreen() {
       <Modal visible={myStoryMenu} transparent animationType="fade" onRequestClose={() => setMyStoryMenu(false)}>
         <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
           <View style={st.menuCardFloat}>
-            <TouchableOpacity style={st.menuItem} onPress={() => { pickFromGallery(); setMyStoryMenu(false); }}>
+            <TouchableOpacity style={st.menuItem} onPress={() => { addStory(); setMyStoryMenu(false); }}>
               <Ionicons name="image-outline" size={16} color="#a855f7" />
               <Text style={st.menuItemText}>Subir foto/video</Text>
             </TouchableOpacity>

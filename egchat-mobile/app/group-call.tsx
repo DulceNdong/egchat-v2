@@ -126,7 +126,7 @@ export default function GroupCallScreen() {
       </ScrollView>
 
       {/* Controles */}
-      <SafeAreaView edges={['bottom']}>
+      <View style={s.controlsWrap}>
         <View style={s.controls}>
           {/* Silenciar */}
           <TouchableOpacity style={[s.btn, isMuted && s.btnDanger]} onPress={toggleGroupMute}>
@@ -163,7 +163,7 @@ export default function GroupCallScreen() {
         {!hasNativeWebRTC && (
           <Text style={s.hint}>WebRTC nativo disponible con EAS Dev Client</Text>
         )}
-      </SafeAreaView>
+      </View>
     </View>
   );
 }
@@ -205,6 +205,12 @@ const s = StyleSheet.create({
     borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center',
   },
   emptyIcon: { fontSize: 28, color: 'rgba(255,255,255,0.2)', fontWeight: '200' },
+  controlsWrap: {
+    paddingHorizontal: 20,
+    paddingBottom: 12,
+    paddingTop: 6,
+    backgroundColor: 'rgba(15,23,42,0.95)',
+  },
   controls: {
     flexDirection: 'row', justifyContent: 'center',
     alignItems: 'center', gap: 28,

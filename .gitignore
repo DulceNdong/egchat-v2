@@ -7,3 +7,6 @@ dist/
 
 # Submódulo roto - no trackear
 egchat-api-temp/
+
+.vercel
+.env*.local

@@ -136,7 +136,7 @@ export const mergePersistentAvatar = async <T extends { id?: string; avatar_url?
   }
 
   const localAvatar = await getLocalAvatar(user.id);
-  if (localAvatar && localAvatar.startsWith(FileSystem.documentDirectory)) {
+  if (localAvatar && FileSystem.documentDirectory && localAvatar.startsWith(FileSystem.documentDirectory)) {
     return { ...user, avatar_url: localAvatar };
   }
   if (localAvatar && isBrokenAvatarUrl(user.avatar_url)) {

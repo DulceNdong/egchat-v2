@@ -108,7 +108,7 @@ export default function BarcosScreen() {
         setLoading(false);
         return;
       }
-      await walletAPI.pay({ amount: totalPrice, description: `Billete barco ${route?.from} → ${route?.to} · ${ship?.name}`, category: 'transport' });
+      await walletAPI.transfer('barcos', totalPrice, `Billete barco ${route?.from} → ${route?.to} · ${ship?.name}`);
       const ref = `BRC-${Date.now().toString(36).toUpperCase()}`;
       setBookingRef(ref);
       setStep('success');
@@ -199,7 +199,7 @@ export default function BarcosScreen() {
           <TouchableOpacity key={sh.id} style={[st.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
             onPress={() => { setShip(sh); setStep('class'); }} activeOpacity={0.8}>
             <View style={st.shipRow}>
-              <View style={[st.shipIcon, { backgroundColor: sh.color + '20' }]}>
+              <View style={[st.shipIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                 <Text style={{ fontSize: 32 }}>{sh.icon}</Text>
               </View>
               <View style={{ flex: 1 }}>

@@ -108,7 +108,8 @@ export default function RootLayout() {
                 prevCleanup?.();
               };
             }
-            router.replace('/(tabs)'); // → Home Dashboard (index.tsx)
+            // La app nativa debe seguir la experiencia principal de la web local
+            router.replace('/(tabs)');
 
             // Notificaciones y llamadas solo en nativo
             if (Platform.OS !== 'web') {

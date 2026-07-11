@@ -93,7 +93,7 @@ export const useAuth = () => {
       await wakeServer();
       const res = await authAPI.register(data);
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
-      router.replace('/(tabs)'); // → Home Dashboard
+      router.replace('/(tabs)');
       return true;
     } catch (e: any) {
       const msg = e.message || '';
@@ -181,7 +181,7 @@ export const useSessionCheck = () => {
         const isAuth = await authAPI.isAuthenticated();
         if (isAuth) {
           await authAPI.me();
-          router.replace('/(tabs)'); // → Home Dashboard
+          router.replace('/(tabs)');
         } else {
           router.replace('/(auth)/login');
         }

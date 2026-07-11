@@ -17,6 +17,9 @@ dist/
 .env.development
 .env.local
 
+# Configuración local de Android específica del entorno
+android/local.properties
+
 # Assets web innecesarios para build Android
 web-build/
 

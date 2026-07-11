@@ -131,7 +131,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
             {BILL_CATEGORIES.map(c => (
               <TouchableOpacity
                 key={c.id}
-                style={[s.catCell, form.catId === c.id && { backgroundColor: c.color + '10', borderBottomWidth: 2, borderBottomColor: c.color }]}
+                style={[s.catCell, form.catId === c.id && { backgroundColor: 'transparent', borderBottomWidth: 2, borderBottomColor: c.color }]}
                 onPress={() => { setF('catId', c.id); setF('service', c.label); setF('provider', c.provider); }}
               >
                 <Text style={{ fontSize: 20 }}>{c.icon}</Text>

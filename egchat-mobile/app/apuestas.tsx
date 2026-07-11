@@ -116,7 +116,7 @@ export default function ApuestasScreen() {
           {COMPANIES.map(co => (
             <View key={co.id} style={s.coCard}>
               <TouchableOpacity style={s.coTop} onPress={() => { setCompany(co); setSportId(co.sports?.[0]?.id || 'futbol'); }}>
-                <View style={[s.coLogo, { backgroundColor: co.color + '22' }]}>
+                <View style={[s.coLogo, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                   <Text style={{ fontSize: 22, fontWeight: '900', color: co.color }}>
                     {co.name.slice(0, 2).toUpperCase()}
                   </Text>

@@ -17,6 +17,9 @@ export function ChatContextMenu({
   onDelete,
   onDeleteForMe,
   onReaction,
+  onTranslate,
+  onPin,
+  onEphemeral,
 }: {
   visible: boolean;
   message: ChatMessage | null;

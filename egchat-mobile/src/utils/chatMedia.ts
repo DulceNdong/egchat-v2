@@ -247,7 +247,6 @@ export async function pickDocument(): Promise<PickedAsset | null> {
   const result = await ImagePicker.launchImageLibraryAsync({
     mediaTypes: ImagePicker.MediaTypeOptions.All,
     quality: 1,
-    copyToCacheDirectory: true,
   });
   if (result.canceled || !result.assets?.[0]) return null;
   const a = result.assets[0];

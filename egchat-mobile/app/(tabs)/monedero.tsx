@@ -1019,194 +1019,206 @@ export default function MonederoScreen() {
         onMenuPress={() => setShowMenu(true)}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00c8a0" colors={['#00c8a0']} />}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* ── Tarjeta de balance ── */}
-        <View style={s.balanceCardWrap}>
-          <LinearGradient
-            colors={['#1A3A6B', '#0E5F8A', '#0A7A8A']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.balanceCard}
-          >
-            <Text style={s.balanceCardLabel}>MONEDERO EGCHAT</Text>
+<View style={s.pageContent}>
+        <View style={s.stickyWalletSection}>
+          {/* ── Tarjeta de balance ── */}
+          <View style={s.balanceCardWrap}>
+            <LinearGradient
+              colors={['#1A3A6B', '#0E5F8A', '#0A7A8A']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.balanceCard}
+            >
+              <Text style={s.balanceCardLabel}>MONEDERO EGCHAT</Text>
 
-            {/* Saldo con animación de revelado (paridad web) */}
-            <View style={s.balanceRevealBtn}>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, opacity: balanceRevealed ? 1 : 0.15 }}>
-                <Text style={s.balanceAmount}>{fmt(balance)}</Text>
-                <Text style={s.balanceCurrency}>XAF</Text>
-              </View>
-              {!balanceRevealed && (
-                <Animated.View
-                  style={[s.balanceOverlay, { opacity: balanceRevealing ? overlayOpacity : 1 }]}
-                >
-                  <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
-                    <Text style={s.balanceHiddenText}>
-                      {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
-                    </Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-              {balanceRevealed && (
-                <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
-                  <Text style={s.balanceHideText}>Ocultar</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <Text style={s.balanceSubLabel}>Saldo disponible</Text>
-
-            {/* 4 botones de acción */}
-            <View style={s.actionsRow}>
-              {[
-                { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
-                { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
-                { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
-                { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
-              ].map(a => (
-                <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
-                  <View style={s.actionIconWrap}>{a.icon}</View>
-                  <Text style={s.actionLabel}>{a.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* ── Mis Cuentas ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
-          <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
-            <Text style={s.addBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-          {bankAccounts.map((acc, i) => (
-            <View key={acc.id}>
-              <View style={s.bankRow}>
-                <View style={s.bankIconWrap}>
-                  <IcoBanco color="#1B3A6B" />
+              {/* Saldo con animación de revelado (paridad web) */}
+              <View style={s.balanceRevealBtn}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, opacity: balanceRevealed ? 1 : 0.15 }}>
+                  <Text style={s.balanceAmount}>{fmt(balance)}</Text>
+                  <Text style={s.balanceCurrency}>XAF</Text>
                 </View>
-                <View style={s.bankInfo}>
-                  <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
-                  <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
-                </View>
-                <View style={s.bankBalanceWrap}>
-                  <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
-                  <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
-                </View>
-              </View>
-              {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
-            </View>
-          ))}
-        </View>
-
-        {/* ── Mis Tarjetas ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
-          <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
-            <Text style={s.addBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
-          onPress={() => setShowCards(true)}
-          activeOpacity={0.75}
-        >
-          <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
-            <Text style={s.cardPreviewIcon}>💳</Text>
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
-            <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
-          </View>
-          <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
-        </TouchableOpacity>
-
-        {/* ── Transferencias pendientes ── */}
-        {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
-          <>
-            <View style={s.sectionHeader}>
-              <Text style={[s.sectionTitle, { color: '#b45309' }]}>TRANSFERENCIAS PENDIENTES</Text>
-            </View>
-            <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-              {pendingTransfers.filter(t => t.status === 'pending').map((transfer, i, arr) => (
-                <View key={transfer.id}>
-                  <View style={s.pendingRow}>
-                    <View style={s.pendingIcon}>
-                      <Text>⏱</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.bankName, { color: C.textPrimary }]}>
-                        {transfer.from} → {transfer.to}
+                {!balanceRevealed && (
+                  <Animated.View
+                    style={[s.balanceOverlay, { opacity: balanceRevealing ? overlayOpacity : 1 }]}
+                  >
+                    <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
+                      <Text style={s.balanceHiddenText}>
+                        {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
                       </Text>
-                      <Text style={[s.bankType, { color: C.textSecondary }]}>
-                        Expira en {Math.max(0, Math.ceil((transfer.expiresAt - Date.now()) / 60000))} min
-                      </Text>
-                    </View>
-                    <Text style={[s.pendingAmount, { color: '#b45309' }]}>
-                      {fmt(transfer.amount)} XAF
-                    </Text>
-                    <TouchableOpacity
-                      style={s.cancelPendingBtn}
-                      onPress={() => setPendingTransfers(prev =>
-                        prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' as const } : t),
-                      )}
-                    >
-                      <Text style={s.cancelPendingText}>Cancelar</Text>
                     </TouchableOpacity>
+                  </Animated.View>
+                )}
+                {balanceRevealed && (
+                  <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
+                    <Text style={s.balanceHideText}>Ocultar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={s.balanceSubLabel}>Saldo disponible</Text>
+
+              {/* 4 botones de acción */}
+              <View style={s.actionsRow}>
+                {[
+                  { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
+                  { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
+                  { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
+                  { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
+                ].map(a => (
+                  <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
+                    <View style={s.actionIconWrap}>{a.icon}</View>
+                    <Text style={s.actionLabel}>{a.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+
+        <ScrollView
+          style={s.sectionsScroll}
+          contentContainerStyle={s.sectionsContainer}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Mis Cuentas ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
+                <Text style={s.addBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+              {bankAccounts.map((acc, i) => (
+                <View key={acc.id}>
+                  <View style={s.bankRow}>
+                    <View style={s.bankIconWrap}>
+                      <IcoBanco color="#1B3A6B" />
+                    </View>
+                    <View style={s.bankInfo}>
+                      <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
+                      <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
+                    </View>
+                    <View style={s.bankBalanceWrap}>
+                      <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
+                      <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
+                    </View>
                   </View>
-                  {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                  {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
                 </View>
               ))}
             </View>
-          </>
-        )}
+          </View>
 
-        {/* ── Historial de Transferencias ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
-          <TouchableOpacity onPress={() => router.push('/historial-completo' as any)} activeOpacity={0.7}>
-            <Text style={s.verTodo}>Ver todo →</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-          {recentTx.length === 0 ? (
-            <View style={s.emptyWrap}>
-              <Text style={s.emptyIcon}>💳</Text>
-              <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin transacciones aún</Text>
+          {/* ── Mis Tarjetas ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
+                <Text style={s.addBtnText}>+</Text>
+              </TouchableOpacity>
             </View>
-          ) : recentTx.map((tx, i) => (
-            <View key={tx.id || i}>
-              <View style={s.txCard}>
-                <View style={[s.txIconWrap, { backgroundColor: isCredit(tx.type) ? '#E8F8EE' : '#FEF2F2' }]}>
-                  {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
-                </View>
-                <View style={s.txInfo}>
-                  <Text style={[s.txLabel, { color: C.textPrimary }]}>
-                    {isCredit(tx.type) ? '↙️ Recibido' : '↗️ Enviado'}
-                  </Text>
-                  <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
-                  <Text style={[s.txDate, { color: C.textTertiary }]}>
-                    {formatDate(tx.created_at || tx.date || new Date().toISOString())}
-                  </Text>
-                </View>
-                <View style={s.txAmountWrap}>
-                  <Text style={[s.txAmount, { color: isCredit(tx.type) ? '#00c8a0' : '#ef4444' }]}>
-                    {isCredit(tx.type) ? '+' : '-'}{fmt(tx.amount)}
-                  </Text>
-                  <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
-                </View>
+            <TouchableOpacity
+              style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
+              onPress={() => setShowCards(true)}
+              activeOpacity={0.75}
+            >
+              <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
+                <Text style={s.cardPreviewIcon}>💳</Text>
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
               </View>
-              {i < recentTx.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+              <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Transferencias pendientes ── */}
+          {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <Text style={[s.sectionTitle, { color: '#b45309' }]}>TRANSFERENCIAS PENDIENTES</Text>
+              </View>
+              <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+                {pendingTransfers.filter(t => t.status === 'pending').map((transfer, i, arr) => (
+                  <View key={transfer.id}>
+                    <View style={s.pendingRow}>
+                      <View style={s.pendingIcon}>
+                        <Text>⏱</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.bankName, { color: C.textPrimary }]}> 
+                          {transfer.from} → {transfer.to}
+                        </Text>
+                        <Text style={[s.bankType, { color: C.textSecondary }]}> 
+                          Expira en {Math.max(0, Math.ceil((transfer.expiresAt - Date.now()) / 60000))} min
+                        </Text>
+                      </View>
+                      <Text style={[s.pendingAmount, { color: '#b45309' }]}> 
+                        {fmt(transfer.amount)} XAF
+                      </Text>
+                      <TouchableOpacity
+                        style={s.cancelPendingBtn}
+                        onPress={() => setPendingTransfers(prev =>
+                          prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' as const } : t),
+                        )}
+                      >
+                        <Text style={s.cancelPendingText}>Cancelar</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* ── Historial de Transferencias ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
+              <TouchableOpacity onPress={() => router.push('/historial-completo' as any)} activeOpacity={0.7}>
+                <Text style={s.verTodo}>Ver todo →</Text>
+              </TouchableOpacity>
             </View>
-          ))}
-        </View>
-      </ScrollView>
+
+            <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+              {recentTx.length === 0 ? (
+                <View style={s.emptyWrap}>
+                  <Text style={s.emptyIcon}>💳</Text>
+                  <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin transacciones aún</Text>
+                </View>
+              ) : recentTx.map((tx, i) => (
+                <View key={tx.id || i}>
+                  <View style={s.txCard}>
+                    <View style={[s.txIconWrap, { backgroundColor: isCredit(tx.type) ? '#E8F8EE' : '#FEF2F2' }]}> 
+                      {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
+                    </View>
+                    <View style={s.txInfo}>
+                      <Text style={[s.txLabel, { color: C.textPrimary }]}> 
+                        {isCredit(tx.type) ? '↙️ Recibido' : '↗️ Enviado'}
+                      </Text>
+                      <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
+                      <Text style={[s.txDate, { color: C.textTertiary }]}> 
+                        {formatDate(tx.created_at || tx.date || new Date().toISOString())}
+                      </Text>
+                    </View>
+                    <View style={s.txAmountWrap}>
+                      <Text style={[s.txAmount, { color: isCredit(tx.type) ? '#00c8a0' : '#ef4444' }]}> 
+                        {isCredit(tx.type) ? '+' : '-'}{fmt(tx.amount)}
+                      </Text>
+                      <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
+                    </View>
+                  </View>
+                  {i < recentTx.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                </View>
+              ))}
+            </View>
+          </View>
+        </ScrollView>
+      </View>
 
       {/* ── Modales ── */}
       <NotificationsPanel
@@ -1262,6 +1274,14 @@ export default function MonederoScreen() {
 // ── Estilos ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#EEF2F7' },
+  pageContent: { flex: 1 },
+  stickyWalletSection: { flexShrink: 0 },
+  sectionsScroll: { flex: 1 },
+  sectionsContainer: { paddingBottom: 120 },
+  sectionBlock: { marginBottom: 10 },
+  sectionScroll: { maxHeight: 210, marginHorizontal: 12 },
+  historySectionScroll: { maxHeight: 320, marginHorizontal: 12 },
+  sectionScrollContent: { paddingBottom: 2 },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
@@ -1289,7 +1309,7 @@ const s = StyleSheet.create({
   actionLabel:   { fontSize: 11, fontWeight: '700', color: '#1A2B4A' },
 
   // Sections
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, marginBottom: 8, marginTop: 4 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginBottom: 6, marginTop: 2 },
   sectionTitle:  { fontSize: 13, fontWeight: '800', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 0.5 },
   addBtn:        { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(52,211,153,0.15)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)', alignItems: 'center', justifyContent: 'center' },
   addBtnText:    { fontSize: 18, fontWeight: '700', color: '#00c8a0', lineHeight: 22 },
@@ -1298,11 +1318,11 @@ const s = StyleSheet.create({
   verTodo:       { fontSize: 13, color: '#00c8a0', fontWeight: '600' },
 
   // Card container
-  card:          { marginHorizontal: 14, borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, marginBottom: 12 },
+  card:          { marginHorizontal: 12, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginBottom: 8 },
   divider:       { height: 1, marginHorizontal: 14 },
 
   // Bank accounts
-  bankRow:       { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  bankRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 10 },
   bankIconWrap:  { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(52,211,153,0.08)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.18)', alignItems: 'center', justifyContent: 'center' },
   bankInfo:      { flex: 1 },
   bankName:      { fontSize: 13, fontWeight: '700', color: '#0d0d0d' },
@@ -1327,7 +1347,7 @@ const s = StyleSheet.create({
   cancelPendingText: { fontSize: 11, fontWeight: '600', color: '#f87171' },
 
   // Transactions
-  txCard:        { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  txCard:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, gap: 10, minHeight: 64 },
   txIconWrap:    { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'transparent' },
   txInfo:        { flex: 1 },
   txLabel:       { fontSize: 12, fontWeight: '700', color: '#0d0d0d', marginBottom: 1 },

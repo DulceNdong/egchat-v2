@@ -63,6 +63,8 @@ export default function CallScreen() {
   const dotAnims = useRef([0, 1, 2].map(() => new Animated.Value(0.4))).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initiated = useRef(false);
+  const topOffset = insets.top + 14;
+  const contentOffset = insets.top + 56;
 
   const isVideo = callType === 'video';
   const name = targetName || 'Usuario';
@@ -253,7 +255,7 @@ export default function CallScreen() {
 
       {/* Minimizar */}
       <TouchableOpacity
-        style={[s.minimizeBtn, { top: insets.top + 12 }]}
+        style={[s.minimizeBtn, { top: topOffset }]}
         onPress={() => router.back()}
         activeOpacity={0.8}
       >
@@ -265,13 +267,13 @@ export default function CallScreen() {
 
       {/* Video local PiP */}
       {isVideo && localStream && !isCamOff && (
-        <View style={[s.localPip, { top: insets.top + 80 }]}>
+        <View style={[s.localPip, { top: topOffset + 62 }]}>
           <RTCView streamURL={localUrl} style={s.localVideo} objectFit="cover" mirror />
         </View>
       )}
 
       {/* Info contacto */}
-      <View style={[s.infoBlock, { marginTop: insets.top + 80 }]}>
+      <View style={[s.infoBlock, { marginTop: contentOffset }]}> 
         {(!isVideo || !remoteUrl) && (
           <View style={[s.avatarCircle, { borderColor: `${ACCENT}99`, marginBottom: 14 }]}>
             {targetAvatar ? (
