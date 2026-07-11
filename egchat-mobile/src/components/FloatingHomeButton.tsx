@@ -18,14 +18,25 @@ const HOME_ROUTE = '/(tabs)';
 
 export const FloatingHomeButton = () => {
   const pathname = usePathname();
-  // Ocultar en home principal (cualquier variante de ruta)
+  // Ocultar en home principal y en auth/login/splash
   const isHome =
     pathname === '/(tabs)' ||
     pathname === '/(tabs)/' ||
     pathname === '/(tabs)/index' ||
     pathname === '/index' ||
-    pathname === '/';
-  if (isHome) return null;
+    pathname === '/' ||
+    pathname === '' ||
+    // tabs con sub-rutas de index
+    /^\/(tabs)(\/index)?\/?$/.test(pathname);
+
+  const isAuthScreen =
+    pathname.includes('/(auth)') ||
+    pathname.includes('/login') ||
+    pathname.includes('/welcome') ||
+    pathname === '/call' ||
+    pathname.includes('/call/');
+
+  if (isHome || isAuthScreen) return null;
   return <DraggableButton />;
 };
 
