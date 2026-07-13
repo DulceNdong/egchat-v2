@@ -77,7 +77,7 @@
     },
     "scheme": "egchat",
     "extra": {
-      "apiUrl": "https://egchat-api.onrender.com",
+      "apiUrl": "https://egchat-api-xlxj.onrender.com",
       "router": {
         "origin": false
       },
