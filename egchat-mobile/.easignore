@@ -5,8 +5,13 @@ node_modules/
 android/build/
 android/.gradle/
 android/app/build/
+android/gradlew-*.log
+android/hs_err_pid*.log
+android/replay_pid*.log
+android/gradle_clang_matches.txt
 ios/build/
 dist/
+dist-web/
 
 # Cache
 .expo/
@@ -17,10 +22,10 @@ dist/
 .env.development
 .env.local
 
-# Configuración local de Android específica del entorno
+# Configuración local
 android/local.properties
 
-# Assets web innecesarios para build Android
+# Assets web innecesarios
 web-build/
 
 # Git
@@ -29,3 +34,27 @@ web-build/
 # Editores
 .vscode/
 .idea/
+.windsurf/
+.cursor/
+.kluster/
+
+# Archivos de diagnóstico y temporales
+tmp_eas_*.txt
+error-context.txt
+error-lines.txt
+build-log*.txt
+eas-build-log*.txt
+qr_data.txt
+qr.html
+*.bat
+*.ps1
+*.sh
+decodeBuildLog.js
+*.decoded.txt
+create_zip.py
+DEPLOY_GUIDE.md
+ARREGLAR_RENDER_DB.md
+BUILD.md
+BUILD_NATIVE.md
+setup-*.sql
+setup-avatars-bucket.sql
