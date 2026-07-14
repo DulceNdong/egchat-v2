@@ -7,7 +7,8 @@ export type ChatMessageType =
   | 'audio'
   | 'file'
   | 'contact'
-  | 'location';
+  | 'location'
+  | 'live_location';
 
 export interface ChatParticipant {
   user_id: string;
@@ -28,6 +29,9 @@ export interface ChatMessage {
   uploadProgress?: number;
   uploadState?: 'queued' | 'uploading' | 'processing';
   created_at: string;
+  edited?: boolean;
+  expires_at?: string;
+  view_once?: boolean;
   sender?: {
     id: string;
     full_name: string;

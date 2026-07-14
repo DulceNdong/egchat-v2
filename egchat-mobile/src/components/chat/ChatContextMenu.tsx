@@ -20,6 +20,8 @@ export function ChatContextMenu({
   onTranslate,
   onPin,
   onEphemeral,
+  onEdit,
+  onForward,
 }: {
   visible: boolean;
   message: ChatMessage | null;
@@ -33,9 +35,13 @@ export function ChatContextMenu({
   onEphemeral?: () => void;
   onPin?: () => void;
   onTranslate?: () => void;
+  onEdit?: () => void;
+  onForward?: () => void;
   onReaction: (emoji: string) => void;
 }) {
   if (!message) return null;
+
+  const isTextMsg = message.type === 'text' || !message.type;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -50,21 +56,23 @@ export function ChatContextMenu({
           </ScrollView>
           <View style={s.menu}>
             {[
-              { label: 'Copiar', onPress: onCopy },
-              { label: '🌐 Traducir', onPress: () => { onTranslate?.(); onClose(); }, danger: false },
-              { label: 'Responder', onPress: onReply },
-              { label: 'Destacar', onPress: onStar },
-              { label: '📌 Fijar mensaje', onPress: () => { onPin?.(); onClose(); }, danger: false },
+              isTextMsg ? { label: '📋 Copiar', onPress: onCopy } : null,
+              { label: '↩️ Responder', onPress: onReply },
+              onForward ? { label: '➡️ Reenviar', onPress: () => { onForward(); onClose(); } } : null,
+              isTextMsg ? { label: '🌐 Traducir', onPress: () => { onTranslate?.(); onClose(); } } : null,
+              { label: '⭐ Destacar', onPress: onStar },
+              { label: '📌 Fijar mensaje', onPress: () => { onPin?.(); onClose(); } },
               ...(isOwn ? [
-                { label: 'Eliminar para todos', onPress: onDelete, danger: true },
-                { label: '⏱ Mensaje efímero (30s)', onPress: () => { onEphemeral?.(); onClose(); }, danger: false },
+                isTextMsg ? { label: '✏️ Editar', onPress: () => { onEdit?.(); onClose(); } } : null,
+                { label: '🗑 Eliminar para todos', onPress: onDelete, danger: true },
+                { label: '⏱ Mensajes temporales', onPress: () => { onEphemeral?.(); onClose(); } },
               ] : []),
               { label: 'Eliminar para mí', onPress: onDeleteForMe, danger: true },
-            ].map((item, i, arr) => (
+            ].filter(Boolean).map((item: any, i, arr) => (
               <TouchableOpacity
                 key={item.label}
                 style={[s.item, i < arr.length - 1 && s.itemBorder]}
-                onPress={() => { item.onPress(); onClose(); }}
+                onPress={() => { item.onPress(); }}
               >
                 <Text style={[s.itemText, item.danger && s.danger]}>{item.label}</Text>
               </TouchableOpacity>

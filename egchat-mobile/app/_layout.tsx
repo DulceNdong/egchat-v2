@@ -252,6 +252,8 @@ export default function RootLayout() {
             <Stack.Screen name="welcome" />
             <Stack.Screen name="ajustes" />
             <Stack.Screen name="historial-completo" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="moments" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="broadcast" options={{ presentation: 'modal' }} />
           </Stack>
 
           {/* ── Botón Home flotante draggable (igual que la versión web) ── */}

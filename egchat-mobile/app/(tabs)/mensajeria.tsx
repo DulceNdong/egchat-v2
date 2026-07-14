@@ -42,6 +42,7 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -185,8 +186,6 @@ const IconArchive = ({ color = '#374151' }: { color?: string }) => (
     <Polyline points="21 8 21 21 3 21 3 8" /><Rect x="1" y="3" width="22" height="5" /><Line x1="10" y1="12" x2="14" y2="12" />
   </Svg>
 );
-
-// ── Iconos SVG ────────────────────────────────────────────────────
 const IconSearch = ({ color = Colors.textTertiary }: { color?: string }) => (
   <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
     <Circle cx="11" cy="11" r="8"/>
@@ -311,6 +310,8 @@ export default function MensajeriaScreen() {
   const [archivePwdError, setArchivePwdError] = useState('');
   const [temp, setTemp] = useState(27);
   const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>('cloudy');
+  // Sprint 1.1 — Crear grupo
+  const [showCreateGroup, setShowCreateGroup] = useState(false);
   const { isDark } = useThemeContext();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
@@ -707,7 +708,13 @@ export default function MensajeriaScreen() {
         {/* Botón + nuevo chat */}
         <TouchableOpacity
           style={st.newChatBtn}
-          onPress={() => router.push('/new-chat' as any)}
+          onPress={() => {
+            Alert.alert('Nueva conversación', '¿Qué quieres crear?', [
+              { text: 'Chat privado', onPress: () => router.push('/new-chat' as any) },
+              { text: 'Grupo', onPress: () => setShowCreateGroup(true) },
+              { text: 'Cancelar', style: 'cancel' },
+            ]);
+          }}
           activeOpacity={0.85}
         >
           <LinearGradient
@@ -974,6 +981,17 @@ export default function MensajeriaScreen() {
         temp={`${temp}°`}
         city="Malabo"
         condition={weatherCondition}
+      />
+
+      {/* Sprint 1.1 — Modal crear grupo */}
+      <CreateGroupModal
+        visible={showCreateGroup}
+        onClose={() => setShowCreateGroup(false)}
+        onGroupCreated={(newChat) => {
+          setShowCreateGroup(false);
+          loadChats(currentUserId);
+          router.push(`/chat/${newChat.id}` as any);
+        }}
       />
 
       {/* Modal contraseña archivo */}

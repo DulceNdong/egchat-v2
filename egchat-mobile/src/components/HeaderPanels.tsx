@@ -261,6 +261,12 @@ const MenuIcon = ({ name }: { name: string }) => {
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Circle cx="12" cy="12" r="10"/><Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><Line x1="12" y1="17" x2="12.01" y2="17"/></Svg>;
     case 'crear-grupo':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>;
+    case 'moments':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>;
+    case 'broadcast':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M22 12h-4l-3 9L9 3l-3 9H2"/></Svg>;
+    case 'notas':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></Svg>;
     case 'contactos':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Rect x="5" y="2" width="14" height="20" rx="2"/><Line x1="9" y1="7" x2="15" y2="7"/><Line x1="9" y1="11" x2="15" y2="11"/><Line x1="9" y1="15" x2="13" y2="15"/></Svg>;
     case 'mensajes-arch':
@@ -312,6 +318,9 @@ export const HamburgerMenu = ({
     { id: 'perfil',         label: 'Mi Perfil',           sub: 'Ver y editar tu perfil'    },
     { id: 'nuevo-contacto', label: 'Nuevo contacto',       sub: 'Añadir a tu lista'         },
     { id: 'crear-grupo',    label: 'Crear grupo',          sub: 'Nuevo grupo de chat'       },
+    { id: 'moments',        label: '📸 Moments',           sub: 'Feed social de contactos'  },
+    { id: 'broadcast',      label: '📢 Difusión',          sub: 'Mensaje a múltiples chats' },
+    { id: 'notas',          label: '📝 Mis notas',         sub: 'Chat personal privado'     },
     { id: 'contactos',      label: 'Mis contactos',        sub: 'Ver todos tus contactos'   },
     { id: 'mensajes-arch',  label: 'Mensajes archivados',  sub: 'Chats archivados'          },
     { id: 'notificaciones', label: 'Notificaciones',       sub: 'Gestionar alertas'         },
@@ -321,13 +330,21 @@ export const HamburgerMenu = ({
     { id: 'salir',          label: 'Cerrar sesión',        sub: 'Salir de tu cuenta'        },
   ];
 
-  const handlePress = (id: string) => {
+  const handlePress = async (id: string) => {
     onClose();
-    setTimeout(() => {
+    setTimeout(async () => {
       switch (id) {
         case 'perfil':         router.push('/ajustes/perfil' as any); break;
         case 'nuevo-contacto': router.push('/contacts' as any); break;
         case 'crear-grupo':    router.push('/new-chat' as any); break;
+        case 'moments':        router.push('/moments' as any); break;
+        case 'broadcast':      router.push('/broadcast' as any); break;
+        case 'notas': {
+          const { getOrCreateNotesChat } = await import('../services/personalNotes');
+          const chatId = await getOrCreateNotesChat();
+          if (chatId) router.push(`/chat/${chatId}` as any);
+          break;
+        }
         case 'contactos':      router.push('/contacts' as any); break;
         case 'mensajes-arch':  router.push('/(tabs)/mensajeria' as any); break;
         case 'notificaciones': router.push('/(tabs)/ajustes' as any); break;

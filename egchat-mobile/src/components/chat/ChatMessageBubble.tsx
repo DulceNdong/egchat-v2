@@ -11,6 +11,7 @@ import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
 import { PollMessage, parsePoll } from './PollMessage';
 import { ImageViewer } from '../ImageViewer';
+import { LinkPreview, extractUrl } from './LinkPreview';
 import type { ChatMessage } from '../../types/chat';
 
 // ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
@@ -875,6 +876,7 @@ export const ChatMessageBubble = React.memo(({
   const isContactMsg = message.type === 'contact'
     || (message.type === 'text' && !!message.text?.startsWith('👤'));
   const isLocationMsg = message.type === 'location'
+    || message.type === 'live_location'
     || (message.type === 'text' && !!message.text?.startsWith('📍'));
   const isCallMsg = message.type === 'call'
     || (message.type === 'text' && !!(
@@ -937,7 +939,14 @@ export const ChatMessageBubble = React.memo(({
 
       {/* Texto normal */}
       {!isCardType && message.type === 'text' && !!message.text && (
-        <Text style={s.bubbleText}>{message.text}</Text>
+        <>
+          <Text style={s.bubbleText}>{message.text}</Text>
+          {/* Sprint 3.4 — Link Preview */}
+          {(() => {
+            const url = extractUrl(message.text);
+            return url ? <LinkPreview url={url} isOwn={isOwn} /> : null;
+          })()}
+        </>
       )}
       {message.type === 'image' && imageUri ? (
         <TouchableOpacity onPress={() => setImageViewerOpen(true)} activeOpacity={0.9}>
@@ -996,6 +1005,9 @@ export const ChatMessageBubble = React.memo(({
         </TouchableOpacity>
       )}
       <View style={s.meta}>
+        {message.edited && (
+          <Text style={s.editedLabel}>editado</Text>
+        )}
         <Text style={s.time}>{time}</Text>
         {isOwn && showReadReceipts && <MessageStatusIndicator status={message.status} />}
       </View>
@@ -1151,6 +1163,7 @@ const s = StyleSheet.create({
   bubbleImage: { width: 240, height: 200, borderRadius: 10, marginBottom: 4 },
   meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
   time: { fontSize: 11, color: '#9ca3af' },
+  editedLabel: { fontSize: 11, color: '#9ca3af', fontStyle: 'italic' },
   uploadBox: { marginTop: 6, gap: 4 },
   uploadTrack: { height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.12)', overflow: 'hidden' },
   uploadFill: { height: 3, backgroundColor: '#00c8a0', borderRadius: 2 },

@@ -24,6 +24,21 @@ import { ChatWallpaperModal } from '../../src/components/chat/ChatWallpaperModal
 import { ChatSearchBar } from '../../src/components/chat/ChatSearchBar';
 import { ChatStarredModal } from '../../src/components/chat/ChatStarredModal';
 import { ChatContextMenu } from '../../src/components/chat/ChatContextMenu';
+import { GroupInfoModal } from '../../src/components/chat/GroupInfoModal';
+import { EphemeralSettingsModal } from '../../src/components/chat/EphemeralSettingsModal';
+import { EditMessageBar } from '../../src/components/chat/EditMessageBar';
+import { LiveLocationBar } from '../../src/components/chat/LiveLocationBar';
+import {
+  getEphemeralDuration, setEphemeralDuration, filterExpiredMessages,
+  type EphemeralDuration,
+} from '../../src/services/ephemeralMessages';
+import { editMessage, applyEditLocally } from '../../src/services/editMessage';
+import { startLiveLocation, stopLiveLocation, isLiveLocationActive } from '../../src/services/liveLocation';
+import { MentionSuggestions, detectMentionQuery, applyMention, type MentionUser } from '../../src/components/chat/MentionSuggestions';
+import { GroupPaymentModal } from '../../src/components/chat/GroupPaymentModal';
+import { ChatToneModal } from '../../src/components/chat/ChatToneModal';
+import { ChatLabelsModal } from '../../src/components/chat/ChatLabelsModal';
+import { getChatTone, setChatTone } from '../../src/services/chatTones';
 import { scheduleReadReceipt, clearAllMessageStatusTimers } from '../../src/features/chat/messageStatus';
 import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
 import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
@@ -196,6 +211,34 @@ export default function ChatScreen() {
   const [pinnedMessages, setPinnedMessages] = useState<PinnedMessage[]>([]);
   const [showScrollBottom, setShowScrollBottom] = useState(false);
   const [mediaPickerMode, setMediaPickerMode] = useState<'photo' | 'video' | null>(null);
+  // ── Sprint 1.1 Grupos ──────────────────────────────────────────
+  const [showGroupInfo, setShowGroupInfo] = useState(false);
+  // ── Sprint 1.2 Mensajes temporales ────────────────────────────
+  const [ephemeralDuration, setEphemeralDurationState] = useState<EphemeralDuration>(0);
+  const [showEphemeralModal, setShowEphemeralModal] = useState(false);
+  // ── Sprint 1.3 Editar mensajes ────────────────────────────────
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null);
+  const [editText, setEditText] = useState('');
+  // ── Sprint 1.4 Ubicación en vivo ──────────────────────────────
+  const [liveLocationActive, setLiveLocationActive] = useState(false);
+  // ── Sprint 2.2 Menciones ──────────────────────────────────────
+  const [mentionQuery, setMentionQuery] = useState<string | null>(null);
+  // ── Sprint 2.4 Pago grupal ─────────────────────────────────────
+  const [showGroupPayment, setShowGroupPayment] = useState(false);
+  // ── Sprint 3.1 Tono personalizado ─────────────────────────────
+  const [chatTone, setChatToneState] = useState('default');
+  const [showToneModal, setShowToneModal] = useState(false);
+  // ── Sprint 3.5 Etiquetas ──────────────────────────────────────
+  const [showLabelsModal, setShowLabelsModal] = useState(false);
+  const groupMembers: MentionUser[] = (isGroup && chat?.participants)
+    ? (chat.participants as any[])
+        .filter((p: any) => p.user_id !== currentUserId)
+        .map((p: any) => ({
+          user_id: p.user_id,
+          full_name: p.full_name || p.users?.full_name || p.user?.full_name || 'Usuario',
+          avatar_url: p.avatar_url || p.users?.avatar_url,
+        }))
+    : [];
   const flatListRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -259,6 +302,12 @@ export default function ChatScreen() {
     AsyncStorage.getItem(`egchat_muted_${chatId}`).then(v => setIsMuted(v === '1'));
     isIncognitoChat(chatId).then(setIsIncognito);
     getPinnedMessages(chatId).then(setPinnedMessages);
+    // Sprint 1.2 — cargar duración efímera
+    getEphemeralDuration(chatId).then(setEphemeralDurationState);
+    // Sprint 1.4 — verificar si hay sesión live activa
+    setLiveLocationActive(isLiveLocationActive(chatId));
+    // Sprint 3.1 — cargar tono
+    getChatTone(chatId).then(setChatToneState);
   }, [chatId]);
 
   const applyMessageStatus = useCallback((messageId: string, status: Message['status']) => {
@@ -651,6 +700,59 @@ export default function ChatScreen() {
     setContextVisible(false);
   }, [contextMsg]);
 
+  // ── Sprint 1.3: Editar mensaje ─────────────────────────────────
+  const handleEditMessage = useCallback(() => {
+    if (!contextMsg || contextMsg.type !== 'text') return;
+    setEditingMessage(contextMsg);
+    setEditText(contextMsg.text || '');
+    setContextVisible(false);
+  }, [contextMsg]);
+
+  const handleConfirmEdit = useCallback(async () => {
+    if (!editingMessage || !editText.trim()) return;
+    const newText = editText.trim();
+    // Optimista
+    setMessages(prev => applyEditLocally(prev, editingMessage.id, newText));
+    setEditingMessage(null);
+    setEditText('');
+    // Sincronizar con backend
+    const result = await editMessage(editingMessage.id, newText);
+    if (!result.success) {
+      toast.error('No se pudo editar', result.error || 'Error desconocido');
+      // Revertir
+      setMessages(prev => applyEditLocally(prev, editingMessage.id, editingMessage.text || ''));
+    }
+  }, [editingMessage, editText]);
+
+  // ── Sprint 1.3: Reenviar mensaje ───────────────────────────────
+  const handleForwardMessage = useCallback(() => {
+    if (!contextMsg) return;
+    setContextVisible(false);
+    // Abrir selector de chats para reenviar
+    (global as any).__egchat_forward_msg = contextMsg;
+    router.push('/contacts?mode=forward' as any);
+  }, [contextMsg]);
+
+  // ── Sprint 1.4: Ubicación en vivo ──────────────────────────────
+  const handleStartLiveLocation = useCallback(async () => {
+    if (!chatId) return;
+    try {
+      setShowAttach(false);
+      await startLiveLocation(chatId, () => setLiveLocationActive(true));
+      setLiveLocationActive(true);
+      toast.info('📍 Ubicación en vivo', 'Compartiendo tu posición en tiempo real');
+    } catch (e: any) {
+      toast.error('Ubicación', e?.message || 'No se pudo iniciar');
+    }
+  }, [chatId]);
+
+  const handleStopLiveLocation = useCallback(() => {
+    if (!chatId) return;
+    stopLiveLocation(chatId);
+    setLiveLocationActive(false);
+    toast.info('Ubicación detenida');
+  }, [chatId]);
+
   const handleDelete = useCallback(() => {
     setContextVisible(false);
     Alert.alert('Eliminar mensaje', '¿Eliminar para todos?', [
@@ -678,6 +780,11 @@ export default function ChatScreen() {
   // Emitir "escribiendo..." al servidor con debounce
   const handleTextChange = useCallback((val: string) => {
     setText(val);
+    // Sprint 2.2 — detectar mención
+    if (isGroup) {
+      const detection = detectMentionQuery(val);
+      setMentionQuery(detection ? detection.query : null);
+    }
     if (typingTimer.current) clearTimeout(typingTimer.current);
     if (val.trim()) {
       typingChannelRef.current?.sendTyping(true);
@@ -687,7 +794,7 @@ export default function ChatScreen() {
     } else {
       typingChannelRef.current?.sendTyping(false);
     }
-  }, [chatId]);
+  }, [chatId, isGroup]);
 
   const pushOptimistic = useCallback((msg: Message) => {
     setMessages(prev => mergeMessages(prev, [msg]));
@@ -850,21 +957,34 @@ export default function ChatScreen() {
     }
     if (action === 'location') {
       setShowAttach(false);
-      toast.info('GPS', 'Obteniendo tu ubicación...');
-      const { lat, lng, label } = await getCurrentLocationLabel();
-      const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
-      const msgText = `📍 ${label}\n${mapsUrl}`;
-      const tempId = createTempMessageId();
-      pushOptimistic({
-        id: tempId, text: msgText, type: 'location', sender_id: currentUserId,
-        status: 'pending', created_at: new Date().toISOString(),
-      });
-      try {
-        const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
-        replaceOptimistic(tempId, sent);
-      } catch {
-        failOptimistic(tempId);
-      }
+      // Preguntar: ubicación puntual o en vivo
+      Alert.alert('Compartir ubicación', '¿Cómo quieres compartirla?', [
+        {
+          text: 'Ubicación actual',
+          onPress: async () => {
+            toast.info('GPS', 'Obteniendo tu ubicación...');
+            const { lat, lng, label } = await getCurrentLocationLabel();
+            const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
+            const msgText = `📍 ${label}\n${mapsUrl}`;
+            const tempId = createTempMessageId();
+            pushOptimistic({
+              id: tempId, text: msgText, type: 'location', sender_id: currentUserId,
+              status: 'pending', created_at: new Date().toISOString(),
+            });
+            try {
+              const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+              replaceOptimistic(tempId, sent);
+            } catch {
+              failOptimistic(tempId);
+            }
+          },
+        },
+        {
+          text: liveLocationActive ? 'Detener ubicación en vivo' : 'Ubicación en vivo',
+          onPress: liveLocationActive ? handleStopLiveLocation : handleStartLiveLocation,
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ]);
       return;
     }
     if (action === 'music') {
@@ -1016,9 +1136,13 @@ export default function ChatScreen() {
     {
       section: 'main',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="12" cy="7" r="4"/></Svg>,
-      label: 'Ver perfil',
+      label: isGroup ? 'Info del grupo' : 'Ver perfil',
       color: IC,
-      onPress: () => { setDrawerVisible(false); setShowProfile(true); },
+      onPress: () => {
+        setDrawerVisible(false);
+        if (isGroup) setShowGroupInfo(true);
+        else setShowProfile(true);
+      },
     },
     {
       section: 'main',
@@ -1042,6 +1166,13 @@ export default function ChatScreen() {
       onPress: () => { setDrawerVisible(false); togglePin(); },
     },
     // ── Sección configuración ──
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.8}><Circle cx="12" cy="12" r="10"/><Polyline points="12 6 12 12 16 14"/></Svg>,
+      label: ephemeralDuration > 0 ? `⏱ Mensajes temporales (activo)` : '⏱ Mensajes temporales',
+      color: ephemeralDuration > 0 ? '#07a472' : IC,
+      onPress: () => { setDrawerVisible(false); setShowEphemeralModal(true); },
+    },
     {
       section: 'config',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
@@ -1076,6 +1207,20 @@ export default function ChatScreen() {
       color: '#00c8a0',
       onPress: () => Alert.alert('🔒 Cifrado E2E', 'Este chat está cifrado de extremo a extremo.'),
     },
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeLinecap="round"/><Path d="M13.73 21a2 2 0 0 1-3.46 0" strokeLinecap="round"/></Svg>,
+      label: `🔔 Tono del chat`,
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowToneModal(true); },
+    },
+    {
+      section: 'config',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.82z" strokeLinecap="round"/><Line x1="7" y1="7" x2="7.01" y2="7" strokeLinecap="round"/></Svg>,
+      label: '🏷️ Etiquetas',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowLabelsModal(true); },
+    },
     // ── Sección acciones ──
     {
       section: 'actions',
@@ -1084,6 +1229,13 @@ export default function ChatScreen() {
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowQuickTransfer(true); },
     },
+    ...(isGroup ? [{
+      section: 'actions' as const,
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" strokeLinecap="round"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87" strokeLinecap="round"/></Svg>,
+      label: '💰 Dividir pago',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowGroupPayment(true); },
+    }] : []),
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Circle cx="18" cy="5" r="3"/><Circle cx="6" cy="12" r="3"/><Circle cx="18" cy="19" r="3"/><Line x1="8.59" y1="13.51" x2="15.42" y2="17.49" strokeLinecap="round"/><Line x1="15.41" y1="6.51" x2="8.59" y2="10.49" strokeLinecap="round"/></Svg>,
@@ -1150,7 +1302,7 @@ export default function ChatScreen() {
 
   const displayMessages = chatSearchQuery.trim()
     ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
-    : messages;
+    : filterExpiredMessages(messages, ephemeralDuration);
 
   const starredMessages = messages.filter(m => starredIds.includes(m.id));
 
@@ -1241,11 +1393,14 @@ export default function ChatScreen() {
         isTyping={isTyping}
         isOnline={isOtherOnline}
         onBack={() => router.back()}
-        onProfilePress={() => setShowProfile(true)}
+        onProfilePress={() => isGroup ? setShowGroupInfo(true) : setShowProfile(true)}
         onAudioCall={() => goToCall('audio')}
         onVideoCall={() => goToCall('video')}
         onMenuPress={() => setDrawerVisible(true)}
       />
+
+      {/* Sprint 1.4 — barra de ubicación en vivo */}
+      <LiveLocationBar active={liveLocationActive} onStop={handleStopLiveLocation} />
 
       {showChatSearch && (
         <ChatSearchBar
@@ -1347,8 +1502,19 @@ export default function ChatScreen() {
           />
         )}
 
+        {/* Sprint 1.3 — Barra de edición (reemplaza input cuando edita) */}
+        {editingMessage && (
+          <EditMessageBar
+            message={editingMessage}
+            editText={editText}
+            onChangeText={setEditText}
+            onConfirm={handleConfirmEdit}
+            onCancel={() => { setEditingMessage(null); setEditText(''); }}
+          />
+        )}
+
         {/* Panel adjuntos — overlay que cierra al tocar fuera */}
-        {showAttach && (
+        {!editingMessage && showAttach && (
           <>
             <Pressable
               style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
@@ -1393,7 +1559,21 @@ export default function ChatScreen() {
           />
         )}
 
-        <ChatInputBar
+        {/* Sprint 2.2 — Sugerencias de menciones */}
+        {isGroup && mentionQuery !== null && (
+          <MentionSuggestions
+            visible
+            users={groupMembers}
+            query={mentionQuery}
+            onSelect={(user) => {
+              const newText = applyMention(text, user);
+              setText(newText);
+              setMentionQuery(null);
+            }}
+          />
+        )}
+
+        {!editingMessage && <ChatInputBar
           text={text}
           sending={sending}
           showAttach={showAttach}
@@ -1437,7 +1617,7 @@ export default function ChatScreen() {
               toast.error('Error', 'No se pudo enviar el audio');
             }
           }}
-        />
+        />}
       </KeyboardAvoidingView>
 
       <ChatContextMenu
@@ -1452,15 +1632,11 @@ export default function ChatScreen() {
         onDeleteForMe={handleDeleteForMe}
         onReaction={handleReaction}
         onTranslate={handleTranslate}
+        onEdit={handleEditMessage}
+        onForward={handleForwardMessage}
         onEphemeral={() => {
-          if (!contextMsg) return;
-          const msgId = contextMsg.id;
-          // Borrar visualmente después de 30 segundos
-          setTimeout(() => {
-            setMessages(prev => prev.filter(m => m.id !== msgId));
-            chatAPI.deleteMessage(msgId).catch(() => {});
-          }, 30000);
-          toast.info('⏱ Efímero', 'El mensaje se borrará en 30 segundos');
+          setContextVisible(false);
+          setShowEphemeralModal(true);
         }}
         onPin={() => {
           if (!contextMsg || !chatId) return;
@@ -1480,6 +1656,70 @@ export default function ChatScreen() {
           });
         }}
       />
+
+      {/* Sprint 1.2 — Modal mensajes temporales */}
+      <EphemeralSettingsModal
+        visible={showEphemeralModal}
+        current={ephemeralDuration}
+        onSelect={async (d) => {
+          setEphemeralDurationState(d);
+          if (chatId) await setEphemeralDuration(chatId, d);
+          const label = d === 0 ? 'Mensajes temporales desactivados' : `Mensajes temporales: ${d >= 86400 ? `${d/86400}d` : d >= 3600 ? `${d/3600}h` : `${d}s`}`;
+          toast.info(label);
+        }}
+        onClose={() => setShowEphemeralModal(false)}
+      />
+
+      {/* Sprint 1.1 — Modal info del grupo */}
+      {isGroup && (
+        <GroupInfoModal
+          visible={showGroupInfo}
+          chat={chat}
+          currentUserId={currentUserId}
+          onClose={() => setShowGroupInfo(false)}
+          onLeft={() => { setShowGroupInfo(false); router.back(); }}
+        />
+      )}
+
+      {/* Sprint 3.1 — Tono personalizado */}
+      <ChatToneModal
+        visible={showToneModal}
+        current={chatTone}
+        onSelect={async (toneId) => {
+          setChatToneState(toneId);
+          if (chatId) await setChatTone(chatId, toneId);
+        }}
+        onClose={() => setShowToneModal(false)}
+      />
+
+      {/* Sprint 3.5 — Etiquetas */}
+      <ChatLabelsModal
+        visible={showLabelsModal}
+        chatId={chatId}
+        onClose={() => setShowLabelsModal(false)}
+      />
+
+      {/* Sprint 2.4 — Pago grupal */}
+      {isGroup && (
+        <GroupPaymentModal
+          visible={showGroupPayment}
+          chatId={chatId}
+          members={(chat?.participants || []).map((p: any) => ({
+            user_id: p.user_id,
+            full_name: p.full_name || p.users?.full_name || 'Usuario',
+            avatar_url: p.avatar_url || p.users?.avatar_url,
+          }))}
+          currentUserId={currentUserId}
+          onClose={() => setShowGroupPayment(false)}
+          onSent={(msg) => {
+            const tempId = createTempMessageId();
+            pushOptimistic({ id: tempId, text: msg, type: 'text', sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+            chatAPI.sendMessage(chatId, { text: msg, type: 'text' })
+              .then(real => replaceOptimistic(tempId, real))
+              .catch(() => failOptimistic(tempId));
+          }}
+        />
+      )}
       <ChatWallpaperModal
         visible={showWallpaperModal}
         activeId={wallpaperId}
