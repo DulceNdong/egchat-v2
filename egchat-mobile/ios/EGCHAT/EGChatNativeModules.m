@@ -267,3 +267,94 @@ RCT_EXPORT_METHOD(endCallActivity) {
 }
 
 @end
+
+
+#pragma mark - EGChatShareModule (Share Extension / contenido compartido)
+
+@interface EGChatShareModule : RCTEventEmitter <RCTBridgeModule>
+@end
+
+@implementation EGChatShareModule {
+  NSString *_pendingContent;
+}
+
+RCT_EXPORT_MODULE(EGChatShareModule)
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"sharedContent"];
+}
+
+RCT_EXPORT_METHOD(getSharedContent:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  // Leer del App Group compartido con la Share Extension
+  NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:@"group.com.egchat.app"];
+  NSString *type = [shared stringForKey:@"shared_type"];
+  NSString *text = [shared stringForKey:@"shared_text"];
+  NSString *uri  = [shared stringForKey:@"shared_uri"];
+  NSString *mime = [shared stringForKey:@"shared_mime"];
+
+  if (!type) { resolve([NSNull null]); return; }
+
+  NSMutableDictionary *content = [NSMutableDictionary dictionary];
+  content[@"type"] = type;
+  if (text) content[@"text"] = text;
+  if (uri)  content[@"uri"]  = uri;
+  if (mime) content[@"mimeType"] = mime;
+  resolve(content);
+}
+
+RCT_EXPORT_METHOD(clearSharedContent) {
+  NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:@"group.com.egchat.app"];
+  [shared removeObjectForKey:@"shared_type"];
+  [shared removeObjectForKey:@"shared_text"];
+  [shared removeObjectForKey:@"shared_uri"];
+  [shared removeObjectForKey:@"shared_mime"];
+  [shared synchronize];
+}
+
+@end
+
+
+#pragma mark - EGChatWidgetModule (Home Widget badge count)
+
+@interface EGChatWidgetModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation EGChatWidgetModule
+
+RCT_EXPORT_MODULE(EGChatWidgetModule)
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+RCT_EXPORT_METHOD(updateWidget:(NSString *)chatsJson
+                  unreadTotal:(NSInteger)unreadTotal) {
+  // Actualizar badge de la app
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:unreadTotal];
+  });
+  // Guardar en App Group para el widget de WidgetKit
+  NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:@"group.com.egchat.app"];
+  if (chatsJson) [shared setObject:chatsJson forKey:@"widget_chats"];
+  [shared setInteger:unreadTotal forKey:@"widget_unread"];
+  [shared synchronize];
+  // Recargar todas las líneas de tiempo del widget
+  if (@available(iOS 14.0, *)) {
+    Class widgetCenter = NSClassFromString(@"WidgetCenter");
+    if (widgetCenter) {
+      id center = [widgetCenter performSelector:@selector(shared)];
+      [center performSelector:@selector(reloadAllTimelines)];
+    }
+  }
+}
+
+RCT_EXPORT_METHOD(clearWidget) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [[UIApplication sharedApplication] setApplicationIconBadgeNumber:0];
+  });
+  NSUserDefaults *shared = [[NSUserDefaults alloc] initWithSuiteName:@"group.com.egchat.app"];
+  [shared removeObjectForKey:@"widget_chats"];
+  [shared removeObjectForKey:@"widget_unread"];
+  [shared synchronize];
+}
+
+@end
