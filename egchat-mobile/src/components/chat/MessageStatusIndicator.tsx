@@ -1,48 +1,99 @@
-// Indicador de estado EGCHAT — 3 puntos (naranja / verde / azul), no estilo WhatsApp
+/**
+ * MessageStatusIndicator — doble check estilo WhatsApp
+ *
+ * pending   → reloj gris
+ * sent      → ✓  gris  (un check)
+ * delivered → ✓✓ gris  (dos checks)
+ * read      → ✓✓ azul  (dos checks azules)
+ * failed    → ✕  rojo
+ */
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet, Text } from 'react-native';
+import Svg, { Path, Polyline } from 'react-native-svg';
 import type { ChatMessageStatus } from '../../types/chat';
 
-const DOT_SIZE = 7;
-
-const C = {
-  send: '#f59e0b',
-  delivered: '#22c55e',
-  deliveredDim: 'rgba(34,197,94,0.25)',
-  read: '#00b4e6',
-  readDim: 'rgba(0,180,230,0.25)',
-};
-
-export function MessageStatusIndicator({ status }: { status: ChatMessageStatus }) {
-  if (status === 'failed') {
-    return <Text style={styles.failed}>❌</Text>;
-  }
-
-  const delivered = status === 'delivered' || status === 'read';
-  const read = status === 'read';
-
-  return (
-    <View style={styles.row}>
-      <View style={[styles.dot, { backgroundColor: C.send }]} />
-      <View style={[styles.dot, { backgroundColor: delivered ? C.delivered : C.deliveredDim }]} />
-      <View style={[styles.dot, { backgroundColor: read ? C.read : C.readDim }]} />
-    </View>
-  );
+interface Props {
+  status: ChatMessageStatus;
+  size?: number;
 }
 
-const styles = StyleSheet.create({
+// ── Ícono de reloj (pending) ────────────────────────────────────
+const ClockIcon = ({ size, color }: { size: number; color: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20z" />
+    <Path d="M12 6v6l4 2" />
+  </Svg>
+);
+
+// ── Un check ────────────────────────────────────────────────────
+const SingleCheck = ({ size, color }: { size: number; color: string }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none"
+    stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Polyline points="5 13 9 17 19 7" />
+  </Svg>
+);
+
+// ── Doble check ─────────────────────────────────────────────────
+const DoubleCheck = ({ size, color }: { size: number; color: string }) => (
+  <Svg width={size + 6} height={size} viewBox="0 0 30 24" fill="none"
+    stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    {/* Primer check (ligeramente desplazado a la izquierda) */}
+    <Polyline points="2 13 6 17 16 7" />
+    {/* Segundo check (desplazado a la derecha) */}
+    <Polyline points="9 13 13 17 23 7" />
+  </Svg>
+);
+
+export function MessageStatusIndicator({ status, size = 14 }: Props) {
+  if (status === 'failed') {
+    return <Text style={s.failed}>!</Text>;
+  }
+
+  if (status === 'pending') {
+    return (
+      <View style={s.row}>
+        <ClockIcon size={size} color="#9ca3af" />
+      </View>
+    );
+  }
+
+  if (status === 'sent') {
+    return (
+      <View style={s.row}>
+        <SingleCheck size={size} color="#9ca3af" />
+      </View>
+    );
+  }
+
+  if (status === 'delivered') {
+    return (
+      <View style={s.row}>
+        <DoubleCheck size={size} color="#9ca3af" />
+      </View>
+    );
+  }
+
+  if (status === 'read') {
+    return (
+      <View style={s.row}>
+        <DoubleCheck size={size} color="#00b4e6" />
+      </View>
+    );
+  }
+
+  return null;
+}
+
+const s = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
-  },
-  dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
   },
   failed: {
-    fontSize: 11,
+    fontSize: 12,
+    fontWeight: '800',
     color: '#ef4444',
+    lineHeight: 14,
   },
 });

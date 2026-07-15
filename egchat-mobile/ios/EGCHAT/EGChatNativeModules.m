@@ -1,0 +1,269 @@
+/**
+ * EGChatNativeModules.m
+ * Módulos nativos 100% Objective-C para React Native New Architecture
+ * Incluye: CallKit, AudioRecorder, LiveActivity
+ * No requiere Swift — evita el problema de bridging header con prebuilt RN
+ */
+
+#import <React/RCTBridgeModule.h>
+#import <React/RCTEventEmitter.h>
+#import <CallKit/CallKit.h>
+#import <AVFoundation/AVFoundation.h>
+
+#pragma mark - EGChatCallModule (CallKit)
+
+@interface EGChatCallModule : RCTEventEmitter <RCTBridgeModule, CXProviderDelegate>
+@end
+
+@implementation EGChatCallModule {
+  CXProvider        *_provider;
+  CXCallController  *_callController;
+  NSUUID            *_activeCallUUID;
+  NSString          *_activeCallId;
+}
+
+RCT_EXPORT_MODULE(EGChatCallModule)
+
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+- (instancetype)init {
+  if (self = [super init]) {
+    CXProviderConfiguration *cfg = [[CXProviderConfiguration alloc] init];
+    cfg.supportsVideo        = YES;
+    cfg.supportedHandleTypes = [NSSet setWithObject:@(CXHandleTypeGeneric)];
+    cfg.ringtoneSound        = @"notification.wav";
+    _provider       = [[CXProvider alloc] initWithConfiguration:cfg];
+    _callController = [[CXCallController alloc] init];
+    [_provider setDelegate:self queue:nil];
+  }
+  return self;
+}
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"callAnswered", @"callRejected", @"callEnded", @"callMuted"];
+}
+
+RCT_EXPORT_METHOD(showIncomingCall:(NSString *)callerName
+                  callerAvatar:(NSString *)callerAvatar
+                  callId:(NSString *)callId
+                  isVideo:(BOOL)isVideo) {
+  _activeCallUUID = [NSUUID UUID];
+  _activeCallId   = callId;
+  CXCallUpdate *update        = [[CXCallUpdate alloc] init];
+  update.remoteHandle         = [[CXHandle alloc] initWithType:CXHandleTypeGeneric value:callerName];
+  update.localizedCallerName  = callerName;
+  update.hasVideo             = isVideo;
+  update.supportsHolding      = NO;
+  update.supportsGrouping     = NO;
+  update.supportsUngrouping   = NO;
+  [_provider reportNewIncomingCallWithUUID:_activeCallUUID
+                                    update:update
+                                completion:^(NSError *error) {
+    if (error) NSLog(@"[CallKit] incoming error: %@", error);
+  }];
+}
+
+RCT_EXPORT_METHOD(dismissIncomingCall) {
+  if (!_activeCallUUID) return;
+  [_provider reportCallWithUUID:_activeCallUUID
+                       endedAtDate:[NSDate date]
+                            reason:CXCallEndedReasonRemoteEnded];
+  _activeCallUUID = nil;
+}
+
+RCT_EXPORT_METHOD(answerCall:(NSString *)callId) {
+  if (!_activeCallUUID) return;
+  CXAnswerCallAction *action = [[CXAnswerCallAction alloc] initWithCallUUID:_activeCallUUID];
+  [_callController requestTransaction:[[CXTransaction alloc] initWithAction:action]
+                           completion:^(NSError *e) {}];
+}
+
+RCT_EXPORT_METHOD(rejectCall:(NSString *)callId) {
+  if (!_activeCallUUID) return;
+  CXEndCallAction *action = [[CXEndCallAction alloc] initWithCallUUID:_activeCallUUID];
+  [_callController requestTransaction:[[CXTransaction alloc] initWithAction:action]
+                           completion:^(NSError *e) {}];
+  _activeCallUUID = nil;
+}
+
+RCT_EXPORT_METHOD(endCall:(NSString *)callId) {
+  if (!_activeCallUUID) return;
+  CXEndCallAction *action = [[CXEndCallAction alloc] initWithCallUUID:_activeCallUUID];
+  [_callController requestTransaction:[[CXTransaction alloc] initWithAction:action]
+                           completion:^(NSError *e) {}];
+  _activeCallUUID = nil;
+  _activeCallId   = nil;
+}
+
+// CXProviderDelegate
+- (void)providerDidReset:(CXProvider *)provider {
+  _activeCallUUID = nil;
+  _activeCallId   = nil;
+}
+
+- (void)provider:(CXProvider *)provider performAnswerCallAction:(CXAnswerCallAction *)action {
+  AVAudioSession *s = [AVAudioSession sharedInstance];
+  [s setCategory:AVAudioSessionCategoryPlayAndRecord
+            mode:AVAudioSessionModeVoiceChat
+         options:AVAudioSessionCategoryOptionAllowBluetooth
+           error:nil];
+  [s setActive:YES error:nil];
+  [action fulfill];
+  [self sendEventWithName:@"callAnswered" body:@{@"callId": _activeCallId ?: @""}];
+}
+
+- (void)provider:(CXProvider *)provider performEndCallAction:(CXEndCallAction *)action {
+  [action fulfill];
+  [self sendEventWithName:@"callRejected" body:@{@"callId": _activeCallId ?: @""}];
+  _activeCallUUID = nil;
+  _activeCallId   = nil;
+}
+
+- (void)provider:(CXProvider *)provider performSetMutedCallAction:(CXSetMutedCallAction *)action {
+  [action fulfill];
+  [self sendEventWithName:@"callMuted" body:@{@"muted": @(action.isMuted)}];
+}
+
+- (void)provider:(CXProvider *)provider didActivateAudioSession:(AVAudioSession *)audioSession {
+  [audioSession setActive:YES error:nil];
+}
+
+- (void)provider:(CXProvider *)provider didDeactivateAudioSession:(AVAudioSession *)audioSession {
+  [audioSession setActive:NO withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
+                    error:nil];
+}
+
+@end
+
+
+#pragma mark - EGChatAudioRecorder (AVAudioRecorder)
+
+@interface EGChatAudioRecorder : NSObject <RCTBridgeModule, AVAudioRecorderDelegate>
+@end
+
+@implementation EGChatAudioRecorder {
+  AVAudioRecorder *_recorder;
+  NSURL           *_outputURL;
+  NSDate          *_startDate;
+}
+
+RCT_EXPORT_MODULE(EGChatAudioRecorder)
+
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+RCT_EXPORT_METHOD(startRecording:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  AVAudioSession *session = [AVAudioSession sharedInstance];
+  NSError *err = nil;
+  [session setCategory:AVAudioSessionCategoryPlayAndRecord
+                  mode:AVAudioSessionModeVoiceChat
+               options:AVAudioSessionCategoryOptionAllowBluetooth |
+                        AVAudioSessionCategoryOptionDefaultToSpeaker
+                 error:&err];
+  if (err) { reject(@"AUDIO_SESSION", @"No se pudo configurar la sesión", err); return; }
+  [session setActive:YES error:&err];
+  if (err) { reject(@"AUDIO_SESSION", @"No se pudo activar la sesión", err); return; }
+
+  NSString *name = [NSString stringWithFormat:@"egchat_voice_%ld.m4a", (long)[[NSDate date] timeIntervalSince1970]];
+  _outputURL = [[NSURL fileURLWithPath:NSTemporaryDirectory()] URLByAppendingPathComponent:name];
+
+  NSDictionary *settings = @{
+    AVFormatIDKey:            @(kAudioFormatMPEG4AAC),
+    AVSampleRateKey:          @44100.0,
+    AVNumberOfChannelsKey:    @1,
+    AVEncoderAudioQualityKey: @(AVAudioQualityHigh),
+    AVEncoderBitRateKey:      @128000
+  };
+
+  _recorder = [[AVAudioRecorder alloc] initWithURL:_outputURL settings:settings error:&err];
+  if (err) { reject(@"RECORDER_INIT", @"No se pudo crear el recorder", err); return; }
+  _recorder.delegate          = self;
+  _recorder.meteringEnabled   = YES;
+  [_recorder record];
+  _startDate = [NSDate date];
+  resolve(@{@"path": _outputURL.absoluteString, @"recording": @YES});
+}
+
+RCT_EXPORT_METHOD(stopRecording:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  if (!_recorder || !_recorder.recording) {
+    reject(@"NOT_RECORDING", @"No hay grabación activa", nil); return;
+  }
+  NSTimeInterval duration = [[NSDate date] timeIntervalSinceDate:_startDate];
+  [_recorder stop];
+  [[AVAudioSession sharedInstance] setActive:NO
+                                 withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
+                                       error:nil];
+  if (!_outputURL) { reject(@"NO_FILE", @"No se encontró el archivo", nil); return; }
+  resolve(@{@"uri": _outputURL.absoluteString, @"duration": @(duration), @"mimeType": @"audio/aac"});
+  _recorder  = nil;
+  _outputURL = nil;
+  _startDate = nil;
+}
+
+RCT_EXPORT_METHOD(cancelRecording) {
+  [_recorder stop];
+  [_recorder deleteRecording];
+  _recorder  = nil;
+  _outputURL = nil;
+  _startDate = nil;
+  [[AVAudioSession sharedInstance] setActive:NO
+                                 withOptions:AVAudioSessionSetActiveOptionNotifyOthersOnDeactivation
+                                       error:nil];
+}
+
+RCT_EXPORT_METHOD(getAmplitude:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  if (!_recorder || !_recorder.recording) { resolve(@0); return; }
+  [_recorder updateMeters];
+  float power      = [_recorder averagePowerForChannel:0]; // -160 … 0 dB
+  float normalized = MAX(0.0f, (power + 160.0f) / 160.0f);
+  resolve(@((int)(normalized * 32768)));
+}
+
+@end
+
+
+#pragma mark - EGChatLiveActivityModule
+
+@interface EGChatLiveActivityModule : NSObject <RCTBridgeModule>
+@end
+
+@implementation EGChatLiveActivityModule {
+  NSDate *_callStartDate;
+  NSTimer *_timer;
+}
+
+RCT_EXPORT_MODULE(EGChatLiveActivityModule)
+
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+RCT_EXPORT_METHOD(startCallActivity:(NSString *)callId
+                  callerName:(NSString *)callerName
+                  isVideo:(BOOL)isVideo) {
+  _callStartDate = [NSDate date];
+  // ActivityKit solo disponible en iOS 16.2+ y requiere Swift
+  // El timer actualiza el contador cada segundo via EGChatActivityManagerObjC
+  dispatch_async(dispatch_get_main_queue(), ^{
+    [self->_timer invalidate];
+    self->_timer = [NSTimer scheduledTimerWithTimeInterval:1.0
+                                                   repeats:YES
+                                                     block:^(NSTimer *t) {
+      if (!self->_callStartDate) return;
+      NSInteger elapsed = (NSInteger)[[NSDate date] timeIntervalSinceDate:self->_callStartDate];
+      NSLog(@"[LiveActivity] Duración: %lds", (long)elapsed);
+    }];
+  });
+}
+
+RCT_EXPORT_METHOD(updateCallActivity:(double)seconds) {
+  NSLog(@"[LiveActivity] Update: %.0fs", seconds);
+}
+
+RCT_EXPORT_METHOD(endCallActivity) {
+  [_timer invalidate];
+  _timer         = nil;
+  _callStartDate = nil;
+}
+
+@end
