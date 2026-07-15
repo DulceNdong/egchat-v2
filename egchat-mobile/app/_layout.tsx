@@ -36,6 +36,20 @@ function handleDeepLink(url: string | null) {
       const userId = parsed.path.replace('user/', '');
       if (userId) setTimeout(() => router.push(`/contacts?userId=${userId}` as any), 300);
     }
+    // egchat://call/open/[callId] — volver a la pantalla de llamada activa (desde Live Activity)
+    if (parsed.path?.startsWith('call/open/')) {
+      const callId = parsed.path.replace('call/open/', '');
+      if (callId) setTimeout(() => router.push(`/call/${callId}` as any), 300);
+    }
+    // egchat://call/end/[callId] — colgar desde Live Activity / pantalla bloqueada
+    if (parsed.path?.startsWith('call/end/')) {
+      const callId = parsed.path.replace('call/end/', '');
+      if (callId) {
+        const { NativeCallKit } = require('../src/native/CallKit');
+        NativeCallKit.endCall(callId);
+        setTimeout(() => router.back(), 200);
+      }
+    }
   } catch { /* ignore malformed URLs */ }
 }
 
@@ -257,6 +271,7 @@ export default function RootLayout() {
             <Stack.Screen name="channels" options={{ presentation: 'modal' }} />
             <Stack.Screen name="global-search" options={{ presentation: 'modal' }} />
             <Stack.Screen name="ajustes/cloud-backup" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="business-profile" options={{ presentation: 'modal' }} />
           </Stack>
 
           {/* ── Botón Home flotante draggable (igual que la versión web) ── */}
