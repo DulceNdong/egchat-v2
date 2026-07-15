@@ -14,6 +14,7 @@ import { ToastContainer } from '../src/components/Toast';
 import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
 import { trackUserPresence } from '../src/supabase';
 import { NativeCallKit } from '../src/native/CallKit';
+import { PushKit } from '../src/native/PushKit';
 
 // ── Handler de deep links: egchat://chat/ID, egchat://user/ID ─────
 function handleDeepLink(url: string | null) {
@@ -129,6 +130,32 @@ export default function RootLayout() {
             if (Platform.OS !== 'web') {
               const pushToken = await registerForPushNotifications();
               if (pushToken) console.log('✅ Push token:', pushToken.substring(0, 30) + '...');
+
+              // ── PushKit VoIP (iOS) — llamadas con app cerrada ──────────
+              PushKit.register();
+              PushKit.onTokenUpdated(async (voipToken) => {
+                // Subir token VoIP al servidor para llamadas push en iOS
+                const { getToken: getAuthToken, getApiBase } = await import('../src/api');
+                const authToken = await getAuthToken();
+                if (!authToken) return;
+                fetch(`${getApiBase()}/api/push/register-voip-token`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+                  body: JSON.stringify({ voipToken }),
+                }).catch(() => {});
+              });
+              PushKit.onIncomingCall((callData) => {
+                router.push({
+                  pathname: '/call/[callId]',
+                  params: {
+                    callId: callData.callId,
+                    targetName: callData.callerName,
+                    callType: callData.callType || 'audio',
+                    role: 'callee',
+                    offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                  }
+                } as any);
+              });
 
               notifCleanup.current = setupNotificationListeners(
                 (chatId) => router.push(`/chat/${chatId}` as any),

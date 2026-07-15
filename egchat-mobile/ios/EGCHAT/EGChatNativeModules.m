@@ -358,3 +358,77 @@ RCT_EXPORT_METHOD(clearWidget) {
 }
 
 @end
+
+
+#pragma mark - EGChatPushKitModule (VoIP Push para llamadas con app cerrada)
+
+#import <PushKit/PushKit.h>
+
+@interface EGChatPushKitModule : RCTEventEmitter <RCTBridgeModule, PKPushRegistryDelegate>
+@end
+
+@implementation EGChatPushKitModule {
+  PKPushRegistry *_registry;
+}
+
+RCT_EXPORT_MODULE(EGChatPushKitModule)
++ (BOOL)requiresMainQueueSetup { return YES; }
+
+- (NSArray<NSString *> *)supportedEvents {
+  return @[@"voipPushReceived", @"voipTokenUpdated"];
+}
+
+RCT_EXPORT_METHOD(registerVoIP) {
+  dispatch_async(dispatch_get_main_queue(), ^{
+    self->_registry = [[PKPushRegistry alloc] initWithQueue:dispatch_get_main_queue()];
+    self->_registry.delegate     = self;
+    self->_registry.desiredPushTypes = [NSSet setWithObject:PKPushTypeVoIP];
+  });
+}
+
+// ── PKPushRegistryDelegate ─────────────────────────────────────────
+
+- (void)pushRegistry:(PKPushRegistry *)registry
+didUpdatePushCredentials:(PKPushCredentials *)credentials
+             forType:(PKPushType)type {
+  if (![type isEqualToString:PKPushTypeVoIP]) return;
+  NSData *tokenData = credentials.token;
+  NSMutableString *token = [NSMutableString string];
+  const unsigned char *bytes = (const unsigned char *)tokenData.bytes;
+  for (NSUInteger i = 0; i < tokenData.length; i++) {
+    [token appendFormat:@"%02x", bytes[i]];
+  }
+  [self sendEventWithName:@"voipTokenUpdated" body:@{@"token": token}];
+}
+
+- (void)pushRegistry:(PKPushRegistry *)registry
+didReceiveIncomingPushWithPayload:(PKPushPayload *)payload
+             forType:(PKPushType)type
+withCompletionHandler:(void (^)(void))completion {
+  if (![type isEqualToString:PKPushTypeVoIP]) { completion(); return; }
+
+  NSDictionary *data     = payload.dictionaryPayload;
+  NSString *callId       = data[@"callId"]     ?: @"";
+  NSString *callerName   = data[@"callerName"] ?: @"Llamada entrante";
+  NSString *callType     = data[@"callType"]   ?: @"audio";
+  BOOL isVideo           = [callType isEqualToString:@"video"];
+
+  // Mostrar llamada nativa via CallKit
+  EGChatCallModule *callModule = [self.bridge moduleForName:@"EGChatCallModule"];
+  if (callModule) {
+    [callModule showIncomingCall:callerName
+                   callerAvatar:@""
+                         callId:callId
+                        isVideo:isVideo];
+  }
+
+  // Notificar a JS para que inicie WebRTC
+  [self sendEventWithName:@"voipPushReceived" body:data];
+
+  completion();
+}
+
+- (void)pushRegistry:(PKPushRegistry *)registry
+didInvalidatePushTokenForType:(PKPushType)type {}
+
+@end
