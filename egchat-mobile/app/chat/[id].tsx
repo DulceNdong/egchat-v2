@@ -39,6 +39,12 @@ import { GroupPaymentModal } from '../../src/components/chat/GroupPaymentModal';
 import { ChatToneModal } from '../../src/components/chat/ChatToneModal';
 import { ChatLabelsModal } from '../../src/components/chat/ChatLabelsModal';
 import { getChatTone, setChatTone } from '../../src/services/chatTones';
+import { CreatePollModal } from '../../src/components/chat/CreatePollModal';
+import { MessageReadReceiptsModal } from '../../src/components/chat/MessageReadReceiptsModal';
+import { MediaPreviewModal, type MediaPreviewItem } from '../../src/components/chat/MediaPreviewModal';
+import { QuickReplyPanel } from '../../src/components/chat/QuickReplyPanel';
+import { toggleReaction, applyReactionOptimistic, type ReactionsMap } from '../../src/services/messageReactions';
+import { getAllQuickReplies, searchQuickReplies, type QuickReply } from '../../src/services/quickReplies';
 import { scheduleReadReceipt, clearAllMessageStatusTimers } from '../../src/features/chat/messageStatus';
 import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
 import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
@@ -230,6 +236,18 @@ export default function ChatScreen() {
   const [showToneModal, setShowToneModal] = useState(false);
   // ── Sprint 3.5 Etiquetas ──────────────────────────────────────
   const [showLabelsModal, setShowLabelsModal] = useState(false);
+  // ── C3 Encuestas ───────────────────────────────────────────────
+  const [showCreatePoll, setShowCreatePoll] = useState(false);
+  // ── F4 Media preview ──────────────────────────────────────────
+  const [mediaPreviewItem, setMediaPreviewItem] = useState<MediaPreviewItem | null>(null);
+  const [mediaSending, setMediaSending] = useState(false);
+  // ── C4 Reacciones reales ───────────────────────────────────────
+  const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionsMap>>({});
+  // ── C9 Receipts de lectura ─────────────────────────────────────
+  const [receiptsMsgId, setReceiptsMsgId] = useState<string | null>(null);
+  // ── F1 Respuestas rápidas ──────────────────────────────────────
+  const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
+  const [quickReplySuggestions, setQuickReplySuggestions] = useState<QuickReply[]>([]);
   const groupMembers: MentionUser[] = (isGroup && chat?.participants)
     ? (chat.participants as any[])
         .filter((p: any) => p.user_id !== currentUserId)
@@ -308,6 +326,8 @@ export default function ChatScreen() {
     setLiveLocationActive(isLiveLocationActive(chatId));
     // Sprint 3.1 — cargar tono
     getChatTone(chatId).then(setChatToneState);
+    // F1 — cargar respuestas rápidas
+    getAllQuickReplies().then(setQuickReplies);
   }, [chatId]);
 
   const applyMessageStatus = useCallback((messageId: string, status: Message['status']) => {
@@ -627,17 +647,22 @@ export default function ChatScreen() {
   const handleReaction = useCallback((emoji: string) => {
     if (!contextMsg || !chatId) return;
     const msgId = contextMsg.id;
-    // Actualizar reacciones locales con animación
+    // Actualizar optimísticamente en local
+    setReactionsMap(prev => ({
+      ...prev,
+      [msgId]: applyReactionOptimistic(prev[msgId] || {}, emoji, currentUserId),
+    }));
+    // También actualizar el mapa legado para compatibilidad con ChatMessageBubble
     setMessageReactions(prev => {
       const current = prev[msgId] || {};
-      const count = (current[emoji] || 0) + 1;
+      const alreadyReacted = Object.values(reactionsMap[msgId] || {}).find(r => r.emoji === emoji && r.reactedByMe);
+      const count = alreadyReacted ? Math.max(0, (current[emoji] || 1) - 1) : (current[emoji] || 0) + 1;
       return { ...prev, [msgId]: { ...current, [emoji]: count } };
     });
     setContextVisible(false);
-    // Enviar al servidor como mensaje de texto
-    const reactText = `${emoji} reaccionaste a: ${(contextMsg.text || '').slice(0, 40)}`;
-    chatAPI.sendMessage(chatId, { text: reactText, type: 'text' }).catch(() => {});
-  }, [contextMsg, chatId]);
+    // Guardar en BD
+    toggleReaction(msgId, emoji, currentUserId).catch(() => {});
+  }, [contextMsg, chatId, currentUserId, reactionsMap]);
 
   const exportChat = useCallback(() => {
     const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
@@ -785,6 +810,12 @@ export default function ChatScreen() {
       const detection = detectMentionQuery(val);
       setMentionQuery(detection ? detection.query : null);
     }
+    // F1 — detectar respuestas rápidas (/)
+    if (val.startsWith('/')) {
+      setQuickReplySuggestions(searchQuickReplies(quickReplies, val));
+    } else {
+      setQuickReplySuggestions([]);
+    }
     if (typingTimer.current) clearTimeout(typingTimer.current);
     if (val.trim()) {
       typingChannelRef.current?.sendTyping(true);
@@ -794,7 +825,7 @@ export default function ChatScreen() {
     } else {
       typingChannelRef.current?.sendTyping(false);
     }
-  }, [chatId, isGroup]);
+  }, [chatId, isGroup, quickReplies]);
 
   const pushOptimistic = useCallback((msg: Message) => {
     setMessages(prev => mergeMessages(prev, [msg]));
@@ -946,7 +977,8 @@ export default function ChatScreen() {
     if (action === 'file') {
       const asset = await pickDocument();
       if (asset) {
-        await sendMedia(asset, { text: asset.fileName, type: 'file' });
+        // F4 — preview antes de enviar
+        setMediaPreviewItem({ uri: asset.uri, fileName: asset.fileName, mimeType: asset.mimeType, type: 'file' });
       }
       return;
     }
@@ -997,6 +1029,10 @@ export default function ChatScreen() {
     if (action === 'money') {
       setShowAttach(false);
       setShowQuickTransfer(true);
+    }
+    if (action === 'poll') {
+      setShowAttach(false);
+      setShowCreatePoll(true);
     }
   }, [chatId, sendMedia, pushOptimistic, replaceOptimistic, failOptimistic]);
 
@@ -1327,12 +1363,19 @@ export default function ChatScreen() {
           showReadReceipts={showReadReceipts}
           highlight={searchHit}
           reactions={messageReactions[item.id]}
-          onLongPress={handleLongPress}
+          onLongPress={(msg) => {
+            handleLongPress(msg);
+            // C9 — abrir receipts si es propio y es grupo
+            if (isGroup && msg.sender_id === currentUserId) {
+              setReceiptsMsgId(msg.id);
+            }
+          }}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}
           onCallback={() => {
-            // Detectar si fue videollamada o llamada de audio
-            const isVideo = item.text?.includes('📹') || item.text?.toLowerCase().includes('video');
+            // C6 — Devolver llamada: detecta tipo y llama de vuelta
+            const txt = item.text?.toLowerCase() || '';
+            const isVideo = txt.includes('video') || txt.includes('📹') || txt.includes('videollamada');
             goToCall(isVideo ? 'video' : 'audio');
           }}
         />
@@ -1392,10 +1435,12 @@ export default function ChatScreen() {
         subtitle={chatSubtitle}
         isTyping={isTyping}
         isOnline={isOtherOnline}
+        isGroup={isGroup}
         onBack={() => router.back()}
         onProfilePress={() => isGroup ? setShowGroupInfo(true) : setShowProfile(true)}
         onAudioCall={() => goToCall('audio')}
         onVideoCall={() => goToCall('video')}
+        onGroupCall={() => goToCall('audio')}
         onMenuPress={() => setDrawerVisible(true)}
       />
 
@@ -1559,6 +1604,18 @@ export default function ChatScreen() {
           />
         )}
 
+        {/* F1 — Respuestas rápidas */}
+        {quickReplySuggestions.length > 0 && (
+          <QuickReplyPanel
+            visible
+            replies={quickReplySuggestions}
+            onSelect={(reply) => {
+              setText(reply.text);
+              setQuickReplySuggestions([]);
+            }}
+          />
+        )}
+
         {/* Sprint 2.2 — Sugerencias de menciones */}
         {isGroup && mentionQuery !== null && (
           <MentionSuggestions
@@ -1699,6 +1756,36 @@ export default function ChatScreen() {
         onClose={() => setShowLabelsModal(false)}
       />
 
+      {/* C3 — Crear encuesta */}
+      <CreatePollModal
+        visible={showCreatePoll}
+        currentUserId={currentUserId}
+        onClose={() => setShowCreatePoll(false)}
+        onSend={async (pollText) => {
+          const tempId = createTempMessageId();
+          pushOptimistic({ id: tempId, text: pollText, type: 'poll' as any, sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+          try {
+            const sent = await chatAPI.sendMessage(chatId, { text: pollText, type: 'text' });
+            replaceOptimistic(tempId, sent);
+          } catch { failOptimistic(tempId); }
+        }}
+      />
+
+      {/* F3 — Receipts de lectura en grupo */}
+      {isGroup && (
+        <MessageReadReceiptsModal
+          visible={!!receiptsMsgId}
+          messageId={receiptsMsgId || ''}
+          chatParticipants={(chat?.participants || []).map((p: any) => ({
+            user_id: p.user_id,
+            full_name: p.full_name || p.users?.full_name || 'Usuario',
+            avatar_url: p.avatar_url || p.users?.avatar_url,
+          }))}
+          currentUserId={currentUserId}
+          onClose={() => setReceiptsMsgId(null)}
+        />
+      )}
+
       {/* Sprint 2.4 — Pago grupal */}
       {isGroup && (
         <GroupPaymentModal
@@ -1727,6 +1814,32 @@ export default function ChatScreen() {
         onSelect={async (id) => {
           setWallpaperId(id);
           if (chatId) await setChatWallpaperId(chatId, id);
+        }}
+      />
+
+      {/* F4 — Preview antes de enviar */}
+      <MediaPreviewModal
+        visible={!!mediaPreviewItem}
+        item={mediaPreviewItem}
+        sending={mediaSending}
+        onCancel={() => setMediaPreviewItem(null)}
+        onSend={async (caption) => {
+          if (!mediaPreviewItem || !chatId) return;
+          setMediaSending(true);
+          try {
+            const asset = {
+              uri: mediaPreviewItem.uri,
+              fileName: mediaPreviewItem.fileName,
+              mimeType: mediaPreviewItem.mimeType,
+            };
+            const type = mediaPreviewItem.type === 'image' ? 'image'
+              : mediaPreviewItem.type === 'video' ? 'video' : 'file';
+            const label = caption || asset.fileName;
+            await sendMedia(asset, { text: label, type });
+          } finally {
+            setMediaSending(false);
+            setMediaPreviewItem(null);
+          }
         }}
       />
       <ChatStarredModal
@@ -1781,7 +1894,7 @@ export default function ChatScreen() {
                   if (a) setPhotoEditUri(a.uri);
                 } else {
                   const a = await pickVideoFromCamera();
-                  if (a) await sendMedia(a, { text: a.fileName, type: 'video' });
+                  if (a) setMediaPreviewItem({ uri: a.uri, fileName: a.fileName, mimeType: a.mimeType, type: 'video' });
                 }
               }}
             >
@@ -1813,7 +1926,7 @@ export default function ChatScreen() {
                   if (a) setPhotoEditUri(a.uri);
                 } else {
                   const a = await pickVideo();
-                  if (a) await sendMedia(a, { text: a.fileName, type: 'video' });
+                  if (a) setMediaPreviewItem({ uri: a.uri, fileName: a.fileName, mimeType: a.mimeType, type: 'video' });
                 }
               }}
             >

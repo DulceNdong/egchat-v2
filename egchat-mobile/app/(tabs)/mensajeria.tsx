@@ -215,7 +215,15 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
 
   const body = (
     <>
-      <EGAvatar src={avatarSrc} name={chatName} size={50} />
+      {/* Avatar con badge de grupo */}
+      <View style={{ position: 'relative' }}>
+        <EGAvatar src={avatarSrc} name={chatName} size={50} />
+        {chat.type === 'group' && (
+          <View style={st.groupBadge}>
+            <Text style={st.groupBadgeText}>👥</Text>
+          </View>
+        )}
+      </View>
       <View style={st.chatInfo}>
         <View style={st.chatRow}>
           <Text style={st.chatName} numberOfLines={1}>{chatName}</Text>
@@ -730,6 +738,29 @@ export default function MensajeriaScreen() {
 
 <View style={st.contentArea}>
         <View style={st.fixedContent}>
+          {/* C5 — Mis Notas: entrada rápida siempre visible */}
+          <TouchableOpacity
+            style={[st.notesRow, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}
+            onPress={async () => {
+              const { getOrCreateNotesChat } = await import('../../src/services/personalNotes');
+              const chatId = await getOrCreateNotesChat();
+              if (chatId) router.push(`/chat/${chatId}` as any);
+              else toast.info('Creando tu chat de notas...');
+            }}
+            activeOpacity={0.7}
+          >
+            <View style={st.notesIcon}>
+              <Text style={{ fontSize: 22 }}>📝</Text>
+            </View>
+            <View style={st.notesInfo}>
+              <Text style={[st.notesTitle, { color: C.textPrimary }]}>Mis Notas</Text>
+              <Text style={[st.notesSub, { color: C.textTertiary }]}>Guarda recordatorios y mensajes</Text>
+            </View>
+            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
+              <Path d="M9 18l6-6-6-6"/>
+            </Svg>
+          </TouchableOpacity>
+
           {/* ══════════════════════════════════════════════════════
               CONTACTOS FAVORITOS
           ══════════════════════════════════════════════════════ */}
@@ -1263,6 +1294,27 @@ const st = StyleSheet.create({
   center: { alignItems: 'center', justifyContent: 'center', padding: Spacing.screenPadding, paddingTop: 60 },
   emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
   emptyTitle: { fontSize: FontSize.lg, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: Spacing.sm, textAlign: 'center' },
+  // ── Mis Notas ────────────────────────────────────────────────────
+  notesRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  notesIcon: {
+    width: 48, height: 48, borderRadius: 24,
+    backgroundColor: '#f59e0b20', alignItems: 'center', justifyContent: 'center',
+  },
+  notesInfo: { flex: 1 },
+  notesTitle: { fontSize: 15, fontWeight: '700' },
+  notesSub: { fontSize: 12, marginTop: 2 },
+  // ── Group badge ──────────────────────────────────────────────────
+  groupBadge: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 18, height: 18, borderRadius: 9,
+    backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
+  },
+  groupBadgeText: { fontSize: 10 },
   emptySub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
   dineroCta: { marginTop: Spacing.lg, borderRadius: BorderRadius.lg, overflow: 'hidden' },
   dineroCtaGrad: { paddingHorizontal: Spacing.xl, paddingVertical: Spacing.md },

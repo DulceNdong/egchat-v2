@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
 
-export type AttachAction = 'photo' | 'video' | 'file' | 'contact' | 'location' | 'music' | 'money';
+export type AttachAction = 'photo' | 'video' | 'file' | 'contact' | 'location' | 'music' | 'money' | 'poll';
 
 const ITEMS: {
   id: AttachAction;
@@ -97,6 +97,19 @@ const ITEMS: {
         <Rect x="2" y="5" width="20" height="14" rx="2" />
         <Line x1="2" y1="10" x2="22" y2="10" />
         <Circle cx="12" cy="15" r="2" />
+      </Svg>
+    ),
+  },
+  {
+    id: 'poll',
+    label: 'Encuesta',
+    color: '#8b5cf6',
+    bg: '#EDE9FE',
+    Icon: () => (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <Line x1="18" y1="20" x2="18" y2="10"/>
+        <Line x1="12" y1="20" x2="12" y2="4"/>
+        <Line x1="6" y1="20" x2="6" y2="14"/>
       </Svg>
     ),
   },
