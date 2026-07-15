@@ -104,9 +104,14 @@ export default function RegisterScreen() {
     setOtpSending(true);
     setLocalError('');
     try {
-      await authAPI.sendVerification(fullPhone);
+      const result = await authAPI.sendVerification(fullPhone);
       setOtpSent(true);
       startOtpTimer();
+      // En modo dev (sin Twilio), el backend devuelve el código para testing
+      if ((result as any)?.dev_code) {
+        setOtpCode((result as any).dev_code);
+        toast.info('Código de prueba autocompletado (modo dev)');
+      }
     } catch (e: any) {
       setLocalError(e?.message || 'No se pudo enviar el código');
     } finally {

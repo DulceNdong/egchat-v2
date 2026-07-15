@@ -746,23 +746,33 @@ const cs = StyleSheet.create({
 });
 
 // ── Tarjeta UBICACIÓN ─────────────────────────────────────────────
-const LocationCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
+const LocationCard = ({ text, isOwn, isLive }: { text: string; isOwn: boolean; isLive?: boolean }) => {
   const lines = (text || '').split('\n');
   const label = lines[0]?.replace(/^📍\s*/, '').trim() || 'Ubicación';
   const url = lines[1]?.trim() || '';
+  // Extraer coordenadas de live_location: "lat:X,lng:Y"
+  const coordMatch = text.match(/lat:([-\d.]+),lng:([-\d.]+)/);
+  const mapsUrl = coordMatch
+    ? `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}`
+    : url;
   return (
     <View style={ls.card}>
-      <TouchableOpacity activeOpacity={0.85} onPress={() => url && Linking.openURL(url)}>
-        <LinearGradient colors={['#4facfe', '#00f2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ls.preview}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => mapsUrl && Linking.openURL(mapsUrl)}>
+        <LinearGradient colors={isLive ? ['#ef4444', '#f97316'] : ['#4facfe', '#00f2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ls.preview}>
           <View style={ls.gridH1} /><View style={ls.gridH2} />
           <View style={ls.gridV1} /><View style={ls.gridV2} />
-          <View style={ls.pin}><Text style={ls.pinEmoji}>📍</Text></View>
+          <View style={ls.pin}><Text style={ls.pinEmoji}>{isLive ? '🔴' : '📍'}</Text></View>
+          {isLive && (
+            <View style={ls.liveBadge}>
+              <Text style={ls.liveText}>EN VIVO</Text>
+            </View>
+          )}
         </LinearGradient>
       </TouchableOpacity>
-      <Text style={ls.label} numberOfLines={2}>{label}</Text>
-      <TouchableOpacity onPress={() => url && Linking.openURL(url)}
+      <Text style={ls.label} numberOfLines={2}>{isLive ? '📍 Ubicación en vivo' : label}</Text>
+      <TouchableOpacity onPress={() => mapsUrl && Linking.openURL(mapsUrl)}
         style={[ls.btn, isOwn ? ls.btnOwn : ls.btnTheir]} activeOpacity={0.7}>
-        <Text style={ls.btnText}>Abrir en Maps</Text>
+        <Text style={ls.btnText}>{isLive ? 'Ver en Maps' : 'Abrir en Maps'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -781,6 +791,12 @@ const ls = StyleSheet.create({
   btnOwn: { backgroundColor: 'rgba(0,200,160,0.12)' },
   btnTheir: { backgroundColor: 'rgba(0,180,230,0.10)' },
   btnText: { fontSize: 12, fontWeight: '700', color: '#00b4e6' },
+  liveBadge: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: '#ef4444', borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  liveText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 });
 
 // ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
@@ -934,7 +950,13 @@ export const ChatMessageBubble = React.memo(({
       {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
       {pollData     && <PollMessage poll={pollData} currentUserId={''} isOwn={isOwn} onVote={() => {}} />}
       {isContactMsg && !!message.text && <ContactCard text={message.text} isOwn={isOwn} />}
-      {isLocationMsg && !!message.text && <LocationCard text={message.text} isOwn={isOwn} />}
+      {isLocationMsg && !!message.text && (
+        <LocationCard
+          text={message.text}
+          isOwn={isOwn}
+          isLive={message.type === 'live_location'}
+        />
+      )}
       {isMoneyMsg && !!message.text && <MoneyCard text={message.text} />}
 
       {/* Texto normal */}
