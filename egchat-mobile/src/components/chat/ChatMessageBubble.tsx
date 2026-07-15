@@ -881,6 +881,26 @@ export const ChatMessageBubble = React.memo(({
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
   const [popEmoji, setPopEmoji] = useState<string | null>(null);
+
+  // ── Animación de entrada ──────────────────────────────────────
+  const entranceAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(entranceAnim, {
+      toValue: 1,
+      tension: 120,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  const entranceStyle = {
+    opacity: entranceAnim,
+    transform: [
+      { scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+      { translateY: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+    ],
+  };
+  // ──────────────────────────────────────────────────────────────
+
   const time = formatTime(message.created_at);
   const canRetry = isOwn && message.status === 'failed';
   const imageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
@@ -1048,6 +1068,7 @@ export const ChatMessageBubble = React.memo(({
   );
 
   return (
+    <Animated.View style={entranceStyle}>
     <TouchableOpacity
       onPress={canRetry ? () => onRetry?.(message) : canOpenImage ? () => onOpenImage?.(imageUri!) : undefined}
       onLongPress={() => onLongPress(message)}
@@ -1108,6 +1129,7 @@ export const ChatMessageBubble = React.memo(({
         />
       )}
     </TouchableOpacity>
+    </Animated.View>
   );
 });
 

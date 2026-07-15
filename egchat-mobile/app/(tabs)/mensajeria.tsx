@@ -42,7 +42,7 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
-import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
+import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -832,9 +832,7 @@ export default function MensajeriaScreen() {
           }
         >
           {loading ? (
-            <View style={st.center}>
-              <ActivityIndicator size="large" color={Colors.brand} />
-            </View>
+            <ChatListSkeleton count={8} />
           ) : filter === 'archivar' && !archiveUnlocked ? (
             <View style={st.center}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
