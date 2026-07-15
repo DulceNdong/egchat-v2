@@ -559,12 +559,15 @@ export default function ChatScreen() {
     if (typingTimer.current) clearTimeout(typingTimer.current);
     setText('');
     setReplyTo(null);
+    setQuickReplySuggestions([]);
     setSending(true);
-    haptics.light(); // feedback táctil al enviar
+    haptics.light();
 
+    // Animación de vuelo: escala abajo → rebote hacia arriba
     Animated.sequence([
-      Animated.spring(sendScale, { toValue: 0.85, useNativeDriver: true, speed: 50 }),
-      Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30 }),
+      Animated.timing(sendScale, { toValue: 0.75, duration: 80, useNativeDriver: true }),
+      Animated.spring(sendScale, { toValue: 1.15, useNativeDriver: true, speed: 40, bounciness: 14 }),
+      Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30, bounciness: 6 }),
     ]).start();
 
     const tempId = createTempMessageId();

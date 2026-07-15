@@ -254,6 +254,9 @@ export default function RootLayout() {
             <Stack.Screen name="historial-completo" options={{ presentation: 'modal' }} />
             <Stack.Screen name="moments" options={{ presentation: 'modal' }} />
             <Stack.Screen name="broadcast" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="channels" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="global-search" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="ajustes/cloud-backup" options={{ presentation: 'modal' }} />
           </Stack>
 
           {/* ── Botón Home flotante draggable (igual que la versión web) ── */}

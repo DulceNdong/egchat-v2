@@ -8,6 +8,7 @@ import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
 import { exportBackup, importBackup } from '../../src/services/chatBackup';
 import { authAPI } from '../../src/api';
 import { toast } from '../../src/components/Toast';
+import { router } from 'expo-router';
 
 export default function HistorialChatScreen() {
   const [backupWifi, setBackupWifi] = useState(true);
