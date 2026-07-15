@@ -324,6 +324,7 @@ export const HamburgerMenu = ({
     { id: 'crear-grupo',    label: 'Crear grupo',          sub: 'Nuevo grupo de chat'       },
     { id: 'global-search',  label: '🔍 Buscar en chats',   sub: 'Busca mensajes y contactos'},
     { id: 'channels',       label: '📡 Canales',           sub: 'Canales oficiales y feeds' },
+    { id: 'business',       label: '💼 Perfil empresarial', sub: 'Catálogo y cuenta negocio' },
     { id: 'moments',        label: '📸 Moments',           sub: 'Feed social de contactos'  },
     { id: 'broadcast',      label: '📢 Difusión',          sub: 'Mensaje a múltiples chats' },
     { id: 'notas',          label: '📝 Mis notas',         sub: 'Chat personal privado'     },
@@ -347,6 +348,7 @@ export const HamburgerMenu = ({
         case 'broadcast':      router.push('/broadcast' as any); break;
         case 'channels':       router.push('/channels' as any); break;
         case 'global-search':  router.push('/global-search' as any); break;
+        case 'business':       router.push('/business-profile' as any); break;
         case 'notas': {
           const { getOrCreateNotesChat } = await import('../services/personalNotes');
           const chatId = await getOrCreateNotesChat();

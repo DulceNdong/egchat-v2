@@ -17,6 +17,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
 import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
 import { EGAvatar } from '../src/components/ui';
+import { StoryMusicPicker, StoryMusicBadge, type StoryMusic } from '../src/components/StoryMusicPicker';
 import {
   Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
 } from '../src/theme';
@@ -367,6 +368,8 @@ export default function StoriesScreen() {
   const [myGroup, setMyGroup] = useState<StoryGroup | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [storyMusic, setStoryMusic] = useState<StoryMusic | null>(null);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<number | null>(null);
   const [currentUserId, setCurrentUserId] = useState('');
   const [activeTab, setActiveTab] = useState<StoryTab>('recientes');
@@ -417,7 +420,11 @@ export default function StoriesScreen() {
   const uploadStory = async (uri: string, type: 'image' | 'video' = 'image') => {
     setUploading(true);
     try {
-      await storiesAPI.create({ media: [{ url: uri, type }] });
+      await storiesAPI.create({
+        media: [{ url: uri, type }],
+        music: storyMusic ?? undefined,
+      });
+      setStoryMusic(null);
       await loadStories();
     } catch { Alert.alert('Error', 'No se pudo publicar el estado'); }
     finally { setUploading(false); }
@@ -770,6 +777,33 @@ export default function StoriesScreen() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* Música en Stories */}
+      <StoryMusicPicker
+        visible={showMusicPicker}
+        selected={storyMusic}
+        onSelect={(music) => { setStoryMusic(music); }}
+        onClose={() => setShowMusicPicker(false)}
+      />
+      {storyMusic ? (
+        <View style={{ position: "absolute", bottom: 100, left: 16, right: 16, zIndex: 99 }}>
+          <StoryMusicBadge music={storyMusic} />
+          <View style={{ flexDirection: "row", gap: 10, marginTop: 8 }}>
+            <TouchableOpacity
+              style={{ backgroundColor: "#1db954", borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}
+              onPress={() => addStory()}
+            >
+              <Text style={{ color: "#fff", fontWeight: "700", fontSize: 13 }}>Publicar con música</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={{ backgroundColor: "rgba(0,0,0,0.5)", borderRadius: 20, paddingHorizontal: 12, paddingVertical: 8 }}
+              onPress={() => setStoryMusic(null)}
+            >
+              <Text style={{ color: "#fff", fontSize: 13 }}>×</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      ) : null}
     </SafeAreaView>
   );
 }

@@ -43,6 +43,7 @@ import { CreatePollModal } from '../../src/components/chat/CreatePollModal';
 import { MessageReadReceiptsModal } from '../../src/components/chat/MessageReadReceiptsModal';
 import { MediaPreviewModal, type MediaPreviewItem } from '../../src/components/chat/MediaPreviewModal';
 import { QuickReplyPanel } from '../../src/components/chat/QuickReplyPanel';
+import { PushToTalkButton } from '../../src/components/chat/PushToTalkButton';
 import { toggleReaction, applyReactionOptimistic, type ReactionsMap } from '../../src/services/messageReactions';
 import { getAllQuickReplies, searchQuickReplies, type QuickReply } from '../../src/services/quickReplies';
 import { scheduleReadReceipt, clearAllMessageStatusTimers } from '../../src/features/chat/messageStatus';
@@ -241,6 +242,8 @@ export default function ChatScreen() {
   // ── F4 Media preview ──────────────────────────────────────────
   const [mediaPreviewItem, setMediaPreviewItem] = useState<MediaPreviewItem | null>(null);
   const [mediaSending, setMediaSending] = useState(false);
+  // ── PTT Walkie-talkie ─────────────────────────────────────────
+  const [showPTT, setShowPTT] = useState(false);
   // ── C4 Reacciones reales ───────────────────────────────────────
   const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionsMap>>({});
   // ── C9 Receipts de lectura ─────────────────────────────────────
@@ -1263,6 +1266,13 @@ export default function ChatScreen() {
     // ── Sección acciones ──
     {
       section: 'actions',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z" strokeLinecap="round"/><Path d="M19 10v2a7 7 0 0 1-14 0v-2" strokeLinecap="round"/></Svg>,
+      label: '🎙 Walkie-talkie',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowPTT(true); },
+    },
+    {
+      section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="22" y1="2" x2="11" y2="13" strokeLinecap="round"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>,
       label: 'Enviar dinero',
       color: IC,
@@ -1787,6 +1797,35 @@ export default function ChatScreen() {
           currentUserId={currentUserId}
           onClose={() => setReceiptsMsgId(null)}
         />
+      )}
+
+      {/* PTT — Walkie-talkie */}
+      {showPTT && (
+        <Modal visible transparent animationType="slide" onRequestClose={() => setShowPTT(false)}>
+          <Pressable style={{ flex: 1, backgroundColor: 'rgba(0,0,0,0.4)', justifyContent: 'flex-end' }} onPress={() => setShowPTT(false)}>
+            <Pressable style={{ backgroundColor: C.bgPrimary, borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 24, paddingBottom: 40 }} onPress={e => e.stopPropagation()}>
+              <Text style={{ fontSize: 16, fontWeight: '700', color: C.textPrimary, textAlign: 'center', marginBottom: 16 }}>
+                🎙 Walkie-talkie con {chatName}
+              </Text>
+              <PushToTalkButton
+                chatId={chatId}
+                currentUserId={currentUserId}
+                otherName={chatName}
+                onRecorded={async (uri, dur) => {
+                  setShowPTT(false);
+                  const tempId = createTempMessageId();
+                  const label = `🎙 PTT (${dur}s)`;
+                  pushOptimistic({ id: tempId, text: label, type: 'audio', sender_id: currentUserId, status: 'pending', created_at: new Date().toISOString() });
+                  try {
+                    const asset = { uri, fileName: 'ptt.m4a', mimeType: 'audio/m4a' };
+                    const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
+                    replaceOptimistic(tempId, sent);
+                  } catch { failOptimistic(tempId); }
+                }}
+              />
+            </Pressable>
+          </Pressable>
+        </Modal>
       )}
 
       {/* Sprint 2.4 — Pago grupal */}
