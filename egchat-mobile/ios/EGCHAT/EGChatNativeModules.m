@@ -432,3 +432,58 @@ withCompletionHandler:(void (^)(void))completion {
 didInvalidatePushTokenForType:(PKPushType)type {}
 
 @end
+
+
+#pragma mark - EGChatRichNotification (Notificaciones ricas iOS)
+
+#import <UserNotifications/UserNotifications.h>
+
+@interface EGChatRichNotification : NSObject <RCTBridgeModule>
+@end
+
+@implementation EGChatRichNotification
+
+RCT_EXPORT_MODULE(EGChatRichNotification)
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+RCT_EXPORT_METHOD(show:(NSDictionary *)payload) {
+  // En iOS las notificaciones ricas se manejan via UNNotificationServiceExtension
+  // Este método existe para compatibilidad con la interfaz JS — en iOS no es necesario
+  // porque el sistema ya muestra el contenido del push directamente
+  NSString *chatId      = payload[@"chatId"] ?: @"";
+  NSString *senderName  = payload[@"senderName"] ?: @"Mensaje";
+  NSString *messageText = payload[@"messageText"] ?: @"";
+
+  // Mostrar notificación local si la app está en primer plano
+  UNMutableNotificationContent *content = [[UNMutableNotificationContent alloc] init];
+  content.title = senderName;
+  content.body  = messageText;
+  content.sound = [UNNotificationSound soundNamed:@"notification.wav"];
+  content.userInfo = @{ @"chatId": chatId };
+
+  UNTimeIntervalNotificationTrigger *trigger =
+    [UNTimeIntervalNotificationTrigger triggerWithTimeInterval:0.1 repeats:NO];
+
+  NSString *identifier = [NSString stringWithFormat:@"egchat_msg_%@_%@",
+                          chatId, @((long)[[NSDate date] timeIntervalSince1970])];
+
+  UNNotificationRequest *request =
+    [UNNotificationRequest requestWithIdentifier:identifier
+                                         content:content
+                                         trigger:trigger];
+
+  [[UNUserNotificationCenter currentNotificationCenter]
+    addNotificationRequest:request
+     withCompletionHandler:^(NSError *error) {
+      if (error) NSLog(@"[RichNotif] Error: %@", error);
+  }];
+}
+
+RCT_EXPORT_METHOD(cancel:(NSString *)chatId) {
+  [[UNUserNotificationCenter currentNotificationCenter]
+    removePendingNotificationRequestsWithIdentifiers:@[chatId]];
+  [[UNUserNotificationCenter currentNotificationCenter]
+    removeDeliveredNotificationsWithIdentifiers:@[chatId]];
+}
+
+@end
