@@ -16,12 +16,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20.x'
-          cache: 'npm'
-          cache-dependency-path: egchat-mobile/package-lock.json
 
-      - name: Instalar dependencias
+      - name: Instalar dependencias (limpio)
         working-directory: egchat-mobile
-        run: npm install --legacy-peer-deps
+        run: |
+          rm -rf node_modules
+          npm install --legacy-peer-deps --no-audit --prefer-offline=false
+
+      - name: Verificar paquetes clave
+        working-directory: egchat-mobile
+        run: |
+          node -e "require('expo-sharing'); console.log('expo-sharing OK')"
+          node -e "require('expo-file-system'); console.log('expo-file-system OK')"
+          node -e "require('expo-av'); console.log('expo-av OK')"
 
       - name: Build web (Expo)
         working-directory: egchat-mobile
@@ -30,6 +37,7 @@ jobs:
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           EXPO_NO_CAPABILITY_SYNC: 1
+          CI: false
         run: npx expo export --platform web --output-dir dist
 
       - name: Deploy a Vercel
