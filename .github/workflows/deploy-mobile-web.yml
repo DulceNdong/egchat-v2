@@ -9,14 +9,15 @@ jobs:
   deploy:
     name: Build y Deploy App Nativa
     runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
 
       - name: Setup Node 20
-        uses: actions/setup-node@v5
+        uses: actions/setup-node@v4
         with:
           node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: egchat-mobile/package-lock.json
 
       - name: Instalar dependencias
         working-directory: egchat-mobile
@@ -25,17 +26,19 @@ jobs:
       - name: Build web (Expo)
         working-directory: egchat-mobile
         env:
-          EXPO_PUBLIC_API_URL: https://egchat-api-xlxj.onrender.com
+          EXPO_PUBLIC_API_URL: https://egchat-api.onrender.com
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          EXPO_NO_CAPABILITY_SYNC: 1
         run: npx expo export --platform web --output-dir dist
 
       - name: Deploy a Vercel
         working-directory: egchat-mobile
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           npx vercel --prod \
             --token "$VERCEL_TOKEN" \
-            --yes \
-            --name egchat-nativa 2>&1 | tail -5
+            --yes 2>&1 | tail -10
