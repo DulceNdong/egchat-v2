@@ -19,6 +19,7 @@ const WEB_STUBS = {
   'expo-location':              './src/stubs/expo-location.web.js',
   'react-native-webrtc':        './src/stubs/react-native-webrtc.web.js',
   'react-native-qrcode-svg':    './src/stubs/react-native-qrcode-svg.web.js',
+  'expo-sharing':               './src/stubs/expo-sharing.web.js',
 };
 
 config.resolver.resolveRequest = (context, moduleName, platform) => {
