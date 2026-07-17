@@ -376,6 +376,13 @@ export default function MensajeriaScreen() {
   // ── Carga ───────────────────────────────────────────────────────
   const loadChats = useCallback(async (userId?: string) => {
     const uid = userId || currentUserId;
+
+    // Mostrar caché inmediatamente mientras llega la respuesta del servidor
+    const cached = await readCache<Chat[]>('chat_list');
+    if (cached?.length && chats.length === 0) {
+      setChats(sortChatsByActivity(cached));
+    }
+
     try {
       const [data, favContacts, favGroups] = await Promise.all([
         chatAPI.getChats(),
@@ -451,6 +458,12 @@ export default function MensajeriaScreen() {
       }
     };
     init();
+
+    // Keep-alive: ping cada 14 min para que Render no duerma el servidor
+    const keepAlive = setInterval(() => {
+      fetch('https://egchat-api.onrender.com/health', { method: 'GET' }).catch(() => {});
+    }, 14 * 60 * 1000);
+
     loadArchivedChats().then(setArchivedChats);
     getArchivePassword().then(setArchivePasswordState);
     fetch('https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current=temperature_2m,weather_code&timezone=auto')
@@ -464,6 +477,8 @@ export default function MensajeriaScreen() {
         else setWeatherCondition('cloudy');
       })
       .catch(() => {});
+
+    return () => clearInterval(keepAlive);
   }, []);
 
   useEffect(() => {
