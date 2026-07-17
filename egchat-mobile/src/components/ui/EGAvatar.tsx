@@ -31,6 +31,9 @@ const isValidAvatarUrl = (url?: string | null): url is string =>
 export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
   const [imgError, setImgError] = useState(false);
 
+  // Resetear error cuando cambia la URL (nueva foto de perfil)
+  React.useEffect(() => { setImgError(false); }, [src]);
+
   const initials = name
     ?.split(' ')
     .filter(Boolean)

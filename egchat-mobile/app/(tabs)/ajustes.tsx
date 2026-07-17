@@ -9,7 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { authAPI, clearToken } from '../../src/api';
-import { mergePersistentAvatar } from '../../src/utils/profileEvents';
+import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
@@ -102,6 +102,20 @@ export default function AjustesScreen() {
       .then(setUser)
       .catch(() => {})
       .finally(() => setLoading(false));
+  }, []);
+
+  // Actualizar avatar/nombre cuando el usuario los cambia en perfil
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      setUser(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+          ...(patch.full_name ? { full_name: patch.full_name } : {}),
+        };
+      });
+    });
   }, []);
 
   const filtered = useMemo(() => {
