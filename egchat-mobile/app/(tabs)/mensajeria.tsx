@@ -433,13 +433,17 @@ export default function MensajeriaScreen() {
       setFavoriteContacts(favContacts || []);
       setFavoriteGroupIds(favGroups);
     } catch (e: any) {
+      const msg = e?.message || '';
+      // Si es sesión expirada, el handler de _layout ya redirige al login
+      if (msg.includes('expirada') || msg.includes('401') || msg.includes('autorizado')) {
+        return; // el setUnauthorizedHandler se encarga
+      }
       const cachedChats = await readCache<Chat[]>('chat_list');
       if (cachedChats?.length) {
         setChats(sortChatsByActivity(cachedChats));
         toast.info('Mostrando chats guardados offline');
       } else {
-        const msg = e?.message || 'Error cargando chats';
-        toast.error(msg);
+        toast.error('Error cargando chats. Comprueba tu conexión.');
       }
     }
     finally { setLoading(false); setRefreshing(false); }

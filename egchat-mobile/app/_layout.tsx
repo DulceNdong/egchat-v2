@@ -299,6 +299,12 @@ export default function RootLayout() {
             <Stack.Screen name="global-search" options={{ presentation: 'modal' }} />
             <Stack.Screen name="ajustes/cloud-backup" options={{ presentation: 'modal' }} />
             <Stack.Screen name="business-profile" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="call-history" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="group-call" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+            <Stack.Screen name="mini-apps" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="mini-app-player" options={{ presentation: 'fullScreenModal' }} />
+            <Stack.Screen name="barcos" options={{ presentation: 'modal' }} />
+            <Stack.Screen name="_qr-login" options={{ presentation: 'fullScreenModal' }} />
           </Stack>
 
           {/* ── Botón Home flotante draggable (igual que la versión web) ── */}
