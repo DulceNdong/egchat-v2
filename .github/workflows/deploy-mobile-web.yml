@@ -10,33 +10,24 @@ jobs:
     name: Build y Deploy App Nativa
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
 
       - name: Setup Node 20
         uses: actions/setup-node@v4
         with:
-          node-version: '20.x'
+          node-version: '20'
 
-      - name: Instalar dependencias (limpio)
+      - name: Instalar dependencias
         working-directory: egchat-mobile
-        run: |
-          rm -rf node_modules
-          npm install --legacy-peer-deps --no-audit --prefer-offline=false
+        run: npm install --legacy-peer-deps
 
-      - name: Verificar paquetes clave
-        working-directory: egchat-mobile
-        run: |
-          node -e "require('expo-sharing'); console.log('expo-sharing OK')"
-          node -e "require('expo-file-system'); console.log('expo-file-system OK')"
-          node -e "require('expo-av'); console.log('expo-av OK')"
-
-      - name: Build web (Expo)
+      - name: Build web
         working-directory: egchat-mobile
         env:
           EXPO_PUBLIC_API_URL: https://egchat-api.onrender.com
           EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
           EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
-          EXPO_NO_CAPABILITY_SYNC: 1
           CI: false
         run: npx expo export --platform web --output-dir dist
 
@@ -46,7 +37,4 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: |
-          npx vercel --prod \
-            --token "$VERCEL_TOKEN" \
-            --yes 2>&1 | tail -10
+        run: npx vercel --prod --token "$VERCEL_TOKEN" --yes
