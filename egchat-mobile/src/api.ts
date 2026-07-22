@@ -564,17 +564,59 @@ export const saludAPI = {
 // TAXI
 // ══════════════════════════════════════════════════════════════════
 export const taxiAPI = {
+  /** Solicitar viaje */
   requestRide: (
     origin: { address: string; lat?: number; lng?: number },
     destination: { address: string; lat?: number; lng?: number },
-    rideType: string
-  ) => post<any>('/api/taxi/request', {
-    origin: origin.address,
-    dest: destination.address,
-    type: rideType,
+    rideType: string,
+    paymentMethod: 'wallet' | 'cash' | 'card' = 'wallet',
+  ) => post<{
+    rideId: string; driver: any; eta: number; tarifa: number;
+    distanceKm: number; type: string; status: string; paymentMethod: string;
+  }>('/api/taxi/request', {
+    origin:        origin.address,
+    dest:          destination.address,
+    type:          rideType,
+    paymentMethod,
+    originLat:     origin.lat,
+    originLng:     origin.lng,
+    destLat:       destination.lat,
+    destLng:       destination.lng,
   }),
-  cancelRide: (rideId: string) => post<any>(`/api/taxi/${rideId}/cancel`, {}),
-  getRideStatus: (rideId: string) => get<any>(`/api/taxi/${rideId}/status`),
-  rateDriver: (rideId: string, rating: number) =>
-    post<any>(`/api/taxi/${rideId}/rate`, { rating }),
+
+  /** Cancelar viaje */
+  cancelRide: (rideId: string) =>
+    post<{ message: string }>(`/api/taxi/${rideId}/cancel`, {}),
+
+  /** Estado del viaje (polling) */
+  getRideStatus: (rideId: string) =>
+    get<{
+      rideId: string; status: string; eta: number; distanceKm: number;
+      fare: number; driver: any; driver_location: { lat: number; lng: number };
+      paymentMethod: string;
+    }>(`/api/taxi/${rideId}/status`),
+
+  /** Valorar conductor */
+  rateDriver: (rideId: string, rating: number, comment?: string) =>
+    post<{ message: string; rating: number }>(`/api/taxi/${rideId}/rate`, { rating, comment }),
+
+  /** Historial de viajes */
+  getRides: (page = 1, limit = 20) =>
+    get<any[]>(`/api/taxi/rides?page=${page}&limit=${limit}`),
+
+  /** Estimación de precio sin pedir viaje */
+  estimateFare: (
+    rideType: string,
+    origin: { lat?: number; lng?: number },
+    dest: { lat?: number; lng?: number },
+    distanceKm?: number,
+  ) => post<{ tarifa: number; distanceKm: number; eta: number; currency: string }>(
+    '/api/taxi/estimate',
+    {
+      type: rideType,
+      originLat: origin.lat, originLng: origin.lng,
+      destLat: dest.lat,     destLng: dest.lng,
+      distanceKm,
+    },
+  ),
 };
