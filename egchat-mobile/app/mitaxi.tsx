@@ -11,7 +11,7 @@ import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { taxiAPI, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
-import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap.native';
+import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap';
 import {
   MALABO_CENTER, MITAXI_PLACE_NAMES, MapCoord,
   findPlaceCoords, isCurrentLocationLabel,
