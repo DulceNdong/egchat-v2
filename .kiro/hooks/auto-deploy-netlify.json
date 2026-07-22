@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Deploy manual a Netlify",
+      "description": "Deploy directo a Netlify. Usar cuando Vercel alcanza el límite diario. Requiere NETLIFY_AUTH_TOKEN y NETLIFY_SITE_ID configurados.",
+      "trigger": "Manual",
+      "action": {
+        "type": "command",
+        "command": "npm run build && npx netlify deploy --prod --dir=dist --auth=$NETLIFY_AUTH_TOKEN --site=$NETLIFY_SITE_ID && echo 'Deploy en Netlify completado'"
+      },
+      "timeout": 300,
+      "enabled": true
+    }
+  ]
+}

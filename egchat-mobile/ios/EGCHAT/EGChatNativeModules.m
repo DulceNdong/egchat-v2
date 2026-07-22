@@ -487,3 +487,107 @@ RCT_EXPORT_METHOD(cancel:(NSString *)chatId) {
 }
 
 @end
+
+
+#pragma mark - EGChatFaceFilter (Vision Framework — detección facial)
+
+#import <Vision/Vision.h>
+#import <CoreImage/CoreImage.h>
+
+@interface EGChatFaceFilter : NSObject <RCTBridgeModule>
+@end
+
+@implementation EGChatFaceFilter {
+  VNDetectFaceLandmarksRequest *_landmarksRequest;
+  VNDetectFaceRectanglesRequest *_rectRequest;
+}
+
+RCT_EXPORT_MODULE(EGChatFaceFilter)
++ (BOOL)requiresMainQueueSetup { return NO; }
+
+RCT_EXPORT_METHOD(initialize:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  // Vision está siempre disponible en iOS 11+, no requiere init especial
+  resolve(@YES);
+}
+
+RCT_EXPORT_METHOD(detectFacesInImage:(NSString *)base64Frame
+                  resolver:(RCTPromiseResolveBlock)resolve
+                  rejecter:(RCTPromiseRejectBlock)reject) {
+  // Decodificar base64 → UIImage
+  NSData *imageData = [[NSData alloc] initWithBase64EncodedString:base64Frame options:0];
+  if (!imageData) { resolve(@[]); return; }
+  UIImage *image = [UIImage imageWithData:imageData];
+  if (!image) { resolve(@[]); return; }
+
+  CIImage *ciImage = [[CIImage alloc] initWithImage:image];
+  if (!ciImage) { resolve(@[]); return; }
+
+  // Request de landmarks faciales
+  __block NSMutableArray *results = [NSMutableArray array];
+
+  VNDetectFaceLandmarksRequest *request = [[VNDetectFaceLandmarksRequest alloc]
+    initWithCompletionHandler:^(VNRequest *req, NSError *error) {
+      if (error || !req.results) return;
+      for (VNFaceObservation *face in req.results) {
+        CGFloat iw = image.size.width;
+        CGFloat ih = image.size.height;
+        CGRect bbox = face.boundingBox;
+
+        // Vision usa coordenadas normalizadas con origen en bottom-left
+        // Convertir a top-left (estilo iOS/React Native)
+        CGFloat x = bbox.origin.x * iw;
+        CGFloat y = (1 - bbox.origin.y - bbox.size.height) * ih;
+        CGFloat w = bbox.size.width * iw;
+        CGFloat h = bbox.size.height * ih;
+
+        NSMutableDictionary *faceDict = [@{
+          @"x": @(x), @"y": @(y),
+          @"width": @(w), @"height": @(h),
+          @"headEulerX": @(face.pitch ? face.pitch.doubleValue * 57.29578 : 0),
+          @"headEulerY": @(face.yaw ? face.yaw.doubleValue * 57.29578 : 0),
+          @"headEulerZ": @(face.roll ? face.roll.doubleValue * 57.29578 : 0),
+        } mutableCopy];
+
+        // Landmarks
+        NSMutableDictionary *landmarks = [NSMutableDictionary dictionary];
+        VNFaceLandmarks2D *lm = face.landmarks;
+
+        auto pointForRegion = ^(VNFaceLandmarkRegion2D *region) -> NSDictionary * {
+          if (!region || region.pointCount == 0) return nil;
+          // Calcular centro del region
+          CGFloat sx = 0, sy = 0;
+          const float *rawPoints = (const float *)region.normalizedPoints;
+          for (NSUInteger i = 0; i < region.pointCount; i++) {
+            sx += rawPoints[i * 2];
+            sy += rawPoints[i * 2 + 1];
+          }
+          CGFloat cx = (sx / region.pointCount) * iw;
+          CGFloat cy = (1 - sy / region.pointCount) * ih;
+          return @{ @"x": @(cx), @"y": @(cy) };
+        };
+
+        if (lm.nose)        landmarks[@"nose"]       = pointForRegion(lm.nose)       ?: [NSNull null];
+        if (lm.leftEye)     landmarks[@"leftEye"]    = pointForRegion(lm.leftEye)    ?: [NSNull null];
+        if (lm.rightEye)    landmarks[@"rightEye"]   = pointForRegion(lm.rightEye)   ?: [NSNull null];
+        if (lm.outerLips)   landmarks[@"mouth"]      = pointForRegion(lm.outerLips)  ?: [NSNull null];
+        if (lm.leftEyebrow) landmarks[@"leftBrow"]   = pointForRegion(lm.leftEyebrow)  ?: [NSNull null];
+        if (lm.rightEyebrow)landmarks[@"rightBrow"]  = pointForRegion(lm.rightEyebrow) ?: [NSNull null];
+
+        faceDict[@"landmarks"] = landmarks;
+        [results addObject:faceDict];
+      }
+    }];
+
+  VNImageRequestHandler *handler = [[VNImageRequestHandler alloc]
+    initWithCIImage:ciImage options:@{}];
+  NSError *err = nil;
+  [handler performRequests:@[request] error:&err];
+  resolve(results);
+}
+
+RCT_EXPORT_METHOD(releaseFilter) {
+  // No hay recursos que liberar — Vision gestiona su propio ciclo de vida
+}
+
+@end

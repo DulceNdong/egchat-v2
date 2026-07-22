@@ -1,0 +1,17 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Auto Deploy Backend",
+      "description": "Automatically commits and pushes backend changes to GitHub when server/index.js is saved, triggering Render redeploy",
+      "trigger": "PostFileSave",
+      "matcher": "server/index\\.js$",
+      "action": {
+        "type": "command",
+        "command": "cd server && git add index.js && git commit -m \"auto: update backend\" && git push origin main"
+      },
+      "timeout": 60,
+      "enabled": true
+    }
+  ]
+}
