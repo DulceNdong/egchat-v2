@@ -46,7 +46,12 @@ import { QuickReplyPanel } from '../../src/components/chat/QuickReplyPanel';
 import { PushToTalkButton } from '../../src/components/chat/PushToTalkButton';
 import { toggleReaction, applyReactionOptimistic, type ReactionsMap } from '../../src/services/messageReactions';
 import { getAllQuickReplies, searchQuickReplies, type QuickReply } from '../../src/services/quickReplies';
-import { scheduleReadReceipt, clearAllMessageStatusTimers } from '../../src/features/chat/messageStatus';
+import {
+  scheduleReadReceipt,
+  clearAllMessageStatusTimers,
+  markChatAsRead,
+  markMessageRead,
+} from '../../src/features/chat/messageStatus';
 import { CFG, getCfgBool } from '../../src/services/settingsPrefs';
 import { getChatWallpaperId, setChatWallpaperId } from '../../src/utils/chatWallpaper';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -63,7 +68,13 @@ import { haptics } from '../../src/hooks/useHaptics';
 import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
 import { useOffline } from '../../src/hooks/useOffline';
 import { toast } from '../../src/components/Toast';
-import { createChatTypingChannel, subscribeToChat, subscribeToOnlineUsers } from '../../src/supabase';
+import {
+  createChatTypingChannel,
+  subscribeToChat,
+  subscribeToOnlineUsers,
+  subscribeToReadBroadcast,
+  broadcastReadReceipt,
+} from '../../src/supabase';
 import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
@@ -284,7 +295,9 @@ export default function ChatScreen() {
       if (msg.sender_id === currentUserId) return;
       const enriched = normalizeMessage(msg);
       setMessages(prev => mergeMessages(prev, [enriched]));
+      // Marcar como leído y notificar al emisor con checks azules
       chatAPI.markAsRead(chatId, msg.id).catch(() => {});
+      broadcastReadReceipt(chatId, currentUserId, [msg.id]);
       setIsTyping(false);
       playMessageReceived(); // ← sonido de mensaje recibido
     }
@@ -298,8 +311,19 @@ export default function ChatScreen() {
       }
     }
 
-    if (event.type === 'read' && event.chatId === chatId && event.messageId) {
-      setMessages(prev => prev.map(m => (m.id === event.messageId ? { ...m, status: 'read' } : m)));
+    // Evento 'read' emitido por el backend cuando el receptor abre el chat
+    // Puede venir con un messageId individual o con messageIds (array)
+    if (event.type === 'read' && event.chatId === chatId) {
+      const ids: string[] = (event as any).messageIds || (event.messageId ? [event.messageId] : []);
+      if (ids.length > 0) {
+        setMessages(prev =>
+          prev.map(m =>
+            ids.includes(m.id) && m.sender_id === currentUserId
+              ? { ...m, status: 'read' as const }
+              : m,
+          ),
+        );
+      }
     }
   });
 
@@ -337,10 +361,14 @@ export default function ChatScreen() {
     setMessages(prev => prev.map(m => (m.id === messageId ? { ...m, status } : m)));
   }, []);
 
+  // Aplica 'delivered' al mensaje propio recién enviado.
+  // El estado 'read' llegará de verdad cuando el receptor abra el chat
+  // vía SSE o Supabase broadcast — ya NO hay timer falso.
   const markDeliveredAndScheduleRead = useCallback((messageId: string) => {
     applyMessageStatus(messageId, 'delivered');
-    scheduleReadReceipt(messageId, applyMessageStatus);
-  }, [applyMessageStatus]);
+    // scheduleReadReceipt ahora solo hace el POST real al backend, no un timer visual
+    scheduleReadReceipt(messageId, applyMessageStatus, chatId);
+  }, [applyMessageStatus, chatId]);
 
   // Actualizar mi avatar/nombre cuando cambia el perfil
   useEffect(() => {
@@ -394,10 +422,24 @@ export default function ChatScreen() {
         saveCache(`chat_messages_${chatId}`, msgList);
         setHasMore(msgList.length === 50);
 
-        // Marcar como leídos
+        // ── Lectura real (doble check azul) ──────────────────────────
+        // 1. Marcar el último mensaje leído en BD (endpoint existente)
         const lastReadableId = getLastReadableMessageId(msgList, me?.id || '');
         if (lastReadableId) {
           chatAPI.markAsRead(chatId, lastReadableId).catch(() => {});
+        }
+        // 2. Marcar TODOS los mensajes del chat como leídos (nuevo endpoint)
+        //    Esto actualiza status → 'read' en BD y el backend emite SSE al emisor
+        markChatAsRead(chatId);
+        // 3. Emitir broadcast inmediato por Supabase para máxima velocidad
+        //    (el emisor lo recibe en < 200ms antes de que BD propague)
+        if (me?.id) {
+          const unreadIds = msgList
+            .filter(m => m.sender_id !== me.id && m.status !== 'read')
+            .map(m => m.id);
+          if (unreadIds.length > 0) {
+            broadcastReadReceipt(chatId, me.id, unreadIds);
+          }
         }
       } catch (e) {
         console.error('Error cargando chat:', e);
@@ -448,13 +490,28 @@ export default function ChatScreen() {
           return currentChat;
         });
         if (event === 'INSERT') {
+          // Marcar como leído inmediatamente (estamos en el chat activo)
           chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
+          // Broadcast de lectura para que el emisor vea checks azules al instante
+          broadcastReadReceipt(chatId, currentUserId, [newMsg.id]);
           playMessageReceived(); // ← sonido en mensajes via Realtime
         }
         setIsTyping(false);
       } else if (event === 'UPDATE') {
         setMessages(prev => mergeMessages(prev, [newMsg]));
       }
+    });
+
+    // ── Suscripción a read receipts (checks azules en tiempo real) ──
+    // El emisor escucha cuándo el receptor lee sus mensajes
+    const unsubscribeRead = subscribeToReadBroadcast(chatId, currentUserId, (messageIds) => {
+      setMessages(prev =>
+        prev.map(m =>
+          messageIds.includes(m.id) && m.sender_id === currentUserId
+            ? { ...m, status: 'read' as const }
+            : m,
+        ),
+      );
     });
 
     // Si Realtime no responde en 5s, polling cada 2s
@@ -472,6 +529,7 @@ export default function ChatScreen() {
 
     return () => {
       unsubscribe();
+      unsubscribeRead();
       clearTimeout(realtimeCheck);
       if (pollInterval) clearInterval(pollInterval);
     };

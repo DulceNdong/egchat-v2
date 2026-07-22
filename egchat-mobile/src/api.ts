@@ -144,7 +144,7 @@ async function request<T>(
   };
 
   // Render gratis puede tardar ~30–50 s al despertar
-  const timeoutMs = method === 'GET' ? 25000 : 40000;
+  const timeoutMs = method === 'GET' ? 60000 : 60000;
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
 

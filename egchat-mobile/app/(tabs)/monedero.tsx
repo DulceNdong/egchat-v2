@@ -18,6 +18,12 @@ import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../..
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import {
+  createDepositIntent, confirmDeposit, pollPaymentStatus,
+  getPaymentHistory, createWithdrawIntent, confirmWithdraw,
+  GATEWAY_INFO, formatGatewayFee, getNetAmount,
+  type PaymentGateway, type ExternalTransaction,
+} from '../../src/services/paymentGateway';
+import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
 } from '../../src/theme';
@@ -314,7 +320,8 @@ const QRModal = ({
 };
 
 // ── Modal Recarga ─────────────────────────────────────────────────
-type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success';
+type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success'
+           | 'stripe' | 'orange_money' | 'mtn_mobile' | 'polling';
 
 const RecargaModal = ({
   visible, balance, onClose, onSuccess,
@@ -354,16 +361,21 @@ const RecargaModal = ({
   };
 
   const METODOS = [
-    { id: 'banco',         label: 'Desde banco',          sub: 'Transferencia bancaria desde tu cuenta', gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
-    { id: 'transferencia', label: 'Transferencia EGCHAT',  sub: 'Recibe de otro usuario EGCHAT',          gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
-    { id: 'codigo',        label: 'Código de recarga',     sub: 'Introduce un código de recarga prepago', gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
-    { id: 'agente',        label: 'Depósito en efectivo',  sub: 'En agentes autorizados EGCHAT',          gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
+    { id: 'stripe',        label: 'Tarjeta Visa / Mastercard', sub: 'Pago inmediato con tarjeta internacional', gradient: ['#635BFF', '#4F46E5'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
+    { id: 'orange_money',  label: 'Orange Money',              sub: 'Pago USSD — inmediato en GQ',              gradient: ['#FF6600', '#EA580C'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'mtn_mobile',    label: 'MTN Mobile Money',          sub: 'Pago USSD — inmediato',                    gradient: ['#FFCC00', '#D97706'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'banco',         label: 'Desde banco',               sub: 'Transferencia bancaria desde tu cuenta',   gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
+    { id: 'transferencia', label: 'Transferencia EGCHAT',       sub: 'Recibe de otro usuario EGCHAT',            gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
+    { id: 'codigo',        label: 'Código de recarga',          sub: 'Introduce un código de recarga prepago',   gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
+    { id: 'agente',        label: 'Depósito en efectivo',       sub: 'En agentes autorizados EGCHAT',            gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
   ];
 
-  const TITLES: Record<RStep, string> = {
+  const TITLES: Record<string, string> = {
     menu: 'Recargar monedero', banco: 'Desde banco', transferencia: 'Transferencia EGCHAT',
     codigo: 'Código de recarga', agente: 'Depósito en efectivo',
     confirm: 'Confirmar recarga', success: '¡Recarga completada!',
+    stripe: 'Pagar con tarjeta', orange_money: 'Orange Money', mtn_mobile: 'MTN Mobile Money',
+    polling: 'Esperando pago…',
   };
 
   return (
@@ -555,6 +567,193 @@ const RecargaModal = ({
             </View>
             <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={close} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── STRIPE — tarjeta internacional ── */}
+        {step === 'stripe' && (
+          <>
+            <SectionHead title="Pagar con tarjeta" sub="Visa, Mastercard, Amex — procesado por Stripe"
+              gradient={['#635BFF', '#4F46E5']} icon={<IcoTarjeta color="#fff" />} />
+            <View style={s.infoBox}>
+              <Text style={[s.infoValue, { textAlign: 'center', paddingVertical: 4 }]}>
+                💳  Pago 100% seguro · Cifrado SSL
+              </Text>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoValue}>2.9% + 30 XAF</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Disponibilidad</Text>
+                <Text style={s.infoValue}>Inmediato</Text>
+              </View>
+            </View>
+            <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
+            <Field label="Importe (mín. 500 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="10000" keyboardType="numeric" />
+            {amountNum >= 500 && (
+              <View style={[s.infoBox, { marginBottom: 8 }]}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
+                    {fmt(getNetAmount('stripe', amountNum))} XAF
+                  </Text>
+                </View>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Comisión Stripe</Text>
+                  <Text style={s.infoValue}>{formatGatewayFee('stripe', amountNum)}</Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: '#635BFF' }, (amountNum < 500 || loading) && s.primaryBtnDisabled]}
+              onPress={async () => {
+                if (amountNum < 500 || loading) return;
+                setLoading(true);
+                try {
+                  const intent = await createDepositIntent(amountNum, 'stripe', { description: 'Recarga EGChat' });
+                  if (intent.clientSecret) {
+                    // clientSecret listo — en producción integrar @stripe/stripe-react-native aquí
+                    // Por ahora confirmamos directamente (sandbox/demo)
+                    Alert.alert(
+                      'Pago con Stripe',
+                      `PaymentIntent creado.\n\nEn producción: integra @stripe/stripe-react-native para confirmar con la tarjeta.\n\nClientSecret: ${intent.clientSecret?.slice(0, 30)}...`,
+                      [
+                        { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+                        { text: 'Simular pago ✓', onPress: async () => {
+                          const result = await confirmDeposit(intent.id, 'stripe');
+                          onSuccess();
+                          set('ref', intent.id);
+                          setStep('success');
+                          setLoading(false);
+                        }},
+                      ],
+                    );
+                  } else {
+                    Alert.alert('Stripe no configurado', 'Añade STRIPE_SECRET_KEY al servidor para activar pagos reales.');
+                    setLoading(false);
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error', e.message || 'No se pudo crear el pago');
+                  setLoading(false);
+                }
+              }}
+              disabled={amountNum < 500 || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryBtnText}>Pagar {amountNum >= 500 ? fmt(amountNum) : '…'} XAF con tarjeta</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+          </>
+        )}
+
+        {/* ── ORANGE MONEY ── */}
+        {(step === 'orange_money' || step === 'mtn_mobile') && (
+          <>
+            <SectionHead
+              title={step === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money'}
+              sub="Pago USSD — confirma en tu teléfono"
+              gradient={step === 'orange_money' ? ['#FF6600', '#EA580C'] : ['#FFCC00', '#D97706']}
+              icon={<IcoEfectivo color="#fff" />}
+            />
+            <View style={s.infoBox}>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoValue}>1%</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Tiempo</Text>
+                <Text style={s.infoValue}>Inmediato tras confirmar USSD</Text>
+              </View>
+            </View>
+            <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
+            <Field label="Importe (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label="Tu número de teléfono" value={data.phone||''} onChangeText={v=>set('phone',v)} placeholder="+240 222 000 000" keyboardType="phone-pad" />
+            {amountNum >= 1000 && (
+              <View style={[s.infoBox, { marginBottom: 8 }]}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
+                    {fmt(getNetAmount(step as PaymentGateway, amountNum))} XAF
+                  </Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.primaryBtn,
+                { backgroundColor: step === 'orange_money' ? '#FF6600' : '#FFCC00' },
+                (amountNum < 1000 || !data.phone || loading) && s.primaryBtnDisabled,
+              ]}
+              onPress={async () => {
+                if (amountNum < 1000 || !data.phone || loading) return;
+                setLoading(true);
+                try {
+                  const intent = await createDepositIntent(amountNum, step as PaymentGateway, { phone: data.phone });
+                  set('intentId', intent.id);
+                  set('ussdCode', (intent as any).ussdCode || '');
+                  setStep('polling');
+                } catch (e: any) {
+                  Alert.alert('Error', e.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={amountNum < 1000 || !data.phone || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={[s.primaryBtnText, { color: step === 'mtn_mobile' ? '#1f2937' : '#fff' }]}>
+                    Iniciar pago USSD — {amountNum >= 1000 ? fmt(amountNum) : '…'} XAF
+                  </Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+          </>
+        )}
+
+        {/* ── POLLING — esperando confirmación USSD ── */}
+        {step === 'polling' && (
+          <View style={s.successWrap}>
+            <View style={[s.successCircle, { backgroundColor: '#FF6600' }]}>
+              <Text style={{ fontSize: 28 }}>📱</Text>
+            </View>
+            <Text style={s.successTitle}>Confirma en tu teléfono</Text>
+            {data.ussdCode ? (
+              <View style={s.refCard}>
+                <Text style={s.refLabel}>CÓDIGO USSD</Text>
+                <Text style={[s.refCode, { fontSize: 22, letterSpacing: 2 }]}>{data.ussdCode}</Text>
+              </View>
+            ) : null}
+            <Text style={[s.successSub, { marginTop: 8 }]}>
+              Marca el código en tu teléfono {data.phone ? `(${data.phone})` : ''} y confirma con tu PIN.
+            </Text>
+            <ActivityIndicator color="#00c8a0" style={{ marginVertical: 12 }} />
+            <Text style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
+              Esperando confirmación del operador…
+            </Text>
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: '#00c8a0', marginTop: 16 }]}
+              onPress={async () => {
+                if (!data.intentId) return;
+                setLoading(true);
+                const result = await pollPaymentStatus(data.intentId, 1, 0);
+                // En demo confirmamos manualmente
+                const confirmed = await confirmDeposit(data.intentId, 'orange_money');
+                onSuccess();
+                set('ref', data.intentId);
+                setStep('success');
+                setLoading(false);
+              }}
+              activeOpacity={0.85}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Ya confirmé el pago ✓</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={() => setStep('menu')}>
+              <Text style={s.backBtnText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -939,14 +1138,18 @@ export default function MonederoScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
+  const [externalHistory, setExternalHistory] = useState<ExternalTransaction[]>([]);
+
   const loadData = useCallback(async () => {
     try {
-      const [bal, txs] = await Promise.all([
+      const [bal, txs, extTxs] = await Promise.all([
         walletAPI.getBalance(),
         walletAPI.getTransactions(1),
+        getPaymentHistory(1, 10),
       ]);
       setBalance(bal.balance || 0);
       setTransactions(txs.transactions || []);
+      setExternalHistory(extTxs || []);
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -1217,6 +1420,59 @@ export default function MonederoScreen() {
               ))}
             </View>
           </View>
+
+          {/* ── Historial de pagos externos (Stripe / Orange / MTN) ── */}
+          {externalHistory.length > 0 && (
+            <View style={s.sectionBlock}>
+              <View style={s.sectionHeader}>
+                <Text style={[s.sectionTitle, { color: C.textPrimary }]}>PASARELA DE PAGO</Text>
+              </View>
+              <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
+                {externalHistory.map((tx, i) => {
+                  const info = GATEWAY_INFO[tx.gateway as PaymentGateway];
+                  const isIn = tx.type === 'deposit';
+                  const statusColor = tx.status === 'completed' ? '#00c8a0'
+                    : tx.status === 'pending' ? '#f59e0b'
+                    : '#ef4444';
+                  return (
+                    <View key={tx.id}>
+                      <View style={s.txCard}>
+                        <View style={[s.txIconWrap, { backgroundColor: isIn ? '#E8F8EE' : '#FEF2F2' }]}>
+                          <Text style={{ fontSize: 18 }}>{info?.icon || '💳'}</Text>
+                        </View>
+                        <View style={s.txInfo}>
+                          <Text style={[s.txLabel, { color: C.textPrimary }]}>
+                            {info?.label || tx.gateway}
+                          </Text>
+                          <Text style={[s.txDesc, { color: C.textSecondary }]}>
+                            {tx.description || (isIn ? 'Depósito' : 'Retiro')}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <View style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusColor }]} />
+                            <Text style={[s.txDate, { color: statusColor, fontWeight: '600' }]}>
+                              {tx.status === 'completed' ? 'Completado'
+                                : tx.status === 'pending' ? 'Pendiente'
+                                : tx.status === 'failed' ? 'Fallido' : tx.status}
+                            </Text>
+                            <Text style={[s.txDate, { color: C.textTertiary }]}>
+                              · {formatDate(tx.createdAt)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={s.txAmountWrap}>
+                          <Text style={[s.txAmount, { color: isIn ? '#00c8a0' : '#ef4444' }]}>
+                            {isIn ? '+' : '-'}{fmt(tx.amount)}
+                          </Text>
+                          <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
+                        </View>
+                      </View>
+                      {i < externalHistory.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </ScrollView>
       </View>
 

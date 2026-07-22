@@ -2,10 +2,12 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image, Linking, Animated,
+  PanResponder, LayoutChangeEvent,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import Svg, { Path, Rect, Polygon } from 'react-native-svg';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
 import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
@@ -269,104 +271,52 @@ const isVoiceMessage = (msg: ChatMessage): boolean => {
   return false;
 };
 
-const SPEED_STEPS = [1, 1.5, 2] as const;
-type SpeedStep = typeof SPEED_STEPS[number];
-
-// ── VoiceCard — mensaje de voz con velocidad ──────────────────────
 const VOICE_BARS = [0.3,0.5,0.8,0.6,1.0,0.7,0.4,0.9,0.5,0.8,0.6,0.3,0.7,1.0,0.5,0.4,0.9,0.6,0.8,0.3,0.5,0.7,1.0,0.4,0.6,0.9,0.5,0.3,0.8,0.6];
 
+// ── VoiceCard — mensaje de voz con velocidad 1×/1.5×/2×, scrubbing táctil
+// y reproducción continua al salir del chat (usa reproductor global singleton)
 const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
-  const [playing, setPlaying]   = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [position, setPosition] = useState(0);
-  const [speed, setSpeed]       = useState<SpeedStep>(1);
-  const soundRef   = useRef<Audio.Sound | null>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
-  const pulseAnim  = useRef(new Animated.Value(1)).current;
-  const isWeb      = typeof document !== 'undefined';
-  const url        = message.file_url || '';
+  const url = message.file_url || '';
+  const { playing, progress, position, duration, speed, togglePlay, cycleSpeed, seek } =
+    useAudioPlayer(url);
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Ancho de la barra de progreso para calcular ratio de scrubbing
+  const waveWidthRef = useRef(0);
 
   const fmtTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  // Pulso
+  // Pulso del botón play mientras reproduce
   useEffect(() => {
     if (playing) {
       Animated.loop(Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.12, duration: 500, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1.0,  duration: 500, useNativeDriver: true }),
       ])).start();
-    } else { pulseAnim.stopAnimation(); pulseAnim.setValue(1); }
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
   }, [playing]);
 
-  // Web: Audio element
-  useEffect(() => {
-    if (!isWeb || !url) return;
-    const el = new (window as any).Audio(url) as HTMLAudioElement;
-    el.preload = 'metadata';
-    el.playbackRate = speed;
-    el.onloadedmetadata = () => setDuration(el.duration);
-    el.ontimeupdate = () => {
-      setPosition(el.currentTime);
-      setProgress(el.duration ? el.currentTime / el.duration : 0);
-    };
-    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
-    audioElRef.current = el;
-    return () => { el.pause(); el.src = ''; audioElRef.current = null; };
-  }, [isWeb, url]);
-
-  // Cambiar velocidad en web
-  useEffect(() => {
-    if (isWeb && audioElRef.current) audioElRef.current.playbackRate = speed;
-  }, [isWeb, speed]);
-
-  const togglePlay = useCallback(async () => {
-    if (!url) return;
-    if (isWeb) {
-      const el = audioElRef.current;
-      if (!el) return;
-      if (playing) { el.pause(); setPlaying(false); }
-      else { el.play().catch(() => {}); setPlaying(true); }
-      return;
-    }
-    try {
-      if (soundRef.current) {
-        const st = await soundRef.current.getStatusAsync();
-        if (st.isLoaded) {
-          if (st.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
-          else              { await soundRef.current.setRateAsync(speed, true); await soundRef.current.playAsync(); setPlaying(true); }
-          return;
-        }
-      }
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url }, { shouldPlay: true, rate: speed, shouldCorrectPitch: true },
-        (st) => {
-          if (!st.isLoaded) return;
-          const dur = (st.durationMillis || 0) / 1000;
-          const pos = (st.positionMillis || 0) / 1000;
-          setDuration(dur); setPosition(pos);
-          setProgress(dur ? pos / dur : 0);
-          if (st.didJustFinish) { setPlaying(false); setProgress(0); setPosition(0); sound.setPositionAsync(0).catch(() => {}); }
-        }
-      );
-      soundRef.current = sound;
-      setPlaying(true);
-    } catch {}
-  }, [url, playing, isWeb, speed]);
-
-  // Cambiar velocidad en nativo mientras reproduce
-  const cycleSpeed = useCallback(async () => {
-    const idx  = SPEED_STEPS.indexOf(speed);
-    const next = SPEED_STEPS[(idx + 1) % SPEED_STEPS.length];
-    setSpeed(next);
-    if (!isWeb && soundRef.current) {
-      try { await soundRef.current.setRateAsync(next, true); } catch {}
-    }
-  }, [speed, isWeb]);
-
-  useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
+  // PanResponder para scrubbing táctil en nativo
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        if (waveWidthRef.current <= 0) return;
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / waveWidthRef.current));
+        seek(ratio);
+      },
+      onPanResponderMove: (evt) => {
+        if (waveWidthRef.current <= 0) return;
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / waveWidthRef.current));
+        seek(ratio);
+      },
+    }),
+  ).current;
 
   const accent   = isOwn ? '#00c8a0' : '#00b4e6';
   const barFill  = isOwn ? '#00c8a0' : '#00b4e6';
@@ -374,7 +324,7 @@ const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
 
   return (
     <View style={vc.card}>
-      {/* Botón play/pause */}
+      {/* Botón play/pause con pulso animado */}
       <TouchableOpacity onPress={togglePlay} activeOpacity={0.8}>
         <Animated.View style={[vc.btn, { backgroundColor: accent, transform: [{ scale: pulseAnim }] }]}>
           {playing ? (
@@ -388,22 +338,48 @@ const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
         </Animated.View>
       </TouchableOpacity>
 
-      {/* Onda + info */}
+      {/* Forma de onda con scrubbing */}
       <View style={vc.mid}>
-        <View style={vc.waveRow}>
+        <View
+          style={vc.waveRow}
+          onLayout={(e: LayoutChangeEvent) => { waveWidthRef.current = e.nativeEvent.layout.width; }}
+          {...panResponder.panHandlers}
+        >
           {VOICE_BARS.map((h, i) => {
             const filled = progress > 0 && i / VOICE_BARS.length < progress;
-            return <View key={i} style={[vc.bar, { height: Math.max(3, h * 24), backgroundColor: filled ? barFill : barEmpty }]} />;
+            return (
+              <View
+                key={i}
+                style={[vc.bar, {
+                  height: Math.max(3, h * 24),
+                  backgroundColor: filled ? barFill : barEmpty,
+                }]}
+              />
+            );
           })}
+          {/* Thumb indicador de posición */}
+          {progress > 0 && (
+            <View
+              style={[vc.scrubThumb, {
+                left: `${Math.round(progress * 100)}%` as any,
+                backgroundColor: accent,
+              }]}
+            />
+          )}
         </View>
         <View style={vc.timeRow}>
           <Text style={vc.timeText}>
             {playing && position > 0 ? fmtTime(position) : duration > 0 ? fmtTime(duration) : '0:00'}
           </Text>
+          {duration > 0 && position > 0 && (
+            <Text style={[vc.timeText, { marginLeft: 'auto' as any, opacity: 0.5 }]}>
+              -{fmtTime(Math.max(0, duration - position))}
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* Botón velocidad */}
+      {/* Botón velocidad: toca para ciclar 1× → 1.5× → 2× */}
       <TouchableOpacity onPress={cycleSpeed} style={[vc.speedBtn, { borderColor: accent }]} activeOpacity={0.7}>
         <Text style={[vc.speedText, { color: accent }]}>{speed}×</Text>
       </TouchableOpacity>
@@ -418,9 +394,18 @@ const vc = StyleSheet.create({
   pauseWrap: { flexDirection: 'row', gap: 3 },
   pauseBar: { width: 3, height: 13, borderRadius: 2 },
   mid: { flex: 1, gap: 4 },
-  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26 },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26, position: 'relative' },
   bar: { width: 3, borderRadius: 2 },
-  timeRow: { flexDirection: 'row' },
+  scrubThumb: {
+    position: 'absolute',
+    top: -2,
+    width: 10,
+    height: 30,
+    borderRadius: 3,
+    opacity: 0.85,
+    marginLeft: -5,
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center' },
   timeText: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
   speedBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5, flexShrink: 0, minWidth: 42, alignItems: 'center' },
   speedText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },

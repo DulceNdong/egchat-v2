@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState, useRef, useCallback } from 'react';
 import { Stack, router, useNavigationContainerRef } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
@@ -10,11 +10,15 @@ import { authAPI, setUnauthorizedHandler } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { useWebRTC } from '../src/hooks/useWebRTC';
+import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
 import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
 import { trackUserPresence } from '../src/supabase';
 import { NativeCallKit } from '../src/native/CallKit';
 import { PushKit } from '../src/native/PushKit';
+import {
+  registerSession, heartbeatSession, handleSyncMessage, handleSessionRevoked,
+} from '../src/services/deviceSessions';
 
 // ── Handler de deep links: egchat://chat/ID, egchat://user/ID ─────
 function handleDeepLink(url: string | null) {
@@ -60,16 +64,43 @@ function StatusBarController() {
 }
 
 export default function RootLayout() {
-  const [checking, setChecking] = useState(true);
-  const notifCleanup = useRef<(() => void) | null>(null);
-  const incomingCleanup = useRef<(() => void) | null>(null);
-  const presenceCleanup = useRef<(() => void) | null>(null);
+  const [checking, setChecking]       = useState(true);
+  const [globalUserId, setGlobalUserId] = useState<string | undefined>(undefined);
+  const notifCleanup   = useRef<(() => void) | null>(null);
+  const incomingCleanup= useRef<(() => void) | null>(null);
+  const presenceCleanup= useRef<(() => void) | null>(null);
   const { pollIncoming } = useWebRTC();
-  const navigationRef = useNavigationContainerRef();
+  const navigationRef  = useNavigationContainerRef();
 
   setUnauthorizedHandler(() => {
     router.replace('/(auth)/login');
   });
+
+  // ── SSE global: sync_message + session_revoked ─────────────────
+  // Conectado una sola vez para toda la app. Maneja sincronización
+  // entre dispositivos y revocación remota de sesión.
+  useChatStream(globalUserId, useCallback((event: any) => {
+    if (event.type === 'sync_message' && event.chatId && event.message) {
+      // Mensaje enviado desde otro dispositivo (web/desktop) → actualizar lista
+      handleSyncMessage(event, {
+        onNewMessage: (_chatId, _msg) => {
+          // El state de los chats se actualiza automáticamente vía Supabase Realtime
+          // o al refrescar la pantalla. Este handler es para future-proofing.
+        },
+        onChatUpdated: (_chatId) => {},
+      });
+    }
+    if (event.type === 'session_revoked') {
+      handleSessionRevoked(event, () => {
+        // Sesión revocada remotamente — hacer logout
+        Alert.alert(
+          'Sesión cerrada',
+          'Tu sesión fue cerrada desde otro dispositivo.',
+          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
+        );
+      });
+    }
+  }, []));
 
   useEffect(() => {
     const init = async () => {
@@ -89,6 +120,7 @@ export default function RootLayout() {
           try {
             const me = await authAPI.me();
             if (me?.id) {
+              setGlobalUserId(String(me.id)); // activa el SSE global
               presenceCleanup.current?.();
               presenceCleanup.current = trackUserPresence(me.id);
 
@@ -117,9 +149,17 @@ export default function RootLayout() {
               };
               heartbeatFn(); // inmediato
               const heartbeatTimer = setInterval(heartbeatFn, 30000);
+
+              // ── Multi-dispositivo: registrar sesión + heartbeat cada 5min ──
+              registerSession().catch(() => {});
+              const sessionHeartbeatTimer = setInterval(() => {
+                heartbeatSession().catch(() => {});
+              }, 5 * 60 * 1000);
+
               const prevCleanup = presenceCleanup.current;
               presenceCleanup.current = () => {
                 clearInterval(heartbeatTimer);
+                clearInterval(sessionHeartbeatTimer);
                 prevCleanup?.();
               };
             }

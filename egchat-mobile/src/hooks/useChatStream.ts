@@ -8,13 +8,33 @@ import { useEffect, useRef, useCallback } from 'react';
 import { getToken, getApiBase } from '../api';
 
 type StreamEvent = {
-  type: 'new_message' | 'chat_updated' | 'connected' | 'heartbeat' | 'typing' | 'read';
+  type: 'new_message' | 'chat_updated' | 'connected' | 'heartbeat' | 'typing' | 'read'
+       | 'sync_message' | 'session_revoked' | 'wallet_updated'
+       | 'group_call_participant_joined' | 'group_call_participant_left'
+       | 'group_call_offer' | 'group_call_answer' | 'group_call_ice';
   chatId?: string;
   message?: any;
   userId?: string;
   messageId?: string;
+  messageIds?: string[];
   isTyping?: boolean;
   ts?: number;
+  // sync_message
+  senderDeviceId?: string;
+  // session_revoked
+  deviceId?: string;
+  sessionId?: string;
+  all?: boolean;
+  exceptDeviceId?: string;
+  // wallet_updated
+  balance?: number;
+  // group_call
+  roomId?: string;
+  fromUserId?: string;
+  name?: string;
+  avatar?: string;
+  sdp?: any;
+  candidate?: any;
 };
 
 type StreamHandler = (event: StreamEvent) => void;

@@ -43,6 +43,7 @@ import {
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
+import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -381,6 +382,9 @@ export default function MensajeriaScreen() {
     const cached = await readCache<Chat[]>('chat_list');
     if (cached?.length && chats.length === 0) {
       setChats(sortChatsByActivity(cached));
+    } else if (!cached?.length) {
+      // Sin caché: avisar que puede tardar en la primera carga
+      toast.info('Conectando con el servidor…');
     }
 
     try {
@@ -441,9 +445,11 @@ export default function MensajeriaScreen() {
       const cachedChats = await readCache<Chat[]>('chat_list');
       if (cachedChats?.length) {
         setChats(sortChatsByActivity(cachedChats));
-        toast.info('Mostrando chats guardados offline');
+        toast.info('Mostrando chats guardados. Reconectando…');
+      } else if (msg.includes('abort') || msg.includes('timeout') || msg.includes('network')) {
+        toast.error('El servidor está despertando. Espera unos segundos y desliza para recargar.');
       } else {
-        toast.error('Error cargando chats. Comprueba tu conexión.');
+        toast.error('No se pudieron cargar los chats. Desliza para reintentar.');
       }
     }
     finally { setLoading(false); setRefreshing(false); }

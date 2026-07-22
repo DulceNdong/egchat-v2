@@ -2,11 +2,17 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, TextInput, TouchableOpacity, ActivityIndicator } from 'react-native';
 import { router } from 'expo-router';
 import {
-  SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow,
+  SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { Colors } from '../../src/theme';
 import { authAPI, getToken, getApiBase } from '../../src/api';
 import { toast } from '../../src/components/Toast';
+import {
+  isBiometricAvailable, getBiometricType,
+  isBiometricLoginEnabled, saveBiometricCredentials, disableBiometricLogin,
+  authenticateWithBiometrics,
+} from '../../src/biometrics';
+import { SetupPINModal } from '../../src/components/wallet/SetupPINModal';
 
 export default function SeguridadCuentaScreen() {
   const [activity, setActivity] = useState<any[]>([]);
@@ -16,6 +22,12 @@ export default function SeguridadCuentaScreen() {
   const [newPwd, setNewPwd] = useState('');
   const [confirmPwd, setConfirmPwd] = useState('');
   const [saving, setSaving] = useState(false);
+  // Biometría
+  const [biometricAvailable, setBiometricAvailable] = useState(false);
+  const [biometricEnabled, setBiometricEnabled] = useState(false);
+  const [biometricType, setBiometricType] = useState('Biometría');
+  // PIN
+  const [showSetupPIN, setShowSetupPIN] = useState(false);
 
   useEffect(() => {
     const load = async () => {
@@ -30,6 +42,21 @@ export default function SeguridadCuentaScreen() {
       setLoading(false);
     };
     load();
+
+    // Verificar disponibilidad y estado de biometría
+    const loadBiometrics = async () => {
+      const available = await isBiometricAvailable();
+      setBiometricAvailable(available);
+      if (available) {
+        const [type, enabled] = await Promise.all([
+          getBiometricType(),
+          isBiometricLoginEnabled(),
+        ]);
+        setBiometricType(type);
+        setBiometricEnabled(enabled);
+      }
+    };
+    loadBiometrics();
   }, []);
 
   const changePassword = async () => {
@@ -58,10 +85,47 @@ export default function SeguridadCuentaScreen() {
     setSaving(false);
   };
 
+  const toggleBiometric = async () => {
+    if (biometricEnabled) {
+      // Desactivar: pedir confirmación biométrica primero
+      const ok = await authenticateWithBiometrics('Confirma para desactivar biometría');
+      if (!ok) { toast.error('Autenticación fallida'); return; }
+      await disableBiometricLogin();
+      setBiometricEnabled(false);
+      toast.success(`✓ ${biometricType} desactivado`);
+    } else {
+      // Activar: necesitamos las credenciales para guardarlas
+      Alert.alert(
+        `Activar ${biometricType}`,
+        `Para activar el inicio de sesión con ${biometricType}, ingresa tu contraseña actual para guardarla de forma segura en este dispositivo.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Continuar',
+            onPress: () => setShowChangePwd(true), // reusar el formulario para obtener contraseña
+          },
+        ],
+      );
+    }
+  };
+
+  const activateBiometricWithPassword = async (password: string) => {
+    const ok = await authenticateWithBiometrics(`Activa ${biometricType} para EGCHAT`);
+    if (!ok) { toast.error('Autenticación biométrica fallida'); return; }
+    try {
+      const me = await authAPI.me();
+      if (me?.phone) {
+        await saveBiometricCredentials(me.phone, password);
+        setBiometricEnabled(true);
+        toast.success(`✓ ${biometricType} activado`);
+      }
+    } catch { toast.error('No se pudo activar'); }
+  };
   const TYPE_ICON: Record<string, string> = { login: '🔑', transaction: '💸', security: '🔒', profile: '👤', chat: '💬' };
   const TYPE_BG:   Record<string, string> = { login: '#d1fae5', transaction: '#dbeafe', security: '#fee2e2', profile: '#f3e8ff', chat: '#e0f2fe' };
 
   return (
+    <>
     <SettingsLayout title="Seguridad de la cuenta">
       {/* Cambiar contraseña */}
       <SettingsSection label="Contraseña y acceso" />
@@ -81,11 +145,20 @@ export default function SeguridadCuentaScreen() {
           </View>
         )}
         <SettingsDivider />
-        <SettingsRow label="PIN de pagos" onPress={() => router.push('/ajustes/security' as any)} />
+        <SettingsRow label="PIN de pagos" onPress={() => setShowSetupPIN(true)} />
         <SettingsDivider />
         <SettingsRow label="Límites de transacción" onPress={() => router.push('/ajustes/security' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Autenticación biométrica" onPress={() => router.push('/ajustes/security' as any)} />
+        {biometricAvailable ? (
+          <SettingsToggleRow
+            label={biometricType}
+            description={biometricEnabled ? 'Inicio de sesión activado' : 'Toca para activar'}
+            value={biometricEnabled}
+            onValueChange={toggleBiometric}
+          />
+        ) : (
+          <SettingsRow label="Biometría" value="No disponible en este dispositivo" />
+        )}
       </SettingsCard>
 
       {/* Sesiones */}
@@ -124,7 +197,12 @@ export default function SeguridadCuentaScreen() {
         <SettingsRow label="Ver historial completo" onPress={() => router.push('/ajustes/actividad' as any)}/>
       </SettingsCard>
     </SettingsLayout>
-  );
+    <SetupPINModal
+      visible={showSetupPIN}
+      onDone={() => { setShowSetupPIN(false); toast.success('✓ PIN de pagos configurado'); }}
+      onCancel={() => setShowSetupPIN(false)}
+    />
+  </> );
 }
 
 const st = StyleSheet.create({

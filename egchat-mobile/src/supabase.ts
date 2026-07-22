@@ -6,8 +6,8 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from './types/chat';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://dptpdifjqgzccjauhodq.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://raqtpkcu36mpwnn0dqss7a.supabase.co';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'sb_publishable_RAQTPKCU36MPwnn0dQSs7A_00ShWhJa';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {
@@ -35,7 +35,7 @@ export const subscribeToChat = (
       {
         event: '*',
         schema: 'public',
-        table: 'messages',
+        table: 'chat_messages',
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
@@ -194,5 +194,103 @@ export const createChatTypingChannel = (
       });
       supabase.removeChannel(channel);
     },
+  };
+};
+
+// ── Suscripción a eventos de lectura (doble check real) ──────────
+/**
+ * subscribeToReadReceipts — escucha cambios en message_reads o chat_participants.
+ * Cuando el receptor abre el chat y llama /read-all, el backend actualiza
+ * la tabla y Supabase Realtime notifica al emisor para poner checks azules.
+ *
+ * Estrategia: escuchar UPDATE en chat_messages donde status cambia a 'read'
+ * para el chat en cuestión.
+ */
+export const subscribeToReadReceipts = (
+  chatId: string,
+  currentUserId: string,
+  onRead: (messageIds: string[]) => void,
+) => {
+  const channel = supabase
+    .channel(`read-receipts:${chatId}:${currentUserId}:${Date.now()}`)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'chat_messages',
+        filter: `chat_id=eq.${chatId}`,
+      },
+      (payload) => {
+        const updated = payload.new as { id: string; status?: string; sender_id?: string };
+        // Solo nos interesan mensajes nuestros que pasaron a 'read'
+        if (
+          updated?.id &&
+          updated?.status === 'read' &&
+          updated?.sender_id === currentUserId
+        ) {
+          onRead([updated.id]);
+        }
+      },
+    );
+
+  channel.subscribe((status) => {
+    if (status === 'CHANNEL_ERROR') {
+      console.warn('[Supabase] Error en canal read-receipts:', chatId);
+    }
+  });
+
+  return () => {
+    supabase.removeChannel(channel);
+  };
+};
+
+/**
+ * broadcastReadReceipt — el receptor emite un broadcast de lectura
+ * para que el emisor actualice los checks en tiempo real (< 200ms).
+ * Se usa ADEMÁS de la actualización en BD para máxima velocidad.
+ */
+export const broadcastReadReceipt = (
+  chatId: string,
+  readerId: string,
+  messageIds: string[],
+) => {
+  const channel = supabase.channel(`read-receipts:${chatId}:broadcast`);
+  channel.send({
+    type: 'broadcast',
+    event: 'read',
+    payload: {
+      chat_id: chatId,
+      reader_id: readerId,
+      message_ids: messageIds,
+      ts: Date.now(),
+    },
+  }).catch(() => {});
+};
+
+/**
+ * subscribeToReadBroadcast — el emisor escucha el broadcast de lectura
+ * del receptor para actualizar los checks inmediatamente (sin esperar BD).
+ */
+export const subscribeToReadBroadcast = (
+  chatId: string,
+  currentUserId: string,
+  onRead: (messageIds: string[]) => void,
+) => {
+  const channel = supabase
+    .channel(`read-receipts:${chatId}:broadcast`, {
+      config: { broadcast: { self: false } },
+    })
+    .on('broadcast', { event: 'read' }, ({ payload }) => {
+      if (!payload?.message_ids?.length) return;
+      // Solo procesar si el que leyó NO somos nosotros
+      if (payload.reader_id === currentUserId) return;
+      onRead(payload.message_ids as string[]);
+    });
+
+  channel.subscribe();
+
+  return () => {
+    supabase.removeChannel(channel);
   };
 };
