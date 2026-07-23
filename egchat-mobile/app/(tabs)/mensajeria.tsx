@@ -382,10 +382,8 @@ export default function MensajeriaScreen() {
     const cached = await readCache<Chat[]>('chat_list');
     if (cached?.length && chats.length === 0) {
       setChats(sortChatsByActivity(cached));
-    } else if (!cached?.length) {
-      // Sin caché: avisar que puede tardar en la primera carga
-      toast.info('Conectando con el servidor…');
     }
+    // Nota: NO mostrar toast de "Conectando" — es molesto y se repite
 
     try {
       const [data, favContacts, favGroups] = await Promise.all([
