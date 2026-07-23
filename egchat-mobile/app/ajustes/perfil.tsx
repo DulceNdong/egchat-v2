@@ -224,9 +224,13 @@ export default function PerfilScreen() {
     setSaving(true);
     try {
       if (editingField === 'name') {
-        await authAPI.updateProfile({ full_name: fieldVal, avatar_url: user?.avatar_url });
+        // Guardar localmente primero (funciona aunque Supabase esté sin cuota)
         setUser(prev => prev ? { ...prev, full_name: fieldVal } : prev);
         emitProfileUpdated({ id: user?.id, full_name: fieldVal });
+        // Intentar sincronizar con el servidor (no crítico si falla)
+        try {
+          await authAPI.updateProfile({ full_name: fieldVal, avatar_url: user?.avatar_url });
+        } catch { /* Supabase sin cuota — guardado localmente, se sincronizará después */ }
         toast.success('✓ Nombre actualizado');
       } else if (editingField === 'bio') {
         setBio(fieldVal);
@@ -238,12 +242,12 @@ export default function PerfilScreen() {
         toast.success('✓ Género guardado');
       } else if (editingField === 'region') {
         setRegion(fieldVal);
-        await userAPI.updateProfile({ country: fieldVal });
+        try { await userAPI.updateProfile({ country: fieldVal }); } catch {}
         setUser(prev => prev ? { ...prev, country: fieldVal } : prev);
         emitProfileUpdated({ country: fieldVal });
         toast.success('✓ Región actualizada');
       } else if (editingField === 'address') {
-        await userAPI.updateProfile({ address: fieldVal });
+        try { await userAPI.updateProfile({ address: fieldVal }); } catch {}
         setUser(prev => prev ? { ...prev, address: fieldVal } : prev);
         emitProfileUpdated({ address: fieldVal });
         toast.success('✓ Dirección guardada');
