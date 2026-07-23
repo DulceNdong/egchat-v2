@@ -226,7 +226,7 @@ export default function PerfilScreen() {
       if (editingField === 'name') {
         await authAPI.updateProfile({ full_name: fieldVal, avatar_url: user?.avatar_url });
         setUser(prev => prev ? { ...prev, full_name: fieldVal } : prev);
-        emitProfileUpdated({ full_name: fieldVal });
+        emitProfileUpdated({ id: user?.id, full_name: fieldVal });
         toast.success('✓ Nombre actualizado');
       } else if (editingField === 'bio') {
         setBio(fieldVal);

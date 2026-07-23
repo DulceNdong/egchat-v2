@@ -234,6 +234,20 @@ export default function AjustesScreen() {
               <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
             </TouchableOpacity>
 
+            {/* Banner: actualiza tu nombre si es genérico */}
+            {user && (!user.full_name || user.full_name === 'Usuario EGCHAT' || user.full_name.startsWith('Usuario ')) && (
+              <TouchableOpacity
+                style={{ backgroundColor: '#fff3cd', borderRadius: 10, padding: 12, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                onPress={() => router.push('/ajustes/perfil')}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 16 }}>✏️</Text>
+                <Text style={{ flex: 1, color: '#856404', fontSize: 13 }}>
+                  Tu nombre aparece como genérico. Toca aquí para actualizar tu perfil.
+                </Text>
+              </TouchableOpacity>
+            )}
+
             {/* Botón cambiar cuenta */}
             <TouchableOpacity
               style={styles.switchAccountBtn}
