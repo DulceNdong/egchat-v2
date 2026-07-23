@@ -5,6 +5,7 @@
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SessionManager from './sessionManager';
+import { saveLocalProfile, getLocalProfile } from './utils/profileEvents';
 
 const BASE = (() => {
   const url = (process.env.EXPO_PUBLIC_API_URL || '').trim();
@@ -203,7 +204,28 @@ export const authAPI = {
     const res = await post<{ token: string; user: any }>('/api/auth/login', { phone, password });
     if (res.token) {
       await setToken(res.token);
-      await sessionManager.saveSession(res.user, res.token);
+      const user = { ...res.user };
+      const isGeneric = !user.full_name || user.full_name === 'Usuario EGCHAT' || user.full_name.startsWith('Usuario ');
+      if (!isGeneric) {
+        // Nombre real recibido del servidor → persistirlo para uso offline futuro
+        await saveLocalProfile(user.id, user.full_name);
+      } else {
+        // Nombre genérico → intentar recuperar el nombre real guardado previamente
+        const cachedName = await getLocalProfile(user.id);
+        if (cachedName) {
+          user.full_name = cachedName;
+        } else {
+          // Último recurso: recuperar de sessionManager
+          const cachedUser = await sessionManager.getUser();
+          const prevName = cachedUser?.full_name;
+          if (prevName && prevName !== 'Usuario EGCHAT' && !prevName.startsWith('Usuario ')) {
+            user.full_name = prevName;
+            user.avatar_url = user.avatar_url || cachedUser?.avatar_url;
+          }
+        }
+      }
+      await sessionManager.saveSession(user, res.token);
+      res.user = user;
     }
     return res;
   },
@@ -229,10 +251,27 @@ export const authAPI = {
 
   me: async () => {
     try {
-      const user = await get<any>('/api/auth/me');
+      const serverUser = await get<any>('/api/auth/me');
       const token = await getToken();
-      if (token) await sessionManager.saveSession(user, token);
-      return user;
+
+      // Si el servidor está offline (Supabase sin cuota), preservar
+      // el full_name y avatar_url reales guardados en caché local.
+      // Esto evita que "Usuario EGCHAT" sobreescriba el nombre real.
+      if (serverUser?._offline) {
+        const cached = await sessionManager.getUser();
+        const merged = {
+          ...serverUser,
+          full_name: cached?.full_name && cached.full_name !== 'Usuario EGCHAT'
+            ? cached.full_name
+            : serverUser.full_name,
+          avatar_url: cached?.avatar_url ?? serverUser.avatar_url,
+        };
+        if (token) await sessionManager.saveSession(merged, token);
+        return merged;
+      }
+
+      if (token) await sessionManager.saveSession(serverUser, token);
+      return serverUser;
     } catch (err) {
       const cached = await sessionManager.getUser();
       if (cached) return cached;
