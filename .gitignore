@@ -10,3 +10,18 @@ egchat-api-temp/
 
 .vercel
 .env*.local
+
+# Build artifacts iOS/Xcode
+build/
+DerivedData/
+Podfile.save
+*.save
+*.xcuserstate
+
+# NPM logs y caches
+.npm/
+*.log
+
+# Expo
+.expo/prebuild/
+.expo/xcodebuild*.log

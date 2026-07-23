@@ -1,5 +1,0 @@
- extern const unsigned char EGCHATVersionString[];
- extern const double EGCHATVersionNumber;
-
- const unsigned char EGCHATVersionString[] __attribute__ ((used)) = "@(#)PROGRAM:EGCHAT  PROJECT:EGCHAT-1" "\n";
- const double EGCHATVersionNumber __attribute__ ((used)) = (double)1.;
