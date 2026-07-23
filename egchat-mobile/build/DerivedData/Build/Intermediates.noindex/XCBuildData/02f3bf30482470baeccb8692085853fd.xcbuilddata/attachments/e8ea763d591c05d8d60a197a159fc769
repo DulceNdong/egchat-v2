@@ -1,0 +1,15 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/ExpoAsset-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/ExpoAsset-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/ExpoAsset-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/ExpoAsset-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/ExpoAsset-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/ExpoAsset-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-asset/ios/AssetModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/AssetModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/AssetModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoAsset.build/Objects-normal/arm64/AssetModule.o"
+  }
+}

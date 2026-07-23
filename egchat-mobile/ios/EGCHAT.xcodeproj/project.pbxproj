@@ -14,8 +14,8 @@
 		9E4D9DA22140CE53DDEC051F /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 9AC8FEBDA3A3283ECC32B622 /* ExpoModulesProvider.swift */; };
 		B8F891E6FD21D300DFE56E98 /* libPods-EGCHAT.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C87923D5687B044D4F258974 /* libPods-EGCHAT.a */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
-		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 		EG001A0000000007 /* EGChatNativeModules.m in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000007 /* EGChatNativeModules.m */; };
+		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -31,9 +31,9 @@
 		BC7E413D3CF067907F996504 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = EGCHAT/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		C87923D5687B044D4F258974 /* libPods-EGCHAT.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-EGCHAT.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
+		EG001B0000000007 /* EGChatNativeModules.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatNativeModules.m; path = EGCHAT/EGChatNativeModules.m; sourceTree = "<group>"; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = EGCHAT/AppDelegate.swift; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "EGCHAT-Bridging-Header.h"; path = "EGCHAT/EGCHAT-Bridging-Header.h"; sourceTree = "<group>"; };
-		EG001B0000000007 /* EGChatNativeModules.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatNativeModules.m; path = EGCHAT/EGChatNativeModules.m; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */

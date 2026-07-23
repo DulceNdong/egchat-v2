@@ -1,0 +1,20 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/EXAV-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/EXAV-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/EXAV-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/EXAV-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/EXAV-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/EXAV-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-av/ios/EXAV/ExpoVideoView.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/ExpoVideoView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/ExpoVideoView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/ExpoVideoView.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-av/ios/EXAV/Video/VideoViewModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/VideoViewModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/VideoViewModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXAV.build/Objects-normal/arm64/VideoViewModule.o"
+  }
+}

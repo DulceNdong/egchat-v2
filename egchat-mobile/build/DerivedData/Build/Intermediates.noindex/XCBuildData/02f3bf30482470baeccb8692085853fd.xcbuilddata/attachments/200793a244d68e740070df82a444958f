@@ -1,0 +1,25 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/ExpoCrypto-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/ExpoCrypto-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/ExpoCrypto-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/ExpoCrypto-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/ExpoCrypto-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/ExpoCrypto-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-crypto/ios/CryptoModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/CryptoModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/CryptoModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/CryptoModule.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-crypto/ios/DigestAlgorithm.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/DigestAlgorithm.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/DigestAlgorithm.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/DigestAlgorithm.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-crypto/ios/DigestOptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/DigestOptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/DigestOptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCrypto.build/Objects-normal/arm64/DigestOptions.o"
+  }
+}

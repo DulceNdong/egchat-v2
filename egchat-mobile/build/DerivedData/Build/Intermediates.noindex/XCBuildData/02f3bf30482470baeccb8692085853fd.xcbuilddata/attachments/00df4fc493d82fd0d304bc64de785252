@@ -1,0 +1,78 @@
+{
+  "" : {
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/ExpoFont-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/ExpoFont-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/ExpoFont-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/ExpoFont-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/FontExceptions.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontExceptions~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/FontFamilyAliasManager.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontFamilyAliasManager~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/FontLoaderModule.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontLoaderModule~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/FontUtils.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtils~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/FontUtilsModule.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsModule~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/FontUtilsRecords.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/FontUtilsRecords~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-font/ios/UIFont+FontFamilyAlias.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoFont.build/Objects-normal/arm64/UIFont+FontFamilyAlias~partial.swiftmodule"
+  }
+}

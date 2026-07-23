@@ -1,0 +1,25 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/ExpoLinearGradient-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/ExpoLinearGradient-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/ExpoLinearGradient-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/ExpoLinearGradient-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/ExpoLinearGradient-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/ExpoLinearGradient-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-linear-gradient/ios/LinearGradientLayer.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientLayer.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientLayer.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientLayer.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-linear-gradient/ios/LinearGradientModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientModule.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-linear-gradient/ios/LinearGradientView.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLinearGradient.build/Objects-normal/arm64/LinearGradientView.o"
+  }
+}

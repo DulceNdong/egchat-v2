@@ -1,0 +1,115 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCamera-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCamera-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCamera-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCamera-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCamera-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCamera-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/CameraViewModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraViewModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraViewModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraViewModule.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/BarcodeExceptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeExceptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeExceptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeExceptions.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/BarcodeUtils.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeUtils.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/CameraExceptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraExceptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraExceptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraExceptions.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/CameraPermissionsRequester.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraPermissionsRequester.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraPermissionsRequester.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraPermissionsRequester.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/DeviceDiscovery.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/DeviceDiscovery.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/DeviceDiscovery.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/DeviceDiscovery.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/ExpoCameraUtils.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCameraUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCameraUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/ExpoCameraUtils.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/PictureOptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/PictureOptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/PictureOptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/PictureOptions.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Common/PictureRef.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/PictureRef.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/PictureRef.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/PictureRef.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/BarcodeRecord.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeRecord.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeRecord.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeRecord.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/BarcodeScanner.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeScanner.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeScanner.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeScanner.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/BarcodeScannerUtils.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeScannerUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeScannerUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/BarcodeScannerUtils.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/CameraEnums.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraEnums.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraEnums.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraEnums.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/CameraPhotoCapture.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraPhotoCapture.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraPhotoCapture.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraPhotoCapture.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/CameraRecordingOptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraRecordingOptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraRecordingOptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraRecordingOptions.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/CameraSessionManager.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraSessionManager.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraSessionManager.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraSessionManager.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/CameraVideoRecording.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraVideoRecording.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraVideoRecording.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraVideoRecording.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/CameraView.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/CameraView.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/MetaDataDelegate.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/MetaDataDelegate.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/MetaDataDelegate.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/MetaDataDelegate.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/Current/VisionScannerDelegate.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/VisionScannerDelegate.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/VisionScannerDelegate.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/VisionScannerDelegate.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-camera/ios/SimulatorUtils.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/SimulatorUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/SimulatorUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoCamera.build/Objects-normal/arm64/SimulatorUtils.o"
+  }
+}

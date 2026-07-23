@@ -1,0 +1,30 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/ExpoSecureStore-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/ExpoSecureStore-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/ExpoSecureStore-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/ExpoSecureStore-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/ExpoSecureStore-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/ExpoSecureStore-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-secure-store/ios/SecureStoreAccessible.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreAccessible.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreAccessible.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreAccessible.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-secure-store/ios/SecureStoreExceptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreExceptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreExceptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreExceptions.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-secure-store/ios/SecureStoreModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreModule.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-secure-store/ios/SecureStoreOptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreOptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreOptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoSecureStore.build/Objects-normal/arm64/SecureStoreOptions.o"
+  }
+}

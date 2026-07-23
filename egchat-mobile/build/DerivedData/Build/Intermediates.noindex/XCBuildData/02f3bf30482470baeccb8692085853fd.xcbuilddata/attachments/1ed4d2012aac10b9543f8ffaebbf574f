@@ -1,0 +1,30 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EXManifests-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EXManifests-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EXManifests-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EXManifests-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EXManifests-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EXManifests-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-manifests/ios/EXManifests/EmbeddedManifest.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EmbeddedManifest.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EmbeddedManifest.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/EmbeddedManifest.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-manifests/ios/EXManifests/ExpoUpdatesManifest.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/ExpoUpdatesManifest.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/ExpoUpdatesManifest.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/ExpoUpdatesManifest.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-manifests/ios/EXManifests/Manifest.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/Manifest.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/Manifest.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/Manifest.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-manifests/ios/EXManifests/ManifestFactory.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/ManifestFactory.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/ManifestFactory.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/EXManifests.build/Objects-normal/arm64/ManifestFactory.o"
+  }
+}

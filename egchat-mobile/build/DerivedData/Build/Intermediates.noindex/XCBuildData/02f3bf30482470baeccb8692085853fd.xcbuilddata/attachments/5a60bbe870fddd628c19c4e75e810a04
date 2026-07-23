@@ -1,0 +1,20 @@
+{
+  "" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/ExpoLocalAuthentication-master.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/ExpoLocalAuthentication-master.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/ExpoLocalAuthentication-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/ExpoLocalAuthentication-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/ExpoLocalAuthentication-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/ExpoLocalAuthentication-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-local-authentication/ios/LocalAuthenticationModule.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/LocalAuthenticationModule.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/LocalAuthenticationModule.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/LocalAuthenticationModule.o"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-local-authentication/ios/LocalAuthenticationOptions.swift" : {
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/LocalAuthenticationOptions.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/LocalAuthenticationOptions.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/ExpoLocalAuthentication.build/Objects-normal/arm64/LocalAuthenticationOptions.o"
+  }
+}

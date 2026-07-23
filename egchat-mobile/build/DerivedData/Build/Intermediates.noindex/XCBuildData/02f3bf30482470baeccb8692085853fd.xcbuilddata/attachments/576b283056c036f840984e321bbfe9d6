@@ -1,0 +1,448 @@
+{
+  "" : {
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/expo-dev-launcher-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/expo-dev-launcher-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/expo-dev-launcher-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/expo-dev-launcher-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/DevLauncherNetworkInterceptor.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherNetworkInterceptor~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/Errors/EXDevLauncherAppError.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherAppError~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/Errors/EXDevLauncherErrorManager.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorManager~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/Errors/EXDevLauncherErrorRegistry.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherErrorRegistry~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/Errors/EXDevLauncherUncaughtExceptionHandler.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUncaughtExceptionHandler~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/EXDevLauncherInstallationIDHelper.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherInstallationIDHelper~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/EXDevLauncherPendingDeepLinkListener.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkListener~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/EXDevLauncherPendingDeepLinkRegistry.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherPendingDeepLinkRegistry~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/EXDevLauncherRecentlyOpenedAppsRegistry.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRecentlyOpenedAppsRegistry~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/EXDevLauncherURLHelper.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherURLHelper~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/EXDevLauncherUtils.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherUtils~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/Logs/EXDevLauncherRemoteLogsManager.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRemoteLogsManager~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/Manifest/EXDevLauncherManifestHelper.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherManifestHelper~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/ReactDelegateHandler/ExpoDevLauncherAppDelegateSubscriber.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherAppDelegateSubscriber~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/ReactDelegateHandler/ExpoDevLauncherReactDelegateHandler.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ExpoDevLauncherReactDelegateHandler~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/ReactNative/EXDevLauncherBundleURLProviderInterceptor.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherBundleURLProviderInterceptor~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/ReactNative/EXDevLauncherRedBoxInterceptor.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/EXDevLauncherRedBoxInterceptor~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/AccountSheet.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/AccountSheet~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/CrashReportView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/CrashReportView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/Data.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Data~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevLauncherErrors.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherErrors~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevLauncherTabBarManager.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherTabBarManager~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevLauncherViewController.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewController~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevLauncherViewModel.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViewModel~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevLauncherViews.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevLauncherViews~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevServerInfoModal.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServerInfoModal~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/DevServersView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/DevServersView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/ErrorView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/ErrorView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/GraphQL/APIClient.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/APIClient~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/GraphQL/Models.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Models~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/GraphQL/Queries.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Queries~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/HomeTabView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/HomeTabView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/Navigation/Navigation.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Navigation~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/NetworkUtilities.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NetworkUtilities~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/SettingsTabView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/SettingsTabView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/StackFrameView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/StackFrameView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/UpdatesTab/NotSignedInView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotSignedInView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/UpdatesTab/NotUsingUpdatesView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/NotUsingUpdatesView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/UpdatesTab/UpdateRow.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateRow~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/UpdatesTab/UpdatesListView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesListView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/UpdatesTab/UpdatesTabView.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdatesTabView~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/UpdatesTab/UpdateUtils.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/UpdateUtils~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/Utils/Avatar.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Avatar~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/node_modules/expo-dev-launcher/ios/SwiftUI/Utils/Utils.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.dia",
+    "index-unit-output-path" : "/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/Pods.build/Debug-iphoneos/expo-dev-launcher.build/Objects-normal/arm64/Utils~partial.swiftmodule"
+  }
+}

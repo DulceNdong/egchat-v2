@@ -20,42 +20,29 @@ import {
   registerSession, heartbeatSession, handleSyncMessage, handleSessionRevoked,
 } from '../src/services/deviceSessions';
 
-// ── Handler de deep links: egchat://chat/ID, egchat://user/ID ─────
+// ── Deep link handler ─────────────────────────────────────────────
 function handleDeepLink(url: string | null) {
   if (!url) return;
   try {
     const parsed = Linking.parse(url);
-    // egchat://qr-login/[sessionId] — confirmar login desde PC
-    if (parsed.path?.startsWith('qr-login/')) {
-      const sessionId = parsed.path.replace('qr-login/', '');
+    const path = parsed.path || '';
+    if (path.startsWith('qr-login/')) {
+      const sessionId = path.replace('qr-login/', '');
       if (sessionId) setTimeout(() => router.push(`/_qr-login?sessionId=${sessionId}` as any), 300);
-      return;
-    }
-    // egchat://chat/[chatId]
-    if (parsed.path?.startsWith('chat/')) {
-      const chatId = parsed.path.replace('chat/', '');
+    } else if (path.startsWith('chat/')) {
+      const chatId = path.replace('chat/', '');
       if (chatId) setTimeout(() => router.push(`/chat/${chatId}` as any), 300);
-    }
-    // egchat://user/[userId] — abrir chat o perfil
-    if (parsed.path?.startsWith('user/')) {
-      const userId = parsed.path.replace('user/', '');
+    } else if (path.startsWith('user/')) {
+      const userId = path.replace('user/', '');
       if (userId) setTimeout(() => router.push(`/contacts?userId=${userId}` as any), 300);
-    }
-    // egchat://call/open/[callId] — volver a la pantalla de llamada activa (desde Live Activity)
-    if (parsed.path?.startsWith('call/open/')) {
-      const callId = parsed.path.replace('call/open/', '');
+    } else if (path.startsWith('call/open/')) {
+      const callId = path.replace('call/open/', '');
       if (callId) setTimeout(() => router.push(`/call/${callId}` as any), 300);
+    } else if (path.startsWith('call/end/')) {
+      const callId = path.replace('call/end/', '');
+      if (callId) { NativeCallKit.endCall(callId); setTimeout(() => router.back(), 200); }
     }
-    // egchat://call/end/[callId] — colgar desde Live Activity / pantalla bloqueada
-    if (parsed.path?.startsWith('call/end/')) {
-      const callId = parsed.path.replace('call/end/', '');
-      if (callId) {
-        const { NativeCallKit } = require('../src/native/CallKit');
-        NativeCallKit.endCall(callId);
-        setTimeout(() => router.back(), 200);
-      }
-    }
-  } catch { /* ignore malformed URLs */ }
+  } catch {}
 }
 
 function StatusBarController() {
@@ -64,248 +51,176 @@ function StatusBarController() {
 }
 
 export default function RootLayout() {
-  const [checking, setChecking]       = useState(true);
-  const [globalUserId, setGlobalUserId] = useState<string | undefined>(undefined);
-  const notifCleanup   = useRef<(() => void) | null>(null);
-  const incomingCleanup= useRef<(() => void) | null>(null);
-  const presenceCleanup= useRef<(() => void) | null>(null);
+  const [checking, setChecking]           = useState(true);
+  const [globalUserId, setGlobalUserId]   = useState<string | undefined>(undefined);
+  const notifCleanup    = useRef<(() => void) | null>(null);
+  const incomingCleanup = useRef<(() => void) | null>(null);
+  const presenceCleanup = useRef<(() => void) | null>(null);
   const { pollIncoming } = useWebRTC();
-  const navigationRef  = useNavigationContainerRef();
+  const navigationRef   = useNavigationContainerRef();
 
-  setUnauthorizedHandler(() => {
-    router.replace('/(auth)/login');
-  });
+  setUnauthorizedHandler(() => router.replace('/(auth)/login'));
 
-  // ── SSE global: sync_message + session_revoked ─────────────────
-  // Conectado una sola vez para toda la app. Maneja sincronización
-  // entre dispositivos y revocación remota de sesión.
+  // SSE global — solo conecta cuando hay userId (después del login)
   useChatStream(globalUserId, useCallback((event: any) => {
-    if (event.type === 'sync_message' && event.chatId && event.message) {
-      // Mensaje enviado desde otro dispositivo (web/desktop) → actualizar lista
-      handleSyncMessage(event, {
-        onNewMessage: (_chatId, _msg) => {
-          // El state de los chats se actualiza automáticamente vía Supabase Realtime
-          // o al refrescar la pantalla. Este handler es para future-proofing.
-        },
-        onChatUpdated: (_chatId) => {},
-      });
+    if (event.type === 'sync_message' && event.chatId) {
+      handleSyncMessage(event, { onNewMessage: () => {}, onChatUpdated: () => {} });
     }
     if (event.type === 'session_revoked') {
-      handleSessionRevoked(event, () => {
-        // Sesión revocada remotamente — hacer logout
-        Alert.alert(
-          'Sesión cerrada',
-          'Tu sesión fue cerrada desde otro dispositivo.',
-          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }],
-        );
-      });
+      handleSessionRevoked(event, () =>
+        Alert.alert('Sesión cerrada', 'Tu sesión fue cerrada desde otro dispositivo.',
+          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]),
+      );
     }
   }, []));
 
   useEffect(() => {
+    let mounted = true;
+
     const init = async () => {
-      // Polling hasta que el NavigationContainer esté listo
+      // 1. Esperar NavigationContainer — máx 3s
       let attempts = 0;
-      while (!navigationRef.isReady() && attempts < 100) {
+      while (!navigationRef.isReady() && attempts < 30) {
         await new Promise(r => setTimeout(r, 100));
         attempts++;
       }
-      // Espera extra en web estático para que el bundle termine de parsear
-      if (Platform.OS === 'web') {
-        await new Promise(r => setTimeout(r, 500));
-      }
+
       try {
         const isAuth = await authAPI.isAuthenticated();
-        if (isAuth) {
-          try {
-            const me = await authAPI.me();
-            if (me?.id) {
-              setGlobalUserId(String(me.id)); // activa el SSE global
-              presenceCleanup.current?.();
-              presenceCleanup.current = trackUserPresence(me.id);
 
-              // Inicializar buckets de storage si no existen
-              try {
-                const { getToken, getApiBase } = await import('../src/api');
-                const token = await getToken();
-                const base  = getApiBase();
-                await fetch(`${base}/api/storage/init`, {
-                  method: 'POST',
-                  headers: { Authorization: `Bearer ${token}` },
-                }).catch(() => {});
-              } catch {}
+        if (!isAuth) {
+          if (mounted) { setChecking(false); router.replace('/(auth)/login'); }
+          return;
+        }
 
-              // Heartbeat cada 30s para mantener online_status activo en DB
-              const { getToken, getApiBase } = await import('../src/api');
-              const heartbeatFn = async () => {
-                try {
-                  const token = await getToken();
-                  const base = getApiBase();
-                  await fetch(`${base}/api/auth/heartbeat`, {
-                    method: 'POST',
-                    headers: { Authorization: `Bearer ${token}` },
-                  });
-                } catch {}
-              };
-              heartbeatFn(); // inmediato
-              const heartbeatTimer = setInterval(heartbeatFn, 30000);
+        // 2. Navegar inmediatamente — no esperar a authAPI.me()
+        if (mounted) { setChecking(false); router.replace('/(tabs)'); }
 
-              // ── Multi-dispositivo: registrar sesión + heartbeat cada 5min ──
-              registerSession().catch(() => {});
-              const sessionHeartbeatTimer = setInterval(() => {
-                heartbeatSession().catch(() => {});
-              }, 5 * 60 * 1000);
+        // 3. Cargar perfil y arrancar servicios en background (no bloquea UI)
+        try {
+          const me = await authAPI.me();
+          if (!me?.id || !mounted) return;
 
-              const prevCleanup = presenceCleanup.current;
-              presenceCleanup.current = () => {
-                clearInterval(heartbeatTimer);
-                clearInterval(sessionHeartbeatTimer);
-                prevCleanup?.();
-              };
-            }
-            // La app nativa debe seguir la experiencia principal de la web local
-            router.replace('/(tabs)');
+          setGlobalUserId(String(me.id));
 
-            // Notificaciones y llamadas solo en nativo
-            if (Platform.OS !== 'web') {
-              const pushToken = await registerForPushNotifications();
-              if (pushToken) console.log('✅ Push token:', pushToken.substring(0, 30) + '...');
+          // Presencia Supabase
+          presenceCleanup.current?.();
+          presenceCleanup.current = trackUserPresence(me.id);
 
-              // ── PushKit VoIP (iOS) — llamadas con app cerrada ──────────
+          // API endpoints — completamente en background, fire-and-forget
+          const { getToken, getApiBase } = await import('../src/api');
+          const getB = () => getApiBase();
+          const getT = () => getToken();
+
+          // Storage init
+          getT().then(t => fetch(`${getB()}/api/storage/init`, {
+            method: 'POST', headers: { Authorization: `Bearer ${t}` }
+          }).catch(() => {}));
+
+          // Heartbeat cada 60s
+          const hb = () => getT().then(t =>
+            fetch(`${getB()}/api/auth/heartbeat`, { method: 'POST', headers: { Authorization: `Bearer ${t}` } })
+          ).catch(() => {});
+          hb();
+          const hbTimer = setInterval(hb, 60000);
+
+          // Sesiones — diferido 8s para no competir con el arranque
+          setTimeout(() => registerSession().catch(() => {}), 8000);
+          const sessTimer = setInterval(() => heartbeatSession().catch(() => {}), 10 * 60 * 1000);
+
+          presenceCleanup.current = () => {
+            clearInterval(hbTimer);
+            clearInterval(sessTimer);
+            trackUserPresence(me.id); // ya se limpió arriba
+          };
+
+          // 4. Notificaciones y llamadas — solo nativo, diferidas 2s
+          if (Platform.OS !== 'web') {
+            setTimeout(async () => {
+              if (!mounted) return;
+              const pushToken = await registerForPushNotifications().catch(() => null);
+              if (pushToken) console.log('✅ Push:', pushToken.substring(0, 20) + '...');
+
               PushKit.register();
               PushKit.onTokenUpdated(async (voipToken) => {
-                // Subir token VoIP al servidor para llamadas push en iOS
-                const { getToken: getAuthToken, getApiBase } = await import('../src/api');
-                const authToken = await getAuthToken();
-                if (!authToken) return;
-                fetch(`${getApiBase()}/api/push/register-voip-token`, {
+                const t = await getT();
+                if (!t) return;
+                fetch(`${getB()}/api/push/register-voip-token`, {
                   method: 'POST',
-                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+                  headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
                   body: JSON.stringify({ voipToken }),
                 }).catch(() => {});
               });
+
               PushKit.onIncomingCall((callData) => {
-                router.push({
-                  pathname: '/call/[callId]',
-                  params: {
-                    callId: callData.callId,
-                    targetName: callData.callerName,
-                    callType: callData.callType || 'audio',
-                    role: 'callee',
-                    offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                  }
-                } as any);
+                router.push({ pathname: '/call/[callId]', params: {
+                  callId: callData.callId, targetName: callData.callerName,
+                  callType: callData.callType || 'audio', role: 'callee',
+                  offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                }} as any);
               });
 
               notifCleanup.current = setupNotificationListeners(
                 (chatId) => router.push(`/chat/${chatId}` as any),
-                (callData) => {
-                  router.push({
-                    pathname: '/call/[callId]',
-                    params: {
-                      callId: callData.callId,
-                      targetName: callData.callerName,
-                      callType: callData.callType || 'audio',
-                      role: 'callee',
-                      offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                    }
-                  } as any);
-                }
+                (callData) => router.push({ pathname: '/call/[callId]', params: {
+                  callId: callData.callId, targetName: callData.callerName,
+                  callType: callData.callType || 'audio', role: 'callee',
+                  offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                }} as any),
               );
 
-              if (me?.id) {
-                incomingCleanup.current = pollIncoming(me.id, (call) => {
-                  // ── Mostrar llamada nativa (Android: notificación full-screen, iOS: CallKit) ──
-                  NativeCallKit.showIncomingCall(
-                    call.callerName || 'Usuario',
-                    call.callerAvatar || '',
-                    call.callId,
-                    call.type === 'video',
-                  );
-
-                  // Escuchar respuesta del usuario desde la notificación nativa
-                  const unAnswer = NativeCallKit.onAnswer((cid) => {
-                    if (cid !== call.callId) return;
-                    unAnswer(); unReject();
-                    router.push({
-                      pathname: '/call/[callId]',
-                      params: {
-                        callId: call.callId,
-                        targetName: call.callerName || 'Usuario',
-                        targetAvatar: call.callerAvatar || '',
-                        callType: call.type || 'audio',
-                        role: 'callee',
-                        offer: call.offer ? JSON.stringify(call.offer) : undefined,
-                      }
-                    } as any);
-                  });
-
-                  const unReject = NativeCallKit.onReject((cid) => {
-                    if (cid !== call.callId) return;
-                    unAnswer(); unReject();
-                  });
-
-                  // Fallback Alert en web
-                  if (Platform.OS === 'web') {
-                    Alert.alert(`📞 Llamada entrante`, `${call.callerName || 'Alguien'} te está llamando`, [
-                      { text: 'Rechazar', style: 'destructive', onPress: () => {
-                        NativeCallKit.rejectCall(call.callId);
-                      } },
-                      {
-                        text: 'Aceptar',
-                        onPress: () => router.push({
-                          pathname: '/call/[callId]',
-                          params: {
-                            callId: call.callId,
-                            targetName: call.callerName || 'Usuario',
-                            targetAvatar: call.callerAvatar || '',
-                            callType: call.type || 'audio',
-                            role: 'callee',
-                            offer: call.offer ? JSON.stringify(call.offer) : undefined,
-                          }
-                        } as any),
-                      },
-                    ]);
-                  }
+              incomingCleanup.current = pollIncoming(me.id, (call) => {
+                NativeCallKit.showIncomingCall(
+                  call.callerName || 'Usuario', call.callerAvatar || '',
+                  call.callId, call.type === 'video',
+                );
+                const unAnswer = NativeCallKit.onAnswer((cid) => {
+                  if (cid !== call.callId) return;
+                  unAnswer(); unReject();
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId: call.callId, targetName: call.callerName || 'Usuario',
+                    targetAvatar: call.callerAvatar || '', callType: call.type || 'audio',
+                    role: 'callee', offer: call.offer ? JSON.stringify(call.offer) : undefined,
+                  }} as any);
                 });
-              }
+                const unReject = NativeCallKit.onReject((cid) => {
+                  if (cid !== call.callId) return;
+                  unAnswer(); unReject();
+                });
+              });
 
               clearBadge();
-
-              const lastResponse = await Notifications.getLastNotificationResponseAsync();
-              if (lastResponse) {
-                const data = lastResponse.notification.request.content.data as any;
+              const lastResp = await Notifications.getLastNotificationResponseAsync().catch(() => null);
+              if (lastResp) {
+                const data = lastResp.notification.request.content.data as any;
                 if (data?.chatId) setTimeout(() => router.push(`/chat/${data.chatId}` as any), 500);
               }
-            }
-          } catch {
-            router.replace('/(auth)/login');
+            }, 2000); // diferir 2s para que la UI cargue primero
           }
-        } else {
-          router.replace('/(auth)/login');
+
+        } catch (e) {
+          console.warn('Background init error:', e);
         }
-      } finally {
-        setChecking(false);
+
+      } catch {
+        if (mounted) { setChecking(false); router.replace('/(auth)/login'); }
       }
     };
 
     init();
 
-    // ── Deep links: URL abierta mientras la app estaba cerrada ────
     Linking.getInitialURL().then(handleDeepLink);
-    // URL abierta mientras la app estaba en background/foreground
-    const linkingSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
+    const linkSub = Linking.addEventListener('url', ({ url }) => handleDeepLink(url));
 
     return () => {
-      linkingSub.remove();
+      mounted = false;
+      linkSub.remove();
       notifCleanup.current?.();
       incomingCleanup.current?.();
       presenceCleanup.current?.();
     };
   }, []);
 
-  // El Stack SIEMPRE se renderiza para que el router pueda navegar
-  // El spinner se superpone encima mientras checking=true
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <SafeAreaProvider>
@@ -346,16 +261,12 @@ export default function RootLayout() {
             <Stack.Screen name="barcos" options={{ presentation: 'modal' }} />
             <Stack.Screen name="_qr-login" options={{ presentation: 'fullScreenModal' }} />
           </Stack>
-
-          {/* ── Botón Home flotante draggable (igual que la versión web) ── */}
           <FloatingHomeButton />
-          {/* Spinner superpuesto mientras se verifica la sesión */}
           {checking && (
-            <View style={styles.overlay}>
+            <View style={st.overlay}>
               <ActivityIndicator size="large" color={Colors.accent} />
             </View>
           )}
-          {/* Toast notifications globales */}
           <ToastContainer />
         </ThemeProvider>
       </SafeAreaProvider>
@@ -363,7 +274,7 @@ export default function RootLayout() {
   );
 }
 
-const styles = StyleSheet.create({
+const st = StyleSheet.create({
   overlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: Colors.bgPrimary,

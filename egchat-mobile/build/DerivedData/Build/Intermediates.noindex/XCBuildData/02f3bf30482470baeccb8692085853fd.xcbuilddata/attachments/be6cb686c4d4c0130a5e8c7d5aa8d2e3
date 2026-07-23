@@ -1,0 +1,38 @@
+{
+  "" : {
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/EGCHAT-master.dia",
+    "emit-module-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/EGCHAT-master-emit-module.d",
+    "emit-module-diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/EGCHAT-master-emit-module.dia",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/EGCHAT-master.swiftdeps"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/DerivedSources/GeneratedAssetSymbols.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.dia",
+    "index-unit-output-path" : "/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/GeneratedAssetSymbols~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/ios/EGCHAT/AppDelegate.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.dia",
+    "index-unit-output-path" : "/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/AppDelegate~partial.swiftmodule"
+  },
+  "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/ios/Pods/Target Support Files/Pods-EGCHAT/ExpoModulesProvider.swift" : {
+    "const-values" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.swiftconstvalues",
+    "dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.d",
+    "diagnostics" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.dia",
+    "index-unit-output-path" : "/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.o",
+    "llvm-bc" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.bc",
+    "object" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.o",
+    "swift-dependencies" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider.swiftdeps",
+    "swiftmodule" : "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/build/DerivedData/Build/Intermediates.noindex/EGCHAT.build/Debug-iphoneos/EGCHAT.build/Objects-normal/arm64/ExpoModulesProvider~partial.swiftmodule"
+  }
+}
