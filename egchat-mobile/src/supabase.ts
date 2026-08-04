@@ -6,7 +6,7 @@ import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from './types/chat';
 
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://fjtoxjcuyfapeprniink.supabase.co';
+const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://fqfxtjnfhvpggssbymdn.supabase.co';
 const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqdG94amN1eWZhcGVwcm5paW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTI0MTMsImV4cCI6MjA5MDg4ODQxM30.hy7iWUHSFky1SyCvVBWGuRgfqO9-I94uCfPyMkxevwI';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {

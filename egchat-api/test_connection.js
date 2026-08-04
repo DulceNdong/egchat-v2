@@ -62,7 +62,7 @@ async function testConnection() {
 # EGCHAT API - Variables de entorno
 PORT=5000
 JWT_SECRET=egchat_secret_2026
-SUPABASE_URL=https://fjtoxjcuyfapeprniink.supabase.co
+SUPABASE_URL=https://fqfxtjnfhvpggssbymdn.supabase.co
 SUPABASE_SERVICE_KEY=${key}
 CORS_ALLOWED_ORIGINS=https://egchat-app.vercel.app,http://localhost:3003,http://localhost:5173
 APP_VERSION=2.5.1
