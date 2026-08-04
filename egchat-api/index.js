@@ -27,6 +27,7 @@ const APP_VERSION = '2.5.0';
 const chatStreams = new Map();
 const dependencyCache = { timestamp: 0, result: null };
 const enableLocalAuthFallback = process.env.LOCAL_AUTH_FALLBACK !== 'false';
+const enableExternalNewsScraping = process.env.ENABLE_EXTERNAL_NEWS_SCRAPING === '1';
 const localAuthUsers = new Map();
 
 const getLocalAuthUser = (phone, fullName = 'Usuario EGCHAT', avatarUrl = null) => {
@@ -50,6 +51,75 @@ const sendLocalAuth = (res, phone, fullName, avatarUrl, status = 200) => {
   return res.status(status).json({ token, user });
 };
 
+const DEMO_USERS = [
+  { phone: '+240111111111', full_name: 'Raymon Prueba', avatar_url: null },
+  { phone: '+240222222222', full_name: 'Tiny Abaga', avatar_url: null },
+];
+DEMO_USERS.forEach(user => getLocalAuthUser(user.phone, user.full_name, user.avatar_url));
+
+const localChats = new Map();
+const localMessages = new Map();
+
+const isLocalUserId = (id) => String(id || '').startsWith('local-');
+const getLocalUserById = (id) => Array.from(localAuthUsers.values()).find(user => user.id === id) || null;
+const getDemoContactsFor = (userId) => Array.from(localAuthUsers.values())
+  .filter(user => user.id !== userId)
+  .map(user => ({
+    id: `contact-${user.id}`,
+    contact_user_id: user.id,
+    name: user.full_name,
+    phone: user.phone,
+    avatar_url: user.avatar_url || '',
+    is_blocked: false,
+    is_favorite: false,
+    created_at: new Date().toISOString(),
+    user,
+  }));
+
+const getLocalPrivateChat = (a, b) => {
+  const key = [a, b].sort().join('__');
+  if (!localChats.has(key)) {
+    localChats.set(key, {
+      id: `local-chat-${Buffer.from(key).toString('hex').slice(0, 24)}`,
+      key,
+      type: 'private',
+      participant_ids: [a, b],
+      created_by: a,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  const chat = localChats.get(key);
+  if (!localMessages.has(chat.id)) localMessages.set(chat.id, []);
+  return chat;
+};
+
+const formatLocalChat = (chat) => {
+  const messages = localMessages.get(chat.id) || [];
+  return {
+    id: chat.id,
+    type: 'private',
+    name: null,
+    avatar_url: null,
+    created_by: chat.created_by,
+    participants: chat.participant_ids.map(userId => {
+      const user = getLocalUserById(userId) || {};
+      return {
+        chat_id: chat.id,
+        user_id: userId,
+        full_name: user.full_name || '',
+        phone: user.phone || '',
+        avatar_url: user.avatar_url || '',
+        user,
+        users: user,
+      };
+    }),
+    last_message: messages[messages.length - 1] || null,
+    updated_at: chat.updated_at,
+    unread_count: 0,
+  };
+};
+
 // --- Supabase ---------------------------------------------------------
 const supabase = createClient(
   process.env.SUPABASE_URL || '',
@@ -68,6 +138,8 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // Permitir cualquier localhost en desarrollo
     if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+    // Permitir LAN local para probar web + iPhone desde el Mac
+    if (/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin)) return callback(null, true);
     // Permitir cualquier subdominio de vercel.app (egchat-v2, egchat-app, etc.)
     if (/^https:\/\/egchat.*\.vercel\.app$/.test(origin)) return callback(null, true);
     return callback(new Error('CORS policy: origin not allowed'));
@@ -772,6 +844,14 @@ const getChatParticipants = async (chatId) => {
 // Obtener todos los chats del usuario
 app.get('/api/chats', auth, async (req, res) => {
   try {
+    if (isLocalUserId(req.user.id)) {
+      const chats = Array.from(localChats.values())
+        .filter(chat => chat.participant_ids.includes(req.user.id))
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .map(formatLocalChat);
+      return res.json(chats);
+    }
+
     // Buscar chats donde el usuario es participante
     const { data: participations, error: pErr } = await supabase
       .from('chat_participants')
@@ -859,6 +939,12 @@ app.get('/api/chats', auth, async (req, res) => {
 app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
   try {
     const { chatId } = req.params;
+    if (isLocalUserId(req.user.id)) {
+      const chat = Array.from(localChats.values()).find(item => item.id === chatId);
+      if (!chat || !chat.participant_ids.includes(req.user.id)) return res.status(403).json({ message: 'No tienes acceso a este chat' });
+      return res.json(localMessages.get(chatId) || []);
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const from = (page - 1) * limit;
@@ -922,6 +1008,28 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
     const { chatId } = req.params;
     const { text, type = 'text', reply_to, file_url } = req.body;
     if (!text && !file_url) return res.status(400).json({ message: 'Texto o archivo requerido' });
+    if (isLocalUserId(req.user.id)) {
+      const chat = Array.from(localChats.values()).find(item => item.id === chatId);
+      if (!chat || !chat.participant_ids.includes(req.user.id)) return res.status(403).json({ message: 'Sin acceso' });
+      const sender = getLocalUserById(req.user.id) || {};
+      const message = {
+        id: `local-msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        chat_id: chatId,
+        sender_id: req.user.id,
+        text: text || null,
+        type,
+        reply_to: reply_to || null,
+        file_url: file_url || null,
+        status: 'sent',
+        created_at: new Date().toISOString(),
+        sender: { id: sender.id, full_name: sender.full_name || '', avatar_url: sender.avatar_url || '' },
+      };
+      localMessages.set(chatId, [...(localMessages.get(chatId) || []), message]);
+      chat.updated_at = message.created_at;
+      emitToUsers(chat.participant_ids, { type: 'new_message', chatId, message });
+      emitToUsers(chat.participant_ids, { type: 'chat_updated', chatId, ts: Date.now() });
+      return res.status(201).json(message);
+    }
 
     // Verificar acceso
     const { data: part } = await supabase
@@ -1003,14 +1111,22 @@ app.post('/api/chats/private', auth, async (req, res) => {
     const { participant_id, phone } = req.body;
     let targetId = participant_id;
 
-    if (!targetId && phone) {
-      const { data: found, error: userError } = await supabase
-        .from('users')
-        .select('id, phone, full_name, avatar_url')
-        .eq('phone', phone)
-        .single();
+    if (isLocalUserId(req.user.id)) {
+      if (!targetId && phone) {
+        const target = getLocalAuthUser(phone);
+        targetId = target?.id;
+      }
+      const target = getLocalUserById(targetId);
+      if (!target) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+      if (target.id === req.user.id) return res.status(400).json({ message: 'No puedes crear un chat contigo mismo' });
+      const chat = getLocalPrivateChat(req.user.id, target.id);
+      return res.status(201).json(formatLocalChat(chat));
+    }
 
-      if (userError || !found) {
+    if (!targetId && phone) {
+      const found = await findUserByPhone(phone);
+
+      if (!found) {
         return res.status(404).json({ message: 'Usuario no encontrado con ese nÁºmero' });
       }
 
@@ -1560,9 +1676,60 @@ app.delete('/api/messages/:messageId', auth, async (req, res) => {
 // CONTACTOS - GESTIÁƒâ€œN COMPLETA
 // ════════════════════════════════════════════════════════════════════
 
+const phoneLookupCandidates = (phone = '') => {
+  const trimmed = String(phone || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
+  const candidates = new Set([trimmed]);
+  if (digits) {
+    candidates.add(digits);
+    candidates.add(`+${digits}`);
+    if (digits.startsWith('240')) {
+      candidates.add(digits.slice(3));
+      candidates.add(`+${digits.slice(3)}`);
+    } else {
+      candidates.add(`240${digits}`);
+      candidates.add(`+240${digits}`);
+    }
+    if (digits.length > 9) {
+      const last9 = digits.slice(-9);
+      candidates.add(last9);
+      candidates.add(`240${last9}`);
+      candidates.add(`+240${last9}`);
+    }
+  }
+  return Array.from(candidates).filter(Boolean);
+};
+
+async function findUserByPhone(phone) {
+  const candidates = phoneLookupCandidates(phone);
+  if (!candidates.length) return null;
+  const { data: exact } = await supabase
+    .from('users')
+    .select('id, phone, full_name, avatar_url')
+    .in('phone', candidates)
+    .limit(1);
+  if (exact?.[0]) return exact[0];
+
+  const digits = String(phone || '').replace(/\D/g, '');
+  const suffixes = [digits, digits.slice(-9), digits.slice(-8)].filter(v => v && v.length >= 6);
+  for (const suffix of suffixes) {
+    const { data } = await supabase
+      .from('users')
+      .select('id, phone, full_name, avatar_url')
+      .ilike('phone', `%${suffix}`)
+      .limit(1);
+    if (data?.[0]) return data[0];
+  }
+  return null;
+}
+
 // Obtener todos los contactos del usuario
 app.get('/api/contacts', auth, async (req, res) => {
   try {
+    if (isLocalUserId(req.user.id)) {
+      return res.json(getDemoContactsFor(req.user.id));
+    }
+
     const { data: contacts, error } = await supabase
       .from('contacts')
       .select('*')
@@ -1607,21 +1774,32 @@ app.post('/api/contacts', auth, async (req, res) => {
     console.log('[ADD CONTACT] body:', { contact_user_id, phone, nickname, caller: req.user?.id });
     let targetId = contact_user_id && contact_user_id.trim() ? contact_user_id.trim() : null;
 
+    if (isLocalUserId(req.user.id)) {
+      if (!targetId && phone) {
+        const target = getLocalAuthUser(phone, nickname || 'Usuario EGCHAT');
+        targetId = target?.id;
+      }
+      const target = getLocalUserById(targetId);
+      if (!target || target.id === req.user.id) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+      return res.json({
+        id: `contact-${target.id}`,
+        contact_user_id: target.id,
+        name: nickname || target.full_name,
+        phone: target.phone,
+        avatar_url: target.avatar_url || '',
+        is_blocked: false,
+        is_favorite: false,
+        created_at: new Date().toISOString(),
+        user: target,
+      });
+    }
+
     if (!targetId && phone) {
-      // Normalizar teléfono: buscar con y sin prefijo +
-      const phoneNorm = phone.trim();
-      const phoneAlt = phoneNorm.startsWith('+') ? phoneNorm.slice(1) : '+' + phoneNorm;
-      console.log('[ADD CONTACT] searching by phone:', phoneNorm, 'or', phoneAlt);
+      const targetUser = await findUserByPhone(phone);
 
-      const { data: targetUser, error: userError } = await supabase
-        .from('users')
-        .select('id, phone, full_name')
-        .or(`phone.eq.${phoneNorm},phone.eq.${phoneAlt}`)
-        .single();
+      console.log('[ADD CONTACT] phone search result:', targetUser);
 
-      console.log('[ADD CONTACT] phone search result:', targetUser, 'error:', userError?.message);
-
-      if (userError || !targetUser) {
+      if (!targetUser) {
         return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
       }
 
@@ -1833,6 +2011,8 @@ app.delete('/api/contacts/:contactId/favorite', auth, async (req, res) => {
 // Listar solo contactos favoritos
 app.get('/api/contacts/favorites', auth, async (req, res) => {
   try {
+    if (isLocalUserId(req.user.id)) return res.json([]);
+
     const { data: contacts, error } = await supabase
       .from('contacts')
       .select('*')
@@ -1866,6 +2046,15 @@ app.get('/api/contacts/favorites', auth, async (req, res) => {
 app.get('/api/contacts/search', auth, async (req, res) => {
   try {
     const { q } = req.query;
+    if (isLocalUserId(req.user.id)) {
+      const term = String(q || '').toLowerCase().trim();
+      const users = Array.from(localAuthUsers.values())
+        .filter(user => user.id !== req.user.id)
+        .filter(user => !term || user.phone.includes(term) || user.full_name.toLowerCase().includes(term))
+        .slice(0, 50)
+        .map(({ id, phone, full_name, avatar_url }) => ({ id, phone, full_name, avatar_url }));
+      return res.json(users);
+    }
 
     let query = supabase
       .from('users')
@@ -1891,14 +2080,36 @@ app.get('/api/contacts/search', auth, async (req, res) => {
 // WALLET
 // ════════════════════════════════════════════════════════════════════
 app.get('/api/wallet/balance', auth, async (req, res) => {
-  let { data: wallet } = await supabase
-    .from('wallets').select('balance, currency').eq('user_id', req.user.id).single();
-  if (!wallet) {
-    const { data } = await supabase
-      .from('wallets').insert({ user_id: req.user.id, balance: 5000, currency: 'XAF' }).select().single();
-    wallet = data;
+  try {
+    let { data: wallet, error } = await supabase
+      .from('wallets')
+      .select('balance, currency')
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Wallet lookup error:', error.message);
+    }
+
+    if (!wallet) {
+      const { data, error: insertError } = await supabase
+        .from('wallets')
+        .insert({ user_id: req.user.id, balance: 5000, currency: 'XAF' })
+        .select('balance, currency')
+        .maybeSingle();
+
+      if (insertError) {
+        console.warn('Wallet create error:', insertError.message);
+      }
+
+      wallet = data || { balance: 5000, currency: 'XAF' };
+    }
+
+    res.json({ balance: Number(wallet.balance || 0), currency: wallet.currency || 'XAF' });
+  } catch (e) {
+    console.error('Wallet balance error:', e);
+    res.json({ balance: 5000, currency: 'XAF' });
   }
-  res.json({ balance: wallet.balance, currency: wallet.currency || 'XAF' });
 });
 
 app.get('/api/wallet/transactions', auth, async (req, res) => {
@@ -5173,6 +5384,10 @@ async function checkAndNotifyNewGovNews() {
 
 function startGovNewsScheduler() {
   if (govNewsSchedulerStarted) return;
+  if (!enableExternalNewsScraping) {
+    console.log('[GovNews] Scheduler desactivado por ENABLE_EXTERNAL_NEWS_SCRAPING!=1');
+    return;
+  }
   govNewsSchedulerStarted = true;
   console.log('[GovNews] Scheduler iniciado — revisando cada 10 minutos');
   // Primera ejecución inmediata
@@ -5199,6 +5414,14 @@ const NOTICIAS_FALLBACK = [
 
 app.get('/api/noticias/gobierno', async (req, res) => {
   try {
+    if (!enableExternalNewsScraping) {
+      return res.json({
+        noticias: NOTICIAS_FALLBACK.map((n, i) => ({ id: `gov-fb-${i}`, ...n, scrapedAt: Date.now() })),
+        fromCache: true,
+        updatedAt: Date.now(),
+        externalScrapingDisabled: true,
+      });
+    }
     const now = Date.now();
     // Devolver cache si es reciente
     if (noticiasCache.data.length > 0 && now - noticiasCache.timestamp < NOTICIAS_TTL) {
@@ -5302,6 +5525,9 @@ async function fetchRssFeed(feed) {
 
 app.get('/api/news/rss', async (req, res) => {
   try {
+    if (!enableExternalNewsScraping) {
+      return res.json({ news: [], externalScrapingDisabled: true });
+    }
     const results = await Promise.allSettled(RSS_FEEDS_PROXY.map(fetchRssFeed));
     const news = results
       .filter(r => r.status === 'fulfilled')
@@ -5469,6 +5695,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
-
-
