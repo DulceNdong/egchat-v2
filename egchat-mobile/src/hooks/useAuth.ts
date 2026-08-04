@@ -4,7 +4,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { router } from 'expo-router';
-import { authAPI, clearToken, wakeServer } from '../api';
+import { authAPI, clearToken, setToken, wakeServer } from '../api';
+import SessionManager from '../sessionManager';
 
 interface User {
   id: string;

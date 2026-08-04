@@ -55,7 +55,6 @@ export default function LoginScreen() {
   const fullPhone = countryCode + phone.replace(/\s/g, '');
 
   const doLogin = () => login(fullPhone, password);
-
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: C.bgPrimary }]}>
       <KeyboardAvoidingView
@@ -336,7 +335,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 0,
   },
-
   // Buttons
   loginBtn: {
     marginBottom: Spacing.md,

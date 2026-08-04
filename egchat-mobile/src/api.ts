@@ -4,20 +4,30 @@
 // ══════════════════════════════════════════════════════════════════
 import * as SecureStore from 'expo-secure-store';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
 import SessionManager from './sessionManager';
 import { saveLocalProfile, getLocalProfile } from './utils/profileEvents';
 
 const BASE = (() => {
-  const url = (process.env.EXPO_PUBLIC_API_URL || '').trim();
-  if (!url) return 'https://egchat-api.onrender.com';
+  const mobileUrl = (process.env.EXPO_PUBLIC_API_URL_MOBILE || '').trim();
+  const webUrl = (process.env.EXPO_PUBLIC_API_URL || '').trim();
+  let url = Platform.OS === 'web' ? webUrl : (mobileUrl || webUrl);
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    const isLanHost = host && host !== 'localhost' && host !== '127.0.0.1';
+    if (isLanHost && (!url || /localhost|127\.0\.0\.1/.test(url))) {
+      url = `http://${host}:5000`;
+    }
+  }
+  // MIGRACIÓN: Cambiar a Railway cuando esté desplegado
+  // if (!url) return 'https://egchat-railway-production.up.railway.app';
+  if (!url) return 'https://egchat-api.onrender.com'; // ← cambiar después del deploy
   return url.replace(/\/$/, '');
 })();
 
 // ── Token seguro (SecureStore en nativo, localStorage en web) ──────
 const TOKEN_KEY = 'egchat_token';
 const sessionManager = SessionManager.getInstance();
-
-import { Platform } from 'react-native';
 
 export const getToken = async (): Promise<string | null> => {
   if (Platform.OS === 'web') {
@@ -39,7 +49,14 @@ export const clearToken = async (): Promise<void> => {
     try { localStorage.removeItem(TOKEN_KEY); } catch {}
     try { localStorage.removeItem('egchat_session'); } catch {}
     try { sessionStorage.clear(); } catch {}
+  } else {
+    try { await SecureStore.deleteItemAsync(TOKEN_KEY); } catch {}
   }
+  try { await AsyncStorage.removeItem(TOKEN_KEY); } catch {}
+  try { await AsyncStorage.removeItem('egchat_token'); } catch {}
+  try { await AsyncStorage.removeItem('egchat_session'); } catch {}
+  try { await AsyncStorage.removeItem('token'); } catch {}
+  try { await AsyncStorage.removeItem('user'); } catch {}
   await sessionManager.clearSession();
 };
 
@@ -129,6 +146,17 @@ async function getLocalUser() {
   return { id: 'local-user', full_name: 'Yo', avatar_url: '' };
 }
 
+const getRequestBases = () => {
+  const bases = [BASE];
+  if (Platform.OS === 'web' && typeof window !== 'undefined') {
+    const host = window.location.hostname;
+    if (host && host !== 'localhost' && host !== '127.0.0.1') {
+      bases.push(`http://${host}:5000`);
+    }
+  }
+  return Array.from(new Set(bases.map(base => base.replace(/\/$/, '')).filter(Boolean)));
+};
+
 // ── Cliente HTTP base con timeout y reintentos ────────────────────
 async function request<T>(
   path: string,
@@ -140,22 +168,35 @@ async function request<T>(
 
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
+    'ngrok-skip-browser-warning': 'true',
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> || {}),
   };
 
   // Render gratis puede tardar ~30–50 s al despertar
   const timeoutMs = method === 'GET' ? 60000 : 60000;
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
-
   try {
-    const res = await fetch(`${BASE}${path}`, {
-      ...options,
-      headers,
-      signal: controller.signal,
-    });
-    clearTimeout(timeoutId);
+    let res: Response | null = null;
+    let lastNetworkError: any = null;
+    for (const base of getRequestBases()) {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+      try {
+        res = await fetch(`${base}${path}`, {
+          ...options,
+          headers,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+        break;
+      } catch (e: any) {
+        clearTimeout(timeoutId);
+        lastNetworkError = e;
+        res = null;
+      }
+    }
+
+    if (!res) throw lastNetworkError || new Error(CONNECTION_ERROR);
 
     if (res.status === 401) {
       const err = await res.json().catch(() => ({ message: 'No autorizado' }));
@@ -176,7 +217,6 @@ async function request<T>(
 
     return res.json();
   } catch (err: any) {
-    clearTimeout(timeoutId);
     const isNetwork = err.name === 'AbortError'
       || err.name === 'TypeError'
       || err.message?.includes('fetch')
@@ -272,7 +312,12 @@ export const authAPI = {
 
       if (token) await sessionManager.saveSession(serverUser, token);
       return serverUser;
-    } catch (err) {
+    } catch (err: any) {
+      if (String(err?.message || '').toLowerCase().includes('usuario no encontrado')) {
+        await clearToken();
+        onUnauthorized?.();
+        throw err;
+      }
       const cached = await sessionManager.getUser();
       if (cached) return cached;
       throw err;
@@ -431,14 +476,19 @@ export const userAPI = {
   updateProfile: (data: any) => put<any>('/api/user/profile', data),
 };
 
-// Keep-alive agresivo para que Render no duerma nunca (plan gratuito duerme a los 15 min)
-const keepAlive = async () => {
-  try { await fetch(`${BASE}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined }); } catch {}
-};
-// Cada 90 segundos — muy por debajo del límite de 15 min de Render
-setInterval(keepAlive, 90 * 1000);
-// También al iniciar por si el servidor estaba dormido
-keepAlive();
+// Keep-alive para Render — solo se activa cuando el usuario está autenticado
+// NO se ejecuta al importar el módulo
+let keepAliveInterval: ReturnType<typeof setInterval> | null = null;
+export function startKeepAlive() {
+  if (keepAliveInterval) return;
+  const ping = async () => {
+    try { await fetch(`${BASE}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined }); } catch {}
+  };
+  keepAliveInterval = setInterval(ping, 90 * 1000);
+}
+export function stopKeepAlive() {
+  if (keepAliveInterval) { clearInterval(keepAliveInterval); keepAliveInterval = null; }
+}
 
 // ══════════════════════════════════════════════════════════════════
 // STORIES
