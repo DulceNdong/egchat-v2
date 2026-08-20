@@ -29,6 +29,16 @@ export interface MiniApp {
 // ── Catálogo integrado ─────────────────────────────────────────────
 export const MINI_APPS: MiniApp[] = [
   {
+    id: 'djangue',
+    name: 'Mi Djangue',
+    description: 'Caja de ahorro grupal por turnos',
+    icon: 'djangue', accentColor: '#6366f1',
+    url: '',
+    category: 'finance',
+    permissions: ['payment'],
+    verified: true, developer: 'EGChat', installsCount: 0,
+  },
+  {
     id: 'mitaxi',
     name: 'MiTaxi GQ',
     description: 'Pide un taxi con GPS en tiempo real',

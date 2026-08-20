@@ -7,10 +7,21 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
-import Svg, { Line, Path, Circle } from 'react-native-svg';
-import { MINI_APPS, CATEGORIES, type MiniAppCategory, searchMiniApps, type MiniApp } from '../src/miniapps/miniAppsStore';
+import { router } from 'expo-router';import Svg, { Line, Path, Circle } from 'react-native-svg';
+import { MINI_APPS, CATEGORIES, addRecentApp, type MiniAppCategory, searchMiniApps, type MiniApp } from '../src/miniapps/miniAppsStore';
 import { MiniAppIcon } from '../src/miniapps/MiniAppIcon';
+
+const NATIVE_MINI_APP_ROUTES: Record<string, any> = {
+  djangue: '/djangue',
+  mitaxi: '/mitaxi',
+  cemac: '/cemac',
+  supermercado: { pathname: '/(tabs)/servicios', params: { service: 'supermercado' } },
+  servicios_gov: '/(tabs)/servicios',
+  seguros: '/seguros-salud',
+  apuestas: '/apuestas',
+  ocio: '/ocio',
+  barcos: '/barcos',
+};
 
 export default function MiniAppsScreen() {
   const [search, setSearch]     = useState('');
@@ -25,49 +36,53 @@ export default function MiniAppsScreen() {
   const featured = MINI_APPS.filter(a => a.verified).slice(0, 3);
 
   const openApp = (app: MiniApp) => {
+    void addRecentApp(app.id);
+    const nativeRoute = NATIVE_MINI_APP_ROUTES[app.id];
+    if (nativeRoute) {
+      router.push(nativeRoute);
+      return;
+    }
     router.push({ pathname: '/mini-app-player', params: { url: app.url, title: app.name, appId: app.id } } as any);
   };
 
   return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       {/* ── Header ── */}
       <LinearGradient colors={['#0f172a', '#1e3a5f']} style={s.header}>
-        <SafeAreaView edges={['top']}>
-          <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.iconBtn}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-                <Line x1="19" y1="12" x2="5" y2="12"/>
-                <Path d="M12 19l-7-7 7-7"/>
-              </Svg>
-            </TouchableOpacity>
-            <View style={{ flex: 1, alignItems: 'center' }}>
-              <Text style={s.headerTitle}>Mini-Apps</Text>
-              <Text style={s.headerSub}>{MINI_APPS.length} aplicaciones · EGChat</Text>
-            </View>
-            <View style={{ width: 36 }} />
+        <View style={s.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.iconBtn}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+              <Line x1="19" y1="12" x2="5" y2="12"/>
+              <Path d="M12 19l-7-7 7-7"/>
+            </Svg>
+          </TouchableOpacity>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={s.headerTitle}>Mini-Apps</Text>
+            <Text style={s.headerSub}>{MINI_APPS.length} aplicaciones · EGChat</Text>
           </View>
+          <View style={{ width: 36 }} />
+        </View>
 
-          {/* Búsqueda */}
-          <View style={s.searchRow}>
-            <View style={s.searchBar}>
-              <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={2} strokeLinecap="round">
-                <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
-              </Svg>
-              <TextInput
-                style={s.searchInput}
-                placeholder="Buscar aplicación..."
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                value={search}
-                onChangeText={setSearch}
-              />
-              {search.length > 0 && (
-                <TouchableOpacity onPress={() => setSearch('')}>
-                  <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16 }}>✕</Text>
-                </TouchableOpacity>
-              )}
-            </View>
+        {/* Búsqueda */}
+        <View style={s.searchRow}>
+          <View style={s.searchBar}>
+            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={2} strokeLinecap="round">
+              <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
+            </Svg>
+            <TextInput
+              style={s.searchInput}
+              placeholder="Buscar aplicación..."
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={search}
+              onChangeText={setSearch}
+            />
+            {search.length > 0 && (
+              <TouchableOpacity onPress={() => setSearch('')}>
+                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16 }}>✕</Text>
+              </TouchableOpacity>
+            )}
           </View>
-        </SafeAreaView>
+        </View>
       </LinearGradient>
 
       <ScrollView showsVerticalScrollIndicator={false} style={s.scroll}>
@@ -154,7 +169,7 @@ export default function MiniAppsScreen() {
 
         <View style={{ height: 40 }} />
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
@@ -164,7 +179,7 @@ const s = StyleSheet.create({
 
   // Header
   header: { paddingBottom: 20 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 4 },
+  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
   headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
   headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },

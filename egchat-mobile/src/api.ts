@@ -19,9 +19,9 @@ const BASE = (() => {
       url = `http://${host}:5000`;
     }
   }
-  // MIGRACIÓN: Cambiar a Railway cuando esté desplegado
-  // if (!url) return 'https://egchat-railway-production.up.railway.app';
-  if (!url) return 'https://egchat-api.onrender.com'; // ← cambiar después del deploy
+  if (!url || /localhost|127\.0\.0\.1/.test(url)) {
+    return 'https://egchat-api.onrender.com';
+  }
   return url.replace(/\/$/, '');
 })();
 
@@ -166,9 +166,10 @@ async function request<T>(
   const token = await getToken();
   const method = (options.method || 'GET').toUpperCase();
 
+  const isNgrok = BASE.includes('ngrok');
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
-    'ngrok-skip-browser-warning': 'true',
+    ...(isNgrok ? { 'ngrok-skip-browser-warning': 'true' } : {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
     ...(options.headers as Record<string, string> || {}),
   };
@@ -205,9 +206,28 @@ async function request<T>(
       if (isAuthPublicPath(path)) {
         throw new Error(message);
       }
-      await clearToken();
-      onUnauthorized?.();
-      throw new Error('Sesión expirada. Inicia sesión de nuevo.');
+      // Para rutas protegidas, verificar que el token realmente es inválido
+      // antes de desconectar. Render en plan gratis puede devolver 401 transitorio
+      // mientras el servidor se despierta (cold start). Solo desconectar si el
+      // mensaje indica explícitamente que el token es inválido o no existe.
+      const isReallyInvalid =
+        message.toLowerCase().includes('inválido') ||
+        message.toLowerCase().includes('invalido') ||
+        message.toLowerCase().includes('expirado') ||
+        message.toLowerCase().includes('expired') ||
+        message.toLowerCase().includes('invalid') ||
+        message.toLowerCase().includes('no token') ||
+        message.toLowerCase().includes('token not') ||
+        message.toLowerCase().includes('unauthorized');
+
+      if (isReallyInvalid) {
+        await clearToken();
+        onUnauthorized?.();
+        throw new Error('Sesión expirada. Inicia sesión de nuevo.');
+      }
+
+      // 401 ambiguo (servidor Render despertando, etc.) → lanzar error sin desconectar
+      throw new Error(message || 'No autorizado');
     }
 
     if (!res.ok) {
@@ -235,6 +255,10 @@ const post = <T>(path: string, body: unknown) =>
 const put  = <T>(path: string, body: unknown) =>
   request<T>(path, { method: 'PUT', body: JSON.stringify(body) });
 const del  = <T>(path: string) => request<T>(path, { method: 'DELETE' });
+
+// ── apiFetch: acceso público a request() para pantallas nativas ───
+export const apiFetch = <T = any>(path: string, options: RequestInit = {}): Promise<T> =>
+  request<T>(path, options);
 
 // ══════════════════════════════════════════════════════════════════
 // AUTH — idéntico al web
@@ -296,7 +320,6 @@ export const authAPI = {
 
       // Si el servidor está offline (Supabase sin cuota), preservar
       // el full_name y avatar_url reales guardados en caché local.
-      // Esto evita que "Usuario EGCHAT" sobreescriba el nombre real.
       if (serverUser?._offline) {
         const cached = await sessionManager.getUser();
         const merged = {
@@ -313,11 +336,31 @@ export const authAPI = {
       if (token) await sessionManager.saveSession(serverUser, token);
       return serverUser;
     } catch (err: any) {
-      if (String(err?.message || '').toLowerCase().includes('usuario no encontrado')) {
+      const msg = String(err?.message || '').toLowerCase();
+
+      // Solo desconectar si el servidor devolvió explícitamente que el usuario
+      // no existe Y el token es inválido — no por errores de red o Supabase caído
+      const isHardAuthError =
+        (msg.includes('usuario no encontrado') || msg.includes('user not found')) &&
+        !msg.includes('network') &&
+        !msg.includes('fetch') &&
+        !msg.includes('conexión') &&
+        !msg.includes('timeout') &&
+        !msg.includes('abort');
+
+      if (isHardAuthError) {
+        // Antes de desconectar, comprobar si tenemos sesión en caché válida
+        const cached = await sessionManager.getUser();
+        if (cached?.id) {
+          console.warn('[authAPI.me] Usuario no encontrado en servidor pero hay caché válida — usando caché');
+          return cached;
+        }
         await clearToken();
         onUnauthorized?.();
         throw err;
       }
+
+      // Cualquier otro error (red, Supabase caído, timeout) → usar caché
       const cached = await sessionManager.getUser();
       if (cached) return cached;
       throw err;
@@ -335,6 +378,15 @@ export const authAPI = {
 
   resetPassword: (phone: string, code: string, newPassword: string) =>
     post<{ success: boolean; message?: string }>('/api/auth/reset-password', { phone, code, newPassword }),
+
+  verifyPin: (pin: string) =>
+    post<{ valid: boolean; message?: string }>('/api/auth/verify-pin', { pin }),
+
+  setupPin: (pin: string) =>
+    post<{ success: boolean; message?: string }>('/api/auth/setup-pin', { pin }),
+
+  hasPinConfigured: () =>
+    get<{ hasPin: boolean }>('/api/auth/has-pin'),
 
   checkPhone: (phone: string) =>
     post<{ exists: boolean }>('/api/auth/check-phone', { phone }),
@@ -708,4 +760,36 @@ export const taxiAPI = {
       distanceKm,
     },
   ),
+
+  /** Registro de nuevo conductor */
+  registerDriver: (data: {
+    name: string;
+    phone: string;
+    license?: string;
+    vehicle: {
+      brand?: string;
+      model?: string;
+      year?: string;
+      color?: string;
+      plate: string;
+      type?: string;
+    };
+  }) => post<{ message: string; driverId: string; status: string }>(
+    '/api/taxi/drivers/register',
+    data,
+  ),
+
+  /** Estado del perfil de conductor del usuario actual */
+  getDriverProfile: () =>
+    get<{
+      id: string; name: string; status: 'pending' | 'approved' | 'rejected' | 'suspended';
+      rating: number; trips: number; vehicle: any;
+    }>('/api/taxi/drivers/me'),
+
+  /** Activar/desactivar disponibilidad del conductor */
+  setDriverAvailability: (available: boolean) =>
+    post<{ message: string; available: boolean }>(
+      '/api/taxi/drivers/availability',
+      { available },
+    ),
 };

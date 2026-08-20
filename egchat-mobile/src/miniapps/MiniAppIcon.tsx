@@ -14,6 +14,16 @@ export function MiniAppIcon({ name, color, size = 28 }: Props & { name: string }
   const d = s(size);
 
   switch (name) {
+    case 'djangue': return (
+      <Svg {...d} viewBox="0 0 24 24">
+        {/* Grupo de personas con símbolo de moneda = tanda/caja grupal */}
+        <Circle {...p} cx="9" cy="7" r="3"/>
+        <Path {...p} d="M3 20c0-3 2.7-5 6-5s6 2 6 5"/>
+        <Circle {...p} cx="17" cy="8" r="2.5"/>
+        <Path {...p} d="M20 19c0-2-1.8-3.5-4-3.5"/>
+        <Path {...p} d="M17 4v4M15 6h4"/>
+      </Svg>
+    );
     case 'taxi': return (
       <Svg {...d} viewBox="0 0 24 24">
         <Path {...p} d="M5 17H3a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h1l2-3h10l2 3h1a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
@@ -86,4 +96,15 @@ export function MiniAppIcon({ name, color, size = 28 }: Props & { name: string }
       </Svg>
     );
   }
+}
+
+// Exportar el componente anchor que faltaba
+export function AnchorIcon({ color = '#fff', size = 28 }: { color: string; size?: number }) {
+  const p = { fill: 'none', stroke: color, strokeWidth: 1.6, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  return (
+    <Svg width={size} height={size} viewBox="0 0 24 24">
+      <Circle {...p} cx="12" cy="5" r="3"/>
+      <Path {...p} d="M12 8v13M5 12H2a10 10 0 0 0 20 0h-3"/>
+    </Svg>
+  );
 }
