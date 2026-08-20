@@ -33,6 +33,14 @@ interface Member {
   is_current_beneficiary: boolean;
 }
 
+interface Contribution {
+  id: string;
+  amount: number;
+  paid_at: string;
+  turn_number: number;
+  users: { full_name: string; avatar_url: string | null };
+}
+
 interface DjangueDetail {
   id: string; name: string; description: string;
   frequency: string; quota_amount: number; currency: string;
@@ -108,6 +116,8 @@ export default function DjangueDetailScreen() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError]     = useState('');
   const [myUserId, setMyUserId] = useState('');
+  const [contributions, setContributions] = useState<Contribution[]>([]);
+  const [showHistory, setShowHistory] = useState(false);
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -120,12 +130,14 @@ export default function DjangueDetailScreen() {
         setRefreshing(false);
         return;
       }
-      const [detail, me] = await Promise.all([
+      const [detail, me, historyData] = await Promise.all([
         apiFetch(`/api/djangue/${id}`),
         apiFetch('/api/auth/me'),
+        apiFetch(`/api/djangue/${id}/contributions`).catch(() => ({ contributions: [] })),
       ]);
       setData(detail);
       setMyUserId(me?.id || '');
+      setContributions(historyData.contributions || []);
     } catch (e: any) {
       setError(e.message || 'Error al cargar el djangue');
     } finally {
@@ -296,6 +308,47 @@ export default function DjangueDetailScreen() {
           </View>
         </View>
 
+        {/* Historial de contribuciones */}
+        {contributions.length > 0 && (
+          <View style={s.section}>
+            <TouchableOpacity 
+              onPress={() => setShowHistory(!showHistory)}
+              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
+            >
+              <Text style={s.sectionTitle}>📊 Historial de pagos</Text>
+              <Svg 
+                width={20} height={20} viewBox="0 0 24 24" fill="none"
+                stroke="rgba(255,255,255,0.6)" strokeWidth={2.5} strokeLinecap="round"
+                style={{ transform: [{ rotate: showHistory ? '180deg' : '0deg' }] }}
+              >
+                <Path d="M6 9l6 6 6-6" />
+              </Svg>
+            </TouchableOpacity>
+            
+            {showHistory && (
+              <View style={{ gap: 8, marginTop: 4 }}>
+                {contributions.map((contrib, idx) => (
+                  <View key={contrib.id} style={h.row}>
+                    <Avatar uri={contrib.users.avatar_url} name={contrib.users.full_name} size={32} />
+                    <View style={h.info}>
+                      <Text style={h.name}>{contrib.users.full_name}</Text>
+                      <Text style={h.date}>
+                        {new Date(contrib.paid_at).toLocaleDateString('es-ES', { 
+                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+                        })}
+                      </Text>
+                    </View>
+                    <View style={h.amount}>
+                      <Text style={h.amountTxt}>{fmtAmount(contrib.amount, data.currency)}</Text>
+                      <Text style={h.turnTxt}>Turno {contrib.turn_number}</Text>
+                    </View>
+                  </View>
+                ))}
+              </View>
+            )}
+          </View>
+        )}
+
         {/* Descripción */}
         {data.description ? (
           <View style={s.section}>
@@ -364,4 +417,14 @@ const m = StyleSheet.create({
   pendingBadge: { backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
   pendingTxt: { fontSize: 11, fontWeight: '600', color: '#f59e0b' },
   receivingTxt: { fontSize: 12, fontWeight: '700', color: '#a78bfa' },
+});
+
+const h = StyleSheet.create({
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
+  info: { flex: 1 },
+  name: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  date: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  amount: { alignItems: 'flex-end' },
+  amountTxt: { fontSize: 14, fontWeight: '800', color: '#10b981' },
+  turnTxt: { fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 },
 });
