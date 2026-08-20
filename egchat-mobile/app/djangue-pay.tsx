@@ -3,6 +3,7 @@
  * Descuenta del monedero personal y acredita al monedero del djangue.
  */
 import React, { useState, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert,
@@ -58,6 +59,8 @@ export default function DjanguePayScreen() {
   }, [id]);
 
   const handlePay = async () => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return Alert.alert('No autenticado', 'Debes iniciar sesión.');
     if (!group || !wallet) return;
     if (wallet.balance < group.quota_amount) {
       Alert.alert(
@@ -122,7 +125,7 @@ export default function DjanguePayScreen() {
   return (
     <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#1e1b4b', '#312e81']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
@@ -246,8 +249,8 @@ export default function DjanguePayScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f0f1a' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f0f1a' },
+  root: { flex: 1, backgroundColor: '#1a1f3a' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1f3a' },
   header: { paddingHorizontal: 16, paddingBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
@@ -258,7 +261,7 @@ const s = StyleSheet.create({
   amountLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
   amountValue: { fontSize: 36, fontWeight: '900', color: '#fff' },
   amountSub: { fontSize: 13, color: 'rgba(255,255,255,0.45)' },
-  balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#1e1b4b', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
+  balanceCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#2d3561', borderRadius: 14, padding: 16, borderWidth: 1, borderColor: 'rgba(16,185,129,0.2)' },
   balanceCardLow: { borderColor: 'rgba(239,68,68,0.25)', backgroundColor: 'rgba(239,68,68,0.06)' },
   balanceLabel: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginBottom: 4 },
   balanceValue: { fontSize: 20, fontWeight: '800', color: '#10b981' },
@@ -266,7 +269,7 @@ const s = StyleSheet.create({
   suffTxt: { fontSize: 12, fontWeight: '700', color: '#10b981' },
   rechargeBtn: { backgroundColor: '#6366f1', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 8 },
   rechargeTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  progressCard: { backgroundColor: '#1e1b4b', borderRadius: 14, padding: 14, gap: 8 },
+  progressCard: { backgroundColor: '#2d3561', borderRadius: 14, padding: 14, gap: 8 },
   progressHeader: { flexDirection: 'row', justifyContent: 'space-between' },
   progressTitle: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.5)' },
   progressCount: { fontSize: 13, fontWeight: '700', color: '#10b981' },

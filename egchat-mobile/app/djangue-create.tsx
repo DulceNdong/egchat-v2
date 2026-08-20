@@ -3,6 +3,7 @@
  * Solo el responsable general puede crear. Puede designar un secretario.
  */
 import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ScrollView, ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -40,6 +41,8 @@ export default function DjangueCreateScreen() {
   const quota = Number(quotaRaw.replace(/[^0-9]/g, ''));
 
   const handleCreate = async () => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return Alert.alert('No autenticado', 'Debes iniciar sesión para crear un djangue.');
     if (!name.trim()) return Alert.alert('Falta el nombre', 'Ponle un nombre al djangue.');
     if (!quota || quota < 100) return Alert.alert('Cuota inválida', 'La cuota mínima es 100 XAF.');
     if (Number(maxMembers) < 2) return Alert.alert('Mínimo 2 miembros', 'Un djangue necesita al menos 2 integrantes.');
@@ -74,7 +77,7 @@ export default function DjangueCreateScreen() {
   return (
     <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#1e1b4b', '#312e81']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
@@ -252,7 +255,7 @@ export default function DjangueCreateScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f0f1a' },
+  root: { flex: 1, backgroundColor: '#1a1f3a' },
   header: { paddingHorizontal: 16, paddingBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
@@ -261,19 +264,19 @@ const s = StyleSheet.create({
   form: { padding: 16, gap: 16 },
   field: { gap: 8 },
   label: { fontSize: 13, fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: '#1e1b4b', borderRadius: 12, padding: 14, fontSize: 15, color: '#fff', borderWidth: 1, borderColor: 'rgba(99,102,241,0.2)' },
+  input: { backgroundColor: '#2d3561', borderRadius: 12, padding: 14, fontSize: 15, color: '#fff', borderWidth: 1, borderColor: 'rgba(99,102,241,0.2)' },
   inputRow: { flexDirection: 'row', gap: 8 },
   currencyBadge: { backgroundColor: '#312e81', borderRadius: 12, paddingHorizontal: 14, justifyContent: 'center' },
   currencyTxt: { fontSize: 14, fontWeight: '700', color: '#a5b4fc' },
   hint: { fontSize: 12, color: 'rgba(255,255,255,0.3)', marginTop: -4 },
   freqGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  freqBtn: { flex: 1, minWidth: '45%', backgroundColor: '#1e1b4b', borderRadius: 12, padding: 14, alignItems: 'center', gap: 4, borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' },
+  freqBtn: { flex: 1, minWidth: '45%', backgroundColor: '#2d3561', borderRadius: 12, padding: 14, alignItems: 'center', gap: 4, borderWidth: 1, borderColor: 'rgba(99,102,241,0.15)' },
   freqBtnActive: { borderColor: '#6366f1', backgroundColor: 'rgba(99,102,241,0.15)' },
   freqEmoji: { fontSize: 22 },
   freqLabel: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
   freqLabelActive: { color: '#a5b4fc' },
   freqDesc: { fontSize: 11, color: 'rgba(255,255,255,0.3)' },
-  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: '#1e1b4b', borderRadius: 12, padding: 8, alignSelf: 'flex-start' },
+  counterRow: { flexDirection: 'row', alignItems: 'center', gap: 16, backgroundColor: '#2d3561', borderRadius: 12, padding: 8, alignSelf: 'flex-start' },
   counterBtn: { width: 40, height: 40, borderRadius: 10, backgroundColor: 'rgba(99,102,241,0.2)', alignItems: 'center', justifyContent: 'center' },
   counterBtnTxt: { fontSize: 20, fontWeight: '700', color: '#a5b4fc' },
   counterVal: { fontSize: 22, fontWeight: '800', color: '#fff', minWidth: 40, textAlign: 'center' },

@@ -6,6 +6,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   ActivityIndicator, Alert, RefreshControl,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -112,6 +113,13 @@ export default function DjangueDetailScreen() {
     if (!isRefresh) setLoading(true);
     setError('');
     try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        setError('Debes iniciar sesión');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       const [detail, me] = await Promise.all([
         apiFetch(`/api/djangue/${id}`),
         apiFetch('/api/auth/me'),
@@ -182,7 +190,7 @@ export default function DjangueDetailScreen() {
   return (
     <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#1e1b4b', '#312e81']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
@@ -310,34 +318,34 @@ export default function DjangueDetailScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f0f1a' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#0f0f1a' },
-  header: { paddingHorizontal: 16, paddingBottom: 16 },
+  root: { flex: 1, backgroundColor: '#1a1f3a' },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1f3a' },
+  header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 10 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.45)', marginTop: 1 },
-  walletCard: { borderRadius: 16, padding: 20, alignItems: 'center', gap: 4 },
-  walletLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '600', textTransform: 'uppercase', letterSpacing: 1 },
-  walletBalance: { fontSize: 32, fontWeight: '900', color: '#fff' },
-  walletSub: { fontSize: 12, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
-  section: { backgroundColor: '#1e1b4b', borderRadius: 16, padding: 16, gap: 10 },
-  sectionTitle: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.6)', textTransform: 'uppercase', letterSpacing: 0.5 },
+  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  walletCard: { borderRadius: 16, padding: 20, alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
+  walletLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
+  walletBalance: { fontSize: 34, fontWeight: '900', color: '#fff' },
+  walletSub: { fontSize: 12, color: 'rgba(255,255,255,0.55)', textAlign: 'center' },
+  section: { backgroundColor: '#2d3561', borderRadius: 16, padding: 16, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 },
+  sectionTitle: { fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.8 },
   progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressTxt: { fontSize: 13, color: 'rgba(255,255,255,0.5)' },
-  progressBg: { height: 8, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 4, overflow: 'hidden' },
+  progressTxt: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
+  progressBg: { height: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 4, overflow: 'hidden' },
   progressFill: { height: '100%', borderRadius: 4, minWidth: 8 },
-  progressGoal: { fontSize: 12, color: 'rgba(255,255,255,0.35)', textAlign: 'right' },
-  payBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center' },
+  progressGoal: { fontSize: 12, color: 'rgba(255,255,255,0.45)', textAlign: 'right' },
+  payBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
   payBtnTxt: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  myTurnCard: { borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  myTurnCard: { borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
   myTurnEmoji: { fontSize: 32 },
   myTurnTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  myTurnSub: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginTop: 2, lineHeight: 17 },
+  myTurnSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2, lineHeight: 17 },
   membersList: { gap: 2 },
-  descTxt: { fontSize: 14, color: 'rgba(255,255,255,0.6)', lineHeight: 20 },
-  cancelBtn: { borderWidth: 1, borderColor: 'rgba(239,68,68,0.3)', borderRadius: 12, paddingVertical: 14, alignItems: 'center' },
-  cancelTxt: { fontSize: 15, fontWeight: '700', color: '#ef4444' },
+  descTxt: { fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 20 },
+  cancelBtn: { borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.08)' },
+  cancelTxt: { fontSize: 15, fontWeight: '700', color: '#ff6b6b' },
 });
 
 const m = StyleSheet.create({

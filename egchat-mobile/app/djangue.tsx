@@ -11,6 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, Rect, Polyline } from 'react-native-svg';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '../src/api';
 
 // ── Tipos ─────────────────────────────────────────────────────────
@@ -142,6 +143,13 @@ export default function DjangueScreen() {
     if (!isRefresh) setLoading(true);
     setError('');
     try {
+      const token = await AsyncStorage.getItem('token');
+      if (!token) {
+        setError('Debes iniciar sesión para acceder a Mi Djangue');
+        setLoading(false);
+        setRefreshing(false);
+        return;
+      }
       const data = await apiFetch('/api/djangue');
       setGroups(Array.isArray(data) ? data : []);
     } catch (e: any) {
@@ -160,7 +168,7 @@ export default function DjangueScreen() {
   return (
     <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#1e1b4b', '#312e81']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
@@ -232,7 +240,7 @@ export default function DjangueScreen() {
             style={s.createBtn}
             onPress={() => router.push('/djangue-create' as any)}
           >
-            <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.createBtnGrad}>
+            <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.createBtnGrad}>
               <Text style={s.createBtnTxt}>+ Crear Djangue</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -254,7 +262,7 @@ export default function DjangueScreen() {
               style={s.newBtn}
               onPress={() => router.push('/djangue-create' as any)}
             >
-              <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.newBtnGrad}>
+              <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.newBtnGrad}>
                 <Text style={s.newBtnTxt}>+ Crear nuevo Djangue</Text>
               </LinearGradient>
             </TouchableOpacity>
@@ -273,52 +281,52 @@ export default function DjangueScreen() {
 
 // ── Estilos ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f0f1a' },
-  header: { paddingHorizontal: 16, paddingBottom: 16 },
+  root: { flex: 1, backgroundColor: '#1a1f3a' }, // Fondo azul oscuro profesional
+  header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 }, // Más padding bottom
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 1 },
-  statsRow: { flexDirection: 'row', marginTop: 16, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 12, padding: 12 },
+  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
+  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
+  statsRow: { flexDirection: 'row', marginTop: 16, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 14, padding: 16 },
   statItem: { flex: 1, alignItems: 'center' },
-  statVal: { fontSize: 22, fontWeight: '800', color: '#fff' },
-  statLbl: { fontSize: 11, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
-  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.1)' },
+  statVal: { fontSize: 26, fontWeight: '900', color: '#fff' },
+  statLbl: { fontSize: 12, color: 'rgba(255,255,255,0.6)', marginTop: 4, fontWeight: '500' },
+  statDivider: { width: 1, backgroundColor: 'rgba(255,255,255,0.15)' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
-  loadingTxt: { fontSize: 14, color: '#6b7280', marginTop: 8 },
+  loadingTxt: { fontSize: 14, color: '#9ca3af', marginTop: 8 },
   errorEmoji: { fontSize: 40 },
   errorTxt: { fontSize: 14, color: '#ef4444', textAlign: 'center' },
-  retryBtn: { backgroundColor: '#6366f1', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 },
+  retryBtn: { backgroundColor: '#00C8A0', paddingHorizontal: 24, paddingVertical: 10, borderRadius: 10 },
   retryTxt: { color: '#fff', fontWeight: '700' },
   emptyTitle: { fontSize: 18, fontWeight: '800', color: '#fff', marginTop: 12 },
-  emptyDesc: { fontSize: 13, color: 'rgba(255,255,255,0.4)', textAlign: 'center', lineHeight: 20 },
+  emptyDesc: { fontSize: 13, color: 'rgba(255,255,255,0.5)', textAlign: 'center', lineHeight: 20 },
   createBtn: { marginTop: 8, borderRadius: 12, overflow: 'hidden' },
   createBtnGrad: { paddingHorizontal: 28, paddingVertical: 13 },
   createBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
-  list: { padding: 16, gap: 12 },
-  newBtn: { marginBottom: 4, borderRadius: 12, overflow: 'hidden' },
-  newBtnGrad: { paddingVertical: 13, alignItems: 'center' },
+  list: { padding: 16, gap: 14 },
+  newBtn: { marginBottom: 6, borderRadius: 12, overflow: 'hidden' },
+  newBtnGrad: { paddingVertical: 14, alignItems: 'center' },
   newBtnTxt: { fontSize: 15, fontWeight: '700', color: '#fff' },
 });
 
 const c = StyleSheet.create({
-  card: { backgroundColor: '#1e1b4b', borderRadius: 16, padding: 16, gap: 10 },
+  card: { backgroundColor: '#2d3561', borderRadius: 16, padding: 16, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
   cardHeader: { flexDirection: 'row', alignItems: 'center' },
-  cardBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
-  cardBadgeTxt: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  cardName: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  cardSub: { fontSize: 12, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
-  statusDot: { width: 8, height: 8, borderRadius: 4, marginLeft: 8 },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressTxt: { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
-  progressBg: { height: 6, backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 3, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 3, minWidth: 6 },
-  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.06)', paddingTop: 10 },
+  cardBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
+  cardBadgeTxt: { fontSize: 11, fontWeight: '800', color: '#fff', textTransform: 'uppercase' },
+  cardName: { fontSize: 17, fontWeight: '800', color: '#fff' },
+  cardSub: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
+  statusDot: { width: 10, height: 10, borderRadius: 5, marginLeft: 8 },
+  progressRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 2 },
+  progressTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
+  progressBg: { height: 7, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 4, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: 4, minWidth: 7 },
+  cardFooter: { flexDirection: 'row', justifyContent: 'space-between', borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.08)', paddingTop: 12, marginTop: 2 },
   footerItem: { alignItems: 'center', flex: 1 },
-  footerLabel: { fontSize: 10, color: 'rgba(255,255,255,0.35)', marginBottom: 2 },
-  footerValue: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  myTurnBadge: { borderRadius: 8, paddingVertical: 6, alignItems: 'center' },
-  myTurnTxt: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  unpaidBadge: { backgroundColor: 'rgba(245,158,11,0.15)', borderRadius: 8, paddingVertical: 6, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245,158,11,0.3)' },
-  unpaidTxt: { fontSize: 12, color: '#f59e0b', fontWeight: '600' },
+  footerLabel: { fontSize: 10, color: 'rgba(255,255,255,0.4)', marginBottom: 3, textTransform: 'uppercase', fontWeight: '600' },
+  footerValue: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  myTurnBadge: { borderRadius: 10, paddingVertical: 8, alignItems: 'center' },
+  myTurnTxt: { fontSize: 13, fontWeight: '800', color: '#fff' },
+  unpaidBadge: { backgroundColor: 'rgba(245,158,11,0.18)', borderRadius: 10, paddingVertical: 8, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(245,158,11,0.4)' },
+  unpaidTxt: { fontSize: 12, color: '#fbbf24', fontWeight: '700' },
 });

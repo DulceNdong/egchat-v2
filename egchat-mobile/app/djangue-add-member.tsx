@@ -3,6 +3,7 @@
  * Solo responsable o secretario pueden agregar miembros.
  */
 import React, { useState } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Alert, KeyboardAvoidingView, Platform,
@@ -53,6 +54,8 @@ export default function DjangueAddMemberScreen() {
   };
 
   const handleAdd = async () => {
+    const token = await AsyncStorage.getItem('token');
+    if (!token) return Alert.alert('No autenticado', 'Debes iniciar sesión.');
     if (!phone.trim()) return Alert.alert('Teléfono requerido', 'Ingresa el teléfono del integrante.');
     setLoading(true);
     try {
@@ -75,7 +78,7 @@ export default function DjangueAddMemberScreen() {
 
   return (
     <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
-      <LinearGradient colors={['#1e1b4b', '#312e81']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
@@ -182,7 +185,7 @@ export default function DjangueAddMemberScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f0f1a' },
+  root: { flex: 1, backgroundColor: '#1a1f3a' },
   header: { paddingHorizontal: 16, paddingBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
@@ -190,15 +193,15 @@ const s = StyleSheet.create({
   headerSub: { fontSize: 12, color: 'rgba(255,255,255,0.5)', marginTop: 1 },
   content: { flex: 1, padding: 16, gap: 14 },
   searchRow: { flexDirection: 'row', gap: 10 },
-  input: { flex: 1, backgroundColor: '#1e1b4b', borderRadius: 12, padding: 14, fontSize: 16, color: '#fff', borderWidth: 1, borderColor: 'rgba(99,102,241,0.2)' },
+  input: { flex: 1, backgroundColor: '#2d3561', borderRadius: 12, padding: 14, fontSize: 16, color: '#fff', borderWidth: 1, borderColor: 'rgba(99,102,241,0.2)' },
   searchBtn: { width: 52, backgroundColor: '#6366f1', borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
-  previewCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#1e1b4b', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)' },
+  previewCard: { flexDirection: 'row', alignItems: 'center', gap: 12, backgroundColor: '#2d3561', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(16,185,129,0.25)' },
   avatar: { width: 48, height: 48, borderRadius: 24 },
   previewName: { fontSize: 16, fontWeight: '700', color: '#fff' },
   previewPhone: { fontSize: 13, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
   foundBadge: { backgroundColor: 'rgba(16,185,129,0.15)', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
   foundTxt: { fontSize: 12, fontWeight: '700', color: '#10b981' },
-  infoBox: { backgroundColor: '#1e1b4b', borderRadius: 14, padding: 16, gap: 8 },
+  infoBox: { backgroundColor: '#2d3561', borderRadius: 14, padding: 16, gap: 8 },
   infoTitle: { fontSize: 14, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
   infoTxt: { fontSize: 13, color: 'rgba(255,255,255,0.4)', lineHeight: 22 },
   addBtn: { paddingVertical: 16, alignItems: 'center', borderRadius: 14 },
