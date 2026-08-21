@@ -11,16 +11,71 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Svg, { Path, Line, Circle } from 'react-native-svg';
+import Svg, { Path, Line, Circle, Rect } from 'react-native-svg';
 import { apiFetch } from '../src/api';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'annual';
 
-const FREQUENCIES: { key: Frequency; label: string; desc: string; emoji: string }[] = [
-  { key: 'daily',   label: 'Diario',   desc: 'Cada día',    emoji: '📅' },
-  { key: 'weekly',  label: 'Semanal',  desc: 'Cada semana', emoji: '📆' },
-  { key: 'monthly', label: 'Mensual',  desc: 'Cada mes',    emoji: '🗓️' },
-  { key: 'annual',  label: 'Anual',    desc: 'Cada año',    emoji: '📊' },
+// ── Iconos de frecuencia ──────────────────────────────────────────
+function FrequencyIcon({ type, size = 24, color = '#fff' }: { type: Frequency; size?: number; color?: string }) {
+  switch (type) {
+    case 'daily':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+          <Circle cx="12" cy="12" r="4" />
+          <Line x1="12" y1="1" x2="12" y2="3" />
+          <Line x1="12" y1="21" x2="12" y2="23" />
+          <Line x1="4.22" y1="4.22" x2="5.64" y2="5.64" />
+          <Line x1="18.36" y1="18.36" x2="19.78" y2="19.78" />
+          <Line x1="1" y1="12" x2="3" y2="12" />
+          <Line x1="21" y1="12" x2="23" y2="12" />
+          <Line x1="4.22" y1="19.78" x2="5.64" y2="18.36" />
+          <Line x1="18.36" y1="5.64" x2="19.78" y2="4.22" />
+        </Svg>
+      );
+    case 'weekly':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+          <Rect x="3" y="4" width="18" height="18" rx="2" />
+          <Line x1="3" y1="10" x2="21" y2="10" />
+          <Line x1="8" y1="2" x2="8" y2="6" />
+          <Line x1="16" y1="2" x2="16" y2="6" />
+          <Path d="M9 16l2 2 4-4" />
+        </Svg>
+      );
+    case 'monthly':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+          <Rect x="3" y="4" width="18" height="18" rx="2" />
+          <Line x1="3" y1="10" x2="21" y2="10" />
+          <Line x1="8" y1="2" x2="8" y2="6" />
+          <Line x1="16" y1="2" x2="16" y2="6" />
+          <Line x1="8" y1="14" x2="8" y2="14.01" />
+          <Line x1="12" y1="14" x2="12" y2="14.01" />
+          <Line x1="16" y1="14" x2="16" y2="14.01" />
+          <Line x1="8" y1="18" x2="8" y2="18.01" />
+          <Line x1="12" y1="18" x2="12" y2="18.01" />
+        </Svg>
+      );
+    case 'annual':
+      return (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+          <Path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6" />
+          <Path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18" />
+          <Path d="M4 22h16" />
+          <Path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22" />
+          <Path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22" />
+          <Path d="M18 2H6v7a6 6 0 0 0 12 0V2Z" />
+        </Svg>
+      );
+  }
+}
+
+const FREQUENCIES: { key: Frequency; label: string; desc: string }[] = [
+  { key: 'daily',   label: 'Diario',   desc: 'Cada día' },
+  { key: 'weekly',  label: 'Semanal',  desc: 'Cada semana' },
+  { key: 'monthly', label: 'Mensual',  desc: 'Cada mes' },
+  { key: 'annual',  label: 'Anual',    desc: 'Cada año' },
 ];
 
 const fmtAmount = (n: string) => {
@@ -138,7 +193,11 @@ export default function DjangueCreateScreen() {
                   onPress={() => setFrequency(f.key)}
                   activeOpacity={0.8}
                 >
-                  <Text style={s.freqEmoji}>{f.emoji}</Text>
+                  <FrequencyIcon 
+                    type={f.key} 
+                    size={28} 
+                    color={frequency === f.key ? '#00C8A0' : 'rgba(255,255,255,0.4)'} 
+                  />
                   <Text style={[s.freqLabel, frequency === f.key && s.freqLabelActive]}>{f.label}</Text>
                   <Text style={s.freqDesc}>{f.desc}</Text>
                 </TouchableOpacity>
