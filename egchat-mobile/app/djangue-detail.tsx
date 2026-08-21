@@ -1,10 +1,10 @@
 /**
  * Mi Djangue — Detalle / Dashboard del grupo
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, RefreshControl,
+  ActivityIndicator, Alert, RefreshControl, Animated,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
@@ -25,6 +25,71 @@ const fmtDate = (iso: string | null) => {
 };
 const initials = (name: string) =>
   name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
+
+// ── Loader animado ────────────────────────────────────────────────
+function PulseLoader() {
+  const pulse1 = useRef(new Animated.Value(0.3)).current;
+  const pulse2 = useRef(new Animated.Value(0.3)).current;
+  const pulse3 = useRef(new Animated.Value(0.3)).current;
+
+  React.useEffect(() => {
+    const createPulse = (anim: Animated.Value, delay: number) => {
+      return Animated.loop(
+        Animated.sequence([
+          Animated.timing(anim, {
+            toValue: 1,
+            duration: 600,
+            delay,
+            useNativeDriver: true,
+          }),
+          Animated.timing(anim, {
+            toValue: 0.3,
+            duration: 600,
+            useNativeDriver: true,
+          }),
+        ])
+      );
+    };
+
+    Animated.parallel([
+      createPulse(pulse1, 0),
+      createPulse(pulse2, 200),
+      createPulse(pulse3, 400),
+    ]).start();
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
+      <Animated.View
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: '#00C8A0',
+          opacity: pulse1,
+        }}
+      />
+      <Animated.View
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: '#00B4E6',
+          opacity: pulse2,
+        }}
+      />
+      <Animated.View
+        style={{
+          width: 16,
+          height: 16,
+          borderRadius: 8,
+          backgroundColor: '#00C8A0',
+          opacity: pulse3,
+        }}
+      />
+    </View>
+  );
+}
 
 interface Member {
   id: string; turn_order: number; user_id: string;
@@ -118,6 +183,8 @@ export default function DjangueDetailScreen() {
   const [myUserId, setMyUserId] = useState('');
   const [contributions, setContributions] = useState<Contribution[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const historyHeight = useRef(new Animated.Value(0)).current;
+  const historyOpacity = useRef(new Animated.Value(0)).current;
 
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
@@ -147,6 +214,25 @@ export default function DjangueDetailScreen() {
   }, [id]);
 
   useFocusEffect(useCallback(() => { load(); }, [load]));
+
+  const toggleHistory = () => {
+    const toValue = showHistory ? 0 : 1;
+    setShowHistory(!showHistory);
+    
+    Animated.parallel([
+      Animated.spring(historyHeight, {
+        toValue,
+        tension: 50,
+        friction: 8,
+        useNativeDriver: false,
+      }),
+      Animated.timing(historyOpacity, {
+        toValue,
+        duration: 300,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
 
   const handleAddMember = () => {
     router.push({ pathname: '/djangue-add-member', params: { id } } as any);
@@ -179,7 +265,10 @@ export default function DjangueDetailScreen() {
 
   if (loading) return (
     <View style={s.center}>
-      <ActivityIndicator size="large" color="#6366f1" />
+      <PulseLoader />
+      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 16 }}>
+        Cargando djangue...
+      </Text>
     </View>
   );
 
@@ -312,40 +401,72 @@ export default function DjangueDetailScreen() {
         {contributions.length > 0 && (
           <View style={s.section}>
             <TouchableOpacity 
-              onPress={() => setShowHistory(!showHistory)}
+              onPress={toggleHistory}
               style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
             >
               <Text style={s.sectionTitle}>📊 Historial de pagos</Text>
-              <Svg 
-                width={20} height={20} viewBox="0 0 24 24" fill="none"
-                stroke="rgba(255,255,255,0.6)" strokeWidth={2.5} strokeLinecap="round"
-                style={{ transform: [{ rotate: showHistory ? '180deg' : '0deg' }] }}
+              <Animated.View
+                style={{
+                  transform: [{
+                    rotate: historyHeight.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: ['0deg', '180deg'],
+                    }),
+                  }],
+                }}
               >
-                <Path d="M6 9l6 6 6-6" />
-              </Svg>
+                <Svg 
+                  width={20} height={20} viewBox="0 0 24 24" fill="none"
+                  stroke="rgba(255,255,255,0.6)" strokeWidth={2.5} strokeLinecap="round"
+                >
+                  <Path d="M6 9l6 6 6-6" />
+                </Svg>
+              </Animated.View>
             </TouchableOpacity>
             
-            {showHistory && (
+            <Animated.View
+              style={{
+                maxHeight: historyHeight.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: [0, contributions.length * 60 + 50], // altura estimada
+                }),
+                opacity: historyOpacity,
+                overflow: 'hidden',
+              }}
+            >
               <View style={{ gap: 8, marginTop: 4 }}>
                 {contributions.map((contrib, idx) => (
-                  <View key={contrib.id} style={h.row}>
-                    <Avatar uri={contrib.users.avatar_url} name={contrib.users.full_name} size={32} />
-                    <View style={h.info}>
-                      <Text style={h.name}>{contrib.users.full_name}</Text>
-                      <Text style={h.date}>
-                        {new Date(contrib.paid_at).toLocaleDateString('es-ES', { 
-                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
-                        })}
-                      </Text>
+                  <Animated.View
+                    key={contrib.id}
+                    style={{
+                      opacity: historyOpacity,
+                      transform: [{
+                        translateY: historyOpacity.interpolate({
+                          inputRange: [0, 1],
+                          outputRange: [20, 0],
+                        }),
+                      }],
+                    }}
+                  >
+                    <View style={h.row}>
+                      <Avatar uri={contrib.users.avatar_url} name={contrib.users.full_name} size={32} />
+                      <View style={h.info}>
+                        <Text style={h.name}>{contrib.users.full_name}</Text>
+                        <Text style={h.date}>
+                          {new Date(contrib.paid_at).toLocaleDateString('es-ES', { 
+                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
+                          })}
+                        </Text>
+                      </View>
+                      <View style={h.amount}>
+                        <Text style={h.amountTxt}>{fmtAmount(contrib.amount, data.currency)}</Text>
+                        <Text style={h.turnTxt}>Turno {contrib.turn_number}</Text>
+                      </View>
                     </View>
-                    <View style={h.amount}>
-                      <Text style={h.amountTxt}>{fmtAmount(contrib.amount, data.currency)}</Text>
-                      <Text style={h.turnTxt}>Turno {contrib.turn_number}</Text>
-                    </View>
-                  </View>
+                  </Animated.View>
                 ))}
               </View>
-            )}
+            </Animated.View>
           </View>
         )}
 

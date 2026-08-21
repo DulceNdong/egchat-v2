@@ -2,10 +2,10 @@
  * Mi Djangue — Pantalla principal (lista de djangues)
  * Tanda / Caja de ahorro grupal — EGChat
  */
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, FlatList,
-  ActivityIndicator, RefreshControl,
+  ActivityIndicator, RefreshControl, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -68,12 +68,40 @@ function DjangueIcon({ color = '#fff', size = 24 }: { color?: string; size?: num
 }
 
 // ── Tarjeta de grupo ──────────────────────────────────────────────
-function DjangueCard({ group, onPress }: { group: DjangueGroup; onPress: () => void }) {
+function DjangueCard({ group, onPress, index }: { group: DjangueGroup; onPress: () => void; index: number }) {
   const colors = FREQ_COLORS[group.frequency] ?? ['#6366f1', '#4f46e5'];
   const progress = group.total_turns > 0 ? (group.current_turn - 1) / group.total_turns : 0;
 
+  // Animación de entrada
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(50)).current;
+
+  React.useEffect(() => {
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 400,
+        delay: index * 100, // Stagger effect
+        useNativeDriver: true,
+      }),
+      Animated.spring(slideAnim, {
+        toValue: 0,
+        tension: 50,
+        friction: 7,
+        delay: index * 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
+
   return (
-    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={c.card}>
+    <Animated.View 
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }],
+      }}
+    >
+      <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={c.card}>
       <View style={c.cardHeader}>
         <LinearGradient colors={colors} style={c.cardBadge}>
           <Text style={c.cardBadgeTxt}>{FREQ_LABELS[group.frequency]}</Text>
@@ -129,6 +157,7 @@ function DjangueCard({ group, onPress }: { group: DjangueGroup; onPress: () => v
         </View>
       )}
     </TouchableOpacity>
+    </Animated.View>
   );
 }
 
@@ -267,9 +296,10 @@ export default function DjangueScreen() {
               </LinearGradient>
             </TouchableOpacity>
           }
-          renderItem={({ item }) => (
+          renderItem={({ item, index }) => (
             <DjangueCard
               group={item}
+              index={index}
               onPress={() => router.push({ pathname: '/djangue-detail', params: { id: item.id } } as any)}
             />
           )}
