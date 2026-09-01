@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity,
-  StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, Modal, Pressable, Alert, Image, Share,
+  View, Text, FlatList, TouchableOpacity, TextInput,
+  StyleSheet, Platform, ActivityIndicator,
+  Animated, Modal, Pressable, Alert, Image, Share, Keyboard,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -15,14 +16,20 @@ import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPic
 import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
 import { StickerPanel } from '../../src/components/chat/StickerPanel';
 import { QuickTransferModal } from '../../src/components/chat/QuickTransferModal';
+import { TransferDetailsModal } from '../../src/components/chat/TransferDetailsModal';
 import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuPanel';
 import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
 import { ChatHeader } from '../../src/components/chat/ChatHeader';
 import { ChatInputBar } from '../../src/components/chat/ChatInputBar';
+import { ScheduledMessageModal } from '../../src/components/chat/ScheduledMessageModal';
+import { processScheduledMessages } from '../../src/services/scheduledMessages';
+import { EditHistoryModal } from '../../src/components/chat/EditHistoryModal';
 import { ChatWallpaperBackground } from '../../src/components/chat/ChatWallpaperBackground';
 import { ChatWallpaperModal } from '../../src/components/chat/ChatWallpaperModal';
 import { ChatSearchBar } from '../../src/components/chat/ChatSearchBar';
 import { ChatStarredModal } from '../../src/components/chat/ChatStarredModal';
+import { ChatMediaGallery } from '../../src/components/chat/ChatMediaGallery';
+import { ForwardWithCommentModal } from '../../src/components/chat/ForwardWithCommentModal';
 import { ChatContextMenu } from '../../src/components/chat/ChatContextMenu';
 import { GroupInfoModal } from '../../src/components/chat/GroupInfoModal';
 import { EphemeralSettingsModal } from '../../src/components/chat/EphemeralSettingsModal';
@@ -62,7 +69,7 @@ import { PhotoEditorModal } from '../../src/components/PhotoEditorModal';
 import {
   pickImageFromLibrary, pickImageFromCamera, pickVideo, pickVideoFromCamera,
   pickDocument, pickContact, pickFile,
-  getCurrentLocationLabel, uploadAndSend,
+  getCurrentLocationLabel, uploadAndSend, pickMultipleImages,
 } from '../../src/utils/chatMedia';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
@@ -77,9 +84,11 @@ import {
 } from '../../src/supabase';
 import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
+import { useKeyboardHeight } from '../../src/hooks/useKeyboardHeight';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
 import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
 import { translateText } from '../../src/services/translator';
+import { ReactionDetailModal } from '../../src/components/chat/ReactionDetailModal';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -208,6 +217,7 @@ export default function ChatScreen() {
   const [showAttach, setShowAttach] = useState(false);
   const [showEmojis, setShowEmojis] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
+  const [inputBarHeight, setInputBarHeight] = useState(0);
   const [showQuickTransfer, setShowQuickTransfer] = useState(false);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
@@ -243,6 +253,9 @@ export default function ChatScreen() {
   const [mentionQuery, setMentionQuery] = useState<string | null>(null);
   // ── Sprint 2.4 Pago grupal ─────────────────────────────────────
   const [showGroupPayment, setShowGroupPayment] = useState(false);
+  // ── Transfer Details Modal ─────────────────────────────────────
+  const [showTransferDetails, setShowTransferDetails] = useState(false);
+  const [transferDetailsData, setTransferDetailsData] = useState<any>(null);
   // ── Sprint 3.1 Tono personalizado ─────────────────────────────
   const [chatTone, setChatToneState] = useState('default');
   const [showToneModal, setShowToneModal] = useState(false);
@@ -259,12 +272,31 @@ export default function ChatScreen() {
   const [reactionsMap, setReactionsMap] = useState<Record<string, ReactionsMap>>({});
   // ── C9 Receipts de lectura ─────────────────────────────────────
   const [receiptsMsgId, setReceiptsMsgId] = useState<string | null>(null);
+  // ── #9 Contador de no leídos al scrollear ─────────────────────
+  const [unreadScrollCount, setUnreadScrollCount] = useState(0);
+  // ── #8 ID del primer mensaje no leído al abrir ─────────────────
+  const [firstUnreadId, setFirstUnreadId] = useState<string | null>(null);
+  // ── #7 Modal de quién reaccionó ────────────────────────────────
+  const [reactionDetailMsgId, setReactionDetailMsgId] = useState<string | null>(null);
+  const [reactionDetailCounts, setReactionDetailCounts] = useState<Record<string, number>>({});
+  // ── #12 Selección múltiple de mensajes ─────────────────────────
+  const [isSelectMode, setIsSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // ── A2 Mensajes programados ────────────────────────────────────
+  const [showScheduleModal, setShowScheduleModal] = useState(false);
+  // ── A3 Historial de ediciones ──────────────────────────────────
+  const [editHistoryMsg, setEditHistoryMsg] = useState<Message | null>(null);
+  // ── C5 Galería multimedia ──────────────────────────────────────
+  const [showMediaGallery, setShowMediaGallery] = useState(false);
+  // ── C7 Reenvío con comentario ──────────────────────────────────
+  const [showForwardModal, setShowForwardModal] = useState(false);
+  const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
   // ── F1 Respuestas rápidas ──────────────────────────────────────
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [quickReplySuggestions, setQuickReplySuggestions] = useState<QuickReply[]>([]);
-  const groupMembers: MentionUser[] = (isGroup && chat?.participants)
+  const groupMembers: MentionUser[] = (chat?.type === 'group' && chat?.participants)
     ? (chat.participants as any[])
-        .filter((p: any) => p.user_id !== currentUserId)
+        .filter((p: any) => String(p.user_id) !== String(currentUserId))
         .map((p: any) => ({
           user_id: p.user_id,
           full_name: p.full_name || p.users?.full_name || p.user?.full_name || 'Usuario',
@@ -272,6 +304,7 @@ export default function ChatScreen() {
         }))
     : [];
   const flatListRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -282,10 +315,53 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
+  const { keyboardHeight, keyboardVisible } = useKeyboardHeight();
+
+  // Animated.Value que sigue el teclado con la curva nativa — sin delay JS
+  const dockBottom = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const showSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      (e) => {
+        Animated.timing(dockBottom, {
+          toValue: e.endCoordinates.height + 4,
+          duration: Platform.OS === 'ios' ? e.duration || 250 : 150,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+    const hideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      (e) => {
+        Animated.timing(dockBottom, {
+          toValue: 0,
+          duration: Platform.OS === 'ios' ? e.duration || 250 : 150,
+          useNativeDriver: false,
+        }).start();
+      }
+    );
+    return () => { showSub.remove(); hideSub.remove(); };
+  }, [dockBottom]);
+  const activePanelHeight = showAttach
+    ? 290
+    : showEmojis
+      ? 300
+      : showStickers
+        ? 320
+        : 0;
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
     return () => clearAllMessageStatusTimers();
+  }, []);
+
+  // ── A2 Procesar mensajes programados cada 30s ──────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      processScheduledMessages().catch(() => {});
+    }, 30_000);
+    return () => clearInterval(interval);
   }, []);
 
   // ── SSE Stream — mensajes instantáneos desde el backend ──────────
@@ -386,6 +462,8 @@ export default function ChatScreen() {
   // Cargar datos iniciales
   useEffect(() => {
     const init = async () => {
+      // Timeout de seguridad: si la carga tarda más de 20s, salir del spinner
+      const safetyTimeout = setTimeout(() => setLoading(false), 20000);
       try {
         // Obtener usuario actual via API (no decodificar JWT en RN)
         const me = await authAPI.me();
@@ -422,6 +500,19 @@ export default function ChatScreen() {
         saveCache(`chat_messages_${chatId}`, msgList);
         setHasMore(msgList.length === 50);
 
+        // ── #8 Detectar primer mensaje no leído ─────────────────────
+        const meId = me?.id || '';
+        const firstUnread = msgList.find(
+          m => m.sender_id !== meId && m.status !== 'read'
+        );
+        if (firstUnread) setFirstUnreadId(firstUnread.id);
+
+        // ── #9 Contar no leídos ─────────────────────────────────────
+        const unreadCnt = msgList.filter(
+          m => m.sender_id !== meId && m.status !== 'read'
+        ).length;
+        if (unreadCnt > 0) setUnreadScrollCount(unreadCnt);
+
         // ── Lectura real (doble check azul) ──────────────────────────
         // 1. Marcar el último mensaje leído en BD (endpoint existente)
         const lastReadableId = getLastReadableMessageId(msgList, me?.id || '');
@@ -448,6 +539,7 @@ export default function ChatScreen() {
           setMessages(normalizeMessages(cached));
         }
       } finally {
+        clearTimeout(safetyTimeout);
         setLoading(false);
       }
     };
@@ -544,7 +636,7 @@ export default function ChatScreen() {
   // (por si Supabase Presence no funciona en web)
   useEffect(() => {
     const _isGroup = chat?.type === 'group';
-    const _otherParticipant = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const _otherParticipant = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     if (!_otherParticipant?.user_id || _isGroup) return;
     const uid = String(_otherParticipant.user_id);
 
@@ -595,6 +687,15 @@ export default function ChatScreen() {
       setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
     }
   }, [messages.length]);
+
+  // Scroll al fondo cuando sube el teclado — para que el último mensaje
+  // siempre quede visible encima de la barra de input
+  useEffect(() => {
+    if (keyboardVisible) {
+      // Pequeño delay para que KAV haya terminado de ajustar el layout
+      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 50);
+    }
+  }, [keyboardVisible]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
@@ -729,7 +830,7 @@ export default function ChatScreen() {
   }, [contextMsg, chatId, currentUserId, reactionsMap]);
 
   const exportChat = useCallback(() => {
-    const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const other = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     const name = chat?.type === 'group'
       ? (chat?.name || 'Grupo')
       : (getParticipantName(other) || 'Usuario');
@@ -766,9 +867,15 @@ export default function ChatScreen() {
     const fallbackName = chat?.type === 'group'
       ? (chat?.name || 'Grupo')
       : (getParticipantName(other) || 'Usuario');
+    // #6 — incluir thumbnail si el mensaje padre es imagen
+    const imageUri =
+      parent.type === 'image'
+        ? (parent.imageUrl || parent.file_url || undefined)
+        : undefined;
     return {
       author: parent.sender_id === currentUserId ? 'Tú' : (parent.sender?.full_name || fallbackName),
-      text: parent.text || 'Mensaje',
+      text: parent.type === 'image' ? '📷 Foto' : (parent.text || 'Mensaje'),
+      imageUri,
     };
   }, [messages, currentUserId, chat]);
 
@@ -817,9 +924,9 @@ export default function ChatScreen() {
   const handleForwardMessage = useCallback(() => {
     if (!contextMsg) return;
     setContextVisible(false);
-    // Abrir selector de chats para reenviar
-    (global as any).__egchat_forward_msg = contextMsg;
-    router.push('/contacts?mode=forward' as any);
+    // C7 — abrir modal de reenvío con comentario
+    setForwardMsg(contextMsg);
+    setShowForwardModal(true);
   }, [contextMsg]);
 
   // ── Sprint 1.4: Ubicación en vivo ──────────────────────────────
@@ -870,7 +977,7 @@ export default function ChatScreen() {
   const handleTextChange = useCallback((val: string) => {
     setText(val);
     // Sprint 2.2 — detectar mención
-    if (isGroup) {
+    if (chat?.type === 'group') {
       const detection = detectMentionQuery(val);
       setMentionQuery(detection ? detection.query : null);
     }
@@ -889,7 +996,7 @@ export default function ChatScreen() {
     } else {
       typingChannelRef.current?.sendTyping(false);
     }
-  }, [chatId, isGroup, quickReplies]);
+  }, [chat, chatId, quickReplies]);
 
   const pushOptimistic = useCallback((msg: Message) => {
     setMessages(prev => mergeMessages(prev, [msg]));
@@ -1032,6 +1139,46 @@ export default function ChatScreen() {
       return;
     }
 
+    // ── ÁLBUM ─────────────────────────────────────────────────────
+    if (action === 'album') {
+      setShowAttach(false);
+      const assets = await pickMultipleImages();
+      if (!assets.length) return;
+      if (assets.length === 1) {
+        // Una sola foto → enviar como imagen normal
+        setMediaPreviewItem({ uri: assets[0].uri, fileName: assets[0].fileName, mimeType: assets[0].mimeType, type: 'image' });
+        return;
+      }
+      // Múltiples → subir en paralelo y enviar como álbum
+      toast.info('📷 Subiendo álbum...', `${assets.length} fotos`);
+      const tempId = createTempMessageId();
+      pushOptimistic({
+        id: tempId, text: `📷 Álbum (${assets.length} fotos)`, type: 'album',
+        sender_id: currentUserId, status: 'pending',
+        created_at: new Date().toISOString(),
+        album_urls: assets.map(a => a.uri), // URIs locales mientras sube
+      });
+      try {
+        const uploadedUrls = await Promise.all(
+          assets.map(asset =>
+            uploadAndSend(chatId, asset, { text: asset.fileName, type: 'image' })
+              .then(msg => msg?.file_url || msg?.imageUrl || asset.uri)
+              .catch(() => asset.uri)
+          )
+        );
+        const sent = await chatAPI.sendMessage(chatId, {
+          text: `📷 Álbum (${uploadedUrls.length} fotos)`,
+          type: 'album',
+          album_urls: uploadedUrls,
+        });
+        replaceOptimistic(tempId, { ...sent, album_urls: uploadedUrls });
+      } catch {
+        failOptimistic(tempId);
+        toast.error('Error', 'No se pudo enviar el álbum');
+      }
+      return;
+    }
+
     // ── VIDEO ─────────────────────────────────────────────────────
     if (action === 'video') {
       setShowAttach(false);
@@ -1059,7 +1206,12 @@ export default function ChatScreen() {
           text: 'Ubicación actual',
           onPress: async () => {
             toast.info('GPS', 'Obteniendo tu ubicación...');
-            const { lat, lng, label } = await getCurrentLocationLabel();
+            const location = await getCurrentLocationLabel();
+            if (!location) {
+              toast.error('Ubicación', 'No se pudo obtener tu ubicación');
+              return;
+            }
+            const { lat, lng, label } = location;
             const mapsUrl = `https://www.google.com/maps?q=${lat},${lng}`;
             const msgText = `📍 ${label}\n${mapsUrl}`;
             const tempId = createTempMessageId();
@@ -1218,7 +1370,7 @@ export default function ChatScreen() {
   }, []);
 
   const isGroup = chat?.type === 'group';
-  const otherParticipant = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+  const otherParticipant = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
   const chatName = chat
     ? isGroup ? (chat.name || 'Grupo') : (getParticipantName(otherParticipant) || 'Usuario')
     : '...';
@@ -1228,6 +1380,11 @@ export default function ChatScreen() {
   const chatSubtitle = isGroup
     ? `${chat?.participants?.length || 0} miembros`
     : isOtherOnline ? 'En línea' : 'Desconectado';
+
+  // C3 — broadcast mode: solo admins escriben
+  const broadcastMode = isGroup && chat?.settings?.broadcast_mode === true;
+  const isGroupAdmin = isGroup && (chat?.participants || []).find((p: any) => p.user_id === currentUserId)?.role === 'admin';
+  const canWrite = !broadcastMode || isGroupAdmin;
 
   // ── Items del drawer ──────────────────────────────────────────
   const IC = '#374151'; // color base
@@ -1264,6 +1421,14 @@ export default function ChatScreen() {
       label: isPinned ? 'Desfijar chat' : 'Fijar chat',
       color: IC,
       onPress: () => { setDrawerVisible(false); togglePin(); },
+    },
+    // ── C5 Galería multimedia ──
+    {
+      section: 'main',
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>,
+      label: 'Archivos multimedia',
+      color: IC,
+      onPress: () => { setDrawerVisible(false); setShowMediaGallery(true); },
     },
     // ── Sección configuración ──
     {
@@ -1407,21 +1572,110 @@ export default function ChatScreen() {
     },
   ];
 
-  const displayMessages = chatSearchQuery.trim()
-    ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
-    : filterExpiredMessages(messages, ephemeralDuration);
+  const displayMessages = useMemo(() =>
+    chatSearchQuery.trim()
+      ? messages.filter(m => m.text?.toLowerCase().includes(chatSearchQuery.toLowerCase()))
+      : filterExpiredMessages(messages, ephemeralDuration),
+  [messages, chatSearchQuery, ephemeralDuration]);
 
   const starredMessages = messages.filter(m => starredIds.includes(m.id));
 
-  const renderItem = ({ item, index }: { item: Message; index: number }) => {
+  // ── Función para manejar click en tarjeta de transferencia ──────
+  // ── #4 Jump to message al tocar reply preview ─────────────────
+  const handleJumpToMessage = useCallback((parentId: string) => {
+    const idx = displayMessages.findIndex(m => m.id === parentId);
+    if (idx === -1) return;
+    try {
+      flatListRef.current?.scrollToIndex({ index: idx, animated: true, viewPosition: 0.3 });
+    } catch { /* scrollToItem como fallback */ }
+  }, [displayMessages]);
+
+  // ── #1 Swipe-to-reply handler ──────────────────────────────────
+  const handleSwipeReply = useCallback((msg: Message) => {
+    setReplyTo(msg);
+    haptics.light();
+  }, []);
+
+  // ── #12 Selección múltiple ──────────────────────────────────────
+  const toggleSelect = useCallback((id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const exitSelectMode = useCallback(() => {
+    setIsSelectMode(false);
+    setSelectedIds(new Set());
+  }, []);
+
+  const handleDeleteSelected = useCallback(() => {
+    Alert.alert(
+      'Eliminar mensajes',
+      `¿Eliminar ${selectedIds.size} mensaje${selectedIds.size > 1 ? 's' : ''}?`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar', style: 'destructive',
+          onPress: async () => {
+            const ids = Array.from(selectedIds);
+            await Promise.allSettled(ids.map(id => chatAPI.deleteMessage(id)));
+            setMessages(prev => prev.filter(m => !selectedIds.has(m.id)));
+            exitSelectMode();
+          },
+        },
+      ]
+    );
+  }, [selectedIds, exitSelectMode]);
+
+  const handleForwardSelected = useCallback(() => {
+    const msgs = messages.filter(m => selectedIds.has(m.id));
+    if (msgs.length === 0) return;
+    exitSelectMode();
+    // Reenviar el primero con el modal; si hay varios, los encola en globals para el modal
+    (global as any).__egchat_forward_msgs = msgs;
+    setForwardMsg(msgs[0]);
+    setShowForwardModal(true);
+  }, [messages, selectedIds, exitSelectMode]);
+
+  const handleTransferPress = useCallback((transferData: any) => {
+    setTransferDetailsData(transferData);
+    setShowTransferDetails(true);
+  }, []);
+
+  const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === currentUserId;
     const prevMsg = index > 0 ? displayMessages[index - 1] : null;
     const showDate = !prevMsg || getDateLabel(item.created_at) !== getDateLabel(prevMsg.created_at);
     const searchHit = !!chatSearchQuery.trim() && !!item.text?.toLowerCase().includes(chatSearchQuery.toLowerCase());
+    // #8 — Separador de mensajes no leídos
+    const showUnreadSeparator = !!firstUnreadId && item.id === firstUnreadId;
+    // #12 — estado de selección
+    const isSelected = selectedIds.has(item.id);
 
     return (
-      <>
+      <TouchableOpacity
+        activeOpacity={isSelectMode ? 0.7 : 1}
+        onPress={isSelectMode ? () => toggleSelect(item.id) : undefined}
+        style={isSelected ? styles.selectedRow : undefined}
+      >
         {showDate && <DateSeparator label={getDateLabel(item.created_at)} />}
+        {showUnreadSeparator && (
+          <View style={styles.unreadSeparator}>
+            <View style={styles.unreadLine} />
+            <Text style={styles.unreadLabel}>Mensajes nuevos</Text>
+            <View style={styles.unreadLine} />
+          </View>
+        )}
+        {/* Checkmark de selección */}
+        {isSelectMode && (
+          <View style={[styles.selectCheck, isOwn ? styles.selectCheckOwn : styles.selectCheckTheir]}>
+            <View style={[styles.selectCircle, isSelected && styles.selectCircleActive]}>
+              {isSelected && <Text style={styles.selectTick}>✓</Text>}
+            </View>
+          </View>
+        )}
         <ChatMessageBubble
           message={item}
           isOwn={isOwn}
@@ -1432,27 +1686,52 @@ export default function ChatScreen() {
           otherAvatar={chatAvatar}
           replyPreview={getReplyPreview(item)}
           showReadReceipts={showReadReceipts}
-          highlight={searchHit}
+          highlight={searchHit || isSelected}
           reactions={messageReactions[item.id]}
           onLongPress={(msg) => {
+            if (isSelectMode) {
+              toggleSelect(msg.id);
+              return;
+            }
+            haptics.medium();
+            setIsSelectMode(true);
+            setSelectedIds(new Set([msg.id]));
             handleLongPress(msg);
-            // C9 — abrir receipts si es propio y es grupo
             if (isGroup && msg.sender_id === currentUserId) {
               setReceiptsMsgId(msg.id);
             }
           }}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}
+          onTransferPress={handleTransferPress}
+          onSwipeReply={isSelectMode ? undefined : handleSwipeReply}
+          onReplyTap={handleJumpToMessage}
+          onReactionPress={(msgId, rxns) => {
+            setReactionDetailMsgId(msgId);
+            setReactionDetailCounts(rxns);
+          }}
           onCallback={() => {
-            // C6 — Devolver llamada: detecta tipo y llama de vuelta
             const txt = item.text?.toLowerCase() || '';
             const isVideo = txt.includes('video') || txt.includes('📹') || txt.includes('videollamada');
             goToCall(isVideo ? 'video' : 'audio');
           }}
+          onTranscribed={(msgId, transcriptText) => {
+            // C8 — guardar transcripción en el estado del mensaje
+            setMessages(prev => prev.map(m =>
+              m.id === msgId ? { ...m, voice_transcript: transcriptText } : m
+            ));
+          }}
         />
-      </>
+      </TouchableOpacity>
     );
-  };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    currentUserId, displayMessages, chatSearchQuery, firstUnreadId,
+    selectedIds, isSelectMode, isGroup, myProfile, chatName, chatAvatar,
+    showReadReceipts, messageReactions, toggleSelect, retryMessage,
+    setPreviewImageUri, handleTransferPress, handleSwipeReply,
+    handleJumpToMessage, handleLongPress,
+  ]);
 
   const goToCall = (callType: 'audio' | 'video') => {
     // Si es chat grupal → llamada grupal
@@ -1490,6 +1769,15 @@ export default function ChatScreen() {
     } as any);
   };
 
+  // Guard: chatId debe ser un string válido (no undefined, no array)
+  if (!chatId || Array.isArray(chatId)) {
+    return (
+      <View style={styles.center}>
+        <Text style={{ color: Colors.textSecondary }}>Chat no encontrado</Text>
+      </View>
+    );
+  }
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -1499,7 +1787,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgTertiary }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bgTertiary }]} edges={['left', 'right']}>
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
@@ -1557,19 +1845,27 @@ export default function ChatScreen() {
         </View>
       )}
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={styles.chatBg}>
+      <View style={{ flex: 1 }}>
+        <View style={[styles.chatBg, { flex: 1 }]}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
           <FlatList
             ref={flatListRef}
             data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            contentContainerStyle={styles.messagesList}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: inputBarHeight + keyboardHeight + 16 }]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
+            // ── Optimizaciones de rendimiento ──────────────────────
+            initialNumToRender={20}
+            maxToRenderPerBatch={15}
+            updateCellsBatchingPeriod={50}
+            windowSize={10}
+            removeClippedSubviews={Platform.OS === 'android'}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
+            // ────────────────────────────────────────────────────────
             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 8 }} /> : null}
             ListFooterComponent={isTyping ? <TypingIndicator /> : null}
             ListEmptyComponent={
@@ -1583,9 +1879,20 @@ export default function ChatScreen() {
           {showScrollBottom && (
             <TouchableOpacity
               style={styles.scrollBottomBtn}
-              onPress={() => flatListRef.current?.scrollToEnd({ animated: true })}
+              onPress={() => {
+                flatListRef.current?.scrollToEnd({ animated: true });
+                setUnreadScrollCount(0);
+                setFirstUnreadId(null);
+              }}
               activeOpacity={0.85}
             >
+              {unreadScrollCount > 0 && (
+                <View style={styles.scrollBottomBadge}>
+                  <Text style={styles.scrollBottomBadgeText}>
+                    {unreadScrollCount > 99 ? '99+' : unreadScrollCount}
+                  </Text>
+                </View>
+              )}
               <Text style={styles.scrollBottomIcon}>↓</Text>
             </TouchableOpacity>
           )}
@@ -1610,143 +1917,226 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
 
-        {replyTo && (
-          <ReplyPreview
-            author={replyTo.sender_id === currentUserId ? 'Tú' : (replyTo.sender?.full_name || chatName)}
-            text={replyTo.text || 'Mensaje'}
-            onCancel={() => setReplyTo(null)}
-          />
-        )}
+        {/* ── BOTTOM DOCK — sube/baja animado con el teclado ── */}
+        <Animated.View style={[styles.bottomDock, { bottom: dockBottom }]}>
 
-        {/* Sprint 1.3 — Barra de edición (reemplaza input cuando edita) */}
-        {editingMessage && (
-          <EditMessageBar
-            message={editingMessage}
-            editText={editText}
-            onChangeText={setEditText}
-            onConfirm={handleConfirmEdit}
-            onCancel={() => { setEditingMessage(null); setEditText(''); }}
-          />
-        )}
+            {replyTo && (
+              <ReplyPreview
+                author={replyTo.sender_id === currentUserId ? 'Tú' : (replyTo.sender?.full_name || chatName)}
+                text={replyTo.text || 'Mensaje'}
+                onCancel={() => setReplyTo(null)}
+              />
+            )}
 
-        {/* Panel adjuntos — overlay que cierra al tocar fuera */}
-        {!editingMessage && showAttach && (
-          <>
-            <Pressable
-              style={{ position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, zIndex: 10 }}
-              onPress={() => setShowAttach(false)}
-            />
-            <View style={{ zIndex: 11 }}>
-              <ChatAttachPanel onAction={handleAttachAction} />
-            </View>
-          </>
-        )}
-        {showEmojis && (
-          <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
-        )}
-        {showStickers && (
-          <StickerPanel
-            onSelect={async (url) => {
-              setShowStickers(false);
-              // Enviar sticker como mensaje de imagen GIF
-              const tempId = createTempMessageId();
-              pushOptimistic({
-                id: tempId,
-                text: '🎭 Sticker',
-                type: 'image',
-                imageUrl: url,
-                file_url: url,
-                sender_id: currentUserId,
-                status: 'pending',
-                created_at: new Date().toISOString(),
-              });
-              try {
-                const sent = await chatAPI.sendMessage(chatId!, {
-                  text: '🎭 Sticker',
-                  type: 'image',
-                  file_url: url,
-                });
-                replaceOptimistic(tempId, { ...sent, imageUrl: url, file_url: url });
-              } catch {
-                failOptimistic(tempId);
-              }
-            }}
-            onClose={() => setShowStickers(false)}
-          />
-        )}
+            {/* Sprint 1.3 — Barra de edición */}
+            {editingMessage && (
+              <EditMessageBar
+                message={editingMessage}
+                editText={editText}
+                onChangeText={setEditText}
+                onConfirm={handleConfirmEdit}
+                onCancel={() => { setEditingMessage(null); setEditText(''); }}
+              />
+            )}
 
-        {/* F1 — Respuestas rápidas */}
-        {quickReplySuggestions.length > 0 && (
-          <QuickReplyPanel
-            visible
-            replies={quickReplySuggestions}
-            onSelect={(reply) => {
-              setText(reply.text);
-              setQuickReplySuggestions([]);
-            }}
-          />
-        )}
+            {/* #12 — Barra de acciones de selección múltiple */}
+            {isSelectMode && (
+              <View style={styles.multiSelectBar}>
+                <TouchableOpacity style={styles.multiSelectClose} onPress={exitSelectMode}>
+                  <Text style={styles.multiSelectCloseText}>✕</Text>
+                </TouchableOpacity>
+                <Text style={styles.multiSelectCount}>
+                  {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
+                </Text>
+                <View style={styles.multiSelectActions}>
+                  <TouchableOpacity
+                    style={[styles.multiSelectBtn, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
+                    onPress={selectedIds.size > 0 ? handleForwardSelected : undefined}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.multiSelectBtnIcon}>➡️</Text>
+                    <Text style={styles.multiSelectBtnLabel}>Reenviar</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.multiSelectBtn, styles.multiSelectBtnDanger, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
+                    onPress={selectedIds.size > 0 ? handleDeleteSelected : undefined}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.multiSelectBtnIcon}>🗑</Text>
+                    <Text style={[styles.multiSelectBtnLabel, styles.multiSelectBtnLabelDanger]}>Eliminar</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
 
-        {/* Sprint 2.2 — Sugerencias de menciones */}
-        {isGroup && mentionQuery !== null && (
-          <MentionSuggestions
-            visible
-            users={groupMembers}
-            query={mentionQuery}
-            onSelect={(user) => {
-              const newText = applyMention(text, user);
-              setText(newText);
-              setMentionQuery(null);
-            }}
-          />
-        )}
+            {/* Paneles adjuntos/emojis/stickers */}
+            {!editingMessage && (showAttach || showEmojis || showStickers) && (
+              <View style={{ overflow: 'hidden' }}>
+                {showAttach && (
+                  <View style={[styles.bottomSheet, styles.bottomSheetCompact]}>
+                    <Pressable
+                      style={StyleSheet.absoluteFillObject}
+                      onPress={() => setShowAttach(false)}
+                    />
+                    <ChatAttachPanel onAction={handleAttachAction} />
+                  </View>
+                )}
+                {showEmojis && (
+                  <View style={[styles.bottomSheet, styles.bottomSheetCompact]}>
+                    <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
+                  </View>
+                )}
+                {showStickers && (
+                  <View style={[styles.bottomSheet, styles.bottomSheetCompact]}>
+                    <StickerPanel
+                      onSelect={async (url) => {
+                        setShowStickers(false);
+                        const tempId = createTempMessageId();
+                        pushOptimistic({
+                          id: tempId,
+                      text: '🎭 Sticker',
+                      type: 'image',
+                      imageUrl: url,
+                      file_url: url,
+                      sender_id: currentUserId,
+                      status: 'pending',
+                      created_at: new Date().toISOString(),
+                    });
+                    try {
+                      const sent = await chatAPI.sendMessage(chatId!, {
+                        text: '🎭 Sticker',
+                        type: 'image',
+                        file_url: url,
+                      });
+                      replaceOptimistic(tempId, { ...sent, imageUrl: url, file_url: url });
+                    } catch {
+                      failOptimistic(tempId);
+                    }
+                  }}
+                      onClose={() => setShowStickers(false)}
+                    />
+                  </View>
+                )}
+              </View>
+            )}
 
-        {!editingMessage && <ChatInputBar
-          text={text}
-          sending={sending}
-          showAttach={showAttach}
-          showEmojis={showEmojis}
-          isRecording={isRecording}
-          durationFormatted={durationFormatted}
-          sendScale={sendScale}
-          onChangeText={handleTextChange}
-          onToggleAttach={() => {
-            setShowAttach(v => { const n = !v; if (n) { setShowEmojis(false); setShowStickers(false); } return n; });
-          }}
-          onToggleEmojis={() => {
-            setShowEmojis(v => { const n = !v; if (n) { setShowAttach(false); setShowStickers(false); } return n; });
-          }}
-          onToggleStickers={() => {
-            setShowStickers(v => { const n = !v; if (n) { setShowAttach(false); setShowEmojis(false); } return n; });
-          }}
-          onSend={sendMessage}
-          onStartRecording={async () => {
-            haptics.medium();
-            const ok = await startRecording();
-            if (!ok) toast.error('Sin permiso', 'Activa el micrófono en ajustes');
-          }}
-          onCancelRecording={cancelRecording}
-          onStopRecording={async () => {
-            const rec = await stopRecording();
-            if (!rec?.uri || !chatId) return;
-            haptics.success();
-            const tempId = createTempMessageId();
-            const label = `🎵 Audio (${rec.duration}s)`;
-            pushOptimistic({
-              id: tempId, text: label, type: 'audio', sender_id: currentUserId,
-              status: 'pending', created_at: new Date().toISOString(),
-            });
-            try {
-              const asset = { uri: rec.uri, fileName: 'audio.m4a', mimeType: 'audio/m4a' };
-              const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
-              replaceOptimistic(tempId, sent);
-            } catch {
-              failOptimistic(tempId);
-              toast.error('Error', 'No se pudo enviar el audio');
-            }
-          }}
-        />}
-      </KeyboardAvoidingView>
+            {/* F1 — Respuestas rápidas */}
+            {quickReplySuggestions.length > 0 && (
+              <QuickReplyPanel
+                visible
+                replies={quickReplySuggestions}
+                onSelect={(reply) => {
+                  setText(reply.text);
+                  setQuickReplySuggestions([]);
+                }}
+              />
+            )}
+
+            {/* Sprint 2.2 — Sugerencias de menciones */}
+            {isGroup && mentionQuery !== null && (
+              <MentionSuggestions
+                visible
+                users={groupMembers}
+                query={mentionQuery}
+                onSelect={(user) => {
+                  const newText = applyMention(text, user);
+                  setText(newText);
+                  setMentionQuery(null);
+                }}
+              />
+            )}
+
+            {/* Input bar */}
+            {!editingMessage && !isSelectMode && (
+              <View onLayout={e => setInputBarHeight(e.nativeEvent.layout.height)}>
+                {!canWrite ? (
+                  <View style={styles.broadcastBlock}>
+                    <Text style={styles.broadcastBlockText}>📢 Solo los administradores pueden escribir</Text>
+                  </View>
+                ) : (
+                <ChatInputBar
+                  text={text}
+                  sending={sending}
+                  showAttach={showAttach}
+                  showEmojis={showEmojis}
+                  isRecording={isRecording}
+                  durationFormatted={durationFormatted}
+                  sendScale={sendScale}
+                  onChangeText={handleTextChange}
+                  onToggleAttach={() => {
+                    setShowAttach(v => {
+                      const n = !v;
+                      if (n) {
+                        setShowEmojis(false);
+                        setShowStickers(false);
+                        inputRef.current?.blur();
+                        Keyboard.dismiss();
+                      }
+                      return n;
+                    });
+                  }}
+                  onToggleEmojis={() => {
+                    setShowEmojis(v => {
+                      const n = !v;
+                      if (n) {
+                        setShowAttach(false);
+                        setShowStickers(false);
+                        inputRef.current?.blur();
+                        Keyboard.dismiss();
+                      }
+                      return n;
+                    });
+                  }}
+                  onToggleStickers={() => {
+                    setShowStickers(v => {
+                      const n = !v;
+                      if (n) {
+                        setShowAttach(false);
+                        setShowEmojis(false);
+                        inputRef.current?.blur();
+                        Keyboard.dismiss();
+                      }
+                      return n;
+                    });
+                  }}
+                  inputRef={inputRef}
+                  onSend={sendMessage}
+                  onLongPressSend={() => {
+                    if (text.trim()) setShowScheduleModal(true);
+                  }}
+                  onStartRecording={async () => {
+                    haptics.medium();
+                    const ok = await startRecording();
+                    if (!ok) toast.error('Sin permiso', 'Activa el micrófono en ajustes');
+                  }}
+                  onCancelRecording={cancelRecording}
+                  onStopRecording={async () => {
+                    const rec = await stopRecording();
+                    if (!rec?.uri || !chatId) return;
+                    haptics.success();
+                    const tempId = createTempMessageId();
+                    const label = `🎵 Audio (${rec.duration}s)`;
+                    pushOptimistic({
+                      id: tempId, text: label, type: 'audio', sender_id: currentUserId,
+                      status: 'pending', created_at: new Date().toISOString(),
+                    });
+                    try {
+                      const asset = { uri: rec.uri, fileName: 'audio.m4a', mimeType: 'audio/m4a' };
+                      const sent = await uploadAndSend(chatId, asset, { text: label, type: 'audio' });
+                      replaceOptimistic(tempId, sent);
+                    } catch {
+                      failOptimistic(tempId);
+                      toast.error('Error', 'No se pudo enviar el audio');
+                    }
+                  }}
+                />
+                )}
+              </View>
+            )}
+          {/* ── FIN BOTTOM DOCK ── */}
+        </Animated.View>
+
+      </View>
 
       <ChatContextMenu
         visible={contextVisible}
@@ -1762,6 +2152,10 @@ export default function ChatScreen() {
         onTranslate={handleTranslate}
         onEdit={handleEditMessage}
         onForward={handleForwardMessage}
+        onEditHistory={() => {
+          if (contextMsg?.edited) setEditHistoryMsg(contextMsg);
+          setContextVisible(false);
+        }}
         onEphemeral={() => {
           setContextVisible(false);
           setShowEphemeralModal(true);
@@ -1856,6 +2250,61 @@ export default function ChatScreen() {
           onClose={() => setReceiptsMsgId(null)}
         />
       )}
+
+      {/* #7 — Modal de quién reaccionó */}
+      <ReactionDetailModal
+        visible={!!reactionDetailMsgId}
+        messageId={reactionDetailMsgId}
+        localCounts={reactionDetailCounts}
+        currentUserId={currentUserId}
+        onClose={() => setReactionDetailMsgId(null)}
+        resolveUser={(uid) => {
+          const p = (chat?.participants || []).find((x: any) => x.user_id === uid);
+          if (!p) return undefined;
+          return {
+            full_name: p.full_name || p.users?.full_name,
+            avatar_url: p.avatar_url || p.users?.avatar_url,
+          };
+        }}
+      />
+
+      {/* A2 — Modal de mensaje programado */}
+      <ScheduledMessageModal
+        visible={showScheduleModal}
+        chatId={chatId || ''}
+        messageText={text}
+        onClose={() => setShowScheduleModal(false)}
+        onScheduled={() => {
+          setShowScheduleModal(false);
+          setText('');
+          toast.success('Programado ✓', 'El mensaje se enviará en la fecha indicada');
+        }}
+      />
+
+      {/* A3 — Historial de ediciones */}
+      <EditHistoryModal
+        visible={!!editHistoryMsg}
+        history={editHistoryMsg?.edit_history || []}
+        currentText={editHistoryMsg?.text}
+        onClose={() => setEditHistoryMsg(null)}
+      />
+
+      {/* C5 — Galería multimedia */}
+      <ChatMediaGallery
+        visible={showMediaGallery}
+        chatId={chatId || ''}
+        chatName={chatName}
+        onClose={() => setShowMediaGallery(false)}
+      />
+
+      {/* C7 — Reenvío con comentario */}
+      <ForwardWithCommentModal
+        visible={showForwardModal}
+        message={forwardMsg}
+        currentUserId={currentUserId}
+        onClose={() => { setShowForwardModal(false); setForwardMsg(null); }}
+        onForwarded={() => { setShowForwardModal(false); setForwardMsg(null); }}
+      />
 
       {/* PTT — Walkie-talkie */}
       {showPTT && (
@@ -1963,6 +2412,14 @@ export default function ChatScreen() {
         visible={showContactPicker}
         onClose={() => setShowContactPicker(false)}
         onSelect={handleShareContact}
+      />
+
+      {/* ── Transfer Details Modal ── */}
+      <TransferDetailsModal
+        visible={showTransferDetails}
+        onClose={() => setShowTransferDetails(false)}
+        transferData={transferDetailsData}
+        isReceived={false}
       />
 
       {/* ── Bottom-sheet selector Foto / Video ── */}
@@ -2221,6 +2678,112 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   scrollBottomIcon: { fontSize: 18, color: '#00c8a0', fontWeight: '700' },
+  scrollBottomBadge: {
+    position: 'absolute',
+    top: -6,
+    right: -4,
+    backgroundColor: '#00c8a0',
+    borderRadius: 10,
+    minWidth: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 4,
+    borderWidth: 2,
+    borderColor: '#fff',
+  },
+  scrollBottomBadgeText: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  // ── Separador de mensajes no leídos (#8) ──
+  unreadSeparator: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 8,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  unreadLine: { flex: 1, height: 1, backgroundColor: '#00b4e6', opacity: 0.35 },
+  unreadLabel: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#00b4e6',
+    backgroundColor: 'rgba(0,180,230,0.10)',
+    borderRadius: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+  },
+  // ── Selección múltiple (#12) ──
+  selectedRow: {
+    backgroundColor: 'rgba(0,180,230,0.10)',
+  },
+  selectCheck: {
+    position: 'absolute',
+    top: '50%',
+    zIndex: 10,
+    marginTop: -12,
+  },
+  selectCheckOwn:   { right: 8 },
+  selectCheckTheir: { left: 8 },
+  selectCircle: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: '#00b4e6',
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  selectCircleActive: {
+    backgroundColor: '#00b4e6',
+    borderColor: '#00b4e6',
+  },
+  selectTick: { fontSize: 13, color: '#fff', fontWeight: '700' },
+  multiSelectBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+    borderTopWidth: 1,
+    borderTopColor: '#e5e7eb',
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    gap: 8,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  multiSelectClose: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    backgroundColor: '#f3f4f6',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  multiSelectCloseText: { fontSize: 14, color: '#6b7280', fontWeight: '700' },
+  multiSelectCount: { flex: 1, fontSize: 14, fontWeight: '600', color: '#111827' },
+  multiSelectActions: { flexDirection: 'row', gap: 8 },
+  multiSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: 'rgba(0,180,230,0.10)',
+  },
+  multiSelectBtnDanger: { backgroundColor: 'rgba(239,68,68,0.08)' },
+  multiSelectBtnDisabled: { opacity: 0.4 },
+  multiSelectBtnIcon: { fontSize: 16 },
+  multiSelectBtnLabel: { fontSize: 13, fontWeight: '600', color: '#00b4e6' },
+  multiSelectBtnLabelDanger: { color: '#ef4444' },
+  // C3 — broadcast block
+  broadcastBlock: {
+    paddingVertical: 14, alignItems: 'center', backgroundColor: '#fff',
+    borderTopWidth: 1, borderTopColor: '#e5e7eb',
+  },
+  broadcastBlockText: { fontSize: 13, color: '#f97316', fontWeight: '600' },
 
   // Messages
   messagesList: { paddingHorizontal: Spacing.sm + 2, paddingVertical: Spacing.sm, gap: 2 },
@@ -2404,6 +2967,33 @@ const styles = StyleSheet.create({
   imagePreview: {
     width: '100%',
     height: '100%',
+  },
+
+  // Bottom dock — posición absoluta, sube con el teclado sin mover la barra visualmente
+  bottomDock: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'transparent',
+    zIndex: 20,
+  },
+
+  bottomSheet: {
+    backgroundColor: Colors.bgSecondary,
+    borderTopWidth: 1,
+    borderTopColor: Colors.borderLight,
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: -2 },
+    elevation: 6,
+  },
+  bottomSheetCompact: {
+    marginBottom: -1,
   },
 
   // Panel adjuntos — grid 2 columnas

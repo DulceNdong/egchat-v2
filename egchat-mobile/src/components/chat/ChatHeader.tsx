@@ -3,7 +3,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Line, Polyline, Polygon, Rect, Circle } from 'react-native-svg';
+import Svg, { Path, Line, Polyline, Polygon, Rect, Circle, G } from 'react-native-svg';
 import { EGAvatar } from '../ui';
 
 export interface ChatHeaderProps {
@@ -80,9 +80,15 @@ export function ChatHeader({
           </TouchableOpacity>
         )}
         <TouchableOpacity style={s.iconBtn} onPress={onVideoCall} activeOpacity={0.75}>
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round">
-            <Polygon points="23 7 16 12 23 17 23 7"/>
-            <Rect x="1" y="5" width="15" height="14" rx="2"/>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+            {/* Cuerpo de la cámara */}
+            <Rect x="2" y="7" width="13" height="11" rx="2.5"/>
+            {/* Lente */}
+            <Circle cx="8.5" cy="12.5" r="2.5"/>
+            {/* Flap de video lateral */}
+            <Path d="M15 10.5l5.5-2.5v9L15 14.5"/>
+            {/* Punto de grabación */}
+            <Circle cx="8.5" cy="12.5" r="1" fill="#fff" stroke="none"/>
           </Svg>
         </TouchableOpacity>
         <TouchableOpacity style={s.iconBtn} onPress={onMenuPress} activeOpacity={0.75}>

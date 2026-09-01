@@ -22,6 +22,7 @@ export function ChatContextMenu({
   onEphemeral,
   onEdit,
   onForward,
+  onEditHistory,
 }: {
   visible: boolean;
   message: ChatMessage | null;
@@ -37,6 +38,7 @@ export function ChatContextMenu({
   onTranslate?: () => void;
   onEdit?: () => void;
   onForward?: () => void;
+  onEditHistory?: () => void;
   onReaction: (emoji: string) => void;
 }) {
   if (!message) return null;
@@ -60,6 +62,7 @@ export function ChatContextMenu({
               { label: '↩️ Responder', onPress: onReply },
               onForward ? { label: '➡️ Reenviar', onPress: () => { onForward(); onClose(); } } : null,
               isTextMsg ? { label: '🌐 Traducir', onPress: () => { onTranslate?.(); onClose(); } } : null,
+              (message.edited && onEditHistory) ? { label: '🕐 Ver historial', onPress: () => { onEditHistory(); onClose(); } } : null,
               { label: '⭐ Destacar', onPress: onStar },
               { label: '📌 Fijar mensaje', onPress: () => { onPin?.(); onClose(); } },
               ...(isOwn ? [

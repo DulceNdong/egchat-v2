@@ -1,9 +1,9 @@
 // Panel de adjuntos del chat — paridad visual con App.tsx (web)
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Polyline, Polygon, Rect, G } from 'react-native-svg';
 
-export type AttachAction = 'photo' | 'video' | 'file' | 'contact' | 'location' | 'music' | 'money' | 'poll';
+export type AttachAction = 'photo' | 'album' | 'video' | 'file' | 'contact' | 'location' | 'music' | 'money' | 'poll';
 
 const ITEMS: {
   id: AttachAction;
@@ -26,14 +26,34 @@ const ITEMS: {
     ),
   },
   {
+    id: 'album',
+    label: 'Álbum',
+    color: '#8b5cf6',
+    bg: '#EDE9FE',
+    Icon: () => (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8b5cf6" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
+        <Rect x="2" y="2" width="10" height="10" rx="2" />
+        <Rect x="12" y="2" width="10" height="10" rx="2" />
+        <Rect x="2" y="12" width="10" height="10" rx="2" />
+        <Rect x="12" y="12" width="10" height="10" rx="2" />
+      </Svg>
+    ),
+  },
+  {
     id: 'video',
     label: 'Video',
     color: '#f59e0b',
     bg: '#FEF3C7',
     Icon: () => (
       <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <Polygon points="23 7 16 12 23 17 23 7" />
-        <Rect x="1" y="5" width="15" height="14" rx="2" />
+        {/* Cuerpo de la cámara */}
+        <Rect x="2" y="7" width="13" height="11" rx="2.5" />
+        {/* Lente */}
+        <Circle cx="8.5" cy="12.5" r="2.5" />
+        {/* Flap lateral */}
+        <Path d="M15 10.5l5.5-2.5v9L15 14.5" />
+        {/* Punto de lente */}
+        <Circle cx="8.5" cy="12.5" r="1" fill="#f59e0b" stroke="none" />
       </Svg>
     ),
   },
@@ -91,12 +111,14 @@ const ITEMS: {
     id: 'money',
     label: 'Enviar dinero',
     color: '#00c8a0',
-    bg: '#D1FAE5',
+    bg: 'transparent',
     Icon: () => (
       <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth={1.7} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x="2" y="5" width="20" height="14" rx="2" />
-        <Line x1="2" y1="10" x2="22" y2="10" />
-        <Circle cx="12" cy="15" r="2" />
+        {/* Flecha circular de transferencia */}
+        <Path d="M17 1l4 4-4 4"/>
+        <Path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+        <Path d="M7 23l-4-4 4-4"/>
+        <Path d="M21 13v2a4 4 0 0 1-4 4H3"/>
       </Svg>
     ),
   },
@@ -143,11 +165,14 @@ export function ChatAttachPanel({ onAction }: Props) {
 
 const s = StyleSheet.create({
   panel: {
+    flexGrow: 0,
+    flexShrink: 0,
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.07)',
     paddingVertical: 14,
     paddingHorizontal: 16,
+    minHeight: 250,
   },
   grid: {
     flexDirection: 'row',

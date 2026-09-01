@@ -1,5 +1,6 @@
 // EGCHAT — Hub de Configuración (paridad con ConfiguracionView web v2.5.5)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image,
   ActivityIndicator,
@@ -13,6 +14,8 @@ import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profile
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { useAppStore } from '../../src/store/useAppStore';
+import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { SettingsSearch, SettingsSection, SettingsCard, SettingsDivider, SettingsRow } from '../../src/components/settings/SettingsUI';
 import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
@@ -44,6 +47,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     items: [
       { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
       { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
+      { label: 'Dispositivos conectados', route: '/ajustes/dispositivos' },
     ],
   },
   {
@@ -83,7 +87,7 @@ const IconGear = () => (
   </Svg>
 );
 
-export default function AjustesScreen() {
+function AjustesScreenInner() {
   const [user, setUser] = useState<{ id?: string; full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -92,7 +96,7 @@ export default function AjustesScreen() {
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
@@ -169,18 +173,14 @@ export default function AjustesScreen() {
   const initials = user?.full_name?.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || 'U';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['left', 'right']}>
       <EGChatHeader
-        temp={24}
-        city="Malabo"
-        weatherCondition="cloudy"
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
@@ -192,7 +192,7 @@ export default function AjustesScreen() {
         </View>
         <TouchableOpacity
           style={[styles.closeBtn, { backgroundColor: isDark ? C.bgTertiary : 'rgba(243,244,246,0.85)', borderColor: C.borderLight }]}
-          onPress={() => router.push('/(tabs)/index' as any)}
+          onPress={() => router.replace('/(tabs)/' as any)}
         >
           <Svg width={16} height={16} viewBox="0 0 24 24" stroke={C.textPrimary} strokeWidth={2.5} strokeLinecap="round">
             <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
@@ -228,7 +228,7 @@ export default function AjustesScreen() {
               <View style={styles.heroInfo}>
                 <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Usuario'}</Text>
                 <Text style={[styles.heroSub, { color: C.textTertiary }]}>
-                  {user?.phone || ''}{user?.email ? ` · ${user.email}` : ''}
+                  {user?.id ? `ID: ${user.id.slice(0, 12).toUpperCase()}` : (user?.phone || '')}
                 </Text>
               </View>
               <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
@@ -281,7 +281,7 @@ export default function AjustesScreen() {
 
             <View style={{ height: 16 }} />
             <SettingsCard>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => Alert.alert('Próximamente', 'Cambiar de cuenta estará disponible pronto.')}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => setShowAccountSwitcher(true)}>
                 <Text style={styles.actionGreen}>Cambiar de cuenta</Text>
               </TouchableOpacity>
             </SettingsCard>
@@ -299,16 +299,16 @@ export default function AjustesScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
-        onNotifPress={() => setShowNotifications(false)}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
+        onNotifPress={(n) => { removeNotification(n.id); setShowNotifications(false); }}
       />
       <HamburgerMenu
         visible={showMenu}
         onClose={() => setShowMenu(false)}
         user={user ? { full_name: user.full_name || '', avatar_url: user.avatar_url, phone: user.phone } : null}
       />
-      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="26°" city="Malabo" condition="cloudy" />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp={`${weather.temp}°`} city={weather.city} condition={weather.condition} />
       <AccountSwitcher
         visible={showAccountSwitcher}
         currentAccountId={user?.id || ''}
@@ -362,3 +362,11 @@ const styles = StyleSheet.create({
   actionGreen: { fontSize: 16, fontWeight: '500', color: '#07c160' },
   actionRed: { fontSize: 16, fontWeight: '500', color: '#ef4444' },
 });
+
+export default function AjustesScreen() {
+  return (
+    <TabErrorBoundary tabName="Ajustes">
+      <AjustesScreenInner />
+    </TabErrorBoundary>
+  );
+}

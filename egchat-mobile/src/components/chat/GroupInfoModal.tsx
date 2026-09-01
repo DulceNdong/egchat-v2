@@ -5,7 +5,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, Modal, TouchableOpacity, StyleSheet,
   FlatList, Alert, ActivityIndicator, ScrollView,
-  TextInput, Platform,
+  TextInput, Platform, Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -55,6 +55,12 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const isAdmin = members.find(m => m.user_id === currentUserId)?.role === 'admin';
+  // C3 — broadcast mode
+  const [broadcastMode, setBroadcastMode] = useState<boolean>(chat?.settings?.broadcast_mode ?? false);
+  const [savingBroadcast, setSavingBroadcast] = useState(false);
+  // C4 — invite link
+  const [inviteLink, setInviteLink] = useState<string | null>(null);
+  const [loadingLink, setLoadingLink] = useState(false);
 
   useEffect(() => {
     if (!visible || !chat?.id) return;
@@ -78,6 +84,56 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
       setLoading(false);
     }
   }, [chat]);
+
+  // C3 — toggle broadcast mode
+  const handleToggleBroadcast = useCallback(async () => {
+    if (!isAdmin) return;
+    setSavingBroadcast(true);
+    const next = !broadcastMode;
+    try {
+      const BASE = getApiBase();
+      const token = await getToken();
+      await fetch(`${BASE}/api/chats/${chat.id}/settings`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ broadcast_mode: next }),
+      });
+      setBroadcastMode(next);
+      toast.info(next ? '📢 Modo broadcast activado' : 'Modo broadcast desactivado');
+    } catch {
+      toast.error('No se pudo cambiar el modo');
+    } finally {
+      setSavingBroadcast(false);
+    }
+  }, [isAdmin, broadcastMode, chat]);
+
+  // C4 — generar o copiar enlace de invitación
+  const handleInviteLink = useCallback(async () => {
+    if (inviteLink) {
+      Share.share({ message: `Únete al grupo "${chat?.name || 'Grupo'}" en EGChat:\n${inviteLink}` });
+      return;
+    }
+    setLoadingLink(true);
+    try {
+      const BASE = getApiBase();
+      const token = await getToken();
+      const res = await fetch(`${BASE}/api/chats/${chat.id}/invite-link`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      const link = data.link || data.invite_link || `https://egchat.app/join/${chat.id}`;
+      setInviteLink(link);
+      Share.share({ message: `Únete al grupo "${chat?.name || 'Grupo'}" en EGChat:\n${link}` });
+    } catch {
+      // Fallback: link estático con el chat ID
+      const fallback = `https://egchat.app/join/${chat.id}`;
+      setInviteLink(fallback);
+      Share.share({ message: `Únete al grupo "${chat?.name || 'Grupo'}" en EGChat:\n${fallback}` });
+    } finally {
+      setLoadingLink(false);
+    }
+  }, [inviteLink, chat]);
 
   const handleSaveName = useCallback(async () => {
     const name = groupName.trim();
@@ -260,6 +316,55 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
             <Text style={[s.memberCountText, { color: C.textTertiary }]}>{members.length} participantes</Text>
           </View>
 
+          {/* C3 — Modo broadcast (solo admins escriben) */}
+          {isAdmin && (
+            <View style={[s.settingRow, { borderColor: C.borderLight }]}>
+              <View style={s.settingLeft}>
+                <Text style={s.settingIcon}>📢</Text>
+                <View>
+                  <Text style={[s.settingTitle, { color: C.textPrimary }]}>Modo broadcast</Text>
+                  <Text style={[s.settingDesc, { color: C.textTertiary }]}>Solo admins pueden escribir</Text>
+                </View>
+              </View>
+              <TouchableOpacity
+                onPress={handleToggleBroadcast}
+                disabled={savingBroadcast}
+                style={[s.toggle, broadcastMode && s.toggleOn]}
+                activeOpacity={0.8}
+              >
+                <View style={[s.toggleThumb, broadcastMode && s.toggleThumbOn]} />
+              </TouchableOpacity>
+            </View>
+          )}
+          {!isAdmin && broadcastMode && (
+            <View style={s.broadcastBanner}>
+              <Text style={s.broadcastBannerText}>📢 Solo los admins pueden enviar mensajes</Text>
+            </View>
+          )}
+
+          {/* C4 — Enlace de invitación */}
+          {isAdmin && (
+            <TouchableOpacity
+              style={[s.settingRow, { borderColor: C.borderLight }]}
+              onPress={handleInviteLink}
+              activeOpacity={0.7}
+            >
+              <View style={s.settingLeft}>
+                <Text style={s.settingIcon}>🔗</Text>
+                <View>
+                  <Text style={[s.settingTitle, { color: C.textPrimary }]}>Enlace de invitación</Text>
+                  <Text style={[s.settingDesc, { color: C.textTertiary }]}>
+                    {loadingLink ? 'Generando...' : inviteLink ? 'Toca para compartir' : 'Generar y compartir'}
+                  </Text>
+                </View>
+              </View>
+              {loadingLink
+                ? <ActivityIndicator size="small" color="#00b4e6" />
+                : <Text style={{ fontSize: 18 }}>↗️</Text>
+              }
+            </TouchableOpacity>
+          )}
+
           {/* Acciones */}
           <View style={[s.actionsRow, { borderColor: C.borderLight }]}>
             <TouchableOpacity style={s.actionBtn} onPress={handleAddMembers}>
@@ -397,4 +502,29 @@ const s = StyleSheet.create({
   searchWrap: { margin: 10, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
   searchInput: { fontSize: 15 },
   empty: { textAlign: 'center', marginTop: 40, fontSize: 15 },
+  // C3/C4
+  settingRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    marginHorizontal: 16, marginBottom: 2, paddingVertical: 14,
+    borderBottomWidth: 1,
+  },
+  settingLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  settingIcon: { fontSize: 22 },
+  settingTitle: { fontSize: 15, fontWeight: '600' },
+  settingDesc: { fontSize: 12, marginTop: 1 },
+  toggle: {
+    width: 46, height: 26, borderRadius: 13, backgroundColor: '#e5e7eb',
+    justifyContent: 'center', paddingHorizontal: 2,
+  },
+  toggleOn: { backgroundColor: '#00b4e6' },
+  toggleThumb: {
+    width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,
+  },
+  toggleThumbOn: { alignSelf: 'flex-end' },
+  broadcastBanner: {
+    marginHorizontal: 16, marginBottom: 8, backgroundColor: 'rgba(251,146,60,0.12)',
+    borderRadius: 10, padding: 10,
+  },
+  broadcastBannerText: { fontSize: 13, color: '#f97316', fontWeight: '600', textAlign: 'center' },
 });

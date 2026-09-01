@@ -1,551 +1,605 @@
 /**
- * Mi Djangue — Detalle / Dashboard del grupo
+ * Mi Djangue — Detalle del Djangue
+ * Vista completa para administradores con lista de integrantes y acciones
  */
-import React, { useState, useCallback, useRef } from 'react';
+
+import React, { useState, useEffect, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView,
-  ActivityIndicator, Alert, RefreshControl, Animated,
+  View, Text, StyleSheet, ScrollView, TouchableOpacity,
+  ActivityIndicator, RefreshControl, TextInput, Alert,
 } from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
-import Svg, { Path, Line, Circle, Check } from 'react-native-svg';
+import { Image } from 'expo-image';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { apiFetch } from '../src/api';
 
-const FREQ_LABELS: Record<string, string> = {
-  daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual', annual: 'Anual',
-};
-const fmtAmount = (n: number, currency = 'XAF') =>
-  `${Number(n).toLocaleString('fr-FR')} ${currency}`;
-const fmtDate = (iso: string | null) => {
-  if (!iso) return '—';
-  return new Date(iso).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' });
-};
-const initials = (name: string) =>
-  name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
-
-// ── Loader animado ────────────────────────────────────────────────
-function PulseLoader() {
-  const pulse1 = useRef(new Animated.Value(0.3)).current;
-  const pulse2 = useRef(new Animated.Value(0.3)).current;
-  const pulse3 = useRef(new Animated.Value(0.3)).current;
-
-  React.useEffect(() => {
-    const createPulse = (anim: Animated.Value, delay: number) => {
-      return Animated.loop(
-        Animated.sequence([
-          Animated.timing(anim, {
-            toValue: 1,
-            duration: 600,
-            delay,
-            useNativeDriver: true,
-          }),
-          Animated.timing(anim, {
-            toValue: 0.3,
-            duration: 600,
-            useNativeDriver: true,
-          }),
-        ])
-      );
-    };
-
-    Animated.parallel([
-      createPulse(pulse1, 0),
-      createPulse(pulse2, 200),
-      createPulse(pulse3, 400),
-    ]).start();
-  }, []);
-
-  return (
-    <View style={{ flexDirection: 'row', gap: 12, alignItems: 'center' }}>
-      <Animated.View
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: '#00C8A0',
-          opacity: pulse1,
-        }}
-      />
-      <Animated.View
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: '#00B4E6',
-          opacity: pulse2,
-        }}
-      />
-      <Animated.View
-        style={{
-          width: 16,
-          height: 16,
-          borderRadius: 8,
-          backgroundColor: '#00C8A0',
-          opacity: pulse3,
-        }}
-      />
-    </View>
-  );
+interface DjangueDetail {
+  id: string;
+  name: string;
+  slogan: string | null;
+  description: string | null;
+  logo_url: string | null;
+  frequency: string;
+  quota_amount: number;
+  currency: string;
+  max_members: number;
+  penalty_percent: number;
+  status: string;
+  current_turn: number;
+  total_turns: number;
+  my_role: 'owner' | 'secretary' | 'member';
+  my_turn_number: number;
+  is_my_turn: boolean;
+  owner_id: string;
+  secretary_id: string | null;
+  members: Member[];
+  wallet: {
+    balance: number;
+    currency: string;
+  } | null;
+  current_turn_contributions: Contribution[];
+  chat_group_id?: string | null;
 }
 
 interface Member {
-  id: string; turn_order: number; user_id: string;
-  user: { id: string; full_name: string; phone: string; avatar_url: string | null };
-  paid_current_turn: boolean;
-  is_current_beneficiary: boolean;
+  id: string;
+  user_id: string;
+  turn_number: number;
+  status: string;
+  users: {
+    id: string;
+    full_name: string;
+    phone: string;
+    avatar_url: string | null;
+  };
 }
 
 interface Contribution {
   id: string;
   amount: number;
-  paid_at: string;
-  turn_number: number;
-  users: { full_name: string; avatar_url: string | null };
+  status: string;
+  djangue_members: {
+    user_id: string;
+    turn_number: number;
+  };
 }
 
-interface DjangueDetail {
-  id: string; name: string; description: string;
-  frequency: string; quota_amount: number; currency: string;
-  status: string; current_turn: number; total_turns: number;
-  next_payout_at: string | null; owner_id: string; secretary_id: string | null;
-  members: Member[];
-  wallet: { balance: number; currency: string };
-  my_role: 'owner' | 'secretary' | 'member';
-  my_turn_order: number | null;
-  is_my_turn: boolean;
-  total_paid_this_turn: number;
-  expected_total_this_turn: number;
-  paid_count: number;
-  pending_count: number;
-}
+const FREQUENCY_LABELS: Record<string, string> = {
+  daily: 'Diario',
+  weekly: 'Semanal',
+  monthly: 'Mensual',
+  annual: 'Anual',
+};
 
-// ── Avatar ────────────────────────────────────────────────────────
-function Avatar({ uri, name, size = 40 }: { uri?: string | null; name: string; size?: number }) {
-  if (uri) return (
-    <Image source={{ uri }} style={{ width: size, height: size, borderRadius: size / 2 }} contentFit="cover" />
-  );
-  return (
-    <View style={{ width: size, height: size, borderRadius: size / 2, backgroundColor: '#6366f1', alignItems: 'center', justifyContent: 'center' }}>
-      <Text style={{ fontSize: size * 0.35, fontWeight: '700', color: '#fff' }}>{initials(name)}</Text>
-    </View>
-  );
-}
-
-// ── Fila de miembro ───────────────────────────────────────────────
-function MemberRow({ member, isMe, quotaAmount, currency }: {
-  member: Member; isMe: boolean; quotaAmount: number; currency: string;
-}) {
-  return (
-    <View style={[m.row, member.is_current_beneficiary && m.rowBeneficiary]}>
-      <View style={m.turnBadge}>
-        <Text style={m.turnNum}>{member.turn_order}</Text>
-      </View>
-      <Avatar uri={member.user.avatar_url} name={member.user.full_name} size={38} />
-      <View style={m.info}>
-        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-          <Text style={m.name}>{member.user.full_name}{isMe ? ' (yo)' : ''}</Text>
-          {member.is_current_beneficiary && (
-            <View style={m.benBadge}><Text style={m.benTxt}>Le toca</Text></View>
-          )}
-        </View>
-        <Text style={m.phone}>{member.user.phone}</Text>
-      </View>
-      <View style={m.status}>
-        {member.is_current_beneficiary ? (
-          <Text style={m.receivingTxt}>Recibe</Text>
-        ) : member.paid_current_turn ? (
-          <View style={m.paidBadge}>
-            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2.5} strokeLinecap="round">
-              <Path d="M20 6L9 17l-5-5" />
-            </Svg>
-            <Text style={m.paidTxt}>Pagó</Text>
-          </View>
-        ) : (
-          <View style={m.pendingBadge}>
-            <Text style={m.pendingTxt}>{fmtAmount(quotaAmount, currency)}</Text>
-          </View>
-        )}
-      </View>
-    </View>
-  );
-}
-
-// ── Pantalla de detalle ───────────────────────────────────────────
 export default function DjangueDetailScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
-  const [data, setData]       = useState<DjangueDetail | null>(null);
+  const params = useLocalSearchParams();
+  const djangueId = params.id as string;
+
+  const [djangue, setDjangue] = useState<DjangueDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError]     = useState('');
-  const [myUserId, setMyUserId] = useState('');
-  const [contributions, setContributions] = useState<Contribution[]>([]);
-  const [showHistory, setShowHistory] = useState(false);
-  const historyHeight = useRef(new Animated.Value(0)).current;
-  const historyOpacity = useRef(new Animated.Value(0)).current;
+  const [showAddMember, setShowAddMember] = useState(false);
+  const [newMemberPhone, setNewMemberPhone] = useState('');
+  const [addingMember, setAddingMember] = useState(false);
 
-  const load = useCallback(async (isRefresh = false) => {
-    if (!isRefresh) setLoading(true);
-    setError('');
+  const loadDjangue = async (isRefresh = false) => {
     try {
-      const token = await AsyncStorage.getItem('token');
-      if (!token) {
-        setError('Debes iniciar sesión');
-        setLoading(false);
-        setRefreshing(false);
-        return;
-      }
-      const [detail, me, historyData] = await Promise.all([
-        apiFetch(`/api/djangue/${id}`),
-        apiFetch('/api/auth/me'),
-        apiFetch(`/api/djangue/${id}/contributions`).catch(() => ({ contributions: [] })),
-      ]);
-      setData(detail);
-      setMyUserId(me?.id || '');
-      setContributions(historyData.contributions || []);
-    } catch (e: any) {
-      setError(e.message || 'Error al cargar el djangue');
+      if (!isRefresh) setLoading(true);
+      const data = await apiFetch(`/api/djangue/${djangueId}`);
+      setDjangue(data);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo cargar el djangue');
+      router.back();
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, [id]);
-
-  useFocusEffect(useCallback(() => { load(); }, [load]));
-
-  const toggleHistory = () => {
-    const toValue = showHistory ? 0 : 1;
-    setShowHistory(!showHistory);
-    
-    Animated.parallel([
-      Animated.spring(historyHeight, {
-        toValue,
-        tension: 50,
-        friction: 8,
-        useNativeDriver: false,
-      }),
-      Animated.timing(historyOpacity, {
-        toValue,
-        duration: 300,
-        useNativeDriver: true,
-      }),
-    ]).start();
   };
 
-  const handleAddMember = () => {
-    router.push({ pathname: '/djangue-add-member', params: { id } } as any);
+  useFocusEffect(
+    useCallback(() => {
+      loadDjangue();
+    }, [djangueId])
+  );
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    loadDjangue(true);
   };
 
-  const handlePay = () => {
-    router.push({ pathname: '/djangue-pay', params: { id } } as any);
+  const handleAddMember = async () => {
+    if (!newMemberPhone.trim()) {
+      Alert.alert('Error', 'Ingresa el teléfono del nuevo miembro');
+      return;
+    }
+
+    setAddingMember(true);
+    try {
+      await apiFetch(`/api/djangue/${djangueId}/members`, {
+        method: 'POST',
+        body: JSON.stringify({ phone: newMemberPhone.trim() }),
+      });
+
+      Alert.alert('✅ Miembro agregado', 'El usuario fue agregado exitosamente al djangue');
+      setNewMemberPhone('');
+      setShowAddMember(false);
+      loadDjangue(true);
+    } catch (error: any) {
+      Alert.alert('Error', error.message || 'No se pudo agregar el miembro');
+    } finally {
+      setAddingMember(false);
+    }
   };
 
-  const handleCancel = () => {
-    Alert.alert(
-      'Cancelar Djangue',
-      '¿Estás seguro de que quieres cancelar este djangue? Esta acción no se puede deshacer.',
-      [
-        { text: 'No', style: 'cancel' },
-        {
-          text: 'Cancelar djangue', style: 'destructive',
-          onPress: async () => {
-            try {
-              await apiFetch(`/api/djangue/${id}`, { method: 'DELETE' });
-              router.back();
-            } catch (e: any) {
-              Alert.alert('Error', e.message);
-            }
-          },
-        },
-      ],
+  const handleOpenChat = () => {
+    if (djangue?.chat_group_id) {
+      router.push(`/chat/${djangue.chat_group_id}` as any);
+    } else {
+      Alert.alert(
+        'Chat no disponible',
+        'Este djangue aún no tiene un grupo de chat configurado.\nContacta al administrador.',
+      );
+    }
+  };
+
+  if (loading) {
+    return (
+      <SafeAreaView style={s.root} edges={['top']}>
+        <View style={s.loadingContainer}>
+          <ActivityIndicator size="large" color="#00C8A0" />
+          <Text style={s.loadingText}>Cargando...</Text>
+        </View>
+      </SafeAreaView>
     );
-  };
+  }
 
-  if (loading) return (
-    <View style={s.center}>
-      <PulseLoader />
-      <Text style={{ color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 16 }}>
-        Cargando djangue...
-      </Text>
-    </View>
-  );
+  if (!djangue) {
+    return null;
+  }
 
-  if (error || !data) return (
-    <View style={s.center}>
-      <Text style={{ color: '#ef4444', fontSize: 15 }}>{error || 'No encontrado'}</Text>
-      <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-        <Text style={{ color: '#6366f1', fontWeight: '700' }}>Volver</Text>
-      </TouchableOpacity>
-    </View>
-  );
-
-  const collectionProgress = data.expected_total_this_turn > 0
-    ? data.total_paid_this_turn / data.expected_total_this_turn
-    : 0;
-
-  const canPay = !data.is_my_turn && data.status === 'active';
-  const isAdmin = data.my_role === 'owner' || data.my_role === 'secretary';
+  const isAdmin = djangue.my_role === 'owner' || djangue.my_role === 'secretary';
+  const paidCount = djangue.current_turn_contributions.filter(c => c.status === 'paid').length;
+  const pendingCount = djangue.members.length - paidCount;
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
-      {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
+    <SafeAreaView style={s.root} edges={['top']}>
+      <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.gradient}>
+        {/* Header */}
+        <View style={s.header}>
+          <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Line x1="19" y1="12" x2="5" y2="12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
+              <Path d="M12 19l-7-7 7-7" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
             </Svg>
           </TouchableOpacity>
-          <View style={{ flex: 1 }}>
-            <Text style={s.headerTitle} numberOfLines={1}>{data.name}</Text>
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            <Text style={s.headerTitle}>{djangue.name}</Text>
             <Text style={s.headerSub}>
-              {FREQ_LABELS[data.frequency]} · {data.members.length} miembros
+              {djangue.my_role === 'owner' ? '👑 Administrador' : djangue.my_role === 'secretary' ? '📋 Secretario' : '👤 Integrante'}
             </Text>
           </View>
-          {isAdmin && (
-            <TouchableOpacity onPress={handleAddMember} style={s.iconBtn} hitSlop={12}>
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
-                stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-                <Circle cx="9" cy="8" r="4" />
-                <Path d="M15 11c1.1 0 2 .9 2 2v1" />
-                <Line x1="18" y1="11" x2="18" y2="17" />
-                <Line x1="15" y1="14" x2="21" y2="14" />
-                <Path d="M1 20c0-3.3 3.6-6 8-6" />
-              </Svg>
-            </TouchableOpacity>
-          )}
-        </View>
-      </LinearGradient>
-
-      <ScrollView
-        style={{ flex: 1 }}
-        contentContainerStyle={{ padding: 16, gap: 14 }}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor="#6366f1" />
-        }
-      >
-        {/* Monedero del djangue */}
-        <LinearGradient colors={['#312e81', '#4c1d95']} style={s.walletCard}>
-          <Text style={s.walletLabel}>Monedero del Djangue</Text>
-          <Text style={s.walletBalance}>{fmtAmount(data.wallet.balance, data.wallet.currency)}</Text>
-          <Text style={s.walletSub}>
-            Turno {data.current_turn} de {data.total_turns} · Próximo cobro: {fmtDate(data.next_payout_at)}
-          </Text>
-        </LinearGradient>
-
-        {/* Progreso del turno actual */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Cotización — Turno {data.current_turn}</Text>
-          <View style={s.progressRow}>
-            <Text style={s.progressTxt}>
-              {data.paid_count} de {data.members.length - 1} pagaron
-            </Text>
-            <Text style={s.progressTxt}>{fmtAmount(data.total_paid_this_turn, data.currency)}</Text>
-          </View>
-          <View style={s.progressBg}>
-            <LinearGradient
-              colors={['#10b981', '#059669']}
-              style={[s.progressFill, { width: `${Math.min(collectionProgress * 100, 100)}%` }]}
-            />
-          </View>
-          <Text style={s.progressGoal}>
-            Meta: {fmtAmount(data.expected_total_this_turn, data.currency)}
-          </Text>
-        </View>
-
-        {/* Botón pagar cuota */}
-        {canPay && (
-          <TouchableOpacity onPress={handlePay} activeOpacity={0.85}>
-            <LinearGradient colors={['#10b981', '#059669']} style={s.payBtn}>
-              <Text style={s.payBtnTxt}>
-                💳 Pagar cuota — {fmtAmount(data.quota_amount, data.currency)}
-              </Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-
-        {/* Es mi turno */}
-        {data.is_my_turn && data.status === 'active' && (
-          <LinearGradient colors={['#f59e0b', '#d97706']} style={s.myTurnCard}>
-            <Text style={s.myTurnEmoji}>🎉</Text>
-            <View>
-              <Text style={s.myTurnTitle}>¡Este turno te toca a ti!</Text>
-              <Text style={s.myTurnSub}>
-                Recibirás {fmtAmount(data.expected_total_this_turn, data.currency)} en tu monedero cuando todos paguen.
-              </Text>
-            </View>
-          </LinearGradient>
-        )}
-
-        {/* Lista de miembros */}
-        <View style={s.section}>
-          <Text style={s.sectionTitle}>Integrantes y estado</Text>
-          <View style={s.membersList}>
-            {data.members.map(member => (
-              <MemberRow
-                key={member.id}
-                member={member}
-                isMe={member.user_id === myUserId}
-                quotaAmount={data.quota_amount}
-                currency={data.currency}
+          <TouchableOpacity onPress={handleOpenChat} style={s.chatBtn} hitSlop={12}>
+            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+              <Path
+                d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+                stroke="#fff"
+                strokeWidth={2}
+                strokeLinecap="round"
+                strokeLinejoin="round"
               />
-            ))}
-          </View>
+            </Svg>
+          </TouchableOpacity>
         </View>
 
-        {/* Historial de contribuciones */}
-        {contributions.length > 0 && (
+        <ScrollView
+          style={s.scroll}
+          contentContainerStyle={s.content}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor="#fff" />
+          }
+        >
+          {/* Logo y Info Principal */}
+          <View style={s.heroCard}>
+            {djangue.logo_url ? (
+              <Image source={{ uri: djangue.logo_url }} style={s.heroLogo} contentFit="cover" />
+            ) : (
+              <View style={s.heroLogoPlaceholder}>
+                <Text style={s.heroLogoEmoji}>💰</Text>
+              </View>
+            )}
+            <Text style={s.heroName}>{djangue.name}</Text>
+            {djangue.slogan && <Text style={s.heroSlogan}>{djangue.slogan}</Text>}
+            {djangue.description && <Text style={s.heroDesc}>{djangue.description}</Text>}
+          </View>
+
+          {/* Stats */}
+          <View style={s.statsGrid}>
+            <View style={s.statCard}>
+              <Text style={s.statValue}>{djangue.current_turn}/{djangue.total_turns}</Text>
+              <Text style={s.statLabel}>Turno Actual</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.statValue}>{djangue.members.length}/{djangue.max_members}</Text>
+              <Text style={s.statLabel}>Miembros</Text>
+            </View>
+            <View style={s.statCard}>
+              <Text style={s.statValue}>
+                {djangue.quota_amount.toLocaleString()} {djangue.currency}
+              </Text>
+              <Text style={s.statLabel}>Cuota {FREQUENCY_LABELS[djangue.frequency]}</Text>
+            </View>
+          </View>
+
+          {/* Balance del Wallet */}
+          {isAdmin && djangue.wallet && (
+            <View style={s.walletCard}>
+              <LinearGradient colors={['#10b981', '#059669']} style={s.walletGradient}>
+                <View style={s.walletHeader}>
+                  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+                    <Path
+                      d="M21 12V7H5a2 2 0 0 1 0-4h14v4"
+                      stroke="#fff"
+                      strokeWidth={2}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    <Path d="M3 5v14a2 2 0 0 0 2 2h16v-5" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                  </Svg>
+                  <Text style={s.walletTitle}>Balance del Djangue</Text>
+                </View>
+                <Text style={s.walletBalance}>
+                  {djangue.wallet.balance.toLocaleString()} {djangue.wallet.currency}
+                </Text>
+                <Text style={s.walletSub}>
+                  {paidCount} de {djangue.members.length} pagados • {pendingCount} pendientes
+                </Text>
+              </LinearGradient>
+            </View>
+          )}
+
+          {/* Lista de Integrantes */}
           <View style={s.section}>
-            <TouchableOpacity 
-              onPress={toggleHistory}
-              style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}
-            >
-              <Text style={s.sectionTitle}>📊 Historial de pagos</Text>
-              <Animated.View
-                style={{
-                  transform: [{
-                    rotate: historyHeight.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: ['0deg', '180deg'],
-                    }),
-                  }],
-                }}
-              >
-                <Svg 
-                  width={20} height={20} viewBox="0 0 24 24" fill="none"
-                  stroke="rgba(255,255,255,0.6)" strokeWidth={2.5} strokeLinecap="round"
+            <View style={s.sectionHeader}>
+              <Text style={s.sectionTitle}>Integrantes ({djangue.members.length})</Text>
+              {isAdmin && djangue.members.length < djangue.max_members && (
+                <TouchableOpacity
+                  style={s.addBtn}
+                  onPress={() => setShowAddMember(!showAddMember)}
+                  activeOpacity={0.7}
                 >
-                  <Path d="M6 9l6 6 6-6" />
-                </Svg>
-              </Animated.View>
-            </TouchableOpacity>
-            
-            <Animated.View
-              style={{
-                maxHeight: historyHeight.interpolate({
-                  inputRange: [0, 1],
-                  outputRange: [0, contributions.length * 60 + 50], // altura estimada
-                }),
-                opacity: historyOpacity,
-                overflow: 'hidden',
-              }}
-            >
-              <View style={{ gap: 8, marginTop: 4 }}>
-                {contributions.map((contrib, idx) => (
-                  <Animated.View
-                    key={contrib.id}
-                    style={{
-                      opacity: historyOpacity,
-                      transform: [{
-                        translateY: historyOpacity.interpolate({
-                          inputRange: [0, 1],
-                          outputRange: [20, 0],
-                        }),
-                      }],
-                    }}
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+                    <Circle cx={12} cy={12} r={10} stroke="#fff" strokeWidth={2} />
+                    <Path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
+                  </Svg>
+                  <Text style={s.addBtnText}>Agregar</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Formulario para agregar miembro */}
+            {showAddMember && (
+              <View style={s.addMemberForm}>
+                <Text style={s.addMemberLabel}>Teléfono del nuevo miembro</Text>
+                <View style={s.addMemberRow}>
+                  <TextInput
+                    style={s.addMemberInput}
+                    value={newMemberPhone}
+                    onChangeText={setNewMemberPhone}
+                    placeholder="+240..."
+                    placeholderTextColor="rgba(255,255,255,0.5)"
+                    keyboardType="phone-pad"
+                  />
+                  <TouchableOpacity
+                    style={[s.addMemberSubmit, addingMember && s.addMemberSubmitDisabled]}
+                    onPress={handleAddMember}
+                    disabled={addingMember}
                   >
-                    <View style={h.row}>
-                      <Avatar uri={contrib.users.avatar_url} name={contrib.users.full_name} size={32} />
-                      <View style={h.info}>
-                        <Text style={h.name}>{contrib.users.full_name}</Text>
-                        <Text style={h.date}>
-                          {new Date(contrib.paid_at).toLocaleDateString('es-ES', { 
-                            day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' 
-                          })}
+                    {addingMember ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={s.addMemberSubmitText}>✓</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            )}
+
+            {/* Miembros */}
+            {djangue.members.map((member, index) => {
+              const contribution = djangue.current_turn_contributions.find(
+                c => c.djangue_members.user_id === member.user_id
+              );
+              const hasPaid = contribution?.status === 'paid';
+              const isCurrentTurn = member.turn_number === djangue.current_turn;
+
+              return (
+                <View key={member.id} style={s.memberCard}>
+                  <View style={s.memberLeft}>
+                    {member.users.avatar_url ? (
+                      <Image source={{ uri: member.users.avatar_url }} style={s.memberAvatar} contentFit="cover" />
+                    ) : (
+                      <View style={s.memberAvatarPlaceholder}>
+                        <Text style={s.memberAvatarText}>
+                          {member.users.full_name?.charAt(0)?.toUpperCase() || '?'}
                         </Text>
                       </View>
-                      <View style={h.amount}>
-                        <Text style={h.amountTxt}>{fmtAmount(contrib.amount, data.currency)}</Text>
-                        <Text style={h.turnTxt}>Turno {contrib.turn_number}</Text>
-                      </View>
+                    )}
+                    <View style={s.memberInfo}>
+                      <Text style={s.memberName}>{member.users.full_name || 'Usuario'}</Text>
+                      <Text style={s.memberPhone}>{member.users.phone}</Text>
                     </View>
-                  </Animated.View>
-                ))}
-              </View>
-            </Animated.View>
+                  </View>
+
+                  <View style={s.memberRight}>
+                    <View style={s.memberTurnBadge}>
+                      <Text style={s.memberTurnText}>Turno {member.turn_number}</Text>
+                    </View>
+                    {isCurrentTurn && (
+                      <View style={[s.memberStatusBadge, { backgroundColor: 'rgba(251,146,60,0.2)' }]}>
+                        <Text style={[s.memberStatusText, { color: '#f59e0b' }]}>🎯 Su turno</Text>
+                      </View>
+                    )}
+                    {!isCurrentTurn && hasPaid && (
+                      <View style={[s.memberStatusBadge, { backgroundColor: 'rgba(16,185,129,0.2)' }]}>
+                        <Text style={[s.memberStatusText, { color: '#10b981' }]}>✅ Pagado</Text>
+                      </View>
+                    )}
+                    {!isCurrentTurn && !hasPaid && (
+                      <View style={[s.memberStatusBadge, { backgroundColor: 'rgba(239,68,68,0.2)' }]}>
+                        <Text style={[s.memberStatusText, { color: '#ef4444' }]}>⏳ Pendiente</Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
+              );
+            })}
           </View>
-        )}
 
-        {/* Descripción */}
-        {data.description ? (
-          <View style={s.section}>
-            <Text style={s.sectionTitle}>Descripción</Text>
-            <Text style={s.descTxt}>{data.description}</Text>
-          </View>
-        ) : null}
+          {/* Acciones de Administrador */}
+          {isAdmin && (
+            <View style={s.section}>
+              <Text style={s.sectionTitle}>Acciones de Administrador</Text>
+              <TouchableOpacity
+                style={s.actionBtn}
+                onPress={() => router.push({ pathname: '/djangue-admin-settings', params: { id: djangueId } } as any)}
+              >
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                  <Circle cx={12} cy={12} r={3} stroke="#6366f1" strokeWidth={2} />
+                  <Path
+                    d="M12 1v6m0 6v6M23 12h-6m-6 0H5"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                  />
+                </Svg>
+                <Text style={s.actionBtnText}>Configuración del Djangue</Text>
+              </TouchableOpacity>
 
-        {/* Acciones admin */}
-        {data.my_role === 'owner' && data.status === 'active' && (
-          <TouchableOpacity onPress={handleCancel} style={s.cancelBtn}>
-            <Text style={s.cancelTxt}>Cancelar Djangue</Text>
-          </TouchableOpacity>
-        )}
+              <TouchableOpacity
+                style={s.actionBtn}
+                onPress={() => router.push({ pathname: '/djangue-secretary', params: { id: djangueId } } as any)}
+              >
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                  <Path
+                    d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <Path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+                <Text style={s.actionBtnText}>Panel de Secretario</Text>
+              </TouchableOpacity>
 
-        <View style={{ height: 32 }} />
-      </ScrollView>
+              <TouchableOpacity
+                style={s.actionBtn}
+                onPress={() => router.push({ pathname: '/djangue-admin-stats', params: { id: djangueId } } as any)}
+              >
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+                  <Path
+                    d="M3 3v18h18"
+                    stroke="#6366f1"
+                    strokeWidth={2}
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                  <Path d="M18 17V9M13 17v-4M8 17v-8" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+                </Svg>
+                <Text style={s.actionBtnText}>Estadísticas y Reportes</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </LinearGradient>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#1a1f3a' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1f3a' },
-  header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 10 },
-  iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2 },
-  walletCard: { borderRadius: 16, padding: 20, alignItems: 'center', gap: 4, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.25, shadowRadius: 4, elevation: 3 },
-  walletLabel: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1.2 },
-  walletBalance: { fontSize: 34, fontWeight: '900', color: '#fff' },
-  walletSub: { fontSize: 12, color: 'rgba(255,255,255,0.55)', textAlign: 'center' },
-  section: { backgroundColor: '#2d3561', borderRadius: 16, padding: 16, gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 2 },
-  sectionTitle: { fontSize: 13, fontWeight: '800', color: 'rgba(255,255,255,0.7)', textTransform: 'uppercase', letterSpacing: 0.8 },
-  progressRow: { flexDirection: 'row', justifyContent: 'space-between' },
-  progressTxt: { fontSize: 13, color: 'rgba(255,255,255,0.6)', fontWeight: '500' },
-  progressBg: { height: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 4, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 4, minWidth: 8 },
-  progressGoal: { fontSize: 12, color: 'rgba(255,255,255,0.45)', textAlign: 'right' },
-  payBtn: { borderRadius: 14, paddingVertical: 16, alignItems: 'center', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
-  payBtnTxt: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  myTurnCard: { borderRadius: 16, padding: 16, flexDirection: 'row', alignItems: 'center', gap: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.3, shadowRadius: 4, elevation: 3 },
-  myTurnEmoji: { fontSize: 32 },
-  myTurnTitle: { fontSize: 16, fontWeight: '800', color: '#fff' },
-  myTurnSub: { fontSize: 12, color: 'rgba(255,255,255,0.8)', marginTop: 2, lineHeight: 17 },
-  membersList: { gap: 2 },
-  descTxt: { fontSize: 14, color: 'rgba(255,255,255,0.7)', lineHeight: 20 },
-  cancelBtn: { borderWidth: 1, borderColor: 'rgba(239,68,68,0.4)', borderRadius: 12, paddingVertical: 14, alignItems: 'center', backgroundColor: 'rgba(239,68,68,0.08)' },
-  cancelTxt: { fontSize: 15, fontWeight: '700', color: '#ff6b6b' },
-});
-
-const m = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  rowBeneficiary: { backgroundColor: 'rgba(245,158,11,0.06)', borderRadius: 10, paddingHorizontal: 6 },
-  turnBadge: { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(99,102,241,0.2)', alignItems: 'center', justifyContent: 'center' },
-  turnNum: { fontSize: 12, fontWeight: '700', color: '#a5b4fc' },
-  info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  phone: { fontSize: 12, color: 'rgba(255,255,255,0.35)', marginTop: 1 },
-  benBadge: { backgroundColor: 'rgba(245,158,11,0.2)', borderRadius: 6, paddingHorizontal: 6, paddingVertical: 2 },
-  benTxt: { fontSize: 10, fontWeight: '700', color: '#f59e0b' },
-  status: { alignItems: 'flex-end' },
-  paidBadge: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(16,185,129,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
-  paidTxt: { fontSize: 12, fontWeight: '600', color: '#10b981' },
-  pendingBadge: { backgroundColor: 'rgba(245,158,11,0.1)', borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4, borderWidth: 1, borderColor: 'rgba(245,158,11,0.25)' },
-  pendingTxt: { fontSize: 11, fontWeight: '600', color: '#f59e0b' },
-  receivingTxt: { fontSize: 12, fontWeight: '700', color: '#a78bfa' },
-});
-
-const h = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  info: { flex: 1 },
-  name: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  date: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
-  amount: { alignItems: 'flex-end' },
-  amountTxt: { fontSize: 14, fontWeight: '800', color: '#10b981' },
-  turnTxt: { fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 1 },
+  root: { flex: 1, backgroundColor: '#6366f1' },
+  gradient: { flex: 1 },
+  loadingContainer: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  loadingText: { fontSize: 16, fontWeight: '700', color: '#fff', marginTop: 12 },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 18,
+  },
+  backBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  chatBtn: {
+    width: 44,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: 22,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  headerTitle: { fontSize: 20, fontWeight: '900', color: '#fff', letterSpacing: 0.3 },
+  headerSub: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.85)', marginTop: 2 },
+  scroll: { flex: 1 },
+  content: { padding: 16, gap: 16 },
+  heroCard: {
+    backgroundColor: '#fff',
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  heroLogo: { width: 100, height: 100, borderRadius: 50 },
+  heroLogoPlaceholder: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: '#E7DCC3',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroLogoEmoji: { fontSize: 50 },
+  heroName: { fontSize: 24, fontWeight: '900', color: '#10202B', textAlign: 'center', letterSpacing: 0.3 },
+  heroSlogan: { fontSize: 15, fontWeight: '600', color: '#6366f1', textAlign: 'center', fontStyle: 'italic' },
+  heroDesc: { fontSize: 14, fontWeight: '500', color: 'rgba(16,32,43,0.7)', textAlign: 'center', lineHeight: 20 },
+  statsGrid: { flexDirection: 'row', gap: 12 },
+  statCard: {
+    flex: 1,
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    alignItems: 'center',
+    gap: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  statValue: { fontSize: 18, fontWeight: '900', color: '#10202B', letterSpacing: 0.3 },
+  statLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(16,32,43,0.6)', textAlign: 'center' },
+  walletCard: {
+    borderRadius: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  walletGradient: { padding: 20, gap: 8 },
+  walletHeader: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  walletTitle: { fontSize: 16, fontWeight: '700', color: '#fff' },
+  walletBalance: { fontSize: 32, fontWeight: '900', color: '#fff', letterSpacing: 0.5, marginTop: 8 },
+  walletSub: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.85)' },
+  section: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 18,
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  sectionHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  sectionTitle: { fontSize: 18, fontWeight: '900', color: '#10202B', letterSpacing: 0.3 },
+  addBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#6366f1',
+    paddingHorizontal: 14,
+    paddingVertical: 8,
+    borderRadius: 12,
+  },
+  addBtnText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  addMemberForm: {
+    backgroundColor: '#6366f1',
+    borderRadius: 12,
+    padding: 14,
+    gap: 10,
+  },
+  addMemberLabel: { fontSize: 13, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+  addMemberRow: { flexDirection: 'row', gap: 10 },
+  addMemberInput: {
+    flex: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 15,
+    color: '#fff',
+    fontWeight: '600',
+  },
+  addMemberSubmit: {
+    width: 44,
+    height: 44,
+    backgroundColor: '#10b981',
+    borderRadius: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addMemberSubmitDisabled: { opacity: 0.5 },
+  addMemberSubmitText: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  memberCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 14,
+    gap: 12,
+  },
+  memberLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  memberAvatar: { width: 50, height: 50, borderRadius: 25 },
+  memberAvatarPlaceholder: {
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: '#6366f1',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  memberAvatarText: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  memberInfo: { flex: 1, gap: 4 },
+  memberName: { fontSize: 15, fontWeight: '700', color: '#10202B' },
+  memberPhone: { fontSize: 12, fontWeight: '500', color: 'rgba(16,32,43,0.6)' },
+  memberRight: { alignItems: 'flex-end', gap: 6 },
+  memberTurnBadge: {
+    backgroundColor: 'rgba(99,102,241,0.15)',
+    borderRadius: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  memberTurnText: { fontSize: 11, fontWeight: '700', color: '#6366f1' },
+  memberStatusBadge: { borderRadius: 8, paddingHorizontal: 10, paddingVertical: 4 },
+  memberStatusText: { fontSize: 11, fontWeight: '700' },
+  actionBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#f8f9fa',
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: 'rgba(99,102,241,0.15)',
+  },
+  actionBtnText: { flex: 1, fontSize: 15, fontWeight: '700', color: '#10202B' },
 });

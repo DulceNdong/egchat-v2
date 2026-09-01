@@ -8,7 +8,8 @@ export type ChatMessageType =
   | 'file'
   | 'contact'
   | 'location'
-  | 'live_location';
+  | 'live_location'
+  | 'album';
 
 export interface ChatParticipant {
   user_id: string;
@@ -26,12 +27,20 @@ export interface ChatMessage {
   reply_to?: string;
   file_url?: string;
   imageUrl?: string;
+  /** URLs de fotos para mensajes tipo álbum */
+  album_urls?: string[];
   uploadProgress?: number;
   uploadState?: 'queued' | 'uploading' | 'processing';
   created_at: string;
   edited?: boolean;
+  /** Historial de versiones anteriores del mensaje */
+  edit_history?: Array<{ text: string; edited_at: string }>;
   expires_at?: string;
   view_once?: boolean;
+  /** Envío programado — ISO string de cuando debe enviarse */
+  scheduled_at?: string;
+  /** Transcripción de nota de voz (generada localmente, no se sube) */
+  voice_transcript?: string;
   sender?: {
     id: string;
     full_name: string;

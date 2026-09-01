@@ -10,7 +10,7 @@
  * - Recientes (últimos 20 enviados)
  */
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { getToken, getApiBase } from '../api';
 
 // ── Tipos ──────────────────────────────────────────────────────────
@@ -175,10 +175,44 @@ export async function fetchPackCatalog(): Promise<StickerPack[]> {
     });
     if (!res.ok) throw new Error('Catalog unavailable');
     const data = await res.json();
-    return Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) return getOfflineCatalog();
+
+    // Normalizar el formato que viene del servidor (tabla sticker_packs)
+    return data.map((row: any): StickerPack => {
+      // Los stickers pueden venir como JSON string o ya como array
+      let stickers: Sticker[] = [];
+      try {
+        const raw = typeof row.stickers === 'string'
+          ? JSON.parse(row.stickers)
+          : (Array.isArray(row.stickers) ? row.stickers : []);
+        stickers = raw.map((s: any): Sticker => ({
+          id:         s.id   || `${row.id}_${Math.random().toString(36).slice(2)}`,
+          url:        s.url  || s.file_url || '',
+          label:      s.label,
+          isAnimated: s.isAnimated ?? (s.url || '').includes('.gif'),
+          packId:     row.id,
+        }));
+      } catch { /* stickers vacíos */ }
+
+      return {
+        id:            row.id,
+        name:          row.name,
+        author:        row.author || 'EGChat',
+        coverUrl:      row.cover_url || row.coverUrl || (stickers[0]?.url ?? ''),
+        stickers,
+        isDownloaded:  false,
+        isBuiltIn:     false,
+        downloadCount: row.download_count ?? row.downloadCount ?? 0,
+      };
+    });
   } catch {
-    // Fallback: paquetes extra hardcodeados como catálogo offline
-    return [
+    return getOfflineCatalog();
+  }
+}
+
+/** Catálogo offline como fallback cuando el servidor no responde */
+function getOfflineCatalog(): StickerPack[] {
+  return [
       {
         id: 'guinea_eq',
         name: 'Guinea Ecuatorial',
@@ -204,7 +238,6 @@ export async function fetchPackCatalog(): Promise<StickerPack[]> {
         ],
       },
     ];
-  }
 }
 
 // ── Stickers personalizados (desde fotos) ────────────────────────

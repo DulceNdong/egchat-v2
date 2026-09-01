@@ -14,6 +14,7 @@ import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
 import { PollMessage, parsePoll } from './PollMessage';
 import { ImageViewer } from '../ImageViewer';
 import { LinkPreview, extractUrl } from './LinkPreview';
+import { MarkdownText } from './MarkdownText';
 import type { ChatMessage } from '../../types/chat';
 
 // ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
@@ -35,6 +36,13 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       if (playing) {
         await videoRef.current.pauseAsync();
       } else {
+        // Asegurar que el audio suena aunque el iPhone esté en modo silencio
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          allowsRecordingIOS: false,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: false,
+        });
         await videoRef.current.playAsync();
       }
       setPlaying(p => !p);
@@ -275,10 +283,38 @@ const VOICE_BARS = [0.3,0.5,0.8,0.6,1.0,0.7,0.4,0.9,0.5,0.8,0.6,0.3,0.7,1.0,0.5,
 
 // ── VoiceCard — mensaje de voz con velocidad 1×/1.5×/2×, scrubbing táctil
 // y reproducción continua al salir del chat (usa reproductor global singleton)
-const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+const VoiceCard = ({ message, isOwn, onTranscribed }: { message: ChatMessage; isOwn: boolean; onTranscribed?: (t: string) => void }) => {
   const url = message.file_url || '';
   const { playing, progress, position, duration, speed, togglePlay, cycleSpeed, seek } =
     useAudioPlayer(url);
+  // C8 — transcripción: usar guardada si existe, sino null
+  const [transcript, setTranscript] = useState<string | null>(message.voice_transcript || null);
+  const [transcribing, setTranscribing] = useState(false);
+
+  const handleTranscribe = async () => {
+    if (transcript) { setTranscript(null); return; } // toggle
+    if (!url) return;
+    setTranscribing(true);
+    try {
+      const { getToken, getApiBase } = await import('../../api');
+      const token = await getToken();
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/lia/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ audio_url: url }),
+      });
+      const data = await res.json();
+      const text = data.text || data.transcript || 'No se pudo transcribir';
+      setTranscript(text);
+      // C8 — persistir en el estado del chat
+      onTranscribed?.(text);
+    } catch {
+      setTranscript('Error al transcribir');
+    } finally {
+      setTranscribing(false);
+    }
+  };
 
   const pulseAnim = useRef(new Animated.Value(1)).current;
   // Ancho de la barra de progreso para calcular ratio de scrubbing
@@ -323,6 +359,7 @@ const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
   const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
 
   return (
+    <>
     <View style={vc.card}>
       {/* Botón play/pause con pulso animado */}
       <TouchableOpacity onPress={togglePlay} activeOpacity={0.8}>
@@ -383,9 +420,23 @@ const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       <TouchableOpacity onPress={cycleSpeed} style={[vc.speedBtn, { borderColor: accent }]} activeOpacity={0.7}>
         <Text style={[vc.speedText, { color: accent }]}>{speed}×</Text>
       </TouchableOpacity>
+
+      {/* A4 — Botón de transcripción */}
+      <TouchableOpacity onPress={handleTranscribe} style={vc.transcribeBtn} activeOpacity={0.7}>
+        {transcribing ? (
+          <Text style={{ fontSize: 12 }}>⏳</Text>
+        ) : (
+          <Text style={vc.transcribeIcon}>{transcript ? '✕' : '🔤'}</Text>
+        )}
+      </TouchableOpacity>
     </View>
-  );
-};
+    {transcript ? (
+      <View style={[vc.transcriptBox, { borderColor: accent }]}>
+        <Text style={vc.transcriptText}>🔤 {transcript}</Text>
+      </View>
+    ) : null}
+  </>
+  );};
 
 const vc = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 220, maxWidth: 280, paddingVertical: 4 },
@@ -409,6 +460,13 @@ const vc = StyleSheet.create({
   timeText: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
   speedBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5, flexShrink: 0, minWidth: 42, alignItems: 'center' },
   speedText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  transcribeBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.05)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  transcribeIcon: { fontSize: 14 },
+  transcriptBox: {
+    marginTop: 6, backgroundColor: '#f9fafb', borderRadius: 8, padding: 8,
+    borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  transcriptText: { fontSize: 12, color: '#374151', lineHeight: 16, fontStyle: 'italic' },
 });
 
 
@@ -784,8 +842,55 @@ const ls = StyleSheet.create({
   liveText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 });
 
+// ── Tarjeta ÁLBUM (múltiples fotos) ──────────────────────────────
+const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: string) => void }) => {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const visible = urls.slice(0, 6);
+  const extra = urls.length > 6 ? urls.length - 6 : 0;
+
+  const openAt = (i: number) => {
+    setViewerIndex(i);
+    setViewerOpen(true);
+  };
+
+  if (visible.length === 1) {
+    return (
+      <>
+        <TouchableOpacity onPress={() => openAt(0)} activeOpacity={0.9}>
+          <Image source={{ uri: visible[0] }} style={{ width: 240, height: 200, borderRadius: 10 }} resizeMode="cover" />
+        </TouchableOpacity>
+        <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
+      </>
+    );
+  }
+
+  const cols = visible.length === 2 ? 2 : 3;
+  const cellSize = cols === 2 ? 118 : 78;
+
+  return (
+    <>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, borderRadius: 10, overflow: 'hidden', maxWidth: 240 }}>
+        {visible.map((uri, i) => (
+          <TouchableOpacity key={i} onPress={() => openAt(i)} activeOpacity={0.85}>
+            <View style={{ width: cellSize, height: cellSize }}>
+              <Image source={{ uri }} style={{ width: cellSize, height: cellSize }} resizeMode="cover" />
+              {i === 5 && extra > 0 && (
+                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 20 }}>+{extra}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
+    </>
+  );
+};
+
 // ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
-const MoneyCard = ({ text }: { text: string }) => {
+const MoneyCard = ({ text, onPress }: { text: string; onPress?: () => void }) => {
   const lines = (text || '').split('\n');
   const amountLine = lines.find(l => l.includes('💰')) || '';
   const toLine = lines.find(l => l.includes('👤')) || '';
@@ -793,7 +898,8 @@ const MoneyCard = ({ text }: { text: string }) => {
   const amount = amountLine.replace(/^💰\s*/, '').trim();
   const to = toLine.replace(/^👤 Para:\s*/i, '').trim();
   const ref = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
-  return (
+  
+  const CardContent = (
     <LinearGradient colors={['#1a73e8', '#0d47a1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ms.card}>
       <View style={ms.header}>
         <Text style={ms.headerIcon}>💸</Text>
@@ -808,6 +914,16 @@ const MoneyCard = ({ text }: { text: string }) => {
       </View>
     </LinearGradient>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        {CardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return CardContent;
 };
 const ms = StyleSheet.create({
   card: { borderRadius: 12, padding: 14, minWidth: 200, maxWidth: 260 },
@@ -827,6 +943,26 @@ const formatTime = (dateStr: string) => {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
+// Función para parsear datos de transferencia del mensaje
+const parseTransferData = (text: string, messageDate: string) => {
+  const lines = (text || '').split('\n');
+  const amountLine = lines.find(l => l.includes('💰')) || '';
+  const toLine = lines.find(l => l.includes('👤')) || '';
+  const refLine = lines.find(l => l.includes('🔑')) || '';
+  
+  const amount = amountLine.replace(/^💰\s*/, '').trim();
+  const recipient = toLine.replace(/^👤 Para:\s*/i, '').trim();
+  const reference = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
+  
+  return {
+    amount: amount || '0 CFA',
+    recipient: recipient || 'Destinatario desconocido',
+    reference: reference || 'Sin referencia',
+    status: 'completed' as const,
+    date: new Date(messageDate).toLocaleString('es-ES'),
+  };
+};
+
 export interface ChatMessageBubbleProps {
   message: ChatMessage;
   isOwn: boolean;
@@ -836,14 +972,23 @@ export interface ChatMessageBubbleProps {
   // Datos del otro participante para cuando sender no viene del servidor
   otherName?: string;
   otherAvatar?: string;
-  replyPreview?: { author: string; text: string };
+  replyPreview?: { author: string; text: string; imageUri?: string };
   showReadReceipts?: boolean;
   highlight?: boolean;
   onLongPress: (msg: ChatMessage) => void;
   onRetry?: (msg: ChatMessage) => void;
   onOpenImage?: (uri: string) => void;
   onCallback?: () => void;
+  onTransferPress?: (transferData: any) => void;
   reactions?: Record<string, number>;
+  /** Swipe-to-reply: se dispara cuando el usuario desliza la burbuja */
+  onSwipeReply?: (msg: ChatMessage) => void;
+  /** Ver quién reaccionó */
+  onReactionPress?: (msgId: string, reactions: Record<string, number>) => void;
+  /** Saltar al mensaje original al tocar el reply preview */
+  onReplyTap?: (parentId: string) => void;
+  /** C8 — Guardar transcripción de voz en el estado del chat */
+  onTranscribed?: (msgId: string, transcript: string) => void;
 }
 
 export const ChatMessageBubble = React.memo(({
@@ -861,7 +1006,12 @@ export const ChatMessageBubble = React.memo(({
   onRetry,
   onOpenImage,
   onCallback,
+  onTransferPress,
   reactions,
+  onSwipeReply,
+  onReactionPress,
+  onReplyTap,
+  onTranscribed,
 }: ChatMessageBubbleProps) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
@@ -884,6 +1034,41 @@ export const ChatMessageBubble = React.memo(({
       { translateY: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
     ],
   };
+
+  // ── Swipe-to-reply ────────────────────────────────────────────
+  const SWIPE_THRESHOLD = 60;
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const swipeFired = useRef(false);
+
+  const swipePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gs) =>
+        Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+      onPanResponderGrant: () => {
+        swipeFired.current = false;
+        swipeX.setValue(0);
+      },
+      onPanResponderMove: (_evt, gs) => {
+        // Sólo hacia la derecha (dx > 0) con resistencia
+        if (gs.dx > 0) {
+          const clamped = Math.min(gs.dx, SWIPE_THRESHOLD * 1.2);
+          swipeX.setValue(clamped);
+          if (!swipeFired.current && gs.dx >= SWIPE_THRESHOLD) {
+            swipeFired.current = true;
+            onSwipeReply?.(message);
+          }
+        }
+      },
+      onPanResponderRelease: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+        swipeFired.current = false;
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+        swipeFired.current = false;
+      },
+    })
+  ).current;
   // ──────────────────────────────────────────────────────────────
 
   const time = formatTime(message.created_at);
@@ -946,10 +1131,21 @@ export const ChatMessageBubble = React.memo(({
         <Text style={s.senderName}>{message.sender.full_name}</Text>
       )}
       {replyPreview && (
-        <View style={s.replyQuote}>
+        <TouchableOpacity
+          onPress={() => message.reply_to && onReplyTap?.(message.reply_to)}
+          activeOpacity={0.7}
+          style={s.replyQuote}
+        >
           <Text style={s.replyAuthor} numberOfLines={1}>{replyPreview.author}</Text>
-          <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
-        </View>
+          {replyPreview.imageUri ? (
+            <View style={s.replyImageRow}>
+              <Image source={{ uri: replyPreview.imageUri }} style={s.replyThumb} />
+              <Text style={s.replyText} numberOfLines={1}>{replyPreview.text || '📷 Foto'}</Text>
+            </View>
+          ) : (
+            <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
+          )}
+        </TouchableOpacity>
       )}
       {/* Tarjetas especiales */}
       {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
@@ -962,18 +1158,30 @@ export const ChatMessageBubble = React.memo(({
           isLive={message.type === 'live_location'}
         />
       )}
-      {isMoneyMsg && !!message.text && <MoneyCard text={message.text} />}
+      {isMoneyMsg && !!message.text && (
+        <MoneyCard 
+          text={message.text} 
+          onPress={onTransferPress ? () => {
+            const transferData = parseTransferData(message.text || '', message.created_at);
+            onTransferPress(transferData);
+          } : undefined}
+        />
+      )}
 
       {/* Texto normal */}
       {!isCardType && message.type === 'text' && !!message.text && (
         <>
-          <Text style={s.bubbleText}>{message.text}</Text>
+          <MarkdownText text={message.text} style={s.bubbleText} />
           {/* Sprint 3.4 — Link Preview */}
           {(() => {
             const url = extractUrl(message.text);
             return url ? <LinkPreview url={url} isOwn={isOwn} /> : null;
           })()}
         </>
+      )}
+      {/* Album */}
+      {message.type === 'album' && Array.isArray(message.album_urls) && message.album_urls.length > 0 && (
+        <AlbumCard urls={message.album_urls} onOpenImage={onOpenImage} />
       )}
       {message.type === 'image' && imageUri ? (
         <TouchableOpacity onPress={() => setImageViewerOpen(true)} activeOpacity={0.9}>
@@ -987,7 +1195,7 @@ export const ChatMessageBubble = React.memo(({
       )}
       {message.type === 'audio' && (
         isVoiceMessage(message)
-          ? <VoiceCard message={message} isOwn={isOwn} />
+          ? <VoiceCard message={message} isOwn={isOwn} onTranscribed={onTranscribed ? (t) => onTranscribed(message.id, t) : undefined} />
           : <MusicCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'file' && (
@@ -1018,13 +1226,20 @@ export const ChatMessageBubble = React.memo(({
             const fileIcon = isPdf ? '📕' : isWord ? '📘' : isExcel ? '📗' : isPpt ? '📙' : isImage ? '🖼️' : '📄';
             const fileColor = isPdf ? '#e53e3e' : isWord ? '#2b5ce6' : isExcel ? '#1d6f42' : isPpt ? '#d04a02' : '#6b7280';
             return (
-              <View style={s.fileInner}>
-                <View style={[s.fileIconBox, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
-                  <Text style={s.fileIconText}>{fileIcon}</Text>
+              <View style={s.fileWrap}>
+                <View style={s.fileInner}>
+                  <View style={[s.fileIconBox, { borderColor: fileColor }]}>
+                    <Text style={s.fileIconText}>{fileIcon}</Text>
+                  </View>
+                  <View style={s.fileInfo}>
+                    <Text style={s.fileName} numberOfLines={2}>{fileName}</Text>
+                    <Text style={[s.fileExt, { color: fileColor }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                  </View>
                 </View>
-                <View style={s.fileInfo}>
-                  <Text style={s.fileName} numberOfLines={2}>{fileName}</Text>
-                  <Text style={[s.fileExt, { color: fileColor }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                <View style={s.fileActionRow}>
+                  <Text style={[s.fileAction, { color: fileColor }]}>
+                    {message.file_url ? '↓ Descargar' : 'Preparando archivo'}
+                  </Text>
                 </View>
               </View>
             );
@@ -1053,7 +1268,27 @@ export const ChatMessageBubble = React.memo(({
   );
 
   return (
-    <Animated.View style={entranceStyle}>
+    <Animated.View
+      style={[entranceStyle, { transform: [{ translateX: swipeX }] }]}
+      {...(onSwipeReply ? swipePan.panHandlers : {})}
+    >
+      {/* Icono de responder visible durante el swipe */}
+      {onSwipeReply && (
+        <Animated.View
+          style={[
+            s.swipeReplyIcon,
+            isOwn ? s.swipeReplyIconOwn : s.swipeReplyIconTheir,
+            {
+              opacity: swipeX.interpolate({ inputRange: [0, 30, SWIPE_THRESHOLD], outputRange: [0, 0.4, 1] }),
+              transform: [{
+                scale: swipeX.interpolate({ inputRange: [0, SWIPE_THRESHOLD], outputRange: [0.5, 1], extrapolate: 'clamp' }),
+              }],
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 16 }}>↩️</Text>
+        </Animated.View>
+      )}
     <TouchableOpacity
       onPress={canRetry ? () => onRetry?.(message) : canOpenImage ? () => onOpenImage?.(imageUri!) : undefined}
       onLongPress={() => onLongPress(message)}
@@ -1091,11 +1326,19 @@ export const ChatMessageBubble = React.memo(({
 
       {/* Reacciones bajo la burbuja */}
       {(reactions && Object.keys(reactions).length > 0) || Object.keys(localReactions).length > 0 ? (
-        <View style={[s.reactionsRow, isOwn ? s.reactionsOwn : s.reactionsTheir]}>
-          {Object.entries({ ...reactions, ...localReactions }).map(([emoji, count]) => (
-            <ReactionBubble key={emoji} emoji={emoji} count={count as number} isOwn={isOwn} />
-          ))}
-        </View>
+        <TouchableOpacity
+          onPress={() => {
+            const merged = { ...reactions, ...localReactions };
+            onReactionPress?.(message.id, merged);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[s.reactionsRow, isOwn ? s.reactionsOwn : s.reactionsTheir]}>
+            {Object.entries({ ...reactions, ...localReactions }).map(([emoji, count]) => (
+              <ReactionBubble key={emoji} emoji={emoji} count={count as number} isOwn={isOwn} />
+            ))}
+          </View>
+        </TouchableOpacity>
       ) : null}
 
       {/* Pop de emoji al reaccionar */}
@@ -1188,6 +1431,8 @@ const s = StyleSheet.create({
   },
   replyAuthor: { fontSize: 11, fontWeight: '700', color: '#00b4e6', marginBottom: 2 },
   replyText: { fontSize: 12, color: '#6b7280' },
+  replyImageRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  replyThumb: { width: 36, height: 36, borderRadius: 5, backgroundColor: '#e5e7eb' },
   bubbleText: { fontSize: 15, color: '#111827', lineHeight: 21 },
   bubbleImage: { width: 240, height: 200, borderRadius: 10, marginBottom: 4 },
   meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
@@ -1203,10 +1448,27 @@ const s = StyleSheet.create({
   reactionsOwn:  { justifyContent: 'flex-end',   paddingRight: 44 },
   reactionsTheir:{ justifyContent: 'flex-start',  paddingLeft: 44 },
   popWrap: { position: 'absolute', top: 0, zIndex: 50 },
+  // ── Swipe-to-reply ──
+  swipeReplyIcon: {
+    position: 'absolute',
+    top: '40%',
+    zIndex: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,180,230,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeReplyIconOwn:   { left: 6 },
+  swipeReplyIconTheir: { left: 6 },
   // ── Tarjeta archivo ──
   fileCard: {
     minWidth: 200,
     maxWidth: 260,
+  },
+  fileWrap: {
+    gap: 8,
   },
   fileInner: {
     flexDirection: 'row',
@@ -1221,6 +1483,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    backgroundColor: 'rgba(255,255,255,0.54)',
+    borderWidth: 1,
   },
   fileIconText: {
     fontSize: 24,
@@ -1240,5 +1504,14 @@ const s = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
     letterSpacing: 0.5,
+  },
+  fileActionRow: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
+    paddingTop: 8,
+  },
+  fileAction: {
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

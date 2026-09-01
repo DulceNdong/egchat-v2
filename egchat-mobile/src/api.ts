@@ -19,9 +19,10 @@ const BASE = (() => {
       url = `http://${host}:5000`;
     }
   }
-  if (!url || /localhost|127\.0\.0\.1/.test(url)) {
+  if (!url) {
     return 'https://egchat-api.onrender.com';
   }
+  console.log('[API] BASE URL:', url);
   return url.replace(/\/$/, '');
 })();
 
@@ -406,6 +407,8 @@ export const chatAPI = {
     type?: string;
     reply_to?: string;
     file_url?: string;
+    album_urls?: string[];
+    forwarded_from?: string;
   }) => post<any>(`/api/chats/${chatId}/messages`, data),
   createPrivate: (participant_id?: string, phone?: string) =>
     post<any>('/api/chats/private', { participant_id, phone }),

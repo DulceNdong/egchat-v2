@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, TextInput, Modal, Pressable,
-  Dimensions, FlatList,
+  Dimensions, FlatList, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { taxiAPI, walletAPI } from '../src/api';
+import { subscribe, getState } from '../src/store/appStore';
 import { toast } from '../src/components/Toast';
 import { MiTaxiMap } from '../src/components/mitaxi/MiTaxiMap';
 import {
@@ -44,6 +45,7 @@ const PAYMENT_METHODS = [
   { id: 'card',   label: 'Tarjeta',          icon: '🏦' },
 ];
 
+type RideOption = typeof RIDES[number];
 type Step = 'form' | 'searching' | 'matched' | 'riding' | 'rating' | 'history';
 type FocusField = 'o' | 'd' | null;
 
@@ -53,9 +55,23 @@ interface DriverInfo {
 }
 
 export default function MiTaxiScreen() {
+  const insets = useSafeAreaInsets();
+  const [sheetCollapsed, setSheetCollapsed] = useState(false);
+  const sheetAnim = useRef(new Animated.Value(SH * 0.68)).current;
+
+  const toggleSheet = useCallback(() => {
+    const toValue = sheetCollapsed ? SH * 0.68 : 80;
+    Animated.spring(sheetAnim, {
+      toValue,
+      useNativeDriver: false,
+      tension: 65,
+      friction: 12,
+    }).start();
+    setSheetCollapsed(prev => !prev);
+  }, [sheetCollapsed, sheetAnim]);
   const [origin, setOrigin]           = useState('');
   const [dest, setDest]               = useState('');
-  const [selected, setSelected]       = useState(RIDES[1]);
+  const [selected, setSelected]       = useState<RideOption>(RIDES[1]);
   const [step, setStep]               = useState<Step>('form');
   const [rideId, setRideId]           = useState('');
   const [driver, setDriver]           = useState<DriverInfo | null>(null);
@@ -76,13 +92,29 @@ export default function MiTaxiScreen() {
   const [showDriver, setShowDriver]   = useState(false);
   const [history, setHistory]         = useState<any[]>([]);
   const [loadingHistory, setLoadHist] = useState(false);
+
+  // Ciudad real desde el appStore (mismo dato que usa el clima)
+  const [cityName, setCityName] = useState<string>(() => {
+    const w = getState().weather;
+    return w?.city && w.city !== 'Detectando ubicación...' ? w.city : '';
+  });
+
+  useEffect(() => {
+    const unsub = subscribe(() => {
+      const w = getState().weather;
+      if (w?.city && w.city !== 'Detectando ubicación...') {
+        setCityName(w.city);
+      }
+    });
+    return () => { unsub(); };
+  }, []);
   const pollRef      = useRef<ReturnType<typeof setInterval> | null>(null);
   const gpsWatchRef  = useRef<Location.LocationSubscription | null>(null);
   const estTimer     = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const canGo   = origin.trim().length > 0 && dest.trim().length > 0;
   const accent  = selected.color;
-  const minFare = selected ? estimateFare(selected.id, Math.max(1, distanceKm)) : selected.eta * 250;
+  const minFare = estimateFare(selected.id, Math.max(1, distanceKm));
 
   const loadBalance = useCallback(() => {
     walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
@@ -262,13 +294,21 @@ export default function MiTaxiScreen() {
 
   const renderFormSheet = () => (
     <>
-      <View style={s.sheetHandle} />
       <View style={s.sheetHeaderRow}>
         <Text style={s.sheetTitle}>¿A dónde vas?</Text>
-        <TouchableOpacity onPress={openHistory} style={s.histBtn}>
-          <Ionicons name="time-outline" size={18} color={ACCENT} />
-          <Text style={[s.histBtnTxt, { color: ACCENT }]}>Historial</Text>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
+          <TouchableOpacity
+            onPress={() => router.push('/taxi-driver-register' as any)}
+            style={[s.histBtn, { backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }]}
+          >
+            <Ionicons name="car-outline" size={16} color="#10B981" />
+            <Text style={[s.histBtnTxt, { color: '#10B981' }]}>Soy conductor</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={openHistory} style={s.histBtn}>
+            <Ionicons name="time-outline" size={18} color={ACCENT} />
+            <Text style={[s.histBtnTxt, { color: ACCENT }]}>Historial</Text>
+          </TouchableOpacity>
+        </View>
       </View>
 
       {/* Campos origen / destino */}
@@ -491,7 +531,7 @@ export default function MiTaxiScreen() {
       <MiTaxiMap userLocation={userLocation} destLocation={destLocation}
         driverLocation={driverLocation} showNearby={step==='form'||step==='searching'} accentColor={accent} />
 
-      <SafeAreaView style={s.headerFloat} edges={['top']}>
+      <SafeAreaView style={[s.headerFloat, { paddingTop: insets.top }]} edges={[]}>
         <TouchableOpacity onPress={() => router.back()} style={s.headerBack}>
           <Ionicons name="arrow-back" size={20} color={TEXT} />
         </TouchableOpacity>
@@ -499,7 +539,7 @@ export default function MiTaxiScreen() {
           <Text style={s.headerTitle}>🚕 MiTaxi</Text>
           <View style={s.gpsRow}>
             <View style={[s.gpsDot, { backgroundColor: gpsOk ? GREEN : '#F59E0B' }]} />
-            <Text style={s.gpsText}>{gpsOk ? 'GPS activo · Malabo' : 'Obteniendo ubicación...'}</Text>
+            <Text style={s.gpsText}>{gpsOk ? `GPS activo · ${cityName || 'Obteniendo ciudad...'}` : 'Obteniendo ubicación...'}</Text>
           </View>
         </View>
         <TouchableOpacity style={s.balancePill} onPress={() => router.push('/(tabs)/monedero' as any)}>
@@ -507,13 +547,28 @@ export default function MiTaxiScreen() {
         </TouchableOpacity>
       </SafeAreaView>
 
-      {/* Bottom sheet */}
-      <View style={s.sheet}>
-        <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
-          {step === 'form' || step === 'history' ? renderFormSheet() : null}
-          {renderActiveSheet()}
-        </ScrollView>
-      </View>
+      {/* Bottom sheet colapsable */}
+      <Animated.View style={[s.sheet, { maxHeight: sheetAnim }]}>
+        {/* Barrita toggle — toca para colapsar/expandir */}
+        <TouchableOpacity
+          onPress={toggleSheet}
+          style={s.handleWrap}
+          activeOpacity={0.7}
+          hitSlop={{ top: 10, bottom: 10, left: 60, right: 60 }}
+        >
+          <View style={s.sheetHandle} />
+          {sheetCollapsed && (
+            <Text style={s.handleHint}>¿A dónde vas? · Toca para expandir</Text>
+          )}
+        </TouchableOpacity>
+
+        {!sheetCollapsed && (
+          <ScrollView keyboardShouldPersistTaps="handled" showsVerticalScrollIndicator={false}>
+            {step === 'form' || step === 'history' ? renderFormSheet() : null}
+            {renderActiveSheet()}
+          </ScrollView>
+        )}
+      </Animated.View>
 
       {/* Modal método de pago */}
       <Modal visible={showPayment} transparent animationType="slide" onRequestClose={() => setShowPayment(false)}>
@@ -559,7 +614,7 @@ export default function MiTaxiScreen() {
 const s = StyleSheet.create({
   root:          { flex: 1, backgroundColor: '#F8FAFF' },
   // Header
-  headerFloat:   { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 8, gap: 10 },
+  headerFloat:   { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 10, gap: 10, backgroundColor: 'rgba(255,255,255,0.92)' },
   headerBack:    { width: 36, height: 36, borderRadius: 18, backgroundColor: CARD, alignItems: 'center', justifyContent: 'center', shadowColor: '#000', shadowOpacity: 0.08, shadowOffset: { width: 0, height: 2 }, elevation: 3 },
   headerTitle:   { fontSize: 16, fontWeight: '800', color: TEXT },
   gpsRow:        { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 },
@@ -568,8 +623,10 @@ const s = StyleSheet.create({
   balancePill:   { backgroundColor: CARD, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 5, shadowColor: '#000', shadowOpacity: 0.06, shadowOffset: { width: 0, height: 1 }, elevation: 2 },
   balanceTxt:    { fontSize: 12, fontWeight: '700', color: TEXT },
   // Sheet
-  sheet:         { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: CARD, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingBottom: 32, maxHeight: SH * 0.68, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: -3 }, elevation: 10 },
-  sheetHandle:   { width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2, alignSelf: 'center', marginTop: 10, marginBottom: 6 },
+  sheet:         { position: 'absolute', bottom: 0, left: 0, right: 0, backgroundColor: CARD, borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 16, paddingBottom: 32, shadowColor: '#000', shadowOpacity: 0.1, shadowOffset: { width: 0, height: -3 }, elevation: 10, overflow: 'hidden' },
+  handleWrap:    { alignItems: 'center', paddingTop: 10, paddingBottom: 4 },
+  sheetHandle:   { width: 40, height: 4, backgroundColor: BORDER, borderRadius: 2 },
+  handleHint:    { fontSize: 12, color: SUB, marginTop: 6, fontWeight: '600' },
   sheetHeaderRow:{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 },
   sheetTitle:    { fontSize: 18, fontWeight: '800', color: TEXT },
   histBtn:       { flexDirection: 'row', alignItems: 'center', gap: 4 },
