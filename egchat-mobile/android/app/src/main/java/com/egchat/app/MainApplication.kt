@@ -16,6 +16,8 @@ import com.facebook.react.defaults.DefaultReactNativeHost
 import expo.modules.ApplicationLifecycleDispatcher
 import expo.modules.ReactNativeHostWrapper
 
+import com.egchat.app.modules.EGChatPackage
+
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost = ReactNativeHostWrapper(
@@ -23,23 +25,11 @@ class MainApplication : Application(), ReactApplication {
       object : DefaultReactNativeHost(this) {
         override fun getPackages(): List<ReactPackage> =
             PackageList(this).packages.apply {
-              // Módulo nativo de llamadas EGChat
-              add(CallPackage())
-              // Módulo notificaciones ricas con imagen
-              add(RichNotificationPackage())
-              // Módulo compartir desde otras apps
-              add(SharePackage())
-              // Módulo widget pantalla de inicio
-              add(WidgetPackage())
-              // Módulo grabación audio de alta calidad
-              add(AudioRecorderPackage())
-              // Módulo face filters AR
-              add(FaceFilterPackage())
-              // Módulo respuesta rapida desde notificacion
-              add(QuickReplyPackage())
+              // Módulos nativos EGChat
+              add(EGChatPackage())
             }
 
-          override fun getJSMainModuleName(): String = "index"
+          override fun getJSMainModuleName(): String = ".expo/.virtual-metro-entry"
 
           override fun getUseDeveloperSupport(): Boolean = BuildConfig.DEBUG
 

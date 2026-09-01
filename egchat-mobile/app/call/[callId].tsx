@@ -13,7 +13,8 @@ import { LiveActivity } from '../../src/native/LiveActivity';
 import { NativeCallKit } from '../../src/native/CallKit';
 import { Audio } from 'expo-av';
 import { FaceFilterOverlay } from '../../src/components/FaceFilterOverlay';
-import { FILTERS, type FilterId } from '../../src/native/FaceFilter';
+import { FaceFilter, FILTERS, type FilterId, type FaceData } from '../../src/native/FaceFilter';
+import { startRingtone, stopRingtone } from '../../src/hooks/useSounds';
 
 const ACCENT = '#00c8a0';
 
@@ -43,6 +44,68 @@ export default function CallScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterId>('none');
   const [showFilters, setShowFilters] = useState(false);
   const [videoSize, setVideoSize] = useState({ width: 300, height: 400 });
+
+  // ── FASE 3: FaceFilter AR ─────────────────────────────────────────
+  const [faces, setFaces] = useState<FaceData[]>([]);
+  const faceDetectorRef = useRef(false);   // true cuando FaceFilter ya está inicializado
+  const faceFrameRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Inicializar detector cuando hay videollamada
+  useEffect(() => {
+    if (!FaceFilter.isAvailable || !isVideo) return;
+
+    FaceFilter.initialize().then(ok => {
+      faceDetectorRef.current = ok;
+    });
+
+    return () => {
+      FaceFilter.release();
+      faceDetectorRef.current = false;
+    };
+  // isVideo proviene de callType, estable durante la llamada
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Iniciar/detener el loop de detección según filtro activo
+  useEffect(() => {
+    if (faceFrameRef.current) {
+      clearInterval(faceFrameRef.current);
+      faceFrameRef.current = null;
+    }
+
+    if (
+      activeFilter === 'none' ||
+      !FaceFilter.isAvailable ||
+      !faceDetectorRef.current ||
+      !localStream
+    ) {
+      setFaces([]);
+      return;
+    }
+
+    // Capturar frame del stream local cada 200ms (≈5fps — suficiente para filtros)
+    faceFrameRef.current = setInterval(async () => {
+      try {
+        // Obtener frame como base64 desde el stream nativo si es posible
+        const stream = localStream as any;
+        if (!stream?.captureFrame) return;
+        const base64 = await stream.captureFrame();
+        if (!base64) return;
+        const detected = await FaceFilter.detectFaces(base64);
+        setFaces(detected);
+      } catch {
+        // Frame no disponible — no crashear
+      }
+    }, 200);
+
+    return () => {
+      if (faceFrameRef.current) {
+        clearInterval(faceFrameRef.current);
+        faceFrameRef.current = null;
+      }
+    };
+  }, [activeFilter, localStream]);
+  // ── Fin FASE 3 ────────────────────────────────────────────────────
 
   // Routing de audio real al altavoz
   const toggleSpeaker = useCallback(async () => {
@@ -111,6 +174,7 @@ export default function CallScreen() {
       LiveActivity.startCall(callId, name, isVideo);
       // Cerrar notificación nativa de llamada entrante (si estaba visible)
       NativeCallKit.dismissIncomingCall();
+      stopRingtone().catch(() => {});
     }
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
@@ -122,6 +186,7 @@ export default function CallScreen() {
       // Terminar Live Activity al colgar
       LiveActivity.endCall();
       NativeCallKit.endCall(callId);
+      stopRingtone().catch(() => {});
       setTimeout(() => router.back(), 800);
     }
   }, [callState]);
@@ -133,6 +198,7 @@ export default function CallScreen() {
   };
 
   const hangUp = useCallback(async () => {
+    await stopRingtone().catch(() => {});
     await endCall();
     router.back();
   }, [endCall]);
@@ -150,10 +216,43 @@ export default function CallScreen() {
     }
   }, [callId, offerParam, callType, answerCall]);
 
+  // ── FASE 4: CallKit nativo — mostrar UI de llamada entrante ──────
+  // Cuando la pantalla carga en modo callee+idle (llamada entrante),
+  // mostramos la UI nativa de CallKit (iOS) / notificación full-screen (Android).
+  // Así el usuario ve la interfaz nativa del SO aunque la app esté en foreground.
+  useEffect(() => {
+    if (role === 'callee' && callState === 'idle') {
+      NativeCallKit.showIncomingCall(name, targetAvatar || '', callId, isVideo);
+    }
+    // Escuchar si el usuario acepta/rechaza desde la UI nativa
+    const unsubAnswer = NativeCallKit.onAnswer((_cid) => {
+      accept();
+    });
+    const unsubReject = NativeCallKit.onReject((_cid) => {
+      hangUp();
+    });
+    return () => {
+      unsubAnswer();
+      unsubReject();
+    };
+  // Solo al montar — callId/role/name son estables
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  // ── Fin FASE 4 ────────────────────────────────────────────────────
+
   const uiState = role === 'callee' && callState === 'idle' ? 'ringing' : callState;
   const isIncoming = uiState === 'ringing' && role === 'callee';
   const isCalling = uiState === 'calling' || (uiState === 'ringing' && role === 'caller');
   const isConnected = uiState === 'connected';
+
+  useEffect(() => {
+    if (isIncoming) {
+      startRingtone().catch(() => {});
+    } else {
+      stopRingtone().catch(() => {});
+    }
+    return () => { stopRingtone().catch(() => {}); };
+  }, [isIncoming]);
 
   const statusLabel = () => {
     if (isCalling) return 'Llamando...';
@@ -390,7 +489,7 @@ export default function CallScreen() {
       {/* Overlay de face filter sobre el video */}
       {isVideo && activeFilter !== 'none' && (
         <FaceFilterOverlay
-          faces={[]}
+          faces={faces}
           filterId={activeFilter}
           width={videoSize.width}
           height={videoSize.height}

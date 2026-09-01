@@ -156,8 +156,8 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // ML Kit — Face Detection para filtros AR
-    implementation("com.google.mlkit:face-detection:16.1.5")
+    // ML Kit — detección facial para EGChatFaceFilter
+    implementation("com.google.mlkit:face-detection:16.1.7")
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";

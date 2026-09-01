@@ -1,119 +1,141 @@
-/**
- * EGChatCallBridge.swift
- * Lógica CallKit — sin imports de React Native
- * El bridge RN vive en EGChatCallModule.m
- */
-
+import Foundation
 import CallKit
 import AVFoundation
+import UIKit
+import React
 
-@objc(EGChatCallBridge)
-class EGChatCallBridge: NSObject, CXProviderDelegate {
+/**
+ * EGChat — Módulo nativo de llamadas iOS (CallKit)
+ * Registrar en AppDelegate.mm:
+ *   [EGChatCallModule sharedInstance];  // inicializar el provider
+ *
+ * Expone a React Native exactamente la misma API que el módulo Android:
+ *   showIncomingCall, dismissIncomingCall, answerCall, rejectCall, endCall
+ */
+@objc(EGChatCallModule)
+class EGChatCallModule: RCTEventEmitter {
 
-  private let provider: CXProvider
-  private let callController = CXCallController()
-  private var activeCallUUID: UUID?
-  private var activeCallId: String?
+  private var provider: CXProvider?
+  private var callController = CXCallController()
+  private var currentCallUUID: UUID?
+  private var pendingCallId: String?
 
-  // Callbacks para eventos hacia JS (se setean desde el .m via bridge)
-  @objc var onCallAnswered: RCTResponseSenderBlock?
-  @objc var onCallRejected: RCTResponseSenderBlock?
-  @objc var onCallMuted:    RCTResponseSenderBlock?
-
-  // EventEmitter para enviar eventos a JS
-  private weak var eventEmitter: RCTEventEmitter?
-
-  @objc static func moduleName() -> String { "EGChatCallModule" }
-  @objc static func requiresMainQueueSetup() -> Bool { false }
+  static let shared = EGChatCallModule()
 
   override init() {
-    let cfg = CXProviderConfiguration()
-    cfg.localizedName            = "EGCHAT"
-    cfg.supportsVideo            = true
-    cfg.maximumCallGroups        = 1
-    cfg.maximumCallsPerCallGroup = 1
-    cfg.supportedHandleTypes     = [.generic]
-    cfg.ringtoneSound            = "notification.wav"
-    provider = CXProvider(configuration: cfg)
     super.init()
-    provider.setDelegate(self, queue: nil)
+    let config = CXProviderConfiguration()
+    config.supportsVideo = true
+    config.maximumCallsPerCallGroup = 1
+    config.supportedHandleTypes = [.generic]
+    // Icono de la app en la pantalla de llamada
+    config.iconTemplateImageData = UIImage(named: "AppIcon")?.pngData()
+    config.ringtoneSound = "notification.wav" // suena al recibir llamada
+
+    provider = CXProvider(configuration: config)
+    provider?.setDelegate(self, queue: nil)
   }
 
-  // MARK: - Métodos exportados a JS
+  // ── API expuesta a React Native ──────────────────────────────────
 
-  @objc func showIncomingCall(_ callerName: String,
-                               callerAvatar: String,
-                               callId: String,
-                               isVideo: Bool) {
+  @objc func showIncomingCall(
+    _ callerName: String,
+    callerAvatar: String,
+    callId: String,
+    isVideo: Bool
+  ) {
     let uuid = UUID()
-    activeCallUUID = uuid
-    activeCallId   = callId
+    currentCallUUID = uuid
+    pendingCallId = callId
+
     let update = CXCallUpdate()
-    update.remoteHandle        = CXHandle(type: .generic, value: callerName)
+    update.remoteHandle = CXHandle(type: .generic, value: callerName)
     update.localizedCallerName = callerName
-    update.hasVideo            = isVideo
-    update.supportsHolding     = false
-    provider.reportNewIncomingCall(with: uuid, update: update) { error in
-      if let e = error { print("[CallKit] incoming error: \(e)") }
+    update.hasVideo = isVideo
+    update.supportsHolding = false
+    update.supportsGrouping = false
+
+    provider?.reportNewIncomingCall(with: uuid, update: update) { error in
+      if let error = error {
+        print("EGChat CallKit error: \(error.localizedDescription)")
+      }
     }
   }
 
   @objc func dismissIncomingCall() {
-    guard let uuid = activeCallUUID else { return }
-    provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
-    activeCallUUID = nil
-  }
-
-  @objc func answerCall(_ callId: String) {
-    guard let uuid = activeCallUUID else { return }
-    callController.request(CXTransaction(action: CXAnswerCallAction(call: uuid))) { _ in }
-  }
-
-  @objc func rejectCall(_ callId: String) {
-    guard let uuid = activeCallUUID else { return }
-    callController.request(CXTransaction(action: CXEndCallAction(call: uuid))) { _ in }
-    activeCallUUID = nil
+    guard let uuid = currentCallUUID else { return }
+    provider?.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
+    currentCallUUID = nil
+    pendingCallId = nil
   }
 
   @objc func endCall(_ callId: String) {
-    guard let uuid = activeCallUUID else { return }
-    callController.request(CXTransaction(action: CXEndCallAction(call: uuid))) { _ in }
-    activeCallUUID = nil
-    activeCallId   = nil
+    dismissIncomingCall()
+    sendEvent(withName: "callEnded", body: callId)
   }
 
-  // MARK: - CXProviderDelegate
+  @objc func answerCall(_ callId: String) {
+    dismissIncomingCall()
+    sendEvent(withName: "callAnswered", body: callId)
+  }
+
+  @objc func rejectCall(_ callId: String) {
+    guard let uuid = currentCallUUID else { return }
+    let action = CXEndCallAction(call: uuid)
+    let transaction = CXTransaction(action: action)
+    callController.request(transaction) { _ in }
+    currentCallUUID = nil
+    pendingCallId = nil
+    sendEvent(withName: "callRejected", body: callId)
+  }
+
+  // ── RCTEventEmitter ─────────────────────────────────────────────
+
+  override func supportedEvents() -> [String] {
+    return ["callAnswered", "callRejected", "callEnded"]
+  }
+
+  override static func requiresMainQueueSetup() -> Bool { return false }
+}
+
+// ── CXProviderDelegate ───────────────────────────────────────────
+
+extension EGChatCallModule: CXProviderDelegate {
 
   func providerDidReset(_ provider: CXProvider) {
-    activeCallUUID = nil
-    activeCallId   = nil
+    currentCallUUID = nil
+    pendingCallId = nil
   }
 
+  // El usuario toca "Aceptar" en la pantalla de llamada de iOS
   func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
-    let s = AVAudioSession.sharedInstance()
-    try? s.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth])
-    try? s.setActive(true)
+    // Configurar audio para la llamada
+    let session = AVAudioSession.sharedInstance()
+    try? session.setCategory(.playAndRecord, mode: .voiceChat)
+    try? session.setActive(true)
+
     action.fulfill()
-    EGChatNativeEvents.shared.send("callAnswered", body: ["callId": activeCallId ?? ""])
+
+    if let callId = pendingCallId {
+      sendEvent(withName: "callAnswered", body: callId)
+    }
   }
 
+  // El usuario toca "Rechazar" o desliza para silenciar
   func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
     action.fulfill()
-    EGChatNativeEvents.shared.send("callRejected", body: ["callId": activeCallId ?? ""])
-    activeCallUUID = nil
-    activeCallId   = nil
-  }
-
-  func provider(_ provider: CXProvider, perform action: CXSetMutedCallAction) {
-    action.fulfill()
-    EGChatNativeEvents.shared.send("callMuted", body: ["muted": action.isMuted])
+    if let callId = pendingCallId {
+      sendEvent(withName: "callRejected", body: callId)
+    }
+    currentCallUUID = nil
+    pendingCallId = nil
   }
 
   func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
-    try? audioSession.setActive(true)
+    // Audio activado — la llamada puede sonar
   }
 
   func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
-    try? audioSession.setActive(false, options: .notifyOthersOnDeactivation)
+    try? audioSession.setActive(false)
   }
 }

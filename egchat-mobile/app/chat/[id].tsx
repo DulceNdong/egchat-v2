@@ -84,6 +84,7 @@ import {
 } from '../../src/supabase';
 import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
+import { notifyReaction } from '../../src/notifications';
 import { useKeyboardHeight } from '../../src/hooks/useKeyboardHeight';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
 import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
@@ -399,6 +400,26 @@ export default function ChatScreen() {
               : m,
           ),
         );
+      }
+    }
+
+    // 4a — Notificación push de reacción
+    if ((event as any).type === 'reaction_added' && (event as any).chatId === chatId) {
+      const ev = event as any;
+      // Solo notificar si el mensaje es nuestro (el servidor ya lo filtra, pero doble check)
+      notifyReaction({
+        senderName: ev.reactorName || 'Alguien',
+        emoji: ev.emoji,
+        messagePreview: ev.messagePreview,
+        chatId: ev.chatId,
+        chatName: chatName,
+      }).catch(() => {});
+      // Actualizar el mapa de reacciones localmente
+      if (ev.messageId) {
+        setMessageReactions(prev => {
+          const cur = prev[ev.messageId] || {};
+          return { ...prev, [ev.messageId]: { ...cur, [ev.emoji]: (cur[ev.emoji] || 0) + 1 } };
+        });
       }
     }
   });
@@ -863,7 +884,7 @@ export default function ChatScreen() {
     if (!msg.reply_to) return undefined;
     const parent = messages.find(m => m.id === msg.reply_to);
     if (!parent) return undefined;
-    const other = chat?.participants?.find((p: any) => p.user_id !== currentUserId);
+    const other = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
     const fallbackName = chat?.type === 'group'
       ? (chat?.name || 'Grupo')
       : (getParticipantName(other) || 'Usuario');
@@ -1328,7 +1349,7 @@ export default function ChatScreen() {
           return {
             ...prev,
             participants: prev.participants?.map((p: any) =>
-              p.user_id === currentUserId ? { ...p, avatar_url } : p,
+              String(p.user_id) === String(currentUserId) ? { ...p, avatar_url } : p,
             ),
           };
         });
@@ -1383,7 +1404,7 @@ export default function ChatScreen() {
 
   // C3 — broadcast mode: solo admins escriben
   const broadcastMode = isGroup && chat?.settings?.broadcast_mode === true;
-  const isGroupAdmin = isGroup && (chat?.participants || []).find((p: any) => p.user_id === currentUserId)?.role === 'admin';
+  const isGroupAdmin = isGroup && (chat?.participants || []).find((p: any) => String(p.user_id) === String(currentUserId))?.role === 'admin';
   const canWrite = !broadcastMode || isGroupAdmin;
 
   // ── Items del drawer ──────────────────────────────────────────
@@ -1737,7 +1758,7 @@ export default function ChatScreen() {
     // Si es chat grupal → llamada grupal
     if (isGroup && chat?.participants?.length > 2) {
       const otherIds = chat.participants
-        .filter((p: any) => p.user_id !== currentUserId)
+        .filter((p: any) => String(p.user_id) !== String(currentUserId))
         .map((p: any) => p.user_id);
       const names: Record<string, string> = {};
       chat.participants.forEach((p: any) => {

@@ -9,9 +9,27 @@
     "ios": {
       "bundleIdentifier": "com.egchat.app",
       "supportsTablet": false,
+      "entitlements": {
+        "com.apple.developer.pushkit.voip": true,
+        "aps-environment": "production",
+        "com.apple.developer.associated-domains": ["applinks:egchat-app.vercel.app"]
+      },
       "infoPlist": {
+        "UIBackgroundModes": ["voip", "audio", "fetch", "remote-notification"],
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": true,
         "NSCameraUsageDescription": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
         "NSMicrophoneUsageDescription": "EGCHAT necesita el micrófono para llamadas de voz y video.",
+        "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos y videos para enviarlos en el chat.",
+        "NSPhotoLibraryAddUsageDescription": "EGCHAT necesita permiso para guardar fotos y videos en tu galería.",
+        "NSContactsUsageDescription": "EGCHAT necesita acceso a tus contactos para compartirlos y encontrar amigos.",
+        "NSLocationWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para servicios como MiTaxi y ubicación en vivo.",
+        "NSDocumentsFolderUsageDescription": "EGCHAT necesita acceso a documentos para enviarlos en el chat.",
+        "NSLocalNetworkUsageDescription": "EGCHAT necesita acceder a la red local para conectar con el servidor de desarrollo en tu Mac.",
+        "NSBonjourServices": [
+          "_expo._tcp"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       }
     },
@@ -25,17 +43,28 @@
         "VIBRATE",
         "USE_FULL_SCREEN_INTENT",
         "POST_NOTIFICATIONS",
+        "READ_CONTACTS",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
         "android.permission.CAMERA",
         "android.permission.RECORD_AUDIO",
         "android.permission.ACCESS_COARSE_LOCATION",
-        "android.permission.ACCESS_FINE_LOCATION"
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO"
       ],
       "googleServicesFile": "./google-services.json",
       "config": {
         "googleMaps": {
           "apiKey": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw"
         }
-      }
+      },
+      "softwareKeyboardLayoutMode": "pan"
     },
     "plugins": [
       "expo-router",
@@ -50,20 +79,24 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicacion para servicios de taxi."
+          "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios como MiTaxi.",
+          "locationWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos."
         }
       ],
       [
-        "expo-notifications",
+        "expo-image-picker",
         {
-          "icon": "./assets/notification-icon.png",
-          "color": "#00c8a0",
-          "defaultChannel": "egchat-messages",
-          "sounds": [
-            "./assets/notification.wav"
-          ]
+          "photosPermission": "EGCHAT necesita acceso a tus fotos y videos para enviarlos en el chat.",
+          "cameraPermission": "EGCHAT necesita la cámara para tomar fotos y videos."
         }
       ],
+      [
+        "expo-contacts",
+        {
+          "contactsPermission": "EGCHAT necesita acceso a tus contactos para compartirlos y encontrar amigos."
+        }
+      ],
+      "expo-document-picker",
       "expo-secure-store"
     ],
     "platforms": [
@@ -77,7 +110,7 @@
     },
     "scheme": "egchat",
     "extra": {
-      "apiUrl": "https://egchat-api-xlxj.onrender.com",
+      "apiUrl": "https://egchat-api.onrender.com",
       "router": {
         "origin": false
       },
