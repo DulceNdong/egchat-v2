@@ -7,7 +7,7 @@ RCT_EXTERN_METHOD(detectFacesInImage:(NSString *)base64Image
                   resolver:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
-RCT_EXTERN_METHOD(release)
+RCT_EXTERN_METHOD(releaseDetector)
 
 + (BOOL)requiresMainQueueSetup { return NO; }
 

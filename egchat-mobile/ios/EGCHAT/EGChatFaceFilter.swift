@@ -96,7 +96,7 @@ class EGChatFaceFilter: NSObject {
     }
   }
 
-  @objc func release() {
+  @objc func releaseDetector() {
     arSession?.pause()
     arSession = nil
     sceneView?.removeFromSuperview()
