@@ -17,6 +17,7 @@ import React, { useEffect, useCallback, useState, useRef } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Platform,
   Dimensions, Animated, PanResponder, Alert, SafeAreaView,
+  FlatList, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useLocalSearchParams, router } from 'expo-router';
@@ -197,13 +198,15 @@ const LocalPiP = ({
 // ── Pantalla principal ────────────────────────────────────────────
 
 export default function GroupCallScreen() {
-  const { groupId, callType: rawType } = useLocalSearchParams<{
+  const { groupId, callType: rawType, participantNames: rawNames } = useLocalSearchParams<{
     groupId: string;
     callType: 'audio' | 'video';
+    participantNames?: string;
   }>();
 
   const callType = (rawType as 'audio' | 'video') || 'audio';
   const isVideo = callType === 'video';
+  const participantNames: Record<string, string> = rawNames ? JSON.parse(rawNames) : {};
 
   const {
     participants, localStream, isActive,
@@ -214,9 +217,12 @@ export default function GroupCallScreen() {
   } = useSFUGroupCall();
 
   const [duration, setDuration] = useState(0);
-  const [myUser, setMyUser]     = useState<any>(null);
-  // userId del hablante activo (simulado por volumen de audio track)
+  const [myUser, setMyUser] = useState<any>(null);
   const [activeSpeaker, setActiveSpeaker] = useState<string | null>(null);
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<{ id: string; name: string; text: string; ts: number }[]>([]);
+  const [chatText, setChatText] = useState('');
+  const [joinToasts, setJoinToasts] = useState<string[]>([]);
   const sseRef = useRef<XMLHttpRequest | null>(null);
 
   const fmt = (s: number) =>
@@ -277,6 +283,10 @@ export default function GroupCallScreen() {
           const msg = JSON.parse(part.replace(/^data:\s*/, ''));
           if (msg.type === 'group_call_participant_joined' && msg.roomId === groupId) {
             handlePeerJoined(msg.userId, msg.name, msg.avatar);
+            // Toast de quien se unió
+            const name = msg.name || participantNames[msg.userId] || 'Alguien';
+            setJoinToasts(prev => [...prev, `${name} se unió`]);
+            setTimeout(() => setJoinToasts(prev => prev.slice(1)), 3000);
           }
         } catch {}
       }
@@ -387,6 +397,13 @@ export default function GroupCallScreen() {
             </Svg>
           </CtrlBtn>
 
+          {/* Chat lateral */}
+          <CtrlBtn active={showChat} onPress={() => setShowChat(v => !v)}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+              <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </Svg>
+          </CtrlBtn>
+
           {/* Colgar */}
           <TouchableOpacity onPress={hangUp} activeOpacity={0.85}>
             <LinearGradient colors={['#ff3b30', '#c0392b']} style={s.hangup}>
@@ -419,6 +436,67 @@ export default function GroupCallScreen() {
           isVideo={isVideo}
           name={myUser?.full_name || 'Yo'}
         />
+      )}
+
+      {/* Toasts de quien se une */}
+      <View style={{ position: 'absolute', top: 100, left: 0, right: 0, alignItems: 'center', gap: 6 }} pointerEvents="none">
+        {joinToasts.map((t, i) => (
+          <View key={i} style={{ backgroundColor: 'rgba(0,200,160,0.85)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>👋 {t}</Text>
+          </View>
+        ))}
+      </View>
+
+      {/* Panel de chat lateral */}
+      {showChat && (
+        <View style={s.chatPanel}>
+          <View style={s.chatHeader}>
+            <Text style={s.chatTitle}>Chat de la llamada</Text>
+            <TouchableOpacity onPress={() => setShowChat(false)}>
+              <Text style={{ color: '#fff', fontSize: 18 }}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={chatMessages}
+            keyExtractor={m => m.id}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 10, gap: 8 }}
+            ListEmptyComponent={<Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 20 }}>Sin mensajes aún</Text>}
+            renderItem={({ item }) => (
+              <View>
+                <Text style={{ color: '#00c8a0', fontSize: 11, fontWeight: '700' }}>{item.name}</Text>
+                <Text style={{ color: '#fff', fontSize: 14 }}>{item.text}</Text>
+              </View>
+            )}
+          />
+          <View style={s.chatInput}>
+            <TextInput
+              style={s.chatTextInput}
+              value={chatText}
+              onChangeText={setChatText}
+              placeholder="Mensaje..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              returnKeyType="send"
+              onSubmitEditing={() => {
+                if (!chatText.trim()) return;
+                const msg = { id: String(Date.now()), name: myUser?.full_name || 'Yo', text: chatText.trim(), ts: Date.now() };
+                setChatMessages(prev => [...prev, msg]);
+                setChatText('');
+              }}
+            />
+            <TouchableOpacity
+              onPress={() => {
+                if (!chatText.trim()) return;
+                const msg = { id: String(Date.now()), name: myUser?.full_name || 'Yo', text: chatText.trim(), ts: Date.now() };
+                setChatMessages(prev => [...prev, msg]);
+                setChatText('');
+              }}
+              style={{ paddingHorizontal: 12 }}
+            >
+              <Text style={{ color: '#00c8a0', fontWeight: '700', fontSize: 15 }}>↑</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
       )}
     </View>
   );
@@ -471,6 +549,27 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.55, shadowRadius: 10, elevation: 10,
+  },
+  // Chat lateral
+  chatPanel: {
+    position: 'absolute', bottom: 90, right: 0, top: 0,
+    width: 260, backgroundColor: 'rgba(15,23,42,0.96)',
+    borderLeftWidth: 1, borderLeftColor: 'rgba(255,255,255,0.1)',
+  },
+  chatHeader: {
+    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
+    padding: 12, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.1)',
+  },
+  chatTitle: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  chatInput: {
+    flexDirection: 'row', alignItems: 'center',
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)',
+    padding: 8,
+  },
+  chatTextInput: {
+    flex: 1, color: '#fff', fontSize: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)', borderRadius: 18,
+    paddingHorizontal: 12, paddingVertical: 8,
   },
 });
 

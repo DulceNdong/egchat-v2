@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
-  TextInput, Animated,
+  TextInput, Animated, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,6 +13,7 @@ import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { markAllRead } from '../../src/store/appStore';
 import { CardsScreen } from '../../src/components/services/CardsScreen';
 import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
 import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
@@ -167,6 +169,7 @@ const Sheet = ({
   onClose: () => void; children: React.ReactNode;
 }) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <Pressable style={s.overlay} onPress={onClose}>
       <Pressable style={s.sheet} onPress={() => {}}>
         <View style={s.handle} />
@@ -177,6 +180,7 @@ const Sheet = ({
         </ScrollView>
       </Pressable>
     </Pressable>
+        </KeyboardAvoidingView>
   </Modal>
 );
 
@@ -254,6 +258,7 @@ const QRModal = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Pressable style={s.qrOverlay} onPress={onClose}>
         <Pressable style={s.qrCard} onPress={() => {}}>
           <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrHeader}>
@@ -315,6 +320,7 @@ const QRModal = ({
           </View>
         </Pressable>
       </Pressable>
+        </KeyboardAvoidingView>
     </Modal>
   );
 };
@@ -445,10 +451,19 @@ const RecargaModal = ({
             <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label="Importe a solicitar (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <TouchableOpacity
-              style={[s.primaryBtn, { backgroundColor: '#065F46' }]}
-              onPress={() => { doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`); }}
+              style={[s.primaryBtn, { backgroundColor: '#065F46' }, !isValid && s.primaryBtnDisabled]}
+              onPress={() => {
+                if (!isValid) {
+                  Alert.alert('Monto inválido', 'Introduce al menos 1.000 XAF para generar la solicitud.');
+                  return;
+                }
+                doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`);
+              }}
+              disabled={!isValid || loading}
               activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
           </>
@@ -1106,7 +1121,7 @@ const HistorialModal = ({
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL — Mi Cartera
 // ══════════════════════════════════════════════════════════════════
-export default function MonederoScreen() {
+function MonederoScreenInner() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [bankAccounts, setBankAccounts] = useState(DEFAULT_BANK_ACCOUNTS);
@@ -1204,20 +1219,16 @@ export default function MonederoScreen() {
   const recentTx = transactions.slice(0, 8);
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right']}>
 
       {/* ── Header ── */}
       <EGChatHeader
-        temp={27}
-        city="Malabo"
-        weatherCondition="cloudy"
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
@@ -1386,6 +1397,42 @@ export default function MonederoScreen() {
                 <Text style={s.verTodo}>Ver todo →</Text>
               </TouchableOpacity>
             </View>
+
+          {/* 4d — Estadísticas del mes */}
+          {transactions.length > 0 && (() => {
+            const now = new Date();
+            const thisMonth = transactions.filter(tx => {
+              const d = new Date(tx.createdAt || tx.created_at || '');
+              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            });
+            const totalIn  = thisMonth.filter(tx => isCredit(tx.type)).reduce((a, tx) => a + Math.abs(Number(tx.amount || 0)), 0);
+            const totalOut = thisMonth.filter(tx => !isCredit(tx.type)).reduce((a, tx) => a + Math.abs(Number(tx.amount || 0)), 0);
+            const max = Math.max(totalIn, totalOut, 1);
+            return (
+              <View style={[s.card, { backgroundColor: C.bgSecondary, marginBottom: 10 }]}>
+                <Text style={[s.sectionTitle, { color: C.textPrimary, marginBottom: 12 }]}>📊 ESTE MES</Text>
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginBottom: 10 }}>
+                  {[{ label: 'Recibido', value: totalIn, color: '#10b981' }, { label: 'Enviado', value: totalOut, color: '#ef4444' }].map(item => (
+                    <View key={item.label} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: item.color }}>
+                        {fmt(item.value)} XAF
+                      </Text>
+                      <View style={{ width: '100%', height: 80, justifyContent: 'flex-end' }}>
+                        <View style={{ width: '100%', height: Math.max(4, (item.value / max) * 80), backgroundColor: item.color, borderRadius: 4, opacity: 0.85 }} />
+                      </View>
+                      <Text style={{ fontSize: 11, color: C.textTertiary }}>{item.label}</Text>
+                    </View>
+                  ))}
+                </View>
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: C.textSecondary }}>{thisMonth.length} transacciones</Text>
+                  <Text style={{ fontSize: 12, color: totalIn >= totalOut ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+                    {totalIn >= totalOut ? '▲' : '▼'} Neto: {fmt(Math.abs(totalIn - totalOut))} XAF
+                  </Text>
+                </View>
+              </View>
+            );
+          })()}
 
             <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
               {recentTx.length === 0 ? (
@@ -1750,3 +1797,11 @@ const s = StyleSheet.create({
   qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32, marginTop: 4 },
   qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
 });
+
+export default function MonederoScreen() {
+  return (
+    <TabErrorBoundary tabName="Cartera">
+      <MonederoScreenInner />
+    </TabErrorBoundary>
+  );
+}

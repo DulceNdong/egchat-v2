@@ -1,6 +1,7 @@
 /**
  * notifications.ts — Notificaciones nativas con expo-notifications
  * Funciona con el teléfono hibernado gracias a FCM (Firebase Cloud Messaging)
+ * NOTA: Push desactivado temporalmente (sin Apple Developer Program)
  */
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
@@ -9,8 +10,15 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 import { RichNotifications } from './native/RichNotifications';
+import { playNotification, startRingtone } from './hooks/useSounds';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com';
+const API_BASE = (
+  Platform.OS === 'web'
+    ? process.env.EXPO_PUBLIC_API_URL
+    : (process.env.EXPO_PUBLIC_API_URL_MOBILE || process.env.EXPO_PUBLIC_API_URL)
+) || 'https://egchat-api.onrender.com';
+
+const PUSH_ENABLED = process.env.EXPO_PUBLIC_ENABLE_PUSH === '1';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
 
 // ── Configurar cómo se muestran las notificaciones en primer plano ──────────
@@ -33,9 +41,8 @@ Notifications.setNotificationHandler({
 
 // ── Tarea en segundo plano para notificaciones recibidas con app cerrada ────
 TaskManager.defineTask(BACKGROUND_TASK, async ({ data, error }) => {
-  if (error) { console.error('BG notification error:', error); return; }
-  // La notificación ya fue mostrada por FCM — aquí podemos hacer lógica extra
-  console.log('BG notification received:', data);
+  if (error) return; // Background notification error
+  // Notification received in background
 });
 
 // ── Crear canales Android ───────────────────────────────────────────────────
@@ -68,6 +75,9 @@ async function createChannels() {
 
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
 export async function registerForPushNotifications(): Promise<string | null> {
+  if (Platform.OS === 'web') return null; // push no disponible en web
+  if (!PUSH_ENABLED) return null;         // push desactivado por configuración
+
   await createChannels();
 
   const { status: existing } = await Notifications.getPermissionsAsync();
@@ -86,7 +96,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (finalStatus !== 'granted') {
-    console.warn('Permisos de notificación denegados');
+    // Notification permissions denied
     return null;
   }
 
@@ -102,14 +112,14 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
     expoPushToken = tokenData.data;
   } catch (e) {
-    console.warn('No se pudo obtener Expo Push Token:', e);
-    // Intentar con token FCM nativo directamente (solo Android)
+    // Could not get Expo Push Token
+    // Try FCM native token (Android only)
     if (Platform.OS === 'android') {
       try {
         const nativeToken = await Notifications.getDevicePushTokenAsync();
         expoPushToken = nativeToken.data as string;
       } catch (e2) {
-        console.warn('No se pudo obtener token FCM nativo:', e2);
+        // Could not get FCM native token
       }
     }
   }
@@ -133,13 +143,21 @@ export async function syncTokenWithServer(expoPushToken: string) {
   if (!authToken) return;
 
   try {
-    await fetch(`${API_BASE}/api/push/register-expo-token`, {
+    const res = await fetch(`${API_BASE}/api/push/register-expo-token`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${authToken}`,
       },
       body: JSON.stringify({ expoPushToken, platform: Platform.OS }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+    console.log('✅ Expo push token registrado en servidor', {
+      platform: Platform.OS,
+      tokenSuffix: expoPushToken.slice(-12),
     });
   } catch (e) {
     console.warn('No se pudo registrar token push:', e);
@@ -155,13 +173,20 @@ export function setupNotificationListeners(
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data as any;
     if (data?.notificationType === 'incoming_call') {
+      if (Platform.OS === 'ios') {
+        startRingtone().catch(() => {});
+      }
       onCall({
         callId: data.callId,
         callerName: data.callerName,
         callType: data.callType || 'audio',
         offer: data.offer,
       });
-    } else if (data?.chatId && Platform.OS === 'android') {
+    } else if (data?.chatId) {
+      if (Platform.OS === 'ios') {
+        playNotification().catch(() => {});
+      }
+      if (Platform.OS === 'android') {
       // Mostrar notificación rica nativa cuando la app está en primer plano
       RichNotifications.show({
         chatId: data.chatId,
@@ -171,6 +196,7 @@ export function setupNotificationListeners(
         messageType: data.messageType || 'text',
         imageUrl: data.imageUrl || '',
       });
+      }
     }
   });
 
@@ -201,4 +227,35 @@ export function setupNotificationListeners(
 // ── Limpiar badge ───────────────────────────────────────────────────────────
 export async function clearBadge() {
   await Notifications.setBadgeCountAsync(0);
+}
+
+// ── 4a Notificación local de reacción ──────────────────────────────────────
+/**
+ * Dispara una notificación local cuando alguien reacciona a un mensaje propio.
+ * Se llama desde el evento SSE/Supabase de reacciones.
+ */
+export async function notifyReaction(params: {
+  senderName: string;
+  emoji: string;
+  messagePreview?: string;
+  chatId: string;
+  chatName: string;
+}) {
+  try {
+    const { senderName, emoji, messagePreview, chatId, chatName } = params;
+    const body = messagePreview
+      ? `"${messagePreview.slice(0, 40)}${messagePreview.length > 40 ? '…' : ''}"`
+      : 'tu mensaje';
+
+    await Notifications.scheduleNotificationAsync({
+      content: {
+        title: `${senderName} reaccionó ${emoji}`,
+        body: `En ${chatName}: ${body}`,
+        data: { type: 'reaction', chatId },
+        sound: 'notification.wav',
+        badge: 1,
+      },
+      trigger: null, // inmediata
+    });
+  } catch { /* silencioso */ }
 }

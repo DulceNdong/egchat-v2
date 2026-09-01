@@ -731,6 +731,19 @@ function MensajeriaScreenInner() {
             </TouchableOpacity>
           )}
         </View>
+        {/* 4c — Búsqueda global */}
+        <TouchableOpacity
+          style={[st.globalSearchBtn, { backgroundColor: C.bgTertiary, borderColor: C.border }]}
+          onPress={() => router.push('/global-search' as any)}
+          activeOpacity={0.7}
+          hitSlop={8}
+        >
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round">
+            <Circle cx="11" cy="11" r="8"/>
+            <Line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </Svg>
+          <Text style={{ fontSize: 10, color: C.textTertiary, marginTop: 1 }}>Global</Text>
+        </TouchableOpacity>
         {/* Botón + nuevo chat */}
         <TouchableOpacity
           style={st.newChatBtn}
@@ -1181,6 +1194,10 @@ const st = StyleSheet.create({
     padding: 0,
   },
   searchClear: { padding: 2 },
+  globalSearchBtn: {
+    width: 40, height: 44, borderRadius: 10, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center', marginLeft: 4,
+  },
   newChatBtn: {
     width: 44, height: 44, borderRadius: 10,
     ...Shadow.sm,
