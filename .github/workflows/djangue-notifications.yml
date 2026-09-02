@@ -1,0 +1,38 @@
+name: Djangue Daily Notifications
+
+on:
+  schedule:
+    # Ejecutar todos los días a las 9:00 AM UTC (10:00 AM WAT - Guinea Ecuatorial)
+    - cron: '0 9 * * *'
+  workflow_dispatch: # Permitir ejecución manual desde GitHub Actions
+
+jobs:
+  send-notifications:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Send Djangue Notifications
+        run: |
+          echo "Triggering Djangue daily notifications..."
+          response=$(curl -s -w "\n%{http_code}" -X POST ${{ secrets.API_URL }}/api/djangue/cron/notifications \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "Error: Failed to send notifications"
+            exit 1
+          fi
+          
+          echo "✅ Notifications sent successfully"
+
+      - name: Log completion
+        if: always()
+        run: |
+          echo "Job completed at $(date)"
+          echo "Status: ${{ job.status }}"
