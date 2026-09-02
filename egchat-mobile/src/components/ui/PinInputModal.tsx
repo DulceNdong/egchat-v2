@@ -4,7 +4,7 @@ import {
   Pressable, ActivityIndicator, Vibration,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from './MIcon';
 
 interface PinInputModalProps {
   visible: boolean;
@@ -99,7 +99,7 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
           {/* Header */}
           <View style={s.header}>
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <Ionicons name="close" size={20} color="#64748B" />
+              <MIcon name="close" size={20} color="#64748B" />
             </TouchableOpacity>
             <Text style={s.title}>{title}</Text>
             <Text style={s.subtitle}>{subtitle}</Text>
@@ -138,7 +138,7 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
             {/* Error Message */}
             {error && (
               <View style={s.errorContainer}>
-                <Ionicons name="warning" size={16} color="#EF4444" />
+                <MIcon name="warning" size={16} color="#EF4444" />
                 <Text style={s.errorText}>{error}</Text>
               </View>
             )}
@@ -155,7 +155,7 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
           {/* Actions */}
           <View style={s.actions}>
             <TouchableOpacity onPress={handleClear} style={s.clearBtn}>
-              <Ionicons name="backspace-outline" size={20} color="#64748B" />
+              <MIcon name="backspace" size={20} color="#64748B" />
               <Text style={s.clearText}>Limpiar</Text>
             </TouchableOpacity>
           </View>

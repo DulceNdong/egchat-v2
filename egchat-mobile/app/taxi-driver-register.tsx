@@ -4,7 +4,7 @@ import {
   TextInput, Alert, ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from '../src/components/ui/MIcon';
 import * as ImagePicker from 'expo-image-picker';
 import { router } from 'expo-router';
 import { taxiAPI } from '../src/api';
@@ -90,7 +90,7 @@ export default function TaxiDriverRegisterScreen() {
       <SafeAreaView style={s.root}>
         <View style={s.successWrap}>
           <View style={s.successIcon}>
-            <Ionicons name="checkmark" size={40} color={GREEN} />
+            <MIcon name="check" size={40} color={GREEN} />
           </View>
           <Text style={s.successTitle}>Solicitud enviada</Text>
           <Text style={s.successSub}>
@@ -108,7 +108,7 @@ export default function TaxiDriverRegisterScreen() {
     <SafeAreaView style={s.root} edges={['top']}>
       <View style={[s.header, { paddingTop: insets.top > 0 ? 0 : 12 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Ionicons name="arrow-back" size={20} color={TEXT} />
+          <MIcon name="arrow-back" size={20} color={TEXT} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.headerTitle}>Soy conductor</Text>

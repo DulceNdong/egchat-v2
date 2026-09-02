@@ -19,7 +19,7 @@ import {
   pickImageFromCamera, pickImageFromLibrary,
   pickVideo, pickVideoFromCamera,
 } from '../src/utils/chatMedia';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from '../src/components/ui/MIcon';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
 import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
 import { EGAvatar } from '../src/components/ui';
@@ -254,7 +254,7 @@ const StoryViewer = ({
             <Text style={sv.headerMeta}>{timeAgo(story.created_at)} · {timeRemaining(story.created_at)} restante</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={sv.closeBtn} activeOpacity={0.7}>
-            <Ionicons name="close" size={20} color="#fff" />
+            <MIcon name="close" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
 
@@ -296,10 +296,10 @@ const StoryViewer = ({
                 returnKeyType="send"
               />
               <TouchableOpacity onPress={sendReply} style={sv.replySendBtn} activeOpacity={0.8}>
-                <Ionicons name="send" size={16} color="#fff" />
+                <MIcon name="send" size={16} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setShowReply(false); paused.current = false; startProgress(); }} style={sv.replyCloseBtn}>
-                <Ionicons name="close" size={16} color="rgba(255,255,255,0.7)" />
+                <MIcon name="close" size={16} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             </View>
           ) : (
@@ -308,7 +308,7 @@ const StoryViewer = ({
                 <Text style={sv.replyPlaceholderText}>Responder...</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={() => setShowReactions(v => !v)} style={sv.reactBtn} activeOpacity={0.8}>
-                <Ionicons name="happy-outline" size={24} color="#fff" />
+                <MIcon name="sentiment-satisfied" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
           )}
@@ -476,18 +476,18 @@ const StoryCard = React.memo(({ group, onPress, C }: { group: StoryGroup; onPres
       <View style={scStyles.info}>
         <Text style={[scStyles.name, group.seen && scStyles.nameSeen]} numberOfLines={1}>{group.userName}</Text>
         <View style={scStyles.meta}>
-          <Ionicons name={group.seen ? 'checkmark-done' : 'time-outline'} size={12} color={group.seen ? BRAND : C.textTertiary} />
+          <MIcon name={group.seen ? 'done-all' : 'schedule'} size={12} color={group.seen ? BRAND : C.textTertiary} />
           <Text style={scStyles.metaText}>{timeAgo(group.stories[0].created_at)}</Text>
           {group.views > 0 && (
             <>
               <Text style={scStyles.dot}>·</Text>
-              <Ionicons name="eye-outline" size={12} color={C.textTertiary} />
+              <MIcon name="visibility" size={12} color={C.textTertiary} />
               <Text style={scStyles.metaText}>{group.views}</Text>
             </>
           )}
         </View>
       </View>
-      <Ionicons name="chevron-forward" size={16} color={C.border} />
+      <MIcon name="chevron-right" size={16} color={C.border} />
     </TouchableOpacity>
   );
 });
@@ -643,7 +643,7 @@ export default function StoriesScreen() {
               <View style={[buStyles.avatar, { width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }]}>
                 {myAvatarUrl
                   ? <Image source={{ uri: myAvatarUrl }} style={{ width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }} />
-                  : <Ionicons name="person" size={28} color={C.textSecondary} />}
+                  : <MIcon name="person" size={28} color={C.textSecondary} />}
               </View>
             </LinearGradient>
           ) : (
@@ -651,14 +651,14 @@ export default function StoriesScreen() {
               <View style={[buStyles.avatar, { width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }]}>
                 {myAvatarUrl
                   ? <Image source={{ uri: myAvatarUrl }} style={{ width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }} />
-                  : <Ionicons name="person" size={28} color={C.textTertiary} />}
+                  : <MIcon name="person" size={28} color={C.textTertiary} />}
               </View>
             </View>
           )}
           <View style={mbu.addBadge}>
             {uploading
               ? <ActivityIndicator size="small" color="#fff" style={{ transform: [{ scale: 0.7 }] }} />
-              : <Ionicons name="add" size={12} color="#fff" />}
+              : <MIcon name="add" size={12} color="#fff" />}
           </View>
         </View>
         <Text style={buStyles.name} numberOfLines={1}>Mi estado</Text>
@@ -741,7 +741,7 @@ export default function StoriesScreen() {
       {/* HEADER */}
       <View style={[st.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
         <TouchableOpacity onPress={() => router.back()} style={[st.backBtn, { backgroundColor: C.bgTertiary }]} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
-          <Ionicons name="arrow-back" size={22} color={C.textPrimary} />
+          <MIcon name="arrow-back" size={22} color={C.textPrimary} />
         </TouchableOpacity>
         <View style={st.headerCenter}>
           <Text style={[st.headerTitle, { color: C.textPrimary }]}>Estados</Text>
@@ -753,10 +753,10 @@ export default function StoriesScreen() {
         </View>
         <View style={st.headerActions}>
           <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir desde galería">
-            <Ionicons name="image-outline" size={21} color={C.textSecondary} />
+            <MIcon name="image" size={21} color={C.textSecondary} />
           </TouchableOpacity>
           <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir estado">
-            <Ionicons name="camera-outline" size={21} color={C.textSecondary} />
+            <MIcon name="photo-camera" size={21} color={C.textSecondary} />
           </TouchableOpacity>
         </View>
       </View>
@@ -805,13 +805,13 @@ export default function StoriesScreen() {
                 );
               }) : (
                 <View style={st.empty}>
-                  <Ionicons name={activeTab === 'recientes' ? 'sparkles-outline' : 'checkmark-done-circle-outline'} size={52} color={C.border} />
+                  <MIcon name={activeTab === 'recientes' ? 'auto-awesome' : 'task-alt'} size={52} color={C.border} />
                   <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{activeTab === 'recientes' ? 'Todo al día' : 'Sin estados vistos'}</Text>
                   <Text style={[st.emptySub, { color: C.textTertiary }]}>{activeTab === 'recientes' ? 'No hay estados nuevos de tus contactos' : 'Los estados que veas aparecerán aquí'}</Text>
                   {activeTab === 'recientes' && (
                     <TouchableOpacity style={st.emptyBtn} onPress={addStory} activeOpacity={0.85}>
                       <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
-                        <Ionicons name="add" size={18} color="#fff" />
+                        <MIcon name="add" size={18} color="#fff" />
                         <Text style={st.emptyBtnText}>Publicar estado</Text>
                       </LinearGradient>
                     </TouchableOpacity>
@@ -828,19 +828,19 @@ export default function StoriesScreen() {
         <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
           <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={[st.menuCard, { borderColor: C.borderLight }]}>
             {([
-              { icon: 'image-outline'      as const, color: '#a855f7', label: 'Subir foto/video',  onPress: () => { addStory();                              setMyStoryMenu(false); } },
-              { icon: 'add-circle-outline' as const, color: BRAND,     label: 'Añadir estado',     onPress: () => { addStory();                              setMyStoryMenu(false); } },
-              { icon: 'eye-outline'        as const, color: BRAND2,    label: 'Ver mi estado',     onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
+              { icon: 'image'        as const, color: '#a855f7', label: 'Subir foto/video',  onPress: () => { addStory();                              setMyStoryMenu(false); } },
+              { icon: 'add-circle'   as const, color: BRAND,     label: 'Añadir estado',     onPress: () => { addStory();                              setMyStoryMenu(false); } },
+              { icon: 'visibility'   as const, color: BRAND2,    label: 'Ver mi estado',     onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
             ] as const).map((item, idx, arr) => (
               <TouchableOpacity key={item.label}
                 style={[st.menuItem, idx < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight }]}
                 onPress={item.onPress} activeOpacity={0.75}
                 accessibilityRole="button" accessibilityLabel={item.label}>
                 <View style={[st.menuIconWrap, { backgroundColor: item.color + '22' }]}>
-                  <Ionicons name={item.icon} size={18} color={item.color} />
+                  <MIcon name={item.icon} size={18} color={item.color} />
                 </View>
                 <Text style={[st.menuItemText, { color: C.textPrimary }]}>{item.label}</Text>
-                <Ionicons name="chevron-forward" size={14} color={C.border} />
+                <MIcon name="chevron-right" size={14} color={C.border} />
               </TouchableOpacity>
             ))}
             {myGroup?.storyId && myStories.length > 0 && (
@@ -848,10 +848,10 @@ export default function StoriesScreen() {
                 onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }} activeOpacity={0.75}
                 accessibilityRole="button" accessibilityLabel="Eliminar mi estado">
                 <View style={[st.menuIconWrap, { backgroundColor: '#ef444422' }]}>
-                  <Ionicons name="trash-outline" size={18} color="#ef4444" />
+                  <MIcon name="delete" size={18} color="#ef4444" />
                 </View>
                 <Text style={[st.menuItemText, { color: '#ef4444' }]}>Eliminar todo</Text>
-                <Ionicons name="chevron-forward" size={14} color={C.border} />
+                <MIcon name="chevron-right" size={14} color={C.border} />
               </TouchableOpacity>
             )}
           </BlurView>
@@ -873,7 +873,7 @@ export default function StoriesScreen() {
         <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
           <LinearGradient colors={[activeEspacio?.coverColor || BRAND, 'transparent']} style={st.espModalHeader}>
             <TouchableOpacity onPress={() => setActiveEspacio(null)} style={[st.backBtn, { backgroundColor: 'rgba(0,0,0,0.25)' }]} activeOpacity={0.7}>
-              <Ionicons name="arrow-back" size={22} color="#fff" />
+              <MIcon name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
             <Text style={st.espModalTitle}>{activeEspacio?.emoji} {activeEspacio?.name}</Text>
           </LinearGradient>
@@ -908,7 +908,7 @@ export default function StoriesScreen() {
               <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Publicar con música</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.musicCancelBtn, { backgroundColor: C.bgTertiary }]} onPress={() => setStoryMusic(null)}>
-              <Ionicons name="close" size={16} color={C.textPrimary} />
+              <MIcon name="close" size={16} color={C.textPrimary} />
             </TouchableOpacity>
           </View>
         </View>

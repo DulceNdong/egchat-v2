@@ -5,7 +5,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from '../src/components/ui/MIcon';
 import { getToken, getApiBase, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
@@ -254,7 +254,7 @@ export default function SupermercadosScreen() {
           onPress={() => setShowCart(true)}
           disabled={cart.length === 0}
         >
-          <Ionicons name="bag-outline" size={24} color={cart.length > 0 ? Colors.accent : C.textTertiary} />
+          <MIcon name="shopping-bag" size={24} color={cart.length > 0 ? Colors.accent : C.textTertiary} />
           {cartItemsCount > 0 && (
             <View style={styles.cartBadge}>
               <Text style={styles.cartBadgeText}>{cartItemsCount}</Text>
@@ -293,7 +293,7 @@ export default function SupermercadosScreen() {
 
       {/* Search */}
       <View style={[styles.searchContainer, { backgroundColor: C.bgSecondary }]}>
-        <Ionicons name="search-outline" size={20} color={C.textTertiary} />
+        <MIcon name="search" size={20} color={C.textTertiary} />
         <TextInput
           style={[styles.searchInput, { color: C.textPrimary }]}
           placeholder="Buscar productos..."
@@ -397,7 +397,7 @@ export default function SupermercadosScreen() {
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: C.bgPrimary }]} edges={['top']}>
           <View style={[styles.modalHeader, { borderBottomColor: C.borderLight }]}>
             <TouchableOpacity onPress={() => setShowCart(false)}>
-              <Ionicons name="close" size={24} color={C.textPrimary} />
+              <MIcon name="close" size={24} color={C.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: C.textPrimary }]}>Mi Carrito</Text>
             <TouchableOpacity onPress={clearCart} disabled={cart.length === 0}>
@@ -470,7 +470,7 @@ export default function SupermercadosScreen() {
         <SafeAreaView style={[styles.modalContainer, { backgroundColor: C.bgPrimary }]} edges={['top']}>
           <View style={[styles.modalHeader, { borderBottomColor: C.borderLight }]}>
             <TouchableOpacity onPress={() => setShowCheckout(false)}>
-              <Ionicons name="arrow-back" size={24} color={C.textPrimary} />
+              <MIcon name="arrow-back" size={24} color={C.textPrimary} />
             </TouchableOpacity>
             <Text style={[styles.modalTitle, { color: C.textPrimary }]}>Finalizar Pedido</Text>
             <View style={{ width: 24 }} />

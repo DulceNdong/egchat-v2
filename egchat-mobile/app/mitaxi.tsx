@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from '../src/components/ui/MIcon';
 import * as Location from 'expo-location';
 import { router } from 'expo-router';
 import { taxiAPI, walletAPI } from '../src/api';
@@ -301,11 +301,11 @@ export default function MiTaxiScreen() {
             onPress={() => router.push('/taxi-driver-register' as any)}
             style={[s.histBtn, { backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }]}
           >
-            <Ionicons name="car-outline" size={16} color="#10B981" />
+            <MIcon name="directions-car" size={16} color="#10B981" />
             <Text style={[s.histBtnTxt, { color: '#10B981' }]}>Soy conductor</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={openHistory} style={s.histBtn}>
-            <Ionicons name="time-outline" size={18} color={ACCENT} />
+            <MIcon name="schedule" size={18} color={ACCENT} />
             <Text style={[s.histBtnTxt, { color: ACCENT }]}>Historial</Text>
           </TouchableOpacity>
         </View>
@@ -339,7 +339,7 @@ export default function MiTaxiScreen() {
         <View style={s.suggBox}>
           {suggestions.map((place, i) => (
             <TouchableOpacity key={place} style={[s.suggItem, i < suggestions.length-1 && s.suggBorder]} onPress={() => selectPlace(place)}>
-              <Ionicons name="location-outline" size={13} color={accent} style={{ marginRight: 8 }} />
+              <MIcon name="location-on" size={13} color={accent} style={{ marginRight: 8 }} />
               <Text style={s.suggText}>{place}</Text>
             </TouchableOpacity>
           ))}
@@ -378,7 +378,7 @@ export default function MiTaxiScreen() {
       <TouchableOpacity style={[s.payRow, { borderColor: BORDER }]} onPress={() => setShowPayment(true)}>
         <Text style={s.payIcon}>{PAYMENT_METHODS.find(p=>p.id===paymentMethod)?.icon}</Text>
         <Text style={s.payLabel}>{PAYMENT_METHODS.find(p=>p.id===paymentMethod)?.label}</Text>
-        <Ionicons name="chevron-forward" size={16} color={SUB} />
+        <MIcon name="chevron-right" size={16} color={SUB} />
       </TouchableOpacity>
 
       {/* Resumen + saldo */}
@@ -488,7 +488,7 @@ export default function MiTaxiScreen() {
         <View style={s.histHeaderRow}>
           <Text style={s.sheetTitle}>Mis viajes</Text>
           <TouchableOpacity onPress={() => setStep('form')}>
-            <Ionicons name="close" size={22} color={TEXT} />
+            <MIcon name="close" size={22} color={TEXT} />
           </TouchableOpacity>
         </View>
         {loadingHistory ? <ActivityIndicator color={accent} style={{ marginVertical: 20 }} /> : (
@@ -533,7 +533,7 @@ export default function MiTaxiScreen() {
 
       <SafeAreaView style={[s.headerFloat, { paddingTop: insets.top }]} edges={[]}>
         <TouchableOpacity onPress={() => router.back()} style={s.headerBack}>
-          <Ionicons name="arrow-back" size={20} color={TEXT} />
+          <MIcon name="arrow-back" size={20} color={TEXT} />
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.headerTitle}>🚕 MiTaxi</Text>
@@ -580,7 +580,7 @@ export default function MiTaxiScreen() {
                 onPress={() => { setPayment(pm.id as any); setShowPayment(false); }}>
                 <Text style={s.payOptionIcon}>{pm.icon}</Text>
                 <Text style={[s.payOptionLabel, paymentMethod === pm.id && { color: ACCENT, fontWeight: '700' }]}>{pm.label}</Text>
-                {paymentMethod === pm.id && <Ionicons name="checkmark-circle" size={20} color={ACCENT} />}
+                {paymentMethod === pm.id && <MIcon name="check-circle" size={20} color={ACCENT} />}
               </TouchableOpacity>
             ))}
           </View>

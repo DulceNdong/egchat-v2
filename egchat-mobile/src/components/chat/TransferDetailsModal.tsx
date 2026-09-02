@@ -4,7 +4,7 @@ import {
   ScrollView, Share,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from '../ui/MIcon';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from '../Toast';
 
@@ -64,7 +64,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
-              <Ionicons name="close" size={22} color="#64748B" />
+              <MIcon name="close" size={22} color="#64748B" />
             </TouchableOpacity>
           </View>
 
@@ -89,7 +89,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
                   onPress={() => copyToClipboard(transferData.recipient, 'Destinatario')}
                 >
                   <Text style={s.detailValue}>{transferData.recipient}</Text>
-                  <Ionicons name="copy-outline" size={16} color="#64748B" />
+                  <MIcon name="content-copy" size={16} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
@@ -102,7 +102,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
                   onPress={() => copyToClipboard(transferData.reference, 'Referencia')}
                 >
                   <Text style={s.detailValue}>{transferData.reference}</Text>
-                  <Ionicons name="copy-outline" size={16} color="#64748B" />
+                  <MIcon name="content-copy" size={16} color="#64748B" />
                 </TouchableOpacity>
               </View>
 
@@ -126,7 +126,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
 
             <View style={s.actions}>
               <TouchableOpacity style={s.actionBtn} onPress={shareDetails}>
-                <Ionicons name="share-outline" size={20} color="#6366F1" />
+                <MIcon name="share" size={20} color="#6366F1" />
                 <Text style={s.actionText}>Compartir</Text>
               </TouchableOpacity>
               
@@ -134,7 +134,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
                 style={s.actionBtn} 
                 onPress={() => copyToClipboard(transferData.reference, 'Referencia')}
               >
-                <Ionicons name="copy-outline" size={20} color="#6366F1" />
+                <MIcon name="content-copy" size={20} color="#6366F1" />
                 <Text style={s.actionText}>Copiar ref.</Text>
               </TouchableOpacity>
             </View>

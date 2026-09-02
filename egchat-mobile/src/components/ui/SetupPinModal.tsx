@@ -4,7 +4,7 @@ import {
   Pressable, ActivityIndicator, Vibration, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { Ionicons } from '@expo/vector-icons';
+import { MIcon } from './MIcon';
 import { authAPI } from '../../api';
 
 interface SetupPinModalProps {
@@ -172,7 +172,7 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
           {/* Header */}
           <LinearGradient colors={['#6366F1', '#4F46E5']} style={s.header}>
             <TouchableOpacity onPress={handleBack} style={s.backBtn}>
-              <Ionicons name={step === 'create' ? 'close' : 'chevron-back'} size={20} color="#fff" />
+              <MIcon name={step === 'create' ? 'close' : 'chevron-left'} size={20} color="#fff" />
             </TouchableOpacity>
             <Text style={s.title}>{title}</Text>
             <Text style={s.subtitle}>
@@ -228,7 +228,7 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
               {/* Error Message */}
               {error && (
                 <View style={s.errorContainer}>
-                  <Ionicons name="warning" size={16} color="#EF4444" />
+                  <MIcon name="warning" size={16} color="#EF4444" />
                   <Text style={s.errorText}>{error}</Text>
                 </View>
               )}
@@ -245,7 +245,7 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
             {/* Actions */}
             <View style={s.actions}>
               <TouchableOpacity onPress={handleClear} style={s.clearBtn}>
-                <Ionicons name="backspace-outline" size={20} color="#64748B" />
+                <MIcon name="backspace" size={20} color="#64748B" />
                 <Text style={s.clearText}>Limpiar</Text>
               </TouchableOpacity>
             </View>
