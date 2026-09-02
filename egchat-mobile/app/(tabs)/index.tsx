@@ -4,6 +4,7 @@
 // APPS grid, FAB +, LIA-25 flotante
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View,
   Text,
@@ -16,7 +17,6 @@ import {
   RefreshControl,
   Image,
   Dimensions,
-  PanResponder,
   Alert,
   Linking,
 } from 'react-native';
@@ -25,7 +25,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
 import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
+import type { AppNotification } from '../../src/store/appStore';
 import { EGChatHeader, WeatherCondition } from '../../src/components/EGChatHeader';
 import { HomeNoticiasModal, HomeIdDigitalModal } from '../../src/components/home/HomeModals';
 import { HOME_NEWS } from '../../src/data/homeNews';
@@ -37,6 +38,11 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useAppStore } from '../../src/store/useAppStore';
+import {
+  fetchWeatherIfStale,
+  markAllRead, clearAllNotifications, removeNotification,
+} from '../../src/store/appStore';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface UserProfile {
@@ -183,7 +189,7 @@ const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; col
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL — HomeScreen
 // ══════════════════════════════════════════════════════════════════
-export default function HomeScreen() {
+function HomeScreenInner() {
   const [balance, setBalance] = useState(0);
   const [currency, setCurrency] = useState('XAF');
   const [balanceVisible, setBalanceVisible] = useState(false);
@@ -194,76 +200,28 @@ export default function HomeScreen() {
   const [showIdDigital, setShowIdDigital] = useState(false);
   const [liveNews, setLiveNews] = useState(HOME_NEWS);
   const [fabOpen, setFabOpen] = useState(false);
-  const [temp, setTemp] = useState(24);
-  const [city, setCity] = useState('Malabo');
-  const [weatherCondition, setWeatherCondition] = useState<WeatherCondition>('cloudy');
+
+  // ── Store global — clima y notificaciones (no se reinician al cambiar de pestaña)
+  const { weather, notifications } = useAppStore();
 
   // ── Estados de los paneles del header ───────────────────────────
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([
-    { id: '1', type: 'message',  title: '💬 Bienvenido a EGCHAT', body: 'Tu cuenta está activa y lista para usar', time: 'Ahora', read: false },
-    { id: '2', type: 'system',   title: '🔒 Cifrado E2E activado', body: 'Todos tus mensajes están cifrados', time: 'Hoy', read: false },
-  ]);
 
   // Animaciones FAB — una por cada servicio
   const fabRotate = useRef(new Animated.Value(0)).current;
   const fabOverlayOpacity = useRef(new Animated.Value(0)).current;
   const fabItemAnims = useRef(FAB_SERVICES.map(() => new Animated.Value(0))).current;
-  // Animación LIA — pulso continuo
+  // LIA — sin PanResponder (bloqueaba toques en iOS)
   const liaPulse = useRef(new Animated.Value(1)).current;
-
-  // ── LIA arrastrable ─────────────────────────────────────────────
   const { width: SW, height: SH } = Dimensions.get('window');
-  const LIA_SIZE = 36;
-  // Posición inicial: esquina inferior derecha
-  const liaPan = useRef(new Animated.ValueXY({
-    x: SW - LIA_SIZE - Spacing.lg,
-    y: SH - LIA_SIZE - 160,
-  })).current;
-  const liaLastPos = useRef({ x: SW - LIA_SIZE - Spacing.lg, y: SH - LIA_SIZE - 160 });
+  const liaPan = useRef(new Animated.ValueXY({ x: SW - 60, y: SH - 220 })).current;
   const liaDragging = useRef(false);
-
-  const liaPanResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) =>
-        Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4,
-      onPanResponderGrant: () => {
-        liaDragging.current = false;
-        liaPan.setOffset({ x: liaLastPos.current.x, y: liaLastPos.current.y });
-        liaPan.setValue({ x: 0, y: 0 });
-      },
-      onPanResponderMove: (_, gs) => {
-        if (Math.abs(gs.dx) > 4 || Math.abs(gs.dy) > 4) liaDragging.current = true;
-        Animated.event(
-          [null, { dx: liaPan.x, dy: liaPan.y }],
-          { useNativeDriver: false }
-        )(_, gs);
-      },
-      onPanResponderRelease: (_, gs) => {
-        liaPan.flattenOffset();
-        // Guardar posición final, con límites de pantalla
-        const newX = Math.max(0, Math.min(SW - LIA_SIZE, liaLastPos.current.x + gs.dx));
-        const newY = Math.max(0, Math.min(SH - LIA_SIZE - 80, liaLastPos.current.y + gs.dy));
-        liaLastPos.current = { x: newX, y: newY };
-        liaPan.setValue({ x: newX, y: newY });
-      },
-    })
-  ).current;
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  // ── Animación LIA pulso ─────────────────────────────────────────
-  useEffect(() => {
-    Animated.loop(
-      Animated.sequence([
-        Animated.timing(liaPulse, { toValue: 1.12, duration: 900, useNativeDriver: true }),
-        Animated.timing(liaPulse, { toValue: 1.0,  duration: 900, useNativeDriver: true }),
-      ])
-    ).start();
-  }, []);
+  // Animación LIA desactivada — LIA comentado en JSX
 
   // ── Carga de datos ──────────────────────────────────────────────
   const loadData = useCallback(async () => {
@@ -308,22 +266,7 @@ export default function HomeScreen() {
   }, []);
 
   useEffect(() => {
-    const fetchWeather = async () => {
-      try {
-        const res = await fetch(
-          'https://api.open-meteo.com/v1/forecast?latitude=3.75&longitude=8.78&current_weather=true',
-        );
-        const data = await res.json();
-        const t = Math.round(data?.current_weather?.temperature ?? 24);
-        const code = data?.current_weather?.weathercode ?? 0;
-        setTemp(t);
-        let cond: WeatherCondition = 'cloudy';
-        if (code === 0) cond = 'sunny';
-        else if (code >= 51 && code <= 67) cond = 'rain';
-        setWeatherCondition(cond);
-      } catch {}
-    };
-    fetchWeather();
+    fetchWeatherIfStale();
   }, []);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
@@ -397,19 +340,15 @@ export default function HomeScreen() {
   }
 
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
 
       <EGChatHeader
-        temp={`${temp}°`}
-        city={city}
-        weatherCondition={weatherCondition}
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
@@ -544,7 +483,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <View style={{ height: 120 }} />
+        <View style={{ height: 168 }} />
       </ScrollView>
 
       {/* ════════════════════════════════════════════════════════
@@ -566,7 +505,7 @@ export default function HomeScreen() {
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
         const FAB_CX = SW / 2;
-        const FAB_BOTTOM = 160; // bottom del centro del FAB
+        const FAB_BOTTOM = 246; // bottom del centro del FAB
         const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
@@ -639,10 +578,7 @@ export default function HomeScreen() {
         });
       })()}
 
-      {/* ════════════════════════════════════════════════════════
-          LIA-25 — Asistente flotante ARRASTRABLE
-          El usuario puede moverlo a cualquier posición
-      ════════════════════════════════════════════════════════ */}
+      {/* LIA-25 desactivado — PanResponder bloquea toques en iOS Release
       <Animated.View
         {...liaPanResponder.panHandlers}
         style={[
@@ -672,6 +608,7 @@ export default function HomeScreen() {
           </LinearGradient>
         </TouchableOpacity>
       </Animated.View>
+      */}
 
       {/* ════════════════════════════════════════════════════════
           FAB + — Botón central flotante
@@ -703,10 +640,10 @@ export default function HomeScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
         onNotifPress={(n) => {
-          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          removeNotification(n.id);
           setShowNotifications(false);
           if (n.chatId) router.push(`/chat/${n.chatId}` as any);
         }}
@@ -719,9 +656,9 @@ export default function HomeScreen() {
       <WeatherModal
         visible={showWeather}
         onClose={() => setShowWeather(false)}
-        temp={`${temp}°`}
-        city={city}
-        condition={weatherCondition}
+        temp={`${weather.temp}°`}
+        city={weather.city}
+        condition={weather.condition}
       />
 
       <HomeNoticiasModal visible={showNews} onClose={() => setShowNews(false)} />
@@ -1097,7 +1034,7 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    bottom: 150,
+    bottom: 236,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,
@@ -1112,3 +1049,11 @@ const st = StyleSheet.create({
     justifyContent: 'center',
   },
 });
+
+export default function HomeScreen() {
+  return (
+    <TabErrorBoundary tabName="Home">
+      <HomeScreenInner />
+    </TabErrorBoundary>
+  );
+}

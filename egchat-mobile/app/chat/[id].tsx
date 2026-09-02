@@ -132,8 +132,7 @@ const getParticipantName = (participant?: any) =>
 const isValidAvatarUrl = (url?: string | null): url is string =>
   !!url &&
   url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://'));
 
 const getParticipantAvatar = (participant?: any) => {
   const raw =

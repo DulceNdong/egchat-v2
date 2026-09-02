@@ -215,6 +215,9 @@ export function setupNotificationListeners(
       });
     } else if (data?.chatId) {
       onMessage(data.chatId);
+    } else if (data?.type === 'djangue_notification' && data?.groupId) {
+      // D4 — Deep link a djangue desde notificación push
+      onMessage(`__djangue__${data.groupId}`);
     }
   });
 

@@ -60,4 +60,5 @@ export const CFG = {
   backupWifi: 'cfg_backup_wifi',
   autoTranslate: 'cfg_auto_translate',
   onlineStatus: 'cfg_online_status',
+  appLanguage: 'cfg_app_language',
 } as const;

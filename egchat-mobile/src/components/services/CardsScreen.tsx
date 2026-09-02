@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import * as ImagePicker from 'expo-image-picker';
 import { GQBank } from '../../data/serviciosFinancieros';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 
@@ -14,6 +15,24 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
   const [addMode, setAddMode] = useState<'none' | 'manual'>('none');
   const [form, setForm] = useState({ number: '', holder: '', expiry: '', cvv: '', type: 'Débito', bankName: bank.name });
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
+
+  const scanCard = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Activa la cámara para escanear tarjetas.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.75,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setAddMode('manual');
+    Alert.alert(
+      'Tarjeta capturada',
+      'Por seguridad no guardamos la foto. Revisa e introduce los datos manualmente.',
+    );
+  };
 
   const addCard = () => {
     if (form.number.length >= 4 && form.holder && form.expiry) {
@@ -52,7 +71,7 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
         <View style={s.addCard}>
           <Text style={s.addTitle}>Añadir nueva tarjeta</Text>
           <View style={s.addRow}>
-            <TouchableOpacity style={s.scanBtn} onPress={() => Alert.alert('Escanear tarjeta', 'Usa la cámara para capturar los datos de la tarjeta (próximamente).')}>
+            <TouchableOpacity style={s.scanBtn} onPress={scanCard}>
               <Text style={{ fontSize: 24 }}>📷</Text>
               <Text style={s.scanLabel}>Escanear tarjeta</Text>
               <Text style={s.scanSub}>Cámara → datos automáticos</Text>

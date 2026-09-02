@@ -9,11 +9,12 @@ import { getToken, getApiBase } from '../api';
 
 type StreamEvent = {
   type: 'new_message' | 'chat_updated' | 'connected' | 'heartbeat' | 'typing' | 'read'
-       | 'sync_message' | 'session_revoked' | 'wallet_updated'
+       | 'sync_message' | 'session_revoked' | 'wallet_updated' | 'presence'
        | 'group_call_participant_joined' | 'group_call_participant_left'
        | 'group_call_offer' | 'group_call_answer' | 'group_call_ice';
   chatId?: string;
   message?: any;
+  online?: boolean;
   userId?: string;
   messageId?: string;
   messageIds?: string[];
@@ -55,10 +56,12 @@ export function useChatStream(
     if (reconnectTimer.current) {
       clearTimeout(reconnectTimer.current);
     }
+    // Máx 30s de delay para no consumir memoria en loop cuando el servidor está caído
+    const delay = Math.min(reconnectDelayRef.current * 2, 30000);
+    reconnectDelayRef.current = delay;
     reconnectTimer.current = setTimeout(() => {
-      reconnectDelayRef.current = Math.min(reconnectDelayRef.current * 2, 10000);
       connect();
-    }, reconnectDelayRef.current);
+    }, delay);
   }, []);
 
   const connect = useCallback(async () => {

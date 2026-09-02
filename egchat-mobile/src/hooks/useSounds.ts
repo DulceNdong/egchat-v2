@@ -1,5 +1,5 @@
 // useSounds.ts — Sistema de sonidos EGCHAT con audio real (expo-av)
-import { Audio } from 'expo-av';
+import { Audio, InterruptionModeIOS } from 'expo-av';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -42,28 +42,46 @@ const setupAudioMode = async () => {
   try {
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
-      playsInSilentModeIOS: false,   // No sonar en silencio para mensajes
+      playsInSilentModeIOS: true,    // Sonar también con el modo silencio activado
+      interruptionModeIOS: InterruptionModeIOS.DoNotMix,
       shouldDuckAndroid: true,
       playThroughEarpieceAndroid: false,
+      staysActiveInBackground: true,
     });
   } catch {}
 };
 
 // ── Cache de sonidos cargados ─────────────────────────────────────
 const soundCache: Record<string, Audio.Sound> = {};
+const activeSounds = new Set<Audio.Sound>();
+
+function retainSound(key: string, sound: Audio.Sound) {
+  activeSounds.add(sound);
+  soundCache[key] = sound;
+}
+
+async function releaseSound(key: string) {
+  const sound = soundCache[key];
+  if (!sound) return;
+  try { await sound.unloadAsync(); } catch {}
+  activeSounds.delete(sound);
+  delete soundCache[key];
+}
 
 async function playAsset(asset: any, volume = 0.7): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
     await setupAudioMode();
+    const key = `${typeof asset === 'number' ? asset : JSON.stringify(asset)}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const { sound } = await Audio.Sound.createAsync(asset, {
       shouldPlay: true,
       volume,
       isMuted: false,
     });
+    retainSound(key, sound);
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
-        sound.unloadAsync().catch(() => {});
+        releaseSound(key).catch(() => {});
       }
     });
   } catch {}
@@ -79,6 +97,10 @@ export const playMessageReceived = async () => {
     // Reproducir el tono de notificación del sistema assets/notification.wav
     await playAsset(require('../../assets/notification.wav'), s.volume);
   } catch {}
+};
+
+export const previewMessageTone = async () => {
+  await playMessageReceived();
 };
 
 export const playMessageSent = async () => {
@@ -99,6 +121,10 @@ export const playNotification = async () => {
     if (s.vibrationEnabled) await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     await playAsset(require('../../assets/notification.wav'), s.volume);
   } catch {}
+};
+
+export const previewNotificationTone = async () => {
+  await playNotification();
 };
 
 // ── Llamadas ──────────────────────────────────────────────────────
@@ -138,6 +164,13 @@ export const startRingtone = async () => {
     // Repetir cada 3 segundos
     ringtoneInterval = setInterval(play, 3000);
   } catch {}
+};
+
+export const previewRingtone = async () => {
+  await startRingtone();
+  setTimeout(() => {
+    stopRingtone().catch(() => {});
+  }, 1400);
 };
 
 export const stopRingtone = async () => {

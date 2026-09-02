@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Svg, { Path, Polygon, Rect, Line } from 'react-native-svg';
+import Svg, { Path, Polygon, Rect, Line, Circle } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
 import { chatAPI, userAPI } from '../src/api';
 
@@ -51,8 +51,15 @@ const PhoneIcon = ({ color, size = 16 }: any) => (
 );
 
 const VideoIcon = ({ color, size = 16 }: any) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
-    <Polygon points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/>
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    {/* Cuerpo de la cámara */}
+    <Rect x="2" y="7" width="13" height="11" rx="2.5"/>
+    {/* Lente */}
+    <Circle cx="8.5" cy="12.5" r="2.5"/>
+    {/* Flap lateral */}
+    <Path d="M15 10.5l5.5-2.5v9L15 14.5"/>
+    {/* Punto de lente */}
+    <Circle cx="8.5" cy="12.5" r="1" fill={color} stroke="none"/>
   </Svg>
 );
 

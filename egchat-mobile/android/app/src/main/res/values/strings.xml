@@ -1,11 +1,4 @@
 <resources>
   <string name="app_name">EGCHAT</string>
   <string name="expo_runtime_version">1.0.0</string>
-  <string name="widget_description">Muestra tus últimos chats con mensajes no leídos</string>
-  <string name="shortcut_new_chat_short">Nuevo chat</string>
-  <string name="shortcut_new_chat_long">Iniciar nuevo chat</string>
-  <string name="shortcut_stories_short">Historias</string>
-  <string name="shortcut_stories_long">Ver mis historias</string>
-  <string name="shortcut_qr_short">Escanear QR</string>
-  <string name="shortcut_qr_long">Escanear código QR</string>
 </resources>

@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Path, Line, Polyline, Circle, Check } from 'react-native-svg';
+import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
 import { chatAPI, contactsAPI } from '../../api';
 import { EGAvatar } from '../ui';
 import { toast } from '../Toast';

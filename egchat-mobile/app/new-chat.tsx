@@ -11,18 +11,45 @@ import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import Svg, { Path, Circle } from 'react-native-svg';
+import { pickContact } from '../src/utils/chatMedia';
+
+const normalizePhoneForLookup = (raw: string) => {
+  const trimmed = String(raw || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return trimmed;
+  if (trimmed.startsWith('+')) return `+${digits}`;
+  if (digits.startsWith('240')) return `+${digits}`;
+  if (digits.length === 9) return `+240${digits}`;
+  return digits;
+};
 
 export default function NewChatScreen() {
   const [query, setQuery] = useState('');
   const [contacts, setContacts] = useState<any[]>([]);
+  const [suggestedUsers, setSuggestedUsers] = useState<any[]>([]);
   const [results, setResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+  const [loadingInitial, setLoadingInitial] = useState(true);
   const [creating, setCreating] = useState<string | null>(null);
+  const [phone, setPhone] = useState('');
+  const [adding, setAdding] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   useEffect(() => {
-    contactsAPI.getAll().then(data => setContacts(data || [])).catch(() => {});
+    const loadInitial = async () => {
+      try {
+        const [contactList, users] = await Promise.all([
+          contactsAPI.getAll().catch(() => []),
+          chatAPI.searchUsers('').catch(() => []),
+        ]);
+        setContacts(contactList || []);
+        setSuggestedUsers(users || []);
+      } finally {
+        setLoadingInitial(false);
+      }
+    };
+    loadInitial();
   }, []);
 
   const search = useCallback(async (q: string) => {
@@ -66,7 +93,48 @@ export default function NewChatScreen() {
     } finally { setCreating(null); }
   }, []);
 
-  const displayList = query.trim().length >= 2 ? results : contacts;
+  const addByPhone = useCallback(async (phoneNumber?: string, name?: string) => {
+    const cleanPhone = normalizePhoneForLookup(phoneNumber || phone);
+    if (!cleanPhone) return;
+    setAdding(true);
+    try {
+      const contact = await contactsAPI.add(undefined, cleanPhone, name);
+      setPhone('');
+      setContacts(prev => [contact, ...prev.filter(c => getRealUserId(c) !== getRealUserId(contact))]);
+      await startChat(contact);
+    } catch {
+      try {
+        const chat = await chatAPI.createPrivate(undefined, cleanPhone);
+        setPhone('');
+        router.replace(`/chat/${chat.id}` as any);
+      } catch {
+        Alert.alert(
+          'Usuario no encontrado',
+          `El número ${cleanPhone} no aparece registrado en EGCHAT. Para iniciar chat, el contacto debe tener cuenta EGCHAT o puedes buscarlo por nombre/teléfono en la lista de usuarios.`,
+          [{ text: 'Entendido' }],
+        );
+      }
+    } finally {
+      setAdding(false);
+    }
+  }, [phone, startChat]);
+
+  const importDeviceContact = useCallback(async () => {
+    const contact = await pickContact();
+    if (!contact?.phone) return;
+    await addByPhone(contact.phone, contact.name);
+  }, [addByPhone]);
+
+  const displayList = query.trim().length >= 2
+    ? results
+    : contacts.length > 0
+      ? contacts
+      : suggestedUsers;
+  const sectionTitle = query.trim().length >= 2
+    ? 'RESULTADOS'
+    : contacts.length > 0
+      ? 'MIS CONTACTOS'
+      : 'USUARIOS EGCHAT DISPONIBLES';
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -109,30 +177,60 @@ export default function NewChatScreen() {
         {loading && <ActivityIndicator size="small" color={Colors.accent} />}
       </View>
 
-      {query.trim().length < 2 && contacts.length > 0 && (
-        <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>MIS CONTACTOS</Text>
+      <View style={styles.addRow}>
+        <TextInput
+          style={[styles.phoneInput, { backgroundColor: C.bgSecondary, borderColor: C.border, color: C.textPrimary }]}
+          value={phone}
+          onChangeText={setPhone}
+          placeholder="Añadir por teléfono..."
+          placeholderTextColor={C.textTertiary}
+          keyboardType="phone-pad"
+        />
+        <TouchableOpacity
+          style={[styles.addBtn, (!phone.trim() || adding) && styles.addBtnDisabled]}
+          onPress={() => addByPhone()}
+          disabled={!phone.trim() || adding}
+        >
+          {adding ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.addBtnText}>+</Text>}
+        </TouchableOpacity>
+        <TouchableOpacity style={[styles.importBtn, { backgroundColor: C.bgSecondary, borderColor: C.border }]} onPress={importDeviceContact}>
+          <Text style={styles.importBtnText}>Agenda</Text>
+        </TouchableOpacity>
+      </View>
+
+      {displayList.length > 0 && (
+        <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>{sectionTitle}</Text>
       )}
       {query.trim().length >= 2 && results.length === 0 && !loading && (
         <View style={styles.empty}>
           <Text style={[styles.emptyText, { color: C.textSecondary }]}>Sin resultados para "{query}"</Text>
         </View>
       )}
-      <FlatList
-        data={displayList}
-        keyExtractor={item => getRealUserId(item) || item.id}
-        renderItem={({ item }) => (
-          <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => startChat(item)} disabled={creating === getRealUserId(item)} activeOpacity={0.7}>
-            <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
-            <View style={styles.info}>
-              <Text style={[styles.name, { color: C.textPrimary }]}>{getDisplayName(item)}</Text>
-              <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
-            </View>
-            {creating === getRealUserId(item) ? <ActivityIndicator size="small" color={Colors.accent} /> : <Text style={[styles.arrow, { color: C.border }]}>›</Text>}
-          </TouchableOpacity>
-        )}
-        ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: C.borderLight }]} />}
-        showsVerticalScrollIndicator={false}
-      />
+      {loadingInitial ? (
+        <View style={styles.empty}><ActivityIndicator color={Colors.accent} /></View>
+      ) : displayList.length === 0 && query.trim().length < 2 ? (
+        <View style={styles.empty}>
+          <Text style={[styles.emptyText, { color: C.textPrimary }]}>No hay contactos todavía</Text>
+          <Text style={[styles.emptySub, { color: C.textSecondary }]}>Añade un número, importa desde la agenda o busca un usuario EGCHAT.</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={displayList}
+          keyExtractor={item => getRealUserId(item) || item.id}
+          renderItem={({ item }) => (
+            <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => startChat(item)} disabled={creating === getRealUserId(item)} activeOpacity={0.7}>
+              <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
+              <View style={styles.info}>
+                <Text style={[styles.name, { color: C.textPrimary }]}>{getDisplayName(item)}</Text>
+                <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
+              </View>
+              {creating === getRealUserId(item) ? <ActivityIndicator size="small" color={Colors.accent} /> : <Text style={[styles.arrow, { color: C.border }]}>›</Text>}
+            </TouchableOpacity>
+          )}
+          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: C.borderLight }]} />}
+          showsVerticalScrollIndicator={false}
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -160,6 +258,40 @@ const styles = StyleSheet.create({
   },
   searchIcon: { fontSize: 16 },
   searchInput: { flex: 1, fontSize: FontSize.base, color: Colors.textPrimary, paddingVertical: Spacing.md },
+  addRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.md,
+    paddingBottom: Spacing.md,
+  },
+  phoneInput: {
+    flex: 1,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm + 2,
+    fontSize: FontSize.base,
+  },
+  addBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: Colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  addBtnDisabled: { opacity: 0.45 },
+  addBtnText: { color: '#fff', fontSize: 24, fontWeight: FontWeight.bold, lineHeight: 26 },
+  importBtn: {
+    height: 44,
+    borderRadius: 22,
+    borderWidth: 1,
+    paddingHorizontal: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  importBtnText: { color: Colors.accent, fontWeight: FontWeight.bold, fontSize: FontSize.sm },
   sectionLabel: {
     fontSize: FontSize.xs, fontWeight: FontWeight.bold,
     color: Colors.textTertiary, letterSpacing: 0.5,
@@ -180,4 +312,5 @@ const styles = StyleSheet.create({
   separator: { height: 1, backgroundColor: Colors.borderLight, marginLeft: Spacing.listItemPaddingH + 46 + Spacing.listItemGap },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
   emptyText: { fontSize: FontSize.base, color: Colors.textSecondary },
+  emptySub: { marginTop: 8, fontSize: FontSize.sm, textAlign: 'center', lineHeight: 20 },
 });

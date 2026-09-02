@@ -12,7 +12,7 @@ import { MINI_APPS, CATEGORIES, addRecentApp, type MiniAppCategory, searchMiniAp
 import { MiniAppIcon } from '../src/miniapps/MiniAppIcon';
 
 const NATIVE_MINI_APP_ROUTES: Record<string, any> = {
-  djangue: '/djangue',
+  djangue: '/mi-djangue',
   mitaxi: '/mitaxi',
   cemac: '/cemac',
   supermercado: { pathname: '/(tabs)/servicios', params: { service: 'supermercado' } },

@@ -3,9 +3,11 @@
 // Usado por todas las pantallas de auth
 
 import { useState, useEffect, useCallback } from 'react';
+import { Platform } from 'react-native';
 import { router } from 'expo-router';
 import { authAPI, clearToken, setToken, wakeServer } from '../api';
 import SessionManager from '../sessionManager';
+import { registerForPushNotifications } from '../notifications';
 
 interface User {
   id: string;
@@ -54,6 +56,11 @@ export const useAuth = () => {
         return false;
       }
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
+      if (Platform.OS !== 'web') {
+        void registerForPushNotifications().catch((pushErr) => {
+          console.warn('[Login push bootstrap skipped]', pushErr);
+        });
+      }
       router.replace('/(tabs)');
       return true;
     } catch (e: any) {
@@ -94,6 +101,11 @@ export const useAuth = () => {
       await wakeServer();
       const res = await authAPI.register(data);
       setState({ user: res.user, isAuthenticated: true, isLoading: false, error: '' });
+      if (Platform.OS !== 'web') {
+        void registerForPushNotifications().catch((pushErr) => {
+          console.warn('[Register push bootstrap skipped]', pushErr);
+        });
+      }
       router.replace('/(tabs)');
       return true;
     } catch (e: any) {

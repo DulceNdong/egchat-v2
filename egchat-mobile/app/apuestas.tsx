@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, TextInput, Linking, Alert,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -329,6 +330,7 @@ function BetSlipModal({ visible, items, totalStake, totalPayout, onClose, onStak
   const s = makeStyles(C);
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Pressable style={s.modalOverlay} onPress={onClose}>
         <Pressable style={s.modalSheet} onPress={() => {}}>
           <Text style={s.modalTitle}>Cupón de apuestas</Text>
@@ -346,6 +348,7 @@ function BetSlipModal({ visible, items, totalStake, totalPayout, onClose, onStak
           <TouchableOpacity style={s.primaryBtn} onPress={onPlace}><Text style={s.primaryBtnText}>Apostar</Text></TouchableOpacity>
         </Pressable>
       </Pressable>
+        </KeyboardAvoidingView>
     </Modal>
   );
 }

@@ -25,3 +25,7 @@ Podfile.save
 # Expo
 .expo/prebuild/
 .expo/xcodebuild*.log
+
+# Firebase service account (NUNCA subir a Git)
+server/firebase-service-account.json
+firebase-service-account.json

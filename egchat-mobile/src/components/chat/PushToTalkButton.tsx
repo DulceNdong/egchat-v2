@@ -8,7 +8,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Animated,
   PanResponder, Alert, Platform, Vibration,
 } from 'react-native';
-import Svg, { Path, Circle } from 'react-native-svg';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { Audio } from 'expo-av';
 import { getToken, getApiBase } from '../../api';
 import { haptics } from '../../hooks/useHaptics';

@@ -1,6 +1,6 @@
 // Texto EGCHAT con pulso neón — paridad con #neon-eg / #neon-chat en web
 import React, { useEffect, useRef } from 'react';
-import { Animated, StyleSheet, View } from 'react-native';
+import { Animated, StyleSheet, View, Platform } from 'react-native';
 
 export function NeonBrandText() {
   const pulse = useRef(new Animated.Value(0)).current;
@@ -16,15 +16,20 @@ export function NeonBrandText() {
     return () => loop.stop();
   }, [pulse]);
 
-  const shadowRadius = pulse.interpolate({ inputRange: [0, 1], outputRange: [6, 14] });
   const textOpacity = pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1] });
 
-  const neon = {
-    textShadowRadius: shadowRadius,
-    textShadowColor: 'rgba(255,255,255,0.85)',
-    textShadowOffset: { width: 0, height: 0 },
-    opacity: textOpacity,
-  };
+  // En web usar textShadow CSS, en nativo usar textShadow* props
+  const neon: any = Platform.OS === 'web'
+    ? {
+        opacity: textOpacity,
+        textShadow: '0px 0px 10px rgba(255,255,255,0.85)',
+      }
+    : {
+        textShadowRadius: pulse.interpolate({ inputRange: [0, 1], outputRange: [6, 14] }),
+        textShadowColor: 'rgba(255,255,255,0.85)',
+        textShadowOffset: { width: 0, height: 0 },
+        opacity: textOpacity,
+      };
 
   return (
     <View style={s.row}>

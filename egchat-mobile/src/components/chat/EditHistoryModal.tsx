@@ -2,7 +2,7 @@
  * EditHistoryModal — muestra el historial de ediciones de un mensaje
  * Se abre desde el context menu de un mensaje editado.
  */
-import React from 'react';
+import React, { useColorScheme } from 'react';
 import {
   View, Text, Modal, Pressable, StyleSheet, FlatList,
 } from 'react-native';
@@ -31,6 +31,11 @@ function relativeTime(iso: string): string {
 }
 
 export function EditHistoryModal({ visible, history, currentText, onClose }: Props) {
+  const isDark = useColorScheme() === 'dark';
+  const sheetBg = isDark ? '#1c1c1e' : '#fff';
+  const textColor = isDark ? '#f9fafb' : '#111827';
+  const entryBg = isDark ? '#374151' : '#f9fafb';
+  const entryBorder = isDark ? '#4b5563' : '#e5e7eb';
   // Versiones: [actual, ...históricas desc]
   const versions: EditEntry[] = [
     ...(currentText ? [{ text: currentText, edited_at: new Date().toISOString() }] : []),
@@ -40,7 +45,7 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={s.overlay} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
           <Text style={s.title}>✏️ Historial de ediciones</Text>
           <FlatList
@@ -49,7 +54,7 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
             style={s.list}
             showsVerticalScrollIndicator={false}
             renderItem={({ item, index }) => (
-              <View style={[s.entry, index === 0 && s.entryLatest]}>
+              <View style={[s.entry, index === 0 && s.entryLatest, { backgroundColor: entryBg, borderColor: index === 0 ? '#00b4e6' : entryBorder }]}>
                 <View style={s.entryHeader}>
                   <Text style={[s.badge, index === 0 && s.badgeCurrent]}>
                     {index === 0 ? 'Actual' : `v${versions.length - index}`}
@@ -58,7 +63,7 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
                     <Text style={s.time}>{relativeTime(item.edited_at)}</Text>
                   )}
                 </View>
-                <Text style={s.entryText}>{item.text}</Text>
+                <Text style={[s.entryText, { color: textColor }]}>{item.text}</Text>
               </View>
             )}
           />

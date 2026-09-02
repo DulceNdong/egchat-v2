@@ -1,7 +1,11 @@
 # Dependencias (EAS las instala en el servidor)
 node_modules/
 
-# Builds locales
+# Pods de iOS (EAS los instala en el servidor con `pod install`)
+ios/Pods/
+ios/build/
+
+# Builds locales de Android
 android/build/
 android/.gradle/
 android/app/build/
@@ -9,29 +13,29 @@ android/gradlew-*.log
 android/hs_err_pid*.log
 android/replay_pid*.log
 android/gradle_clang_matches.txt
-ios/build/
+android/local.properties
+
+# Carpetas enormes que no deben subirse a EAS
+egchat-v2/
+ios-backup-*/
+build/
 dist/
 dist-web/
+web-build/
 
-# Cache
+# Cache y expo local
 .expo/
 .cache/
 *.log
 
-# Archivos de desarrollo
+# Archivos de desarrollo/entorno
 .env.development
 .env.local
-
-# Configuración local
-android/local.properties
-
-# Assets web innecesarios
-web-build/
 
 # Git
 .git/
 
-# Editores
+# Editores e IDEs
 .vscode/
 .idea/
 .windsurf/

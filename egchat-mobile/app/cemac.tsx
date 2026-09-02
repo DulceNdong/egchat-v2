@@ -2,8 +2,9 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   TextInput, Modal, Pressable, ActivityIndicator, Linking,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
@@ -15,6 +16,8 @@ import {
 } from '../src/data/cemacData';
 
 export default function CemacScreen() {
+  const insets = useSafeAreaInsets();
+  const safeTop = insets.top || 44; // fallback para iPhone con notch
   const [lang, setLang] = useState<Lang | null>(null);
   const [country, setCountry] = useState<CountryCode | null>(null);
   const [tab, setTab] = useState<CemacTab>('servicios');
@@ -86,13 +89,13 @@ export default function CemacScreen() {
       <LinearGradient
         colors={['#003d22', '#006b3c', '#00a86b', '#00c8a0', '#00b4e6']}
         locations={[0, 0.35, 0.65, 0.85, 1]}
-        style={{ flex: 1 }}
+        style={{ flex: 1, paddingTop: safeTop }}
       >
-        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-          <TouchableOpacity onPress={() => router.back()} style={s.welcomeBack}>
-            <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
-          </TouchableOpacity>
-          <ScrollView contentContainerStyle={s.welcomeScroll} showsVerticalScrollIndicator={false}>
+        <TouchableOpacity onPress={() => router.back()} style={s.welcomeBack}>
+          <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Volver</Text>
+        </TouchableOpacity>
+        <ScrollView contentContainerStyle={s.welcomeScroll} showsVerticalScrollIndicator={false}>
             <View style={s.welcomeHero}>
               <CemacLogo size={80} />
               <Text style={s.welcomeTitle}>Bienvenido a la CEMAC</Text>
@@ -113,7 +116,7 @@ export default function CemacScreen() {
                 {COUNTRIES.map(c => (
                   <TouchableOpacity key={c.code} style={s.countryCell} onPress={() => enterCountry(c.code)} activeOpacity={0.85}>
                     <LinearGradient colors={[c.g1, c.g2]} style={s.countryIcon}>
-                      <Text style={s.countryCode}>{c.code}</Text>
+                      <Text style={s.countryFlag}>{c.flag}</Text>
                     </LinearGradient>
                     <Text style={s.countryShort}>{c.shortES}</Text>
                     <Text style={s.countryCap}>{c.capital}</Text>
@@ -141,8 +144,7 @@ export default function CemacScreen() {
               </View>
             </View>
           </ScrollView>
-        </SafeAreaView>
-      </LinearGradient>
+        </LinearGradient>
     );
   }
 
@@ -156,9 +158,9 @@ export default function CemacScreen() {
   ];
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
+    <View style={[s.container, { paddingTop: safeTop }]}>
       <LinearGradient colors={[ctry?.g1 || '#00b96b', ctry?.g2 || '#00e5a0']} style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={s.backIcon}>‹</Text>
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
@@ -306,6 +308,7 @@ export default function CemacScreen() {
       </ScrollView>
 
       <Modal visible={transferOpen} transparent animationType="slide" onRequestClose={() => setTransferOpen(false)}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
         <Pressable style={s.modalOverlay} onPress={() => setTransferOpen(false)}>
           <Pressable style={s.modalSheet} onPress={() => {}}>
             <Text style={s.modalTitle}>{t.sendMoney}</Text>
@@ -338,14 +341,15 @@ export default function CemacScreen() {
             </View>
           </Pressable>
         </Pressable>
+        </KeyboardAvoidingView>
       </Modal>
-    </SafeAreaView>
+    </View>
   );
 }
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#0f0f13' },
-  welcomeBack: { paddingHorizontal: 12, paddingVertical: 4 },
+  welcomeBack: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 12, flexDirection: 'row', alignItems: 'center', gap: 6 },
   welcomeScroll: { paddingHorizontal: 12, paddingBottom: 20 },
   welcomeHero: { alignItems: 'center', paddingTop: 8, paddingBottom: 10, paddingHorizontal: 20 },
   welcomeTitle: { color: '#fff', fontSize: 20, fontWeight: '900', marginTop: 8, marginBottom: 2 },
@@ -375,9 +379,9 @@ const s = StyleSheet.create({
   countryGrid: { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-between', rowGap: 8 },
   countryCell: { width: '31%', alignItems: 'center', gap: 5, paddingVertical: 4 },
   countryIcon: {
-    width: 52,
-    height: 52,
-    borderRadius: 14,
+    width: 58,
+    height: 58,
+    borderRadius: 16,
     alignItems: 'center',
     justifyContent: 'center',
     borderWidth: 2,
@@ -389,6 +393,7 @@ const s = StyleSheet.create({
     elevation: 4,
   },
   countryCode: { color: '#fff', fontSize: 13, fontWeight: '900', letterSpacing: 0.5 },
+  countryFlag: { fontSize: 28 },
   countryShort: { color: '#fff', fontSize: 11, fontWeight: '700', textAlign: 'center' },
   countryCap: { color: 'rgba(255,255,255,0.6)', fontSize: 9, textAlign: 'center' },
   langGrid: { flexDirection: 'row', gap: 6 },
@@ -425,7 +430,7 @@ const s = StyleSheet.create({
   chipTextActive: { color: '#fff' },
   primaryBtn: { backgroundColor: '#00c8a0', borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 16 },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 10 },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 18, gap: 10 },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 28, color: '#fff', lineHeight: 32 },
   headerTitle: { fontSize: 18, fontWeight: '800', color: '#fff' },

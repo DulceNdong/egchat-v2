@@ -7,10 +7,12 @@ import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, ActivityIndicator, Image, Dimensions,
   Animated, Alert, TextInput, Platform, StatusBar,
+  KeyboardAvoidingView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
+import { ResizeMode, Video } from 'expo-av';
 import { router } from 'expo-router';
 import { storiesAPI, authAPI } from '../src/api';
 import {
@@ -142,9 +144,11 @@ const StoryViewer = ({
 
   const startProgress = useCallback(() => {
     if (paused.current) return;
+    const currentStory = groups[groupIdx]?.stories[storyIdx];
+    const duration = currentStory?.type === 'video' ? STORY_DURATION * 3 : STORY_DURATION;
     progress.setValue(0);
     timerRef.current = Animated.timing(progress, {
-      toValue: 1, duration: STORY_DURATION, useNativeDriver: false,
+      toValue: 1, duration, useNativeDriver: false,
     });
     timerRef.current.start(({ finished }) => {
       if (finished && !paused.current) goNext();
@@ -173,10 +177,14 @@ const StoryViewer = ({
     }
   }, [showReactions, showReply]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const sendReaction = (emoji: string) => {
+  const sendReaction = async (emoji: string) => {
     setSentReaction(emoji);
     setShowReactions(false);
     paused.current = false;
+    // D3 — persistir reacción en la BD
+    try {
+      await storiesAPI.react(group.storyId, emoji);
+    } catch { /* no bloquear */ }
     setTimeout(() => { setSentReaction(null); startProgress(); }, 1500);
   };
 
@@ -189,6 +197,16 @@ const StoryViewer = ({
       setShowReply(false);
       paused.current = false;
       startProgress();
+      // D3 — después de responder, abrir chat privado con el dueño de la story
+      if (group.userId) {
+        try {
+          const chat = await (await import('../src/api')).chatAPI.createPrivate(group.userId);
+          if (chat?.id) {
+            onClose();
+            router.push(`/chat/${chat.id}` as any);
+          }
+        } catch { /* si falla no bloqueamos */ }
+      }
     } catch {
       Alert.alert('Error', 'No se pudo enviar la respuesta');
     }
@@ -196,12 +214,26 @@ const StoryViewer = ({
 
   if (!group || !story) return null;
 
+  const isVideoStory = story.type === 'video' || /\.(mp4|mov|m4v|webm)(\?|#|$)/i.test(story.media_url || '');
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
       <StatusBar hidden />
       <View style={sv.container}>
         <Animated.View style={[sv.mediaWrap, { transform: [{ translateY: slideAnim }] }]}>
-          {story.media_url ? (
+          {story.media_url && isVideoStory ? (
+            <Video
+              source={{ uri: story.media_url }}
+              style={sv.media}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay
+              isLooping={false}
+              useNativeControls={false}
+              onPlaybackStatusUpdate={(status: any) => {
+                if (status?.didJustFinish) goNext();
+              }}
+            />
+          ) : story.media_url ? (
             <Image source={{ uri: story.media_url }} style={sv.media} resizeMode="cover" />
           ) : (
             <LinearGradient colors={[BRAND, BRAND2]} style={sv.media} />
@@ -495,6 +527,7 @@ const makeEdStyles = (C: typeof Colors) => StyleSheet.create({
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
 export default function StoriesScreen() {
+  const insets = useSafeAreaInsets();
   const [groups,       setGroups]       = useState<StoryGroup[]>([]);
   const [myGroup,      setMyGroup]      = useState<StoryGroup | null>(null);
   const [loading,      setLoading]      = useState(true);
@@ -556,7 +589,7 @@ export default function StoriesScreen() {
   const uploadStory = useCallback(async (uri: string, type: 'image' | 'video' = 'image') => {
     setUploading(true);
     try {
-      await storiesAPI.create({ media: [{ url: uri, type }], music: storyMusic ?? undefined });
+      await storiesAPI.create({ media: [{ url: uri, type }], music: storyMusic ?? undefined } as any);
       setStoryMusic(null);
       await loadStories();
     } catch {
@@ -702,7 +735,7 @@ export default function StoriesScreen() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['top']}>
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary, paddingTop: Math.max(insets.top, 44) }]} edges={['left', 'right']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.bgPrimary} />
 
       {/* HEADER */}

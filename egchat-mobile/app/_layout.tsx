@@ -320,7 +320,14 @@ export default function RootLayout() {
                 }
 
                 notifCleanup.current = setupNotificationListeners(
-                  (chatId) => router.push(`/chat/${chatId}` as any),
+                  (chatIdOrDeepLink) => {
+                    if (chatIdOrDeepLink.startsWith('__djangue__')) {
+                      const groupId = chatIdOrDeepLink.replace('__djangue__', '');
+                      router.push({ pathname: '/djangue-detail', params: { id: groupId } } as any);
+                    } else {
+                      router.push(`/chat/${chatIdOrDeepLink}` as any);
+                    }
+                  },
                   (callData) => router.push({ pathname: '/call/[callId]', params: {
                     callId: callData.callId, targetName: callData.callerName,
                     callType: callData.callType || 'audio', role: 'callee',
@@ -332,7 +339,16 @@ export default function RootLayout() {
                 const lastResp = await Notifications.getLastNotificationResponseAsync().catch(() => null);
                 if (lastResp) {
                   const data = lastResp.notification.request.content.data as any;
-                  if (data?.chatId) setTimeout(() => router.push(`/chat/${data.chatId}` as any), 500);
+                  // D4 — Deep link según tipo de notificación
+                  setTimeout(() => {
+                    if (data?.chatId) {
+                      router.push(`/chat/${data.chatId}` as any);
+                    } else if (data?.type === 'djangue_notification' && data?.groupId) {
+                      router.push({ pathname: '/djangue-detail', params: { id: data.groupId } } as any);
+                    } else if (data?.type === 'reaction' && data?.chatId) {
+                      router.push(`/chat/${data.chatId}` as any);
+                    }
+                  }, 500);
                 }
               } catch (e) {
                 console.warn('[Notifications init error]', e);

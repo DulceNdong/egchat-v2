@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 
@@ -85,14 +86,22 @@ export default function TabsLayout() {
     <Tabs
       screenOptions={{
         headerShown: false,
+        lazy: false,
         tabBarStyle: {
-          height: Platform.OS === 'ios' ? 84 : 64,
+          position: 'absolute',
+          left: 0,
+          right: 0,
+          bottom: 0,
+          height: Platform.OS === 'ios' ? 92 : 72,
           borderTopWidth: 0,
           elevation: 12,
           shadowColor: '#000',
           shadowOffset: { width: 0, height: -2 },
           shadowOpacity: 0.15,
           shadowRadius: 8,
+          backgroundColor: 'transparent',
+          overflow: 'hidden',
+          paddingBottom: Platform.OS === 'ios' ? 10 : 6,
         },
         tabBarBackground: () => (
           <LinearGradient
@@ -108,10 +117,10 @@ export default function TabsLayout() {
           fontSize: 10,
           fontWeight: '600',
           letterSpacing: 0.3,
-          marginBottom: Platform.OS === 'ios' ? 0 : 4,
+          marginBottom: Platform.OS === 'ios' ? 2 : 5,
         },
         tabBarIconStyle: {
-          marginTop: 6,
+          marginTop: 4,
         },
       }}
     >

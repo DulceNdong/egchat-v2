@@ -9,6 +9,8 @@ import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { Spacing } from '../theme';
 import { SpinningLogo } from './SpinningLogo';
 import { NeonBrandText } from './NeonBrandText';
+import { useAppStore } from '../store/useAppStore';
+import { unreadCount as storeUnreadCount } from '../store/appStore';
 
 const BTN_BG = 'rgba(8,18,36,0.88)';
 const BTN_BORDER = 'rgba(255,255,255,0.13)';
@@ -74,14 +76,20 @@ export function EGChatHeader({
   onWeatherPress,
   onNotificationsPress,
   onMenuPress,
-  unreadCount = 0,
+  unreadCount: unreadProp,
   notificationsOpen = false,
   menuOpen = false,
-  temp = 24,
-  city = 'Malabo',
-  weatherCondition = 'cloudy',
+  temp: tempProp,
+  city: cityProp,
+  weatherCondition: condProp,
 }: EGChatHeaderProps) {
   const insets = useSafeAreaInsets();
+  // Leer del store global — no cambia al cambiar de pestaña
+  const { weather } = useAppStore();
+  const temp = tempProp ?? weather.temp;
+  const city = cityProp ?? weather.city;
+  const weatherCondition = condProp ?? weather.condition;
+  const unreadCount = unreadProp ?? storeUnreadCount();
 
   const notifBg = notificationsOpen ? 'rgba(0,200,160,0.30)' : BTN_BG;
   const notifBorder = notificationsOpen ? 'rgba(0,200,160,0.45)' : BTN_BORDER;
@@ -140,11 +148,16 @@ export function EGChatHeader({
 
 const s = StyleSheet.create({
   wrap: {
-    shadowColor: '#00c8a0',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 6,
+    ...Platform.select({
+      web: { boxShadow: '0px 2px 8px rgba(0,200,160,0.3)' },
+      default: {
+        shadowColor: '#00c8a0',
+        shadowOffset: { width: 0, height: 2 },
+        shadowOpacity: 0.3,
+        shadowRadius: 8,
+        elevation: 6,
+      },
+    }),
   },
   row: {
     flexDirection: 'row',
@@ -176,6 +189,7 @@ const s = StyleSheet.create({
     borderWidth: 1,
     borderColor: BTN_BORDER,
     ...Platform.select({
+      web: { boxShadow: '0px 2px 6px rgba(0,0,0,0.35)' },
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
@@ -204,6 +218,7 @@ const s = StyleSheet.create({
     justifyContent: 'center',
     position: 'relative',
     ...Platform.select({
+      web: { boxShadow: '0px 2px 6px rgba(0,0,0,0.35)' },
       ios: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },

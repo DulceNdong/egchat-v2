@@ -280,7 +280,20 @@ export function MiniAppRuntime({
               ],
             );
           } else {
-            sendResponse(id, null, 'Pagos no disponibles');
+            Alert.alert(
+              'Pago con EGChat',
+              `${params.description || initialTitle}\nImporte: ${params.amount || 0} ${params.currency || 'XAF'}`,
+              [
+                { text: 'Cancelar', style: 'cancel', onPress: () => sendResponse(id, null, 'Cancelado por el usuario') },
+                {
+                  text: 'Abrir monedero',
+                  onPress: () => {
+                    router.push('/(tabs)/monedero' as any);
+                    sendResponse(id, { pending: true });
+                  },
+                },
+              ],
+            );
           }
           break;
 

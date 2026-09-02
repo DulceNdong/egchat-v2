@@ -37,8 +37,8 @@ export function SettingsLayout({
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: isDark ? '#161b22' : 'rgba(242,242,247,0.97)', borderBottomColor: C.borderLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Svg width={10} height={16} viewBox="0 0 10 18" fill="none" stroke={Colors.accent} strokeWidth={2.5} strokeLinecap="round">
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Svg width={11} height={18} viewBox="0 0 10 18" fill="none" stroke={Colors.accent} strokeWidth={2.5} strokeLinecap="round">
             <Polyline points="9 1 1 9 9 17" />
           </Svg>
           <Text style={styles.backText}>Volver</Text>
@@ -221,11 +221,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.screenPadding,
-    paddingVertical: 10,
+    paddingVertical: 16,
+    paddingTop: 18,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 72 },
-  backText: { fontSize: 16, color: Colors.accent },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 72 },
+  backText: { fontSize: 17, color: Colors.accent },
   headerTitle: { fontSize: 17, fontWeight: '600' },
   scrollContent: { paddingBottom: 40 },
   sectionLabel: {

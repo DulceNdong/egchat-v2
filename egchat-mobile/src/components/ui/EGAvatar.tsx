@@ -17,16 +17,15 @@ const nameToColor = (name: string) => {
 
 interface EGAvatarProps {
   src?: string | null;
-  name: string;
+  name?: string | null;
   size?: number;
 }
 
-// URL válida: no vacía, no de servidor antiguo roto
+// URL válida: no vacía, debe tener protocolo http/https/file
 const isValidAvatarUrl = (url?: string | null): url is string =>
   !!url &&
   url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://'));
 
 export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
   const [imgError, setImgError] = useState(false);
@@ -34,15 +33,16 @@ export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
   // Resetear error cuando cambia la URL (nueva foto de perfil)
   React.useEffect(() => { setImgError(false); }, [src]);
 
-  const initials = name
-    ?.split(' ')
+  const displayName = (name || '').trim();
+  const initials = displayName
+    .split(' ')
     .filter(Boolean)
     .map(w => w[0].toUpperCase())
     .slice(0, 2)
-    .join('') || '?';
+    .join('') || 'EG';
 
   const fontSize = size * 0.35;
-  const bgColor = nameToColor(name || '?');
+  const bgColor = nameToColor(displayName || 'EGCHAT');
 
   // Mostrar imagen solo si la URL es válida y no tuvo error de carga
   if (isValidAvatarUrl(src) && !imgError) {

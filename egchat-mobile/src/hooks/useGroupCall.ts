@@ -111,12 +111,18 @@ export function useGroupCall() {
     groupIdRef.current   = groupId;
     setCallType(type);
 
-    // Obtener stream local
-    const stream = await NativeRTC.mediaDevices.getUserMedia(
-      type === 'video'
-        ? { audio: true, video: { facingMode: 'user', width: 320, height: 240 } }
-        : { audio: true, video: false }
-    );
+    // Obtener stream local — con manejo de errores de permisos
+    let stream: any = null;
+    try {
+      stream = await NativeRTC.mediaDevices.getUserMedia(
+        type === 'video'
+          ? { audio: true, video: { facingMode: 'user', width: 320, height: 240 } }
+          : { audio: true, video: false }
+      );
+    } catch (e) {
+      console.warn('[useGroupCall] getUserMedia failed:', e);
+      return; // No continuar sin stream
+    }
     localStreamRef.current = stream;
     setLocalStream(stream);
 

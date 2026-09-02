@@ -3,7 +3,7 @@
 // Exporta mensajes comprimidos y los sube al backend / Drive
 // ══════════════════════════════════════════════════════════════════
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getToken, getApiBase, chatAPI } from '../api';
 

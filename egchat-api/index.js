@@ -122,8 +122,8 @@ const formatLocalChat = (chat) => {
 
 // --- Supabase ---------------------------------------------------------
 const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || ''
+  process.env.SUPABASE_URL || 'https://fqfxtjnfhvpggssbymdn.supabase.co',
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ''
 );
 
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'https://egchat-app.vercel.app,https://egchat-v2.vercel.app,http://localhost:5173,http://localhost:3001,http://localhost:3000,http://127.0.0.1:3001')
@@ -5008,7 +5008,10 @@ const sendPushToUser = async (userId, payload) => {
         to: sub.token,
         title: payload.title || 'EGChat',
         body: payload.body || 'Nueva notificacion',
-        sound: isCall ? 'default' : 'notification.wav',
+        // iOS solo reproduce sonidos personalizados si el archivo está
+        // empaquetado en el bundle nativo. Para evitar notificaciones mudas,
+        // usamos el sonido por defecto en todas las plataformas.
+        sound: 'default',
         badge: 1,
         channelId: isCall ? 'egchat-calls' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',

@@ -84,6 +84,8 @@ const fmtAmount = (n: string) => {
   return num.toLocaleString('fr-FR');
 };
 
+// NOTA: Esta pantalla ha sido reemplazada por djangue-admin-create.tsx
+// que incluye todas las funcionalidades de Administrador General
 export default function DjangueCreateScreen() {
   const [name, setName]             = useState('');
   const [description, setDesc]      = useState('');

@@ -12,6 +12,16 @@ import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import Svg, { Path, Circle } from 'react-native-svg';
 
+const normalizePhoneForLookup = (raw: string) => {
+  const trimmed = String(raw || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
+  if (!digits) return trimmed;
+  if (trimmed.startsWith('+')) return `+${digits}`;
+  if (digits.startsWith('240')) return `+${digits}`;
+  if (digits.length === 9) return `+240${digits}`;
+  return digits;
+};
+
 export default function ContactsScreen() {
   const [contacts, setContacts] = useState<any[]>([]);
   const [query, setQuery] = useState('');
@@ -32,18 +42,38 @@ export default function ContactsScreen() {
   useEffect(() => { load(); }, []);
 
   const addContact = useCallback(async () => {
-    const phone = addPhone.trim();
+    const phone = normalizePhoneForLookup(addPhone);
     if (!phone) return;
     setAdding(true);
     try {
-      await contactsAPI.add(undefined, phone);
+      const contact = await contactsAPI.add(undefined, phone);
       setAddPhone('');
       load();
-      Alert.alert('✅', 'Contacto añadido');
-    } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo añadir el contacto');
+      Alert.alert('Contacto añadido', '¿Quieres iniciar un chat ahora?', [
+        { text: 'Luego', style: 'cancel' },
+        {
+          text: 'Abrir chat',
+          onPress: async () => {
+            const userId = contact?.contact_user_id || contact?.user?.id || contact?.id;
+            if (!userId) return;
+            const chat = await chatAPI.createPrivate(userId);
+            router.replace(`/chat/${chat.id}` as any);
+          },
+        },
+      ]);
+    } catch {
+      try {
+        const chat = await chatAPI.createPrivate(undefined, phone);
+        setAddPhone('');
+        router.replace(`/chat/${chat.id}` as any);
+      } catch {
+        Alert.alert(
+          'Usuario no encontrado',
+          `El número ${phone} no aparece registrado en EGCHAT.`,
+        );
+      }
     } finally { setAdding(false); }
-  }, [addPhone]);
+  }, [addPhone, load]);
 
   const removeContact = useCallback((id: string, name: string) => {
     Alert.alert('Eliminar contacto', `¿Eliminar a ${name}?`, [
@@ -97,7 +127,7 @@ export default function ContactsScreen() {
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: C.textPrimary }]}>Contactos</Text>
@@ -133,6 +163,7 @@ export default function ContactsScreen() {
               <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
               <View style={styles.info}>
                 <Text style={[styles.name, { color: C.textPrimary }]}>{getDisplayName(item)}</Text>
+                <Text style={[styles.userId, { color: C.textTertiary }]}>ID: {String(getRealUserId(item) || '').slice(-8).toUpperCase()}</Text>
                 <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
               </View>
               <TouchableOpacity onPress={() => openChat(item)} style={styles.chatBtn}>
@@ -157,11 +188,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm,
+    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.md,
+    paddingTop: 18,
     gap: Spacing.sm,
   },
   backBtn: { padding: Spacing.sm },
-  backIcon: { fontSize: 28, color: Colors.textPrimary, lineHeight: 32 },
+  backIcon: { fontSize: 30, color: Colors.textPrimary, lineHeight: 34 },
   title: { ...Typography.headerTitle, color: Colors.textPrimary, flex: 1 },
   count: {
     fontSize: FontSize.sm, color: Colors.white,
@@ -204,6 +236,7 @@ const styles = StyleSheet.create({
   },
   info: { flex: 1 },
   name: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
+  userId: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 1, fontWeight: FontWeight.medium },
   phone: { fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 2 },
   chatBtn: { padding: Spacing.sm },
   chatBtnIcon: { fontSize: 20 },

@@ -1,5 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { Alert, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
+import * as FileSystem from 'expo-file-system/legacy';
+import * as Sharing from 'expo-sharing';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, VisibilityRow,
 } from '../../src/components/settings/SettingsUI';
@@ -90,10 +92,46 @@ export default function PrivacidadScreen() {
       if (res.ok) {
         Alert.alert('Solicitud enviada', 'Recibirás un email con tus datos en las próximas 24 horas.');
       } else {
-        Alert.alert('Próximamente', 'Esta función estará disponible en la próxima actualización.');
+        await createLocalDataExport();
       }
     } catch {
-      Alert.alert('Próximamente', 'Esta función estará disponible en la próxima actualización.');
+      await createLocalDataExport();
+    }
+  };
+
+  const createLocalDataExport = async () => {
+    try {
+      const fileName = `egchat-datos-${new Date().toISOString().slice(0, 10)}.json`;
+      const path = `${FileSystem.cacheDirectory}${fileName}`;
+      const payload = {
+        app: 'EGCHAT',
+        exportedAt: new Date().toISOString(),
+        privacy: {
+          lastSeen,
+          photoVisibility: photoVis,
+          statusVisibility: statusVis,
+        },
+        blockedContacts: blocked.map(contact => ({
+          id: contact.id,
+          contactUserId: contact.contact_user_id,
+          fullName: contact.full_name,
+          phone: contact.phone,
+        })),
+      };
+      await FileSystem.writeAsStringAsync(path, JSON.stringify(payload, null, 2), {
+        encoding: FileSystem.EncodingType.UTF8,
+      });
+      const canShare = await Sharing.isAvailableAsync();
+      if (canShare) {
+        await Sharing.shareAsync(path, {
+          mimeType: 'application/json',
+          dialogTitle: 'Exportar datos de EGCHAT',
+        });
+        return;
+      }
+      Alert.alert('Exportación creada', `Archivo guardado: ${fileName}`);
+    } catch {
+      Alert.alert('Error', 'No se pudo crear la exportación de datos.');
     }
   };
 

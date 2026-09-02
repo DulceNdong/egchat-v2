@@ -1112,8 +1112,7 @@ export const ChatMessageBubble = React.memo(({
     const isValidSenderAvatar =
       !!rawSenderAvatar &&
       rawSenderAvatar.trim().length > 0 &&
-      (rawSenderAvatar.startsWith('http://') || rawSenderAvatar.startsWith('https://') || rawSenderAvatar.startsWith('file://')) &&
-      !rawSenderAvatar.includes('egchat-api.onrender.com/static/avatars/');
+      (rawSenderAvatar.startsWith('http://') || rawSenderAvatar.startsWith('https://') || rawSenderAvatar.startsWith('file://'));
     const senderAvatar = isValidSenderAvatar ? rawSenderAvatar : otherAvatar;
     const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00b4e6'];
     return (

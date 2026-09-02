@@ -6,17 +6,25 @@ import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { registerForPushNotifications } from '../../src/notifications';
-import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
+import { CFG, getCfgBool, getCfgString, setCfg, setCfgBool } from '../../src/services/settingsPrefs';
+
+const LANGUAGE_OPTIONS = [
+  { code: 'es', label: 'Español' },
+  { code: 'fr', label: 'Français' },
+  { code: 'en', label: 'English' },
+];
 
 export default function OtrasFuncionesScreen() {
   const [autoTranslate, setAutoTranslate] = React.useState(false);
   const [readReceipts, setReadReceipts] = React.useState(true);
   const [onlineStatus, setOnlineStatus] = React.useState(true);
+  const [appLanguage, setAppLanguage] = React.useState('es');
 
   React.useEffect(() => {
     getCfgBool(CFG.autoTranslate, false).then(setAutoTranslate);
     getCfgBool(CFG.readReceipts, true).then(setReadReceipts);
     getCfgBool(CFG.onlineStatus, true).then(setOnlineStatus);
+    getCfgString(CFG.appLanguage, 'es').then(setAppLanguage);
   }, []);
 
   const activatePush = async () => {
@@ -29,6 +37,25 @@ export default function OtrasFuncionesScreen() {
     if (token) Alert.alert('✅', 'Notificaciones push activadas');
     else Alert.alert('Permiso denegado', 'Actívalas en ajustes del sistema.');
   };
+
+  const openLanguagePicker = () => {
+    Alert.alert(
+      'Idioma de la app',
+      'Selecciona el idioma de la interfaz.',
+      [
+        ...LANGUAGE_OPTIONS.map(opt => ({
+          text: opt.label,
+          onPress: () => {
+            setAppLanguage(opt.code);
+            setCfg(CFG.appLanguage, opt.code);
+          },
+        })),
+        { text: 'Cancelar', style: 'cancel' as const },
+      ],
+    );
+  };
+
+  const languageLabel = LANGUAGE_OPTIONS.find(opt => opt.code === appLanguage)?.label || 'Español';
 
   return (
     <SettingsLayout title="Otras funciones">
@@ -43,7 +70,7 @@ export default function OtrasFuncionesScreen() {
         <SettingsDivider />
         <SettingsRow label="Activar notificaciones push" onPress={activatePush} />
         <SettingsDivider />
-        <SettingsRow label="Idioma de la app" value="Español" onPress={() => Alert.alert('Próximamente', 'Soporte multiidioma próximamente.')} />
+        <SettingsRow label="Idioma de la app" value={languageLabel} onPress={openLanguagePicker} />
       </SettingsCard>
 
       <SettingsSection label="Mensajes" />
@@ -76,7 +103,11 @@ export default function OtrasFuncionesScreen() {
         <SettingsDivider />
         <SettingsRow label="Mini-Apps" value="Ver tienda" onPress={() => router.push('/mini-apps' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Face Filters AR" value="Próximamente" onPress={() => Alert.alert('Próximamente', 'Filtros AR disponibles en la próxima versión.')} />
+        <SettingsRow
+          label="Face Filters AR"
+          value="En videollamada"
+          onPress={() => router.push('/(tabs)/mensajeria' as any)}
+        />
       </SettingsCard>
 
       <SettingsSection label="Privacidad avanzada" />

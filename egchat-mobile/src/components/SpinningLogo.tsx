@@ -1,69 +1,73 @@
-// Logo EGCHAT giratorio — paridad con web: spin 6s linear infinite (sin pausas)
-import React, { useEffect, useRef, useCallback } from 'react';
+// Logo EGCHAT giratorio — paridad con web: spin 6s linear infinite.
+// El Animated.Value y la animación son SINGLETONS de módulo para que
+// NO se reinicien cuando el componente se desmonta/remonta al cambiar
+// de pestaña (lazy tabs en Expo Router).
+import React, { useEffect } from 'react';
 import {
-  Animated, Easing, Image, StyleSheet, ViewStyle, AppState, AppStateStatus,
+  Animated, Easing, Image, StyleSheet, ViewStyle, AppState, AppStateStatus, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 
 const LOGO = require('../../assets/logo-transparent.png');
 
-/** Vueltas totales en una sola animación — evita el “salto” del Animated.loop al reiniciar */
-const TOTAL_ROTATIONS = 100_000;
+// ── Singleton: valor y animación fuera del componente ─────────────
+const SPIN_DURATION = 6000;
+const _spinValue = new Animated.Value(0);
+let _animation: Animated.CompositeAnimation | null = null;
 
+const startGlobalSpin = () => {
+  if (_animation) return; // ya está corriendo
+  _animation = Animated.loop(
+    Animated.timing(_spinValue, {
+      toValue: 1,
+      duration: SPIN_DURATION,
+      easing: Easing.linear,
+      useNativeDriver: Platform.OS !== 'web',
+      isInteraction: false,
+    }),
+  );
+  _animation.start();
+};
+
+const restartGlobalSpin = () => {
+  _animation?.stop();
+  _animation = null;
+  _spinValue.setValue(0);
+  startGlobalSpin();
+};
+
+// Arrancar inmediatamente al importar el módulo
+startGlobalSpin();
+
+// Escuchar AppState a nivel de módulo (una sola vez)
+AppState.addEventListener('change', (state: AppStateStatus) => {
+  if (state === 'active') restartGlobalSpin();
+});
+
+// ── Componente ────────────────────────────────────────────────────
 export interface SpinningLogoProps {
   size?: number;
   style?: ViewStyle;
   glow?: boolean;
-  durationMs?: number;
 }
+
+const rotate = _spinValue.interpolate({
+  inputRange: [0, 1],
+  outputRange: ['0deg', '360deg'],
+});
 
 export function SpinningLogo({
   size = 44,
   style,
   glow = true,
-  durationMs = 6000,
 }: SpinningLogoProps) {
-  const spinAnim = useRef(new Animated.Value(0)).current;
-  const animRef = useRef<Animated.CompositeAnimation | null>(null);
-  const mountedRef = useRef(true);
-
-  const startSpin = useCallback(() => {
-    animRef.current?.stop();
-    spinAnim.setValue(0);
-    animRef.current = Animated.timing(spinAnim, {
-      toValue: TOTAL_ROTATIONS,
-      duration: durationMs * TOTAL_ROTATIONS,
-      easing: Easing.linear,
-      useNativeDriver: true,
-      isInteraction: false,
-    });
-    animRef.current.start();
-  }, [spinAnim, durationMs]);
-
+  // Asegurar que la animación sigue corriendo si el módulo se recargó en hot-reload
   useEffect(() => {
-    mountedRef.current = true;
-    startSpin();
-
-    const onAppState = (state: AppStateStatus) => {
-      if (state === 'active' && mountedRef.current) startSpin();
-    };
-    const sub = AppState.addEventListener('change', onAppState);
-
-    return () => {
-      mountedRef.current = false;
-      sub.remove();
-      animRef.current?.stop();
-      spinAnim.stopAnimation();
-    };
-  }, [startSpin, spinAnim]);
-
-  const rotate = spinAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: ['0deg', '360deg'],
-    extrapolate: 'extend',
-  });
+    startGlobalSpin();
+  }, []);
 
   const radius = size / 2;
+
   const img = (
     <Animated.View
       style={{ width: size, height: size, transform: [{ rotate }] }}

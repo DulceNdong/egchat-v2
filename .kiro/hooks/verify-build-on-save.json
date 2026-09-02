@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Verificar Build al Guardar",
+      "description": "Ejecuta tsc --noEmit para verificar que no hay errores de TypeScript cada vez que se guarda App.tsx",
+      "trigger": "PostFileSave",
+      "matcher": "(App\\.tsx$|[^/]*\\.tsx$|[^/]*\\.ts$)",
+      "action": {
+        "type": "command",
+        "command": "npm run lint"
+      },
+      "enabled": true
+    }
+  ]
+}

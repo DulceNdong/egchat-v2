@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import Svg, { Path, Circle, Line, Heart, Polyline } from 'react-native-svg';
+import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { router } from 'expo-router';
 import { getToken, getApiBase, authAPI } from '../src/api';
 import { EGAvatar } from '../src/components/ui';

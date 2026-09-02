@@ -2,7 +2,7 @@
  * ScheduledMessageModal — programar envío de un mensaje para más tarde
  * Muestra un picker de fecha/hora y guarda en AsyncStorage.
  */
-import React, { useState } from 'react';
+import React, { useColorScheme, useState } from 'react';
 import {
   View, Text, Modal, Pressable, StyleSheet,
   TouchableOpacity, Platform, Alert,
@@ -20,6 +20,13 @@ interface Props {
 }
 
 export function ScheduledMessageModal({ visible, chatId, messageText, onClose, onScheduled }: Props) {
+  const isDark = useColorScheme() === 'dark';
+  const sheetBg = isDark ? '#1c1c1e' : '#fff';
+  const textColor = isDark ? '#f9fafb' : '#111827';
+  const subColor = isDark ? '#9ca3af' : '#6b7280';
+  const previewBg = isDark ? '#374151' : '#f3f4f6';
+  const timeBtnBg = isDark ? 'rgba(0,180,230,0.15)' : 'rgba(0,180,230,0.08)';
+  const cancelBg = isDark ? '#374151' : '#f3f4f6';
   const tomorrow = new Date(Date.now() + 60 * 60 * 1000); // 1h desde ahora
   const [date, setDate] = useState(tomorrow);
   const [showPicker, setShowPicker] = useState(false);
@@ -55,10 +62,10 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={s.overlay} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={s.title}>⏰ Programar envío</Text>
-          <Text style={s.preview} numberOfLines={3}>{messageText}</Text>
+          <Text style={[s.title, { color: textColor }]}>⏰ Programar envío</Text>
+          <Text style={[s.preview, { backgroundColor: previewBg, color: textColor }]} numberOfLines={3}>{messageText}</Text>
 
           <TouchableOpacity style={s.timeBtn} onPress={() => setShowPicker(true)} activeOpacity={0.7}>
             <Text style={s.timeBtnLabel}>📅 Enviar el</Text>
@@ -79,7 +86,7 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
           )}
 
           <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <TouchableOpacity style={[s.cancelBtn, { backgroundColor: cancelBg }]} onPress={onClose} activeOpacity={0.7}>
               <Text style={s.cancelTxt}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity

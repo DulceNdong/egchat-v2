@@ -10,7 +10,8 @@ import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { SearchField } from './PublicModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 
-type Screen = 'home' | 'cities' | 'stores' | 'products' | 'cart' | 'checkout' | 'success';
+type Screen = 'home' | 'cities' | 'stores' | 'products' | 'cart' | 'checkout' | 'success' | 'history';
+type SuperOrder = { id: string; store: string; total: number; items: number; createdAt: string };
 
 interface Props { visible: boolean; onClose: () => void; }
 
@@ -26,6 +27,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   const [phone, setPhone] = useState('');
   const [loading, setLoading] = useState(false);
   const [orderId, setOrderId] = useState('');
+  const [orderHistory, setOrderHistory] = useState<SuperOrder[]>([]);
 
   useEffect(() => {
     if (!visible) {
@@ -67,16 +69,25 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
   const placeOrder = async () => {
     if (!store || !cart.length || !address.trim() || !phone.trim() || !name.trim()) return;
     setLoading(true);
+    let nextOrderId = '';
     try {
       const res = await superAPI.createOrder({
         supermarketId: store.id,
         address: address.trim(),
         items: cart.map(i => ({ productId: i.product.id, qty: i.qty, price: i.product.precio })),
       });
-      setOrderId(res?.orderId || `SM-${Date.now()}`);
+      nextOrderId = res?.orderId || `SM-${Date.now()}`;
     } catch {
-      setOrderId(`SM-${Date.now().toString().slice(-6)}`);
+      nextOrderId = `SM-${Date.now().toString().slice(-6)}`;
     } finally {
+      setOrderId(nextOrderId);
+      setOrderHistory(prev => [{
+        id: nextOrderId,
+        store: store.nombre,
+        total: cartTotal,
+        items: cartCount,
+        createdAt: new Date().toISOString(),
+      }, ...prev]);
       setLoading(false);
       setScreen('success');
       setCart([]);
@@ -93,13 +104,15 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
     else if (screen === 'products') setScreen(cityId ? 'stores' : 'home');
     else if (screen === 'stores') setScreen('cities');
     else if (screen === 'cities') setScreen('home');
+    else if (screen === 'history') setScreen('home');
     else onClose();
   };
 
-  const title = screen === 'cities' ? 'Ciudades' : screen === 'stores' ? 'Supermercados' : 'Supermercados';
+  const title = screen === 'cities' ? 'Ciudades' : screen === 'stores' ? 'Supermercados' : screen === 'history' ? 'Mis pedidos' : 'Supermercados';
   const subtitle = screen === 'home'
     ? `${SUPERMARKETS.length} tiendas · ${DAILY_CITIES.length} ciudades · GQ`
     : screen === 'cities' ? 'Selecciona tu ciudad'
+    : screen === 'history' ? `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`
     : store ? store.nombre : undefined;
 
   const filteredProducts = products.filter(p =>
@@ -146,8 +159,8 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
               { icon: '🏙️', label: 'Ver Ciudades', sub: `${DAILY_CITIES.length} ciudades`, action: () => setScreen('cities') },
               { icon: '🛒', label: 'Supermercados', sub: `${SUPERMARKETS.length} tiendas`, action: () => { setCityId(null); setScreen('stores'); } },
               { icon: '🛍️', label: 'Mi Carrito', sub: cartCount ? `${cartCount} productos` : 'Vacío', action: () => cartCount ? setScreen('cart') : Alert.alert('Carrito vacío') },
-              { icon: '📦', label: 'Mis Pedidos', sub: '0 pedidos', action: () => Alert.alert('Pedidos', 'No tienes pedidos recientes') },
-              { icon: '📋', label: 'Historial', sub: 'Compras anteriores', action: () => Alert.alert('Historial', 'Próximamente') },
+              { icon: '📦', label: 'Mis Pedidos', sub: `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`, action: () => setScreen('history') },
+              { icon: '📋', label: 'Historial', sub: 'Compras anteriores', action: () => setScreen('history') },
               { icon: '🎧', label: 'Soporte', sub: 'Ayuda y reportes', action: () => Alert.alert('Soporte', '+240 222 20 00 00') },
             ]).map(item => (
               <TouchableOpacity key={item.label} style={st.gridCard} onPress={item.action} activeOpacity={0.8}>
@@ -172,6 +185,28 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
               </View>
             ))}
           </ScrollView>
+        </View>
+      )}
+
+      {screen === 'history' && (
+        <View>
+          {orderHistory.length === 0 ? (
+            <View style={st.emptyHistory}>
+              <Text style={{ fontSize: 38 }}>📦</Text>
+              <Text style={st.emptyHistoryTitle}>No tienes pedidos recientes</Text>
+              <Text style={st.emptyHistorySub}>Tus compras de supermercado aparecerán aquí.</Text>
+              <PrimaryButton label="Comprar ahora" color="#00c8a0" onPress={() => setScreen('cities')} />
+            </View>
+          ) : orderHistory.map(order => (
+            <View key={order.id} style={st.orderCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={st.orderTitle}>{order.store}</Text>
+                <Text style={st.orderMeta}>{order.items} producto{order.items === 1 ? '' : 's'} · {new Date(order.createdAt).toLocaleDateString('es-ES')}</Text>
+                <Text style={st.orderRef}>Ref. {order.id}</Text>
+              </View>
+              <Text style={st.orderTotal}>{order.total.toLocaleString()} XAF</Text>
+            </View>
+          ))}
         </View>
       )}
 
@@ -326,6 +361,24 @@ const st = StyleSheet.create({
   summaryBox: { backgroundColor: '#F0FAF5', borderRadius: 12, padding: 14, marginBottom: 14 },
   summaryTitle: { fontSize: 12, color: '#6B7280' },
   summaryTotal: { fontSize: 22, fontWeight: '900', color: '#065F46' },
+  emptyHistory: { alignItems: 'center', paddingVertical: 34, gap: 8 },
+  emptyHistoryTitle: { fontSize: 16, fontWeight: '800', color: '#111827' },
+  emptyHistorySub: { fontSize: 12, color: '#9CA3AF', textAlign: 'center', marginBottom: 10 },
+  orderCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    backgroundColor: '#fff',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: '#F0F2F5',
+  },
+  orderTitle: { fontSize: 14, fontWeight: '800', color: '#111827' },
+  orderMeta: { fontSize: 11, color: '#6B7280', marginTop: 2 },
+  orderRef: { fontSize: 10, color: '#9CA3AF', marginTop: 4 },
+  orderTotal: { fontSize: 13, fontWeight: '900', color: '#00c8a0' },
   success: { alignItems: 'center', paddingVertical: 30, gap: 8 },
   successTitle: { fontSize: 20, fontWeight: '900', color: '#111827' },
   successSub: { fontSize: 13, color: '#9CA3AF' },

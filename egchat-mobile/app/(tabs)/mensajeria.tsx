@@ -154,8 +154,7 @@ const isValidAvatarUrl = (url?: string | null): url is string =>
     url.startsWith('http://') ||
     url.startsWith('https://') ||
     url.startsWith('file://')
-  ) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+  );
 
 const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
   // Buscar en todos los niveles posibles de la respuesta del backend
@@ -212,7 +211,7 @@ const IconRefresh = () => (
 const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow }: {
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
 }) => {
-  const other = chat.participants.find(p => p.user_id !== currentUserId);
+  const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
   const chatName = chat.type === 'private'
     ? (getParticipantName(other) || 'Usuario')
     : (chat.name || 'Grupo');
@@ -352,7 +351,7 @@ function MensajeriaScreenInner() {
         const q = searchQuery.toLowerCase();
         const results: typeof globalResults = [];
         for (const chat of chats) {
-          const other = chat.participants.find((p: any) => p.user_id !== currentUserId);
+          const other = chat.participants.find((p: any) => String(p.user_id) !== String(currentUserId));
           const chatName = chat.type === 'private'
             ? (getParticipantName(other) || 'Usuario')
             : (chat.name || 'Grupo');
@@ -376,7 +375,7 @@ function MensajeriaScreenInner() {
   });
 
   const getChatMeta = useCallback((chat: Chat) => {
-    const other = chat.participants.find(p => p.user_id !== currentUserId);
+    const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
     const name = chat.type === 'private' ? (getParticipantName(other) || 'Usuario') : (chat.name || 'Grupo');
     const avatar = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
     return { name, avatar, other };
@@ -427,7 +426,7 @@ function MensajeriaScreenInner() {
 
       // Actualizar widget de pantalla de inicio con últimos chats
       HomeWidget.update(enriched.map(c => {
-        const other = c.participants.find((p: any) => p.user_id !== uid);
+        const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
         const name = c.type === 'private'
           ? (other?.full_name || other?.users?.full_name || 'Usuario')
           : (c.name || 'Grupo');
@@ -520,7 +519,7 @@ function MensajeriaScreenInner() {
       setChats(prev => prev.map(chat => ({
         ...chat,
         participants: chat.participants.map(p =>
-          p.user_id === currentUserId
+          String(p.user_id) === String(currentUserId)
             ? {
                 ...p,
                 ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
@@ -633,7 +632,7 @@ function MensajeriaScreenInner() {
       ]);
       return;
     }
-    const other = chat.participants.find(p => p.user_id !== currentUserId);
+    const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
     const contact = favoriteContacts.find(
       (c: any) => c.contact_user_id === other?.user_id || c.user?.id === other?.user_id,
     );
@@ -671,10 +670,17 @@ function MensajeriaScreenInner() {
   };
 
   // ── Filtrado ────────────────────────────────────────────────────
+  const isGenericName = (name: string) => {
+    const n = name.trim();
+    return !n || n === 'Usuario' || n.startsWith('Usuario ') || n === 'Usuario EGCHAT';
+  };
+
   const filtered = useMemo(() => chats.filter(c => {
     if (archivedIds.has(c.id)) return false;
-    const other = c.participants.find(p => p.user_id !== currentUserId);
+    const other = c.participants.find(p => String(p.user_id) !== String(currentUserId));
     const name = c.type === 'private' ? getParticipantName(other) : (c.name || 'Grupo');
+    // Ocultar chats privados cuyo contacto tiene nombre genérico (datos incompletos)
+    if (c.type === 'private' && isGenericName(name)) return false;
     const last = c.last_message?.text || '';
     if (!matchesSearch(name, last)) return false;
     if (filter === 'individual') return c.type === 'private';

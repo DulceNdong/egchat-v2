@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   ActivityIndicator, Modal, Pressable, Platform, ScrollView, TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -12,6 +13,7 @@ import { authAPI, userAPI } from '../../src/api';
 import { uploadAvatarToSupabase } from '../../src/utils/avatarStorage';
 import { cacheBustAvatarUrl, emitProfileUpdated, mergePersistentAvatar, saveLocalAvatar } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
+import ImageViewer from '../../src/components/ImageViewer';
 import { ProfileQRSheet } from '../../src/components/profile/ProfileQRSheet';
 import { SetupPINModal } from '../../src/components/wallet/SetupPINModal';
 import {
@@ -56,12 +58,13 @@ const CoinIcon = () => (
 );
 
 function PhotoRow({
-  label, avatarUrl, initials, onPress, uploading,
+  label, avatarUrl, initials, onPress, onPressAvatar, uploading,
 }: {
   label: string;
   avatarUrl?: string;
   initials: string;
   onPress: () => void;
+  onPressAvatar?: () => void;
   uploading: boolean;
 }) {
   const { isDark } = useThemeContext();
@@ -72,27 +75,33 @@ function PhotoRow({
   React.useEffect(() => { setImgError(false); }, [avatarUrl]);
 
   return (
-    <TouchableOpacity style={styles.photoRow} onPress={onPress} activeOpacity={0.7}>
+    <View style={styles.photoRow}>
       <Text style={[styles.rowLabel, { color: C.textPrimary }]}>{label}</Text>
       <View style={styles.photoRight}>
-        <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.thumb}>
-          {avatarUrl && !imgError ? (
-            <Image
-              key={avatarUrl}
-              source={{ uri: avatarUrl }}
-              style={styles.thumbImg}
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <Text style={styles.thumbInitials}>{initials}</Text>
-          )}
-          {uploading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#fff" />}
-        </LinearGradient>
-        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isDark ? '#484f58' : '#c7c7cc'} strokeWidth={2.5} strokeLinecap="round">
-          <Polyline points="9 18 15 12 9 6" />
-        </Svg>
+        {/* Toque en la foto → ver en tamaño real */}
+        <TouchableOpacity onPress={onPressAvatar || onPress} activeOpacity={0.8}>
+          <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.thumb}>
+            {avatarUrl && !imgError ? (
+              <Image
+                key={avatarUrl}
+                source={{ uri: avatarUrl }}
+                style={styles.thumbImg}
+                onError={() => setImgError(true)}
+              />
+            ) : (
+              <Text style={styles.thumbInitials}>{initials}</Text>
+            )}
+            {uploading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#fff" />}
+          </LinearGradient>
+        </TouchableOpacity>
+        {/* Toque en la flecha › → cambiar foto */}
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7} hitSlop={12} style={{ padding: 4 }}>
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isDark ? '#484f58' : '#c7c7cc'} strokeWidth={2.5} strokeLinecap="round">
+            <Polyline points="9 18 15 12 9 6" />
+          </Svg>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -111,53 +120,63 @@ function FieldEditModal({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet} onPress={() => {}}>
-          <Text style={styles.modalTitle}>{titles[field]}</Text>
-          {field === 'gender' ? (
-            <View style={styles.optionList}>
-              {GENDERS.map(g => (
-                <TouchableOpacity
-                  key={g}
-                  style={[styles.optionBtn, value === g && styles.optionBtnActive]}
-                  onPress={() => onChange(g)}
-                >
-                  <Text style={styles.optionText}>{g}{value === g ? ' ✓' : ''}</Text>
-                </TouchableOpacity>
-              ))}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>{titles[field]}</Text>
+            {field === 'gender' ? (
+              <View style={styles.optionList}>
+                {GENDERS.map(g => (
+                  <TouchableOpacity
+                    key={g}
+                    style={[styles.optionBtn, value === g && styles.optionBtnActive]}
+                    onPress={() => onChange(g)}
+                  >
+                    <Text style={styles.optionText}>{g}{value === g ? ' ✓' : ''}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : field === 'region' ? (
+              <ScrollView style={styles.regionScroll} showsVerticalScrollIndicator={false}>
+                {REGIONS.map(r => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.optionBtn, value === r && styles.optionBtnActive]}
+                    onPress={() => onChange(r)}
+                  >
+                    <Text style={styles.optionText}>{r}{value === r ? ' ✓' : ''}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <TextInput
+                autoFocus
+                value={value}
+                onChangeText={onChange}
+                placeholder={field === 'bio' ? 'Escribe tu estado...' : 'Escribe aquí...'}
+                placeholderTextColor="#9ca3af"
+                style={styles.fieldInput}
+                multiline={field === 'bio'}
+                blurOnSubmit={field !== 'bio'}
+                returnKeyType={field === 'bio' ? 'default' : 'done'}
+                onSubmitEditing={field !== 'bio' ? onSave : undefined}
+              />
+            )}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={onClose}>
+                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={onSave}>
+                <Text style={styles.modalBtnSaveText}>Guardar</Text>
+              </TouchableOpacity>
             </View>
-          ) : field === 'region' ? (
-            <ScrollView style={styles.regionScroll} showsVerticalScrollIndicator={false}>
-              {REGIONS.map(r => (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.optionBtn, value === r && styles.optionBtnActive]}
-                  onPress={() => onChange(r)}
-                >
-                  <Text style={styles.optionText}>{r}{value === r ? ' ✓' : ''}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <TextInput
-              autoFocus
-              value={value}
-              onChangeText={onChange}
-              placeholder={field === 'bio' ? 'Escribe tu estado...' : 'Escribe aquí...'}
-              placeholderTextColor="#9ca3af"
-              style={styles.fieldInput}
-            />
-          )}
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={onClose}>
-              <Text style={styles.modalBtnCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={onSave}>
-              <Text style={styles.modalBtnSaveText}>Guardar</Text>
-            </TouchableOpacity>
-          </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -177,6 +196,7 @@ export default function PerfilScreen() {
   const [editingField, setEditingField] = useState<EditField | null>(null);
   const [fieldVal, setFieldVal] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -329,6 +349,7 @@ export default function PerfilScreen() {
             avatarUrl={user?.avatar_url}
             initials={initials}
             onPress={pickPhoto}
+            onPressAvatar={user?.avatar_url ? () => setShowAvatarViewer(true) : pickPhoto}
             uploading={uploadingPhoto}
           />
           <SettingsDivider />
@@ -452,6 +473,12 @@ export default function PerfilScreen() {
         visible={showSetupPIN}
         onDone={() => { setShowSetupPIN(false); setPinConfigured(true); toast.success('✓ PIN configurado'); }}
         onCancel={() => setShowSetupPIN(false)}
+      />
+      <ImageViewer
+        visible={showAvatarViewer && !!user?.avatar_url}
+        images={user?.avatar_url ? [user.avatar_url] : []}
+        initialIndex={0}
+        onClose={() => setShowAvatarViewer(false)}
       />
     </>
   );

@@ -4,6 +4,8 @@
 // Fiel a la versión web
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect } from 'react';
+import type { AppNotification } from '../store/appStore';
+export type { AppNotification };
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, Alert, Image, Animated, Dimensions,
@@ -14,24 +16,11 @@ import { router } from 'expo-router';
 import { authAPI } from '../api';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../theme';
 
-// ── Tipos ─────────────────────────────────────────────────────────
-export interface AppNotification {
-  id: string;
-  type: 'message' | 'payment' | 'system' | 'security' | 'taxi' | 'bet';
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
-  chatId?: string;
-}
-
 // ── Helpers ───────────────────────────────────────────────────────
 const colorForType = (type: AppNotification['type']) => {
   if (type === 'message')  return '#00b4e6';
   if (type === 'payment')  return '#00c8a0';
-  if (type === 'taxi')     return '#f59e0b';
-  if (type === 'security') return '#ef4444';
-  if (type === 'bet')      return '#a855f7';
+  if (type === 'call')     return '#f59e0b';
   return '#6b7280';
 };
 
@@ -48,17 +37,9 @@ const IconForType = ({ type }: { type: AppNotification['type'] }) => {
       <Line x1="2" y1="10" x2="22" y2="10"/>
     </Svg>
   );
-  if (type === 'taxi') return (
+  if (type === 'call') return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
-      <Rect x="1" y="3" width="15" height="13" rx="2"/>
-      <Path d="M16 8h4l3 3v5h-7V8z"/>
-      <Circle cx="5.5" cy="18.5" r="2.5"/>
-      <Circle cx="18.5" cy="18.5" r="2.5"/>
-    </Svg>
-  );
-  if (type === 'security') return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
-      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
     </Svg>
   );
   return (
@@ -327,7 +308,6 @@ export const HamburgerMenu = ({
     { id: 'business',       label: '💼 Perfil empresarial', sub: 'Catálogo y cuenta negocio' },
     { id: 'moments',        label: '📸 Moments',           sub: 'Feed social de contactos'  },
     { id: 'broadcast',      label: '📢 Difusión',          sub: 'Mensaje a múltiples chats' },
-    { id: 'notas',          label: '📝 Mis notas',         sub: 'Chat personal privado'     },
     { id: 'contactos',      label: 'Mis contactos',        sub: 'Ver todos tus contactos'   },
     { id: 'mensajes-arch',  label: 'Mensajes archivados',  sub: 'Chats archivados'          },
     { id: 'notificaciones', label: 'Notificaciones',       sub: 'Gestionar alertas'         },
@@ -349,18 +329,12 @@ export const HamburgerMenu = ({
         case 'channels':       router.push('/channels' as any); break;
         case 'global-search':  router.push('/global-search' as any); break;
         case 'business':       router.push('/business-profile' as any); break;
-        case 'notas': {
-          const { getOrCreateNotesChat } = await import('../services/personalNotes');
-          const chatId = await getOrCreateNotesChat();
-          if (chatId) router.push(`/chat/${chatId}` as any);
-          break;
-        }
         case 'contactos':      router.push('/contacts' as any); break;
-        case 'mensajes-arch':  router.push('/(tabs)/mensajeria' as any); break;
-        case 'notificaciones': router.push('/(tabs)/ajustes' as any); break;
-        case 'privacidad':     router.push('/ajustes/security' as any); break;
+        case 'mensajes-arch':  router.push('/ajustes/historial-chat' as any); break;
+        case 'notificaciones': router.push('/ajustes/notificaciones' as any); break;
+        case 'privacidad':     router.push('/ajustes/privacidad' as any); break;
         case 'ajustes':        router.push('/(tabs)/ajustes' as any); break;
-        case 'ayuda':          router.push('/(tabs)/ajustes' as any); break;
+        case 'ayuda':          router.push('/ajustes/acerca' as any); break;
         case 'salir':
           Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
             { text: 'Cancelar', style: 'cancel' },

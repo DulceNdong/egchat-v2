@@ -5,8 +5,13 @@ import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow,
 } from '../../src/components/settings/SettingsUI';
+import { useThemeContext } from '../../src/theme/ThemeContext';
+import { Colors } from '../../src/theme/colors';
+import { DarkColors } from '../../src/theme/darkMode';
 
 export default function AcercaScreen() {
+  const { isDark } = useThemeContext();
+  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const info = [
     { label: 'Versión', value: '2.5.5' },
     { label: 'Desarrollador', value: 'EGCHAT Team' },
@@ -17,7 +22,7 @@ export default function AcercaScreen() {
 
   return (
     <SettingsLayout title="Acerca de EGCHAT">
-      <View style={styles.hero}>
+      <View style={[styles.hero, { backgroundColor: C.bgPrimary }]}>
         <View style={styles.logoWrap}>
           <SpinningLogo size={90} glow={true} />
         </View>
@@ -50,7 +55,7 @@ export default function AcercaScreen() {
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingVertical: 32, backgroundColor: '#fff' },
+  hero: { alignItems: 'center', paddingVertical: 32 },
   logoWrap: { marginBottom: 14 },
   appName: { fontSize: 22, fontWeight: '700' },
   version: { fontSize: 14, color: '#8e8e93', marginTop: 4 },

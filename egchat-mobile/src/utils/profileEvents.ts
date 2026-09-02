@@ -52,9 +52,9 @@ export const onProfileUpdated = (listener: ProfileUpdateListener) => {
 
 export const isBrokenAvatarUrl = (url?: string | null) => {
   if (!url) return true;
-  const s = String(url);
-  // URLs de Render/static son efímeras (Render borra archivos en cada reinicio)
-  if (s.includes('egchat-api.onrender.com/static/avatars/')) return true;
+  const s = String(url).trim();
+  // Consideramos rota si no tiene protocolo http/https/file
+  if (!s.startsWith('http://') && !s.startsWith('https://') && !s.startsWith('file://')) return true;
   // URLs de Supabase Storage son permanentes → no están rotas
   if (s.includes('.supabase.co/storage/')) return false;
   return false;

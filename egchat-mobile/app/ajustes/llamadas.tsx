@@ -4,7 +4,7 @@ import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
-import { getSoundSettings, saveSoundSettings, RINGTONES } from '../../src/hooks/useSounds';
+import { getSoundSettings, saveSoundSettings, RINGTONES, previewRingtone } from '../../src/hooks/useSounds';
 import { Colors } from '../../src/theme';
 
 export default function LlamadasScreen() {
@@ -40,7 +40,11 @@ export default function LlamadasScreen() {
           <React.Fragment key={t.id}>
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13 }}
-              onPress={() => { setRingtone(t.id); saveSoundSettings({ ringtone: t.id }); }}
+              onPress={async () => {
+                setRingtone(t.id);
+                await saveSoundSettings({ ringtone: t.id });
+                if (t.id !== 'none') await previewRingtone();
+              }}
             >
               <Text style={{ flex: 1, fontSize: 15 }}>{t.name}</Text>
               {ringtone === t.id && <Text style={{ color: Colors.accent }}>✓</Text>}

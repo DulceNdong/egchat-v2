@@ -481,6 +481,37 @@ export default function DjangueSecretaryScreen() {
                 <Text style={s.payoutBtnText}>💸 Pagar al beneficiario</Text>
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* D2 — Avanzar turno */}
+            <TouchableOpacity
+              style={[s.payoutBtn, { marginTop: 8 }]}
+              activeOpacity={0.8}
+              onPress={() => {
+                Alert.alert(
+                  '⏭ Avanzar turno',
+                  `¿Cerrar el turno #${data.current_turn} y pasar al siguiente beneficiario?`,
+                  [
+                    { text: 'Cancelar', style: 'cancel' },
+                    {
+                      text: 'Avanzar',
+                      onPress: async () => {
+                        try {
+                          const res = await apiFetch(`/api/djangue/${id}/advance-turn`, { method: 'POST' });
+                          Alert.alert('✅ Turno avanzado', `Ahora estamos en el turno #${res.new_turn}`);
+                          load(true);
+                        } catch (e: any) {
+                          Alert.alert('Error', e.message || 'No se pudo avanzar el turno');
+                        }
+                      },
+                    },
+                  ]
+                );
+              }}
+            >
+              <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.payoutBtnGrad}>
+                <Text style={s.payoutBtnText}>⏭ Avanzar al siguiente turno</Text>
+              </LinearGradient>
+            </TouchableOpacity>
           </View>
 
           {/* Resumen de miembros */}

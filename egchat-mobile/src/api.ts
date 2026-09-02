@@ -665,6 +665,12 @@ export const storiesAPI = {
       return { ok: true, replies: next.find((s: any) => s.id === storyId)?.replies || [] };
     }
   },
+  // D3 — reaccionar a una story
+  react: async (storyId: string, emoji: string) => {
+    try {
+      return await post<void>(`/api/stories/${storyId}/react`, { emoji });
+    } catch { /* silencioso — reacción optimista */ }
+  },
 };
 
 export const cemacAPI = {

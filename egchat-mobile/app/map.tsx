@@ -13,16 +13,20 @@ const PLACES = [
   { id: '5', title: 'Puerto de Malabo', emoji: '⚓', lat: 3.7550, lng: 8.7820 },
 ];
 
-// Lazy import de react-native-maps solo en nativo
+// Lazy import de react-native-maps solo en nativo — con protección de errores
 let MapView: any = null;
 let Marker: any = null;
 let PROVIDER_DEFAULT: any = null;
 
 if (Platform.OS !== 'web') {
-  const maps = require('react-native-maps');
-  MapView = maps.default;
-  Marker = maps.Marker;
-  PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+  try {
+    const maps = require('react-native-maps');
+    MapView = maps.default;
+    Marker = maps.Marker;
+    PROVIDER_DEFAULT = maps.PROVIDER_DEFAULT;
+  } catch {
+    // Módulo no disponible — el mapa mostrará fallback
+  }
 }
 
 export default function MapScreen() {

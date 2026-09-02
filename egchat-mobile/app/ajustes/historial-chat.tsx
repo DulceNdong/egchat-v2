@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import {
   Alert, ActivityIndicator, Platform, View, Text,
   TextInput, TouchableOpacity, StyleSheet, Modal, Pressable,
+  KeyboardAvoidingView,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
@@ -51,39 +52,41 @@ function PasswordModal({
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={st.overlay} onPress={onClose}>
-        <Pressable style={st.sheet} onPress={() => {}}>
-          <Text style={st.modalTitle}>{title}</Text>
-          <Text style={st.modalDesc}>{description}</Text>
-          <TextInput
-            style={st.input}
-            value={pwd}
-            onChangeText={setPwd}
-            placeholder="Contraseña de recuperación"
-            placeholderTextColor="#9ca3af"
-            secureTextEntry
-            autoFocus
-          />
-          {isBackup && (
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+        <Pressable style={st.overlay} onPress={onClose}>
+          <Pressable style={st.sheet} onPress={() => {}}>
+            <Text style={st.modalTitle}>{title}</Text>
+            <Text style={st.modalDesc}>{description}</Text>
             <TextInput
               style={st.input}
-              value={confirm}
-              onChangeText={setConfirm}
-              placeholder="Confirmar contraseña"
+              value={pwd}
+              onChangeText={setPwd}
+              placeholder="Contraseña de recuperación"
               placeholderTextColor="#9ca3af"
               secureTextEntry
+              autoFocus
             />
-          )}
-          <View style={st.modalBtns}>
-            <TouchableOpacity style={[st.modalBtn, st.modalBtnCancel]} onPress={onClose}>
-              <Text style={st.modalBtnCancelTxt}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[st.modalBtn, st.modalBtnConfirm]} onPress={handleConfirm}>
-              <Text style={st.modalBtnConfirmTxt}>{buttonLabel}</Text>
-            </TouchableOpacity>
-          </View>
+            {isBackup && (
+              <TextInput
+                style={st.input}
+                value={confirm}
+                onChangeText={setConfirm}
+                placeholder="Confirmar contraseña"
+                placeholderTextColor="#9ca3af"
+                secureTextEntry
+              />
+            )}
+            <View style={st.modalBtns}>
+              <TouchableOpacity style={[st.modalBtn, st.modalBtnCancel]} onPress={onClose}>
+                <Text style={st.modalBtnCancelTxt}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[st.modalBtn, st.modalBtnConfirm]} onPress={handleConfirm}>
+                <Text style={st.modalBtnConfirmTxt}>{buttonLabel}</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

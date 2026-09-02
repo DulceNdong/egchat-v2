@@ -50,48 +50,26 @@ export const INTERNET_SERVICES: Record<string, InternetService[]> = {
   ip9: [{ id: 's19', name: 'Soporte Sectorial', type: 'Soporte', desc: 'Supervisión y soporte telecom', price: 'Consultar', speed: '—' }],
 };
 
+// Datos servicios básicos — Configuración para backend real
+// Los operadores y paquetes móviles ahora se obtienen desde la API
+
 export const MOBILE_OPERATORS = [
-  { id: 'mo1', name: 'GETESA', color: '#003082', cat: 'Operador Móvil / Telefonía', cov: 'Nacional', desc: 'Operador estatal de telecomunicaciones' },
-  { id: 'mo2', name: 'GECOMSA', color: '#0066CC', cat: 'Operador Móvil / Datos', cov: 'Nacional', desc: 'Operador móvil de datos y telefonía' },
-  { id: 'mo3', name: 'MUNI', color: '#FF6B00', cat: 'Operador Móvil', cov: 'Nacional', desc: 'MUNI Telecomunicaciones Guinea Ecuatorial' },
-  { id: 'mo4', name: 'Orange GE', color: '#FF6600', cat: 'Operador Móvil', cov: 'Nacional', desc: 'Orange Guinea Ecuatorial' },
-  { id: 'mo5', name: 'Otro', color: '#8A9BB5', cat: 'Otros Operadores', cov: 'Nacional', desc: 'Otros operadores disponibles' },
+  { id: 'getesa', name: 'GETESA', color: '#003082' },
+  { id: 'gecomsa', name: 'GECOMSA', color: '#0066CC' },
+  { id: 'orange', name: 'Orange GE', color: '#FF6600' }
 ];
 
-export type MobilePackage = { id: string; name: string; type: string; desc: string; price: number; validity: string };
-
-export const MOBILE_PACKAGES: Record<string, MobilePackage[]> = {
-  mo1: [
-    { id: 'r1', name: 'Recarga 500 XAF', type: 'Saldo', desc: 'Recarga de saldo', price: 500, validity: 'Sin caducidad' },
-    { id: 'r2', name: 'Recarga 1,000 XAF', type: 'Saldo', desc: 'Recarga de saldo', price: 1000, validity: 'Sin caducidad' },
-    { id: 'r3', name: 'Recarga 2,000 XAF', type: 'Saldo', desc: 'Recarga de saldo', price: 2000, validity: 'Sin caducidad' },
-    { id: 'r4', name: 'Recarga 5,000 XAF', type: 'Saldo', desc: 'Recarga de saldo', price: 5000, validity: 'Sin caducidad' },
-    { id: 'r5', name: 'Datos 1 GB', type: 'Datos', desc: '1 GB datos móviles', price: 1500, validity: '7 días' },
-    { id: 'r6', name: 'Datos 5 GB', type: 'Datos', desc: '5 GB datos móviles', price: 5000, validity: '30 días' },
-    { id: 'r7', name: 'Pack Mixto', type: 'Mixto', desc: '500 MB + 100 min llamadas', price: 3000, validity: '30 días' },
-  ],
-  mo2: [
-    { id: 'r8', name: 'Recarga 500 XAF', type: 'Saldo', desc: 'Recarga de saldo', price: 500, validity: 'Sin caducidad' },
-    { id: 'r9', name: 'Datos Diario 1GB', type: 'Datos', desc: '1 GB datos 24h', price: 500, validity: '1 día' },
-    { id: 'r10', name: 'Datos Semanal 5GB', type: 'Datos', desc: '5 GB datos 7 días', price: 2500, validity: '7 días' },
-    { id: 'r11', name: 'Datos Mensual 25GB', type: 'Datos', desc: '25 GB datos 30 días', price: 15000, validity: '30 días' },
-    { id: 'r12', name: 'Ilimitado Mensual', type: 'Datos', desc: 'Datos ilimitados 30 días', price: 25000, validity: '30 días' },
-  ],
-  mo3: [
-    { id: 'r13', name: 'Recarga 500 XAF', type: 'Saldo', desc: 'Recarga de saldo MUNI', price: 500, validity: 'Sin caducidad' },
-    { id: 'r14', name: 'Recarga 1,000 XAF', type: 'Saldo', desc: 'Recarga de saldo MUNI', price: 1000, validity: 'Sin caducidad' },
-    { id: 'r15', name: 'Datos Diario 500MB', type: 'Datos', desc: '500 MB datos 24h', price: 300, validity: '1 día' },
-    { id: 'r16', name: 'Datos Semanal 3GB', type: 'Datos', desc: '3 GB datos 7 días', price: 2000, validity: '7 días' },
-    { id: 'r17', name: 'Datos Mensual 10GB', type: 'Datos', desc: '10 GB datos 30 días', price: 8000, validity: '30 días' },
-    { id: 'r18', name: 'Pack Mixto MUNI', type: 'Mixto', desc: '1 GB + 60 min llamadas', price: 3500, validity: '30 días' },
-  ],
-  mo4: [
-    { id: 'r19', name: 'Recarga 1,000 XAF', type: 'Saldo', desc: 'Recarga de saldo', price: 1000, validity: 'Sin caducidad' },
-    { id: 'r20', name: 'Fly 1G', type: 'Datos', desc: '1 GB datos 3 días', price: 1000, validity: '3 días' },
-    { id: 'r21', name: 'Max 20G', type: 'Datos', desc: '20 GB datos 30 días', price: 12000, validity: '30 días' },
-  ],
-  mo5: [{ id: 'r22', name: 'Recarga Genérica', type: 'Saldo', desc: 'Recarga de saldo', price: 1000, validity: 'Sin caducidad' }],
+export type MobilePackage = { 
+  id: string; 
+  name: string; 
+  type: string; 
+  desc: string; 
+  price: number; 
+  validity: string 
 };
+
+// Los paquetes ahora se cargan dinámicamente desde /api/services/mobile/operators/:id/packages
+export const MOBILE_PACKAGES: Record<string, MobilePackage[]> = {};
 
 export const CHANNEL_COMPANIES = [
   { id: 'cc1', name: 'Canal Sol', full: 'Canal Sol Guinea Ecuatorial', color: '#0A2463', cat: 'TV Local / Generalista', desc: 'Canal de televisión local de Guinea Ecuatorial', cov: 'Nacional' },

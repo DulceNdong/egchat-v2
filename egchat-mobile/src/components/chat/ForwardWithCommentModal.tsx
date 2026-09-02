@@ -2,7 +2,7 @@
  * ForwardWithCommentModal — permite reenviar un mensaje a otro chat
  * añadiendo un comentario opcional antes de enviarlo.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useColorScheme, useState, useEffect } from 'react';
 import {
   View, Text, Modal, Pressable, StyleSheet,
   TextInput, TouchableOpacity, ActivityIndicator,
@@ -29,6 +29,14 @@ interface Props {
 }
 
 export function ForwardWithCommentModal({ visible, message, currentUserId, onClose, onForwarded }: Props) {
+  const isDark = useColorScheme() === 'dark';
+  const sheetBg = isDark ? '#1c1c1e' : '#fff';
+  const textColor = isDark ? '#f9fafb' : '#111827';
+  const previewBg = isDark ? '#374151' : '#f3f4f6';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const cancelBg = isDark ? '#374151' : '#f3f4f6';
+  const inputBg = isDark ? '#374151' : '#fff';
+  const selectedRowBg = isDark ? 'rgba(0,180,230,0.15)' : 'rgba(0,180,230,0.10)';
   const [chats, setChats] = useState<ChatSummary[]>([]);
   const [selectedChat, setSelectedChat] = useState<ChatSummary | null>(null);
   const [comment, setComment] = useState('');
@@ -80,13 +88,13 @@ export function ForwardWithCommentModal({ visible, message, currentUserId, onClo
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
       <Pressable style={s.overlay} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
           <Text style={s.title}>➡️ Reenviar mensaje</Text>
 
           {/* Preview del mensaje original */}
           {message && (
-            <View style={s.preview}>
+            <View style={[s.preview, { backgroundColor: previewBg, borderLeftColor: '#00b4e6' }]}>
               <Text style={s.previewLabel}>Mensaje original:</Text>
               <Text style={s.previewText} numberOfLines={3}>
                 {message.type === 'image' ? '📷 Foto'
@@ -136,7 +144,7 @@ export function ForwardWithCommentModal({ visible, message, currentUserId, onClo
 
           {/* Botones */}
           <View style={s.actions}>
-            <TouchableOpacity style={s.cancelBtn} onPress={onClose} activeOpacity={0.7}>
+            <TouchableOpacity style={[s.cancelBtn, { backgroundColor: cancelBg }]} onPress={onClose} activeOpacity={0.7}>
               <Text style={s.cancelTxt}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity

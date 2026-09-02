@@ -1,5 +1,3 @@
 //
-//  EGCHAT-Bridging-Header.h
-//  El bridge de React Native se maneja en archivos .m separados.
-//  Este archivo expone las clases Swift de lógica nativa a ObjC.
+// Use this file to import your target's public headers that you would like to expose to Swift.
 //

@@ -1,12 +1,14 @@
 import React, { useMemo, useState, useEffect } from 'react';
 import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
 import { Colors } from '../../src/theme';
+import { useThemeContext } from '../../src/theme/ThemeContext';
+import { DarkColors } from '../../src/theme/darkMode';
 
 // Estima el tamaño de los datos de AsyncStorage en MB
 async function estimateAsyncStorageMB(): Promise<number> {
@@ -31,6 +33,8 @@ async function estimateCacheMB(): Promise<number> {
 }
 
 export default function AlmacenamientoScreen() {
+  const { isDark } = useThemeContext();
+  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const [used, setUsed] = useState(0);
   const [cacheSize, setCacheSize] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -104,7 +108,7 @@ export default function AlmacenamientoScreen() {
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <>
-          <View style={styles.usagePanel}>
+          <View style={[styles.usagePanel, { backgroundColor: C.bgSecondary }]}>
             <Text style={styles.usageTitle}>Uso de almacenamiento</Text>
             <Text style={styles.usageValue}>{used.toFixed(1)} MB</Text>
             <View style={styles.barBg}>
@@ -145,7 +149,7 @@ export default function AlmacenamientoScreen() {
 }
 
 const styles = StyleSheet.create({
-  usagePanel: { backgroundColor: '#fff', padding: 20, marginTop: 12 },
+  usagePanel: { padding: 20, marginTop: 12 },
   usageTitle: { fontSize: 15, fontWeight: '600', marginBottom: 4 },
   usageValue: { fontSize: 28, fontWeight: '700', color: Colors.accent },
   barBg: { marginTop: 12, height: 6, backgroundColor: '#f3f4f6', borderRadius: 3, overflow: 'hidden' },

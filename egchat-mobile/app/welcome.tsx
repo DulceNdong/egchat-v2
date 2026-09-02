@@ -71,7 +71,37 @@ const FEATURES = [
   },
 ];
 
-const FLAGS = ['🇬🇶', '🇨🇲', '🇬🇦', '🇨🇬', '🇪🇸', '🇫🇷', '🇬🇧', '🇺🇸'];
+// Lista de países CEMAC + puntos suspensivos para indicar que habrá más
+const CEMAC_FLAGS = ['🇬🇶', '🇨🇲', '🇬🇦', '🇨🇬', '🇹🇩', '🇨🇫'];
+
+// ── Componente de puntos suspensivos animados ──
+const AnimatedDots = () => {
+  const dot1 = useRef(new Animated.Value(0.3)).current;
+  const dot2 = useRef(new Animated.Value(0.3)).current;
+  const dot3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const animate = () => {
+      Animated.sequence([
+        Animated.timing(dot1, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(dot2, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(dot3, { toValue: 1, duration: 400, useNativeDriver: true }),
+        Animated.timing(dot1, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(dot2, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+        Animated.timing(dot3, { toValue: 0.3, duration: 200, useNativeDriver: true }),
+      ]).start(() => animate()); // Loop infinito
+    };
+    animate();
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
+      <Animated.Text style={[st.suspensiveDot, { opacity: dot1 }]}>•</Animated.Text>
+      <Animated.Text style={[st.suspensiveDot, { opacity: dot2 }]}>•</Animated.Text>
+      <Animated.Text style={[st.suspensiveDot, { opacity: dot3 }]}>•</Animated.Text>
+    </View>
+  );
+};
 
 // ── Feature card ──────────────────────────────────────────────────
 const FeatureCard = ({
@@ -141,11 +171,12 @@ export default function WelcomeScreen() {
           </Text>
           <Text style={st.tagline}>La app de Guinea Ecuatorial</Text>
 
-          {/* Banderas */}
+          {/* Banderas CEMAC */}
           <View style={st.flagsRow}>
-            {FLAGS.map((f, i) => (
+            {CEMAC_FLAGS.map((f, i) => (
               <Text key={i} style={st.flag}>{f}</Text>
             ))}
+            <AnimatedDots />
           </View>
         </Animated.View>
 
@@ -253,9 +284,15 @@ const st = StyleSheet.create({
     gap: 4,
     flexWrap: 'wrap',
     justifyContent: 'center',
+    alignItems: 'center',
     marginTop: 4,
   },
   flag: { fontSize: 20 },
+  suspensiveDot: {
+    fontSize: 16,
+    color: 'rgba(255,255,255,0.6)',
+    fontWeight: '700',
+  },
 
   // Features
   features: { gap: 8, paddingVertical: 4 },

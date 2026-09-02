@@ -3,7 +3,7 @@
  * Al tocar las burbujas de reacción de un mensaje se abre este modal.
  * Tiene tabs por emoji, cada uno con la lista de usuarios.
  */
-import React, { useState, useEffect } from 'react';
+import React, { useColorScheme, useState, useEffect } from 'react';
 import {
   View, Text, Modal, Pressable, StyleSheet, FlatList,
   TouchableOpacity, ActivityIndicator,
@@ -33,6 +33,12 @@ export function ReactionDetailModal({
   const [reactionsMap, setReactionsMap] = useState<ReactionsMap>({});
   const [loading, setLoading] = useState(false);
   const [activeEmoji, setActiveEmoji] = useState<string | null>(null);
+  const isDark = useColorScheme() === 'dark';
+  const sheetBg = isDark ? '#1c1c1e' : '#fff';
+  const textColor = isDark ? '#f9fafb' : '#111827';
+  const subColor = isDark ? '#9ca3af' : '#6b7280';
+  const borderColor = isDark ? '#374151' : '#e5e7eb';
+  const chipBg = isDark ? '#374151' : '#f3f4f6';
 
   useEffect(() => {
     if (!visible || !messageId) return;
@@ -71,7 +77,7 @@ export function ReactionDetailModal({
       statusBarTranslucent
     >
       <Pressable style={s.overlay} onPress={onClose}>
-        <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+        <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           {/* Handle */}
           <View style={s.handle} />
 

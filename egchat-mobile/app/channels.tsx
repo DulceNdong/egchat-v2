@@ -26,21 +26,14 @@ interface Channel {
   avatar_url?: string;
   verified: boolean;
   category: string;
-  followers: number;
+  followers_count?: number;
+  followers?: number; 
   followed: boolean;
   last_post?: {
     text: string;
     created_at: string;
   };
 }
-
-const MOCK_CHANNELS: Channel[] = [
-  { id: 'c1', name: 'EGChat Oficial', description: 'Novedades y actualizaciones de EGChat', avatar_url: undefined, verified: true, category: 'Tecnología', followers: 12400, followed: true, last_post: { text: '🚀 Nueva versión disponible con grupos, Moments y mucho más', created_at: new Date().toISOString() } },
-  { id: 'c2', name: 'Noticias Guinea Ecuatorial', description: 'Las últimas noticias del país', avatar_url: undefined, verified: true, category: 'Noticias', followers: 8900, followed: false, last_post: { text: '📰 Últimas noticias de Guinea Ecuatorial', created_at: new Date().toISOString() } },
-  { id: 'c3', name: 'Negocios GE', description: 'Oportunidades de negocio y emprendimiento', avatar_url: undefined, verified: true, category: 'Negocios', followers: 5200, followed: false },
-  { id: 'c4', name: 'Deportes África', description: 'Fútbol y deportes africanos', avatar_url: undefined, verified: true, category: 'Deportes', followers: 23100, followed: false },
-  { id: 'c5', name: 'Salud y Bienestar', description: 'Consejos de salud para toda la familia', avatar_url: undefined, verified: false, category: 'Salud', followers: 3400, followed: false },
-];
 
 const CATEGORIES = ['Todos', 'Noticias', 'Tecnología', 'Negocios', 'Deportes', 'Salud', 'Entretenimiento'];
 
@@ -75,21 +68,19 @@ export default function ChannelsScreen() {
   const load = useCallback(async (showRefresh = false) => {
     if (showRefresh) setRefreshing(true);
     try {
-      // Intentar API real primero
       const BASE = getApiBase();
       const token = await getToken();
       const res = await fetch(`${BASE}/api/channels`, { headers: { Authorization: `Bearer ${token}` } });
-      let data: Channel[] = [];
       if (res.ok) {
-        data = await res.json();
+        const data: Channel[] = await res.json();
+        setChannels(data);
       } else {
-        data = MOCK_CHANNELS;
+        // Error en API - mantener canales actuales
+        toast.error('Error cargando canales');
       }
-      const followed = await getFollowed();
-      setChannels(data.map(c => ({ ...c, followed: followed.includes(c.id) })));
-    } catch {
-      const followed = await getFollowed();
-      setChannels(MOCK_CHANNELS.map(c => ({ ...c, followed: followed.includes(c.id) })));
+    } catch (error) {
+      // Error de conexión - mantener canales actuales
+      toast.error('Error de conexión');
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -99,9 +90,38 @@ export default function ChannelsScreen() {
   useEffect(() => { load(); }, []);
 
   const handleFollow = useCallback(async (ch: Channel) => {
-    await toggleFollow(ch.id);
-    setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-    toast.info(ch.followed ? `Dejaste de seguir a ${ch.name}` : `Siguiendo a ${ch.name}`);
+    try {
+      const BASE = getApiBase();
+      const token = await getToken();
+      const res = await fetch(`${BASE}/api/channels/${ch.id}/follow`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) {
+        const { followed } = await res.json();
+        setChannels(prev => prev.map(c => c.id === ch.id ? { 
+          ...c, 
+          followed,
+          followers_count: followed ? 
+            (c.followers_count || c.followers || 0) + 1 : 
+            Math.max((c.followers_count || c.followers || 0) - 1, 0),
+          followers: followed ? 
+            (c.followers_count || c.followers || 0) + 1 : 
+            Math.max((c.followers_count || c.followers || 0) - 1, 0)
+        } : c));
+        toast.info(followed ? `Siguiendo a ${ch.name}` : `Dejaste de seguir a ${ch.name}`);
+      } else {
+        // Fallback a AsyncStorage si API falla
+        await toggleFollow(ch.id);
+        setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
+        toast.info(ch.followed ? `Dejaste de seguir a ${ch.name}` : `Siguiendo a ${ch.name}`);
+      }
+    } catch (error) {
+      // Fallback a AsyncStorage si hay error
+      await toggleFollow(ch.id);
+      setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
+      toast.info(ch.followed ? `Dejaste de seguir a ${ch.name}` : `Siguiendo a ${ch.name}`);
+    }
   }, []);
 
   const handleOpen = useCallback((ch: Channel) => {
@@ -142,7 +162,7 @@ export default function ChannelsScreen() {
             <Text style={[s.channelDesc, { color: C.textTertiary }]} numberOfLines={1}>{item.description}</Text>
           )}
           <Text style={[s.followers, { color: C.textTertiary }]}>
-            {formatCount(item.followers)} seguidores
+            {formatCount(item.followers_count || item.followers || 0)} seguidores
           </Text>
         </View>
       </View>

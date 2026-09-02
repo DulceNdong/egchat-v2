@@ -3,12 +3,19 @@
  * Izquierda: No leído / Desarchivar
  * Derecha: Silenciar → Archivar → Eliminar
  * Con iconos SVG, colores limpios y haptics
+ * En web: sin swipe, solo TouchableOpacity
  */
 import React, { useRef } from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
-import { Swipeable } from 'react-native-gesture-handler';
+import { View, Text, StyleSheet, TouchableOpacity, Animated, Platform } from 'react-native';
 import Svg, { Path, Line, Rect, Polyline, Circle } from 'react-native-svg';
 import { haptics } from '../../hooks/useHaptics';
+import type { Swipeable as SwipeableType } from 'react-native-gesture-handler';
+
+// Solo importar Swipeable en nativo
+let Swipeable: any = null;
+if (Platform.OS !== 'web') {
+  Swipeable = require('react-native-gesture-handler').Swipeable;
+}
 
 interface Props {
   onOpen: () => void;
@@ -28,7 +35,7 @@ export function SwipeChatItem({
   onOpen, onArchive, onDelete, onMute, onMarkUnread,
   onUnarchive, isArchived, isMuted, children,
 }: Props) {
-  const ref = useRef<Swipeable>(null);
+  const ref = useRef<SwipeableType>(null);
   const close = () => ref.current?.close();
 
   // ── Acciones izquierda ─────────────────────────────────────────
@@ -137,6 +144,15 @@ export function SwipeChatItem({
       </Animated.View>
     );
   };
+
+  // En web: sin swipe, solo TouchableOpacity
+  if (Platform.OS === 'web') {
+    return (
+      <TouchableOpacity onPress={onOpen} activeOpacity={0.75} style={s.row}>
+        {children}
+      </TouchableOpacity>
+    );
+  }
 
   return (
     <Swipeable

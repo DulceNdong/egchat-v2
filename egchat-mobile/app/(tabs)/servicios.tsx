@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, Modal, Pressable, Linking, RefreshControl,
@@ -8,6 +9,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { useAppStore } from '../../src/store/useAppStore';
+import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { ServiceIcon } from '../../src/components/ServiceIcon';
 import {
@@ -101,7 +104,7 @@ const ServiceModal = ({
       <Pressable style={styles.sheet} onPress={() => {}}>
         <View style={styles.handle} />
         <Text style={styles.sheetTitle}>{title}</Text>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 20 }}>
           {children}
         </ScrollView>
       </Pressable>
@@ -161,7 +164,14 @@ const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
       </View>
     ))}
     <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]}
-      onPress={() => Alert.alert('ID Digital', 'Función de verificación de identidad próximamente disponible.')}>
+      onPress={() => {
+        onClose();
+        Alert.alert('ID Digital', 'Elige qué quieres hacer', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Ver perfil', onPress: () => router.push('/ajustes/perfil' as any) },
+          { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
+        ]);
+      }}>
       <Text style={styles.callBtnText}>🪪 Verificar mi identidad</Text>
     </TouchableOpacity>
   </ServiceModal>
@@ -243,7 +253,7 @@ const drawerStyles = StyleSheet.create({
 });
 
 // ── Pantalla principal ────────────────────────────────────────────
-export default function ServiciosScreen() {
+function ServiciosScreenInner() {
   const params = useLocalSearchParams<{ service?: string }>();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -252,7 +262,7 @@ export default function ServiciosScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
@@ -310,7 +320,7 @@ export default function ServiciosScreen() {
       router.push(route as any);
       return;
     }
-    Alert.alert('Próximamente', 'Este servicio estará disponible pronto.');
+    Alert.alert('Servicio no encontrado', 'No se pudo abrir este servicio.');
   };
 
   useEffect(() => {
@@ -325,24 +335,24 @@ export default function ServiciosScreen() {
   }, [params.service]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#F0F2F5' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#F0F2F5' }]} edges={['left', 'right']}>
       <EGChatHeader
-        temp={27}
-        city="Malabo"
-        weatherCondition="cloudy"
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
 
       <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        decelerationRate="fast"
+        scrollEventThrottle={8}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00C8A0" colors={['#00C8A0']} />}
       >
         {SERVICE_SECTIONS.map(section => (
@@ -357,7 +367,8 @@ export default function ServiciosScreen() {
                     key={s.id}
                     style={styles.serviceItem}
                     onPress={() => openService(s.id)}
-                    activeOpacity={0.7}
+                    activeOpacity={0.5}
+                    delayPressIn={0}
                   >
                     <View style={styles.serviceIconBox}>
                       <ServiceIcon name={s.svgIcon} size={26} color={s.color} />
@@ -371,7 +382,6 @@ export default function ServiciosScreen() {
           </View>
         ))}
 
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* ── Drawer menú ── */}
@@ -382,16 +392,16 @@ export default function ServiciosScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
         onNotifPress={(n) => {
-          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          removeNotification(n.id);
           setShowNotifications(false);
           if (n.chatId) router.push(`/chat/${n.chatId}` as any);
         }}
       />
       <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
-      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="27°" city="Malabo" condition="cloudy" />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp={`${weather.temp}°`} city={weather.city} condition={weather.condition} />
 
       {/* ── Modales de servicios ── */}
       <ElectricidadModal  visible={activeModal === 'electricidad'}  onClose={() => setActiveModal(null)} />
@@ -426,6 +436,8 @@ export default function ServiciosScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
 
   // Header
   header: {
@@ -605,3 +617,11 @@ const styles = StyleSheet.create({
   categoryChip: { backgroundColor: Colors.bgTertiary, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: Colors.borderLight },
   categoryText: { fontSize: FontSize.sm, color: Colors.textPrimary },
 });
+
+export default function ServiciosScreen() {
+  return (
+    <TabErrorBoundary tabName="Servicios">
+      <ServiciosScreenInner />
+    </TabErrorBoundary>
+  );
+}
