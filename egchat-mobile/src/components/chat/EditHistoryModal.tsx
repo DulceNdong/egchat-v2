@@ -2,9 +2,9 @@
  * EditHistoryModal — muestra el historial de ediciones de un mensaje
  * Se abre desde el context menu de un mensaje editado.
  */
-import React, { useColorScheme } from 'react';
+import React from 'react';
 import {
-  View, Text, Modal, Pressable, StyleSheet, FlatList,
+  View, Text, Modal, Pressable, StyleSheet, FlatList, useColorScheme,
 } from 'react-native';
 
 interface EditEntry {
@@ -36,7 +36,7 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
   const textColor = isDark ? '#f9fafb' : '#111827';
   const entryBg = isDark ? '#374151' : '#f9fafb';
   const entryBorder = isDark ? '#4b5563' : '#e5e7eb';
-  // Versiones: [actual, ...históricas desc]
+
   const versions: EditEntry[] = [
     ...(currentText ? [{ text: currentText, edited_at: new Date().toISOString() }] : []),
     ...history.slice().reverse(),
@@ -47,21 +47,19 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={s.title}>✏️ Historial de ediciones</Text>
+          <Text style={[s.title, { color: textColor }]}>✏️ Historial de ediciones</Text>
           <FlatList
             data={versions}
             keyExtractor={(_, i) => String(i)}
             style={s.list}
             showsVerticalScrollIndicator={false}
             renderItem={({ item, index }) => (
-              <View style={[s.entry, index === 0 && s.entryLatest, { backgroundColor: entryBg, borderColor: index === 0 ? '#00b4e6' : entryBorder }]}>
+              <View style={[s.entry, { backgroundColor: entryBg, borderColor: index === 0 ? '#00b4e6' : entryBorder }, index === 0 && s.entryLatest]}>
                 <View style={s.entryHeader}>
                   <Text style={[s.badge, index === 0 && s.badgeCurrent]}>
                     {index === 0 ? 'Actual' : `v${versions.length - index}`}
                   </Text>
-                  {index !== 0 && (
-                    <Text style={s.time}>{relativeTime(item.edited_at)}</Text>
-                  )}
+                  {index !== 0 && <Text style={s.time}>{relativeTime(item.edited_at)}</Text>}
                 </View>
                 <Text style={[s.entryText, { color: textColor }]}>{item.text}</Text>
               </View>
@@ -75,21 +73,15 @@ export function EditHistoryModal({ visible, history, currentText, onClose }: Pro
 
 const s = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end' },
-  sheet: {
-    backgroundColor: '#fff', borderTopLeftRadius: 24, borderTopRightRadius: 24,
-    paddingHorizontal: 20, paddingBottom: 40, maxHeight: '70%',
-  },
+  sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, paddingHorizontal: 20, paddingBottom: 40, maxHeight: '70%' },
   handle: { width: 40, height: 4, backgroundColor: '#e5e7eb', borderRadius: 2, alignSelf: 'center', marginTop: 12, marginBottom: 8 },
-  title: { fontSize: 16, fontWeight: '700', color: '#111827', textAlign: 'center', marginBottom: 14 },
+  title: { fontSize: 16, fontWeight: '700', textAlign: 'center', marginBottom: 14 },
   list: { flex: 1 },
-  entry: {
-    backgroundColor: '#f9fafb', borderRadius: 12, padding: 12, marginBottom: 8,
-    borderWidth: 1, borderColor: '#e5e7eb',
-  },
-  entryLatest: { borderColor: '#00b4e6', backgroundColor: 'rgba(0,180,230,0.05)' },
+  entry: { borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: 1 },
+  entryLatest: { borderColor: '#00b4e6' },
   entryHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6 },
   badge: { fontSize: 11, fontWeight: '700', color: '#6b7280', backgroundColor: '#e5e7eb', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8 },
   badgeCurrent: { backgroundColor: '#00b4e6', color: '#fff' },
   time: { fontSize: 11, color: '#9ca3af' },
-  entryText: { fontSize: 14, color: '#374151', lineHeight: 20 },
+  entryText: { fontSize: 14, lineHeight: 20 },
 });
