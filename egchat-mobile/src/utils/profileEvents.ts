@@ -155,6 +155,7 @@ export const mergePersistentAvatar = async <T extends { id?: string; avatar_url?
   // Preservar nombre real: si el servidor devuelve un nombre genérico,
   // usar el guardado localmente (puesto por el usuario o por una sesión anterior con Supabase OK)
   let resolvedName = user.full_name;
+  
   if (isGenericName(resolvedName)) {
     const cachedName = await getLocalProfile(user.id);
     if (cachedName) resolvedName = cachedName;

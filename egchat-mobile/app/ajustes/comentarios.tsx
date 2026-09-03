@@ -28,7 +28,7 @@ export default function ComentariosScreen() {
         body: JSON.stringify({ category, message: text.trim() }),
       });
       setText('');
-      toast.success('✓ Comentario enviado — ¡gracias!');
+      // Comentario enviado
     } catch {
       toast.error('No se pudo enviar', 'Verifica tu conexión');
     }

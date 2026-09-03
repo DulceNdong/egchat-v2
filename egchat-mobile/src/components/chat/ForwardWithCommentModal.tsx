@@ -67,7 +67,7 @@ export function ForwardWithCommentModal({ visible, message, currentUserId, onClo
       if (comment.trim()) {
         await chatAPI.sendMessage(selectedChat.id, { text: comment.trim(), type: 'text' });
       }
-      toast.success('Reenviado ✓', `Enviado a ${selectedChat.name || 'chat'}`);
+      // Mensaje reenviado silenciosamente
       onForwarded?.();
       onClose();
     } catch {

@@ -16,7 +16,7 @@ const API_BASE = (
   Platform.OS === 'web'
     ? process.env.EXPO_PUBLIC_API_URL
     : (process.env.EXPO_PUBLIC_API_URL_MOBILE || process.env.EXPO_PUBLIC_API_URL)
-) || 'https://egchat-api.onrender.com';
+) || 'https://egchat-api-xlxj.onrender.com';
 
 const PUSH_ENABLED = process.env.EXPO_PUBLIC_ENABLE_PUSH === '1';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';

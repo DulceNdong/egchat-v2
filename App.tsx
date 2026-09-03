@@ -9160,7 +9160,7 @@ const App: React.FC = () => {
         const callId = data.callId;
         const token = localStorage.getItem('egchat_token') || localStorage.getItem('token') || '';
         if (!callId || !token) return;
-        fetch(`${(import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com'}/api/call/${callId}`, {
+        fetch(`${(import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com'}/api/call/${callId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(r => r.json()).then(session => {
           if (!session || session.ended || !session.offer) return;
@@ -9394,7 +9394,7 @@ const App: React.FC = () => {
         try {
           const token = localStorage.getItem('egchat_token') || localStorage.getItem('token') || '';
           if (!token) { if (attempt < 10) setTimeout(() => fetchCallSession(attempt + 1), 2000); return; }
-          const apiBase = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+          const apiBase = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '');
           const r = await fetch(`${apiBase}/api/call/${callId}`, { headers: { Authorization: `Bearer ${token}` } });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const session = await r.json();
@@ -10165,7 +10165,7 @@ const App: React.FC = () => {
                       setIncomingCall(null);
                       try {
                         const token = authAPI.getToken();
-                        const BASE_URL = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com/api').replace(/\/+$/, '');
+                        const BASE_URL = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com/api').replace(/\/+$/, '');
                         await fetch(`${BASE_URL}/call/${rejectedCallId}`, {
                           method: 'DELETE',
                           headers: { Authorization: `Bearer ${token}` }
@@ -12651,7 +12651,7 @@ const App: React.FC = () => {
             try {
               const mimeMatch = url.match(/^data:(image\/\w+);base64,/);
               const mimeType = mimeMatch?.[1] || 'image/jpeg';
-              const resp = await fetch(`https://egchat-api.onrender.com/api/chats/${gid}/avatar`, {
+              const resp = await fetch(`https://egchat-api-xlxj.onrender.com/api/chats/${gid}/avatar`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                 body: JSON.stringify({ base64: url, mimeType }),
@@ -12676,7 +12676,7 @@ const App: React.FC = () => {
             } catch {}
             try {
               // Actualizar en backend
-              await fetch(`https://egchat-api.onrender.com/api/chats/${gid}`, {
+              await fetch(`https://egchat-api-xlxj.onrender.com/api/chats/${gid}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${localStorage.getItem('token')}` },
                 body: JSON.stringify({ name }),
@@ -12984,7 +12984,6 @@ if (typeof window !== 'undefined' && 'navigator' in window) {
     console.log(`✅ ${isHarmonyOS ? 'HarmonyOS' : 'Android'} keyboard fix activado`);
   }
 }
-
 
 
 

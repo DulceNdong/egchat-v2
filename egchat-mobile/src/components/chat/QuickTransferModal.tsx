@@ -138,7 +138,7 @@ export function QuickTransferModal({
       ].join('\n');
       
       onTransferred(msgText);
-      toast.success('Transferencia', `${pendingTransfer.amount.toLocaleString()} XAF enviados a ${contactName}`);
+      // Transferencia completada - el mensaje ya se muestra en el chat
       
       // Cerrar modales
       setShowPinModal(false);
@@ -161,7 +161,7 @@ export function QuickTransferModal({
     setShowSetupPin(false);
     // Después de configurar el PIN, reintentamos la transferencia
     if (pendingTransfer || amount) {
-      toast.success('PIN configurado correctamente');
+      // PIN configurado silenciosamente
       // Reactivar el proceso de transferencia
       setTimeout(() => {
         handleSend();

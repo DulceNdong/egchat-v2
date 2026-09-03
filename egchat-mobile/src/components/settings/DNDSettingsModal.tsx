@@ -88,7 +88,7 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
   const handleSave = async () => {
     await saveDNDSettings(settings);
     const active = isDNDActive(settings);
-    toast.success('No molestar guardado', active ? 'Activo ahora' : `Activo de ${formatTime(settings.startHour, settings.startMin)} a ${formatTime(settings.endHour, settings.endMin)}`);
+    // No molestar guardado silenciosamente
     onClose();
   };
 

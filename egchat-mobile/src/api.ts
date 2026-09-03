@@ -20,7 +20,7 @@ const BASE = (() => {
     }
   }
   if (!url) {
-    return 'https://egchat-api.onrender.com';
+    return 'https://egchat-api-xlxj.onrender.com';
   }
   console.log('[API] BASE URL:', url);
   return url.replace(/\/$/, '');
@@ -319,19 +319,35 @@ export const authAPI = {
       const serverUser = await get<any>('/api/auth/me');
       const token = await getToken();
 
-      // Si el servidor está offline (Supabase sin cuota), preservar
-      // el full_name y avatar_url reales guardados en caché local.
-      if (serverUser?._offline) {
+      // Siempre intentar recuperar nombre y avatar reales de la caché local
+      // si el servidor devuelve nombre genérico (Supabase sin cuota, usuario nuevo, etc.)
+      const isGenericName = !serverUser?.full_name || 
+        serverUser.full_name === 'Usuario EGCHAT' || 
+        serverUser.full_name.startsWith('Usuario +') ||
+        serverUser.full_name.startsWith('Usuario ');
+
+      if (isGenericName || serverUser?._offline) {
         const cached = await sessionManager.getUser();
+        const cachedNameFromProfile = serverUser?.id ? await getLocalProfile(serverUser.id) : null;
+        
+        const realName = cachedNameFromProfile || 
+          (cached?.full_name && cached.full_name !== 'Usuario EGCHAT' && !cached.full_name.startsWith('Usuario ')
+            ? cached.full_name
+            : serverUser.full_name);
+
         const merged = {
           ...serverUser,
-          full_name: cached?.full_name && cached.full_name !== 'Usuario EGCHAT'
-            ? cached.full_name
-            : serverUser.full_name,
+          full_name: realName,
           avatar_url: cached?.avatar_url ?? serverUser.avatar_url,
         };
+        
         if (token) await sessionManager.saveSession(merged, token);
         return merged;
+      }
+
+      // Si recibimos nombre real del servidor, guardarlo en caché local
+      if (serverUser?.id && serverUser.full_name) {
+        await saveLocalProfile(serverUser.id, serverUser.full_name);
       }
 
       if (token) await sessionManager.saveSession(serverUser, token);

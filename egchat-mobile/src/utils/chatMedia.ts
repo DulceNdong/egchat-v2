@@ -232,7 +232,7 @@ export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: str
     return null;
   }
   try {
-    toast.info('GPS', 'Obteniendo ubicación...');
+    // GPS: obteniendo ubicación silenciosamente
     const pos = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
@@ -306,7 +306,7 @@ export async function pickAudio(): Promise<PickedAsset | null> {
 export async function pickContact(): Promise<{ name: string; phone: string } | null> {
   // expo-contacts solo funciona en nativo; en web delegamos al modal de EGCHAT
   if (typeof document !== 'undefined') {
-    toast.info('Contactos', 'Usa los contactos EGCHAT en web');
+    // Redirigir a contactos EGCHAT silenciosamente
     return null;
   }
 

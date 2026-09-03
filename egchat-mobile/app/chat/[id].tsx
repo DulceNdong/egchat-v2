@@ -315,34 +315,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
-  const { keyboardHeight, keyboardVisible } = useKeyboardHeight();
-
-  // Animated.Value que sigue el teclado con la curva nativa — sin delay JS
-  const dockBottom = useRef(new Animated.Value(0)).current;
-
-  useEffect(() => {
-    const showSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
-      (e) => {
-        Animated.timing(dockBottom, {
-          toValue: e.endCoordinates.height + 4,
-          duration: Platform.OS === 'ios' ? e.duration || 250 : 150,
-          useNativeDriver: false,
-        }).start();
-      }
-    );
-    const hideSub = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
-      (e) => {
-        Animated.timing(dockBottom, {
-          toValue: 0,
-          duration: Platform.OS === 'ios' ? e.duration || 250 : 150,
-          useNativeDriver: false,
-        }).start();
-      }
-    );
-    return () => { showSub.remove(); hideSub.remove(); };
-  }, [dockBottom]);
+  const { keyboardVisible } = useKeyboardHeight();
   const activePanelHeight = showAttach
     ? 290
     : showEmojis
@@ -502,7 +475,7 @@ export default function ChatScreen() {
           // Enriquecer participantes con datos completos del endpoint dedicado
           try {
             const token = await (await import('../../src/api')).getToken();
-            const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+            const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
             const enrichedParticipants = await fetch(
               `${BASE}/api/chats/${chatId}/participants`,
               { headers: { Authorization: `Bearer ${token}` } }
@@ -662,7 +635,7 @@ export default function ChatScreen() {
 
     const check = async () => {
       try {
-        const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+        const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
         const token = await getToken();
         const res = await fetch(`${BASE}/api/users/${uid}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -701,21 +674,17 @@ export default function ChatScreen() {
     };
   }, [chatId, currentUserId]);
 
-  // Scroll al fondo cuando llegan mensajes nuevos
-  useEffect(() => {
-    if (messages.length > 0) {
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 80);
-    }
-  }, [messages.length]);
+  const scrollToBottom = useCallback((animated = false) => {
+    flatListRef.current?.scrollToEnd({ animated });
+  }, []);
 
-  // Scroll al fondo cuando sube el teclado — para que el último mensaje
-  // siempre quede visible encima de la barra de input
+  // Mantener visible el último mensaje, el indicador de escritura y el input al cambiar teclado
   useEffect(() => {
-    if (keyboardVisible) {
-      // Pequeño delay para que KAV haya terminado de ajustar el layout
-      setTimeout(() => flatListRef.current?.scrollToEnd({ animated: false }), 50);
-    }
-  }, [keyboardVisible]);
+    if (messages.length === 0) return;
+    const delay = keyboardVisible ? 40 : 0;
+    const timer = setTimeout(() => scrollToBottom(false), delay);
+    return () => clearTimeout(timer);
+  }, [messages.length, keyboardVisible, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
@@ -1331,7 +1300,7 @@ export default function ChatScreen() {
     setUploadingAvatar(true);
     try {
       const token = await getToken();
-      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
       const formData = new FormData();
       formData.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any);
       const res = await fetch(`${BASE}/api/user/avatar`, {
@@ -1808,6 +1777,11 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.bgTertiary }]} edges={['left', 'right']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
+      >
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
@@ -1873,7 +1847,7 @@ export default function ChatScreen() {
             data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: inputBarHeight + keyboardHeight + 16 }]}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: inputBarHeight + activePanelHeight + 16 }]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -1938,7 +1912,7 @@ export default function ChatScreen() {
         </View>
 
         {/* ── BOTTOM DOCK — sube/baja animado con el teclado ── */}
-        <Animated.View style={[styles.bottomDock, { bottom: dockBottom }]}>
+        <Animated.View style={styles.bottomDock}>
 
             {replyTo && (
               <ReplyPreview
@@ -2157,6 +2131,8 @@ export default function ChatScreen() {
         </Animated.View>
 
       </View>
+
+      </KeyboardAvoidingView>
 
       <ChatContextMenu
         visible={contextVisible}

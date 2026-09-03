@@ -478,7 +478,7 @@ function MensajeriaScreenInner() {
 
     // Keep-alive: ping cada 14 min para que Render no duerma el servidor
     const keepAlive = setInterval(() => {
-      fetch('https://egchat-api.onrender.com/health', { method: 'GET' }).catch(() => {});
+      fetch('https://egchat-api-xlxj.onrender.com/health', { method: 'GET' }).catch(() => {});
     }, 14 * 60 * 1000);
 
     loadArchivedChats().then(setArchivedChats);

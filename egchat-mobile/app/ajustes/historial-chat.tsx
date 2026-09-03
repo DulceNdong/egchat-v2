@@ -133,8 +133,8 @@ export default function HistorialChatScreen() {
             const me = await authAPI.me().catch(() => null);
             const ok = await exportBackup(me?.id || 'user', 'egchat123');
             setExporting(false);
-            if (ok) toast.success('✓ Backup de chats exportado');
-            else toast.error('No se pudo exportar el backup');
+            // Backup exportado silenciosamente si es exitoso
+            if (!ok) toast.error('No se pudo exportar el backup');
           },
         },
       ],
@@ -149,7 +149,7 @@ export default function HistorialChatScreen() {
     const result = await backupE2EKey(password);
     setE2ELoading(false);
     if (result.ok) {
-      toast.success('✓ Claves E2E respaldadas en el servidor');
+      // Claves respaldadas silenciosamente
       await loadE2EStatus();
     } else {
       Alert.alert('Error', result.error || 'No se pudo hacer el backup');
@@ -162,7 +162,7 @@ export default function HistorialChatScreen() {
     const result = await restoreE2EKey(password);
     setE2ELoading(false);
     if (result.ok) {
-      toast.success('✓ Claves E2E restauradas correctamente');
+      // Claves restauradas silenciosamente
       await loadE2EStatus();
     } else {
       Alert.alert('Error', result.error || 'No se pudo restaurar');
@@ -181,7 +181,7 @@ export default function HistorialChatScreen() {
             const keys = await AsyncStorage.getAllKeys();
             const chatKeys = keys.filter(k => k.startsWith('chat_messages_'));
             await AsyncStorage.multiRemove(chatKeys);
-            toast.success(`✓ ${chatKeys.length} chats limpiados`);
+            // Chats limpiados silenciosamente
           },
         },
       ],
@@ -290,7 +290,7 @@ export default function HistorialChatScreen() {
                         k.startsWith('egchat_pinned'),
                       );
                       await AsyncStorage.multiRemove(toRemove);
-                      toast.success('✓ Chats locales eliminados');
+                      // Chats locales eliminados silenciosamente
                     },
                   },
                 ],

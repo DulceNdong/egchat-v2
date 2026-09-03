@@ -38,7 +38,7 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
     setSaving(true);
     try {
       await saveScheduledMessage({ chatId, text: messageText, type: 'text', scheduledAt: date.toISOString() });
-      toast.success('Programado ✓', `Se enviará el ${date.toLocaleString('es-ES', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}`);
+      // Mensaje programado silenciosamente
       onScheduled();
     } catch {
       toast.error('Error', 'No se pudo programar el mensaje');

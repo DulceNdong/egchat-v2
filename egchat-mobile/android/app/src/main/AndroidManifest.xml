@@ -52,7 +52,6 @@
         <data android:scheme="egchat"/>
         <data android:scheme="exp+egchat"/>
       </intent-filter>
-      <!-- Recibir contenido compartido desde otras apps (imagen, texto, archivo) -->
       <intent-filter>
         <action android:name="android.intent.action.SEND"/>
         <category android:name="android.intent.category.DEFAULT"/>
@@ -64,30 +63,19 @@
         <data android:mimeType="*/*"/>
       </intent-filter>
     </activity>
-
-    <!-- BroadcastReceiver para botones de notificación de llamada (Aceptar / Rechazar) -->
-    <receiver
-      android:name=".modules.CallActionReceiver"
-      android:exported="false">
+    <receiver android:name=".modules.CallActionReceiver" android:exported="false">
       <intent-filter>
         <action android:name="com.egchat.app.CALL_ANSWER"/>
         <action android:name="com.egchat.app.CALL_REJECT"/>
         <action android:name="com.egchat.app.CALL_END"/>
       </intent-filter>
     </receiver>
-
-    <!-- Widget de pantalla de inicio -->
-    <receiver
-      android:name=".modules.EGChatWidgetProvider"
-      android:exported="true">
+    <receiver android:name=".modules.EGChatWidgetProvider" android:exported="true">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
-      <meta-data
-        android:name="android.appwidget.provider"
-        android:resource="@xml/widget_egchat_info"/>
+      <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_egchat_info"/>
     </receiver>
-
     <uses-library android:name="org.apache.http.legacy" android:required="false"/>
   </application>
 </manifest>

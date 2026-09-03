@@ -7,15 +7,18 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.egchat.app",
+      "bundleIdentifier": "com.reddington120.egchat",
       "supportsTablet": false,
       "entitlements": {
-        "com.apple.developer.pushkit.voip": true,
-        "aps-environment": "production",
-        "com.apple.developer.associated-domains": ["applinks:egchat-app.vercel.app"]
+        "com.apple.developer.associated-domains": [
+          "applinks:egchat-app.vercel.app"
+        ]
       },
       "infoPlist": {
-        "UIBackgroundModes": ["voip", "audio", "fetch", "remote-notification"],
+        "UIBackgroundModes": [
+          "audio",
+          "fetch"
+        ],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
         "NSCameraUsageDescription": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
@@ -97,7 +100,8 @@
         }
       ],
       "expo-document-picker",
-      "expo-secure-store"
+      "expo-secure-store",
+      "@react-native-community/datetimepicker"
     ],
     "platforms": [
       "ios",
@@ -110,7 +114,7 @@
     },
     "scheme": "egchat",
     "extra": {
-      "apiUrl": "https://egchat-api.onrender.com",
+      "apiUrl": "https://egchat-api-xlxj.onrender.com",
       "router": {
         "origin": false
       },

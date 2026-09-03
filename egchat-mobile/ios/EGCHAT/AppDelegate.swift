@@ -1,7 +1,6 @@
 import Expo
 import React
 import ReactAppDependencyProvider
-import CallKit
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate {
@@ -22,9 +21,6 @@ public class AppDelegate: ExpoAppDelegate {
     reactNativeFactory = factory
     bindReactNativeFactory(factory)
 
-    // Inicializar EGChatCallModule (CallKit provider) al arrancar
-    _ = EGChatCallModule.shared
-
 #if os(iOS) || os(tvOS)
     window = UIWindow(frame: UIScreen.main.bounds)
     factory.startReactNative(
@@ -42,8 +38,6 @@ public class AppDelegate: ExpoAppDelegate {
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
-    // Reenviar URL de share extension al módulo
-    EGChatShareModule.handleOpenURL(url)
     return super.application(app, open: url, options: options) || RCTLinkingManager.application(app, open: url, options: options)
   }
 

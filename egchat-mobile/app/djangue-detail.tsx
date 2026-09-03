@@ -160,8 +160,8 @@ export default function DjangueDetailScreen() {
   }
 
   const isAdmin = djangue.my_role === 'owner' || djangue.my_role === 'secretary';
-  const paidCount = djangue.current_turn_contributions.filter(c => c.status === 'paid').length;
-  const pendingCount = djangue.members.length - paidCount;
+  const paidCount = (djangue.current_turn_contributions || []).filter(c => c.status === 'paid').length;
+  const pendingCount = (djangue.members || []).length - paidCount;
 
   return (
     <SafeAreaView style={s.root} edges={['top']}>
@@ -221,7 +221,7 @@ export default function DjangueDetailScreen() {
               <Text style={s.statLabel}>Turno Actual</Text>
             </View>
             <View style={s.statCard}>
-              <Text style={s.statValue}>{djangue.members.length}/{djangue.max_members}</Text>
+              <Text style={s.statValue}>{(djangue.members || []).length}/{djangue.max_members}</Text>
               <Text style={s.statLabel}>Miembros</Text>
             </View>
             <View style={s.statCard}>
@@ -253,7 +253,7 @@ export default function DjangueDetailScreen() {
                   {djangue.wallet.balance.toLocaleString()} {djangue.wallet.currency}
                 </Text>
                 <Text style={s.walletSub}>
-                  {paidCount} de {djangue.members.length} pagados • {pendingCount} pendientes
+                  {paidCount} de {(djangue.members || []).length} pagados • {pendingCount} pendientes
                 </Text>
               </LinearGradient>
             </View>
@@ -262,8 +262,8 @@ export default function DjangueDetailScreen() {
           {/* Lista de Integrantes */}
           <View style={s.section}>
             <View style={s.sectionHeader}>
-              <Text style={s.sectionTitle}>Integrantes ({djangue.members.length})</Text>
-              {isAdmin && djangue.members.length < djangue.max_members && (
+              <Text style={s.sectionTitle}>Integrantes ({(djangue.members || []).length})</Text>
+              {isAdmin && (djangue.members || []).length < djangue.max_members && (
                 <TouchableOpacity
                   style={s.addBtn}
                   onPress={() => setShowAddMember(!showAddMember)}
@@ -307,9 +307,9 @@ export default function DjangueDetailScreen() {
             )}
 
             {/* Miembros */}
-            {djangue.members.map((member, index) => {
-              const contribution = djangue.current_turn_contributions.find(
-                c => c.djangue_members.user_id === member.user_id
+            {(djangue.members || []).map((member, index) => {
+              const contribution = (djangue.current_turn_contributions || []).find(
+                c => c.djangue_members?.user_id === member.user_id
               );
               const hasPaid = contribution?.status === 'paid';
               const isCurrentTurn = member.turn_number === djangue.current_turn;
@@ -317,18 +317,18 @@ export default function DjangueDetailScreen() {
               return (
                 <View key={member.id} style={s.memberCard}>
                   <View style={s.memberLeft}>
-                    {member.users.avatar_url ? (
+                    {member.users?.avatar_url ? (
                       <Image source={{ uri: member.users.avatar_url }} style={s.memberAvatar} contentFit="cover" />
                     ) : (
                       <View style={s.memberAvatarPlaceholder}>
                         <Text style={s.memberAvatarText}>
-                          {member.users.full_name?.charAt(0)?.toUpperCase() || '?'}
+                          {member.users?.full_name?.charAt(0)?.toUpperCase() || '?'}
                         </Text>
                       </View>
                     )}
                     <View style={s.memberInfo}>
-                      <Text style={s.memberName}>{member.users.full_name || 'Usuario'}</Text>
-                      <Text style={s.memberPhone}>{member.users.phone}</Text>
+                      <Text style={s.memberName}>{member.users?.full_name || 'Usuario'}</Text>
+                      <Text style={s.memberPhone}>{member.users?.phone}</Text>
                     </View>
                   </View>
 

@@ -3,7 +3,7 @@
 ## 📋 Checklist de Testing End-to-End
 
 ### ✅ Pre-requisitos
-- [ ] Backend corriendo en https://egchat-api.onrender.com
+- [ ] Backend corriendo en https://egchat-api-xlxj.onrender.com
 - [ ] App corriendo en http://localhost:8081
 - [ ] Usuario con sesión activa y token válido
 - [ ] Monedero con saldo suficiente (mínimo 10,000 XAF para pruebas)
@@ -159,21 +159,21 @@
 ```bash
 # 1. Listar djangues
 curl -H "Authorization: Bearer $TOKEN" \
-  https://egchat-api.onrender.com/api/djangue
+  https://egchat-api-xlxj.onrender.com/api/djangue
 
 # 2. Detalle de un djangue
 curl -H "Authorization: Bearer $TOKEN" \
-  https://egchat-api.onrender.com/api/djangue/{id}
+  https://egchat-api-xlxj.onrender.com/api/djangue/{id}
 
 # 3. Historial de contribuciones
 curl -H "Authorization: Bearer $TOKEN" \
-  https://egchat-api.onrender.com/api/djangue/{id}/contributions
+  https://egchat-api-xlxj.onrender.com/api/djangue/{id}/contributions
 
 # 4. Crear djangue
 curl -X POST -H "Authorization: Bearer $TOKEN" \
   -H "Content-Type: application/json" \
   -d '{"name":"Test","frequency":"monthly","quota_amount":5000,"max_members":10}' \
-  https://egchat-api.onrender.com/api/djangue
+  https://egchat-api-xlxj.onrender.com/api/djangue
 ```
 
 ---
@@ -241,7 +241,7 @@ cd egchat-mobile
 npx expo start --web --clear --port 8081
 
 # En otra terminal, verificar backend
-curl https://egchat-api.onrender.com/api/health
+curl https://egchat-api-xlxj.onrender.com/api/health
 ```
 
 ---

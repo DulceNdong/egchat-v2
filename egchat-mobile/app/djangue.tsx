@@ -250,7 +250,7 @@ export default function DjangueScreen() {
         setRefreshing(false);
         return;
       }
-      const data = await apiFetch('/api/djangue');
+      const data = await apiFetch('/api/djangues');
       setGroups(Array.isArray(data) ? data : []);
     } catch (e: any) {
       setError(e.message || 'Error al cargar los djangues');

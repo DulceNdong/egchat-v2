@@ -378,7 +378,7 @@ export function MiniAppRuntime({
           // Proxy HTTP vía fetch nativo para evitar CORS en la mini-app
           // Solo permite URLs externas, NO endpoints internos de EGChat
           const reqUrl = params.url;
-          if (!reqUrl || reqUrl.includes('egchat-api.onrender.com')) {
+          if (!reqUrl || reqUrl.includes('egchat-api-xlxj.onrender.com')) {
             sendResponse(id, null, 'URL no permitida');
             break;
           }

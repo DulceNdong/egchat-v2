@@ -4,7 +4,7 @@ import { authAPI } from './api';
 
 const BASE = (() => {
   const url = ((import.meta as any).env?.VITE_API_URL || '').trim();
-  if (!url || url.startsWith('/')) return 'https://egchat-api.onrender.com/api';
+  if (!url || url.startsWith('/')) return 'https://egchat-api-xlxj.onrender.com/api';
   return url.endsWith('/api') ? url : url.replace(/\/$/, '') + '/api';
 })();
 

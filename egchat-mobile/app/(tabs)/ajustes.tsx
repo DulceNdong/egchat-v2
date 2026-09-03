@@ -101,11 +101,18 @@ function AjustesScreenInner() {
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
   useEffect(() => {
-    authAPI.me()
-      .then(data => mergePersistentAvatar(data))
-      .then(setUser)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const loadUser = async () => {
+      try {
+        const data = await authAPI.me();
+        const merged = await mergePersistentAvatar(data);
+        setUser(merged);
+      } catch (err) {
+        console.error('[Ajustes] Error cargando usuario:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadUser();
   }, []);
 
   // Actualizar avatar/nombre cuando el usuario los cambia en perfil

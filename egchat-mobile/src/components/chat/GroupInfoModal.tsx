@@ -147,7 +147,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ name }),
       });
-      toast.success('Nombre actualizado');
+      // Nombre del grupo actualizado silenciosamente
       setEditingName(false);
     } catch {
       toast.error('No se pudo actualizar el nombre');

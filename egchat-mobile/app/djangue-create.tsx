@@ -106,6 +106,14 @@ export default function DjangueCreateScreen() {
 
     setLoading(true);
     try {
+      console.log('🔍 Intentando crear djangue con datos:', {
+        name: name.trim(),
+        description: description.trim(),
+        frequency,
+        quota_amount: quota,
+        max_members: Number(maxMembers),
+      });
+      
       const group = await apiFetch('/api/djangue', {
         method: 'POST',
         body: JSON.stringify({
@@ -117,6 +125,9 @@ export default function DjangueCreateScreen() {
           secretary_phone: secretaryPhone.trim() || undefined,
         }),
       });
+      
+      console.log('✅ Djangue creado exitosamente:', group);
+      
       Alert.alert(
         '✅ Djangue creado',
         `"${group.name}" está listo. Ahora puedes agregar integrantes.`,
@@ -125,6 +136,7 @@ export default function DjangueCreateScreen() {
         }}],
       );
     } catch (e: any) {
+      console.error('❌ Error creando djangue:', e);
       Alert.alert('Error', e.message || 'No se pudo crear el djangue');
     } finally {
       setLoading(false);

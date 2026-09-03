@@ -13,7 +13,7 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fqfxtjnfhvpggssbymdn.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqZnh0am5maHZwZ2dzc2J5bWRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTI0MTMsImV4cCI6MjA5MDg4ODQxM30.hy7iWUHSFky1SyCvVBWGuRgfqO9-I94uCfPyMkxevwI",
         "EXPO_PUBLIC_ENABLE_PUSH": "0",
@@ -33,8 +33,8 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api.onrender.com",
-        "EXPO_PUBLIC_API_URL_MOBILE": "https://egchat-api.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_API_URL_MOBILE": "https://egchat-api-xlxj.onrender.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fqfxtjnfhvpggssbymdn.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6ImFub24iLCJpYXQiOjE3ODU4NDM4MjAsImV4cCI6MjEwMTQxOTgyMH0.jc8uCndFdhKDlJB8_CfBqqeXAzZYTCpWEUf9W0v8fIw",
         "EXPO_PUBLIC_ENABLE_PUSH": "0",
@@ -53,7 +53,7 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api.onrender.com",
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
         "EXPO_PUBLIC_SUPABASE_URL": "https://fqfxtjnfhvpggssbymdn.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6ImFub24iLCJpYXQiOjE3NzUzMTI0MTMsImV4cCI6MjA5MDg4ODQxM30.hy7iWUHSFky1SyCvVBWGuRgfqO9-I94uCfPyMkxevwI",
         "EXPO_PUBLIC_ENABLE_PUSH": "1",

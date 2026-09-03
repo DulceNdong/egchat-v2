@@ -71,7 +71,7 @@ export default function PrivacidadScreen() {
                 headers: { Authorization: `Bearer ${token}` },
               });
               setBlocked(prev => prev.filter(c => c.id !== contact.id));
-              toast.success(`✓ ${name} desbloqueado`);
+              // Usuario desbloqueado silenciosamente
             } catch {
               toast.error('No se pudo desbloquear. Verifica tu conexión.');
             }

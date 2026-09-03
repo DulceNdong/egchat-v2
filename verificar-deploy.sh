@@ -6,7 +6,7 @@ echo ""
 
 # Verificar que el servidor está vivo
 echo "1️⃣ Verificando que el servidor responde..."
-HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://egchat-api.onrender.com/health)
+HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://egchat-api-xlxj.onrender.com/health)
 
 if [ "$HTTP_CODE" -eq 200 ]; then
     echo "✅ Servidor en línea (HTTP $HTTP_CODE)"
@@ -14,7 +14,7 @@ else
     echo "❌ Servidor no responde correctamente (HTTP $HTTP_CODE)"
     echo "⏳ Render puede estar despertando... Esperando 30 segundos..."
     sleep 30
-    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://egchat-api.onrender.com/health)
+    HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" https://egchat-api-xlxj.onrender.com/health)
     if [ "$HTTP_CODE" -eq 200 ]; then
         echo "✅ Servidor ahora en línea (HTTP $HTTP_CODE)"
     else
@@ -27,7 +27,7 @@ echo ""
 echo "2️⃣ Verificando ruta /api/wallet/transfer..."
 
 # Intentar llamar a la ruta sin autenticación (debe dar 401, no 404)
-RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" https://egchat-api.onrender.com/api/wallet/transfer \
+RESPONSE=$(curl -s -w "\nHTTP_CODE:%{http_code}" https://egchat-api-xlxj.onrender.com/api/wallet/transfer \
     -X POST \
     -H "Content-Type: application/json" \
     -d '{"to":"+240222111111","amount":1000}')
