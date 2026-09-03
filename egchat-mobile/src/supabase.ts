@@ -7,7 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from './types/chat';
 
 const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://fqfxtjnfhvpggssbymdn.supabase.co';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZqdG94amN1eWZhcGVwcm5paW5rIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzUzMTI0MTMsImV4cCI6MjA5MDg4ODQxM30.hy7iWUHSFky1SyCvVBWGuRgfqO9-I94uCfPyMkxevwI';
+const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZnh0am5maHZwZ2dzc2J5bWRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDM4MjAsImV4cCI6MjEwMTQxOTgyMH0.jc8uCndFdhKDlJB8_CfBqqeXAzZYTCpWEUf9W0v8fIw';
 
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
   auth: {

@@ -72,7 +72,20 @@ function PhotoRow({
   const [imgError, setImgError] = React.useState(false);
 
   // Reset error state cuando cambia la URL
-  React.useEffect(() => { setImgError(false); }, [avatarUrl]);
+  React.useEffect(() => { 
+    setImgError(false); 
+    if (avatarUrl) {
+      console.log('[PhotoRow] Nueva URL de avatar:', avatarUrl.slice(0, 100));
+    }
+  }, [avatarUrl]);
+
+  const handleImageError = (error: any) => {
+    console.error('[PhotoRow] Error cargando imagen:', {
+      url: avatarUrl?.slice(0, 100),
+      error: error?.nativeEvent
+    });
+    setImgError(true);
+  };
 
   return (
     <View style={styles.photoRow}>
@@ -86,7 +99,8 @@ function PhotoRow({
                 key={avatarUrl}
                 source={{ uri: avatarUrl }}
                 style={styles.thumbImg}
-                onError={() => setImgError(true)}
+                onError={handleImageError}
+                onLoad={() => console.log('[PhotoRow] Imagen cargada exitosamente')}
               />
             ) : (
               <Text style={styles.thumbInitials}>{initials}</Text>
@@ -246,31 +260,37 @@ export default function PerfilScreen() {
       if (editingField === 'name') {
         // Guardar localmente primero (funciona aunque Supabase esté sin cuota)
         setUser(prev => prev ? { ...prev, full_name: fieldVal } : prev);
+        // IMPORTANTE: Guardar en caché local AsyncStorage para persistencia
+        if (user?.id) {
+          await saveLocalAvatar(user.id, user.avatar_url); // mantener el avatar en caché
+          const { saveLocalProfile } = await import('../../src/utils/profileEvents');
+          await saveLocalProfile(user.id, fieldVal);
+        }
         emitProfileUpdated({ id: user?.id, full_name: fieldVal });
         // Intentar sincronizar con el servidor (no crítico si falla)
         try {
           await authAPI.updateProfile({ full_name: fieldVal, avatar_url: user?.avatar_url });
         } catch { /* Supabase sin cuota — guardado localmente, se sincronizará después */ }
-        toast.success('✓ Nombre actualizado');
+        // Actualizado silenciosamente (estilo nativo)
       } else if (editingField === 'bio') {
         setBio(fieldVal);
         await setCfg(CFG.bio, fieldVal);
-        toast.success('✓ Bio actualizada');
+        // Bio actualizada silenciosamente
       } else if (editingField === 'gender') {
         setGender(fieldVal);
         await setCfg(CFG.gender, fieldVal);
-        toast.success('✓ Género guardado');
+        // Género guardado silenciosamente
       } else if (editingField === 'region') {
         setRegion(fieldVal);
         try { await userAPI.updateProfile({ country: fieldVal }); } catch {}
         setUser(prev => prev ? { ...prev, country: fieldVal } : prev);
         emitProfileUpdated({ country: fieldVal });
-        toast.success('✓ Región actualizada');
+        // Región actualizada silenciosamente
       } else if (editingField === 'address') {
         try { await userAPI.updateProfile({ address: fieldVal }); } catch {}
         setUser(prev => prev ? { ...prev, address: fieldVal } : prev);
         emitProfileUpdated({ address: fieldVal });
-        toast.success('✓ Dirección guardada');
+        // Dirección guardada silenciosamente
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al guardar';
@@ -293,36 +313,48 @@ export default function PerfilScreen() {
   const uploadPhoto = async (uri: string) => {
     setUploadingPhoto(true);
 
-    // ── Mostrar inmediatamente la imagen local ──
-    setUser(prev => prev ? { ...prev, avatar_url: uri } : prev);
-    emitProfileUpdated({ avatar_url: uri });
-
     try {
       const userId = user?.id;
-      if (!userId) throw new Error('Usuario no identificado');
+      if (!userId) {
+        toast.error('Error: usuario no identificado');
+        return;
+      }
 
-      // ── 1. Subir a Supabase Storage (URL permanente) ──────────
+      // ── 1. Mostrar inmediatamente la imagen local mientras sube ──
+      const localUri = uri.startsWith('file:') ? uri : `file://${uri}`;
+      setUser(prev => prev ? { ...prev, avatar_url: localUri } : prev);
+      emitProfileUpdated({ id: userId, avatar_url: localUri });
+
+      // ── 2. Subir a Supabase Storage (URL permanente) ──────────
       const supabaseUrl = await uploadAvatarToSupabase(userId, uri);
 
       if (supabaseUrl) {
-        // ── 2. Sincronizar la URL con el servidor Render ──────────
+        // ── 3. Sincronizar con el servidor Render ──────────
         try {
           await authAPI.updateProfile({ avatar_url: supabaseUrl });
-        } catch { /* no crítico — la URL ya está guardada en Supabase */ }
-
-        // ── 3. Actualizar estado local ────────────────────────────
-        setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
-        emitProfileUpdated({ avatar_url: supabaseUrl });
-        await saveLocalAvatar(userId, supabaseUrl);
-        toast.success('✓ Foto actualizada');
+          
+          // ── 4. Actualizar estado local con URL permanente ────────
+          setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
+          emitProfileUpdated({ id: userId, avatar_url: supabaseUrl });
+          await saveLocalAvatar(userId, supabaseUrl);
+          
+          toast.success('Foto actualizada');
+        } catch (syncError) {
+          console.error('[uploadPhoto] Error sincronizando con Render:', syncError);
+          // Aunque falle el sync con Render, la foto está en Supabase
+          setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
+          emitProfileUpdated({ id: userId, avatar_url: supabaseUrl });
+          await saveLocalAvatar(userId, supabaseUrl);
+          toast.success('Foto actualizada (sincronización pendiente)');
+        }
       } else {
-        // ── Fallback: guardar solo en local si Supabase falla ─────
-        await saveLocalAvatar(userId, uri);
-        toast.info('Foto guardada localmente. Se sincronizará con conexión.');
+        // ── Supabase falló completamente — mantener solo local ─────
+        await saveLocalAvatar(userId, localUri);
+        toast.error('Error al subir foto. Mantenida localmente.');
       }
-    } catch {
-      await saveLocalAvatar(user?.id, uri).catch(() => {});
-      toast.info('Foto guardada. Se sincronizará con conexión.');
+    } catch (error) {
+      console.error('[uploadPhoto] Error:', error);
+      toast.error('Error al actualizar foto');
     } finally {
       setUploadingPhoto(false);
     }
@@ -349,7 +381,7 @@ export default function PerfilScreen() {
             avatarUrl={user?.avatar_url}
             initials={initials}
             onPress={pickPhoto}
-            onPressAvatar={user?.avatar_url ? () => setShowAvatarViewer(true) : pickPhoto}
+            onPressAvatar={user?.avatar_url && !user.avatar_url.startsWith('file://') ? () => setShowAvatarViewer(true) : pickPhoto}
             uploading={uploadingPhoto}
           />
           <SettingsDivider />
@@ -381,7 +413,7 @@ export default function PerfilScreen() {
             onPress={async () => {
               if (user?.id) {
                 await Clipboard.setStringAsync(user.id);
-                toast.success('✓ ID copiado');
+                // ID copiado silenciosamente
               }
             }}
           />
@@ -471,12 +503,12 @@ export default function PerfilScreen() {
       />
       <SetupPINModal
         visible={showSetupPIN}
-        onDone={() => { setShowSetupPIN(false); setPinConfigured(true); toast.success('✓ PIN configurado'); }}
+        onDone={() => { setShowSetupPIN(false); setPinConfigured(true); /* PIN configurado silenciosamente */ }}
         onCancel={() => setShowSetupPIN(false)}
       />
       <ImageViewer
-        visible={showAvatarViewer && !!user?.avatar_url}
-        images={user?.avatar_url ? [user.avatar_url] : []}
+        visible={showAvatarViewer && !!user?.avatar_url && !user.avatar_url.startsWith('file://')}
+        images={user?.avatar_url && !user.avatar_url.startsWith('file://') ? [user.avatar_url] : []}
         initialIndex={0}
         onClose={() => setShowAvatarViewer(false)}
       />
