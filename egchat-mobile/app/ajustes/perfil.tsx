@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   ActivityIndicator, Modal, Pressable, Platform, ScrollView, TextInput,
-  KeyboardAvoidingView,
+  KeyboardAvoidingView, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
@@ -301,7 +301,19 @@ export default function PerfilScreen() {
     }
   };
 
-  const pickPhoto = () => {
+  const pickPhoto = async () => {
+    // Pedir permisos de galería en iOS
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso necesario',
+          'Necesitamos acceso a tu galería para cambiar la foto de perfil. Actívalo en Ajustes > EGCHAT > Fotos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
     ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.9,
