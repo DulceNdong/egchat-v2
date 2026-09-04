@@ -339,84 +339,83 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
 
 const GRID_GAP = 10;
 const GRID_COLS = 3;
-const GRID_TILE_W = (W - 32 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const GRID_TILE_W = (W - 28 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
 
 const ss = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject },
   sheet: {
     position: 'absolute', bottom: 0, left: 0, right: 0,
-    borderTopLeftRadius: 28, borderTopRightRadius: 28,
-    paddingTop: 10, overflow: 'hidden',
-    // color de respaldo si BlurView no disponible
-    backgroundColor: 'rgba(255,255,255,0.82)',
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingTop: 8, overflow: 'hidden',
+    backgroundColor: 'transparent',
   },
   handle: {
-    width: 40, height: 4, borderRadius: 2,
-    backgroundColor: 'rgba(0,0,0,0.15)',
-    alignSelf: 'center', marginBottom: 14,
+    width: 36, height: 4, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.4)',
+    alignSelf: 'center', marginBottom: 10,
   },
   sheetHeader: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingBottom: 16,
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingHorizontal: 14, paddingBottom: 10,
   },
   previewThumb: {
-    width: 54, height: 54, borderRadius: 12,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
+    width: 42, height: 42, borderRadius: 10,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   previewThumbPlaceholder: {
-    backgroundColor: 'rgba(0,0,0,0.06)',
+    backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center', justifyContent: 'center',
   },
-  sheetSender: { fontSize: 15, fontWeight: '700', color: '#111827' },
-  sheetDate: { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  sheetSender: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  sheetDate: { fontSize: 11, color: 'rgba(255,255,255,0.55)', marginTop: 1 },
   closeBtn: {
-    width: 30, height: 30, borderRadius: 15,
-    backgroundColor: 'rgba(0,0,0,0.07)',
+    width: 26, height: 26, borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
   // Fila de 3 acciones principales
   mainRow: {
     flexDirection: 'row', justifyContent: 'space-around',
-    paddingHorizontal: 16, paddingBottom: 20,
+    paddingHorizontal: 12, paddingBottom: 12,
   },
-  mainTile: { alignItems: 'center', gap: 8, flex: 1 },
+  mainTile: { alignItems: 'center', gap: 5, flex: 1 },
   mainCircle: {
-    width: 68, height: 68, borderRadius: 20,
+    width: 54, height: 54, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
   },
   mainCircleInner: {
-    width: 52, height: 52, borderRadius: 16,
+    width: 42, height: 42, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
-  mainLabel: { fontSize: 12, fontWeight: '600', color: '#374151' },
+  mainLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
   sep: {
     height: StyleSheet.hairlineWidth,
-    backgroundColor: 'rgba(0,0,0,0.08)',
-    marginHorizontal: 16, marginBottom: 16,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginHorizontal: 14, marginBottom: 10,
   },
-  // Grid 3×2
+  // Grid 3+2 centrado
   grid: {
     flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 16, gap: GRID_GAP,
-    marginBottom: 8,
+    paddingHorizontal: 14, gap: 8,
+    marginBottom: 6,
     justifyContent: 'center',
   },
   gridTile: {
-    width: GRID_TILE_W, alignItems: 'center', gap: 7,
-    paddingVertical: 14, borderRadius: 18,
-    backgroundColor: 'rgba(0,0,0,0.03)',
+    width: GRID_TILE_W, alignItems: 'center', gap: 5,
+    paddingVertical: 10, borderRadius: 14,
+    backgroundColor: 'rgba(255,255,255,0.08)',
   },
   gridIcon: {
-    width: 52, height: 52, borderRadius: 16,
+    width: 42, height: 42, borderRadius: 13,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 1,
   },
   gridIconInner: {
-    width: 40, height: 40, borderRadius: 12,
+    width: 32, height: 32, borderRadius: 10,
     alignItems: 'center', justifyContent: 'center',
   },
-  gridLabel: { fontSize: 11, fontWeight: '600', color: '#4B5563', textAlign: 'center' },
+  gridLabel: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
 });
 
 // ─── Picker de reacciones ─────────────────────────────────────────
