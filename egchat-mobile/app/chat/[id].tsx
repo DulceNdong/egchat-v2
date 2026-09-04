@@ -222,6 +222,8 @@ export default function ChatScreen() {
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
+  // Contacto de tarjeta compartida — para abrir su perfil al tocar nombre/foto
+  const [cardContact, setCardContact] = useState<{ phone: string; name: string; avatarUrl?: string } | null>(null);
   const [cropUri, setCropUri] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
   const [photoEditUri, setPhotoEditUri] = useState<string | null>(null);
