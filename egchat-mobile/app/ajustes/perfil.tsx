@@ -512,6 +512,7 @@ export default function PerfilScreen() {
         userId={user?.id || ''}
         name={user?.full_name || 'Usuario'}
         phone={user?.phone}
+        avatar={user?.avatar_url}
       />
       <SetupPINModal
         visible={showSetupPIN}
