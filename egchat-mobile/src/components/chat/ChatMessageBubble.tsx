@@ -754,36 +754,117 @@ const mc = StyleSheet.create({
 });
 
 // ── Tarjeta CONTACTO ──────────────────────────────────────────────
+// Formato de texto serializado del contacto:
+//   línea 0: nombre
+//   línea 1: teléfono
+//   línea 2: avatar_url (opcional, puede estar vacío)
 const ContactCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
   const lines = (text || '').split('\n');
-  const name = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
-  const phone = lines[1]?.replace(/^📞\s*/, '').trim() || '';
+  const name      = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
+  const phone     = lines[1]?.replace(/^📞\s*/, '').trim() || '';
+  const avatarUrl = lines[2]?.trim() || '';
+  const isValidUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+
   return (
     <View style={cs.card}>
+      {/* Fila principal: avatar + datos */}
       <View style={cs.row}>
-        <EGAvatar name={name} size={44} />
+        {/* Avatar con foto de perfil si existe */}
+        <View style={cs.avatarWrap}>
+          {isValidUrl ? (
+            <Image
+              source={{ uri: avatarUrl }}
+              style={cs.avatarImg}
+              defaultSource={undefined}
+            />
+          ) : (
+            <EGAvatar name={name} size={48} />
+          )}
+        </View>
         <View style={cs.info}>
           <Text style={cs.name} numberOfLines={1}>{name}</Text>
           {!!phone && <Text style={cs.phone}>{phone}</Text>}
         </View>
       </View>
+
+      {/* Separador */}
       <View style={[cs.divider, isOwn ? cs.divOwn : cs.divTheir]} />
-      <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} activeOpacity={0.7}>
-        <Text style={[cs.action, isOwn ? cs.actionOwn : cs.actionTheir]}>📞 Llamar</Text>
-      </TouchableOpacity>
+
+      {/* Acciones */}
+      <View style={cs.actions}>
+        <TouchableOpacity
+          onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Llamar al contacto"
+          accessibilityRole="button"
+        >
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+            stroke={isOwn ? '#00c8a0' : '#00b4e6'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </Svg>
+          <Text style={[cs.actionText, isOwn ? cs.actionOwn : cs.actionTheir]}>Llamar</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        <TouchableOpacity
+          onPress={() => {}}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Ver perfil del contacto"
+          accessibilityRole="button"
+        >
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+            stroke={isOwn ? '#00c8a0' : '#00b4e6'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+            <Path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+          </Svg>
+          <Text style={[cs.actionText, isOwn ? cs.actionOwn : cs.actionTheir]}>Ver perfil</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        <TouchableOpacity
+          onPress={() => phone && Linking.openURL(`https://wa.me/${phone.replace(/\D/g, '')}`)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Añadir contacto"
+          accessibilityRole="button"
+        >
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+            stroke={isOwn ? '#00c8a0' : '#00b4e6'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <Path d="M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
+            <Line x1="20" y1="8" x2="20" y2="14"/><Line x1="17" y1="11" x2="23" y2="11"/>
+          </Svg>
+          <Text style={[cs.actionText, isOwn ? cs.actionOwn : cs.actionTheir]}>+ Añadir</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 const cs = StyleSheet.create({
-  card: { minWidth: 200, maxWidth: 250 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 10 },
+  card: { minWidth: 220, maxWidth: 270 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 12 },
+  avatarWrap: {
+    width: 48, height: 48, borderRadius: 24,
+    overflow: 'hidden', backgroundColor: '#e5e7eb',
+  },
+  avatarImg: { width: 48, height: 48, borderRadius: 24 },
   info: { flex: 1, minWidth: 0 },
   name: { fontSize: 14, fontWeight: '700', color: '#111827' },
   phone: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  divider: { height: 1, marginHorizontal: -10, marginBottom: 8 },
+  divider: { height: 1, marginHorizontal: -10, marginBottom: 0 },
   divOwn: { backgroundColor: 'rgba(0,200,160,0.2)' },
   divTheir: { backgroundColor: 'rgba(0,0,0,0.07)' },
-  action: { fontSize: 13, fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
+  actions: { flexDirection: 'row', alignItems: 'center', paddingTop: 8 },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 4, paddingVertical: 4,
+  },
+  actionDivider: { width: 1, height: 20, marginHorizontal: 2 },
+  actionText: { fontSize: 12, fontWeight: '700' },
   actionOwn: { color: '#00c8a0' },
   actionTheir: { color: '#00b4e6' },
 });
