@@ -6,7 +6,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
-import Svg, { Path, Rect, Polygon } from 'react-native-svg';
+import Svg, { Path, Rect, Polygon, Line } from 'react-native-svg';
 import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
