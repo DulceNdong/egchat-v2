@@ -671,7 +671,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const handleSave = async () => {
     try {
       const filename = current.name || `egchat_${Date.now()}.jpg`;
-      const dest = `${FileSystem.documentDirectory}${filename}`;
+      const dest = `${FileSystem.cacheDirectory}${filename}`;
       await FileSystem.copyAsync({ from: current.uri, to: dest });
       Alert.alert('', 'Guardado ✓');
     } catch {
