@@ -1306,6 +1306,9 @@ export const ChatMessageBubble = React.memo(({
       {message.type === 'video' && (
         <VideoCard message={message} isOwn={isOwn} />
       )}
+      {message.type === 'music' && (
+        <MusicCard message={message} isOwn={isOwn} />
+      )}
       {message.type === 'audio' && (
         isVoiceMessage(message)
           ? <VoiceCard message={message} isOwn={isOwn} onTranscribed={onTranscribed ? (t) => onTranscribed(message.id, t) : undefined} />
