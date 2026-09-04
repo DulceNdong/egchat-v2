@@ -314,46 +314,37 @@ export default function PerfilScreen() {
 
   const uploadPhoto = async (uri: string) => {
     setUploadingPhoto(true);
-
     try {
-      const token = await getToken();
-      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
+      const currentUserId = user?.id;
+      if (!currentUserId) throw new Error('No hay usuario');
 
-      // ── 1. Mostrar inmediatamente la imagen local mientras sube ──
+      // 1. Mostrar imagen local inmediatamente (optimistic UI)
       const localUri = uri.startsWith('file:') ? uri : `file://${uri}`;
       setUser(prev => prev ? { ...prev, avatar_url: localUri } : prev);
-      emitProfileUpdated({ id: userId, avatar_url: localUri });
+      emitProfileUpdated({ id: currentUserId, avatar_url: localUri });
 
-      // ── 2. Subir a Supabase Storage (URL permanente) ──────────
-      const supabaseUrl = await uploadAvatarToSupabase(userId, uri);
+      // 2. Subir a Supabase Storage
+      const supabaseUrl = await uploadAvatarToSupabase(currentUserId, uri);
 
       if (supabaseUrl) {
-        // ── 3. Sincronizar con el servidor Render ──────────
+        // 3. Sincronizar con Render
         try {
           await authAPI.updateProfile({ avatar_url: supabaseUrl });
-          
-          // ── 4. Actualizar estado local con URL permanente ────────
-          setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
-          emitProfileUpdated({ id: userId, avatar_url: supabaseUrl });
-          await saveLocalAvatar(userId, supabaseUrl);
-          
-          toast.success('Foto actualizada');
         } catch (syncError) {
-          console.error('[uploadPhoto] Error sincronizando con Render:', syncError);
-          // Aunque falle el sync con Render, la foto está en Supabase
-          setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
-          emitProfileUpdated({ id: userId, avatar_url: supabaseUrl });
-          await saveLocalAvatar(userId, supabaseUrl);
-          toast.success('Foto actualizada (sincronización pendiente)');
+          console.warn('[uploadPhoto] Sync con Render falló (no crítico):', syncError);
         }
-        const displayUrl = cacheBustAvatarUrl(finalUrl) || uri;
-        setUser(prev => prev ? { ...prev, avatar_url: displayUrl } : prev);
-        emitProfileUpdated({ avatar_url: displayUrl });
-        await saveLocalAvatar(user?.id, uri);
-        // Foto actualizada silenciosamente
+        // 4. Actualizar estado con URL permanente
+        const finalUrl = cacheBustAvatarUrl(supabaseUrl) || supabaseUrl;
+        setUser(prev => prev ? { ...prev, avatar_url: finalUrl } : prev);
+        emitProfileUpdated({ id: currentUserId, avatar_url: finalUrl });
+        await saveLocalAvatar(currentUserId, finalUrl);
+        toast.success('Foto actualizada');
       } else {
-        await saveLocalAvatar(user?.id, uri);
-        // Foto guardada silenciosamente
+        // Supabase no devolvió URL — guardar localmente
+        await saveLocalAvatar(currentUserId, uri);
+        setUser(prev => prev ? { ...prev, avatar_url: localUri } : prev);
+        emitProfileUpdated({ id: currentUserId, avatar_url: localUri });
+        toast.success('Foto guardada localmente');
       }
     } catch (error) {
       console.error('[uploadPhoto] Error:', error);
