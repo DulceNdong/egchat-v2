@@ -195,15 +195,23 @@ export default function BusinessProfileScreen() {
 
           {/* Campos */}
           {([
-            { key: 'name', label: 'Nombre del negocio *', placeholder: 'Mi Empresa' },
-            { key: 'description', label: 'Descripción', placeholder: 'Qué ofreces...' },
-            { key: 'phone', label: 'Teléfono de contacto', placeholder: '+240 222 XXX XXX' },
-            { key: 'email', label: 'Email', placeholder: 'empresa@email.com' },
-            { key: 'website', label: 'Sitio web', placeholder: 'https://miempresa.com' },
-            { key: 'address', label: 'Dirección', placeholder: 'Malabo, Guinea Ecuatorial' },
-          ] as { key: keyof BusinessProfile; label: string; placeholder: string }[]).map(field => (
+            { key: 'name',        label: 'Nombre del negocio *', placeholder: 'Mi Empresa',                icon: 'building' },
+            { key: 'description', label: 'Descripción',          placeholder: 'Qué ofreces...',           icon: 'align-left' },
+            { key: 'phone',       label: 'Teléfono de contacto', placeholder: '+240 222 XXX XXX',         icon: 'phone' },
+            { key: 'email',       label: 'Email',                placeholder: 'empresa@email.com',        icon: 'mail' },
+            { key: 'website',     label: 'Sitio web',            placeholder: 'https://miempresa.com',    icon: 'globe' },
+            { key: 'address',     label: 'Dirección',            placeholder: 'Malabo, Guinea Ecuatorial',icon: 'map-pin' },
+          ] as { key: keyof BusinessProfile; label: string; placeholder: string; icon: string }[]).map(field => (
             <View key={field.key} style={s.fieldGroup}>
-              <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{field.label}</Text>
+              <View style={s.fieldLabelRow}>
+                {field.icon === 'building' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Rect x="3" y="3" width="18" height="18" rx="2"/><Path d="M3 9h18M9 21V9"/></Svg>}
+                {field.icon === 'align-left' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round"><Line x1="17" y1="10" x2="3" y2="10"/><Line x1="21" y1="6" x2="3" y2="6"/><Line x1="21" y1="14" x2="3" y2="14"/><Line x1="17" y1="18" x2="3" y2="18"/></Svg>}
+                {field.icon === 'phone' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 8.81 19.79 19.79 0 01.01 2.18 2 2 0 012 0h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L6.09 7.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 14.92z"/></Svg>}
+                {field.icon === 'mail' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><Polyline points="22,6 12,13 2,6"/></Svg>}
+                {field.icon === 'globe' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Circle cx="12" cy="12" r="10"/><Line x1="2" y1="12" x2="22" y2="12"/><Path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></Svg>}
+                {field.icon === 'map-pin' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><Circle cx="12" cy="10" r="3"/></Svg>}
+                <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{field.label}</Text>
+              </View>
               <TextInput
                 style={[s.input, { color: C.textPrimary, backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
                 value={String(profile[field.key] || '')}
