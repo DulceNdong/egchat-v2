@@ -72,13 +72,40 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
         <View style={s.addCard}>
           <Text style={s.addTitle}>Añadir nueva tarjeta</Text>
           <View style={s.addRow}>
+            {/* Escanear tarjeta */}
             <TouchableOpacity style={s.scanBtn} onPress={scanCard}>
-              <Text style={{ fontSize: 24 }}>📷</Text>
+              <View style={s.iconWrap}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                  {/* Cuerpo cámara */}
+                  <Rect x="2" y="7" width="20" height="14" rx="3" stroke="#3B7DD8" strokeWidth="1.8" fill="#EFF5FD"/>
+                  {/* Objetivo */}
+                  <Circle cx="12" cy="14" r="3.5" stroke="#3B7DD8" strokeWidth="1.8"/>
+                  {/* Flash / visor */}
+                  <Path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" stroke="#3B7DD8" strokeWidth="1.8" strokeLinecap="round"/>
+                  {/* Líneas de scan */}
+                  <Line x1="9" y1="14" x2="10.5" y2="14" stroke="#3B7DD8" strokeWidth="1.6" strokeLinecap="round"/>
+                  <Line x1="13.5" y1="14" x2="15" y2="14" stroke="#3B7DD8" strokeWidth="1.6" strokeLinecap="round"/>
+                </Svg>
+              </View>
               <Text style={s.scanLabel}>Escanear tarjeta</Text>
               <Text style={s.scanSub}>Cámara → datos automáticos</Text>
             </TouchableOpacity>
+
+            {/* Manual */}
             <TouchableOpacity style={s.manualBtn} onPress={() => setAddMode('manual')}>
-              <Text style={{ fontSize: 24 }}>✏️</Text>
+              <View style={[s.iconWrap, { backgroundColor: '#E6F7F0' }]}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                  {/* Tarjeta base */}
+                  <Rect x="2" y="5" width="20" height="14" rx="3" stroke="#2E9E6B" strokeWidth="1.8" fill="#F0FAF5"/>
+                  {/* Banda magnética */}
+                  <Rect x="2" y="9" width="20" height="3" fill="#2E9E6B" opacity="0.18"/>
+                  {/* Chip */}
+                  <Rect x="4.5" y="13.5" width="5" height="3" rx="1" stroke="#2E9E6B" strokeWidth="1.4"/>
+                  {/* Lápiz encima */}
+                  <Path d="M15.5 13.5 L19 10 L21 12 L17.5 15.5 Z" stroke="#2E9E6B" strokeWidth="1.4" strokeLinejoin="round"/>
+                  <Line x1="15.5" y1="13.5" x2="14.5" y2="16.5" stroke="#2E9E6B" strokeWidth="1.4" strokeLinecap="round"/>
+                </Svg>
+              </View>
               <Text style={s.manualLabel}>Manual</Text>
               <Text style={s.scanSub}>Introduce los datos</Text>
             </TouchableOpacity>
