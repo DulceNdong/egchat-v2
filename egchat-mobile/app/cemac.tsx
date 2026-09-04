@@ -159,7 +159,7 @@ export default function CemacScreen() {
   ];
 
   return (
-    <SafeAreaView style={s.container} edges={['left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: ctry?.g1 || '#00b96b' }]} edges={['left', 'right']}>
       <LinearGradient colors={[ctry?.g1 || '#00b96b', ctry?.g2 || '#00e5a0']} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={s.backIcon}>‹</Text>
