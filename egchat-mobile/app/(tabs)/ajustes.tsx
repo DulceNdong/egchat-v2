@@ -268,8 +268,8 @@ function AjustesScreenInner() {
               <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
             </TouchableOpacity>
 
-            {/* Banner: actualiza tu nombre si es genérico */}
-            {user && (!user.full_name || user.full_name === 'Usuario EGCHAT' || user.full_name.startsWith('Usuario ')) && (
+            {/* Banner: actualiza tu nombre si es genérico o está vacío */}
+            {user && (!user.full_name || user.full_name === 'Usuario' || user.full_name === 'Usuario EGCHAT' || user.full_name.startsWith('Usuario +') || user.full_name.startsWith('Usuario ')) && (
               <TouchableOpacity
                 style={{ backgroundColor: '#fff3cd', borderRadius: 10, padding: 12, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}
                 onPress={() => router.push('/ajustes/perfil')}
