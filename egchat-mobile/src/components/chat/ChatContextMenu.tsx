@@ -257,6 +257,10 @@ export function ChatContextMenu({
 
   const actions = buildActions();
 
+  // Calcula las filas para saber cuál es la última (sin borde inferior)
+  const totalActions = actions.length;
+  const lastRowStart = totalActions - ((totalActions % 4) || 4);
+
   return (
     <Modal
       visible={visible}
@@ -265,6 +269,16 @@ export function ChatContextMenu({
       statusBarTranslucent
       onRequestClose={onClose}
     >
+      {/* Fondo con blur estilo iOS */}
+      {Platform.OS === 'ios' ? (
+        <BlurView
+          intensity={22}
+          tint="dark"
+          style={StyleSheet.absoluteFill}
+          pointerEvents="none"
+        />
+      ) : null}
+
       <Pressable style={s.overlay} onPress={onClose}>
         <Animated.View
           style={[
@@ -272,7 +286,7 @@ export function ChatContextMenu({
             { opacity: opacityAnim, transform: [{ scale: scaleAnim }] },
           ]}
         >
-          {/* ── 1. Acciones rápidas superiores ── */}
+          {/* ── 1. Barra de acciones rápidas ── */}
           {quickActions.length > 0 && (
             <View style={s.quickBar}>
               {quickActions.map((qa, idx) => (
@@ -317,13 +331,13 @@ export function ChatContextMenu({
           {/* ── 3. Cuadrícula de acciones ── */}
           <View style={s.grid}>
             {actions.map((action, idx) => {
-              const isLastRow = idx >= actions.length - (actions.length % 4 || 4);
+              const isInLastRow = idx >= lastRowStart;
               return (
                 <TouchableOpacity
                   key={action.key}
                   style={[
                     s.gridItem,
-                    isLastRow && s.gridItemLastRow,
+                    isInLastRow && s.gridItemLastRow,
                   ]}
                   onPress={action.onPress}
                   activeOpacity={0.7}
