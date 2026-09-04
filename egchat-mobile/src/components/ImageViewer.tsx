@@ -262,7 +262,6 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
 
   // Opciones secundarias en mosaico 3×2
   const gridOptions = [
-    { icon: <IcoInstagram />, label: 'Instagram',     color: '#e1306c', bg: 'rgba(225,48,108,0.15)',  onPress: handleInstagram },
     { icon: <IcoCopy />,      label: 'Copiar',        color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)',  onPress: handleCopy },
     { icon: <IcoSticker />,   label: 'Sticker',       color: '#a855f7', bg: 'rgba(168,85,247,0.15)',  onPress: onClose },
     { icon: <IcoProfile />,   label: 'Foto perfil',   color: '#14b8a6', bg: 'rgba(20,184,166,0.15)',  onPress: () => { onSetProfilePhoto?.(); onClose(); } },
