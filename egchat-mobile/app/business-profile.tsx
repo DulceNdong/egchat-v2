@@ -436,6 +436,7 @@ const s = StyleSheet.create({
   tabs: { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab: { flex: 1, alignItems: 'center', paddingVertical: 12, position: 'relative' },
   tabActive: {},
+  tabInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: { fontSize: 14, fontWeight: '600' },
   tabIndicator: { position: 'absolute', bottom: 0, width: 40, height: 2.5, borderRadius: 2, backgroundColor: '#07a472' },
   avatarWrap: { alignSelf: 'center', position: 'relative', marginBottom: 20, marginTop: 4 },
