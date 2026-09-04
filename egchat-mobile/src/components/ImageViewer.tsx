@@ -758,6 +758,17 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
         </Animated.View>
       </GestureHandlerRootView>
+
+      {/* ── Share Sheet ── */}
+      <ShareSheet
+        visible={showShare}
+        item={current}
+        onClose={() => setShowShare(false)}
+        onForward={() => { onForward?.(current); closeWithFade(); }}
+        onSave={handleSave}
+        onSetProfilePhoto={() => {/* TODO */}}
+        onSetWallpaper={() => {/* TODO */}}
+      />
     </Modal>
   );
 };
