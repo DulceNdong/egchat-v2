@@ -181,7 +181,7 @@ export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: str
     return { lat: '3.7520', lng: '8.7735', label: 'Malabo, Guinea Ecuatorial' };
   }
   try {
-    toast.info('GPS', 'Obteniendo ubicación...');
+    // GPS: obteniendo ubicación silenciosamente
     const pos = await Location.getCurrentPositionAsync({
       accuracy: Location.Accuracy.Balanced,
     });
@@ -264,7 +264,7 @@ export async function pickDocument(): Promise<PickedAsset | null> {
 
 export async function pickContact(): Promise<{ name: string; phone: string } | null> {
   // expo-contacts solo funciona en nativo; en web delegamos al modal de EGCHAT
-  toast.info('Contactos', 'Usa los contactos EGCHAT en web');
+  // Redirigir a contactos EGCHAT silenciosamente
   return null;
 }
 

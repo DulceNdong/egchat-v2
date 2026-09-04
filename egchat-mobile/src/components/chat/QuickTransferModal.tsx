@@ -86,7 +86,7 @@ export function QuickTransferModal({
         '✅ Completado',
       ].join('\n');
       onTransferred(msgText);
-      toast.success('Transferencia', `${num.toLocaleString()} XAF enviados a ${contactName}`);
+      // Transferencia completada - el mensaje ya se muestra en el chat
       onClose();
     } catch (e: any) {
       setError(e?.message || 'No se pudo completar la transferencia');

@@ -2,7 +2,7 @@
 
 ## Introduction
 
-Este documento define los requisitos para cerrar 9 brechas de paridad funcional en la app nativa EGChat (`egchat-mobile/`), alineándola con la versión web de referencia. Las brechas se abordarán en orden prioritario: LIA-25, Stories, ImageViewer, Video Calls, Ocio, CEMAC, Apuestas, MiTaxi y ServiciosDiarios. Todos los cambios se realizan exclusivamente dentro de `egchat-mobile/`. El backend se consume en `https://egchat-api.onrender.com` usando el cliente HTTP existente en `src/api.ts`.
+Este documento define los requisitos para cerrar 9 brechas de paridad funcional en la app nativa EGChat (`egchat-mobile/`), alineándola con la versión web de referencia. Las brechas se abordarán en orden prioritario: LIA-25, Stories, ImageViewer, Video Calls, Ocio, CEMAC, Apuestas, MiTaxi y ServiciosDiarios. Todos los cambios se realizan exclusivamente dentro de `egchat-mobile/`. El backend se consume en `https://egchat-api-xlxj.onrender.com` usando el cliente HTTP existente en `src/api.ts`.
 
 ## Glossary
 
@@ -19,7 +19,7 @@ Este documento define los requisitos para cerrar 9 brechas de paridad funcional 
 - **ApuestasScreen**: Pantalla `app/apuestas.tsx` con apuestas deportivas, casino y lotería.
 - **MiTaxiScreen**: Pantalla `app/mitaxi.tsx` con solicitud de taxis con mapa en tiempo real.
 - **ServiciosDiariosScreen**: Pantalla `app/servicios-diarios.tsx` con restaurantes, vuelos y gasolineras.
-- **Backend**: API REST en `https://egchat-api.onrender.com`.
+- **Backend**: API REST en `https://egchat-api-xlxj.onrender.com`.
 - **ChatMessageBubble**: Componente `src/components/chat/ChatMessageBubble.tsx` que renderiza mensajes individuales.
 - **IncomingCallModal**: Modal de llamada entrante mostrado sobre cualquier pantalla activa.
 - **RTCView**: Componente de `react-native-webrtc` que renderiza streams de video en pantalla.

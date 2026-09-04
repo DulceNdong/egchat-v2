@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Rect, Circle, Line } from 'react-native-svg';
 import { GQBank } from '../../data/serviciosFinancieros';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 
@@ -52,13 +53,32 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
         <View style={s.addCard}>
           <Text style={s.addTitle}>Añadir nueva tarjeta</Text>
           <View style={s.addRow}>
+            {/* Escanear tarjeta */}
             <TouchableOpacity style={s.scanBtn} onPress={() => Alert.alert('Escanear tarjeta', 'Usa la cámara para capturar los datos de la tarjeta (próximamente).')}>
-              <Text style={{ fontSize: 24 }}>📷</Text>
+              <View style={s.iconWrap}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                  <Rect x="2" y="7" width="20" height="14" rx="3" stroke="#3B7DD8" strokeWidth="1.8" fill="#EFF5FD"/>
+                  <Circle cx="12" cy="14" r="3.5" stroke="#3B7DD8" strokeWidth="1.8"/>
+                  <Path d="M8 7V5.5A1.5 1.5 0 0 1 9.5 4h5A1.5 1.5 0 0 1 16 5.5V7" stroke="#3B7DD8" strokeWidth="1.8" strokeLinecap="round"/>
+                  <Line x1="9" y1="14" x2="10.5" y2="14" stroke="#3B7DD8" strokeWidth="1.6" strokeLinecap="round"/>
+                  <Line x1="13.5" y1="14" x2="15" y2="14" stroke="#3B7DD8" strokeWidth="1.6" strokeLinecap="round"/>
+                </Svg>
+              </View>
               <Text style={s.scanLabel}>Escanear tarjeta</Text>
               <Text style={s.scanSub}>Cámara → datos automáticos</Text>
             </TouchableOpacity>
+
+            {/* Manual */}
             <TouchableOpacity style={s.manualBtn} onPress={() => setAddMode('manual')}>
-              <Text style={{ fontSize: 24 }}>✏️</Text>
+              <View style={[s.iconWrap, { backgroundColor: '#E6F7F0' }]}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
+                  <Rect x="2" y="5" width="20" height="14" rx="3" stroke="#2E9E6B" strokeWidth="1.8" fill="#F0FAF5"/>
+                  <Rect x="2" y="9" width="20" height="3" fill="#2E9E6B" opacity="0.18"/>
+                  <Rect x="4.5" y="13.5" width="5" height="3" rx="1" stroke="#2E9E6B" strokeWidth="1.4"/>
+                  <Path d="M15.5 13.5 L19 10 L21 12 L17.5 15.5 Z" stroke="#2E9E6B" strokeWidth="1.4" strokeLinejoin="round"/>
+                  <Line x1="15.5" y1="13.5" x2="14.5" y2="16.5" stroke="#2E9E6B" strokeWidth="1.4" strokeLinecap="round"/>
+                </Svg>
+              </View>
               <Text style={s.manualLabel}>Manual</Text>
               <Text style={s.scanSub}>Introduce los datos</Text>
             </TouchableOpacity>
@@ -110,11 +130,12 @@ const s = StyleSheet.create({
   addCard: { backgroundColor: '#fff', borderRadius: 14, padding: 16, marginTop: 6 },
   addTitle: { fontSize: 13, fontWeight: '700', color: '#111827', marginBottom: 12 },
   addRow: { flexDirection: 'row', gap: 10 },
-  scanBtn: { flex: 1, borderWidth: 1.5, borderColor: '#3B7DD8', borderRadius: 12, padding: 14, alignItems: 'center', backgroundColor: '#EFF5FD' },
-  manualBtn: { flex: 1, borderWidth: 1.5, borderColor: '#2E9E6B', borderRadius: 12, padding: 14, alignItems: 'center', backgroundColor: '#F0FAF5' },
-  scanLabel: { fontSize: 11, fontWeight: '700', color: '#3B7DD8', marginTop: 6 },
-  manualLabel: { fontSize: 11, fontWeight: '700', color: '#2E9E6B', marginTop: 6 },
-  scanSub: { fontSize: 9, color: '#9CA3AF', textAlign: 'center', marginTop: 4 },
+  scanBtn: { flex: 1, borderWidth: 1.5, borderColor: '#3B7DD8', borderRadius: 14, padding: 16, alignItems: 'center', backgroundColor: '#EFF5FD' },
+  manualBtn: { flex: 1, borderWidth: 1.5, borderColor: '#2E9E6B', borderRadius: 14, padding: 16, alignItems: 'center', backgroundColor: '#F0FAF5' },
+  iconWrap: { width: 52, height: 52, borderRadius: 14, backgroundColor: '#DDEEFF', alignItems: 'center', justifyContent: 'center', marginBottom: 8 },
+  scanLabel: { fontSize: 12, fontWeight: '700', color: '#3B7DD8', marginTop: 2 },
+  manualLabel: { fontSize: 12, fontWeight: '700', color: '#2E9E6B', marginTop: 2 },
+  scanSub: { fontSize: 10, color: '#9CA3AF', textAlign: 'center', marginTop: 3 },
   preview: { borderRadius: 12, padding: 16, marginBottom: 14 },
   previewSub: { fontSize: 11, color: 'rgba(255,255,255,0.8)', marginBottom: 8 },
   previewNum: { fontSize: 16, fontWeight: '800', color: '#fff', letterSpacing: 2, marginBottom: 10, fontFamily: 'monospace' },

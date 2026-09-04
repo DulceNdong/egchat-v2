@@ -226,26 +226,26 @@ export default function PerfilScreen() {
         await authAPI.updateProfile({ full_name: fieldVal, avatar_url: user?.avatar_url });
         setUser(prev => prev ? { ...prev, full_name: fieldVal } : prev);
         emitProfileUpdated({ full_name: fieldVal });
-        toast.success('✓ Nombre actualizado');
+        // Nombre actualizado silenciosamente
       } else if (editingField === 'bio') {
         setBio(fieldVal);
         await setCfg(CFG.bio, fieldVal);
-        toast.success('✓ Bio actualizada');
+        // Bio actualizada silenciosamente
       } else if (editingField === 'gender') {
         setGender(fieldVal);
         await setCfg(CFG.gender, fieldVal);
-        toast.success('✓ Género guardado');
+        // Género guardado silenciosamente
       } else if (editingField === 'region') {
         setRegion(fieldVal);
         await userAPI.updateProfile({ country: fieldVal });
         setUser(prev => prev ? { ...prev, country: fieldVal } : prev);
         emitProfileUpdated({ country: fieldVal });
-        toast.success('✓ Región actualizada');
+        // Región actualizada silenciosamente
       } else if (editingField === 'address') {
         await userAPI.updateProfile({ address: fieldVal });
         setUser(prev => prev ? { ...prev, address: fieldVal } : prev);
         emitProfileUpdated({ address: fieldVal });
-        toast.success('✓ Dirección guardada');
+        // Dirección guardada silenciosamente
       }
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : 'Error al guardar';
@@ -274,7 +274,7 @@ export default function PerfilScreen() {
 
     try {
       const token = await getToken();
-      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
 
       // Convertir URI a base64
       let base64Data: string | null = null;
@@ -321,10 +321,10 @@ export default function PerfilScreen() {
         setUser(prev => prev ? { ...prev, avatar_url: displayUrl } : prev);
         emitProfileUpdated({ avatar_url: displayUrl });
         await saveLocalAvatar(user?.id, uri);
-        toast.success('✓ Foto actualizada');
+        // Foto actualizada silenciosamente
       } else {
         await saveLocalAvatar(user?.id, uri);
-        toast.success('✓ Foto guardada');
+        // Foto guardada silenciosamente
       }
     } catch {
       await saveLocalAvatar(user?.id, uri).catch(() => {});
@@ -386,7 +386,7 @@ export default function PerfilScreen() {
             onPress={async () => {
               if (user?.id) {
                 await Clipboard.setStringAsync(user.id);
-                toast.success('✓ ID copiado');
+                // ID copiado silenciosamente
               }
             }}
           />

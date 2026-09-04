@@ -91,8 +91,13 @@ export const ToastContainer = () => {
   const insets = useSafeAreaInsets();
 
   const show = useCallback((item: Omit<ToastItem, 'id'>) => {
-    const id = `toast-${Date.now()}-${Math.random()}`;
-    setToasts(prev => [...prev.slice(-2), { ...item, id }]); // max 3
+    setToasts(prev => {
+      // Deduplicar: si ya hay un toast con el mismo título y tipo activo, ignorar
+      const isDuplicate = prev.some(t => t.title === item.title && t.type === item.type);
+      if (isDuplicate) return prev;
+      const id = `toast-${Date.now()}-${Math.random()}`;
+      return [...prev.slice(-1), { ...item, id }]; // max 2 visibles
+    });
     if (item.type === 'success') haptics.success();
     else if (item.type === 'error') haptics.error();
     else if (item.type === 'warning') haptics.warning();

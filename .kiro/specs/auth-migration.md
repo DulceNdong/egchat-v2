@@ -30,7 +30,7 @@ const getToken = async () => AsyncStorage.getItem('token');
 ### Problema 2 — BASE URL hardcodeada al servidor antiguo
 ```typescript
 // ❌ Actual
-const DEFAULT_BASE = 'https://egchat-api.onrender.com';
+const DEFAULT_BASE = 'https://egchat-api-xlxj.onrender.com';
 
 // ✅ Debe ser
 const BASE = process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com';

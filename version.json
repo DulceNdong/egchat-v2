@@ -89,7 +89,7 @@
     "backend": {
       "status": "ready",
       "platform": "Render",
-      "url": "https://egchat-api.onrender.com",
+      "url": "https://egchat-api-xlxj.onrender.com",
       "version": "2.0.0"
     },
     "frontend": {

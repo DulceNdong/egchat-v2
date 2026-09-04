@@ -10,7 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 import { RichNotifications } from './native/RichNotifications';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com';
+const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
 
 // ── Configurar cómo se muestran las notificaciones en primer plano ──────────

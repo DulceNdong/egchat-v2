@@ -23,7 +23,7 @@ Hay 3 versiones. **Solo trabajamos en la nativa:**
 ## Stack
 
 - Mobile: React Native + Expo ~54 + TypeScript
-- Backend: Supabase + Render API (https://egchat-api.onrender.com)
+- Backend: Supabase + Render API (https://egchat-api-xlxj.onrender.com)
 - Navegación: Expo Router
 - Estilos: StyleSheet nativo
 - Repo: `github.com/DulceNdong/egchat-v2` rama `mobile`

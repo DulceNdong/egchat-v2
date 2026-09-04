@@ -4,7 +4,7 @@
 
 const BASE = (() => {
   const url = ((import.meta as any).env?.VITE_API_URL || '').trim();
-  if (!url || url.startsWith('/')) return 'https://egchat-api.onrender.com/api';
+  if (!url || url.startsWith('/')) return 'https://egchat-api-xlxj.onrender.com/api';
   if (url.endsWith('/api')) return url;
   return url.replace(/\/$/, '') + '/api';
 })();

@@ -109,7 +109,7 @@ const isValidAvatarUrl = (url?: string | null): url is string =>
     url.startsWith('https://') ||
     url.startsWith('file://')
   ) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+  !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
 
 const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
   // Buscar en todos los niveles posibles de la respuesta del backend
@@ -308,7 +308,7 @@ export default function MensajeriaScreen() {
         );
         if (!needsEnrich) return chat;
         try {
-          const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+          const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
           const token = await (await import('../../src/api')).getToken();
           const parts = await fetch(`${BASE}/api/chats/${chat.id}/participants`, {
             headers: { Authorization: `Bearer ${token}` }

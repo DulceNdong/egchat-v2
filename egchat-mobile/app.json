@@ -54,17 +54,6 @@
           "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicacion para servicios de taxi."
         }
       ],
-      [
-        "expo-notifications",
-        {
-          "icon": "./assets/notification-icon.png",
-          "color": "#00c8a0",
-          "defaultChannel": "egchat-messages",
-          "sounds": [
-            "./assets/notification.wav"
-          ]
-        }
-      ],
       "expo-secure-store"
     ],
     "platforms": [
@@ -78,7 +67,7 @@
     },
     "scheme": "egchat",
     "extra": {
-      "apiUrl": "https://egchat-api.onrender.com",
+      "apiUrl": "https://egchat-api-xlxj.onrender.com",
       "router": {
         "origin": false
       },

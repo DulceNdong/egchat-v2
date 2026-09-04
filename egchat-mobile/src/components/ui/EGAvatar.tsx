@@ -26,7 +26,7 @@ const isValidAvatarUrl = (url?: string | null): url is string =>
   !!url &&
   url.trim().length > 0 &&
   (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+  !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
 
 export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
   const [imgError, setImgError] = useState(false);

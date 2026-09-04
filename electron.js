@@ -61,7 +61,7 @@ function createWindow() {
   // Inyectar cabeceras CORS en todas las peticiones al backend
   mainWindow.webContents.session.webRequest.onBeforeSendHeaders((details, callback) => {
     const headers = { ...details.requestHeaders };
-    if (details.url.includes('egchat-api.onrender.com')) {
+    if (details.url.includes('egchat-api-xlxj.onrender.com')) {
       headers['Origin'] = 'https://egchat-app.vercel.app';
     }
     callback({ requestHeaders: headers });

@@ -39,7 +39,7 @@ export const onProfileUpdated = (listener: ProfileUpdateListener) => {
 };
 
 export const isBrokenAvatarUrl = (url?: string | null) =>
-  !url || String(url).includes('egchat-api.onrender.com/static/avatars/');
+  !url || String(url).includes('egchat-api-xlxj.onrender.com/static/avatars/');
 
 const getAvatarExtension = (uri: string) => {
   const clean = uri.split('?')[0].split('#')[0];

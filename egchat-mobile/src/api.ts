@@ -7,7 +7,7 @@ import SessionManager from './sessionManager';
 
 const BASE = (() => {
   const url = (process.env.EXPO_PUBLIC_API_URL || '').trim();
-  if (!url) return 'https://egchat-api.onrender.com';
+  if (!url) return 'https://egchat-api-xlxj.onrender.com';
   return url.replace(/\/$/, '');
 })();
 

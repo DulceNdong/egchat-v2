@@ -1,6 +1,6 @@
 // Service Worker v20260502-v2 — Web Push + llamadas + mensajes + auto-renovación + caché offline + force-update
 const CACHE = 'egchat-v20260502-v2';
-const API_BASE = 'https://egchat-api.onrender.com';
+const API_BASE = 'https://egchat-api-xlxj.onrender.com';
 const VAPID_PUBLIC_KEY = 'BNeDJFYqIX59vgqEKxWfrI263knyPGHafMEK_WrMPeYaIm8bn62vcOah7hDlgIek4R4utB82g-cT9CwAtGn0wUs';
 
 // Assets que se cachean en la instalación (app shell — críticos para arranque)

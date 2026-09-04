@@ -85,7 +85,7 @@ const isValidAvatarUrl = (url?: string | null): url is string =>
   !!url &&
   url.trim().length > 0 &&
   (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+  !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
 
 const getParticipantAvatar = (participant?: any) => {
   const raw =
@@ -280,7 +280,7 @@ export default function ChatScreen() {
           // Enriquecer participantes con datos completos del endpoint dedicado
           try {
             const token = await (await import('../../src/api')).getToken();
-            const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+            const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
             const enrichedParticipants = await fetch(
               `${BASE}/api/chats/${chatId}/participants`,
               { headers: { Authorization: `Bearer ${token}` } }
@@ -395,7 +395,7 @@ export default function ChatScreen() {
 
     const check = async () => {
       try {
-        const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+        const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
         const token = await getToken();
         const res = await fetch(`${BASE}/api/users/${uid}`, {
           headers: { Authorization: `Bearer ${token}` },
@@ -889,7 +889,7 @@ export default function ChatScreen() {
     setUploadingAvatar(true);
     try {
       const token = await getToken();
-      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api.onrender.com').replace(/\/$/, '');
+      const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
       const formData = new FormData();
       formData.append('avatar', { uri, type: 'image/jpeg', name: 'avatar.jpg' } as any);
       const res = await fetch(`${BASE}/api/user/avatar`, {
