@@ -240,7 +240,7 @@ export default function LiaScreen() {
   const isFirstVisit = messages.length <= 1 && !loading && !showChips;
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: '#00C8A0' }]} edges={['top']}>
+    <SafeAreaView style={[s.container, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
 
       {/* ── Header ── */}
       <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x:0,y:0 }} end={{ x:1,y:0 }} style={s.header}>
