@@ -1,5 +1,6 @@
 // EGCHAT — Hub de Configuración (paridad con ConfiguracionView web v2.5.5)
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image,
   ActivityIndicator,
@@ -8,10 +9,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
-import { authAPI } from '../../src/api';
-import { mergePersistentAvatar } from '../../src/utils/profileEvents';
+import { authAPI, clearToken } from '../../src/api';
+import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import SessionManager from '../../src/sessionManager';
+import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { useAppStore } from '../../src/store/useAppStore';
+import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { SettingsSearch, SettingsSection, SettingsCard, SettingsDivider, SettingsRow } from '../../src/components/settings/SettingsUI';
 import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
@@ -43,6 +48,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     items: [
       { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
       { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
+      { label: 'Dispositivos conectados', route: '/ajustes/dispositivos' },
     ],
   },
   {
@@ -60,6 +66,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     items: [
       { label: 'Chat', route: '/ajustes/chat' },
       { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
+      { label: 'Historial de llamadas', route: '/call-history' },
       { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
       { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
     ],
@@ -81,24 +88,70 @@ const IconGear = () => (
   </Svg>
 );
 
-export default function AjustesScreen() {
-  const [user, setUser] = useState<{ full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
+function AjustesScreenInner() {
+  const [user, setUser] = useState<{ id?: string; full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [storageUsed] = useState(() => Math.round(Math.random() * 200 + 50));
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
+  const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
   useEffect(() => {
-    authAPI.me()
-      .then(data => mergePersistentAvatar(data))
-      .then(setUser)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+    const loadUser = async () => {
+      try {
+        // 1️⃣ Mostrar inmediatamente los datos de la sesión local (sin esperar red)
+        const sessionManager = SessionManager.getInstance();
+        const cached = await sessionManager.getUser();
+        if (cached) {
+          const cachedMerged = await mergePersistentAvatar(cached);
+          setUser(cachedMerged);
+          setLoading(false); // quitar spinner enseguida con datos locales
+        }
+
+        // 2️⃣ Refrescar desde la API en background para obtener datos actualizados
+        const data = await authAPI.me();
+        const merged = await mergePersistentAvatar(data);
+        // Solo actualizar si el servidor devuelve nombre real (no genérico)
+        const serverNameIsGeneric =
+          !merged?.full_name ||
+          merged.full_name === 'Usuario EGCHAT' ||
+          merged.full_name.startsWith('Usuario +') ||
+          merged.full_name.startsWith('Usuario ');
+        setUser(prev => ({
+          ...merged,
+          // si el servidor da nombre genérico pero ya tenemos uno real en local, conservar el real
+          full_name: serverNameIsGeneric && prev?.full_name && !prev.full_name.startsWith('Usuario ')
+            ? prev.full_name
+            : merged.full_name || prev?.full_name || 'Usuario',
+          // conservar avatar local si el servidor no devuelve uno mejor
+          avatar_url: merged.avatar_url || prev?.avatar_url,
+        }));
+      } catch (err) {
+        console.error('[Ajustes] Error cargando usuario:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    loadUser();
+  }, []);
+
+  // Actualizar avatar/nombre cuando el usuario los cambia en perfil
+  useEffect(() => {
+    return onProfileUpdated(patch => {
+      setUser(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
+          ...(patch.full_name ? { full_name: patch.full_name } : {}),
+        };
+      });
+    });
   }, []);
 
   const filtered = useMemo(() => {
@@ -108,22 +161,28 @@ export default function AjustesScreen() {
   }, [search]);
 
   const logout = useCallback(() => {
-    Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Cerrar sesión',
-        style: 'destructive',
-        onPress: async () => {
-          try { await authAPI.logout(); } catch {}
-          // En web forzamos recarga completa para limpiar todo el estado
-          if (typeof window !== 'undefined' && window.location) {
-            window.location.href = '/';
-          } else {
-            router.replace('/(auth)/login');
-          }
-        },
-      },
-    ]);
+    const doLogout = async () => {
+      try { await authAPI.logout(); } catch {}
+      try { await clearToken(); } catch {}
+      if (typeof window !== 'undefined' && window.location) {
+        window.location.href = '/';
+      } else {
+        router.replace('/(auth)/login');
+      }
+    };
+
+    if (typeof window !== 'undefined') {
+      // Web: usar confirm nativo del navegador (siempre funciona)
+      if (window.confirm('¿Cerrar sesión en EGChat?')) {
+        doLogout();
+      }
+    } else {
+      // Nativo: usar Alert
+      Alert.alert('Cerrar sesión', '¿Estás seguro?', [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Cerrar sesión', style: 'destructive', onPress: doLogout },
+      ]);
+    }
   }, []);
 
   const navigate = (route: string) => router.push(route as any);
@@ -146,18 +205,14 @@ export default function AjustesScreen() {
   const initials = user?.full_name?.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || 'U';
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['left', 'right']}>
       <EGChatHeader
-        temp={24}
-        city="Malabo"
-        weatherCondition="cloudy"
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
@@ -169,7 +224,7 @@ export default function AjustesScreen() {
         </View>
         <TouchableOpacity
           style={[styles.closeBtn, { backgroundColor: isDark ? C.bgTertiary : 'rgba(243,244,246,0.85)', borderColor: C.borderLight }]}
-          onPress={() => router.push('/(tabs)/index' as any)}
+          onPress={() => router.replace('/(tabs)/' as any)}
         >
           <Svg width={16} height={16} viewBox="0 0 24 24" stroke={C.textPrimary} strokeWidth={2.5} strokeLinecap="round">
             <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
@@ -205,10 +260,42 @@ export default function AjustesScreen() {
               <View style={styles.heroInfo}>
                 <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Usuario'}</Text>
                 <Text style={[styles.heroSub, { color: C.textTertiary }]}>
-                  {user?.phone || ''}{user?.email ? ` · ${user.email}` : ''}
+                  {user?.id ? `ID: ${user.id.slice(0, 12).toUpperCase()}` : (user?.phone || '')}
                 </Text>
               </View>
               <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+
+            {/* Banner: actualiza tu nombre si es genérico */}
+            {user && (!user.full_name || user.full_name === 'Usuario EGCHAT' || user.full_name.startsWith('Usuario ')) && (
+              <TouchableOpacity
+                style={{ backgroundColor: '#fff3cd', borderRadius: 10, padding: 12, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                onPress={() => router.push('/ajustes/perfil')}
+                activeOpacity={0.8}
+              >
+                <Text style={{ fontSize: 16 }}>✏️</Text>
+                <Text style={{ flex: 1, color: '#856404', fontSize: 13 }}>
+                  Tu nombre aparece como genérico. Toca aquí para actualizar tu perfil.
+                </Text>
+              </TouchableOpacity>
+            )}
+
+            {/* Botón cambiar cuenta */}
+            <TouchableOpacity
+              style={styles.switchAccountBtn}
+              onPress={() => setShowAccountSwitcher(true)}
+              activeOpacity={0.7}
+            >
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                <Circle cx="9" cy="7" r="4"/>
+                <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+              </Svg>
+              <Text style={[styles.switchAccountText, { color: C.textTertiary }]}>Cambiar cuenta</Text>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
+                <Path d="M9 18l6-6-6-6"/>
+              </Svg>
             </TouchableOpacity>
 
             {SECTIONS.map(section => (
@@ -226,7 +313,7 @@ export default function AjustesScreen() {
 
             <View style={{ height: 16 }} />
             <SettingsCard>
-              <TouchableOpacity style={styles.actionBtn} onPress={() => Alert.alert('Próximamente', 'Cambiar de cuenta estará disponible pronto.')}>
+              <TouchableOpacity style={styles.actionBtn} onPress={() => setShowAccountSwitcher(true)}>
                 <Text style={styles.actionGreen}>Cambiar de cuenta</Text>
               </TouchableOpacity>
             </SettingsCard>
@@ -244,16 +331,23 @@ export default function AjustesScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
-        onNotifPress={() => setShowNotifications(false)}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
+        onNotifPress={(n) => { removeNotification(n.id); setShowNotifications(false); }}
       />
       <HamburgerMenu
         visible={showMenu}
         onClose={() => setShowMenu(false)}
         user={user ? { full_name: user.full_name || '', avatar_url: user.avatar_url, phone: user.phone } : null}
       />
-      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="26°" city="Malabo" condition="cloudy" />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp={`${weather.temp}°`} city={weather.city} condition={weather.condition} />
+      <AccountSwitcher
+        visible={showAccountSwitcher}
+        currentAccountId={user?.id || ''}
+        onClose={() => setShowAccountSwitcher(false)}
+        onSwitch={(id) => { setShowAccountSwitcher(false); authAPI.me().then(setUser); }}
+        onAddAccount={() => router.push('/(auth)/login' as any)}
+      />
     </SafeAreaView>
   );
 }
@@ -287,6 +381,12 @@ const styles = StyleSheet.create({
   },
   heroImg: { width: '100%', height: '100%' },
   heroInitials: { fontSize: 20, fontWeight: '700', color: '#fff' },
+  switchAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 10, marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)',
+  },
+  switchAccountText: { fontSize: 13, fontWeight: '500' },
   heroInfo: { flex: 1 },
   heroName: { fontSize: 17, fontWeight: '600' },
   heroSub: { fontSize: 13, marginTop: 2 },
@@ -294,3 +394,11 @@ const styles = StyleSheet.create({
   actionGreen: { fontSize: 16, fontWeight: '500', color: '#07c160' },
   actionRed: { fontSize: 16, fontWeight: '500', color: '#ef4444' },
 });
+
+export default function AjustesScreen() {
+  return (
+    <TabErrorBoundary tabName="Ajustes">
+      <AjustesScreenInner />
+    </TabErrorBoundary>
+  );
+}

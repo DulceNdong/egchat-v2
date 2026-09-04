@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
-  TextInput, Animated,
+  TextInput, Animated, KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -12,11 +13,18 @@ import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { markAllRead } from '../../src/store/appStore';
 import { CardsScreen } from '../../src/components/services/CardsScreen';
 import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
 import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import {
+  createDepositIntent, confirmDeposit, pollPaymentStatus,
+  getPaymentHistory, createWithdrawIntent, confirmWithdraw,
+  GATEWAY_INFO, formatGatewayFee, getNetAmount,
+  type PaymentGateway, type ExternalTransaction,
+} from '../../src/services/paymentGateway';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
@@ -161,6 +169,7 @@ const Sheet = ({
   onClose: () => void; children: React.ReactNode;
 }) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
     <Pressable style={s.overlay} onPress={onClose}>
       <Pressable style={s.sheet} onPress={() => {}}>
         <View style={s.handle} />
@@ -171,6 +180,7 @@ const Sheet = ({
         </ScrollView>
       </Pressable>
     </Pressable>
+        </KeyboardAvoidingView>
   </Modal>
 );
 
@@ -248,6 +258,7 @@ const QRModal = ({
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Pressable style={s.qrOverlay} onPress={onClose}>
         <Pressable style={s.qrCard} onPress={() => {}}>
           <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrHeader}>
@@ -309,12 +320,14 @@ const QRModal = ({
           </View>
         </Pressable>
       </Pressable>
+        </KeyboardAvoidingView>
     </Modal>
   );
 };
 
 // ── Modal Recarga ─────────────────────────────────────────────────
-type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success';
+type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success'
+           | 'stripe' | 'orange_money' | 'mtn_mobile' | 'polling';
 
 const RecargaModal = ({
   visible, balance, onClose, onSuccess,
@@ -354,16 +367,21 @@ const RecargaModal = ({
   };
 
   const METODOS = [
-    { id: 'banco',         label: 'Desde banco',          sub: 'Transferencia bancaria desde tu cuenta', gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
-    { id: 'transferencia', label: 'Transferencia EGCHAT',  sub: 'Recibe de otro usuario EGCHAT',          gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
-    { id: 'codigo',        label: 'Código de recarga',     sub: 'Introduce un código de recarga prepago', gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
-    { id: 'agente',        label: 'Depósito en efectivo',  sub: 'En agentes autorizados EGCHAT',          gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
+    { id: 'stripe',        label: 'Tarjeta Visa / Mastercard', sub: 'Pago inmediato con tarjeta internacional', gradient: ['#635BFF', '#4F46E5'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
+    { id: 'orange_money',  label: 'Orange Money',              sub: 'Pago USSD — inmediato en GQ',              gradient: ['#FF6600', '#EA580C'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'mtn_mobile',    label: 'MTN Mobile Money',          sub: 'Pago USSD — inmediato',                    gradient: ['#FFCC00', '#D97706'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'banco',         label: 'Desde banco',               sub: 'Transferencia bancaria desde tu cuenta',   gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
+    { id: 'transferencia', label: 'Transferencia EGCHAT',       sub: 'Recibe de otro usuario EGCHAT',            gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
+    { id: 'codigo',        label: 'Código de recarga',          sub: 'Introduce un código de recarga prepago',   gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
+    { id: 'agente',        label: 'Depósito en efectivo',       sub: 'En agentes autorizados EGCHAT',            gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
   ];
 
-  const TITLES: Record<RStep, string> = {
+  const TITLES: Record<string, string> = {
     menu: 'Recargar monedero', banco: 'Desde banco', transferencia: 'Transferencia EGCHAT',
     codigo: 'Código de recarga', agente: 'Depósito en efectivo',
     confirm: 'Confirmar recarga', success: '¡Recarga completada!',
+    stripe: 'Pagar con tarjeta', orange_money: 'Orange Money', mtn_mobile: 'MTN Mobile Money',
+    polling: 'Esperando pago…',
   };
 
   return (
@@ -433,10 +451,19 @@ const RecargaModal = ({
             <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label="Importe a solicitar (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <TouchableOpacity
-              style={[s.primaryBtn, { backgroundColor: '#065F46' }]}
-              onPress={() => { doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`); }}
+              style={[s.primaryBtn, { backgroundColor: '#065F46' }, !isValid && s.primaryBtnDisabled]}
+              onPress={() => {
+                if (!isValid) {
+                  Alert.alert('Monto inválido', 'Introduce al menos 1.000 XAF para generar la solicitud.');
+                  return;
+                }
+                doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`);
+              }}
+              disabled={!isValid || loading}
               activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
           </>
@@ -555,6 +582,193 @@ const RecargaModal = ({
             </View>
             <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={close} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>Cerrar</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── STRIPE — tarjeta internacional ── */}
+        {step === 'stripe' && (
+          <>
+            <SectionHead title="Pagar con tarjeta" sub="Visa, Mastercard, Amex — procesado por Stripe"
+              gradient={['#635BFF', '#4F46E5']} icon={<IcoTarjeta color="#fff" />} />
+            <View style={s.infoBox}>
+              <Text style={[s.infoValue, { textAlign: 'center', paddingVertical: 4 }]}>
+                💳  Pago 100% seguro · Cifrado SSL
+              </Text>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoValue}>2.9% + 30 XAF</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Disponibilidad</Text>
+                <Text style={s.infoValue}>Inmediato</Text>
+              </View>
+            </View>
+            <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
+            <Field label="Importe (mín. 500 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="10000" keyboardType="numeric" />
+            {amountNum >= 500 && (
+              <View style={[s.infoBox, { marginBottom: 8 }]}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
+                    {fmt(getNetAmount('stripe', amountNum))} XAF
+                  </Text>
+                </View>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Comisión Stripe</Text>
+                  <Text style={s.infoValue}>{formatGatewayFee('stripe', amountNum)}</Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: '#635BFF' }, (amountNum < 500 || loading) && s.primaryBtnDisabled]}
+              onPress={async () => {
+                if (amountNum < 500 || loading) return;
+                setLoading(true);
+                try {
+                  const intent = await createDepositIntent(amountNum, 'stripe', { description: 'Recarga EGChat' });
+                  if (intent.clientSecret) {
+                    // clientSecret listo — en producción integrar @stripe/stripe-react-native aquí
+                    // Por ahora confirmamos directamente (sandbox/demo)
+                    Alert.alert(
+                      'Pago con Stripe',
+                      `PaymentIntent creado.\n\nEn producción: integra @stripe/stripe-react-native para confirmar con la tarjeta.\n\nClientSecret: ${intent.clientSecret?.slice(0, 30)}...`,
+                      [
+                        { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
+                        { text: 'Simular pago ✓', onPress: async () => {
+                          const result = await confirmDeposit(intent.id, 'stripe');
+                          onSuccess();
+                          set('ref', intent.id);
+                          setStep('success');
+                          setLoading(false);
+                        }},
+                      ],
+                    );
+                  } else {
+                    Alert.alert('Stripe no configurado', 'Añade STRIPE_SECRET_KEY al servidor para activar pagos reales.');
+                    setLoading(false);
+                  }
+                } catch (e: any) {
+                  Alert.alert('Error', e.message || 'No se pudo crear el pago');
+                  setLoading(false);
+                }
+              }}
+              disabled={amountNum < 500 || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={s.primaryBtnText}>Pagar {amountNum >= 500 ? fmt(amountNum) : '…'} XAF con tarjeta</Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+          </>
+        )}
+
+        {/* ── ORANGE MONEY ── */}
+        {(step === 'orange_money' || step === 'mtn_mobile') && (
+          <>
+            <SectionHead
+              title={step === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money'}
+              sub="Pago USSD — confirma en tu teléfono"
+              gradient={step === 'orange_money' ? ['#FF6600', '#EA580C'] : ['#FFCC00', '#D97706']}
+              icon={<IcoEfectivo color="#fff" />}
+            />
+            <View style={s.infoBox}>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoValue}>1%</Text>
+              </View>
+              <View style={s.infoRow}>
+                <Text style={s.infoLabel}>Tiempo</Text>
+                <Text style={s.infoValue}>Inmediato tras confirmar USSD</Text>
+              </View>
+            </View>
+            <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
+            <Field label="Importe (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label="Tu número de teléfono" value={data.phone||''} onChangeText={v=>set('phone',v)} placeholder="+240 222 000 000" keyboardType="phone-pad" />
+            {amountNum >= 1000 && (
+              <View style={[s.infoBox, { marginBottom: 8 }]}>
+                <View style={s.infoRow}>
+                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
+                    {fmt(getNetAmount(step as PaymentGateway, amountNum))} XAF
+                  </Text>
+                </View>
+              </View>
+            )}
+            <TouchableOpacity
+              style={[s.primaryBtn,
+                { backgroundColor: step === 'orange_money' ? '#FF6600' : '#FFCC00' },
+                (amountNum < 1000 || !data.phone || loading) && s.primaryBtnDisabled,
+              ]}
+              onPress={async () => {
+                if (amountNum < 1000 || !data.phone || loading) return;
+                setLoading(true);
+                try {
+                  const intent = await createDepositIntent(amountNum, step as PaymentGateway, { phone: data.phone });
+                  set('intentId', intent.id);
+                  set('ussdCode', (intent as any).ussdCode || '');
+                  setStep('polling');
+                } catch (e: any) {
+                  Alert.alert('Error', e.message);
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={amountNum < 1000 || !data.phone || loading}
+              activeOpacity={0.85}
+            >
+              {loading
+                ? <ActivityIndicator color="#fff" />
+                : <Text style={[s.primaryBtnText, { color: step === 'mtn_mobile' ? '#1f2937' : '#fff' }]}>
+                    Iniciar pago USSD — {amountNum >= 1000 ? fmt(amountNum) : '…'} XAF
+                  </Text>
+              }
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+          </>
+        )}
+
+        {/* ── POLLING — esperando confirmación USSD ── */}
+        {step === 'polling' && (
+          <View style={s.successWrap}>
+            <View style={[s.successCircle, { backgroundColor: '#FF6600' }]}>
+              <Text style={{ fontSize: 28 }}>📱</Text>
+            </View>
+            <Text style={s.successTitle}>Confirma en tu teléfono</Text>
+            {data.ussdCode ? (
+              <View style={s.refCard}>
+                <Text style={s.refLabel}>CÓDIGO USSD</Text>
+                <Text style={[s.refCode, { fontSize: 22, letterSpacing: 2 }]}>{data.ussdCode}</Text>
+              </View>
+            ) : null}
+            <Text style={[s.successSub, { marginTop: 8 }]}>
+              Marca el código en tu teléfono {data.phone ? `(${data.phone})` : ''} y confirma con tu PIN.
+            </Text>
+            <ActivityIndicator color="#00c8a0" style={{ marginVertical: 12 }} />
+            <Text style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
+              Esperando confirmación del operador…
+            </Text>
+            <TouchableOpacity
+              style={[s.primaryBtn, { backgroundColor: '#00c8a0', marginTop: 16 }]}
+              onPress={async () => {
+                if (!data.intentId) return;
+                setLoading(true);
+                const result = await pollPaymentStatus(data.intentId, 1, 0);
+                // En demo confirmamos manualmente
+                const confirmed = await confirmDeposit(data.intentId, 'orange_money');
+                onSuccess();
+                set('ref', data.intentId);
+                setStep('success');
+                setLoading(false);
+              }}
+              activeOpacity={0.85}
+            >
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Ya confirmé el pago ✓</Text>}
+            </TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={() => setStep('menu')}>
+              <Text style={s.backBtnText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -907,7 +1121,7 @@ const HistorialModal = ({
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL — Mi Cartera
 // ══════════════════════════════════════════════════════════════════
-export default function MonederoScreen() {
+function MonederoScreenInner() {
   const [balance, setBalance] = useState(0);
   const [transactions, setTransactions] = useState<any[]>([]);
   const [bankAccounts, setBankAccounts] = useState(DEFAULT_BANK_ACCOUNTS);
@@ -939,14 +1153,18 @@ export default function MonederoScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
+  const [externalHistory, setExternalHistory] = useState<ExternalTransaction[]>([]);
+
   const loadData = useCallback(async () => {
     try {
-      const [bal, txs] = await Promise.all([
+      const [bal, txs, extTxs] = await Promise.all([
         walletAPI.getBalance(),
         walletAPI.getTransactions(1),
+        getPaymentHistory(1, 10),
       ]);
       setBalance(bal.balance || 0);
       setTransactions(txs.transactions || []);
+      setExternalHistory(extTxs || []);
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
   }, []);
@@ -1001,212 +1219,309 @@ export default function MonederoScreen() {
   const recentTx = transactions.slice(0, 8);
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right']}>
 
       {/* ── Header ── */}
       <EGChatHeader
-        temp={27}
-        city="Malabo"
-        weatherCondition="cloudy"
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00c8a0" colors={['#00c8a0']} />}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* ── Tarjeta de balance ── */}
-        <View style={s.balanceCardWrap}>
-          <LinearGradient
-            colors={['#1A3A6B', '#0E5F8A', '#0A7A8A']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={s.balanceCard}
-          >
-            <Text style={s.balanceCardLabel}>MONEDERO EGCHAT</Text>
+<View style={s.pageContent}>
+        <View style={s.stickyWalletSection}>
+          {/* ── Tarjeta de balance ── */}
+          <View style={s.balanceCardWrap}>
+            <LinearGradient
+              colors={['#1A3A6B', '#0E5F8A', '#0A7A8A']}
+              start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.balanceCard}
+            >
+              <Text style={s.balanceCardLabel}>MONEDERO EGCHAT</Text>
 
-            {/* Saldo con animación de revelado (paridad web) */}
-            <View style={s.balanceRevealBtn}>
-              <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, opacity: balanceRevealed ? 1 : 0.15 }}>
-                <Text style={s.balanceAmount}>{fmt(balance)}</Text>
-                <Text style={s.balanceCurrency}>XAF</Text>
-              </View>
-              {!balanceRevealed && (
-                <Animated.View
-                  style={[s.balanceOverlay, { opacity: balanceRevealing ? overlayOpacity : 1 }]}
-                >
-                  <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
-                    <Text style={s.balanceHiddenText}>
-                      {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
-                    </Text>
-                  </TouchableOpacity>
-                </Animated.View>
-              )}
-              {balanceRevealed && (
-                <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
-                  <Text style={s.balanceHideText}>Ocultar</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-            <Text style={s.balanceSubLabel}>Saldo disponible</Text>
-
-            {/* 4 botones de acción */}
-            <View style={s.actionsRow}>
-              {[
-                { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
-                { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
-                { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
-                { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
-              ].map(a => (
-                <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
-                  <View style={s.actionIconWrap}>{a.icon}</View>
-                  <Text style={s.actionLabel}>{a.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </LinearGradient>
-        </View>
-
-        {/* ── Mis Cuentas ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
-          <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
-            <Text style={s.addBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-          {bankAccounts.map((acc, i) => (
-            <View key={acc.id}>
-              <View style={s.bankRow}>
-                <View style={s.bankIconWrap}>
-                  <IcoBanco color="#1B3A6B" />
+              {/* Saldo con animación de revelado (paridad web) */}
+              <View style={s.balanceRevealBtn}>
+                <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 6, opacity: balanceRevealed ? 1 : 0.15 }}>
+                  <Text style={s.balanceAmount}>{fmt(balance)}</Text>
+                  <Text style={s.balanceCurrency}>XAF</Text>
                 </View>
-                <View style={s.bankInfo}>
-                  <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
-                  <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
-                </View>
-                <View style={s.bankBalanceWrap}>
-                  <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
-                  <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
-                </View>
-              </View>
-              {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
-            </View>
-          ))}
-        </View>
-
-        {/* ── Mis Tarjetas ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
-          <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
-            <Text style={s.addBtnText}>+</Text>
-          </TouchableOpacity>
-        </View>
-        <TouchableOpacity
-          style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
-          onPress={() => setShowCards(true)}
-          activeOpacity={0.75}
-        >
-          <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
-            <Text style={s.cardPreviewIcon}>💳</Text>
-          </LinearGradient>
-          <View style={{ flex: 1 }}>
-            <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
-            <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
-          </View>
-          <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
-        </TouchableOpacity>
-
-        {/* ── Transferencias pendientes ── */}
-        {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
-          <>
-            <View style={s.sectionHeader}>
-              <Text style={[s.sectionTitle, { color: '#b45309' }]}>TRANSFERENCIAS PENDIENTES</Text>
-            </View>
-            <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-              {pendingTransfers.filter(t => t.status === 'pending').map((transfer, i, arr) => (
-                <View key={transfer.id}>
-                  <View style={s.pendingRow}>
-                    <View style={s.pendingIcon}>
-                      <Text>⏱</Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={[s.bankName, { color: C.textPrimary }]}>
-                        {transfer.from} → {transfer.to}
+                {!balanceRevealed && (
+                  <Animated.View
+                    style={[s.balanceOverlay, { opacity: balanceRevealing ? overlayOpacity : 1 }]}
+                  >
+                    <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
+                      <Text style={s.balanceHiddenText}>
+                        {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
                       </Text>
-                      <Text style={[s.bankType, { color: C.textSecondary }]}>
-                        Expira en {Math.max(0, Math.ceil((transfer.expiresAt - Date.now()) / 60000))} min
-                      </Text>
-                    </View>
-                    <Text style={[s.pendingAmount, { color: '#b45309' }]}>
-                      {fmt(transfer.amount)} XAF
-                    </Text>
-                    <TouchableOpacity
-                      style={s.cancelPendingBtn}
-                      onPress={() => setPendingTransfers(prev =>
-                        prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' as const } : t),
-                      )}
-                    >
-                      <Text style={s.cancelPendingText}>Cancelar</Text>
                     </TouchableOpacity>
+                  </Animated.View>
+                )}
+                {balanceRevealed && (
+                  <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
+                    <Text style={s.balanceHideText}>Ocultar</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+              <Text style={s.balanceSubLabel}>Saldo disponible</Text>
+
+              {/* 4 botones de acción */}
+              <View style={s.actionsRow}>
+                {[
+                  { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
+                  { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
+                  { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
+                  { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
+                ].map(a => (
+                  <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
+                    <View style={s.actionIconWrap}>{a.icon}</View>
+                    <Text style={s.actionLabel}>{a.label}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </LinearGradient>
+          </View>
+        </View>
+
+        <ScrollView
+          style={s.sectionsScroll}
+          contentContainerStyle={s.sectionsContainer}
+          showsVerticalScrollIndicator={false}
+          nestedScrollEnabled
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* ── Mis Cuentas ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
+                <Text style={s.addBtnText}>+</Text>
+              </TouchableOpacity>
+            </View>
+
+            <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+              {bankAccounts.map((acc, i) => (
+                <View key={acc.id}>
+                  <View style={s.bankRow}>
+                    <View style={s.bankIconWrap}>
+                      <IcoBanco color="#1B3A6B" />
+                    </View>
+                    <View style={s.bankInfo}>
+                      <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
+                      <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
+                    </View>
+                    <View style={s.bankBalanceWrap}>
+                      <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
+                      <Text style={[s.bankCurrency, { color: C.textSecondary }]}>XAF</Text>
+                    </View>
                   </View>
-                  {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                  {i < bankAccounts.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
                 </View>
               ))}
             </View>
-          </>
-        )}
+          </View>
 
-        {/* ── Historial de Transferencias ── */}
-        <View style={s.sectionHeader}>
-          <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
-          <TouchableOpacity onPress={() => router.push('/historial-completo' as any)} activeOpacity={0.7}>
-            <Text style={s.verTodo}>Ver todo →</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-          {recentTx.length === 0 ? (
-            <View style={s.emptyWrap}>
-              <Text style={s.emptyIcon}>💳</Text>
-              <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin transacciones aún</Text>
+          {/* ── Mis Tarjetas ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
+              <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
+                <Text style={s.addBtnText}>+</Text>
+              </TouchableOpacity>
             </View>
-          ) : recentTx.map((tx, i) => (
-            <View key={tx.id || i}>
-              <View style={s.txCard}>
-                <View style={[s.txIconWrap, { backgroundColor: isCredit(tx.type) ? '#E8F8EE' : '#FEF2F2' }]}>
-                  {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
+            <TouchableOpacity
+              style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
+              onPress={() => setShowCards(true)}
+              activeOpacity={0.75}
+            >
+              <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
+                <Text style={s.cardPreviewIcon}>💳</Text>
+              </LinearGradient>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
+              </View>
+              <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* ── Transferencias pendientes ── */}
+          {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
+            <>
+              <View style={s.sectionHeader}>
+                <Text style={[s.sectionTitle, { color: '#b45309' }]}>TRANSFERENCIAS PENDIENTES</Text>
+              </View>
+              <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+                {pendingTransfers.filter(t => t.status === 'pending').map((transfer, i, arr) => (
+                  <View key={transfer.id}>
+                    <View style={s.pendingRow}>
+                      <View style={s.pendingIcon}>
+                        <Text>⏱</Text>
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.bankName, { color: C.textPrimary }]}> 
+                          {transfer.from} → {transfer.to}
+                        </Text>
+                        <Text style={[s.bankType, { color: C.textSecondary }]}> 
+                          Expira en {Math.max(0, Math.ceil((transfer.expiresAt - Date.now()) / 60000))} min
+                        </Text>
+                      </View>
+                      <Text style={[s.pendingAmount, { color: '#b45309' }]}> 
+                        {fmt(transfer.amount)} XAF
+                      </Text>
+                      <TouchableOpacity
+                        style={s.cancelPendingBtn}
+                        onPress={() => setPendingTransfers(prev =>
+                          prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' as const } : t),
+                        )}
+                      >
+                        <Text style={s.cancelPendingText}>Cancelar</Text>
+                      </TouchableOpacity>
+                    </View>
+                    {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                  </View>
+                ))}
+              </View>
+            </>
+          )}
+
+          {/* ── Historial de Transferencias ── */}
+          <View style={s.sectionBlock}>
+            <View style={s.sectionHeader}>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
+              <TouchableOpacity onPress={() => router.push('/historial-completo' as any)} activeOpacity={0.7}>
+                <Text style={s.verTodo}>Ver todo →</Text>
+              </TouchableOpacity>
+            </View>
+
+          {/* 4d — Estadísticas del mes */}
+          {transactions.length > 0 && (() => {
+            const now = new Date();
+            const thisMonth = transactions.filter(tx => {
+              const d = new Date(tx.createdAt || tx.created_at || '');
+              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
+            });
+            const totalIn  = thisMonth.filter(tx => isCredit(tx.type)).reduce((a, tx) => a + Math.abs(Number(tx.amount || 0)), 0);
+            const totalOut = thisMonth.filter(tx => !isCredit(tx.type)).reduce((a, tx) => a + Math.abs(Number(tx.amount || 0)), 0);
+            const max = Math.max(totalIn, totalOut, 1);
+            return (
+              <View style={[s.card, { backgroundColor: C.bgSecondary, marginBottom: 10 }]}>
+                <Text style={[s.sectionTitle, { color: C.textPrimary, marginBottom: 12 }]}>📊 ESTE MES</Text>
+                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginBottom: 10 }}>
+                  {[{ label: 'Recibido', value: totalIn, color: '#10b981' }, { label: 'Enviado', value: totalOut, color: '#ef4444' }].map(item => (
+                    <View key={item.label} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
+                      <Text style={{ fontSize: 11, fontWeight: '700', color: item.color }}>
+                        {fmt(item.value)} XAF
+                      </Text>
+                      <View style={{ width: '100%', height: 80, justifyContent: 'flex-end' }}>
+                        <View style={{ width: '100%', height: Math.max(4, (item.value / max) * 80), backgroundColor: item.color, borderRadius: 4, opacity: 0.85 }} />
+                      </View>
+                      <Text style={{ fontSize: 11, color: C.textTertiary }}>{item.label}</Text>
+                    </View>
+                  ))}
                 </View>
-                <View style={s.txInfo}>
-                  <Text style={[s.txLabel, { color: C.textPrimary }]}>
-                    {isCredit(tx.type) ? '↙️ Recibido' : '↗️ Enviado'}
+                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                  <Text style={{ fontSize: 12, color: C.textSecondary }}>{thisMonth.length} transacciones</Text>
+                  <Text style={{ fontSize: 12, color: totalIn >= totalOut ? '#10b981' : '#ef4444', fontWeight: '700' }}>
+                    {totalIn >= totalOut ? '▲' : '▼'} Neto: {fmt(Math.abs(totalIn - totalOut))} XAF
                   </Text>
-                  <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
-                  <Text style={[s.txDate, { color: C.textTertiary }]}>
-                    {formatDate(tx.created_at || tx.date || new Date().toISOString())}
-                  </Text>
-                </View>
-                <View style={s.txAmountWrap}>
-                  <Text style={[s.txAmount, { color: isCredit(tx.type) ? '#00c8a0' : '#ef4444' }]}>
-                    {isCredit(tx.type) ? '+' : '-'}{fmt(tx.amount)}
-                  </Text>
-                  <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
                 </View>
               </View>
-              {i < recentTx.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+            );
+          })()}
+
+            <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
+              {recentTx.length === 0 ? (
+                <View style={s.emptyWrap}>
+                  <Text style={s.emptyIcon}>💳</Text>
+                  <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin transacciones aún</Text>
+                </View>
+              ) : recentTx.map((tx, i) => (
+                <View key={tx.id || i}>
+                  <View style={s.txCard}>
+                    <View style={[s.txIconWrap, { backgroundColor: isCredit(tx.type) ? '#E8F8EE' : '#FEF2F2' }]}> 
+                      {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
+                    </View>
+                    <View style={s.txInfo}>
+                      <Text style={[s.txLabel, { color: C.textPrimary }]}> 
+                        {isCredit(tx.type) ? '↙️ Recibido' : '↗️ Enviado'}
+                      </Text>
+                      <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
+                      <Text style={[s.txDate, { color: C.textTertiary }]}> 
+                        {formatDate(tx.created_at || tx.date || new Date().toISOString())}
+                      </Text>
+                    </View>
+                    <View style={s.txAmountWrap}>
+                      <Text style={[s.txAmount, { color: isCredit(tx.type) ? '#00c8a0' : '#ef4444' }]}> 
+                        {isCredit(tx.type) ? '+' : '-'}{fmt(tx.amount)}
+                      </Text>
+                      <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
+                    </View>
+                  </View>
+                  {i < recentTx.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                </View>
+              ))}
             </View>
-          ))}
-        </View>
-      </ScrollView>
+          </View>
+
+          {/* ── Historial de pagos externos (Stripe / Orange / MTN) ── */}
+          {externalHistory.length > 0 && (
+            <View style={s.sectionBlock}>
+              <View style={s.sectionHeader}>
+                <Text style={[s.sectionTitle, { color: C.textPrimary }]}>PASARELA DE PAGO</Text>
+              </View>
+              <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
+                {externalHistory.map((tx, i) => {
+                  const info = GATEWAY_INFO[tx.gateway as PaymentGateway];
+                  const isIn = tx.type === 'deposit';
+                  const statusColor = tx.status === 'completed' ? '#00c8a0'
+                    : tx.status === 'pending' ? '#f59e0b'
+                    : '#ef4444';
+                  return (
+                    <View key={tx.id}>
+                      <View style={s.txCard}>
+                        <View style={[s.txIconWrap, { backgroundColor: isIn ? '#E8F8EE' : '#FEF2F2' }]}>
+                          <Text style={{ fontSize: 18 }}>{info?.icon || '💳'}</Text>
+                        </View>
+                        <View style={s.txInfo}>
+                          <Text style={[s.txLabel, { color: C.textPrimary }]}>
+                            {info?.label || tx.gateway}
+                          </Text>
+                          <Text style={[s.txDesc, { color: C.textSecondary }]}>
+                            {tx.description || (isIn ? 'Depósito' : 'Retiro')}
+                          </Text>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+                            <View style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusColor }]} />
+                            <Text style={[s.txDate, { color: statusColor, fontWeight: '600' }]}>
+                              {tx.status === 'completed' ? 'Completado'
+                                : tx.status === 'pending' ? 'Pendiente'
+                                : tx.status === 'failed' ? 'Fallido' : tx.status}
+                            </Text>
+                            <Text style={[s.txDate, { color: C.textTertiary }]}>
+                              · {formatDate(tx.createdAt)}
+                            </Text>
+                          </View>
+                        </View>
+                        <View style={s.txAmountWrap}>
+                          <Text style={[s.txAmount, { color: isIn ? '#00c8a0' : '#ef4444' }]}>
+                            {isIn ? '+' : '-'}{fmt(tx.amount)}
+                          </Text>
+                          <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
+                        </View>
+                      </View>
+                      {i < externalHistory.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
+                    </View>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+        </ScrollView>
+      </View>
 
       {/* ── Modales ── */}
       <NotificationsPanel
@@ -1262,6 +1577,14 @@ export default function MonederoScreen() {
 // ── Estilos ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
   container:   { flex: 1, backgroundColor: '#EEF2F7' },
+  pageContent: { flex: 1 },
+  stickyWalletSection: { flexShrink: 0 },
+  sectionsScroll: { flex: 1 },
+  sectionsContainer: { paddingBottom: 120 },
+  sectionBlock: { marginBottom: 10 },
+  sectionScroll: { maxHeight: 210, marginHorizontal: 12 },
+  historySectionScroll: { maxHeight: 320, marginHorizontal: 12 },
+  sectionScrollContent: { paddingBottom: 2 },
   center:      { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
   // Header
@@ -1289,7 +1612,7 @@ const s = StyleSheet.create({
   actionLabel:   { fontSize: 11, fontWeight: '700', color: '#1A2B4A' },
 
   // Sections
-  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 14, marginBottom: 8, marginTop: 4 },
+  sectionHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 12, marginBottom: 6, marginTop: 2 },
   sectionTitle:  { fontSize: 13, fontWeight: '800', color: '#0d0d0d', textTransform: 'uppercase', letterSpacing: 0.5 },
   addBtn:        { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(52,211,153,0.15)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.3)', alignItems: 'center', justifyContent: 'center' },
   addBtnText:    { fontSize: 18, fontWeight: '700', color: '#00c8a0', lineHeight: 22 },
@@ -1298,11 +1621,11 @@ const s = StyleSheet.create({
   verTodo:       { fontSize: 13, color: '#00c8a0', fontWeight: '600' },
 
   // Card container
-  card:          { marginHorizontal: 14, borderRadius: 14, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 4, elevation: 2, marginBottom: 12 },
+  card:          { marginHorizontal: 12, borderRadius: 12, overflow: 'hidden', shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.05, shadowRadius: 3, elevation: 1, marginBottom: 8 },
   divider:       { height: 1, marginHorizontal: 14 },
 
   // Bank accounts
-  bankRow:       { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  bankRow:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 12, paddingHorizontal: 12, gap: 10 },
   bankIconWrap:  { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(52,211,153,0.08)', borderWidth: 1, borderColor: 'rgba(52,211,153,0.18)', alignItems: 'center', justifyContent: 'center' },
   bankInfo:      { flex: 1 },
   bankName:      { fontSize: 13, fontWeight: '700', color: '#0d0d0d' },
@@ -1327,7 +1650,7 @@ const s = StyleSheet.create({
   cancelPendingText: { fontSize: 11, fontWeight: '600', color: '#f87171' },
 
   // Transactions
-  txCard:        { flexDirection: 'row', alignItems: 'center', padding: 14, gap: 12 },
+  txCard:        { flexDirection: 'row', alignItems: 'center', paddingVertical: 14, paddingHorizontal: 12, gap: 10, minHeight: 64 },
   txIconWrap:    { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'transparent' },
   txInfo:        { flex: 1 },
   txLabel:       { fontSize: 12, fontWeight: '700', color: '#0d0d0d', marginBottom: 1 },
@@ -1474,3 +1797,11 @@ const s = StyleSheet.create({
   qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32, marginTop: 4 },
   qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },
 });
+
+export default function MonederoScreen() {
+  return (
+    <TabErrorBoundary tabName="Cartera">
+      <MonederoScreenInner />
+    </TabErrorBoundary>
+  );
+}

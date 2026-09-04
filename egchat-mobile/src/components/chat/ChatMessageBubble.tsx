@@ -2,13 +2,19 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image, Linking, Animated,
+  PanResponder, LayoutChangeEvent, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
-import Svg, { Path, Rect, Polygon } from 'react-native-svg';
+import Svg, { Path, Rect, Polygon, Line } from 'react-native-svg';
+import { useAudioPlayer } from '../../hooks/useAudioPlayer';
 import { EGAvatar } from '../ui';
 import { MessageStatusIndicator } from './MessageStatusIndicator';
+import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
+import { PollMessage, parsePoll } from './PollMessage';
 import { ImageViewer } from '../ImageViewer';
+import { LinkPreview, extractUrl } from './LinkPreview';
+import { MarkdownText } from './MarkdownText';
 import type { ChatMessage } from '../../types/chat';
 
 // ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
@@ -30,6 +36,13 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       if (playing) {
         await videoRef.current.pauseAsync();
       } else {
+        // Asegurar que el audio suena aunque el iPhone esté en modo silencio
+        await Audio.setAudioModeAsync({
+          playsInSilentModeIOS: true,
+          allowsRecordingIOS: false,
+          shouldDuckAndroid: true,
+          staysActiveInBackground: false,
+        });
         await videoRef.current.playAsync();
       }
       setPlaying(p => !p);
@@ -266,112 +279,89 @@ const isVoiceMessage = (msg: ChatMessage): boolean => {
   return false;
 };
 
-const SPEED_STEPS = [1, 1.5, 2] as const;
-type SpeedStep = typeof SPEED_STEPS[number];
-
-// ── VoiceCard — mensaje de voz con velocidad ──────────────────────
 const VOICE_BARS = [0.3,0.5,0.8,0.6,1.0,0.7,0.4,0.9,0.5,0.8,0.6,0.3,0.7,1.0,0.5,0.4,0.9,0.6,0.8,0.3,0.5,0.7,1.0,0.4,0.6,0.9,0.5,0.3,0.8,0.6];
 
-const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
-  const [playing, setPlaying]   = useState(false);
-  const [progress, setProgress] = useState(0);
-  const [duration, setDuration] = useState(0);
-  const [position, setPosition] = useState(0);
-  const [speed, setSpeed]       = useState<SpeedStep>(1);
-  const soundRef   = useRef<Audio.Sound | null>(null);
-  const audioElRef = useRef<HTMLAudioElement | null>(null);
-  const pulseAnim  = useRef(new Animated.Value(1)).current;
-  const isWeb      = typeof document !== 'undefined';
-  const url        = message.file_url || '';
+// ── VoiceCard — mensaje de voz con velocidad 1×/1.5×/2×, scrubbing táctil
+// y reproducción continua al salir del chat (usa reproductor global singleton)
+const VoiceCard = ({ message, isOwn, onTranscribed }: { message: ChatMessage; isOwn: boolean; onTranscribed?: (t: string) => void }) => {
+  const url = message.file_url || '';
+  const { playing, progress, position, duration, speed, togglePlay, cycleSpeed, seek } =
+    useAudioPlayer(url);
+  // C8 — transcripción: usar guardada si existe, sino null
+  const [transcript, setTranscript] = useState<string | null>(message.voice_transcript || null);
+  const [transcribing, setTranscribing] = useState(false);
+
+  const handleTranscribe = async () => {
+    if (transcript) { setTranscript(null); return; } // toggle
+    if (!url) return;
+    setTranscribing(true);
+    try {
+      const { getToken, getApiBase } = await import('../../api');
+      const token = await getToken();
+      const base = getApiBase();
+      const res = await fetch(`${base}/api/lia/transcribe`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ audio_url: url }),
+      });
+      const data = await res.json();
+      const text = data.text || data.transcript || 'No se pudo transcribir';
+      setTranscript(text);
+      // C8 — persistir en el estado del chat
+      onTranscribed?.(text);
+    } catch {
+      setTranscript('Error al transcribir');
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  // Ancho de la barra de progreso para calcular ratio de scrubbing
+  const waveWidthRef = useRef(0);
 
   const fmtTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  // Pulso
+  // Pulso del botón play mientras reproduce
   useEffect(() => {
     if (playing) {
       Animated.loop(Animated.sequence([
         Animated.timing(pulseAnim, { toValue: 1.12, duration: 500, useNativeDriver: true }),
         Animated.timing(pulseAnim, { toValue: 1.0,  duration: 500, useNativeDriver: true }),
       ])).start();
-    } else { pulseAnim.stopAnimation(); pulseAnim.setValue(1); }
+    } else {
+      pulseAnim.stopAnimation();
+      pulseAnim.setValue(1);
+    }
   }, [playing]);
 
-  // Web: Audio element
-  useEffect(() => {
-    if (!isWeb || !url) return;
-    const el = new (window as any).Audio(url) as HTMLAudioElement;
-    el.preload = 'metadata';
-    el.playbackRate = speed;
-    el.onloadedmetadata = () => setDuration(el.duration);
-    el.ontimeupdate = () => {
-      setPosition(el.currentTime);
-      setProgress(el.duration ? el.currentTime / el.duration : 0);
-    };
-    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
-    audioElRef.current = el;
-    return () => { el.pause(); el.src = ''; audioElRef.current = null; };
-  }, [isWeb, url]);
-
-  // Cambiar velocidad en web
-  useEffect(() => {
-    if (isWeb && audioElRef.current) audioElRef.current.playbackRate = speed;
-  }, [isWeb, speed]);
-
-  const togglePlay = useCallback(async () => {
-    if (!url) return;
-    if (isWeb) {
-      const el = audioElRef.current;
-      if (!el) return;
-      if (playing) { el.pause(); setPlaying(false); }
-      else { el.play().catch(() => {}); setPlaying(true); }
-      return;
-    }
-    try {
-      if (soundRef.current) {
-        const st = await soundRef.current.getStatusAsync();
-        if (st.isLoaded) {
-          if (st.isPlaying) { await soundRef.current.pauseAsync(); setPlaying(false); }
-          else              { await soundRef.current.setRateAsync(speed, true); await soundRef.current.playAsync(); setPlaying(true); }
-          return;
-        }
-      }
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
-      const { sound } = await Audio.Sound.createAsync(
-        { uri: url }, { shouldPlay: true, rate: speed, shouldCorrectPitch: true },
-        (st) => {
-          if (!st.isLoaded) return;
-          const dur = (st.durationMillis || 0) / 1000;
-          const pos = (st.positionMillis || 0) / 1000;
-          setDuration(dur); setPosition(pos);
-          setProgress(dur ? pos / dur : 0);
-          if (st.didJustFinish) { setPlaying(false); setProgress(0); setPosition(0); sound.setPositionAsync(0).catch(() => {}); }
-        }
-      );
-      soundRef.current = sound;
-      setPlaying(true);
-    } catch {}
-  }, [url, playing, isWeb, speed]);
-
-  // Cambiar velocidad en nativo mientras reproduce
-  const cycleSpeed = useCallback(async () => {
-    const idx  = SPEED_STEPS.indexOf(speed);
-    const next = SPEED_STEPS[(idx + 1) % SPEED_STEPS.length];
-    setSpeed(next);
-    if (!isWeb && soundRef.current) {
-      try { await soundRef.current.setRateAsync(next, true); } catch {}
-    }
-  }, [speed, isWeb]);
-
-  useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
+  // PanResponder para scrubbing táctil en nativo
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        if (waveWidthRef.current <= 0) return;
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / waveWidthRef.current));
+        seek(ratio);
+      },
+      onPanResponderMove: (evt) => {
+        if (waveWidthRef.current <= 0) return;
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / waveWidthRef.current));
+        seek(ratio);
+      },
+    }),
+  ).current;
 
   const accent   = isOwn ? '#00c8a0' : '#00b4e6';
   const barFill  = isOwn ? '#00c8a0' : '#00b4e6';
   const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
 
   return (
+    <>
     <View style={vc.card}>
-      {/* Botón play/pause */}
+      {/* Botón play/pause con pulso animado */}
       <TouchableOpacity onPress={togglePlay} activeOpacity={0.8}>
         <Animated.View style={[vc.btn, { backgroundColor: accent, transform: [{ scale: pulseAnim }] }]}>
           {playing ? (
@@ -385,28 +375,68 @@ const VoiceCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
         </Animated.View>
       </TouchableOpacity>
 
-      {/* Onda + info */}
+      {/* Forma de onda con scrubbing */}
       <View style={vc.mid}>
-        <View style={vc.waveRow}>
+        <View
+          style={vc.waveRow}
+          onLayout={(e: LayoutChangeEvent) => { waveWidthRef.current = e.nativeEvent.layout.width; }}
+          {...panResponder.panHandlers}
+        >
           {VOICE_BARS.map((h, i) => {
             const filled = progress > 0 && i / VOICE_BARS.length < progress;
-            return <View key={i} style={[vc.bar, { height: Math.max(3, h * 24), backgroundColor: filled ? barFill : barEmpty }]} />;
+            return (
+              <View
+                key={i}
+                style={[vc.bar, {
+                  height: Math.max(3, h * 24),
+                  backgroundColor: filled ? barFill : barEmpty,
+                }]}
+              />
+            );
           })}
+          {/* Thumb indicador de posición */}
+          {progress > 0 && (
+            <View
+              style={[vc.scrubThumb, {
+                left: `${Math.round(progress * 100)}%` as any,
+                backgroundColor: accent,
+              }]}
+            />
+          )}
         </View>
         <View style={vc.timeRow}>
           <Text style={vc.timeText}>
             {playing && position > 0 ? fmtTime(position) : duration > 0 ? fmtTime(duration) : '0:00'}
           </Text>
+          {duration > 0 && position > 0 && (
+            <Text style={[vc.timeText, { marginLeft: 'auto' as any, opacity: 0.5 }]}>
+              -{fmtTime(Math.max(0, duration - position))}
+            </Text>
+          )}
         </View>
       </View>
 
-      {/* Botón velocidad */}
+      {/* Botón velocidad: toca para ciclar 1× → 1.5× → 2× */}
       <TouchableOpacity onPress={cycleSpeed} style={[vc.speedBtn, { borderColor: accent }]} activeOpacity={0.7}>
         <Text style={[vc.speedText, { color: accent }]}>{speed}×</Text>
       </TouchableOpacity>
+
+      {/* A4 — Botón de transcripción */}
+      <TouchableOpacity onPress={handleTranscribe} style={vc.transcribeBtn} activeOpacity={0.7}>
+        {transcribing ? (
+          <Text style={{ fontSize: 12 }}>⏳</Text>
+        ) : (
+          <Text style={vc.transcribeIcon}>{transcript ? '✕' : '🔤'}</Text>
+        )}
+      </TouchableOpacity>
     </View>
-  );
-};
+    {transcript ? (
+      <View style={[vc.transcriptBox, { borderColor: accent }]}>
+        <Text style={vc.transcriptText}>🔤 {transcript}</Text>
+      </View>
+    ) : null}
+  </>
+  );};
 
 const vc = StyleSheet.create({
   card: { flexDirection: 'row', alignItems: 'center', gap: 8, minWidth: 220, maxWidth: 280, paddingVertical: 4 },
@@ -415,12 +445,28 @@ const vc = StyleSheet.create({
   pauseWrap: { flexDirection: 'row', gap: 3 },
   pauseBar: { width: 3, height: 13, borderRadius: 2 },
   mid: { flex: 1, gap: 4 },
-  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26 },
+  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 2, height: 26, position: 'relative' },
   bar: { width: 3, borderRadius: 2 },
-  timeRow: { flexDirection: 'row' },
+  scrubThumb: {
+    position: 'absolute',
+    top: -2,
+    width: 10,
+    height: 30,
+    borderRadius: 3,
+    opacity: 0.85,
+    marginLeft: -5,
+  },
+  timeRow: { flexDirection: 'row', alignItems: 'center' },
   timeText: { fontSize: 11, color: '#9ca3af', fontWeight: '600' },
   speedBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 10, borderWidth: 1.5, flexShrink: 0, minWidth: 42, alignItems: 'center' },
   speedText: { fontSize: 12, fontWeight: '800', letterSpacing: 0.3 },
+  transcribeBtn: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(0,0,0,0.05)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  transcribeIcon: { fontSize: 14 },
+  transcriptBox: {
+    marginTop: 6, backgroundColor: '#f9fafb', borderRadius: 8, padding: 8,
+    borderWidth: 1, borderColor: '#e5e7eb',
+  },
+  transcriptText: { fontSize: 12, color: '#374151', lineHeight: 16, fontStyle: 'italic' },
 });
 
 
@@ -453,35 +499,48 @@ const getCoverGradient = (title: string): [string, string] => {
   return COVER_PALETTES[Math.abs(hash) % COVER_PALETTES.length];
 };
 
-// ── MusicCard — tarjeta de música estilo Apple Music ──────────────
+// ── MusicCard — tarjeta de música con play/pausa y seek táctil ────
 const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
   const [playing, setPlaying]   = useState(false);
-  const [progress, setProgress] = useState(0);   // 0–1
-  const [duration, setDuration] = useState(0);   // segundos
-  const [position, setPosition] = useState(0);   // segundos
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [loading, setLoading]   = useState(false);
   const soundRef    = useRef<Audio.Sound | null>(null);
   const audioElRef  = useRef<HTMLAudioElement | null>(null);
+  const trackWidthRef = useRef(0);
   const spinAnim    = useRef(new Animated.Value(0)).current;
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
   const isWeb       = typeof document !== 'undefined';
 
-  const rawText          = message.text || message.file_url?.split('/').pop() || '';
+  const rawText           = message.text || message.file_url?.split('/').pop() || '';
   const { title, artist } = parseTrackInfo(rawText);
-  const [gradA, gradB]   = getCoverGradient(title);
-  const url              = message.file_url || '';
+  const [gradA, gradB]    = getCoverGradient(title);
+  const url               = message.file_url || '';
+  const accentColor       = isOwn ? '#00c8a0' : '#667eea';
 
   const fmtTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  // Disco giratorio cuando reproduce
+  // Animación disco giratorio
   useEffect(() => {
     if (playing) {
       Animated.loop(
-        Animated.timing(spinAnim, { toValue: 1, duration: 4000, useNativeDriver: true })
+        Animated.timing(spinAnim, { toValue: 1, duration: 5000, useNativeDriver: true })
+      ).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.06, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.0,  duration: 800, useNativeDriver: true }),
+        ])
       ).start();
     } else {
       spinAnim.stopAnimation();
+      pulseAnim.stopAnimation();
+      Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     }
   }, [playing]);
+
   const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   // Web: elemento <audio> oculto
@@ -489,15 +548,12 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
     if (!isWeb || !url) return;
     const el = new (window as any).Audio(url) as HTMLAudioElement;
     el.preload = 'metadata';
-    el.onloadedmetadata = () => setDuration(el.duration);
+    el.onloadedmetadata = () => setDuration(el.duration || 0);
     el.ontimeupdate = () => {
       setPosition(el.currentTime);
       setProgress(el.duration ? el.currentTime / el.duration : 0);
     };
-    el.onended = () => {
-      setPlaying(false); setProgress(0); setPosition(0);
-      el.currentTime = 0;
-    };
+    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
     audioElRef.current = el;
     return () => { el.pause(); el.src = ''; audioElRef.current = null; };
   }, [isWeb, url]);
@@ -520,7 +576,8 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           return;
         }
       }
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      setLoading(true);
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
       const { sound } = await Audio.Sound.createAsync(
         { uri: url }, { shouldPlay: true },
         (st) => {
@@ -528,7 +585,7 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           const dur = (st.durationMillis || 0) / 1000;
           const pos = (st.positionMillis || 0) / 1000;
           setDuration(dur); setPosition(pos);
-          setProgress(dur ? pos / dur : 0);
+          setProgress(dur > 0 ? pos / dur : 0);
           if (st.didJustFinish) {
             setPlaying(false); setProgress(0); setPosition(0);
             sound.setPositionAsync(0).catch(() => {});
@@ -537,39 +594,68 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       );
       soundRef.current = sound;
       setPlaying(true);
-    } catch {}
+    } catch {
+      // silenciar error de audio
+    } finally {
+      setLoading(false);
+    }
   }, [url, playing, isWeb]);
+
+  // Seek nativo via PanResponder en la barra de progreso
+  const seekPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / trackWidthRef.current));
+        applySeek(ratio);
+      },
+      onPanResponderMove: (evt) => {
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / trackWidthRef.current));
+        applySeek(ratio);
+      },
+    })
+  ).current;
+
+  const applySeek = (ratio: number) => {
+    setProgress(ratio);
+    if (isWeb && audioElRef.current) {
+      audioElRef.current.currentTime = ratio * (audioElRef.current.duration || 0);
+      return;
+    }
+    soundRef.current?.getStatusAsync().then(st => {
+      if (st.isLoaded && st.durationMillis) {
+        soundRef.current?.setPositionAsync(ratio * st.durationMillis).catch(() => {});
+      }
+    }).catch(() => {});
+  };
 
   useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
 
-  // Seek al tocar la barra de progreso (web)
-  const handleSeek = useCallback((ratio: number) => {
-    if (isWeb && audioElRef.current) {
-      audioElRef.current.currentTime = ratio * audioElRef.current.duration;
-    }
-  }, [isWeb]);
-
   const initials = title.slice(0, 2).toUpperCase();
+  const pct = Math.round(progress * 100);
 
   return (
     <View style={mc.card}>
-      {/* Portada de álbum */}
-      <View style={mc.cover}>
+      {/* ── Portada con disco giratorio ── */}
+      <Animated.View style={[mc.coverWrap, { transform: [{ scale: pulseAnim }] }]}>
         <LinearGradient colors={[gradA, gradB]} style={mc.coverGrad}>
           <Animated.View style={[mc.disc, { transform: [{ rotate: spin }] }]}>
-            <LinearGradient colors={['#1a1a2e', '#16213e']} style={mc.discInner}>
+            <LinearGradient colors={['#111827', '#1f2937']} style={mc.discInner}>
               <View style={mc.discHole} />
             </LinearGradient>
           </Animated.View>
           <Text style={mc.coverInitials}>{initials}</Text>
         </LinearGradient>
-        {/* Badge musical */}
-        <View style={mc.badge}>
-          <Text style={mc.badgeNote}>♪</Text>
+        {/* Badge verde Spotify-style */}
+        <View style={[mc.badge, { backgroundColor: accentColor }]}>
+          <Svg width={10} height={10} viewBox="0 0 24 24" fill="#fff">
+            <Path d="M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm12-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          </Svg>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* Info + controles */}
+      {/* ── Info + controles ── */}
       <View style={mc.right}>
         {/* Título y artista */}
         <View style={mc.titleRow}>
@@ -577,32 +663,36 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           <Text style={mc.artist} numberOfLines={1}>{artist}</Text>
         </View>
 
-        {/* Barra de progreso */}
-        <TouchableOpacity
+        {/* Barra de progreso con seek táctil (nativo + web) */}
+        <View
           style={mc.progressTrack}
-          activeOpacity={0.8}
-          onPress={(e) => {
-            if (!isWeb) return;
-            // @ts-ignore
-            const rect = e.nativeEvent.target?.getBoundingClientRect?.();
-            if (rect) handleSeek((e.nativeEvent.pageX - rect.left) / rect.width);
-          }}
+          onLayout={e => { trackWidthRef.current = e.nativeEvent.layout.width; }}
+          {...seekPanResponder.panHandlers}
         >
-          <View style={[mc.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
-          <View style={[mc.progressThumb, { left: `${Math.round(progress * 100)}%` as any }]} />
-        </TouchableOpacity>
+          <View style={[mc.progressBg]} />
+          <View style={[mc.progressFill, { width: `${pct}%` as any, backgroundColor: accentColor }]} />
+          <View style={[mc.progressThumb, { left: `${pct}%` as any, backgroundColor: accentColor }]} />
+        </View>
 
-        {/* Tiempo + botón play */}
+        {/* Tiempo + botón play central */}
         <View style={mc.controls}>
-          <Text style={mc.timeText}>
-            {position > 0 ? fmtTime(position) : '0:00'}
-          </Text>
-          <TouchableOpacity onPress={togglePlay} style={mc.playBtn} activeOpacity={0.85}>
+          <Text style={mc.timeText}>{position > 0 ? fmtTime(position) : '0:00'}</Text>
+
+          <TouchableOpacity
+            onPress={togglePlay}
+            style={mc.playBtn}
+            activeOpacity={0.85}
+            accessibilityLabel={playing ? 'Pausar' : 'Reproducir'}
+            accessibilityRole="button"
+            disabled={loading}
+          >
             <LinearGradient
               colors={isOwn ? ['#00c8a0', '#00b4e6'] : ['#667eea', '#764ba2']}
               style={mc.playBtnGrad}
             >
-              {playing ? (
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : playing ? (
                 <View style={mc.pauseWrap}>
                   <View style={mc.pauseBar} />
                   <View style={mc.pauseBar} />
@@ -612,7 +702,8 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
               )}
             </LinearGradient>
           </TouchableOpacity>
-          <Text style={mc.timeText}>
+
+          <Text style={[mc.timeText, { textAlign: 'right' }]}>
             {duration > 0 ? fmtTime(duration) : '--:--'}
           </Text>
         </View>
@@ -625,141 +716,240 @@ const mc = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: 12,
-    minWidth: 240,
-    maxWidth: 300,
-    paddingVertical: 6,
+    minWidth: 250,
+    maxWidth: 310,
+    paddingVertical: 4,
     alignItems: 'center',
   },
-  // Portada
-  cover: { position: 'relative', width: 72, height: 72, flexShrink: 0 },
+  coverWrap: { position: 'relative', width: 68, height: 68, flexShrink: 0 },
   coverGrad: {
-    width: 72, height: 72, borderRadius: 10,
+    width: 68, height: 68, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
   disc: {
     position: 'absolute',
-    width: 50, height: 50, borderRadius: 25,
+    width: 48, height: 48, borderRadius: 24,
     alignItems: 'center', justifyContent: 'center',
-    opacity: 0.35,
+    opacity: 0.4,
   },
-  discInner: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
-  discHole: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.6)' },
+  discInner: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  discHole: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
   coverInitials: {
-    fontSize: 22, fontWeight: '900', color: 'rgba(255,255,255,0.9)',
-    textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    fontSize: 20, fontWeight: '900', color: 'rgba(255,255,255,0.92)',
+    textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   badge: {
-    position: 'absolute', bottom: -4, right: -4,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#1DB954',
+    position: 'absolute', bottom: -5, right: -5,
+    width: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3,
   },
-  badgeNote: { fontSize: 10, color: '#fff', fontWeight: '700' },
-  // Info
-  right: { flex: 1, gap: 6 },
-  titleRow: { gap: 2 },
-  title: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
-  artist: { fontSize: 12, color: '#6b7280', fontWeight: '500' },
-  // Progreso
+  right: { flex: 1, gap: 7 },
+  titleRow: { gap: 1 },
+  title: { fontSize: 13, fontWeight: '700', color: '#111827', lineHeight: 17 },
+  artist: { fontSize: 11, color: '#6b7280', fontWeight: '500' },
   progressTrack: {
-    height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.10)',
-    position: 'relative', overflow: 'visible',
+    height: 18, justifyContent: 'center',
+    position: 'relative',
+  },
+  progressBg: {
+    position: 'absolute', left: 0, right: 0,
+    height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.10)',
   },
   progressFill: {
-    height: 4, borderRadius: 2,
-    backgroundColor: '#1DB954',
-    position: 'absolute', left: 0, top: 0,
+    height: 3, borderRadius: 2,
+    position: 'absolute', left: 0, top: 7,
   },
   progressThumb: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#1DB954',
-    position: 'absolute', top: -3,
+    width: 11, height: 11, borderRadius: 6,
+    position: 'absolute', top: 3,
     marginLeft: -5,
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#1DB954',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3, shadowRadius: 2, elevation: 3,
   },
-  // Controles
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  timeText: { fontSize: 10, color: '#9ca3af', fontWeight: '600', minWidth: 32 },
-  playBtn: { marginHorizontal: 4 },
+  timeText: { fontSize: 10, color: '#9ca3af', fontWeight: '600', minWidth: 34 },
+  playBtn: {},
   playBtnGrad: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22, shadowRadius: 4, elevation: 5,
   },
   playTriangle: {
     width: 0, height: 0,
-    borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 13,
+    borderTopWidth: 6, borderBottomWidth: 6, borderLeftWidth: 11,
     borderTopColor: 'transparent', borderBottomColor: 'transparent',
     borderLeftColor: '#fff',
     marginLeft: 3,
   },
   pauseWrap: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  pauseBar: { width: 3, height: 14, borderRadius: 2, backgroundColor: '#fff' },
+  pauseBar: { width: 3, height: 13, borderRadius: 2, backgroundColor: '#fff' },
 });
 
 // ── Tarjeta CONTACTO ──────────────────────────────────────────────
-const ContactCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
+// Formato de texto serializado del contacto:
+//   línea 0: nombre
+//   línea 1: teléfono
+//   línea 2: avatar_url (opcional, puede estar vacío)
+const ContactCard = ({
+  text,
+  isOwn,
+  onOpenContact,
+  onContactCall,
+  onContactMessage,
+}: {
+  text: string;
+  isOwn: boolean;
+  onOpenContact?: (phone: string, name: string, avatarUrl?: string) => void;
+  onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
+  onContactMessage?: (phone: string, name: string) => void;
+}) => {
   const lines = (text || '').split('\n');
-  const name = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
-  const phone = lines[1]?.replace(/^📞\s*/, '').trim() || '';
+  const name      = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
+  const phone     = lines[1]?.replace(/^📞\s*/, '').trim() || '';
+  const avatarUrl = lines[2]?.trim() || '';
+  const isValidUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+  const color = isOwn ? '#00c8a0' : '#00b4e6';
+
   return (
     <View style={cs.card}>
-      <View style={cs.row}>
-        <EGAvatar name={name} size={44} />
-        <View style={cs.info}>
-          <Text style={cs.name} numberOfLines={1}>{name}</Text>
-          {!!phone && <Text style={cs.phone}>{phone}</Text>}
+      {/* Fila principal: avatar + datos — toca nombre/foto para abrir info */}
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => onOpenContact?.(phone, name, isValidUrl ? avatarUrl : undefined)}
+        accessibilityLabel={`Ver información de ${name}`}
+        accessibilityRole="button"
+      >
+        <View style={cs.row}>
+          <View style={cs.avatarWrap}>
+            {isValidUrl ? (
+              <Image source={{ uri: avatarUrl }} style={cs.avatarImg} />
+            ) : (
+              <EGAvatar name={name} size={48} />
+            )}
+          </View>
+          <View style={cs.info}>
+            <Text style={cs.name} numberOfLines={1}>{name}</Text>
+            {!!phone && <Text style={cs.phone}>{phone}</Text>}
+          </View>
         </View>
-      </View>
-      <View style={[cs.divider, isOwn ? cs.divOwn : cs.divTheir]} />
-      <TouchableOpacity onPress={() => phone && Linking.openURL(`tel:${phone}`)} activeOpacity={0.7}>
-        <Text style={[cs.action, isOwn ? cs.actionOwn : cs.actionTheir]}>📞 Llamar</Text>
       </TouchableOpacity>
+
+      {/* Separador */}
+      <View style={[cs.divider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+      {/* Acciones: Mensaje | Video | Audio */}
+      <View style={cs.actions}>
+        {/* Enviar mensaje */}
+        <TouchableOpacity
+          onPress={() => onContactMessage?.(phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Enviar mensaje"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Mensaje</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        {/* Video llamada */}
+        <TouchableOpacity
+          onPress={() => onContactCall?.('video', phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Videollamada"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Polygon points="23 7 16 12 23 17 23 7"/>
+            <Rect x={1} y={5} width={15} height={14} rx={2}/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Video</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        {/* Audio llamada */}
+        <TouchableOpacity
+          onPress={() => onContactCall?.('audio', phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Llamada de voz"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Audio</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 };
 const cs = StyleSheet.create({
-  card: { minWidth: 200, maxWidth: 250 },
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingBottom: 10 },
+  card: { minWidth: 220, maxWidth: 270 },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingBottom: 12 },
+  avatarWrap: {
+    width: 48, height: 48, borderRadius: 24,
+    overflow: 'hidden', backgroundColor: '#e5e7eb',
+  },
+  avatarImg: { width: 48, height: 48, borderRadius: 24 },
   info: { flex: 1, minWidth: 0 },
   name: { fontSize: 14, fontWeight: '700', color: '#111827' },
   phone: { fontSize: 12, color: '#6b7280', marginTop: 2 },
-  divider: { height: 1, marginHorizontal: -10, marginBottom: 8 },
+  divider: { height: 1, marginHorizontal: -10, marginBottom: 0 },
   divOwn: { backgroundColor: 'rgba(0,200,160,0.2)' },
   divTheir: { backgroundColor: 'rgba(0,0,0,0.07)' },
-  action: { fontSize: 13, fontWeight: '700', textAlign: 'center', paddingVertical: 4 },
+  actions: { flexDirection: 'row', alignItems: 'center', paddingTop: 8 },
+  actionBtn: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    justifyContent: 'center', gap: 4, paddingVertical: 4,
+  },
+  actionDivider: { width: 1, height: 20, marginHorizontal: 2 },
+  actionText: { fontSize: 12, fontWeight: '700' },
   actionOwn: { color: '#00c8a0' },
   actionTheir: { color: '#00b4e6' },
 });
 
 // ── Tarjeta UBICACIÓN ─────────────────────────────────────────────
-const LocationCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
+const LocationCard = ({ text, isOwn, isLive }: { text: string; isOwn: boolean; isLive?: boolean }) => {
   const lines = (text || '').split('\n');
   const label = lines[0]?.replace(/^📍\s*/, '').trim() || 'Ubicación';
   const url = lines[1]?.trim() || '';
+  // Extraer coordenadas de live_location: "lat:X,lng:Y"
+  const coordMatch = text.match(/lat:([-\d.]+),lng:([-\d.]+)/);
+  const mapsUrl = coordMatch
+    ? `https://www.google.com/maps?q=${coordMatch[1]},${coordMatch[2]}`
+    : url;
   return (
     <View style={ls.card}>
-      <TouchableOpacity activeOpacity={0.85} onPress={() => url && Linking.openURL(url)}>
-        <LinearGradient colors={['#4facfe', '#00f2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ls.preview}>
+      <TouchableOpacity activeOpacity={0.85} onPress={() => mapsUrl && Linking.openURL(mapsUrl)}>
+        <LinearGradient colors={isLive ? ['#ef4444', '#f97316'] : ['#4facfe', '#00f2fe']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ls.preview}>
           <View style={ls.gridH1} /><View style={ls.gridH2} />
           <View style={ls.gridV1} /><View style={ls.gridV2} />
-          <View style={ls.pin}><Text style={ls.pinEmoji}>📍</Text></View>
+          <View style={ls.pin}><Text style={ls.pinEmoji}>{isLive ? '🔴' : '📍'}</Text></View>
+          {isLive && (
+            <View style={ls.liveBadge}>
+              <Text style={ls.liveText}>EN VIVO</Text>
+            </View>
+          )}
         </LinearGradient>
       </TouchableOpacity>
-      <Text style={ls.label} numberOfLines={2}>{label}</Text>
-      <TouchableOpacity onPress={() => url && Linking.openURL(url)}
+      <Text style={ls.label} numberOfLines={2}>{isLive ? '📍 Ubicación en vivo' : label}</Text>
+      <TouchableOpacity onPress={() => mapsUrl && Linking.openURL(mapsUrl)}
         style={[ls.btn, isOwn ? ls.btnOwn : ls.btnTheir]} activeOpacity={0.7}>
-        <Text style={ls.btnText}>Abrir en Maps</Text>
+        <Text style={ls.btnText}>{isLive ? 'Ver en Maps' : 'Abrir en Maps'}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -778,10 +968,63 @@ const ls = StyleSheet.create({
   btnOwn: { backgroundColor: 'rgba(0,200,160,0.12)' },
   btnTheir: { backgroundColor: 'rgba(0,180,230,0.10)' },
   btnText: { fontSize: 12, fontWeight: '700', color: '#00b4e6' },
+  liveBadge: {
+    position: 'absolute', top: 8, right: 8,
+    backgroundColor: '#ef4444', borderRadius: 6,
+    paddingHorizontal: 6, paddingVertical: 2,
+  },
+  liveText: { color: '#fff', fontSize: 10, fontWeight: '800', letterSpacing: 0.5 },
 });
 
+// ── Tarjeta ÁLBUM (múltiples fotos) ──────────────────────────────
+const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: string) => void }) => {
+  const [viewerOpen, setViewerOpen] = useState(false);
+  const [viewerIndex, setViewerIndex] = useState(0);
+  const visible = urls.slice(0, 6);
+  const extra = urls.length > 6 ? urls.length - 6 : 0;
+
+  const openAt = (i: number) => {
+    setViewerIndex(i);
+    setViewerOpen(true);
+  };
+
+  if (visible.length === 1) {
+    return (
+      <>
+        <TouchableOpacity onPress={() => openAt(0)} activeOpacity={0.9}>
+          <Image source={{ uri: visible[0] }} style={{ width: 240, height: 200, borderRadius: 10 }} resizeMode="cover" />
+        </TouchableOpacity>
+        <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
+      </>
+    );
+  }
+
+  const cols = visible.length === 2 ? 2 : 3;
+  const cellSize = cols === 2 ? 118 : 78;
+
+  return (
+    <>
+      <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 2, borderRadius: 10, overflow: 'hidden', maxWidth: 240 }}>
+        {visible.map((uri, i) => (
+          <TouchableOpacity key={i} onPress={() => openAt(i)} activeOpacity={0.85}>
+            <View style={{ width: cellSize, height: cellSize }}>
+              <Image source={{ uri }} style={{ width: cellSize, height: cellSize }} resizeMode="cover" />
+              {i === 5 && extra > 0 && (
+                <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ color: '#fff', fontWeight: '700', fontSize: 20 }}>+{extra}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
+    </>
+  );
+};
+
 // ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
-const MoneyCard = ({ text }: { text: string }) => {
+const MoneyCard = ({ text, onPress }: { text: string; onPress?: () => void }) => {
   const lines = (text || '').split('\n');
   const amountLine = lines.find(l => l.includes('💰')) || '';
   const toLine = lines.find(l => l.includes('👤')) || '';
@@ -789,7 +1032,8 @@ const MoneyCard = ({ text }: { text: string }) => {
   const amount = amountLine.replace(/^💰\s*/, '').trim();
   const to = toLine.replace(/^👤 Para:\s*/i, '').trim();
   const ref = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
-  return (
+  
+  const CardContent = (
     <LinearGradient colors={['#1a73e8', '#0d47a1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ms.card}>
       <View style={ms.header}>
         <Text style={ms.headerIcon}>💸</Text>
@@ -804,6 +1048,16 @@ const MoneyCard = ({ text }: { text: string }) => {
       </View>
     </LinearGradient>
   );
+
+  if (onPress) {
+    return (
+      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
+        {CardContent}
+      </TouchableOpacity>
+    );
+  }
+
+  return CardContent;
 };
 const ms = StyleSheet.create({
   card: { borderRadius: 12, padding: 14, minWidth: 200, maxWidth: 260 },
@@ -823,6 +1077,26 @@ const formatTime = (dateStr: string) => {
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
+// Función para parsear datos de transferencia del mensaje
+const parseTransferData = (text: string, messageDate: string) => {
+  const lines = (text || '').split('\n');
+  const amountLine = lines.find(l => l.includes('💰')) || '';
+  const toLine = lines.find(l => l.includes('👤')) || '';
+  const refLine = lines.find(l => l.includes('🔑')) || '';
+  
+  const amount = amountLine.replace(/^💰\s*/, '').trim();
+  const recipient = toLine.replace(/^👤 Para:\s*/i, '').trim();
+  const reference = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
+  
+  return {
+    amount: amount || '0 CFA',
+    recipient: recipient || 'Destinatario desconocido',
+    reference: reference || 'Sin referencia',
+    status: 'completed' as const,
+    date: new Date(messageDate).toLocaleString('es-ES'),
+  };
+};
+
 export interface ChatMessageBubbleProps {
   message: ChatMessage;
   isOwn: boolean;
@@ -832,13 +1106,29 @@ export interface ChatMessageBubbleProps {
   // Datos del otro participante para cuando sender no viene del servidor
   otherName?: string;
   otherAvatar?: string;
-  replyPreview?: { author: string; text: string };
+  replyPreview?: { author: string; text: string; imageUri?: string };
   showReadReceipts?: boolean;
   highlight?: boolean;
   onLongPress: (msg: ChatMessage) => void;
   onRetry?: (msg: ChatMessage) => void;
   onOpenImage?: (uri: string) => void;
   onCallback?: () => void;
+  onTransferPress?: (transferData: any) => void;
+  reactions?: Record<string, number>;
+  /** Swipe-to-reply: se dispara cuando el usuario desliza la burbuja */
+  onSwipeReply?: (msg: ChatMessage) => void;
+  /** Ver quién reaccionó */
+  onReactionPress?: (msgId: string, reactions: Record<string, number>) => void;
+  /** Saltar al mensaje original al tocar el reply preview */
+  onReplyTap?: (parentId: string) => void;
+  /** C8 — Guardar transcripción de voz en el estado del chat */
+  onTranscribed?: (msgId: string, transcript: string) => void;
+  /** Tarjeta contacto — abre info del contacto al tocar nombre/foto */
+  onOpenContact?: (phone: string, name: string, avatarUrl?: string) => void;
+  /** Tarjeta contacto — inicia llamada audio o video */
+  onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
+  /** Tarjeta contacto — envía mensaje al contacto */
+  onContactMessage?: (phone: string, name: string) => void;
 }
 
 export const ChatMessageBubble = React.memo(({
@@ -856,8 +1146,74 @@ export const ChatMessageBubble = React.memo(({
   onRetry,
   onOpenImage,
   onCallback,
+  onTransferPress,
+  reactions,
+  onSwipeReply,
+  onReactionPress,
+  onReplyTap,
+  onTranscribed,
+  onOpenContact,
+  onContactCall,
+  onContactMessage,
 }: ChatMessageBubbleProps) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
+  const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
+  const [popEmoji, setPopEmoji] = useState<string | null>(null);
+
+  // ── Animación de entrada ──────────────────────────────────────
+  const entranceAnim = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.spring(entranceAnim, {
+      toValue: 1,
+      tension: 120,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  }, []);
+  const entranceStyle = {
+    opacity: entranceAnim,
+    transform: [
+      { scale: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [0.88, 1] }) },
+      { translateY: entranceAnim.interpolate({ inputRange: [0, 1], outputRange: [8, 0] }) },
+    ],
+  };
+
+  // ── Swipe-to-reply ────────────────────────────────────────────
+  const SWIPE_THRESHOLD = 60;
+  const swipeX = useRef(new Animated.Value(0)).current;
+  const swipeFired = useRef(false);
+
+  const swipePan = useRef(
+    PanResponder.create({
+      onMoveShouldSetPanResponder: (_evt, gs) =>
+        Math.abs(gs.dx) > 8 && Math.abs(gs.dx) > Math.abs(gs.dy) * 1.5,
+      onPanResponderGrant: () => {
+        swipeFired.current = false;
+        swipeX.setValue(0);
+      },
+      onPanResponderMove: (_evt, gs) => {
+        // Sólo hacia la derecha (dx > 0) con resistencia
+        if (gs.dx > 0) {
+          const clamped = Math.min(gs.dx, SWIPE_THRESHOLD * 1.2);
+          swipeX.setValue(clamped);
+          if (!swipeFired.current && gs.dx >= SWIPE_THRESHOLD) {
+            swipeFired.current = true;
+            onSwipeReply?.(message);
+          }
+        }
+      },
+      onPanResponderRelease: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+        swipeFired.current = false;
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(swipeX, { toValue: 0, useNativeDriver: true, tension: 200, friction: 20 }).start();
+        swipeFired.current = false;
+      },
+    })
+  ).current;
+  // ──────────────────────────────────────────────────────────────
+
   const time = formatTime(message.created_at);
   const canRetry = isOwn && message.status === 'failed';
   const imageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
@@ -869,12 +1225,16 @@ export const ChatMessageBubble = React.memo(({
   const isContactMsg = message.type === 'contact'
     || (message.type === 'text' && !!message.text?.startsWith('👤'));
   const isLocationMsg = message.type === 'location'
+    || message.type === 'live_location'
     || (message.type === 'text' && !!message.text?.startsWith('📍'));
   const isCallMsg = message.type === 'call'
     || (message.type === 'text' && !!(
       message.text?.includes('Llamada') || message.text?.includes('llamada')
     ));
-  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg;
+  const pollData = message.type === 'poll' || message.text?.startsWith('📊')
+    ? parsePoll(message.text || '') : null;
+  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg || !!pollData
+    || message.type === 'music';
 
   const renderAvatar = (side: 'left' | 'right') => {
     if (side === 'left' && isOwn) return null;
@@ -915,34 +1275,82 @@ export const ChatMessageBubble = React.memo(({
         <Text style={s.senderName}>{message.sender.full_name}</Text>
       )}
       {replyPreview && (
-        <View style={s.replyQuote}>
+        <TouchableOpacity
+          onPress={() => message.reply_to && onReplyTap?.(message.reply_to)}
+          activeOpacity={0.7}
+          style={s.replyQuote}
+        >
           <Text style={s.replyAuthor} numberOfLines={1}>{replyPreview.author}</Text>
-          <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
-        </View>
+          {replyPreview.imageUri ? (
+            <View style={s.replyImageRow}>
+              <Image source={{ uri: replyPreview.imageUri }} style={s.replyThumb} />
+              <Text style={s.replyText} numberOfLines={1}>{replyPreview.text || '📷 Foto'}</Text>
+            </View>
+          ) : (
+            <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
+          )}
+        </TouchableOpacity>
       )}
       {/* Tarjetas especiales */}
       {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
-      {isContactMsg && !!message.text && <ContactCard text={message.text} isOwn={isOwn} />}
-      {isLocationMsg && !!message.text && <LocationCard text={message.text} isOwn={isOwn} />}
-      {isMoneyMsg && !!message.text && <MoneyCard text={message.text} />}
+      {pollData     && <PollMessage poll={pollData} currentUserId={''} isOwn={isOwn} onVote={() => {}} />}
+      {isContactMsg && !!message.text && (
+        <ContactCard
+          text={message.text}
+          isOwn={isOwn}
+          onOpenContact={onOpenContact}
+          onContactCall={onContactCall}
+          onContactMessage={onContactMessage}
+        />
+      )}
+      {isLocationMsg && !!message.text && (
+        <LocationCard
+          text={message.text}
+          isOwn={isOwn}
+          isLive={message.type === 'live_location'}
+        />
+      )}
+      {isMoneyMsg && !!message.text && (
+        <MoneyCard 
+          text={message.text} 
+          onPress={onTransferPress ? () => {
+            const transferData = parseTransferData(message.text || '', message.created_at);
+            onTransferPress(transferData);
+          } : undefined}
+        />
+      )}
 
       {/* Texto normal */}
       {!isCardType && message.type === 'text' && !!message.text && (
-        <Text style={s.bubbleText}>{message.text}</Text>
+        <>
+          <MarkdownText text={message.text} style={s.bubbleText} />
+          {/* Sprint 3.4 — Link Preview */}
+          {(() => {
+            const url = extractUrl(message.text);
+            return url ? <LinkPreview url={url} isOwn={isOwn} /> : null;
+          })()}
+        </>
+      )}
+      {/* Album */}
+      {message.type === 'album' && Array.isArray(message.album_urls) && message.album_urls.length > 0 && (
+        <AlbumCard urls={message.album_urls} onOpenImage={onOpenImage} />
       )}
       {message.type === 'image' && imageUri ? (
         <TouchableOpacity onPress={() => setImageViewerOpen(true)} activeOpacity={0.9}>
           <Image source={{ uri: imageUri }} style={s.bubbleImage} resizeMode="cover" />
         </TouchableOpacity>
       ) : message.type === 'image' ? (
-        <Text style={s.bubbleText}>📷 Foto</Text>
+        <Text style={s.bubbleText}>Foto</Text>
       ) : null}
       {message.type === 'video' && (
         <VideoCard message={message} isOwn={isOwn} />
       )}
+      {message.type === 'music' && (
+        <MusicCard message={message} isOwn={isOwn} />
+      )}
       {message.type === 'audio' && (
         isVoiceMessage(message)
-          ? <VoiceCard message={message} isOwn={isOwn} />
+          ? <VoiceCard message={message} isOwn={isOwn} onTranscribed={onTranscribed ? (t) => onTranscribed(message.id, t) : undefined} />
           : <MusicCard message={message} isOwn={isOwn} />
       )}
       {message.type === 'file' && (
@@ -973,13 +1381,20 @@ export const ChatMessageBubble = React.memo(({
             const fileIcon = isPdf ? '📕' : isWord ? '📘' : isExcel ? '📗' : isPpt ? '📙' : isImage ? '🖼️' : '📄';
             const fileColor = isPdf ? '#e53e3e' : isWord ? '#2b5ce6' : isExcel ? '#1d6f42' : isPpt ? '#d04a02' : '#6b7280';
             return (
-              <View style={s.fileInner}>
-                <View style={[s.fileIconBox, { backgroundColor: fileColor + '18' }]}>
-                  <Text style={s.fileIconText}>{fileIcon}</Text>
+              <View style={s.fileWrap}>
+                <View style={s.fileInner}>
+                  <View style={[s.fileIconBox, { borderColor: fileColor }]}>
+                    <Text style={s.fileIconText}>{fileIcon}</Text>
+                  </View>
+                  <View style={s.fileInfo}>
+                    <Text style={s.fileName} numberOfLines={2}>{fileName}</Text>
+                    <Text style={[s.fileExt, { color: fileColor }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                  </View>
                 </View>
-                <View style={s.fileInfo}>
-                  <Text style={s.fileName} numberOfLines={2}>{fileName}</Text>
-                  <Text style={[s.fileExt, { color: fileColor }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                <View style={s.fileActionRow}>
+                  <Text style={[s.fileAction, { color: fileColor }]}>
+                    {message.file_url ? '↓ Descargar' : 'Preparando archivo'}
+                  </Text>
                 </View>
               </View>
             );
@@ -987,6 +1402,9 @@ export const ChatMessageBubble = React.memo(({
         </TouchableOpacity>
       )}
       <View style={s.meta}>
+        {message.edited && (
+          <Text style={s.editedLabel}>editado</Text>
+        )}
         <Text style={s.time}>{time}</Text>
         {isOwn && showReadReceipts && <MessageStatusIndicator status={message.status} />}
       </View>
@@ -1005,6 +1423,27 @@ export const ChatMessageBubble = React.memo(({
   );
 
   return (
+    <Animated.View
+      style={[entranceStyle, { transform: [{ translateX: swipeX }] }]}
+      {...(onSwipeReply ? swipePan.panHandlers : {})}
+    >
+      {/* Icono de responder visible durante el swipe */}
+      {onSwipeReply && (
+        <Animated.View
+          style={[
+            s.swipeReplyIcon,
+            isOwn ? s.swipeReplyIconOwn : s.swipeReplyIconTheir,
+            {
+              opacity: swipeX.interpolate({ inputRange: [0, 30, SWIPE_THRESHOLD], outputRange: [0, 0.4, 1] }),
+              transform: [{
+                scale: swipeX.interpolate({ inputRange: [0, SWIPE_THRESHOLD], outputRange: [0.5, 1], extrapolate: 'clamp' }),
+              }],
+            },
+          ]}
+        >
+          <Text style={{ fontSize: 16 }}>↩️</Text>
+        </Animated.View>
+      )}
     <TouchableOpacity
       onPress={canRetry ? () => onRetry?.(message) : canOpenImage ? () => onOpenImage?.(imageUri!) : undefined}
       onLongPress={() => onLongPress(message)}
@@ -1039,6 +1478,31 @@ export const ChatMessageBubble = React.memo(({
         )}
         {renderAvatar('right')}
       </View>
+
+      {/* Reacciones bajo la burbuja */}
+      {(reactions && Object.keys(reactions).length > 0) || Object.keys(localReactions).length > 0 ? (
+        <TouchableOpacity
+          onPress={() => {
+            const merged = { ...reactions, ...localReactions };
+            onReactionPress?.(message.id, merged);
+          }}
+          activeOpacity={0.7}
+        >
+          <View style={[s.reactionsRow, isOwn ? s.reactionsOwn : s.reactionsTheir]}>
+            {Object.entries({ ...reactions, ...localReactions }).map(([emoji, count]) => (
+              <ReactionBubble key={emoji} emoji={emoji} count={count as number} isOwn={isOwn} />
+            ))}
+          </View>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Pop de emoji al reaccionar */}
+      {popEmoji && (
+        <View style={[s.popWrap, isOwn ? { right: 60 } : { left: 60 }]}>
+          <ReactionPopAnimation emoji={popEmoji} onDone={() => setPopEmoji(null)} />
+        </View>
+      )}
+
       {/* Visor de imagen a pantalla completa */}
       {imageUri && (
         <ImageViewer
@@ -1048,6 +1512,7 @@ export const ChatMessageBubble = React.memo(({
         />
       )}
     </TouchableOpacity>
+    </Animated.View>
   );
 });
 
@@ -1121,19 +1586,44 @@ const s = StyleSheet.create({
   },
   replyAuthor: { fontSize: 11, fontWeight: '700', color: '#00b4e6', marginBottom: 2 },
   replyText: { fontSize: 12, color: '#6b7280' },
+  replyImageRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  replyThumb: { width: 36, height: 36, borderRadius: 5, backgroundColor: '#e5e7eb' },
   bubbleText: { fontSize: 15, color: '#111827', lineHeight: 21 },
   bubbleImage: { width: 240, height: 200, borderRadius: 10, marginBottom: 4 },
   meta: { flexDirection: 'row', alignItems: 'center', justifyContent: 'flex-end', gap: 4, marginTop: 4 },
   time: { fontSize: 11, color: '#9ca3af' },
+  editedLabel: { fontSize: 11, color: '#9ca3af', fontStyle: 'italic' },
   uploadBox: { marginTop: 6, gap: 4 },
   uploadTrack: { height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.12)', overflow: 'hidden' },
   uploadFill: { height: 3, backgroundColor: '#00c8a0', borderRadius: 2 },
   uploadText: { fontSize: 11, color: '#9ca3af', textAlign: 'right' },
   retryHint: { fontSize: 11, color: '#ef4444', fontWeight: '600', marginTop: 3, textAlign: 'right' },
+  // Reacciones bajo la burbuja
+  reactionsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 3, marginTop: 2, marginHorizontal: 6 },
+  reactionsOwn:  { justifyContent: 'flex-end',   paddingRight: 44 },
+  reactionsTheir:{ justifyContent: 'flex-start',  paddingLeft: 44 },
+  popWrap: { position: 'absolute', top: 0, zIndex: 50 },
+  // ── Swipe-to-reply ──
+  swipeReplyIcon: {
+    position: 'absolute',
+    top: '40%',
+    zIndex: 20,
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,180,230,0.18)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  swipeReplyIconOwn:   { left: 6 },
+  swipeReplyIconTheir: { left: 6 },
   // ── Tarjeta archivo ──
   fileCard: {
     minWidth: 200,
     maxWidth: 260,
+  },
+  fileWrap: {
+    gap: 8,
   },
   fileInner: {
     flexDirection: 'row',
@@ -1148,6 +1638,8 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    backgroundColor: 'rgba(255,255,255,0.54)',
+    borderWidth: 1,
   },
   fileIconText: {
     fontSize: 24,
@@ -1167,5 +1659,14 @@ const s = StyleSheet.create({
     fontWeight: '700',
     marginTop: 2,
     letterSpacing: 0.5,
+  },
+  fileActionRow: {
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.06)',
+    paddingTop: 8,
+  },
+  fileAction: {
+    fontSize: 13,
+    fontWeight: '800',
   },
 });

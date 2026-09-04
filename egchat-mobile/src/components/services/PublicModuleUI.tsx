@@ -139,7 +139,7 @@ export const ServiceOptionRow = ({
   onPress: () => void; rightMeta?: string;
 }) => (
   <TouchableOpacity style={pb.optionRow} onPress={onPress} activeOpacity={0.75}>
-    <View style={[pb.optionIcon, { backgroundColor: color + '18' }]}>
+    <View style={[pb.optionIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
       <Text style={{ fontSize: 20 }}>{icon}</Text>
     </View>
     <View style={{ flex: 1 }}>

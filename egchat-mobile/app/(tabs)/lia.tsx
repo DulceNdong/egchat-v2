@@ -308,7 +308,7 @@ export default function LiaScreen() {
             <View style={s.suggestionsGrid}>
               {SUGGESTIONS.map((sg, i) => (
                 <TouchableOpacity key={i} style={[s.suggestionChip, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => send(sg.text)} activeOpacity={0.7}>
-                  <View style={[s.suggestionIcon, { backgroundColor: sg.color + '18' }]}>{sg.icon}</View>
+                  <View style={[s.suggestionIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>{sg.icon}</View>
                   <Text style={[s.suggestionText, { color: C.textSecondary }]} numberOfLines={2}>{sg.text}</Text>
                 </TouchableOpacity>
               ))}

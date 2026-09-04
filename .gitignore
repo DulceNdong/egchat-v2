@@ -7,3 +7,25 @@ dist/
 
 # Submódulo roto - no trackear
 egchat-api-temp/
+
+.vercel
+.env*.local
+
+# Build artifacts iOS/Xcode
+build/
+DerivedData/
+Podfile.save
+*.save
+*.xcuserstate
+
+# NPM logs y caches
+.npm/
+*.log
+
+# Expo
+.expo/prebuild/
+.expo/xcodebuild*.log
+
+# Firebase service account (NUNCA subir a Git)
+server/firebase-service-account.json
+firebase-service-account.json

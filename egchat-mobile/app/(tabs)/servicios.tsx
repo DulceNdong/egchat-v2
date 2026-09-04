@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, Modal, Pressable, Linking, RefreshControl,
@@ -8,6 +9,8 @@ import { router, useLocalSearchParams } from 'expo-router';
 import { authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
+import { useAppStore } from '../../src/store/useAppStore';
+import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { ServiceIcon } from '../../src/components/ServiceIcon';
 import {
@@ -69,6 +72,7 @@ const SERVICE_SECTIONS = [
       { id: 'restaurantes', svgIcon: 'restaurante',   label: 'Restaurante',   color: '#C47D2A' },
       { id: 'hotel',        svgIcon: 'hotel',         label: 'Hotel',         color: '#1485EE' },
       { id: 'vuelos',       svgIcon: 'vuelos',        label: 'Vuelos',        color: '#6B5BD6' },
+      { id: 'barcos',       svgIcon: 'barco',         label: 'Barcos',        color: '#0EA5E9' },
       { id: 'gasolineras',  svgIcon: 'gasolinera',    label: 'Gasolinera',    color: '#C47D2A' },
       { id: 'tienda',       svgIcon: 'tienda',        label: 'Tienda',        color: '#2E9E6B' },
       { id: 'lavanderia',   svgIcon: 'lavanderia',    label: 'Lavandería',    color: '#1485EE' },
@@ -100,7 +104,7 @@ const ServiceModal = ({
       <Pressable style={styles.sheet} onPress={() => {}}>
         <View style={styles.handle} />
         <Text style={styles.sheetTitle}>{title}</Text>
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
+        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 20 }}>
           {children}
         </ScrollView>
       </Pressable>
@@ -160,7 +164,14 @@ const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
       </View>
     ))}
     <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]}
-      onPress={() => Alert.alert('ID Digital', 'Función de verificación de identidad próximamente disponible.')}>
+      onPress={() => {
+        onClose();
+        Alert.alert('ID Digital', 'Elige qué quieres hacer', [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Ver perfil', onPress: () => router.push('/ajustes/perfil' as any) },
+          { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
+        ]);
+      }}>
       <Text style={styles.callBtnText}>🪪 Verificar mi identidad</Text>
     </TouchableOpacity>
   </ServiceModal>
@@ -242,7 +253,7 @@ const drawerStyles = StyleSheet.create({
 });
 
 // ── Pantalla principal ────────────────────────────────────────────
-export default function ServiciosScreen() {
+function ServiciosScreenInner() {
   const params = useLocalSearchParams<{ service?: string }>();
   const [activeModal, setActiveModal] = useState<string | null>(null);
   const [user, setUser] = useState<any>(null);
@@ -251,7 +262,7 @@ export default function ServiciosScreen() {
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
-  const [notifications, setNotifications] = useState<AppNotification[]>([]);
+  const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
@@ -293,6 +304,7 @@ export default function ServiciosScreen() {
     ocio: '/ocio',
     apuestas: '/apuestas',
     lia: '/(tabs)/lia',
+    barcos: '/barcos',
     ajustes: '/(tabs)/ajustes',
     historial: '/historial-completo',
     actividad: '/ajustes/actividad',
@@ -308,7 +320,7 @@ export default function ServiciosScreen() {
       router.push(route as any);
       return;
     }
-    Alert.alert('Próximamente', 'Este servicio estará disponible pronto.');
+    Alert.alert('Servicio no encontrado', 'No se pudo abrir este servicio.');
   };
 
   useEffect(() => {
@@ -323,30 +335,30 @@ export default function ServiciosScreen() {
   }, [params.service]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#F7F8FA' }]} edges={['bottom', 'left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#F0F2F5' }]} edges={['left', 'right']}>
       <EGChatHeader
-        temp={27}
-        city="Malabo"
-        weatherCondition="cloudy"
-        unreadCount={notifications.filter(n => !n.read).length}
         notificationsOpen={showNotifications}
         menuOpen={showMenu}
         onWeatherPress={() => setShowWeather(true)}
         onNotificationsPress={() => {
           setShowNotifications(true);
-          setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+          markAllRead();
         }}
         onMenuPress={() => setShowMenu(true)}
       />
 
       <ScrollView
+        style={styles.scroll}
+        contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        decelerationRate="fast"
+        scrollEventThrottle={8}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00C8A0" colors={['#00C8A0']} />}
       >
         {SERVICE_SECTIONS.map(section => (
-          <View key={section.id} style={styles.sectionWrapper}>
+          <View key={section.id} style={[styles.sectionWrapper, { backgroundColor: C.bgSecondary }]}>
             <View style={styles.sectionHeaderWeb}>
-              <Text style={styles.sectionTitleWeb}>{section.title}</Text>
+              <Text style={[styles.sectionTitleWeb, { color: C.textTertiary }]}>{section.title.toUpperCase()}</Text>
             </View>
             <View style={styles.sectionCardWeb}>
               <View style={styles.grid}>
@@ -355,21 +367,21 @@ export default function ServiciosScreen() {
                     key={s.id}
                     style={styles.serviceItem}
                     onPress={() => openService(s.id)}
-                    activeOpacity={0.7}
+                    activeOpacity={0.5}
+                    delayPressIn={0}
                   >
-                    <View style={[styles.serviceIconBox, { borderColor: s.color + '30' }]}>
+                    <View style={styles.serviceIconBox}>
                       <ServiceIcon name={s.svgIcon} size={26} color={s.color} />
                     </View>
-                    <Text style={styles.serviceLabel} numberOfLines={1}>{s.label}</Text>
+                    <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
             </View>
-            <View style={styles.sectionSpacer} />
+            <View style={[styles.sectionSpacer, { backgroundColor: isDark ? '#0d1117' : '#F0F2F5' }]} />
           </View>
         ))}
 
-        <View style={{ height: 100 }} />
       </ScrollView>
 
       {/* ── Drawer menú ── */}
@@ -380,16 +392,16 @@ export default function ServiciosScreen() {
         visible={showNotifications}
         onClose={() => setShowNotifications(false)}
         notifications={notifications}
-        onMarkAllRead={() => setNotifications(prev => prev.map(n => ({ ...n, read: true })))}
-        onClearAll={() => setNotifications([])}
+        onMarkAllRead={() => markAllRead()}
+        onClearAll={() => clearAllNotifications()}
         onNotifPress={(n) => {
-          setNotifications(prev => prev.filter(x => x.id !== n.id));
+          removeNotification(n.id);
           setShowNotifications(false);
           if (n.chatId) router.push(`/chat/${n.chatId}` as any);
         }}
       />
       <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
-      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp="27°" city="Malabo" condition="cloudy" />
+      <WeatherModal visible={showWeather} onClose={() => setShowWeather(false)} temp={`${weather.temp}°`} city={weather.city} condition={weather.condition} />
 
       {/* ── Modales de servicios ── */}
       <ElectricidadModal  visible={activeModal === 'electricidad'}  onClose={() => setActiveModal(null)} />
@@ -424,6 +436,8 @@ export default function ServiciosScreen() {
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.bgPrimary },
+  scroll: { flex: 1 },
+  scrollContent: { paddingBottom: 100 },
 
   // Header
   header: {
@@ -461,11 +475,11 @@ const styles = StyleSheet.create({
   },
 
   // Secciones (estilo web)
-  sectionWrapper: { backgroundColor: '#FFFFFF' },
-  sectionHeaderWeb: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
-  sectionTitleWeb: { fontSize: 13, fontWeight: '500', color: '#9CA3AF' },
-  sectionCardWeb: { paddingHorizontal: 8, paddingVertical: 4 },
-  sectionSpacer: { height: 8, backgroundColor: '#F7F8FA' },
+  sectionWrapper: {},
+  sectionHeaderWeb: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 2 },
+  sectionTitleWeb: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8 },
+  sectionCardWeb: { paddingHorizontal: 6, paddingVertical: 4 },
+  sectionSpacer: { height: 10 },
 
   // Grid de servicios (4 columnas como la web)
   grid: {
@@ -474,21 +488,22 @@ const styles = StyleSheet.create({
   serviceItem: {
     width: '25%',
     alignItems: 'center',
-    paddingVertical: Spacing.md,
+    paddingVertical: 12,
     paddingHorizontal: 4,
-    gap: Spacing.xs,
+    gap: 6,
   },
   serviceIconBox: {
-    width: 52, height: 52, borderRadius: 14,
+    width: 54, height: 54, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff', borderWidth: 1.5,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.06, shadowRadius: 4, elevation: 1,
+    borderWidth: 1,
+    borderColor: 'rgba(0,0,0,0.07)',
+    backgroundColor: 'transparent',
   },
   serviceEmoji: { fontSize: 26 },
   serviceLabel: {
-    fontSize: 11, fontWeight: '500',
-    color: '#374151', textAlign: 'center',
-    lineHeight: 14, maxWidth: 58,
+    fontSize: 11, fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 14, maxWidth: 60,
   },
 
   // Modal bottom sheet
@@ -602,3 +617,11 @@ const styles = StyleSheet.create({
   categoryChip: { backgroundColor: Colors.bgTertiary, borderRadius: BorderRadius.md, paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm, borderWidth: 1, borderColor: Colors.borderLight },
   categoryText: { fontSize: FontSize.sm, color: Colors.textPrimary },
 });
+
+export default function ServiciosScreen() {
+  return (
+    <TabErrorBoundary tabName="Servicios">
+      <ServiciosScreenInner />
+    </TabErrorBoundary>
+  );
+}

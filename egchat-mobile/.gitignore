@@ -10,3 +10,31 @@ web-build/
 *.orig.*
 web-build/
 .env
+
+# Build artifacts — nunca commitear
+build/
+ios/build/
+android/build/
+android/.gradle/
+android/app/build/
+
+# Derived data de Xcode
+ios/DerivedData/
+*.xcuserstate
+*.xcbuilddata
+
+# NPM logs
+.npm/
+*.log
+
+# Expo prebuild cache
+.expo/prebuild/
+.expo/xcodebuild*.log
+.expo/xcodebuild-error.log
+
+# Archivos temporales de iOS
+Podfile.save
+*.save
+
+# Submodule / carpeta duplicada — no trackear
+egchat-v2/

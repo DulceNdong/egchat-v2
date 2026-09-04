@@ -1,48 +1,59 @@
-// Indicador de estado EGCHAT — 3 puntos (naranja / verde / azul), no estilo WhatsApp
+/**
+ * MessageStatusIndicator — tres puntos de colores estilo EGChat
+ *
+ * pending   → tres puntos grises
+ * sent      → primer punto naranja, dos grises
+ * delivered → dos puntos naranjas, uno gris
+ * read      → tres puntos verdes (leído)
+ * failed    → tres puntos rojos
+ */
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import { View, StyleSheet } from 'react-native';
 import type { ChatMessageStatus } from '../../types/chat';
 
-const DOT_SIZE = 7;
+interface Props {
+  status: ChatMessageStatus;
+  size?: number;
+}
 
-const C = {
-  send: '#f59e0b',
-  delivered: '#22c55e',
-  deliveredDim: 'rgba(34,197,94,0.25)',
-  read: '#00b4e6',
-  readDim: 'rgba(0,180,230,0.25)',
+const DOT_COLORS: Record<ChatMessageStatus, [string, string, string]> = {
+  pending:   ['#d1d5db', '#d1d5db', '#d1d5db'], // gris gris gris
+  sent:      ['#f97316', '#d1d5db', '#d1d5db'], // naranja gris gris
+  delivered: ['#f97316', '#f97316', '#d1d5db'], // naranja naranja gris
+  read:      ['#22c55e', '#22c55e', '#22c55e'], // verde verde verde
+  failed:    ['#ef4444', '#ef4444', '#ef4444'], // rojo rojo rojo
 };
 
-export function MessageStatusIndicator({ status }: { status: ChatMessageStatus }) {
-  if (status === 'failed') {
-    return <Text style={styles.failed}>❌</Text>;
-  }
-
-  const delivered = status === 'delivered' || status === 'read';
-  const read = status === 'read';
+export function MessageStatusIndicator({ status, size = 6 }: Props) {
+  const colors = DOT_COLORS[status] ?? DOT_COLORS.pending;
 
   return (
-    <View style={styles.row}>
-      <View style={[styles.dot, { backgroundColor: C.send }]} />
-      <View style={[styles.dot, { backgroundColor: delivered ? C.delivered : C.deliveredDim }]} />
-      <View style={[styles.dot, { backgroundColor: read ? C.read : C.readDim }]} />
+    <View style={s.row}>
+      {colors.map((color, i) => (
+        <View
+          key={i}
+          style={[
+            s.dot,
+            {
+              width: size,
+              height: size,
+              borderRadius: size / 2,
+              backgroundColor: color,
+            },
+          ]}
+        />
+      ))}
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+const s = StyleSheet.create({
   row: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 2,
+    gap: 3,
   },
   dot: {
-    width: DOT_SIZE,
-    height: DOT_SIZE,
-    borderRadius: DOT_SIZE / 2,
-  },
-  failed: {
-    fontSize: 11,
-    color: '#ef4444',
+    // tamaño y color se aplican inline
   },
 });

@@ -1,44 +1,64 @@
 // ══════════════════════════════════════════════════════════════════
-// EGCHAT — Estados / Stories
-// Visor tipo Instagram: barra de progreso, swipe, auto-avance
+// EGCHAT — Estados / Stories  (Redesign Premium v2)
+// Carrusel horizontal tipo Instagram + feed de cards + visor inmersivo
 // ══════════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, ActivityIndicator, Image, Dimensions,
-  Animated, PanResponder, Alert, TextInput,
+  Animated, Alert, TextInput, Platform, StatusBar,
+  KeyboardAvoidingView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
+import { ResizeMode, Video } from 'expo-av';
 import { router } from 'expo-router';
-import * as ImagePicker from 'expo-image-picker';
 import { storiesAPI, authAPI } from '../src/api';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  pickImageFromCamera, pickImageFromLibrary,
+  pickVideo, pickVideoFromCamera,
+} from '../src/utils/chatMedia';
+import { MIcon } from '../src/components/ui/MIcon';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
 import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
 import { EGAvatar } from '../src/components/ui';
-import {
-  Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
-} from '../src/theme';
+import { StoryMusicPicker, StoryMusicBadge, type StoryMusic } from '../src/components/StoryMusicPicker';
+import { Colors } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 
 const { width: W, height: H } = Dimensions.get('window');
-const STORY_DURATION = 5000; // ms por historia
+const STORY_DURATION = 5000;
+const BUBBLE_SIZE = 72;
 
 type StoryTab = 'recientes' | 'vistos' | 'dulce';
 
-// ── Helpers ───────────────────────────────────────────────────────
-const timeAgo = (dateStr: string) => {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const h = Math.floor(diff / 3600000);
-  const m = Math.floor(diff / 60000);
-  if (h >= 1) return `hace ${h}h`;
-  if (m >= 1) return `hace ${m}m`;
+// ── Paleta de marca (se usa en el visor inmersivo y gradientes) ───
+const BRAND   = '#00c8a0';
+const BRAND2  = '#00b4e6';
+// El visor inmersivo permanece oscuro (estándar UX stories)
+const VIEWER_BG = '#000';
+// MUTED se usa solo dentro del visor oscuro
+const MUTED   = 'rgba(255,255,255,0.45)';
+
+// ── Plataforma ────────────────────────────────────────────────────
+const IOS = Platform.OS === 'ios';
+
+// ── Tiempo relativo ───────────────────────────────────────────────
+const timeAgo = (d: string) => {
+  const ms = Date.now() - new Date(d).getTime();
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor(ms / 60000);
+  if (h >= 1) return `${h}h`;
+  if (m >= 1) return `${m}m`;
   return 'ahora';
 };
 
-// ── Barra de progreso de una historia ────────────────────────────
+// ══════════════════════════════════════════════════════════════════
+// BARRA DE PROGRESO
+// ══════════════════════════════════════════════════════════════════
 const ProgressBar = ({
   total, current, progress,
 }: { total: number; current: number; progress: Animated.Value }) => (
@@ -60,16 +80,13 @@ const ProgressBar = ({
 );
 
 const pv = StyleSheet.create({
-  container: { flexDirection: 'row', gap: 3, paddingHorizontal: 8, paddingTop: 8 },
-  track: {
-    flex: 1, height: 2.5, backgroundColor: 'rgba(255,255,255,0.35)',
-    borderRadius: 2, overflow: 'hidden',
-  },
-  fill: { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
+  container: { flexDirection: 'row', gap: 3, paddingHorizontal: 10, paddingTop: 6 },
+  track: { flex: 1, height: 2, backgroundColor: 'rgba(255,255,255,0.3)', borderRadius: 2, overflow: 'hidden' },
+  fill:  { height: '100%', backgroundColor: '#fff', borderRadius: 2 },
 });
 
 // ══════════════════════════════════════════════════════════════════
-// VISOR DE HISTORIA — pantalla completa
+// VISOR INMERSIVO
 // ══════════════════════════════════════════════════════════════════
 const REACTIONS = ['❤️', '🔥', '😂', '😮', '👏', '💯'];
 
@@ -87,33 +104,57 @@ const StoryViewer = ({
   const [sentReaction, setSentReaction] = useState<string | null>(null);
   const [replyText, setReplyText] = useState('');
   const [showReply, setShowReply] = useState(false);
-  const progress = useRef(new Animated.Value(0)).current;
-  const timerRef = useRef<ReturnType<typeof Animated.timing> | null>(null);
-  const paused = useRef(false);
+  const slideAnim = useRef(new Animated.Value(0)).current;
+  const progress  = useRef(new Animated.Value(0)).current;
+  const timerRef  = useRef<ReturnType<typeof Animated.timing> | null>(null);
+  const paused    = useRef(false);
 
   const group = groups[groupIdx];
   const story = group?.stories[storyIdx];
 
-  // Tiempo restante (24h desde creación)
-  const timeRemaining = (dateStr: string) => {
-    const created = new Date(dateStr).getTime();
-    const remaining = 24 * 3600000 - (Date.now() - created);
-    if (remaining <= 0) return 'Expirado';
-    const h = Math.floor(remaining / 3600000);
-    const m = Math.floor((remaining % 3600000) / 60000);
+  const timeRemaining = (d: string) => {
+    const rem = 24 * 3600000 - (Date.now() - new Date(d).getTime());
+    if (rem <= 0) return 'Expirado';
+    const h = Math.floor(rem / 3600000);
+    const m = Math.floor((rem % 3600000) / 60000);
     return h > 0 ? `${h}h ${m}m` : `${m}m`;
   };
 
+  const goNext = useCallback(() => {
+    timerRef.current?.stop();
+    const g = groups[groupIdx];
+    if (storyIdx < g.stories.length - 1) {
+      setStoryIdx(i => i + 1);
+    } else if (groupIdx < groups.length - 1) {
+      setGroupIdx(gi => gi + 1);
+      setStoryIdx(0);
+    } else {
+      onClose();
+    }
+  }, [groupIdx, storyIdx, groups, onClose]);
+
+  const goPrev = useCallback(() => {
+    timerRef.current?.stop();
+    if (storyIdx > 0) {
+      setStoryIdx(i => i - 1);
+    } else if (groupIdx > 0) {
+      setGroupIdx(gi => gi - 1);
+      setStoryIdx(0);
+    }
+  }, [groupIdx, storyIdx]);
+
   const startProgress = useCallback(() => {
     if (paused.current) return;
+    const currentStory = groups[groupIdx]?.stories[storyIdx];
+    const duration = currentStory?.type === 'video' ? STORY_DURATION * 3 : STORY_DURATION;
     progress.setValue(0);
     timerRef.current = Animated.timing(progress, {
-      toValue: 1, duration: STORY_DURATION, useNativeDriver: false,
+      toValue: 1, duration, useNativeDriver: false,
     });
     timerRef.current.start(({ finished }) => {
       if (finished && !paused.current) goNext();
     });
-  }, [groupIdx, storyIdx]);
+  }, [groupIdx, storyIdx, goNext]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     setShowReactions(false);
@@ -121,12 +162,13 @@ const StoryViewer = ({
     setShowReply(false);
     setReplyText('');
     paused.current = false;
+    slideAnim.setValue(30);
+    Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, speed: 20 }).start();
     startProgress();
     if (group && onStoryView) onStoryView(group);
     return () => { timerRef.current?.stop(); };
-  }, [groupIdx, storyIdx]);
+  }, [groupIdx, storyIdx]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Pausar al abrir reacciones o reply
   useEffect(() => {
     if (showReactions || showReply) {
       paused.current = true;
@@ -134,105 +176,113 @@ const StoryViewer = ({
     } else if (!paused.current) {
       startProgress();
     }
-  }, [showReactions, showReply]);
+  }, [showReactions, showReply]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const goNext = useCallback(() => {
-    timerRef.current?.stop();
-    const group = groups[groupIdx];
-    if (storyIdx < group.stories.length - 1) {
-      setStoryIdx(i => i + 1);
-    } else if (groupIdx < groups.length - 1) {
-      setGroupIdx(g => g + 1);
-      setStoryIdx(0);
-    } else {
-      onClose();
-    }
-  }, [groupIdx, storyIdx, groups]);
-
-  const goPrev = useCallback(() => {
-    timerRef.current?.stop();
-    if (storyIdx > 0) {
-      setStoryIdx(i => i - 1);
-    } else if (groupIdx > 0) {
-      setGroupIdx(g => g - 1);
-      setStoryIdx(0);
-    }
-  }, [groupIdx, storyIdx]);
-
-  const sendReaction = (emoji: string) => {
+  const sendReaction = async (emoji: string) => {
     setSentReaction(emoji);
     setShowReactions(false);
     paused.current = false;
+    // D3 — persistir reacción en la BD
+    try {
+      await storiesAPI.react(group.storyId, emoji);
+    } catch { /* no bloquear */ }
     setTimeout(() => { setSentReaction(null); startProgress(); }, 1500);
   };
 
-  const sendReply = () => {
-    if (replyText.trim()) {
+  const sendReply = async () => {
+    const text = replyText.trim();
+    if (!text) return;
+    try {
+      await storiesAPI.reply(group.storyId, text);
       setReplyText('');
       setShowReply(false);
       paused.current = false;
       startProgress();
+      // D3 — después de responder, abrir chat privado con el dueño de la story
+      if (group.userId) {
+        try {
+          const chat = await (await import('../src/api')).chatAPI.createPrivate(group.userId);
+          if (chat?.id) {
+            onClose();
+            router.push(`/chat/${chat.id}` as any);
+          }
+        } catch { /* si falla no bloqueamos */ }
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo enviar la respuesta');
     }
   };
 
   if (!group || !story) return null;
 
+  const isVideoStory = story.type === 'video' || /\.(mp4|mov|m4v|webm)(\?|#|$)/i.test(story.media_url || '');
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onClose} statusBarTranslucent>
+      <StatusBar hidden />
       <View style={sv.container}>
-        {/* Imagen / video */}
-        <Image source={{ uri: story.media_url }} style={sv.media} resizeMode="cover" />
+        <Animated.View style={[sv.mediaWrap, { transform: [{ translateY: slideAnim }] }]}>
+          {story.media_url && isVideoStory ? (
+            <Video
+              source={{ uri: story.media_url }}
+              style={sv.media}
+              resizeMode={ResizeMode.COVER}
+              shouldPlay
+              isLooping={false}
+              useNativeControls={false}
+              onPlaybackStatusUpdate={(status: any) => {
+                if (status?.didJustFinish) goNext();
+              }}
+            />
+          ) : story.media_url ? (
+            <Image source={{ uri: story.media_url }} style={sv.media} resizeMode="cover" />
+          ) : (
+            <LinearGradient colors={[BRAND, BRAND2]} style={sv.media} />
+          )}
+        </Animated.View>
 
-        {/* Gradientes */}
-        <LinearGradient colors={['rgba(0,0,0,0.6)', 'transparent']} style={sv.topGradient} />
-        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.7)']} style={sv.bottomGradient} />
+        <LinearGradient colors={['rgba(0,0,0,0.75)', 'transparent']} style={sv.topGradient} />
+        <LinearGradient colors={['transparent', 'rgba(0,0,0,0.85)']} style={sv.bottomGradient} />
 
-        {/* Barras de progreso */}
         <View style={sv.progressWrap}>
           <ProgressBar total={group.stories.length} current={storyIdx} progress={progress} />
         </View>
 
-        {/* Header */}
         <View style={sv.header}>
-          <EGAvatar src={group.userAvatar} name={group.userName} size={38} />
+          <EGAvatar src={group.userAvatar} name={group.userName} size={40} />
           <View style={sv.headerInfo}>
             <Text style={sv.headerName}>{group.userName}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
-              <Text style={sv.headerTime}>{timeAgo(story.created_at)}</Text>
-              <Text style={sv.headerTimeLeft}>· {timeRemaining(story.created_at)} restante</Text>
-            </View>
+            <Text style={sv.headerMeta}>{timeAgo(story.created_at)} · {timeRemaining(story.created_at)} restante</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={sv.closeBtn} activeOpacity={0.7}>
-            <Text style={sv.closeIcon}>✕</Text>
+            <MIcon name="close" size={20} color="#fff" />
           </TouchableOpacity>
         </View>
 
-        {/* Caption */}
-        {story.caption ? (
+        {!!story.caption && (
           <View style={sv.captionWrap}>
-            <Text style={sv.caption}>{story.caption}</Text>
+            <BlurView intensity={30} tint="dark" style={sv.captionBlur}>
+              <Text style={sv.caption}>{story.caption}</Text>
+            </BlurView>
+          </View>
+        )}
+
+        {sentReaction ? (
+          <View style={sv.reactionSent}>
+            <Text style={{ fontSize: 52 }}>{sentReaction}</Text>
           </View>
         ) : null}
 
-        {/* Reacción enviada (feedback visual) */}
-        {sentReaction && (
-          <View style={sv.reactionSent}>
-            <Text style={{ fontSize: 48 }}>{sentReaction}</Text>
-          </View>
-        )}
-
-        {/* Panel de reacciones */}
         {showReactions && (
-          <View style={sv.reactionsPanel}>
+          <BlurView intensity={40} tint="dark" style={sv.reactionsPanel}>
             {REACTIONS.map(emoji => (
               <TouchableOpacity key={emoji} onPress={() => sendReaction(emoji)} style={sv.reactionBtn} activeOpacity={0.7}>
-                <Text style={{ fontSize: 28 }}>{emoji}</Text>
+                <Text style={{ fontSize: 30 }}>{emoji}</Text>
               </TouchableOpacity>
             ))}
-          </View>
+          </BlurView>
         )}
 
-        {/* Barra inferior: responder + reaccionar */}
         <View style={sv.bottomBar}>
           {showReply ? (
             <View style={sv.replyRow}>
@@ -241,39 +291,30 @@ const StoryViewer = ({
                 value={replyText}
                 onChangeText={setReplyText}
                 placeholder={`Responder a ${group.userName}...`}
-                placeholderTextColor="rgba(255,255,255,0.5)"
+                placeholderTextColor="rgba(255,255,255,0.45)"
                 autoFocus
                 onSubmitEditing={sendReply}
                 returnKeyType="send"
               />
               <TouchableOpacity onPress={sendReply} style={sv.replySendBtn} activeOpacity={0.8}>
-                <Text style={{ color: '#fff', fontSize: 16 }}>➤</Text>
+                <MIcon name="send" size={16} color="#fff" />
               </TouchableOpacity>
               <TouchableOpacity onPress={() => { setShowReply(false); paused.current = false; startProgress(); }} style={sv.replyCloseBtn}>
-                <Text style={{ color: 'rgba(255,255,255,0.7)', fontSize: 16 }}>✕</Text>
+                <MIcon name="close" size={16} color="rgba(255,255,255,0.7)" />
               </TouchableOpacity>
             </View>
           ) : (
             <View style={sv.replyRow}>
-              <TouchableOpacity
-                style={sv.replyPlaceholder}
-                onPress={() => { setShowReply(true); setShowReactions(false); }}
-                activeOpacity={0.8}
-              >
+              <TouchableOpacity style={sv.replyPlaceholder} onPress={() => { setShowReply(true); setShowReactions(false); }} activeOpacity={0.8}>
                 <Text style={sv.replyPlaceholderText}>Responder...</Text>
               </TouchableOpacity>
-              <TouchableOpacity
-                onPress={() => setShowReactions(v => !v)}
-                style={sv.reactBtn}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 22 }}>😊</Text>
+              <TouchableOpacity onPress={() => setShowReactions(v => !v)} style={sv.reactBtn} activeOpacity={0.8}>
+                <MIcon name="sentiment-satisfied" size={24} color="#fff" />
               </TouchableOpacity>
             </View>
           )}
         </View>
 
-        {/* Zonas táctiles */}
         {!showReactions && !showReply && (
           <View style={sv.touchZones}>
             <TouchableOpacity style={sv.touchLeft} onPress={goPrev} activeOpacity={1} />
@@ -286,116 +327,254 @@ const StoryViewer = ({
 };
 
 const sv = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#000' },
-  media: { ...StyleSheet.absoluteFillObject },
-  topGradient: { position: 'absolute', top: 0, left: 0, right: 0, height: 160, zIndex: 1 },
-  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 180, zIndex: 1 },
-  progressWrap: { position: 'absolute', top: 48, left: 0, right: 0, zIndex: 2 },
+  container:      { flex: 1, backgroundColor: VIEWER_BG },
+  mediaWrap:      { ...StyleSheet.absoluteFillObject },
+  media:          { ...StyleSheet.absoluteFillObject },
+  topGradient:    { position: 'absolute', top: 0, left: 0, right: 0, height: 180, zIndex: 1 },
+  bottomGradient: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 200, zIndex: 1 },
+  progressWrap:   { position: 'absolute', top: IOS ? 52 : 36, left: 0, right: 0, zIndex: 3 },
   header: {
-    position: 'absolute', top: 64, left: 12, right: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 2,
+    position: 'absolute', top: IOS ? 64 : 48,
+    left: 14, right: 14, flexDirection: 'row', alignItems: 'center', gap: 10, zIndex: 3,
   },
-  headerInfo: { flex: 1 },
-  headerName: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  headerTime: { fontSize: 11, color: 'rgba(255,255,255,0.7)', marginTop: 1 },
-  headerTimeLeft: { fontSize: 10, color: 'rgba(255,255,255,0.45)' },
-  closeBtn: {
-    width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  closeIcon: { fontSize: 16, color: '#fff', fontWeight: '700' },
-  captionWrap: { position: 'absolute', bottom: 100, left: 16, right: 16, zIndex: 2 },
-  caption: {
-    fontSize: 15, color: '#fff', fontWeight: '500',
-    textShadowColor: 'rgba(0,0,0,0.8)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
-  },
-  // Reacciones
-  reactionSent: {
-    position: 'absolute', alignSelf: 'center', top: '40%', zIndex: 10,
-  },
+  headerInfo:  { flex: 1 },
+  headerName:  { fontSize: 15, fontWeight: '700', color: '#fff' },
+  headerMeta:  { fontSize: 11, color: 'rgba(255,255,255,0.65)', marginTop: 2 },
+  closeBtn:    { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center' },
+  captionWrap: { position: 'absolute', bottom: 110, left: 14, right: 14, zIndex: 3 },
+  captionBlur: { borderRadius: 14, overflow: 'hidden', padding: 12 },
+  caption:     { fontSize: 15, color: '#fff', fontWeight: '500', lineHeight: 22 },
+  reactionSent:   { position: 'absolute', alignSelf: 'center', top: '40%', zIndex: 10 },
   reactionsPanel: {
-    position: 'absolute', bottom: 80, left: 16, right: 16,
+    position: 'absolute', bottom: 88, left: 16, right: 16,
     flexDirection: 'row', justifyContent: 'space-around',
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 40,
-    paddingVertical: 10, paddingHorizontal: 8, zIndex: 10,
+    borderRadius: 40, paddingVertical: 12, paddingHorizontal: 8, overflow: 'hidden', zIndex: 10,
   },
-  reactionBtn: { padding: 4 },
-  // Barra inferior
-  bottomBar: {
-    position: 'absolute', bottom: 20, left: 12, right: 12, zIndex: 4,
-  },
-  replyRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  reactionBtn:  { padding: 4 },
+  bottomBar:    { position: 'absolute', bottom: IOS ? 36 : 20, left: 14, right: 14, zIndex: 4 },
+  replyRow:     { flexDirection: 'row', alignItems: 'center', gap: 8 },
   replyPlaceholder: {
-    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.4)',
-    borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10,
+    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.35)',
+    borderRadius: 26, paddingHorizontal: 18, paddingVertical: 11, backgroundColor: 'rgba(0,0,0,0.2)',
   },
-  replyPlaceholderText: { color: 'rgba(255,255,255,0.6)', fontSize: 14 },
+  replyPlaceholderText: { color: 'rgba(255,255,255,0.55)', fontSize: 14 },
   replyInput: {
-    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.5)',
-    borderRadius: 24, paddingHorizontal: 16, paddingVertical: 10,
-    color: '#fff', fontSize: 14, backgroundColor: 'rgba(0,0,0,0.3)',
+    flex: 1, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.45)',
+    borderRadius: 26, paddingHorizontal: 18, paddingVertical: 11,
+    color: '#fff', fontSize: 14, backgroundColor: 'rgba(0,0,0,0.35)',
   },
-  replySendBtn: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#00c8a0', alignItems: 'center', justifyContent: 'center',
-  },
-  replyCloseBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center',
-  },
+  replySendBtn:  { width: 42, height: 42, borderRadius: 21, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' },
+  replyCloseBtn: { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center' },
   reactBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.3)',
+    width: 46, height: 46, borderRadius: 23,
+    backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)',
   },
-  touchZones: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 3 },
-  touchLeft: { flex: 1 },
+  touchZones: { ...StyleSheet.absoluteFillObject, flexDirection: 'row', zIndex: 2 },
+  touchLeft:  { flex: 1 },
   touchRight: { flex: 2 },
 });
 
 // ══════════════════════════════════════════════════════════════════
-// PANTALLA PRINCIPAL — Lista de estados
+// BURBUJA DEL CARRUSEL — fuera del componente padre
+// ══════════════════════════════════════════════════════════════════
+const StoryBubble = React.memo(({
+  group, size = BUBBLE_SIZE, onPress, C,
+}: { group: StoryGroup; size?: number; onPress: () => void; C: typeof Colors }) => {
+  const buStyles = makeBuStyles(C);
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    if (!group.seen) {
+      const loop = Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.06, duration: 900, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1,    duration: 900, useNativeDriver: true }),
+        ])
+      );
+      loop.start();
+      return () => loop.stop();
+    }
+  }, [group.seen]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.8} style={buStyles.wrap} accessibilityRole="button" accessibilityLabel={`Ver estado de ${group.userName}`}>
+      <Animated.View style={[buStyles.ringWrap, { transform: [{ scale: group.seen ? 1 : pulseAnim }] }]}>
+        {group.seen ? (
+          <View style={[buStyles.ringGray, { width: size + 4, height: size + 4, borderRadius: (size + 4) / 2 }]}>
+            <View style={[buStyles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+              {group.userAvatar
+                ? <Image source={{ uri: group.userAvatar }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+                : <Text style={buStyles.initials}>{initialsFor(group.userName)}</Text>}
+            </View>
+          </View>
+        ) : (
+          <LinearGradient colors={[BRAND, BRAND2, '#a855f7']} start={{ x: 0, y: 1 }} end={{ x: 1, y: 0 }}
+            style={[buStyles.ringGradient, { width: size + 6, height: size + 6, borderRadius: (size + 6) / 2 }]}>
+            <View style={[buStyles.avatar, { width: size, height: size, borderRadius: size / 2 }]}>
+              {group.userAvatar
+                ? <Image source={{ uri: group.userAvatar }} style={{ width: size, height: size, borderRadius: size / 2 }} />
+                : <Text style={buStyles.initials}>{initialsFor(group.userName)}</Text>}
+            </View>
+          </LinearGradient>
+        )}
+      </Animated.View>
+      <Text style={buStyles.name} numberOfLines={1}>{group.userName.split(' ')[0]}</Text>
+    </TouchableOpacity>
+  );
+});
+
+const makeBuStyles = (C: typeof Colors) => StyleSheet.create({
+  wrap:         { alignItems: 'center', width: BUBBLE_SIZE + 24, marginRight: 4 },
+  ringWrap:     { alignItems: 'center', justifyContent: 'center' },
+  ringGray:     { backgroundColor: C.bgTertiary, padding: 3, alignItems: 'center', justifyContent: 'center' },
+  ringGradient: { padding: 3, alignItems: 'center', justifyContent: 'center' },
+  avatar:       { backgroundColor: C.bgSecondary, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', borderWidth: 2.5, borderColor: C.bgPrimary },
+  initials:     { color: C.textPrimary, fontSize: 18, fontWeight: '800' },
+  name:         { fontSize: 11, color: C.textSecondary, marginTop: 6, fontWeight: '500', maxWidth: BUBBLE_SIZE + 16, textAlign: 'center' },
+});
+// Estilos estáticos por defecto (se sobreescriben en el componente con el tema)
+const bu = makeBuStyles(Colors);
+
+// ══════════════════════════════════════════════════════════════════
+// CARD DEL FEED VERTICAL — fuera del componente padre
+// ══════════════════════════════════════════════════════════════════
+const makeScStyles = (C: typeof Colors) => StyleSheet.create({
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: 14,
+    paddingHorizontal: 16, paddingVertical: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight,
+  },
+  previewWrap:  { width: 54, height: 54, borderRadius: 14, overflow: 'hidden' },
+  preview:      { width: 54, height: 54 },
+  seenOverlay:  { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.3)' },
+  countBadge:   { position: 'absolute', bottom: 4, right: 4, backgroundColor: BRAND, borderRadius: 8, paddingHorizontal: 5, paddingVertical: 1 },
+  countText:    { fontSize: 10, color: '#fff', fontWeight: '700' },
+  info:         { flex: 1, minWidth: 0 },
+  name:         { fontSize: 15, fontWeight: '700', color: C.textPrimary, marginBottom: 4 },
+  nameSeen:     { color: C.textTertiary, fontWeight: '500' },
+  meta:         { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  metaText:     { fontSize: 12, color: C.textSecondary },
+  dot:          { fontSize: 12, color: C.border },
+});
+
+const StoryCard = React.memo(({ group, onPress, C }: { group: StoryGroup; onPress: () => void; C: typeof Colors }) => {
+  const scStyles = makeScStyles(C);
+  const previewUri = group.stories[0]?.media_url;
+  return (
+    <TouchableOpacity onPress={onPress} activeOpacity={0.85} style={scStyles.card} accessibilityRole="button" accessibilityLabel={`Estado de ${group.userName}`}>
+      <View style={scStyles.previewWrap}>
+        {previewUri
+          ? <Image source={{ uri: previewUri }} style={scStyles.preview} resizeMode="cover" />
+          : <LinearGradient colors={[BRAND, BRAND2]} style={scStyles.preview} />}
+        {group.seen && <View style={scStyles.seenOverlay} />}
+        {group.stories.length > 1 && (
+          <View style={scStyles.countBadge}>
+            <Text style={scStyles.countText}>{group.stories.length}</Text>
+          </View>
+        )}
+      </View>
+      <View style={scStyles.info}>
+        <Text style={[scStyles.name, group.seen && scStyles.nameSeen]} numberOfLines={1}>{group.userName}</Text>
+        <View style={scStyles.meta}>
+          <MIcon name={group.seen ? 'done-all' : 'schedule'} size={12} color={group.seen ? BRAND : C.textTertiary} />
+          <Text style={scStyles.metaText}>{timeAgo(group.stories[0].created_at)}</Text>
+          {group.views > 0 && (
+            <>
+              <Text style={scStyles.dot}>·</Text>
+              <MIcon name="visibility" size={12} color={C.textTertiary} />
+              <Text style={scStyles.metaText}>{group.views}</Text>
+            </>
+          )}
+        </View>
+      </View>
+      <MIcon name="chevron-right" size={16} color={C.border} />
+    </TouchableOpacity>
+  );
+});
+
+// ── Estilos del carrusel (dinámicos según tema) ───────────────────
+const makeCarStyles = (C: typeof Colors) => StyleSheet.create({
+  wrap:   { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight, paddingBottom: 4 },
+  scroll: { paddingHorizontal: 14, paddingVertical: 14, gap: 4 },
+});
+
+// ── Estilos de burbuja propia (dinámicos) ─────────────────────────
+const makeMbuStyles = (C: typeof Colors) => StyleSheet.create({
+  outer:    { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  ring:     { padding: 3, alignItems: 'center', justifyContent: 'center', width: BUBBLE_SIZE + 6, height: BUBBLE_SIZE + 6 },
+  addBadge: { position: 'absolute', bottom: 0, right: 0, width: 22, height: 22, borderRadius: 11, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bgPrimary },
+});
+
+// ── Estilos Espacio Dulce (dinámicos) ────────────────────────────
+const makeEdStyles = (C: typeof Colors) => StyleSheet.create({
+  liveBanner:   { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 12, padding: 12, marginBottom: 20, borderWidth: 1, borderColor: BRAND + '33', backgroundColor: C.bgSecondary },
+  liveDot:      { width: 8, height: 8, borderRadius: 4, backgroundColor: BRAND },
+  liveText:     { fontSize: 13, fontWeight: '700', color: BRAND },
+  sectionLabel: { fontSize: 11, fontWeight: '800', color: C.textTertiary, letterSpacing: 1.2, marginBottom: 12 },
+  grid:         { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
+  card:         { width: '47%', backgroundColor: C.bgSecondary, borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: C.borderLight },
+  banner:       { height: 72, alignItems: 'center', justifyContent: 'center' },
+  cardBody:     { padding: 10 },
+  cardName:     { fontSize: 13, fontWeight: '700', color: C.textPrimary, marginBottom: 2 },
+  cardSub:      { fontSize: 11, color: C.textSecondary, marginBottom: 8 },
+  followBtn:    { paddingVertical: 6, borderRadius: 8, backgroundColor: BRAND, alignItems: 'center' },
+  followingBtn: { backgroundColor: C.bgTertiary, borderWidth: 1, borderColor: C.border },
+  followText:   { fontSize: 12, fontWeight: '700', color: '#fff' },
+  followingText:{ color: C.textSecondary },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
 export default function StoriesScreen() {
-  const [groups, setGroups] = useState<StoryGroup[]>([]);
-  const [myGroup, setMyGroup] = useState<StoryGroup | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [uploading, setUploading] = useState(false);
+  const insets = useSafeAreaInsets();
+  const [groups,       setGroups]       = useState<StoryGroup[]>([]);
+  const [myGroup,      setMyGroup]      = useState<StoryGroup | null>(null);
+  const [loading,      setLoading]      = useState(true);
+  const [uploading,    setUploading]    = useState(false);
+  const [storyMusic,   setStoryMusic]   = useState<StoryMusic | null>(null);
+  const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<number | null>(null);
-  const [currentUserId, setCurrentUserId] = useState('');
-  const [activeTab, setActiveTab] = useState<StoryTab>('recientes');
-  const [espacios, setEspacios] = useState(ESPACIOS);
+  const [activeTab,    setActiveTab]    = useState<StoryTab>('recientes');
+  const [espacios,     setEspacios]     = useState(ESPACIOS);
   const [activeEspacio, setActiveEspacio] = useState<Espacio | null>(null);
-  const [myAvatarUrl, setMyAvatarUrl] = useState<string | undefined>();
-  const [myStoryMenu, setMyStoryMenu] = useState(false);
+  const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
+  const [myStoryMenu,  setMyStoryMenu]  = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const UI = { bg: '#fff', text: '#111', sub: '#888', border: '#f0f0f0', rowBorder: '#f9f9f9', brand: '#00c8a0' };
+  const buStyles  = makeBuStyles(C);
+  const mbu       = makeMbuStyles(C);
+  const car       = makeCarStyles(C);
+  const ed        = makeEdStyles(C);
 
-  const myStories = myGroup?.stories || [];
-  const recentGroups = groups.filter(g => !g.seen);
-  const seenGroups = groups.filter(g => g.seen);
+  const myStories      = myGroup?.stories || [];
+  const recentGroups   = useMemo(() => groups.filter(g => !g.seen), [groups]);
+  const seenGroups     = useMemo(() => groups.filter(g =>  g.seen), [groups]);
   const displayedGroups = activeTab === 'recientes' ? recentGroups : seenGroups;
 
+  const allGroupsForViewer = useMemo<StoryGroup[]>(() => [
+    ...(myGroup ? [{ ...myGroup, userName: 'Mi estado' }] : []),
+    ...groups,
+  ], [myGroup, groups]);
+
+  // ── API ────────────────────────────────────────────────────────
   const loadStories = useCallback(async () => {
     try {
-      const [data, me] = await Promise.allSettled([
-        storiesAPI.getAll(),
-        authAPI.me(),
-      ]);
-
+      const [data, me] = await Promise.allSettled([storiesAPI.getAll(), authAPI.me()]);
       const meId = me.status === 'fulfilled' ? me.value?.id || '' : '';
-      setCurrentUserId(meId);
       if (me.status === 'fulfilled') setMyAvatarUrl(me.value?.avatar_url || me.value?.avatarUrl);
-
       if (data.status === 'fulfilled' && Array.isArray(data.value)) {
         const parsed = parseStoriesResponse(data.value, meId);
         setMyGroup(parsed.myGroup);
         setGroups(parsed.groups);
       }
-    } catch {}
-    finally { setLoading(false); }
+    } catch (err) {
+      console.warn('[StoriesScreen] loadStories error:', err);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   const markViewed = useCallback((group: StoryGroup) => {
@@ -403,280 +582,278 @@ export default function StoriesScreen() {
     setGroups(prev => prev.map(g => g.userId === group.userId ? { ...g, seen: true } : g));
   }, []);
 
-  const toggleFollow = (id: string) => {
+  const toggleFollow = useCallback((id: string) => {
     setEspacios(prev => prev.map(e => e.id === id ? { ...e, following: !e.following } : e));
-  };
+  }, []);
 
-  useEffect(() => { loadStories(); }, []);
+  useEffect(() => { loadStories(); }, [loadStories]);
 
-  const pickFromGallery = async () => {
-    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.All,
-      allowsEditing: true,
-      quality: 0.85,
-    });
-    if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
-  };
-
-  const addStory = async () => {
-    Alert.alert('Añadir estado', '¿Cómo quieres añadir tu estado?', [
-      {
-        text: '📷 Cámara',
-        onPress: async () => {
-          const { status } = await ImagePicker.requestCameraPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu cámara.'); return; }
-          const result = await ImagePicker.launchCameraAsync({ allowsEditing: true, quality: 0.85 });
-          if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
-        },
-      },
-      {
-        text: '🖼️ Galería',
-        onPress: async () => {
-          const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-          if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitamos acceso a tu galería.'); return; }
-          const result = await ImagePicker.launchImageLibraryAsync({
-            mediaTypes: ImagePicker.MediaTypeOptions.Images,
-            allowsEditing: true, quality: 0.85,
-          });
-          if (!result.canceled && result.assets[0]) uploadStory(result.assets[0].uri);
-        },
-      },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  };
-
-  const uploadStory = async (uri: string) => {
+  const uploadStory = useCallback(async (uri: string, type: 'image' | 'video' = 'image') => {
     setUploading(true);
     try {
-      await storiesAPI.create({ media: [{ url: uri, type: 'image' }] });
+      await storiesAPI.create({ media: [{ url: uri, type }], music: storyMusic ?? undefined } as any);
+      setStoryMusic(null);
       await loadStories();
-    } catch { Alert.alert('Error', 'No se pudo publicar el estado'); }
-    finally { setUploading(false); }
-  };
+    } catch {
+      Alert.alert('Error', 'No se pudo publicar el estado');
+    } finally {
+      setUploading(false);
+    }
+  }, [storyMusic, loadStories]);
 
-  const deleteStory = (storyId: string) => {
+  const createTextStatus = useCallback(async () => {
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00c8a0"/><stop offset="100%" stop-color="#00b4e6"/></linearGradient></defs><rect width="1080" height="1920" fill="url(#g)"/><circle cx="200" cy="300" r="220" fill="rgba(255,255,255,0.1)"/><circle cx="900" cy="1600" r="300" fill="rgba(255,255,255,0.08)"/><text x="540" y="900" text-anchor="middle" font-family="Arial,sans-serif" font-size="96" font-weight="800" fill="#fff">Nuevo estado</text><text x="540" y="1020" text-anchor="middle" font-family="Arial,sans-serif" font-size="52" fill="rgba(255,255,255,0.85)">EGChat</text></svg>`;
+    await uploadStory(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, 'image');
+  }, [uploadStory]);
+
+  const pickFromGallery = useCallback(async () => {
+    try {
+      const asset = await pickImageFromLibrary();
+      if (!asset) return;
+      await uploadStory(asset.uri, asset.mimeType?.includes('video') ? 'video' : 'image');
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir la galería');
+    }
+  }, [uploadStory]);
+
+  const addStory = useCallback(async () => {
+    setShowAddModal(true);
+  }, []);
+
+  const deleteStory = useCallback((storyId: string) => {
     Alert.alert('Eliminar estado', '¿Eliminar este estado?', [
       { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive',
-        onPress: async () => {
-          try { await storiesAPI.delete(storyId); await loadStories(); } catch {}
-        },
-      },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => { try { await storiesAPI.delete(storyId); await loadStories(); } catch {} } },
     ]);
-  };
+  }, [loadStories]);
 
-  const allGroupsForViewer: StoryGroup[] = [
-    ...(myGroup ? [{ ...myGroup, userName: 'Mi estado' }] : []),
-    ...groups,
-  ];
-
-  const StoryAvatar = ({ group, size = 46 }: { group: StoryGroup; size?: number }) => {
-    const inner = size - 4;
-    const ring = group.seen ? (
-      <View style={[st.ringGray, { padding: 2.5, borderRadius: size / 2 }]}>
-        <View style={[st.avatarInner, { width: inner, height: inner, borderRadius: inner / 2, backgroundColor: group.avatarColor }]}>
-          {group.userAvatar
-            ? <Image source={{ uri: group.userAvatar }} style={{ width: inner, height: inner, borderRadius: inner / 2 }} />
-            : <Text style={st.avatarInitials}>{initialsFor(group.userName)}</Text>}
+  // ── Burbuja "mi estado" ──────────────────────────────────────
+  const MyBubble = useCallback(() => {
+    const hasStory = myStories.length > 0;
+    return (
+      <TouchableOpacity onPress={() => hasStory ? setViewingGroup(0) : addStory()} activeOpacity={0.8} style={buStyles.wrap} accessibilityRole="button" accessibilityLabel="Mi estado">
+        <View style={mbu.outer}>
+          {hasStory ? (
+            <LinearGradient colors={[BRAND, BRAND2]} style={[mbu.ring, { borderRadius: (BUBBLE_SIZE + 6) / 2 }]}>
+              <View style={[buStyles.avatar, { width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }]}>
+                {myAvatarUrl
+                  ? <Image source={{ uri: myAvatarUrl }} style={{ width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }} />
+                  : <MIcon name="person" size={28} color={C.textSecondary} />}
+              </View>
+            </LinearGradient>
+          ) : (
+            <View style={[mbu.ring, { backgroundColor: C.bgTertiary, borderRadius: (BUBBLE_SIZE + 6) / 2, borderWidth: 2, borderColor: C.border, borderStyle: 'dashed' }]}>
+              <View style={[buStyles.avatar, { width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }]}>
+                {myAvatarUrl
+                  ? <Image source={{ uri: myAvatarUrl }} style={{ width: BUBBLE_SIZE, height: BUBBLE_SIZE, borderRadius: BUBBLE_SIZE / 2 }} />
+                  : <MIcon name="person" size={28} color={C.textTertiary} />}
+              </View>
+            </View>
+          )}
+          <View style={mbu.addBadge}>
+            {uploading
+              ? <ActivityIndicator size="small" color="#fff" style={{ transform: [{ scale: 0.7 }] }} />
+              : <MIcon name="add" size={12} color="#fff" />}
+          </View>
         </View>
-      </View>
-    ) : (
-      <LinearGradient colors={['#00c8a0', '#00b4e6']} style={{ padding: 2.5, borderRadius: size / 2 }}>
-        <View style={[st.avatarInner, { width: inner, height: inner, borderRadius: inner / 2, backgroundColor: group.avatarColor }]}>
-          {group.userAvatar
-            ? <Image source={{ uri: group.userAvatar }} style={{ width: inner - 4, height: inner - 4, borderRadius: (inner - 4) / 2 }} />
-            : <Text style={st.avatarInitials}>{initialsFor(group.userName)}</Text>}
-        </View>
-      </LinearGradient>
+        <Text style={buStyles.name} numberOfLines={1}>Mi estado</Text>
+      </TouchableOpacity>
     );
-    return ring;
-  };
+  }, [myStories.length, myAvatarUrl, uploading, addStory, buStyles, mbu, C]);
 
+  // ── Carrusel ─────────────────────────────────────────────────
+  const StoriesCarousel = useCallback(() => {
+    if (recentGroups.length === 0 && !uploading && !myGroup) return null;
+    return (
+      <View style={car.wrap}>
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={car.scroll}>
+          <MyBubble />
+          {recentGroups.map(g => {
+            const globalIdx = groups.findIndex(gr => gr.userId === g.userId);
+            return (
+              <StoryBubble
+                key={g.userId}
+                group={g}
+                C={C}
+                onPress={() => setViewingGroup(myGroup ? globalIdx + 1 : globalIdx)}
+              />
+            );
+          })}
+        </ScrollView>
+      </View>
+    );
+  }, [recentGroups, groups, myGroup, uploading, MyBubble, C, car]);
+
+  // ── Espacio Dulce ─────────────────────────────────────────────
+  const EspacioDulceTab = useCallback(() => (
+    <View style={{ padding: 16 }}>
+      <LinearGradient colors={[BRAND + '22', BRAND2 + '11']} style={ed.liveBanner}>
+        <View style={ed.liveDot} />
+        <Text style={ed.liveText}>En vivo — Espacio Dulce</Text>
+      </LinearGradient>
+      <Text style={ed.sectionLabel}>CANALES</Text>
+      <View style={ed.grid}>
+        {espacios.filter(e => e.type === 'publico').map(esp => (
+          <TouchableOpacity key={esp.id} style={ed.card} onPress={() => setActiveEspacio(esp)} activeOpacity={0.85}>
+            <LinearGradient colors={[esp.coverColor, esp.coverColor + 'aa']} style={ed.banner}>
+              <Text style={{ fontSize: 30 }}>{esp.emoji}</Text>
+            </LinearGradient>
+            <View style={ed.cardBody}>
+              <Text style={ed.cardName} numberOfLines={1}>{esp.name}</Text>
+              <Text style={ed.cardSub}>{formatFollowers(esp.followers)} seguidores</Text>
+              <TouchableOpacity style={[ed.followBtn, esp.following && ed.followingBtn]} onPress={() => toggleFollow(esp.id)}>
+                <Text style={[ed.followText, esp.following && ed.followingText]}>{esp.following ? 'Siguiendo' : 'Seguir'}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+      <Text style={[ed.sectionLabel, { marginTop: 16 }]}>COMUNIDADES</Text>
+      <View style={ed.grid}>
+        {espacios.filter(e => e.type === 'comunidad').map(esp => (
+          <TouchableOpacity key={esp.id} style={ed.card} onPress={() => setActiveEspacio(esp)} activeOpacity={0.85}>
+            <LinearGradient colors={[esp.coverColor, esp.coverColor + 'aa']} style={ed.banner}>
+              <Text style={{ fontSize: 30 }}>{esp.emoji}</Text>
+            </LinearGradient>
+            <View style={ed.cardBody}>
+              <Text style={ed.cardName} numberOfLines={1}>{esp.name}</Text>
+              <Text style={ed.cardSub}>{formatFollowers(esp.followers)} miembros</Text>
+              <TouchableOpacity style={[ed.followBtn, esp.following && ed.followingBtn]} onPress={() => toggleFollow(esp.id)}>
+                <Text style={[ed.followText, esp.following && ed.followingText]}>{esp.following ? 'Unido' : 'Unirse'}</Text>
+              </TouchableOpacity>
+            </View>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </View>
+  ), [espacios, toggleFollow]);
+
+  // ── Render ────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: UI.bg }]} edges={['top']}>
-      <View style={[st.headerWhite, { borderBottomColor: UI.border }]}>
-        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7}>
-          <Text style={[st.backIcon, { color: UI.brand }]}>‹</Text>
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.bgPrimary} />
+
+      {/* HEADER */}
+      <View style={[st.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+        <TouchableOpacity onPress={() => router.back()} style={[st.backBtn, { backgroundColor: C.bgTertiary }]} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
+          <MIcon name="arrow-back" size={22} color={C.textPrimary} />
         </TouchableOpacity>
-        <Text style={[st.headerTitleDark, { color: UI.text }]}>Estados</Text>
+        <View style={st.headerCenter}>
+          <Text style={[st.headerTitle, { color: C.textPrimary }]}>Estados</Text>
+          {recentGroups.length > 0 && (
+            <View style={[st.headerBadge, { backgroundColor: BRAND }]}>
+              <Text style={st.headerBadgeText}>{recentGroups.length}</Text>
+            </View>
+          )}
+        </View>
+        <View style={st.headerActions}>
+          <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir desde galería">
+            <MIcon name="image" size={21} color={C.textSecondary} />
+          </TouchableOpacity>
+          <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir estado">
+            <MIcon name="photo-camera" size={21} color={C.textSecondary} />
+          </TouchableOpacity>
+        </View>
       </View>
 
       {loading ? (
-        <View style={st.center}>
-          <ActivityIndicator size="large" color={Colors.brand} />
+        <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
+          <ActivityIndicator size="large" color={BRAND} />
         </View>
       ) : (
-        <FlatList
-          data={[]}
-          keyExtractor={() => ''}
-          renderItem={null}
-          showsVerticalScrollIndicator={false}
-          ListHeaderComponent={
+        <ScrollView style={{ backgroundColor: C.bgPrimary }} showsVerticalScrollIndicator={false}>
+          {/* TABS */}
+          <View style={[st.tabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+            {([
+              { id: 'recientes' as StoryTab, label: 'Recientes', count: recentGroups.length },
+              { id: 'vistos'    as StoryTab, label: 'Vistos',    count: seenGroups.length },
+              { id: 'dulce'     as StoryTab, label: '✦ Dulce',   count: 0 },
+            ]).map(t => (
+              <TouchableOpacity key={t.id} style={[st.tab, activeTab === t.id && st.tabActive]}
+                onPress={() => setActiveTab(t.id)} activeOpacity={0.8}
+                accessibilityRole="tab" accessibilityState={{ selected: activeTab === t.id }}>
+                <Text style={[st.tabText, { color: C.textTertiary }, activeTab === t.id && { color: C.textPrimary, fontWeight: '700' }]}>
+                  {t.label}{t.count > 0 ? ` ${t.count}` : ''}
+                </Text>
+                {activeTab === t.id && <View style={[st.tabIndicator, { backgroundColor: BRAND }]} />}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {activeTab === 'dulce' ? <EspacioDulceTab /> : (
             <>
-              <View style={[st.tabsRow, { backgroundColor: UI.bg, borderBottomColor: UI.border }]}>
-                {([
-                  { id: 'recientes' as StoryTab, label: `Recientes (${recentGroups.length})` },
-                  { id: 'vistos' as StoryTab, label: `Vistos (${seenGroups.length})` },
-                  { id: 'dulce' as StoryTab, label: '✦ Espacio Dulce' },
-                ]).map(t => (
-                  <TouchableOpacity key={t.id} style={[st.tab, activeTab === t.id && st.tabActive]} onPress={() => setActiveTab(t.id)}>
-                    <Text style={[st.tabText, { color: activeTab === t.id ? UI.brand : '#888' }, activeTab === t.id && st.tabTextActive]}>
-                      {t.label}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-
-              {activeTab === 'dulce' ? (
-                <View style={{ padding: 16 }}>
-                  <Text style={[st.dulceLive, { color: Colors.brand }]}>● En vivo — Espacio Dulce</Text>
-                  <Text style={[st.sectionLabel, { color: C.textTertiary, paddingHorizontal: 0 }]}>CANALES</Text>
-                  <View style={st.espGrid}>
-                    {espacios.filter(e => e.type === 'publico').map(esp => (
-                      <TouchableOpacity key={esp.id} style={[st.espCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => setActiveEspacio(esp)}>
-                        <View style={[st.espBanner, { backgroundColor: esp.coverColor }]}>
-                          <Text style={{ fontSize: 28 }}>{esp.emoji}</Text>
-                        </View>
-                        <Text style={[st.espName, { color: C.textPrimary }]} numberOfLines={1}>{esp.name}</Text>
-                        <Text style={[st.espFollowers, { color: C.textTertiary }]}>{formatFollowers(esp.followers)} seguidores</Text>
-                        <TouchableOpacity style={[st.espFollowBtn, esp.following && st.espFollowing]} onPress={() => toggleFollow(esp.id)}>
-                          <Text style={[st.espFollowText, esp.following && { color: C.textSecondary }]}>{esp.following ? 'Siguiendo' : 'Seguir'}</Text>
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                  <Text style={[st.sectionLabel, { color: C.textTertiary, paddingHorizontal: 0, marginTop: 12 }]}>COMUNIDADES</Text>
-                  <View style={st.espGrid}>
-                    {espacios.filter(e => e.type === 'comunidad').map(esp => (
-                      <TouchableOpacity key={esp.id} style={[st.espCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => setActiveEspacio(esp)}>
-                        <View style={[st.espBanner, { backgroundColor: esp.coverColor }]}>
-                          <Text style={{ fontSize: 28 }}>{esp.emoji}</Text>
-                        </View>
-                        <Text style={[st.espName, { color: C.textPrimary }]} numberOfLines={1}>{esp.name}</Text>
-                        <Text style={[st.espFollowers, { color: C.textTertiary }]}>{formatFollowers(esp.followers)} miembros</Text>
-                        <TouchableOpacity style={[st.espFollowBtn, esp.following && st.espFollowing]} onPress={() => toggleFollow(esp.id)}>
-                          <Text style={[st.espFollowText, esp.following && { color: C.textSecondary }]}>{esp.following ? 'Unido' : 'Unirse'}</Text>
-                        </TouchableOpacity>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
+              {activeTab === 'recientes' && <StoriesCarousel />}
+              {displayedGroups.length > 0 && (
+                <View style={st.feedLabel}>
+                  <Text style={[st.feedLabelText, { color: C.textTertiary }]}>{activeTab === 'recientes' ? 'TODOS LOS ESTADOS' : 'YA VISTOS'}</Text>
                 </View>
-              ) : (
-              <>
-              {activeTab === 'recientes' && (
-              <View style={[st.myStatusWrap, { borderBottomColor: '#f5f5f5' }]}>
-                <View style={st.myStatusRow}>
-                  <TouchableOpacity onPress={() => myStories.length > 0 ? setViewingGroup(0) : addStory()} activeOpacity={0.75}>
-                    <View style={st.myAvatarWrap}>
-                      <View style={[st.myAvatarCircle, myStories.length > 0 && { backgroundColor: UI.brand }]}>
-                        {myAvatarUrl
-                          ? <Image source={{ uri: myAvatarUrl }} style={st.myAvatarImg} />
-                          : <Text style={{ fontSize: 17, fontWeight: '700', color: myStories.length ? '#fff' : '#9ca3af' }}>👤</Text>}
-                      </View>
-                      <View style={st.myStoryAddBadge}>
-                        {uploading
-                          ? <ActivityIndicator size="small" color="#fff" />
-                          : <Ionicons name="add" size={10} color="#fff" />}
-                      </View>
-                    </View>
-                  </TouchableOpacity>
-                  <TouchableOpacity style={{ flex: 1 }} onPress={() => myStories.length > 0 ? setViewingGroup(0) : addStory()} activeOpacity={0.75}>
-                    <Text style={[st.myStoryName, { color: UI.text }]}>Mi estado</Text>
-                    <Text style={[st.myStorySub, { color: UI.sub }]}>
-                      {myStories.length > 0
-                        ? `${myStories.length} publicación${myStories.length > 1 ? 'es' : ''} · ${timeAgo(myStories[0].created_at)}`
-                        : 'Toca para añadir estado'}
-                    </Text>
-                  </TouchableOpacity>
-                  <View style={st.actionIcons}>
-                    {([
-                      { icon: 'image-outline' as const, color: '#a855f7', onPress: pickFromGallery },
-                      { icon: 'film-outline' as const, color: '#f59e0b', onPress: addStory },
-                      { icon: 'videocam-outline' as const, color: '#06b6d4', onPress: addStory },
-                      { icon: 'radio-outline' as const, color: '#ef4444', onPress: () => Alert.alert('En vivo', 'Próximamente') },
-                    ]).map((b, i) => (
-                      <TouchableOpacity key={i} onPress={b.onPress} style={st.actionIconBtn}>
-                        <Ionicons name={b.icon} size={20} color={b.color} />
-                      </TouchableOpacity>
-                    ))}
-                    <View>
-                      <TouchableOpacity onPress={() => setMyStoryMenu(v => !v)} style={st.actionIconBtn}>
-                        <Ionicons name="ellipsis-vertical" size={18} color="#aaa" />
-                      </TouchableOpacity>
-                    </View>
-                  </View>
-                </View>
-              </View>
               )}
-
-              {displayedGroups.length > 0 ? (
-                <View style={{ backgroundColor: UI.bg }}>
-                  {displayedGroups.map((group, i) => {
-                    const globalIdx = groups.findIndex(g => g.userId === group.userId);
-                    return (
-                    <TouchableOpacity
-                      key={group.userId}
-                      style={[st.storyRowFlat, i < displayedGroups.length - 1 && { borderBottomColor: UI.rowBorder }]}
-                      onPress={() => setViewingGroup(myGroup ? globalIdx + 1 : globalIdx)}
-                      activeOpacity={0.75}
-                    >
-                      <StoryAvatar group={group} />
-                      <View style={st.storyInfo}>
-                        <Text style={[st.storyName, { color: group.seen ? '#555' : UI.text, fontWeight: group.seen ? '400' : '600' }]}>
-                          {group.userName}
-                        </Text>
-                        <View style={st.storyMeta}>
-                          <Text style={st.storyMetaText}>hace {timeAgo(group.stories[0].created_at)}</Text>
-                          <Text style={st.storyMetaDot}>·</Text>
-                          <Ionicons name="eye-outline" size={12} color="#aaa" />
-                          <Text style={st.storyMetaText}> {group.views}</Text>
-                        </View>
-                      </View>
+              {displayedGroups.length > 0 ? displayedGroups.map(group => {
+                const globalIdx = groups.findIndex(g => g.userId === group.userId);
+                return (
+                  <StoryCard
+                    key={group.userId}
+                    group={group}
+                    C={C}
+                    onPress={() => setViewingGroup(myGroup ? globalIdx + 1 : globalIdx)}
+                  />
+                );
+              }) : (
+                <View style={st.empty}>
+                  <MIcon name={activeTab === 'recientes' ? 'auto-awesome' : 'task-alt'} size={52} color={C.border} />
+                  <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{activeTab === 'recientes' ? 'Todo al día' : 'Sin estados vistos'}</Text>
+                  <Text style={[st.emptySub, { color: C.textTertiary }]}>{activeTab === 'recientes' ? 'No hay estados nuevos de tus contactos' : 'Los estados que veas aparecerán aquí'}</Text>
+                  {activeTab === 'recientes' && (
+                    <TouchableOpacity style={st.emptyBtn} onPress={addStory} activeOpacity={0.85}>
+                      <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
+                        <MIcon name="add" size={18} color="#fff" />
+                        <Text style={st.emptyBtnText}>Publicar estado</Text>
+                      </LinearGradient>
                     </TouchableOpacity>
-                  );})}
+                  )}
                 </View>
-              ) : (
-                <View style={st.emptyFlat}>
-                  <Text style={{ color: '#bbb', fontSize: 13 }}>
-                    {activeTab === 'recientes' ? 'No hay estados nuevos' : 'No has visto ningún estado aún'}
-                  </Text>
-                </View>
-              )}
-              </>
               )}
             </>
-          }
-        />
+          )}
+        </ScrollView>
       )}
 
+      {/* MODAL MENÚ */}
       <Modal visible={myStoryMenu} transparent animationType="fade" onRequestClose={() => setMyStoryMenu(false)}>
         <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
-          <View style={st.menuCardFloat}>
-            <TouchableOpacity style={st.menuItem} onPress={() => { pickFromGallery(); setMyStoryMenu(false); }}>
-              <Ionicons name="image-outline" size={16} color="#a855f7" />
-              <Text style={st.menuItemText}>Subir foto/video</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={st.menuItem} onPress={() => { addStory(); setMyStoryMenu(false); }}>
-              <Ionicons name="add" size={16} color={UI.brand} />
-              <Text style={st.menuItemText}>Añadir estado</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={st.menuItem} onPress={() => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); }}>
-              <Ionicons name="eye-outline" size={16} color="#555" />
-              <Text style={st.menuItemText}>Ver mi estado</Text>
-            </TouchableOpacity>
+          <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={[st.menuCard, { borderColor: C.borderLight }]}>
+            {([
+              { icon: 'image'        as const, color: '#a855f7', label: 'Subir foto/video',  onPress: () => { addStory();                              setMyStoryMenu(false); } },
+              { icon: 'add-circle'   as const, color: BRAND,     label: 'Añadir estado',     onPress: () => { addStory();                              setMyStoryMenu(false); } },
+              { icon: 'visibility'   as const, color: BRAND2,    label: 'Ver mi estado',     onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
+            ] as const).map((item, idx, arr) => (
+              <TouchableOpacity key={item.label}
+                style={[st.menuItem, idx < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight }]}
+                onPress={item.onPress} activeOpacity={0.75}
+                accessibilityRole="button" accessibilityLabel={item.label}>
+                <View style={[st.menuIconWrap, { backgroundColor: item.color + '22' }]}>
+                  <MIcon name={item.icon} size={18} color={item.color} />
+                </View>
+                <Text style={[st.menuItemText, { color: C.textPrimary }]}>{item.label}</Text>
+                <MIcon name="chevron-right" size={14} color={C.border} />
+              </TouchableOpacity>
+            ))}
             {myGroup?.storyId && myStories.length > 0 && (
-              <TouchableOpacity style={[st.menuItem, { borderBottomWidth: 0 }]} onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }}>
-                <Ionicons name="trash-outline" size={16} color="#e53935" />
-                <Text style={[st.menuItemText, { color: '#e53935' }]}>Eliminar todo</Text>
+              <TouchableOpacity style={st.menuItem}
+                onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }} activeOpacity={0.75}
+                accessibilityRole="button" accessibilityLabel="Eliminar mi estado">
+                <View style={[st.menuIconWrap, { backgroundColor: '#ef444422' }]}>
+                  <MIcon name="delete" size={18} color="#ef4444" />
+                </View>
+                <Text style={[st.menuItemText, { color: '#ef4444' }]}>Eliminar todo</Text>
+                <MIcon name="chevron-right" size={14} color={C.border} />
               </TouchableOpacity>
             )}
-          </View>
+          </BlurView>
         </Pressable>
       </Modal>
 
+      {/* VISOR */}
       {viewingGroup !== null && allGroupsForViewer.length > 0 && (
         <StoryViewer
           groups={allGroupsForViewer}
@@ -686,141 +863,295 @@ export default function StoriesScreen() {
         />
       )}
 
+      {/* MODAL ESPACIO DULCE */}
       <Modal visible={!!activeEspacio} animationType="slide" onRequestClose={() => setActiveEspacio(null)}>
-        <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
-          <View style={[st.espModalHeader, { backgroundColor: activeEspacio?.coverColor || Colors.brand }]}>
-            <TouchableOpacity onPress={() => setActiveEspacio(null)} style={st.backBtn}>
-              <Text style={st.backIcon}>‹</Text>
+        <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
+          <LinearGradient colors={[activeEspacio?.coverColor || BRAND, 'transparent']} style={st.espModalHeader}>
+            <TouchableOpacity onPress={() => setActiveEspacio(null)} style={[st.backBtn, { backgroundColor: 'rgba(0,0,0,0.25)' }]} activeOpacity={0.7}>
+              <MIcon name="arrow-back" size={22} color="#fff" />
             </TouchableOpacity>
             <Text style={st.espModalTitle}>{activeEspacio?.emoji} {activeEspacio?.name}</Text>
-          </View>
+          </LinearGradient>
           <ScrollView contentContainerStyle={{ padding: 16 }}>
             <Text style={[st.espModalDesc, { color: C.textSecondary }]}>{activeEspacio?.description}</Text>
             {activeEspacio?.posts.map(p => (
               <View key={p.id} style={[st.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
                 <View style={st.postHead}>
                   <View style={[st.postAvatar, { backgroundColor: p.color }]}>
-                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>{p.avatar.slice(0, 2)}</Text>
+                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{p.avatar.slice(0, 2)}</Text>
                   </View>
                   <View style={{ flex: 1 }}>
-                    <Text style={[st.storyName, { color: C.textPrimary }]}>{p.author}</Text>
-                    <Text style={[st.storySub, { color: C.textSecondary }]}>{p.time}{p.isOfficial ? ' · Oficial' : ''}</Text>
+                    <Text style={{ color: C.textPrimary, fontSize: 14, fontWeight: '700' }}>{p.author}</Text>
+                    <Text style={{ color: C.textTertiary, fontSize: 11, marginTop: 1 }}>{p.time}{p.isOfficial ? ' · Oficial ✓' : ''}</Text>
                   </View>
                 </View>
-                <Text style={[st.postText, { color: C.textPrimary }]}>{p.text}</Text>
-                <Text style={[st.storySub, { color: C.textTertiary, marginTop: 8 }]}>❤️ {p.likes} · 💬 {p.comments}</Text>
+                <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 20 }}>{p.text}</Text>
+                <Text style={{ color: C.textSecondary, fontSize: 12, marginTop: 10 }}>❤️ {p.likes} · 💬 {p.comments}</Text>
               </View>
             ))}
           </ScrollView>
         </SafeAreaView>
       </Modal>
+
+      {/* MUSIC PICKER */}
+      <StoryMusicPicker visible={showMusicPicker} selected={storyMusic} onSelect={setStoryMusic} onClose={() => setShowMusicPicker(false)} />
+      {storyMusic && (
+        <View style={[st.musicBar, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
+          <StoryMusicBadge music={storyMusic} />
+          <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            <TouchableOpacity style={st.musicPublishBtn} onPress={() => addStory()}>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Publicar con música</Text>
+            </TouchableOpacity>
+            <TouchableOpacity style={[st.musicCancelBtn, { backgroundColor: C.bgTertiary }]} onPress={() => setStoryMusic(null)}>
+              <MIcon name="close" size={16} color={C.textPrimary} />
+            </TouchableOpacity>
+          </View>
+        </View>
+      )}
+
+      {/* ── Modal Añadir Estado — Mosaico moderno ──────────────────── */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <Pressable style={stAdd.backdrop} onPress={() => setShowAddModal(false)}>
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        </Pressable>
+
+        <View style={stAdd.sheet} pointerEvents="box-none">
+          <View style={[stAdd.card, { backgroundColor: isDark ? 'rgba(18,24,32,0.82)' : 'rgba(255,255,255,0.78)' }]}>
+            {/* Título */}
+            <Text style={[stAdd.title, { color: C.textPrimary }]}>Añadir estado</Text>
+            <Text style={[stAdd.subtitle, { color: C.textTertiary }]}>¿Cómo quieres publicar?</Text>
+
+            {/* Grid 2×2 + fila inferior */}
+            <View style={stAdd.grid}>
+              {/* Texto rápido */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(0,200,160,0.15)' : 'rgba(0,200,160,0.10)' }]}
+                onPress={() => { setShowAddModal(false); createTextStatus().catch(() => Alert.alert('Error', 'No se pudo crear')); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#00c8a0' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 20h9" stroke="#fff" strokeWidth={2} strokeLinecap="round"/>
+                    <Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Texto rápido</Text>
+              </TouchableOpacity>
+
+              {/* Cámara */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.10)' }]}
+                onPress={async () => { setShowAddModal(false); const a = await pickImageFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'image'); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#6366f1' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                    <Circle cx={12} cy={13} r={4} stroke="#fff" strokeWidth={2}/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Cámara</Text>
+              </TouchableOpacity>
+
+              {/* Galería */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.10)' }]}
+                onPress={() => { setShowAddModal(false); pickFromGallery(); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#f59e0b' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Rect x={3} y={3} width={18} height={18} rx={3} stroke="#fff" strokeWidth={2}/>
+                    <Circle cx={8.5} cy={8.5} r={1.5} fill="#fff"/>
+                    <Path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Galería</Text>
+              </TouchableOpacity>
+
+              {/* Video galería */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.10)' }]}
+                onPress={async () => { setShowAddModal(false); const a = await pickVideo().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#ef4444' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                    <Path d="M9.75 15.02 15.5 12l-5.75-3.02v6.04z" fill="#fff"/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Video galería</Text>
+              </TouchableOpacity>
+
+              {/* Video cámara — ancho completo */}
+              <TouchableOpacity
+                style={[stAdd.tileWide, { backgroundColor: isDark ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.10)' }]}
+                onPress={async () => { setShowAddModal(false); const a = await pickVideoFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#0ea5e9' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M15 10l4.553-2.277A1 1 0 0 1 21 8.656v6.688a1 1 0 0 1-1.447.894L15 14v-4z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                    <Rect x={2} y={7} width={13} height={10} rx={2} stroke="#fff" strokeWidth={2}/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Video cámara</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancelar */}
+            <TouchableOpacity style={stAdd.cancelBtn} onPress={() => setShowAddModal(false)} activeOpacity={0.7}>
+              <Text style={[stAdd.cancelText, { color: C.textTertiary }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
 
+// ══════════════════════════════════════════════════════════════════
+// ESTILOS PRINCIPALES
+// ══════════════════════════════════════════════════════════════════
 const st = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff' },
+  root:   { flex: 1 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
 
-  headerWhite: {
+  header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 16, paddingTop: 4, paddingBottom: 12,
-    backgroundColor: '#fff', borderBottomWidth: 1,
+    paddingHorizontal: 14, paddingTop: 6, paddingBottom: 14,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  headerTitleDark: { flex: 1, fontSize: 18, fontWeight: '700' },
-  backBtn: { padding: 4, marginLeft: -4 },
-  backIcon: { fontSize: 28, lineHeight: 32 },
+  backBtn:         { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  headerCenter:    { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle:     { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
+  headerBadge:     { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
+  headerBadgeText: { fontSize: 11, fontWeight: '800', color: '#fff' },
+  headerActions:   { flexDirection: 'row', gap: 4 },
+  headerBtn:       { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 
-  section: {
-    backgroundColor: Colors.bgSecondary,
-    marginBottom: 8,
-    paddingTop: 4,
+  tabsWrap: {
+    flexDirection: 'row',
+    paddingHorizontal: 16, paddingTop: 4,
+    borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  sectionLabel: {
-    fontSize: 11, fontWeight: '800', color: Colors.textTertiary,
-    letterSpacing: 0.8, paddingHorizontal: 16, paddingVertical: 8,
-  },
+  tab:          { flex: 1, alignItems: 'center', paddingVertical: 12, position: 'relative' },
+  tabActive:    {},
+  tabText:      { fontSize: 13, fontWeight: '600' },
+  tabTextActive:{},
+  tabIndicator: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2.5, borderRadius: 2 },
 
-  myStatusWrap: { paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1, backgroundColor: '#fff' },
-  myStatusRow: { flexDirection: 'row', alignItems: 'center', gap: 14 },
-  myAvatarWrap: { position: 'relative' },
-  myAvatarCircle: {
-    width: 50, height: 50, borderRadius: 25,
-    backgroundColor: '#e5e7eb',
-    alignItems: 'center', justifyContent: 'center', overflow: 'hidden',
-  },
-  myAvatarImg: { width: 50, height: 50, borderRadius: 25 },
-  myStoryAddBadge: {
-    position: 'absolute', bottom: 0, right: 0,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#00c8a0',
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 2, borderColor: '#fff',
-  },
-  myStoryName: { fontSize: 15, fontWeight: '600' },
-  myStorySub: { fontSize: 12, marginTop: 1 },
-  actionIcons: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  actionIconBtn: { padding: 6, borderRadius: 20 },
-  menuBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.08)' },
-  menuCardFloat: {
-    position: 'absolute', right: 16, top: 130,
-    backgroundColor: '#fff', borderRadius: 12, minWidth: 180,
-    borderWidth: 1, borderColor: '#f0f0f0',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.12, shadowRadius: 20, elevation: 8,
-  },
-  menuItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    paddingVertical: 13, paddingHorizontal: 16,
-    borderBottomWidth: 1, borderBottomColor: '#f5f5f5',
-  },
-  menuItemText: { fontSize: 14, color: '#111' },
+  feedLabel:     { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
+  feedLabelText: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
 
-  ringGray: { backgroundColor: '#e5e7eb' },
-  avatarInner: { alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff', overflow: 'hidden' },
-  avatarInitials: { color: '#fff', fontSize: 15, fontWeight: '700' },
-  storyRowFlat: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    paddingHorizontal: 16, paddingVertical: 10,
-    borderBottomWidth: 1, backgroundColor: '#fff',
-  },
-  storyInfo: { flex: 1, minWidth: 0 },
-  storyName: { fontSize: 15 },
-  storyMeta: { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
-  storyMetaText: { fontSize: 12, color: '#aaa' },
-  storyMetaDot: { color: '#ccc', fontSize: 12 },
-  storySub: { fontSize: 12, marginTop: 2 },
-  emptyFlat: { paddingVertical: 40, paddingHorizontal: 16, alignItems: 'center' },
+  empty:        { alignItems: 'center', paddingVertical: 64, paddingHorizontal: 32 },
+  emptyTitle:   { fontSize: 17, fontWeight: '700', marginTop: 16, marginBottom: 6 },
+  emptySub:     { fontSize: 13, textAlign: 'center', lineHeight: 20, marginBottom: 24 },
+  emptyBtn:     { borderRadius: 14, overflow: 'hidden' },
+  emptyBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 22, paddingVertical: 12 },
+  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
-  // Empty
-  empty: { alignItems: 'center', paddingVertical: 60, paddingHorizontal: 32 },
-  emptyIcon: { fontSize: 56, marginBottom: 16 },
-  emptyTitle: { fontSize: 18, fontWeight: '700', color: Colors.textPrimary, marginBottom: 8 },
-  emptySub: { fontSize: 14, color: Colors.textSecondary, textAlign: 'center', marginBottom: 24 },
-  emptyBtn: {
-    backgroundColor: Colors.brand, borderRadius: 12,
-    paddingVertical: 12, paddingHorizontal: 28,
-  },
-  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  menuBackdrop:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', paddingBottom: 34 },
+  menuCard:       { marginHorizontal: 14, borderRadius: 20, overflow: 'hidden', borderWidth: 1 },
+  menuItem:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 },
+  menuItemBorder: { borderBottomWidth: StyleSheet.hairlineWidth },
+  menuIconWrap:   { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  menuItemText:   { flex: 1, fontSize: 15, fontWeight: '600' },
 
-  tabsRow: { flexDirection: 'row', borderBottomWidth: 2 },
-  tab: { flex: 1, paddingVertical: 10, alignItems: 'center', marginBottom: -2 },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: '#00c8a0' },
-  tabText: { fontSize: 12, fontWeight: '600' },
-  tabTextActive: { fontWeight: '800' },
-  dulceLive: { fontSize: 12, fontWeight: '700', marginBottom: 12, padding: 10, backgroundColor: 'rgba(0,200,160,0.1)', borderRadius: 10 },
-  espGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
-  espCard: { width: '47%', borderRadius: 14, borderWidth: 1, overflow: 'hidden', paddingBottom: 10 },
-  espBanner: { height: 64, alignItems: 'center', justifyContent: 'center' },
-  espName: { fontSize: 13, fontWeight: '700', paddingHorizontal: 10, marginTop: 8 },
-  espFollowers: { fontSize: 11, paddingHorizontal: 10, marginTop: 2 },
-  espFollowBtn: { marginHorizontal: 10, marginTop: 8, paddingVertical: 6, borderRadius: 8, backgroundColor: Colors.brand, alignItems: 'center' },
-  espFollowing: { backgroundColor: Colors.bgTertiary },
-  espFollowText: { color: '#fff', fontSize: 11, fontWeight: '700' },
-  espModalHeader: { flexDirection: 'row', alignItems: 'center', padding: 16, gap: 8 },
-  espModalTitle: { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff' },
-  espModalDesc: { fontSize: 13, marginBottom: 16, lineHeight: 20 },
-  postCard: { borderRadius: 14, padding: 14, marginBottom: 12, borderWidth: 1 },
-  postHead: { flexDirection: 'row', gap: 10, marginBottom: 10 },
-  postAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
-  postText: { fontSize: 14, lineHeight: 20 },
+  espModalHeader: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingTop: 14, paddingBottom: 60 },
+  espModalTitle:  { flex: 1, fontSize: 18, fontWeight: '800', color: '#fff' },
+  espModalDesc:   { fontSize: 14, marginBottom: 20, lineHeight: 21 },
+  postCard:       { borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: 1 },
+  postHead:       { flexDirection: 'row', gap: 10, marginBottom: 10, alignItems: 'center' },
+  postAvatar:     { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+
+  musicBar:        { position: 'absolute', bottom: 100, left: 16, right: 16, zIndex: 99, borderRadius: 16, padding: 12, borderWidth: 1 },
+  musicPublishBtn: { flex: 1, backgroundColor: '#1db954', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 9, alignItems: 'center' },
+  musicCancelBtn:  { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+});
+
+// ── Estilos modal Añadir Estado ────────────────────────────────────
+const TILE_GAP = 10;
+const TILE_SIZE = (W - 48 - TILE_GAP) / 2;
+
+const stAdd = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 32,
+    paddingHorizontal: 16,
+  },
+  card: {
+    borderRadius: 24,
+    padding: 20,
+    // glassmorphism — sin fondo sólido, color definido inline (claro/oscuro)
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: TILE_GAP,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  tile: {
+    width: TILE_SIZE,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: 'center',
+    gap: 10,
+  },
+  tileWide: {
+    width: '100%',
+    borderRadius: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  cancelBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
 });

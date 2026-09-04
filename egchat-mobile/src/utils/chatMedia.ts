@@ -1,12 +1,15 @@
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import * as Location from 'expo-location';
+import * as DocumentPicker from 'expo-document-picker';
+import * as Contacts from 'expo-contacts';
 import { chatAPI } from '../api';
 import { toast } from '../components/Toast';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 64 * 1024 * 1024;
 const MAX_FILE_BYTES = 32 * 1024 * 1024;
+const MAX_AUDIO_BYTES = 32 * 1024 * 1024;
 const MAX_IMAGE_WIDTH = 1600;
 
 export interface PickedAsset {
@@ -24,6 +27,35 @@ function rejectLargeAsset(size: number | undefined, maxBytes: number) {
   if (!isTooLarge(size, maxBytes)) return false;
   toast.error('Archivo muy grande', `Maximo permitido: ${formatFileSize(maxBytes)}`);
   return true;
+}
+
+function pickFromWebInput(accept: string, maxBytes: number, fallbackMime: string): Promise<PickedAsset | null> {
+  return new Promise((resolve) => {
+    const input = document.createElement('input');
+    input.type = 'file';
+    input.accept = accept;
+    input.onchange = () => {
+      const file = input.files?.[0];
+      if (!file) { resolve(null); return; }
+      if (rejectLargeAsset(file.size, maxBytes)) { resolve(null); return; }
+      const uri = URL.createObjectURL(file);
+      resolve({ uri, fileName: file.name, mimeType: file.type || fallbackMime, size: file.size });
+    };
+    input.oncancel = () => resolve(null);
+    input.click();
+  });
+}
+
+function documentAssetToPickedAsset(
+  asset: DocumentPicker.DocumentPickerAsset,
+  fallbackMime = 'application/octet-stream',
+): PickedAsset {
+  return {
+    uri: asset.uri,
+    fileName: asset.name || 'archivo',
+    mimeType: asset.mimeType || fallbackMime,
+    size: asset.size,
+  };
 }
 
 async function prepareImageAsset(asset: ImagePicker.ImagePickerAsset): Promise<PickedAsset | null> {
@@ -55,6 +87,43 @@ async function prepareImageAsset(asset: ImagePicker.ImagePickerAsset): Promise<P
       size: asset.fileSize,
     };
   }
+}
+
+/** Seleccionar múltiples imágenes de la galería (álbum) — máx 10 */
+export async function pickMultipleImages(): Promise<PickedAsset[]> {
+  if (typeof document !== 'undefined') {
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = 'image/*';
+      input.multiple = true;
+      input.onchange = async () => {
+        const files = Array.from(input.files || []).slice(0, 10);
+        const assets = files.map(f => ({
+          uri: URL.createObjectURL(f),
+          fileName: f.name,
+          mimeType: f.type,
+          size: f.size,
+        }));
+        resolve(assets);
+      };
+      input.oncancel = () => resolve([]);
+      input.click();
+    });
+  }
+  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+  if (status !== 'granted') {
+    toast.error('Permiso requerido', 'Activa el acceso a la galería');
+    return [];
+  }
+  const result = await ImagePicker.launchImageLibraryAsync({
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
+    allowsMultipleSelection: true,
+    selectionLimit: 10,
+    quality: 0.85,
+  });
+  if (result.canceled || !result.assets?.length) return [];
+  return (await Promise.all(result.assets.map(a => prepareImageAsset(a)))).filter(Boolean) as PickedAsset[];
 }
 
 export async function pickImageFromLibrary(): Promise<PickedAsset | null> {
@@ -153,32 +222,14 @@ export async function pickVideo(): Promise<PickedAsset | null> {
 }
 
 export async function pickFile(): Promise<PickedAsset | null> {
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a archivos');
-    return null;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.All,
-    quality: 1,
-  });
-  if (result.canceled || !result.assets[0]) return null;
-  const a = result.assets[0];
-  const isVideo = a.type === 'video';
-  if (rejectLargeAsset(a.fileSize, isVideo ? MAX_VIDEO_BYTES : MAX_FILE_BYTES)) return null;
-  const ext = (a.uri.split('.').pop() || (isVideo ? 'mp4' : 'jpg')).toLowerCase();
-  return {
-    uri: a.uri,
-    fileName: a.fileName || (isVideo ? `video.${ext}` : `file.${ext}`),
-    mimeType: a.mimeType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
-    size: a.fileSize,
-  };
+  return pickDocument();
 }
 
-export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: string; label: string }> {
+export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: string; label: string } | null> {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
-    return { lat: '3.7520', lng: '8.7735', label: 'Malabo, Guinea Ecuatorial' };
+    toast.error('Permiso requerido', 'Activa la ubicación para compartirla');
+    return null;
   }
   try {
     // GPS: obteniendo ubicación silenciosamente
@@ -189,7 +240,8 @@ export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: str
     const lng = pos.coords.longitude.toFixed(6);
     return { lat, lng, label: 'Mi ubicación actual' };
   } catch {
-    return { lat: '3.7520', lng: '8.7735', label: 'Malabo, Guinea Ecuatorial' };
+    toast.error('GPS', 'No se pudo obtener tu ubicación');
+    return null;
   }
 }
 
@@ -223,43 +275,32 @@ export async function pickVideoFromCamera(): Promise<PickedAsset | null> {
 export async function pickDocument(): Promise<PickedAsset | null> {
   // En web usar input HTML con accept */*
   if (typeof document !== 'undefined') {
-    return new Promise((resolve) => {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '*/*';
-      input.onchange = () => {
-        const file = input.files?.[0];
-        if (!file) { resolve(null); return; }
-        if (rejectLargeAsset(file.size, MAX_FILE_BYTES)) { resolve(null); return; }
-        const uri = URL.createObjectURL(file);
-        resolve({ uri, fileName: file.name, mimeType: file.type || 'application/octet-stream', size: file.size });
-      };
-      input.oncancel = () => resolve(null);
-      input.click();
-    });
+    return pickFromWebInput('*/*', MAX_FILE_BYTES, 'application/octet-stream');
   }
-  // Nativo: usar ImagePicker como fallback
-  const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-  if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a archivos');
-    return null;
-  }
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.All,
-    quality: 1,
+  const result = await DocumentPicker.getDocumentAsync({
+    type: '*/*',
+    multiple: false,
     copyToCacheDirectory: true,
   });
   if (result.canceled || !result.assets?.[0]) return null;
-  const a = result.assets[0];
-  if (rejectLargeAsset(a.fileSize, MAX_FILE_BYTES)) return null;
-  const ext = (a.uri.split('.').pop() || 'bin').toLowerCase();
-  const isVideo = a.type === 'video';
-  return {
-    uri: a.uri,
-    fileName: a.fileName || `file.${ext}`,
-    mimeType: a.mimeType || (isVideo ? 'video/mp4' : 'application/octet-stream'),
-    size: a.fileSize,
-  };
+  const asset = documentAssetToPickedAsset(result.assets[0]);
+  if (rejectLargeAsset(asset.size, MAX_FILE_BYTES)) return null;
+  return asset;
+}
+
+export async function pickAudio(): Promise<PickedAsset | null> {
+  if (typeof document !== 'undefined') {
+    return pickFromWebInput('audio/*', MAX_AUDIO_BYTES, 'audio/mpeg');
+  }
+  const result = await DocumentPicker.getDocumentAsync({
+    type: 'audio/*',
+    multiple: false,
+    copyToCacheDirectory: true,
+  });
+  if (result.canceled || !result.assets?.[0]) return null;
+  const asset = documentAssetToPickedAsset(result.assets[0], 'audio/mpeg');
+  if (rejectLargeAsset(asset.size, MAX_AUDIO_BYTES)) return null;
+  return asset;
 }
 
 export async function pickContact(): Promise<{ name: string; phone: string } | null> {

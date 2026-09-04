@@ -1,4 +1,4 @@
-// Datos servicios financieros — paridad ServiciosModules.tsx web
+// Datos servicios financieros — Configuración para backend real
 
 export type BankAccount = { type: string; number: string; balance: number };
 
@@ -141,23 +141,9 @@ export type Bill = {
   dueDate: string; status: 'pendiente' | 'vencida' | 'pagada'; ref: string; icon: string; color: string;
 };
 
-export const INITIAL_BILLS: Bill[] = [
-  { id: 'b1', service: 'Electricidad', provider: 'SEGESA', amount: 18500, dueDate: '30/04/2026', status: 'pendiente', ref: '0012345678', icon: '⚡', color: '#C47D2A' },
-  { id: 'b2', service: 'Agua', provider: 'SNGE', amount: 8200, dueDate: '15/04/2026', status: 'vencida', ref: 'SNGE-00456', icon: '💧', color: '#1485EE' },
-  { id: 'b3', service: 'Internet', provider: 'GETESA', amount: 25000, dueDate: '05/05/2026', status: 'pendiente', ref: 'GET-789012', icon: '📶', color: '#6B5BD6' },
-  { id: 'b4', service: 'Electricidad', provider: 'SEGESA', amount: 16800, dueDate: '28/03/2026', status: 'pagada', ref: '0012345678', icon: '⚡', color: '#C47D2A' },
-];
-
-export const BILL_CATEGORIES = [
-  { id: 'elec', label: 'Electricidad', provider: 'SEGESA', icon: '⚡', color: '#C47D2A' },
-  { id: 'agua', label: 'Agua', provider: 'SNGE', icon: '💧', color: '#1485EE' },
-  { id: 'gas', label: 'Gas', provider: 'GEPetrol', icon: '🔥', color: '#EF4444' },
-  { id: 'internet', label: 'Internet', provider: 'GETESA', icon: '📶', color: '#6B5BD6' },
-  { id: 'telefono', label: 'Teléfono', provider: 'GETESA', icon: '📞', color: '#2E9E6B' },
-  { id: 'alquiler', label: 'Alquiler', provider: 'Propietario', icon: '🏠', color: '#0E7FA8' },
-  { id: 'seguro', label: 'Seguro', provider: 'Aseguradora', icon: '🛡️', color: '#7C3AED' },
-  { id: 'otro', label: 'Otro', provider: '', icon: '📄', color: '#5A7090' },
-];
+// Las facturas y categorías ahora se obtienen desde la API:
+// GET /api/services/bills/categories
+// GET /api/services/bills
 
 export const INVEST_OPTIONS = [
   { id: 'plazo', label: 'Depósito a Plazo', sub: '3-24 meses', rate: '+6% anual', color: '#07C160' },

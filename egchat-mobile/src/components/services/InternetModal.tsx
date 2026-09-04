@@ -97,7 +97,7 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
             <View style={st.pkgGrid}>
               {provServices.map(svc => (
                 <TouchableOpacity key={svc.id} style={st.pkgCell} onPress={() => { setService(svc); setScreen('detail'); }} activeOpacity={0.7}>
-                  <View style={[st.pkgIcon, { backgroundColor: color + '12' }]}>{Ico.wifi(color)}</View>
+                  <View style={[st.pkgIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>{Ico.wifi(color)}</View>
                   <Text style={st.pkgName} numberOfLines={2}>{svc.name}</Text>
                   <Text style={[st.pkgPrice, { color }]}>{svc.price}</Text>
                   {svc.speed !== '—' && <Text style={st.pkgValid}>⚡ {svc.speed}</Text>}
@@ -121,7 +121,7 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
             <Text style={[st.detailPrice, { color }]}>{service.price}</Text>
             <Text style={st.detailDesc}>{service.desc}</Text>
             {service.speed !== '—' && (
-              <View style={[st.speedBox, { backgroundColor: color + '12' }]}>
+              <View style={[st.speedBox, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
                 <Text style={[st.speedText, { color }]}>⚡ Velocidad: {service.speed}</Text>
               </View>
             )}

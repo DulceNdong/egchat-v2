@@ -58,7 +58,7 @@ export const FaceFilter = {
 
   release() {
     if (!isAvailable) return;
-    EGChatFaceFilter.release?.();
+    EGChatFaceFilter.releaseDetector?.();
   },
 };
 

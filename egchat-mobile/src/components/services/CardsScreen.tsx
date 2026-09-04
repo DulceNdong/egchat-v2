@@ -16,6 +16,24 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
   const [form, setForm] = useState({ number: '', holder: '', expiry: '', cvv: '', type: 'Débito', bankName: bank.name });
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
+  const scanCard = async () => {
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== 'granted') {
+      Alert.alert('Permiso requerido', 'Activa la cámara para escanear tarjetas.');
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.75,
+    });
+    if (result.canceled || !result.assets?.[0]) return;
+    setAddMode('manual');
+    Alert.alert(
+      'Tarjeta capturada',
+      'Por seguridad no guardamos la foto. Revisa e introduce los datos manualmente.',
+    );
+  };
+
   const addCard = () => {
     if (form.number.length >= 4 && form.holder && form.expiry) {
       setCards(p => [...p, {

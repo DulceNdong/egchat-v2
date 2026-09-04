@@ -44,7 +44,6 @@ export function MiTaxiMap({
   return (
     <View style={s.wrap}>
       {/* iframe solo en web */}
-      {/* @ts-expect-error iframe web */}
       <iframe
         title="Mapa MiTaxi Malabo"
         src={embedUrl}

@@ -3,6 +3,7 @@ import React from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Modal, Pressable,
   ScrollView, TextInput, Dimensions, Linking,
+  KeyboardAvoidingView, Platform,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline, Line, Rect, Circle } from 'react-native-svg';
@@ -21,30 +22,32 @@ export const ServiceModuleShell = ({
   children: React.ReactNode;
 }) => (
   <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-    <Pressable style={sh.overlay} onPress={onClose}>
-      <Pressable style={sh.sheet} onPress={() => {}}>
-        <View style={sh.header}>
-          <TouchableOpacity onPress={onBack} style={sh.backBtn} hitSlop={8}>
-            <Text style={sh.backArrow}>←</Text>
-          </TouchableOpacity>
-          <View style={sh.headerCenter}>
-            <Text style={sh.headerTitle}>{title}</Text>
-            {subtitle ? <Text style={sh.headerSub}>{subtitle}</Text> : null}
+    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <Pressable style={sh.overlay} onPress={onClose}>
+        <Pressable style={sh.sheet} onPress={() => {}}>
+          <View style={sh.header}>
+            <TouchableOpacity onPress={onBack} style={sh.backBtn} hitSlop={8}>
+              <Text style={sh.backArrow}>←</Text>
+            </TouchableOpacity>
+            <View style={sh.headerCenter}>
+              <Text style={sh.headerTitle}>{title}</Text>
+              {subtitle ? <Text style={sh.headerSub}>{subtitle}</Text> : null}
+            </View>
+            <TouchableOpacity onPress={onClose} style={sh.closeBtn}>
+              <Text style={sh.closeX}>✕</Text>
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity onPress={onClose} style={sh.closeBtn}>
-            <Text style={sh.closeX}>✕</Text>
-          </TouchableOpacity>
-        </View>
-        <ScrollView
-          style={sh.body}
-          contentContainerStyle={sh.bodyContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-        >
-          {children}
-        </ScrollView>
+          <ScrollView
+            style={sh.body}
+            contentContainerStyle={sh.bodyContent}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+          >
+            {children}
+          </ScrollView>
+        </Pressable>
       </Pressable>
-    </Pressable>
+    </KeyboardAvoidingView>
   </Modal>
 );
 
@@ -104,7 +107,7 @@ export const LogoThumb = ({ name, color, size = 40 }: { name: string; color: str
   return (
     <View style={{
       width: size, height: size, borderRadius: r,
-      backgroundColor: color + '15', borderWidth: 1.5, borderColor: color + '30',
+      backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
       alignItems: 'center', justifyContent: 'center',
     }}>
       <View style={{
@@ -144,9 +147,14 @@ export const OperatorGrid = ({
     <View style={sh.opGrid}>
       {items.map(op => (
         <TouchableOpacity key={op.id} style={sh.opCell} onPress={() => onSelect(op.id)} activeOpacity={0.7}>
-          <View style={[sh.opLogo, { backgroundColor: op.color + '14' }]}>
+          <View style={[sh.opLogo, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
             <View style={[sh.opLogoInner, { backgroundColor: op.color }]}>
-              <Text style={sh.opInitials}>{op.name.slice(0, 2).toUpperCase()}</Text>
+              <Text style={sh.opInitials}>{
+                // Usar iniciales por palabra si hay varias, o las 2-3 primeras letras
+                op.name.split(' ').length > 1
+                  ? op.name.split(' ').map((w: string) => w[0]).join('').slice(0, 3).toUpperCase()
+                  : op.name.slice(0, 3).toUpperCase()
+              }</Text>
             </View>
           </View>
           <Text style={sh.opName} numberOfLines={1}>{op.name}</Text>

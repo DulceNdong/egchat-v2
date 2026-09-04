@@ -90,7 +90,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
                 </LinearGradient>
                 <Text style={s.insName} numberOfLines={2}>{c.name}</Text>
                 <Text style={s.insCount}>{c.products.length} productos</Text>
-                <View style={[s.insPill, { backgroundColor: c.color + '15' }]}>
+                <View style={[s.insPill, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                   <Text style={[s.insPillText, { color: c.color }]}>{c.products.length} tipos</Text>
                 </View>
               </TouchableOpacity>

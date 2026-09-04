@@ -219,6 +219,8 @@ const s = StyleSheet.create({
     backgroundColor: '#f7f8fa',
     borderTopWidth: 1,
     borderTopColor: 'rgba(0,0,0,0.07)',
+    flexGrow: 0,
+    flexShrink: 0,
   },
   addCustomRow: {
     flexDirection: 'row',

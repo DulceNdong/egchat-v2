@@ -37,8 +37,8 @@ export function SettingsLayout({
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: isDark ? '#0d1117' : '#f2f2f7' }]} edges={['top']}>
       <View style={[styles.header, { backgroundColor: isDark ? '#161b22' : 'rgba(242,242,247,0.97)', borderBottomColor: C.borderLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-          <Svg width={10} height={16} viewBox="0 0 10 18" fill="none" stroke={Colors.accent} strokeWidth={2.5} strokeLinecap="round">
+        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}>
+          <Svg width={11} height={18} viewBox="0 0 10 18" fill="none" stroke={Colors.accent} strokeWidth={2.5} strokeLinecap="round">
             <Polyline points="9 1 1 9 9 17" />
           </Svg>
           <Text style={styles.backText}>Volver</Text>
@@ -90,7 +90,7 @@ export function SettingsRow({
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
   const content = (
     <>
-      <Text style={[styles.rowLabel, { color: danger ? '#ef4444' : C.textPrimary }]}>{label}</Text>
+      <Text style={[styles.rowLabel, { color: danger ? '#ef4444' : C.textPrimary }]} suppressHighlighting>{label}</Text>
       {right ?? (
         <View style={styles.rowRight}>
           {value ? <Text style={[styles.rowValue, { color: C.textTertiary }]}>{value}</Text> : null}
@@ -112,23 +112,34 @@ export function SettingsRow({
 
 export function SettingsToggleRow({
   label,
+  description,
   value,
   onValueChange,
 }: {
   label: string;
+  description?: string;
   value: boolean;
   onValueChange: (v: boolean) => void;
 }) {
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
   return (
     <SettingsRow
       label={label}
       right={
-        <Switch
-          value={value}
-          onValueChange={onValueChange}
-          trackColor={{ false: '#d1d5db', true: Colors.accent }}
-          thumbColor="#fff"
-        />
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+          {description ? (
+            <Text style={{ fontSize: 12, color: C.textTertiary, maxWidth: 120, textAlign: 'right' }} numberOfLines={1}>
+              {description}
+            </Text>
+          ) : null}
+          <Switch
+            value={value}
+            onValueChange={onValueChange}
+            trackColor={{ false: '#d1d5db', true: Colors.accent }}
+            thumbColor="#fff"
+          />
+        </View>
       }
     />
   );
@@ -210,11 +221,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: Spacing.screenPadding,
-    paddingVertical: 10,
+    paddingVertical: 16,
+    paddingTop: 18,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, minWidth: 72 },
-  backText: { fontSize: 16, color: Colors.accent },
+  backBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, minWidth: 72 },
+  backText: { fontSize: 17, color: Colors.accent },
   headerTitle: { fontSize: 17, fontWeight: '600' },
   scrollContent: { paddingBottom: 40 },
   sectionLabel: {

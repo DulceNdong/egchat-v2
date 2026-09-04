@@ -1,8 +1,8 @@
-// Módulo Recarga Tel. — paridad ServiciosModules.tsx web
+// Módulo Recarga Tel. — paridad ServiciosModules.tsx web — CONECTADO CON BACKEND REAL
 import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { walletAPI } from '../../api';
-import { MOBILE_OPERATORS, MOBILE_PACKAGES, MobilePackage } from '../../data/serviciosBasicos';
+import { walletAPI, getApiBase, getToken } from '../../api';
+import { toast } from '../Toast';
 import {
   ServiceModuleShell, ServiceHomeGrid, ServiceBanner, OperatorGrid,
   StatusBadge, SupportScreen, EmptyState, PrimaryButton, FormField, Ico,
@@ -10,34 +10,209 @@ import {
 
 type RScreen = 'home' | 'operators' | 'packages' | 'confirm' | 'success' | 'history' | 'myLines' | 'support';
 
+interface MobileOperator {
+  id: string;
+  name: string;
+  code: string;
+  color: string;
+}
+
+interface MobilePackage {
+  id: string;
+  name: string;
+  type: string;
+  price: number;
+  validity: string;
+  desc: string;
+}
+
 interface Props {
   visible: boolean;
   onClose: () => void;
   userBalance?: number;
 }
 
+// APIs para backend real
+const mobileAPI = {
+  async getOperators(): Promise<MobileOperator[]> {
+    try {
+      const BASE = getApiBase();
+      const token = await getToken();
+      const res = await fetch(`${BASE}/api/services/mobile/operators`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) return res.json();
+    } catch (error) {
+      // Error loading operators - using fallback
+    }
+    return [];
+  },
+
+  async getPackages(operatorId: string): Promise<MobilePackage[]> {
+    try {
+      const BASE = getApiBase();
+      const token = await getToken();
+      const res = await fetch(`${BASE}/api/services/mobile/operators/${operatorId}/packages`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) return res.json();
+    } catch (error) {
+      // Error loading packages - using fallback
+    }
+    return [];
+  },
+
+  async processRecharge(operatorId: string, packageId: string, phone: string, amount: number) {
+    const BASE = getApiBase();
+    const token = await getToken();
+    const res = await fetch(`${BASE}/api/services/mobile/recharge`, {
+      method: 'POST',
+      headers: { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ operatorId, packageId, phone, amount })
+    });
+    
+    if (!res.ok) {
+      const error = await res.json();
+      throw new Error(error.message || 'Error al procesar recarga');
+    }
+    
+    return res.json();
+  },
+
+  async getHistory() {
+    try {
+      const BASE = getApiBase();
+      const token = await getToken();
+      const res = await fetch(`${BASE}/api/services/mobile/history`, {
+        headers: { Authorization: `Bearer ${token}` }
+      });
+      if (res.ok) return res.json();
+    } catch (error) {
+      // Error loading history - using fallback
+    }
+    return [];
+  }
+};
+
 export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: initialBalance = 100000 }) => {
   const [screen, setScreen] = useState<RScreen>('home');
-  const [operator, setOperator] = useState('');
-  const [pkg, setPkg] = useState<MobilePackage | null>(null);
+  const [operators, setOperators] = useState<MobileOperator[]>([]);
+  const [selectedOperator, setSelectedOperator] = useState<MobileOperator | null>(null);
+  const [packages, setPackages] = useState<MobilePackage[]>([]);
+  const [selectedPackage, setSelectedPackage] = useState<MobilePackage | null>(null);
   const [phone, setPhone] = useState('');
   const [balance, setBalance] = useState(initialBalance);
-  const [history, setHistory] = useState<Array<{ id: string; op: string; phone: string; type: string; amount: number; date: string; status: string }>>([]);
+  const [history, setHistory] = useState<Array<any>>([]);
   const [lines, setLines] = useState<Array<{ number: string; op: string }>>([]);
   const [newLine, setNewLine] = useState('');
   const [loading, setLoading] = useState(false);
+  const [loadingData, setLoadingData] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  useEffect(() => { if (visible) setBalance(initialBalance); }, [visible, initialBalance]);
-  useEffect(() => { if (!visible) { setScreen('home'); setOperator(''); setPkg(null); setPhone(''); } }, [visible]);
+  useEffect(() => { 
+    if (visible) {
+      setBalance(initialBalance);
+      loadOperators();
+    }
+  }, [visible, initialBalance]);
+  
+  useEffect(() => { 
+    if (!visible) { 
+      setScreen('home'); 
+      setSelectedOperator(null); 
+      setSelectedPackage(null); 
+      setPhone(''); 
+    } 
+  }, [visible]);
 
-  const selOp = MOBILE_OPERATORS.find(o => o.id === operator);
-  const opPackages = operator ? (MOBILE_PACKAGES[operator] || []) : [];
-  const color = selOp?.color || '#07C160';
+  const loadOperators = async () => {
+    setLoadingData(true);
+    try {
+      const data = await mobileAPI.getOperators();
+      // Si el backend no tiene el endpoint o devuelve vacío, usar operadores por defecto
+      if (data && data.length > 0) {
+        setOperators(data);
+      } else {
+        setOperators([
+          { id: 'getesa',  name: 'GETESA',  code: 'GET', color: '#003F8A' }, // Azul corporativo estatal
+          { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' }, // Verde corporativo
+          { id: 'muni',    name: 'MUNI',    code: 'MUN', color: '#E8320A' }, // Rojo/naranja (ex-Hits Telecom)
+        ]);
+      }
+    } catch (error) {
+      setOperators([
+        { id: 'getesa',  name: 'GETESA',  code: 'GET', color: '#003F8A' },
+        { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' },
+        { id: 'muni',    name: 'MUNI',    code: 'MUN', color: '#E8320A' },
+      ]);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const loadPackages = async (operatorId: string) => {
+    setLoadingData(true);
+    try {
+      const data = await mobileAPI.getPackages(operatorId);
+      if (data && data.length > 0) {
+        setPackages(data);
+      } else {
+        // Paquetes por defecto si el backend no los tiene
+        setPackages([
+          { id: 'p1', name: '100 MB', type: 'datos',    price: 500,   validity: '1 día',   desc: 'Paquete básico de datos' },
+          { id: 'p2', name: '500 MB', type: 'datos',    price: 1000,  validity: '3 días',  desc: 'Paquete estándar de datos' },
+          { id: 'p3', name: '1 GB',   type: 'datos',    price: 2000,  validity: '7 días',  desc: 'Paquete semanal de datos' },
+          { id: 'p4', name: '3 GB',   type: 'datos',    price: 5000,  validity: '15 días', desc: 'Paquete quincenal de datos' },
+          { id: 'p5', name: '5 GB',   type: 'datos',    price: 8000,  validity: '30 días', desc: 'Paquete mensual de datos' },
+          { id: 'p6', name: '500 XAF',type: 'saldo',    price: 500,   validity: '30 días', desc: 'Recarga de saldo' },
+          { id: 'p7', name: '1000 XAF',type:'saldo',    price: 1000,  validity: '30 días', desc: 'Recarga de saldo' },
+          { id: 'p8', name: '2000 XAF',type:'saldo',    price: 2000,  validity: '30 días', desc: 'Recarga de saldo' },
+          { id: 'p9', name: '100 min',type: 'minutos',  price: 1500,  validity: '7 días',  desc: 'Paquete de minutos' },
+        ]);
+      }
+    } catch (error) {
+      setPackages([
+        { id: 'p1', name: '100 MB', type: 'datos',  price: 500,  validity: '1 día',   desc: 'Paquete básico de datos' },
+        { id: 'p2', name: '500 MB', type: 'datos',  price: 1000, validity: '3 días',  desc: 'Paquete estándar de datos' },
+        { id: 'p3', name: '1 GB',   type: 'datos',  price: 2000, validity: '7 días',  desc: 'Paquete semanal de datos' },
+        { id: 'p4', name: '500 XAF',type: 'saldo',  price: 500,  validity: '30 días', desc: 'Recarga de saldo' },
+        { id: 'p5', name: '1000 XAF',type:'saldo',  price: 1000, validity: '30 días', desc: 'Recarga de saldo' },
+      ]);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const loadHistory = async () => {
+    setLoadingData(true);
+    try {
+      const data = await mobileAPI.getHistory();
+      setHistory(data);
+    } catch (error) {
+      toast.error('Error cargando historial');
+      setHistory([]);
+    } finally {
+      setLoadingData(false);
+    }
+  };
+
+  const loadBalance = async () => {
+    try {
+      const result = await walletAPI.getBalance();
+      setBalance(result.balance || 0);
+    } catch (error) {
+      // Error loading balance - continue with cached value
+    }
+  };
+
+  const color = selectedOperator?.color || '#07C160';
 
   const titles: Record<RScreen, string> = {
     home: 'Recarga Tel.', operators: 'Operadores',
-    packages: `${selOp?.name || ''} — Paquetes`, confirm: 'Confirmar',
+    packages: `${selectedOperator?.name || ''} — Paquetes`, confirm: 'Confirmar',
     success: 'Completado', history: 'Historial', myLines: 'Mis Líneas', support: 'Soporte',
   };
 
@@ -58,18 +233,58 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
   ];
 
   const confirmRecharge = async () => {
-    if (!pkg || pkg.price > balance) return;
+    if (!selectedPackage || !selectedOperator || !phone.trim()) {
+      toast.error('Datos incompletos');
+      return;
+    }
+
+    if (selectedPackage.price > balance) {
+      toast.error('Saldo insuficiente');
+      return;
+    }
+
     setLoading(true);
     try {
-      await walletAPI.withdraw(pkg.price, 'recarga_movil', phone);
-    } catch { /* demo mode — continúa igual que web */ }
-    setBalance(b => b - pkg.price);
-    setHistory(p => [...p, {
-      id: `rh${Date.now()}`, op: selOp?.name || '', phone, type: pkg.type,
-      amount: pkg.price, date: new Date().toLocaleDateString('es'), status: 'completado',
-    }]);
-    setLoading(false);
-    setScreen('success');
+      const result = await mobileAPI.processRecharge(
+        selectedOperator.id, 
+        selectedPackage.id, 
+        phone.trim(), 
+        selectedPackage.price
+      );
+      
+      setBalance(result.balance || balance - selectedPackage.price);
+      setScreen('success');
+      toast.success('¡Recarga completada!');
+      
+      // Actualizar historial
+      loadHistory();
+    } catch (error: any) {
+      toast.error(error.message || 'Error al procesar recarga');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const selectOperator = async (operator: MobileOperator) => {
+    setSelectedOperator(operator);
+    setScreen('packages');
+    await loadPackages(operator.id);
+  };
+
+  const selectPackage = (pkg: MobilePackage) => {
+    setSelectedPackage(pkg);
+    setScreen('confirm');
+  };
+
+  const handleItemPress = (id: string) => {
+    if (id === 'operators') {
+      setScreen('operators');
+    } else if (id === 'history') {
+      loadHistory();
+      setScreen('history');
+    } else {
+      setScreen(id as RScreen);
+    }
   };
 
   return (
@@ -82,20 +297,35 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
     >
       {screen === 'home' && (
         <View>
-          <ServiceHomeGrid items={homeItems} onPress={id => setScreen(id as RScreen)} />
+          <ServiceHomeGrid items={homeItems} onPress={handleItemPress} />
           <ServiceBanner
             key={refreshKey}
             label="Operadores disponibles"
-            count={MOBILE_OPERATORS.length}
-            suffix="GETESA — GECOMSA — Orange GE — Otros"
+            count={operators.length}
+            suffix="GETESA — GECOMSA — MUNI"
             colors={['#2E9E6B', '#1B7A52']}
-            onRefresh={() => setRefreshKey(k => k + 1)}
+            onRefresh={() => {
+              setRefreshKey(k => k + 1);
+              loadOperators();
+            }}
           />
         </View>
       )}
 
       {screen === 'operators' && (
-        <OperatorGrid items={MOBILE_OPERATORS} onSelect={id => { setOperator(id); setScreen('packages'); }} />
+        loadingData ? (
+          <View style={s.loading}>
+            <Text>Cargando operadores...</Text>
+          </View>
+        ) : (
+          <OperatorGrid 
+            items={operators.map(op => ({ ...op, color: op.color }))} 
+            onSelect={id => {
+              const operator = operators.find(op => op.id === id);
+              if (operator) selectOperator(operator);
+            }} 
+          />
+        )
       )}
 
       {screen === 'packages' && (
@@ -103,39 +333,56 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
           <View style={s.phoneRow}>
             <Text style={s.phoneEmoji}>📞</Text>
             <View style={{ flex: 1 }}>
-              <FormField placeholder="Número de teléfono" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+              <FormField 
+                placeholder="Número de teléfono" 
+                value={phone} 
+                onChangeText={setPhone} 
+                keyboardType="phone-pad" 
+              />
             </View>
           </View>
-          <View style={s.pkgCard}>
-            <View style={s.pkgGrid}>
-              {opPackages.map(p => (
-                <TouchableOpacity
-                  key={p.id}
-                  style={[s.pkgCell, !phone && s.pkgCellDisabled]}
-                  onPress={() => { if (phone) { setPkg(p); setScreen('confirm'); } }}
-                  activeOpacity={phone ? 0.7 : 1}
-                >
-                  <View style={[s.pkgIcon, { backgroundColor: color + '12' }]}>
-                    {Ico.mobile(color)}
-                  </View>
-                  <Text style={s.pkgName} numberOfLines={2}>{p.name}</Text>
-                  <Text style={[s.pkgPrice, { color }]}>{p.price.toLocaleString()} XAF</Text>
-                  <Text style={s.pkgValid}>{p.validity}</Text>
-                </TouchableOpacity>
-              ))}
+          
+          {loadingData ? (
+            <View style={s.loading}>
+              <Text>Cargando paquetes...</Text>
             </View>
-          </View>
-          {!phone && <Text style={s.warn}>⚠️ Introduce el número para continuar</Text>}
+          ) : (
+            <View style={s.pkgCard}>
+              <View style={s.pkgGrid}>
+                {packages.map(p => (
+                  <TouchableOpacity
+                    key={p.id}
+                    style={[s.pkgCell, !phone && s.pkgCellDisabled]}
+                    onPress={() => { if (phone.trim()) selectPackage(p); }}
+                    activeOpacity={phone.trim() ? 0.7 : 1}
+                  >
+                    <View style={[s.pkgIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
+                      {Ico.mobile(color)}
+                    </View>
+                    <Text style={s.pkgName} numberOfLines={2}>{p.name}</Text>
+                    <Text style={[s.pkgPrice, { color }]}>{p.price.toLocaleString()} XAF</Text>
+                    <Text style={s.pkgValid}>{p.validity}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+          )}
+          
+          {!phone.trim() && <Text style={s.warn}>⚠️ Introduce el número para continuar</Text>}
         </View>
       )}
 
-      {screen === 'confirm' && pkg && (
+      {screen === 'confirm' && selectedPackage && selectedOperator && (
         <View>
           <View style={s.confirmCard}>
             {[
-              ['Operador', selOp?.name || ''], ['Número', phone], ['Paquete', pkg.name],
-              ['Descripción', pkg.desc], ['Validez', pkg.validity],
-              ['Precio', `${pkg.price.toLocaleString()} XAF`], ['Saldo actual', `${balance.toLocaleString()} XAF`],
+              ['Operador', selectedOperator.name], 
+              ['Número', phone], 
+              ['Paquete', selectedPackage.name],
+              ['Descripción', selectedPackage.desc], 
+              ['Validez', selectedPackage.validity],
+              ['Precio', `${selectedPackage.price.toLocaleString()} XAF`], 
+              ['Saldo actual', `${balance.toLocaleString()} XAF`],
             ].map(([l, v]) => (
               <View key={l} style={s.confirmRow}>
                 <Text style={s.confirmLabel}>{l}</Text>
@@ -143,45 +390,58 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
               </View>
             ))}
           </View>
-          {pkg.price > balance && (
+          {selectedPackage.price > balance && (
             <Text style={s.insufficient}>Saldo insuficiente</Text>
           )}
           <PrimaryButton
             label={loading ? 'Procesando...' : 'Confirmar recarga'}
             onPress={confirmRecharge}
-            disabled={pkg.price > balance || loading}
+            disabled={selectedPackage.price > balance || loading}
             color={color}
           />
         </View>
       )}
 
-      {screen === 'success' && pkg && (
+      {screen === 'success' && selectedPackage && selectedOperator && (
         <View style={s.success}>
           <View style={s.successCircle}><Text style={{ fontSize: 32 }}>✅</Text></View>
           <Text style={s.successTitle}>¡Recarga exitosa!</Text>
-          <Text style={s.successSub}>{pkg.name} → {phone}</Text>
-          <Text style={s.successSub}>{selOp?.name} — {pkg.price.toLocaleString()} XAF</Text>
-          <TouchableOpacity style={[s.doneBtn, { backgroundColor: color }]} onPress={() => { setScreen('home'); setPkg(null); setPhone(''); }}>
+          <Text style={s.successSub}>{selectedPackage.name} → {phone}</Text>
+          <Text style={s.successSub}>{selectedOperator.name} — {selectedPackage.price.toLocaleString()} XAF</Text>
+          <TouchableOpacity 
+            style={[s.doneBtn, { backgroundColor: color }]} 
+            onPress={() => { 
+              setScreen('home'); 
+              setSelectedPackage(null); 
+              setSelectedOperator(null);
+              setPhone(''); 
+              loadBalance();
+            }}
+          >
             <Text style={s.doneBtnText}>Listo</Text>
           </TouchableOpacity>
         </View>
       )}
 
       {screen === 'history' && (
-        history.length === 0 ? (
+        loadingData ? (
+          <View style={s.loading}>
+            <Text>Cargando historial...</Text>
+          </View>
+        ) : history.length === 0 ? (
           <EmptyState emoji="📋" title="Sin historial" desc="Tus recargas aparecerán aquí" />
         ) : (
-          history.map(h => (
-            <View key={h.id} style={s.orderCard}>
+          history.map((h, i) => (
+            <View key={h.id || i} style={s.orderCard}>
               <View style={s.orderTop}>
                 <View>
-                  <Text style={s.orderTitle}>{h.op}</Text>
-                  <Text style={s.orderSub}>{h.phone} — {h.type}</Text>
+                  <Text style={s.orderTitle}>{h.response?.operator || 'Recarga'}</Text>
+                  <Text style={s.orderSub}>{h.contract_ref} — {h.response?.package || h.service_type}</Text>
                 </View>
                 <StatusBadge status={h.status} />
               </View>
               <View style={s.orderBottom}>
-                <Text style={s.orderDate}>📅 {h.date}</Text>
+                <Text style={s.orderDate}>📅 {new Date(h.created_at).toLocaleDateString('es')}</Text>
                 <Text style={s.orderAmount}>-{h.amount.toLocaleString()} XAF</Text>
               </View>
             </View>
@@ -195,7 +455,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
             <FormField placeholder="Añadir número (+240...)" value={newLine} onChangeText={setNewLine} keyboardType="phone-pad" />
             <TouchableOpacity
               style={s.addBtn}
-              onPress={() => { if (newLine) { setLines(p => [...p, { number: newLine, op: 'GETESA' }]); setNewLine(''); } }}
+              onPress={() => { if (newLine.trim()) { setLines(p => [...p, { number: newLine.trim(), op: 'GETESA' }]); setNewLine(''); } }}
             >
               <Text style={s.addBtnText}>+</Text>
             </TouchableOpacity>
@@ -221,7 +481,9 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
   );
 };
 
+
 const s = StyleSheet.create({
+  loading: { alignItems: 'center', paddingVertical: 30 },
   phoneRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 12 },
   phoneEmoji: { fontSize: 16 },
   pkgCard: { backgroundColor: '#fff', borderRadius: 14, overflow: 'hidden', marginBottom: 8 },

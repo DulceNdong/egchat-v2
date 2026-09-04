@@ -15,7 +15,10 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
       },
-      "ios": {}
+      "ios": {
+        "simulator": false,
+        "resourceClass": "m-medium"
+      }
     },
     "preview": {
       "distribution": "internal",
@@ -27,18 +30,24 @@
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
       },
-      "ios": {}
+      "ios": {
+        "resourceClass": "m-medium"
+      }
     },
     "production": {
       "distribution": "store",
       "channel": "production",
+      "node": "20.18.0",
       "android": {
         "buildType": "app-bundle"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
       },
-      "ios": {}
+      "ios": {
+        "autoIncrement": true,
+        "resourceClass": "m-medium"
+      }
     }
   },
   "submit": {

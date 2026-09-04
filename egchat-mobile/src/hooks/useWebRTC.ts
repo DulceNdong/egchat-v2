@@ -1,6 +1,8 @@
 // useWebRTC — Señalización HTTP + media real con react-native-webrtc (EAS / dev client)
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { Platform, View } from 'react-native';
+import { Audio } from 'expo-av';
+import { Camera } from 'expo-camera';
 import { callAPI } from '../api';
 
 export type CallState = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
@@ -55,6 +57,27 @@ function mediaConstraints(type: 'audio' | 'video') {
         video: { facingMode: 'user', width: 640, height: 480, frameRate: 24 },
       }
     : { audio: true, video: false };
+}
+
+async function ensureMediaPermissions(type: 'audio' | 'video') {
+  if (Platform.OS === 'web') return true;
+  try {
+    const mic = await Audio.getPermissionsAsync();
+    if (mic.status !== 'granted') {
+      const req = await Audio.requestPermissionsAsync();
+      if (req.status !== 'granted') return false;
+    }
+    if (type === 'video') {
+      const camera = await Camera.getCameraPermissionsAsync();
+      if (camera.status !== 'granted') {
+        const req = await Camera.requestCameraPermissionsAsync();
+        if (req.status !== 'granted') return false;
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 export function useWebRTC() {
@@ -178,6 +201,15 @@ export function useWebRTC() {
     setCallType(type);
     setIsSignalingOnly(false);
 
+    const permissionsOk = await ensureMediaPermissions(type);
+    if (!permissionsOk) {
+      throw new Error(
+        type === 'video'
+          ? 'Permisos de cámara o micrófono denegados. Actívalos en Ajustes.'
+          : 'Permiso de micrófono denegado. Actívalo en Ajustes.'
+      );
+    }
+
     const stream = await getUserMedia(type);
     localStreamRef.current = stream;
     setLocalStream(stream);
@@ -197,6 +229,17 @@ export function useWebRTC() {
 
     const offer = await pc.createOffer({});
     await pc.setLocalDescription(offer);
+
+    // ── Enviar VoIP push ANTES del offer para despertar al destinatario ──
+    // Esto hace que iOS muestre la UI de CallKit incluso con app cerrada.
+    // Si falla (red, token no disponible), la llamada sigue igualmente.
+    callAPI.sendVoipPush({
+      targetUserId,
+      callId: id,
+      callType: type,
+      offer: pc.localDescription,
+    }).catch(() => { /* silencioso — el polling se encarga */ });
+
     await callAPI.offer({ callId: id, offer: pc.localDescription, targetUserId, type });
     setCallState('calling');
 
@@ -236,6 +279,15 @@ export function useWebRTC() {
     cleanupResources();
     setCallType(type);
     setIsSignalingOnly(false);
+
+    const permissionsOk = await ensureMediaPermissions(type);
+    if (!permissionsOk) {
+      throw new Error(
+        type === 'video'
+          ? 'Permisos de cámara o micrófono denegados. Actívalos en Ajustes.'
+          : 'Permiso de micrófono denegado. Actívalo en Ajustes.'
+      );
+    }
 
     const stream = await getUserMedia(type);
     localStreamRef.current = stream;

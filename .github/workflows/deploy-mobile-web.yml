@@ -1,0 +1,168 @@
+name: Deploy App + Backend (Vercel + Render)
+
+on:
+  push:
+    branches: [mobile]
+  workflow_dispatch:
+
+env:
+  RENDER_API_URL: https://egchat-api-xlxj.onrender.com
+  EGCHAT_API_REPO: DulceNdong/egchat-api
+
+jobs:
+  sync-backend:
+    name: Sync server → egchat-api → Render
+    runs-on: ubuntu-latest
+    steps:
+      - name: Verificar token de sync
+        run: |
+          if [ -z "${{ secrets.EGCHAT_API_SYNC_TOKEN }}" ]; then
+            echo "::error::Falta el secret EGCHAT_API_SYNC_TOKEN en GitHub Actions."
+            echo "Crea un PAT con scope repo y añádelo en Settings → Secrets."
+            echo "Ver DEPLOY-UNIFICADO.md"
+            exit 1
+          fi
+
+      - name: Checkout egchat-v2 (con submodule server)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.EGCHAT_API_SYNC_TOKEN }}
+
+      - name: Checkout egchat-api para push
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ env.EGCHAT_API_REPO }}
+          token: ${{ secrets.EGCHAT_API_SYNC_TOKEN }}
+          path: api-repo
+
+      - name: Sincronizar server/ → egchat-api
+        run: |
+          rsync -av --delete \
+            --exclude node_modules \
+            --exclude .git \
+            --exclude .env \
+            --exclude '*.log' \
+            --exclude firebase-service-account.json \
+            server/ api-repo/
+
+          cd api-repo
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+
+          if git diff --staged --quiet; then
+            echo "ℹ️  Backend sin cambios respecto a egchat-api"
+          else
+            git commit -m "sync: egchat-v2@${{ github.sha }} [auto]"
+            git push origin HEAD:main
+            echo "✅ Backend sincronizado en egchat-api"
+          fi
+
+      - name: Trigger Render deploy
+        run: |
+          curl -sf -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" || \
+            curl -sf "https://api.render.com/deploy/srv-d79po8dm5p6s73a7rcu0?key=_SNH3dpUT0k" || \
+            echo "⚠️  Deploy hook no configurado — Render usará auto-deploy de egchat-api"
+
+  deploy-mobile:
+    name: Build y Deploy App Nativa
+    runs-on: ubuntu-latest
+    needs: sync-backend
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Instalar dependencias
+        working-directory: egchat-mobile
+        run: npm install --legacy-peer-deps
+
+      - name: Build web
+        working-directory: egchat-mobile
+        env:
+          EXPO_PUBLIC_API_URL: ${{ env.RENDER_API_URL }}
+          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
+          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
+          CI: false
+        run: npx expo export --platform web --output-dir dist
+
+      - name: Deploy a Vercel
+        working-directory: egchat-mobile
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: npx vercel --prod --token "$VERCEL_TOKEN" --yes
+
+  verify-backend:
+    name: Verificar backend en Render
+    runs-on: ubuntu-latest
+    needs: sync-backend
+    steps:
+      - name: Esperar arranque de Render
+        run: sleep 90
+
+      - name: Comprobar health y rutas críticas
+        run: |
+          node - << 'EOF'
+          const https = require('https');
+          const API = process.env.RENDER_API_URL.replace('https://', '');
+
+          function req(method, path) {
+            return new Promise((resolve) => {
+              const body = '{}';
+              const rq = https.request({
+                hostname: API,
+                path,
+                method,
+                headers: { 'Content-Type': 'application/json', 'Content-Length': body.length }
+              }, (res) => {
+                let b = '';
+                res.on('data', (c) => b += c);
+                res.on('end', () => resolve({ code: res.statusCode, body: b }));
+              });
+              rq.on('error', (e) => resolve({ code: 0, body: e.message }));
+              rq.write(body);
+              rq.end();
+            });
+          }
+
+          (async () => {
+            const health = await req('GET', '/health');
+            let version = 'sin version';
+            try {
+              const d = JSON.parse(health.body);
+              if (d.version) version = d.version;
+            } catch {}
+
+            const routes = [
+              ['GET', '/api/djangue'],
+              ['POST', '/api/djangue/x/advance-turn'],
+              ['PATCH', '/api/chats/x/settings'],
+              ['POST', '/api/chats/x/invite-link'],
+            ];
+
+            let ok = 0;
+            for (const [m, p] of routes) {
+              const s = await req(m, p);
+              if (s.code !== 404 && s.code !== 0) ok++;
+            }
+
+            console.log(`Health: ${health.body}`);
+            console.log(`Versión: ${version}`);
+            console.log(`Rutas: ${ok}/${routes.length}`);
+
+            if (health.code !== 200 || ok < routes.length) {
+              console.error('❌ Backend no listo tras deploy');
+              process.exit(1);
+            }
+            console.log('✅ Backend verificado');
+          })();
+          EOF
+        env:
+          RENDER_API_URL: ${{ env.RENDER_API_URL }}

@@ -60,45 +60,25 @@ export const BorderRadius = {
   sheet: 20,     // bottom sheet top corners
 } as const;
 
+import { Platform } from 'react-native';
+
+// Helper: genera shadow compatible con web (boxShadow) y nativo (shadow*)
+const makeShadow = (
+  x: number, y: number, blur: number, opacity: number, elevation: number
+) => Platform.OS === 'web'
+  ? { boxShadow: `${x}px ${y}px ${blur}px rgba(0,0,0,${opacity})` }
+  : {
+      shadowColor: '#000',
+      shadowOffset: { width: x, height: y },
+      shadowOpacity: opacity,
+      shadowRadius: blur,
+      elevation,
+    };
+
 export const Shadow = {
-  // --shadow-sm
-  sm: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
-    elevation: 1,
-  },
-  // --shadow-md
-  md: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
-  },
-  // --shadow-lg
-  lg: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.10,
-    shadowRadius: 16,
-    elevation: 5,
-  },
-  // Burbuja mensaje ajeno
-  bubble: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  // Pro icon / servicio
-  proIcon: {
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.12,
-    shadowRadius: 16,
-    elevation: 4,
-  },
+  sm:      makeShadow(0, 1,  3,  0.06, 1),
+  md:      makeShadow(0, 2,  8,  0.08, 3),
+  lg:      makeShadow(0, 4,  16, 0.10, 5),
+  bubble:  makeShadow(0, 1,  2,  0.08, 1),
+  proIcon: makeShadow(0, 4,  16, 0.12, 4),
 } as const;

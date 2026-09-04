@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Mi Djangue - Demo</title>
+  <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body style="margin: 0; padding: 0;">
+  <div id="root"></div>
+  
+  <script type="text/babel" src="./MiDjange.tsx"></script>
+  <script type="text/babel">
+    const { createElement } = React;
+    const { createRoot } = ReactDOM;
+    
+    // Cargar el componente
+    const root = createRoot(document.getElementById('root'));
+    root.render(createElement(MiDjange));
+  </script>
+</body>
+</html>

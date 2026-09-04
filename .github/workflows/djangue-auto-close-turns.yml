@@ -1,0 +1,38 @@
+name: Djangue Auto Close Turns
+
+on:
+  schedule:
+    # Ejecutar diariamente a las 23:00 UTC (00:00 WAT) para cerrar turnos vencidos
+    - cron: '0 23 * * *'
+  workflow_dispatch: # Permitir ejecución manual
+
+jobs:
+  close-turns:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Close expired turns and apply penalties
+        run: |
+          echo "Checking for turns ready to close..."
+          response=$(curl -s -w "\n%{http_code}" -X POST ${{ secrets.API_URL }}/api/djangue/cron/auto-close-turns \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            -H "Content-Type: application/json")
+          
+          http_code=$(echo "$response" | tail -n1)
+          body=$(echo "$response" | head -n-1)
+          
+          echo "HTTP Status: $http_code"
+          echo "Response: $body"
+          
+          if [ "$http_code" != "200" ]; then
+            echo "Error: Failed to auto-close turns"
+            exit 1
+          fi
+          
+          echo "✅ Auto-close check completed successfully"
+
+      - name: Log completion
+        if: always()
+        run: |
+          echo "Job completed at $(date)"
+          echo "Status: ${{ job.status }}"

@@ -1,0 +1,16 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Auto Deploy a Vercel (con fallback a Netlify)",
+      "description": "Ejecuta deploy-auto.ps1 — push a git, asigna alias en Vercel, y si Vercel tiene limite alcanzado hace fallback a Netlify.",
+      "trigger": "Stop",
+      "action": {
+        "type": "command",
+        "command": "powershell -ExecutionPolicy Bypass -File deploy-auto.ps1"
+      },
+      "timeout": 420,
+      "enabled": true
+    }
+  ]
+}

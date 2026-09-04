@@ -51,7 +51,7 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
           </View>
           {GAS_COMPANIES.map(c => (
             <TouchableOpacity key={c.id} style={st.companyRow} onPress={() => { setCompany(c); setView('stations'); }} activeOpacity={0.85}>
-              <View style={[st.abbrBox, { backgroundColor: c.color + '18' }]}>
+              <View style={[st.abbrBox, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                 <Text style={[st.abbr, { color: c.color }]}>{c.abbr}</Text>
               </View>
               <View style={{ flex: 1 }}>

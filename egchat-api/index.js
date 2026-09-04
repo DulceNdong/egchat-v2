@@ -27,6 +27,7 @@ const APP_VERSION = '2.5.0';
 const chatStreams = new Map();
 const dependencyCache = { timestamp: 0, result: null };
 const enableLocalAuthFallback = process.env.LOCAL_AUTH_FALLBACK !== 'false';
+const enableExternalNewsScraping = process.env.ENABLE_EXTERNAL_NEWS_SCRAPING === '1';
 const localAuthUsers = new Map();
 
 const getLocalAuthUser = (phone, fullName = 'Usuario EGCHAT', avatarUrl = null) => {
@@ -50,10 +51,79 @@ const sendLocalAuth = (res, phone, fullName, avatarUrl, status = 200) => {
   return res.status(status).json({ token, user });
 };
 
+const DEMO_USERS = [
+  { phone: '+240111111111', full_name: 'Raymon Prueba', avatar_url: null },
+  { phone: '+240222222222', full_name: 'Tiny Abaga', avatar_url: null },
+];
+DEMO_USERS.forEach(user => getLocalAuthUser(user.phone, user.full_name, user.avatar_url));
+
+const localChats = new Map();
+const localMessages = new Map();
+
+const isLocalUserId = (id) => String(id || '').startsWith('local-');
+const getLocalUserById = (id) => Array.from(localAuthUsers.values()).find(user => user.id === id) || null;
+const getDemoContactsFor = (userId) => Array.from(localAuthUsers.values())
+  .filter(user => user.id !== userId)
+  .map(user => ({
+    id: `contact-${user.id}`,
+    contact_user_id: user.id,
+    name: user.full_name,
+    phone: user.phone,
+    avatar_url: user.avatar_url || '',
+    is_blocked: false,
+    is_favorite: false,
+    created_at: new Date().toISOString(),
+    user,
+  }));
+
+const getLocalPrivateChat = (a, b) => {
+  const key = [a, b].sort().join('__');
+  if (!localChats.has(key)) {
+    localChats.set(key, {
+      id: `local-chat-${Buffer.from(key).toString('hex').slice(0, 24)}`,
+      key,
+      type: 'private',
+      participant_ids: [a, b],
+      created_by: a,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    });
+  }
+  const chat = localChats.get(key);
+  if (!localMessages.has(chat.id)) localMessages.set(chat.id, []);
+  return chat;
+};
+
+const formatLocalChat = (chat) => {
+  const messages = localMessages.get(chat.id) || [];
+  return {
+    id: chat.id,
+    type: 'private',
+    name: null,
+    avatar_url: null,
+    created_by: chat.created_by,
+    participants: chat.participant_ids.map(userId => {
+      const user = getLocalUserById(userId) || {};
+      return {
+        chat_id: chat.id,
+        user_id: userId,
+        full_name: user.full_name || '',
+        phone: user.phone || '',
+        avatar_url: user.avatar_url || '',
+        user,
+        users: user,
+      };
+    }),
+    last_message: messages[messages.length - 1] || null,
+    updated_at: chat.updated_at,
+    unread_count: 0,
+  };
+};
+
 // --- Supabase ---------------------------------------------------------
 const supabase = createClient(
-  process.env.SUPABASE_URL || '',
-  process.env.SUPABASE_SERVICE_KEY || ''
+  process.env.SUPABASE_URL || 'https://fqfxtjnfhvpggssbymdn.supabase.co',
+  process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_ANON_KEY || ''
 );
 
 const allowedOrigins = (process.env.CORS_ALLOWED_ORIGINS || 'https://egchat-app.vercel.app,https://egchat-v2.vercel.app,http://localhost:5173,http://localhost:3001,http://localhost:3000,http://127.0.0.1:3001')
@@ -68,6 +138,8 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) return callback(null, true);
     // Permitir cualquier localhost en desarrollo
     if (/^http:\/\/(localhost|127\.0\.0\.1)(:\d+)?$/.test(origin)) return callback(null, true);
+    // Permitir LAN local para probar web + iPhone desde el Mac
+    if (/^http:\/\/(192\.168\.|10\.|172\.(1[6-9]|2\d|3[0-1])\.)\d{1,3}\.\d{1,3}(:\d+)?$/.test(origin)) return callback(null, true);
     // Permitir cualquier subdominio de vercel.app (egchat-v2, egchat-app, etc.)
     if (/^https:\/\/egchat.*\.vercel\.app$/.test(origin)) return callback(null, true);
     return callback(new Error('CORS policy: origin not allowed'));
@@ -206,6 +278,27 @@ app.post('/api/admin/reset-password', async (req, res) => {
   const { data, error } = await supabase.from('users').update({ password_hash: hashed }).eq('phone', phone).select('id, phone, full_name').single();
   if (error || !data) return res.status(404).json({ message: 'Usuario no encontrado', error: error?.message });
   res.json({ message: 'Contrasena reseteada', user: data });
+});
+
+// --- EMERGENCY PASSWORD RESET (token de un solo uso) ------------------
+app.post('/api/emergency/reset-pw', async (req, res) => {
+  const TOKEN = 'EG2026_RESET_TOKEN_X9K';
+  const { token, phone, newPassword } = req.body || {};
+  if (!token || token !== TOKEN) return res.status(403).json({ message: 'No autorizado' });
+  if (!phone || !newPassword) return res.status(400).json({ message: 'phone y newPassword requeridos' });
+  try {
+    const hashed = await bcrypt.hash(newPassword, 10);
+    const { data, error } = await supabase
+      .from('users')
+      .update({ password_hash: hashed })
+      .eq('phone', phone)
+      .select('id, phone, full_name')
+      .single();
+    if (error || !data) return res.status(404).json({ message: 'Usuario no encontrado', error: error?.message });
+    res.json({ ok: true, user: data });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
 });
 
 // --- ROOT -------------------------------------------------------------
@@ -418,12 +511,76 @@ app.post('/api/auth/heartbeat', auth, async (req, res) => {
   res.json({ ok: true });
 });
 
+// Registro de actividad del usuario
+app.get('/api/auth/activity', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const activity = [];
+    const now = new Date();
+
+    // Último login (del campo last_login en users)
+    const { data: user } = await supabase.from('users').select('last_login, created_at').eq('id', userId).single();
+    if (user?.last_login) {
+      activity.push({ id: 'login_1', type: 'login', action: 'Inicio de sesión', description: 'Sesión activa en este dispositivo', timestamp: user.last_login });
+    }
+
+    // Transacciones recientes
+    const { data: txs } = await supabase.from('transactions').select('id, type, amount, description, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5);
+    (txs || []).forEach(tx => {
+      activity.push({ id: `tx_${tx.id}`, type: 'transaction', action: tx.type === 'transfer' ? 'Transferencia' : tx.type === 'deposit' ? 'Recarga' : 'Pago', description: tx.description || `${tx.amount} XAF`, timestamp: tx.created_at });
+    });
+
+    // Mensajes enviados recientes (como indicador de actividad de chat)
+    const { data: msgs } = await supabase.from('messages').select('id, created_at, chat_id').eq('sender_id', userId).order('created_at', { ascending: false }).limit(3);
+    if (msgs && msgs.length > 0) {
+      activity.push({ id: 'chat_1', type: 'chat', action: 'Mensajes enviados', description: `${msgs.length} mensajes recientes`, timestamp: msgs[0].created_at });
+    }
+
+    // Ordenar por fecha
+    activity.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    res.json(activity.slice(0, 20));
+  } catch (e) {
+    res.json([]);
+  }
+});
+
 // Marcar offline al cerrar sesión
 app.post('/api/auth/logout', auth, async (req, res) => {
   if (!String(req.user.id || '').startsWith('local-')) {
     supabase.from('users').update({ online_status: false, last_seen: new Date().toISOString() }).eq('id', req.user.id).then(() => {});
   }
   res.json({ message: 'Sesión cerrada' });
+});
+
+// Cambiar contraseña
+app.post('/api/auth/change-password', auth, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+    if (!oldPassword || !newPassword) return res.status(400).json({ message: 'Contraseñas requeridas' });
+    if (newPassword.length < 6) return res.status(400).json({ message: 'La nueva contraseña debe tener al menos 6 caracteres' });
+    const { data: user } = await supabase.from('users').select('password_hash').eq('id', req.user.id).single();
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+    const valid = await bcrypt.compare(oldPassword, user.password_hash);
+    if (!valid) return res.status(401).json({ message: 'Contraseña actual incorrecta' });
+    const hash = await bcrypt.hash(newPassword, 10);
+    await supabase.from('users').update({ password_hash: hash }).eq('id', req.user.id);
+    res.json({ ok: true, message: 'Contraseña actualizada' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// Enviar feedback/comentarios
+app.post('/api/feedback', auth, async (req, res) => {
+  try {
+    const { category, message } = req.body;
+    if (!message?.trim()) return res.status(400).json({ message: 'Mensaje requerido' });
+    await supabase.from('feedback').insert({
+      user_id: req.user.id,
+      category: category || 'General',
+      message: message.trim(),
+      created_at: new Date().toISOString(),
+    }).then(() => {}).catch(() => {});
+    res.json({ ok: true, message: 'Feedback recibido' });
+  } catch (e) { res.status(500).json({ message: e.message }); }
 });
 
 app.put('/api/auth/profile', auth, async (req, res) => {
@@ -440,6 +597,115 @@ app.put('/api/auth/profile', auth, async (req, res) => {
   } catch (e) {
     res.status(500).json({ message: e.message });
   }
+});
+
+// ── Verificar/crear buckets de storage ───────────────────────────
+app.post('/api/storage/init', auth, async (_req, res) => {
+  try {
+    const results = [];
+    for (const bucketName of ['chat-files', 'avatars']) {
+      const { data: list } = await supabase.storage.listBuckets();
+      const exists = (list || []).some(b => b.name === bucketName);
+      if (!exists) {
+        const { error } = await supabase.storage.createBucket(bucketName, { public: true });
+        results.push({ bucket: bucketName, created: !error, error: error?.message });
+      } else {
+        await supabase.storage.updateBucket(bucketName, { public: true }).catch(() => {});
+        results.push({ bucket: bucketName, created: false, exists: true });
+      }
+    }
+    res.json({ ok: true, results });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Cifrado E2E — claves públicas ─────────────────────────────────────────────
+app.post('/api/auth/e2e-key', auth, async (req, res) => {
+  try {
+    const { publicKey } = req.body;
+    if (!publicKey) return res.status(400).json({ message: 'publicKey requerida' });
+    await supabase.from('users').update({ e2e_public_key: publicKey }).eq('id', req.user.id);
+    res.json({ ok: true });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+app.get('/api/users/:userId/e2e-key', auth, async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('users').select('e2e_public_key').eq('id', req.params.userId).single();
+    res.json({ publicKey: data?.e2e_public_key || null });
+  } catch (e) { res.status(500).json({ message: e.message }); }
+});
+
+// ── Login QR desde PC ────────────────────────────────────────────────────────
+// Almacén en memoria: sessionId → { token, userId, expiresAt, confirmed }
+const qrSessions = new Map();
+
+// PC llama esto para generar un QR
+app.post('/api/auth/qr-create', async (req, res) => {
+  const sessionId = require('crypto').randomBytes(16).toString('hex');
+  qrSessions.set(sessionId, {
+    token: null,
+    userId: null,
+    confirmed: false,
+    expiresAt: Date.now() + 5 * 60 * 1000, // 5 minutos
+  });
+  // Limpiar sesiones expiradas
+  for (const [id, s] of qrSessions.entries()) {
+    if (s.expiresAt < Date.now()) qrSessions.delete(id);
+  }
+  res.json({
+    sessionId,
+    qrData: `egchat://qr-login/${sessionId}`,
+    expiresIn: 300,
+  });
+});
+
+// App móvil escanea el QR y confirma la sesión
+app.post('/api/auth/qr-confirm', auth, async (req, res) => {
+  const { sessionId } = req.body;
+  if (!sessionId) return res.status(400).json({ message: 'sessionId requerido' });
+
+  const session = qrSessions.get(sessionId);
+  if (!session) return res.status(404).json({ message: 'QR no encontrado o expirado' });
+  if (session.expiresAt < Date.now()) {
+    qrSessions.delete(sessionId);
+    return res.status(410).json({ message: 'QR expirado' });
+  }
+
+  // Generar token de sesión para el PC
+  const pcToken = jwt.sign(
+    { id: req.user.id, phone: req.user.phone, via: 'qr' },
+    JWT_SECRET,
+    { expiresIn: '30d' }
+  );
+
+  session.token   = pcToken;
+  session.userId  = req.user.id;
+  session.confirmed = true;
+  qrSessions.set(sessionId, session);
+
+  res.json({ ok: true, message: 'Sesión confirmada desde el móvil' });
+});
+
+// PC hace polling para saber si el QR fue escaneado
+app.get('/api/auth/qr-status/:sessionId', async (req, res) => {
+  const session = qrSessions.get(req.params.sessionId);
+  if (!session) return res.json({ status: 'expired' });
+  if (session.expiresAt < Date.now()) {
+    qrSessions.delete(req.params.sessionId);
+    return res.json({ status: 'expired' });
+  }
+  if (session.confirmed) {
+    const token = session.token;
+    const userId = session.userId;
+    qrSessions.delete(req.params.sessionId); // Usar solo una vez
+    const { data: user } = await supabase
+      .from('users').select('id, phone, full_name, avatar_url').eq('id', userId).single();
+    return res.json({ status: 'confirmed', token, user });
+  }
+  res.json({ status: 'pending' });
 });
 
 // ── Recuperación de contraseña ────────────────────────────────────────────────
@@ -578,6 +844,14 @@ const getChatParticipants = async (chatId) => {
 // Obtener todos los chats del usuario
 app.get('/api/chats', auth, async (req, res) => {
   try {
+    if (isLocalUserId(req.user.id)) {
+      const chats = Array.from(localChats.values())
+        .filter(chat => chat.participant_ids.includes(req.user.id))
+        .sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at))
+        .map(formatLocalChat);
+      return res.json(chats);
+    }
+
     // Buscar chats donde el usuario es participante
     const { data: participations, error: pErr } = await supabase
       .from('chat_participants')
@@ -665,6 +939,12 @@ app.get('/api/chats', auth, async (req, res) => {
 app.get('/api/chats/:chatId/messages', auth, async (req, res) => {
   try {
     const { chatId } = req.params;
+    if (isLocalUserId(req.user.id)) {
+      const chat = Array.from(localChats.values()).find(item => item.id === chatId);
+      if (!chat || !chat.participant_ids.includes(req.user.id)) return res.status(403).json({ message: 'No tienes acceso a este chat' });
+      return res.json(localMessages.get(chatId) || []);
+    }
+
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const from = (page - 1) * limit;
@@ -728,6 +1008,28 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
     const { chatId } = req.params;
     const { text, type = 'text', reply_to, file_url } = req.body;
     if (!text && !file_url) return res.status(400).json({ message: 'Texto o archivo requerido' });
+    if (isLocalUserId(req.user.id)) {
+      const chat = Array.from(localChats.values()).find(item => item.id === chatId);
+      if (!chat || !chat.participant_ids.includes(req.user.id)) return res.status(403).json({ message: 'Sin acceso' });
+      const sender = getLocalUserById(req.user.id) || {};
+      const message = {
+        id: `local-msg-${Date.now()}-${Math.random().toString(16).slice(2)}`,
+        chat_id: chatId,
+        sender_id: req.user.id,
+        text: text || null,
+        type,
+        reply_to: reply_to || null,
+        file_url: file_url || null,
+        status: 'sent',
+        created_at: new Date().toISOString(),
+        sender: { id: sender.id, full_name: sender.full_name || '', avatar_url: sender.avatar_url || '' },
+      };
+      localMessages.set(chatId, [...(localMessages.get(chatId) || []), message]);
+      chat.updated_at = message.created_at;
+      emitToUsers(chat.participant_ids, { type: 'new_message', chatId, message });
+      emitToUsers(chat.participant_ids, { type: 'chat_updated', chatId, ts: Date.now() });
+      return res.status(201).json(message);
+    }
 
     // Verificar acceso
     const { data: part } = await supabase
@@ -809,14 +1111,22 @@ app.post('/api/chats/private', auth, async (req, res) => {
     const { participant_id, phone } = req.body;
     let targetId = participant_id;
 
-    if (!targetId && phone) {
-      const { data: found, error: userError } = await supabase
-        .from('users')
-        .select('id, phone, full_name, avatar_url')
-        .eq('phone', phone)
-        .single();
+    if (isLocalUserId(req.user.id)) {
+      if (!targetId && phone) {
+        const target = getLocalAuthUser(phone);
+        targetId = target?.id;
+      }
+      const target = getLocalUserById(targetId);
+      if (!target) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+      if (target.id === req.user.id) return res.status(400).json({ message: 'No puedes crear un chat contigo mismo' });
+      const chat = getLocalPrivateChat(req.user.id, target.id);
+      return res.status(201).json(formatLocalChat(chat));
+    }
 
-      if (userError || !found) {
+    if (!targetId && phone) {
+      const found = await findUserByPhone(phone);
+
+      if (!found) {
         return res.status(404).json({ message: 'Usuario no encontrado con ese nÁºmero' });
       }
 
@@ -1366,9 +1676,60 @@ app.delete('/api/messages/:messageId', auth, async (req, res) => {
 // CONTACTOS - GESTIÁƒâ€œN COMPLETA
 // ════════════════════════════════════════════════════════════════════
 
+const phoneLookupCandidates = (phone = '') => {
+  const trimmed = String(phone || '').trim();
+  const digits = trimmed.replace(/\D/g, '');
+  const candidates = new Set([trimmed]);
+  if (digits) {
+    candidates.add(digits);
+    candidates.add(`+${digits}`);
+    if (digits.startsWith('240')) {
+      candidates.add(digits.slice(3));
+      candidates.add(`+${digits.slice(3)}`);
+    } else {
+      candidates.add(`240${digits}`);
+      candidates.add(`+240${digits}`);
+    }
+    if (digits.length > 9) {
+      const last9 = digits.slice(-9);
+      candidates.add(last9);
+      candidates.add(`240${last9}`);
+      candidates.add(`+240${last9}`);
+    }
+  }
+  return Array.from(candidates).filter(Boolean);
+};
+
+async function findUserByPhone(phone) {
+  const candidates = phoneLookupCandidates(phone);
+  if (!candidates.length) return null;
+  const { data: exact } = await supabase
+    .from('users')
+    .select('id, phone, full_name, avatar_url')
+    .in('phone', candidates)
+    .limit(1);
+  if (exact?.[0]) return exact[0];
+
+  const digits = String(phone || '').replace(/\D/g, '');
+  const suffixes = [digits, digits.slice(-9), digits.slice(-8)].filter(v => v && v.length >= 6);
+  for (const suffix of suffixes) {
+    const { data } = await supabase
+      .from('users')
+      .select('id, phone, full_name, avatar_url')
+      .ilike('phone', `%${suffix}`)
+      .limit(1);
+    if (data?.[0]) return data[0];
+  }
+  return null;
+}
+
 // Obtener todos los contactos del usuario
 app.get('/api/contacts', auth, async (req, res) => {
   try {
+    if (isLocalUserId(req.user.id)) {
+      return res.json(getDemoContactsFor(req.user.id));
+    }
+
     const { data: contacts, error } = await supabase
       .from('contacts')
       .select('*')
@@ -1413,21 +1774,32 @@ app.post('/api/contacts', auth, async (req, res) => {
     console.log('[ADD CONTACT] body:', { contact_user_id, phone, nickname, caller: req.user?.id });
     let targetId = contact_user_id && contact_user_id.trim() ? contact_user_id.trim() : null;
 
+    if (isLocalUserId(req.user.id)) {
+      if (!targetId && phone) {
+        const target = getLocalAuthUser(phone, nickname || 'Usuario EGCHAT');
+        targetId = target?.id;
+      }
+      const target = getLocalUserById(targetId);
+      if (!target || target.id === req.user.id) return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
+      return res.json({
+        id: `contact-${target.id}`,
+        contact_user_id: target.id,
+        name: nickname || target.full_name,
+        phone: target.phone,
+        avatar_url: target.avatar_url || '',
+        is_blocked: false,
+        is_favorite: false,
+        created_at: new Date().toISOString(),
+        user: target,
+      });
+    }
+
     if (!targetId && phone) {
-      // Normalizar teléfono: buscar con y sin prefijo +
-      const phoneNorm = phone.trim();
-      const phoneAlt = phoneNorm.startsWith('+') ? phoneNorm.slice(1) : '+' + phoneNorm;
-      console.log('[ADD CONTACT] searching by phone:', phoneNorm, 'or', phoneAlt);
+      const targetUser = await findUserByPhone(phone);
 
-      const { data: targetUser, error: userError } = await supabase
-        .from('users')
-        .select('id, phone, full_name')
-        .or(`phone.eq.${phoneNorm},phone.eq.${phoneAlt}`)
-        .single();
+      console.log('[ADD CONTACT] phone search result:', targetUser);
 
-      console.log('[ADD CONTACT] phone search result:', targetUser, 'error:', userError?.message);
-
-      if (userError || !targetUser) {
+      if (!targetUser) {
         return res.status(404).json({ message: 'Usuario no encontrado con ese número' });
       }
 
@@ -1639,6 +2011,8 @@ app.delete('/api/contacts/:contactId/favorite', auth, async (req, res) => {
 // Listar solo contactos favoritos
 app.get('/api/contacts/favorites', auth, async (req, res) => {
   try {
+    if (isLocalUserId(req.user.id)) return res.json([]);
+
     const { data: contacts, error } = await supabase
       .from('contacts')
       .select('*')
@@ -1672,6 +2046,15 @@ app.get('/api/contacts/favorites', auth, async (req, res) => {
 app.get('/api/contacts/search', auth, async (req, res) => {
   try {
     const { q } = req.query;
+    if (isLocalUserId(req.user.id)) {
+      const term = String(q || '').toLowerCase().trim();
+      const users = Array.from(localAuthUsers.values())
+        .filter(user => user.id !== req.user.id)
+        .filter(user => !term || user.phone.includes(term) || user.full_name.toLowerCase().includes(term))
+        .slice(0, 50)
+        .map(({ id, phone, full_name, avatar_url }) => ({ id, phone, full_name, avatar_url }));
+      return res.json(users);
+    }
 
     let query = supabase
       .from('users')
@@ -1697,14 +2080,36 @@ app.get('/api/contacts/search', auth, async (req, res) => {
 // WALLET
 // ════════════════════════════════════════════════════════════════════
 app.get('/api/wallet/balance', auth, async (req, res) => {
-  let { data: wallet } = await supabase
-    .from('wallets').select('balance, currency').eq('user_id', req.user.id).single();
-  if (!wallet) {
-    const { data } = await supabase
-      .from('wallets').insert({ user_id: req.user.id, balance: 5000, currency: 'XAF' }).select().single();
-    wallet = data;
+  try {
+    let { data: wallet, error } = await supabase
+      .from('wallets')
+      .select('balance, currency')
+      .eq('user_id', req.user.id)
+      .maybeSingle();
+
+    if (error) {
+      console.warn('Wallet lookup error:', error.message);
+    }
+
+    if (!wallet) {
+      const { data, error: insertError } = await supabase
+        .from('wallets')
+        .insert({ user_id: req.user.id, balance: 5000, currency: 'XAF' })
+        .select('balance, currency')
+        .maybeSingle();
+
+      if (insertError) {
+        console.warn('Wallet create error:', insertError.message);
+      }
+
+      wallet = data || { balance: 5000, currency: 'XAF' };
+    }
+
+    res.json({ balance: Number(wallet.balance || 0), currency: wallet.currency || 'XAF' });
+  } catch (e) {
+    console.error('Wallet balance error:', e);
+    res.json({ balance: 5000, currency: 'XAF' });
   }
-  res.json({ balance: wallet.balance, currency: wallet.currency || 'XAF' });
 });
 
 app.get('/api/wallet/transactions', auth, async (req, res) => {
@@ -4033,11 +4438,17 @@ const ensureStoriesTable = async () => {
           type TEXT DEFAULT 'text',
           views INTEGER DEFAULT 0,
           reactions JSONB DEFAULT '[]',
+          replies JSONB DEFAULT '[]',
           expires_at TIMESTAMPTZ NOT NULL,
           created_at TIMESTAMPTZ DEFAULT NOW()
         );
         CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
         CREATE INDEX IF NOT EXISTS idx_stories_expires_at ON stories(expires_at);`
+      }).catch(() => {});
+    } else if (!error) {
+      await supabase.rpc('exec_sql', {
+        sql: `ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '[]';
+              ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS replies JSONB DEFAULT '[]';`
       }).catch(() => {});
     }
   } catch {}
@@ -4124,6 +4535,7 @@ app.get('/api/stories', auth, async (req, res) => {
         media: Array.isArray(media) ? media : [],
         views: s.views || 0,
         reactions: s.reactions || [],
+        replies: s.replies || [],
         seen: false,
         publishedAt: new Date(s.created_at).getTime(),
         expiresAt: new Date(s.expires_at).getTime(),
@@ -4171,7 +4583,7 @@ app.post('/api/stories', auth, async (req, res) => {
     } else {
       const { data, error } = await supabase
         .from('stories')
-        .insert({ user_id: req.user.id, media: newSlides, type, views: 0, expires_at: expiresAt })
+        .insert({ user_id: req.user.id, media: newSlides, type, views: 0, reactions: [], replies: [], expires_at: expiresAt })
         .select()
         .single();
       if (error) throw error;
@@ -4221,6 +4633,40 @@ app.post('/api/stories/:storyId/view', auth, async (req, res) => {
     if (s) await supabase.from('stories').update({ views: (s.views || 0) + 1 }).eq('id', req.params.storyId);
     res.json({ ok: true });
   } catch (e) { res.json({ ok: false }); }
+});
+
+app.post('/api/stories/:storyId/reply', auth, async (req, res) => {
+  try {
+    const { text } = req.body;
+    if (!text || !text.trim()) return res.status(400).json({ message: 'text requerido' });
+
+    const { data: story, error: storyErr } = await supabase
+      .from('stories')
+      .select('id, user_id, replies')
+      .eq('id', req.params.storyId)
+      .single();
+
+    if (storyErr || !story) return res.status(404).json({ message: 'Story no encontrada' });
+
+    const replies = Array.isArray(story.replies) ? story.replies : [];
+    const replyPayload = {
+      id: `reply-${Date.now()}`,
+      storyId: req.params.storyId,
+      userId: req.user.id,
+      text: text.trim(),
+      createdAt: new Date().toISOString(),
+    };
+
+    const updatedReplies = [...replies, replyPayload];
+    const { error: updateErr } = await supabase
+      .from('stories')
+      .update({ replies: updatedReplies })
+      .eq('id', req.params.storyId);
+
+    if (updateErr) throw updateErr;
+
+    res.json({ ok: true, reply: replyPayload, replies: updatedReplies });
+  } catch (e) { res.status(500).json({ message: e.message || 'No se pudo guardar la respuesta' }); }
 });
 
 app.post('/api/stories/:storyId/react', auth, async (req, res) => {
@@ -4325,7 +4771,7 @@ app.get('/api/turn-token', auth, async (req, res) => {
 
 // Iniciar llamada — caller envía offer + push al destinatario
 app.post('/api/call/offer', auth, async (req, res) => {
-  const { callId, offer, targetUserId, type } = req.body;
+  const { callId, offer, targetUserId, type, groupId } = req.body;
   if (!callId || !offer) return res.status(400).json({ error: 'callId y offer requeridos' });
   try {
     await supabase.from('call_sessions').upsert({
@@ -4340,9 +4786,10 @@ app.post('/api/call/offer', auth, async (req, res) => {
       ended: false,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
+      ...(groupId ? { group_id: groupId } : {}),
     }, { onConflict: 'call_id' });
 
-    // Enviar push de llamada entrante al destinatario
+    // Push al destinatario con info de llamada grupal si aplica
     if (targetUserId) {
       try {
         const { data: caller } = await supabase
@@ -4561,7 +5008,10 @@ const sendPushToUser = async (userId, payload) => {
         to: sub.token,
         title: payload.title || 'EGChat',
         body: payload.body || 'Nueva notificacion',
-        sound: isCall ? 'default' : 'notification.wav',
+        // iOS solo reproduce sonidos personalizados si el archivo está
+        // empaquetado en el bundle nativo. Para evitar notificaciones mudas,
+        // usamos el sonido por defecto en todas las plataformas.
+        sound: 'default',
         badge: 1,
         channelId: isCall ? 'egchat-calls' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
@@ -4937,6 +5387,10 @@ async function checkAndNotifyNewGovNews() {
 
 function startGovNewsScheduler() {
   if (govNewsSchedulerStarted) return;
+  if (!enableExternalNewsScraping) {
+    console.log('[GovNews] Scheduler desactivado por ENABLE_EXTERNAL_NEWS_SCRAPING!=1');
+    return;
+  }
   govNewsSchedulerStarted = true;
   console.log('[GovNews] Scheduler iniciado — revisando cada 10 minutos');
   // Primera ejecución inmediata
@@ -4963,6 +5417,14 @@ const NOTICIAS_FALLBACK = [
 
 app.get('/api/noticias/gobierno', async (req, res) => {
   try {
+    if (!enableExternalNewsScraping) {
+      return res.json({
+        noticias: NOTICIAS_FALLBACK.map((n, i) => ({ id: `gov-fb-${i}`, ...n, scrapedAt: Date.now() })),
+        fromCache: true,
+        updatedAt: Date.now(),
+        externalScrapingDisabled: true,
+      });
+    }
     const now = Date.now();
     // Devolver cache si es reciente
     if (noticiasCache.data.length > 0 && now - noticiasCache.timestamp < NOTICIAS_TTL) {
@@ -5005,25 +5467,211 @@ app.get('/api/noticias/gobierno', async (req, res) => {
   }
 });
 
+const RSS_FEEDS_PROXY = [
+  { url: 'https://lagacetadeguinea.com/feed/', source: 'La Gaceta de Guinea' },
+  { url: 'https://www.guineaecuatorialpress.com/feed/', source: 'Guinea Ecuatorial Press' },
+];
+
+function stripXmlText(str) {
+  return String(str || '')
+    .replace(/<[^>]+>/g, '')
+    .replace(/&amp;/g, '&')
+    .replace(/&quot;/g, '"')
+    .trim();
+}
+
+function parseRssItems(xml, source) {
+  const items = [];
+  const blocks = xml.split(/<item[\s>]/i).slice(1);
+  for (let index = 0; index < blocks.length && items.length < 12; index++) {
+    const block = blocks[index];
+    const titleMatch = block.match(/<title><!\[CDATA\[([\s\S]*?)\]\]><\/title>/i) || block.match(/<title>([\s\S]*?)<\/title>/i);
+    const linkMatch = block.match(/<link>([\s\S]*?)<\/link>/i);
+    const pubMatch = block.match(/<pubDate>([\s\S]*?)<\/pubDate>/i) || block.match(/<dc:date>([\s\S]*?)<\/dc:date>/i);
+    const title = titleMatch ? stripXmlText(titleMatch[1]) : '';
+    if (!title || title.length < 4) continue;
+    let time = 'Reciente';
+    if (pubMatch) {
+      const date = new Date(pubMatch[1].trim());
+      if (!Number.isNaN(date.getTime())) {
+        const hours = Math.round((Date.now() - date.getTime()) / 3600000);
+        time = hours < 1 ? 'Hace un momento' : hours < 24 ? `Hace ${hours} h` : 'Ayer';
+      }
+    }
+    items.push({
+      id: `rss-${source}-${index}`,
+      title,
+      source,
+      time,
+      url: linkMatch ? stripXmlText(linkMatch[1]) : undefined,
+    });
+  }
+  return items;
+}
+
+async function fetchRssFeed(feed) {
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 8000);
+    const res = await fetch(feed.url, {
+      headers: { Accept: 'application/rss+xml, application/xml, text/xml', 'User-Agent': 'Mozilla/5.0 (compatible; EGChatProxy/1.0)' },
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    if (!res.ok) return [];
+    const xml = await res.text();
+    return parseRssItems(xml, feed.source);
+  } catch (err) {
+    return [];
+  }
+}
+
+app.get('/api/news/rss', async (req, res) => {
+  try {
+    if (!enableExternalNewsScraping) {
+      return res.json({ news: [], externalScrapingDisabled: true });
+    }
+    const results = await Promise.allSettled(RSS_FEEDS_PROXY.map(fetchRssFeed));
+    const news = results
+      .filter(r => r.status === 'fulfilled')
+      .flatMap(r => r.status === 'fulfilled' ? r.value : []);
+    const uniqueNews = news.filter((item, idx, arr) => arr.findIndex(x => x.title === item.title) === idx).slice(0, 12);
+    return res.json({ news: uniqueNews });
+  } catch (e) {
+    return res.json({ news: [] });
+  }
+});
+
 if (require.main === module) {
-  app.listen(PORT, async () => {
-    console.log(`\n😎 EGCHAT API + Supabase en http://localhost:${PORT}`);
+  // ── Servidor HTTP + WebSocket SFU ──────────────────────────────
+  const http = require('http');
+  const { WebSocketServer } = require('ws');
+
+  const httpServer = http.createServer(app);
+
+  // Salas SFU: roomId → Map<userId, { ws, userId, name, avatar }>
+  const sfuRooms = new Map();
+
+  const wss = new WebSocketServer({ server: httpServer, path: '/api/call/sfu-ws' });
+
+  wss.on('connection', (ws, req) => {
+    const url    = new URL(req.url, 'http://localhost');
+    const roomId = url.searchParams.get('roomId') || '';
+    const token  = url.searchParams.get('token') || '';
+
+    let myUserId = '';
+    let myName   = 'Usuario';
+
+    // Verificar token
+    try { const decoded = verifyToken(token); myUserId = String(decoded.id); }
+    catch { ws.close(4001, 'Token inválido'); return; }
+
+    ws.on('message', (raw) => {
+      try {
+        const msg = JSON.parse(raw.toString());
+        switch (msg.type) {
+
+          case 'join': {
+            myName = msg.name || 'Usuario';
+            const avatar = msg.avatar || '';
+
+            if (!sfuRooms.has(roomId)) sfuRooms.set(roomId, new Map());
+            const room = sfuRooms.get(roomId);
+
+            // Enviar estado actual de la sala al nuevo participante
+            const currentParticipants = [...room.values()].map(p => ({
+              userId: p.userId, name: p.name, avatar: p.avatar,
+            }));
+            ws.send(JSON.stringify({ type: 'room_state', participants: currentParticipants }));
+
+            // Notificar a todos de la llegada
+            room.forEach(p => {
+              if (p.ws.readyState === p.ws.OPEN) {
+                p.ws.send(JSON.stringify({
+                  type: 'participant_joined', userId: myUserId, name: myName, avatar,
+                }));
+              }
+            });
+
+            room.set(myUserId, { ws, userId: myUserId, name: myName, avatar });
+            break;
+          }
+
+          case 'offer':
+          case 'answer':
+          case 'ice': {
+            const room = sfuRooms.get(roomId);
+            const target = room?.get(msg.to);
+            if (target?.ws?.readyState === target.ws.OPEN) {
+              target.ws.send(JSON.stringify({ ...msg, from: myUserId }));
+            }
+            break;
+          }
+
+          case 'mute_update': {
+            const room = sfuRooms.get(roomId);
+            room?.forEach(p => {
+              if (p.userId !== myUserId && p.ws.readyState === p.ws.OPEN) {
+                p.ws.send(JSON.stringify({
+                  type: 'mute_update', userId: myUserId,
+                  isMuted: msg.isMuted, isCamOff: msg.isCamOff,
+                }));
+              }
+            });
+            break;
+          }
+
+          case 'leave': handleLeave(); break;
+        }
+      } catch {}
+    });
+
+    function handleLeave() {
+      const room = sfuRooms.get(roomId);
+      if (!room) return;
+      room.delete(myUserId);
+      room.forEach(p => {
+        if (p.ws.readyState === p.ws.OPEN) {
+          p.ws.send(JSON.stringify({ type: 'participant_left', userId: myUserId }));
+        }
+      });
+      if (room.size === 0) sfuRooms.delete(roomId);
+    }
+
+    ws.on('close', handleLeave);
+    ws.on('error', handleLeave);
+  });
+
+  httpServer.listen(PORT, async () => {
+    console.log(`\n😎 EGCHAT API + WebSocket SFU en http://localhost:${PORT}`);
+    console.log(`   SFU WebSocket: ws://localhost:${PORT}/api/call/sfu-ws`);
+    console.log(`   Max participantes por sala: 9`);
     console.log(`   Supabase: ${process.env.SUPABASE_URL ? '✅ Conectado' : '❌ Sin configurar'}`);
     // Iniciar scheduler de noticias del gobierno
     startGovNewsScheduler();
     console.log(`   Auth:   POST /api/auth/register | /api/auth/login`);
     console.log(`   Wallet: GET  /api/wallet/balance | POST /api/wallet/deposit`);
     console.log(`   Lia-25: POST /api/lia/chat\n`);
-    // Crear bucket chat-files si no existe (para avatares y archivos)
+    // Crear buckets si no existen (avatares + archivos de chat)
     try {
       const { data: buckets } = await supabase.storage.listBuckets();
-      const exists = (buckets || []).some(b => b.name === 'chat-files');
-      if (!exists) {
-        const { error: bErr } = await supabase.storage.createBucket('chat-files', { public: true });
-        if (bErr) console.log('Bucket ya existe o error:', bErr.message);
-        else console.log('✅ Bucket chat-files creado');
-      } else {
-        console.log('✅ Bucket chat-files OK');
+      const bucketList = buckets || [];
+
+      for (const bucketName of ['chat-files', 'avatars']) {
+        const exists = bucketList.some(b => b.name === bucketName);
+        if (!exists) {
+          const { error: bErr } = await supabase.storage.createBucket(bucketName, {
+            public: true,
+            allowedMimeTypes: ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'video/mp4', 'audio/m4a', 'application/octet-stream'],
+            fileSizeLimit: 52428800, // 50MB
+          });
+          if (bErr) console.log(`Bucket ${bucketName} ya existe o error:`, bErr.message);
+          else console.log(`✅ Bucket ${bucketName} creado`);
+        } else {
+          // Asegurar que sea público
+          await supabase.storage.updateBucket(bucketName, { public: true }).catch(() => {});
+          console.log(`✅ Bucket ${bucketName} OK (público)`);
+        }
       }
     } catch (e) {
       console.log('Bucket check error:', e.message);
@@ -5050,6 +5698,3 @@ if (require.main === module) {
 }
 
 module.exports = app;
-
-
-

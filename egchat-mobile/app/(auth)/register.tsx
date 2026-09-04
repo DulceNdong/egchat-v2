@@ -9,6 +9,8 @@ import {
   StyleSheet,
   Image,
   Animated,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -22,6 +24,7 @@ import {
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
+import { toast } from '../../src/components/Toast';
 
 const COUNTRIES = [
   { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240' },
@@ -37,10 +40,10 @@ const COUNTRIES = [
 const getFlag = (code: string) =>
   String.fromCodePoint(...code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0)));
 
-// Barra de progreso — igual que la web
+// Barra de progreso — 4 pasos (nombre, teléfono, OTP, contraseña)
 const ProgressBar = ({ step }: { step: number }) => (
   <View style={styles.progressBar}>
-    {[1, 2, 3].map(i => (
+    {[1, 2, 3, 4].map(i => (
       <View
         key={i}
         style={[styles.progressSegment, { backgroundColor: i <= step ? Colors.accent : Colors.border }]}
@@ -57,6 +60,12 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpSending, setOtpSending] = useState(false);
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpResendTimer, setOtpResendTimer] = useState(0);
+  const otpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { register, isLoading, error: authError, clearError } = useAuth();
   const [localError, setLocalError] = useState('');
   const displayError = localError || authError;
@@ -81,6 +90,54 @@ export default function RegisterScreen() {
     }
   };
 
+  const startOtpTimer = () => {
+    setOtpResendTimer(60);
+    if (otpTimerRef.current) clearInterval(otpTimerRef.current);
+    otpTimerRef.current = setInterval(() => {
+      setOtpResendTimer(t => {
+        if (t <= 1) { clearInterval(otpTimerRef.current!); return 0; }
+        return t - 1;
+      });
+    }, 1000);
+  };
+
+  const sendOtp = async () => {
+    setOtpSending(true);
+    setLocalError('');
+    try {
+      const result = await authAPI.sendVerification(fullPhone);
+      setOtpSent(true);
+      startOtpTimer();
+      // En modo dev (sin Twilio), el backend devuelve el código para testing
+      if ((result as any)?.dev_code) {
+        setOtpCode((result as any).dev_code);
+        toast.info('Código de prueba autocompletado (modo dev)');
+      }
+    } catch (e: any) {
+      setLocalError(e?.message || 'No se pudo enviar el código');
+    } finally {
+      setOtpSending(false);
+    }
+  };
+
+  const verifyOtp = async () => {
+    if (otpCode.trim().length < 4) { setLocalError('Introduce el código de 6 dígitos'); return; }
+    setOtpVerifying(true);
+    setLocalError('');
+    try {
+      const result = await authAPI.verifyCode(fullPhone, otpCode.trim());
+      if (result.verified) {
+        setStep(3); // pasa a crear contraseña
+      } else {
+        setLocalError('Código incorrecto. Inténtalo de nuevo.');
+      }
+    } catch (e: any) {
+      setLocalError(e?.message || 'Error al verificar el código');
+    } finally {
+      setOtpVerifying(false);
+    }
+  };
+
   const goNext = async () => {
     setLocalError('');
     clearError();
@@ -90,11 +147,17 @@ export default function RegisterScreen() {
     } else if (step === 2) {
       if (!phone.trim()) { setLocalError('Introduce tu número de teléfono'); return; }
       if (phone.replace(/\s/g, '').length < 6) { setLocalError('Número de teléfono inválido'); return; }
-      try {
-        const { exists } = await authAPI.checkPhone(fullPhone);
-        if (exists) { setLocalError('Este número ya está registrado. Usa "Ya tengo cuenta".'); return; }
-      } catch {}
-      setStep(3);
+      if (!otpSent) {
+        // Primero verificamos que el teléfono no existe, luego mandamos OTP
+        try {
+          const { exists } = await authAPI.checkPhone(fullPhone);
+          if (exists) { setLocalError('Este número ya está registrado. Usa "Ya tengo cuenta".'); return; }
+        } catch {}
+        await sendOtp(); // queda en paso 2 con otpSent=true, mostrando input OTP
+      } else {
+        // Ya enviamos OTP, ahora verificamos
+        await verifyOtp();
+      }
     } else if (step === 3) {
       if (password.length < 6) { setLocalError('La contraseña debe tener al menos 6 caracteres'); return; }
       if (password !== password2) { setLocalError('Las contraseñas no coinciden'); return; }
@@ -119,7 +182,7 @@ export default function RegisterScreen() {
               <Text style={[styles.backText, { color: C.textPrimary }]}>← Atrás</Text>
             </TouchableOpacity>
             <Text style={[styles.title, { color: C.textPrimary }]}>Crear Cuenta</Text>
-            <Text style={[styles.stepLabel, { color: C.textSecondary }]}>Paso {step} de 3</Text>
+            <Text style={[styles.stepLabel, { color: C.textSecondary }]}>Paso {step} de 4</Text>
             <ProgressBar step={step} />
           </View>
 
@@ -226,6 +289,36 @@ export default function RegisterScreen() {
                     />
                   </View>
                 </View>
+
+                {/* ── OTP: se muestra cuando ya se envió el código ── */}
+                {otpSent && (
+                  <View style={styles.fieldGroup}>
+                    <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>Código de verificación</Text>
+                    <Text style={[styles.otpHint, { color: C.textSecondary }]}>
+                      Enviamos un código SMS a {fullPhone}
+                    </Text>
+                    <TextInput
+                      style={[styles.otpInput, { backgroundColor: C.bgSecondary, borderColor: C.border, color: C.textPrimary }]}
+                      value={otpCode}
+                      onChangeText={setOtpCode}
+                      placeholder="------"
+                      placeholderTextColor={C.textTertiary}
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      autoFocus
+                      textAlign="center"
+                    />
+                    <TouchableOpacity
+                      onPress={otpResendTimer === 0 ? sendOtp : undefined}
+                      disabled={otpResendTimer > 0 || otpSending}
+                      style={styles.resendBtn}
+                    >
+                      <Text style={[styles.resendText, { color: otpResendTimer > 0 ? C.textTertiary : Colors.accent }]}>
+                        {otpResendTimer > 0 ? `Reenviar en ${otpResendTimer}s` : 'Reenviar código'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
               </>
             )}
 
@@ -261,11 +354,15 @@ export default function RegisterScreen() {
               title={
                 step === 3
                   ? (isLoading ? 'Registrando...' : 'Registrarme')
-                  : (!name.trim() && step === 1 ? 'Escribe tu nombre primero' : 'Continuar →')
+                  : step === 2 && otpSent
+                    ? (otpVerifying ? 'Verificando...' : 'Verificar código')
+                    : step === 2 && !otpSent
+                      ? (otpSending ? 'Enviando SMS...' : 'Enviar código SMS')
+                      : (!name.trim() && step === 1 ? 'Escribe tu nombre primero' : 'Continuar →')
               }
               onPress={goNext}
-              loading={isLoading}
-              disabled={step === 1 && !name.trim()}
+              loading={isLoading || otpSending || otpVerifying}
+              disabled={(step === 1 && !name.trim()) || (step === 2 && otpSent && otpCode.trim().length < 4)}
             />
           </View>
         </ScrollView>
@@ -409,4 +506,14 @@ const styles = StyleSheet.create({
   },
   phonePrefixText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
   phoneInputContainer: { flex: 1, marginBottom: 0 },
+  // OTP
+  otpHint: { fontSize: 13, marginBottom: 12, lineHeight: 18 },
+  otpInput: {
+    fontSize: 28, fontWeight: '700', letterSpacing: 12,
+    borderRadius: BorderRadius.md, borderWidth: 1.5,
+    paddingVertical: 14, paddingHorizontal: 20,
+    textAlign: 'center',
+  },
+  resendBtn: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
+  resendText: { fontSize: 14, fontWeight: '600' },
 });

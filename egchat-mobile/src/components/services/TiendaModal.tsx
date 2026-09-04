@@ -56,7 +56,7 @@ export const TiendaModal: React.FC<Props> = ({ visible, onClose }) => {
           >
             <View style={st.cardTop}>
               <View style={[st.iconBox, { backgroundColor: s.iconBg }]}><Text style={{ fontSize: 18 }}>{s.icon}</Text></View>
-              <Text style={[st.catTag, { backgroundColor: s.catColor + '18', color: s.catColor }]}>{s.categoria}</Text>
+              <Text style={[st.catTag, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)', color: s.catColor }]}>{s.categoria}</Text>
             </View>
             <Text style={st.name} numberOfLines={2}>{s.nombre}</Text>
             <Text style={st.meta}>📍 {s.barrio}</Text>

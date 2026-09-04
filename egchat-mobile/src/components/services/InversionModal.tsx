@@ -35,7 +35,7 @@ export const InversionModal: React.FC<Props> = ({ visible, onClose }) => {
               style={[s.row, selected === o.id && { borderColor: o.color }]}
               onPress={() => setSelected(o.id)}
             >
-              <View style={[s.icon, { backgroundColor: o.color + '15' }]}>
+              <View style={[s.icon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                 <Text>📈</Text>
               </View>
               <View style={{ flex: 1 }}>

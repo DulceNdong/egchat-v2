@@ -11,6 +11,15 @@ services:
         value: production
       - key: APP_VERSION
         value: 2.5.1
+      - key: ENABLE_EXTERNAL_NEWS_SCRAPING
+        value: "0"
       - key: CORS_ALLOWED_ORIGINS
-        value: https://egchat-app.vercel.app,http://localhost:3001,http://localhost:3003,http://localhost:5173,http://127.0.0.1:3001
-      # Asegúrate de configurar JWT_SECRET en Render Dashboard si no quieres almacenarlo aquí.
+        value: https://egchat-app.vercel.app,https://egchat-v2.vercel.app,http://localhost:3001,http://localhost:3003,http://localhost:5173,http://127.0.0.1:3001
+      - key: SUPABASE_URL
+        value: https://fqfxtjnfhvpggssbymdn.supabase.co
+      - key: SUPABASE_SERVICE_KEY
+        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZnh0am5maHZwZ2dzc2J5bWRuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTg0MzgyMCwiZXhwIjoyMTAxNDE5ODIwfQ.ulwcC4WW-00pgjKzzs9CclyMGad1y4dqjS7P-c2O-CM
+      - key: JWT_SECRET
+        value: egchat_super_secret_key_2026_production
+      - key: LOCAL_AUTH_FALLBACK
+        value: "false"

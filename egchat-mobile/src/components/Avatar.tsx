@@ -25,7 +25,7 @@ export const nameToColor = (name: string): { from: string; to: string } => {
 };
 
 export const getInitials = (name: string): string => {
-  if (!name) return '?';
+  if (!name?.trim()) return 'EG';
   const parts = name.trim().split(/\s+/);
   if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
@@ -40,7 +40,7 @@ interface AvatarProps {
   style?: object;
 }
 
-// URL válida: no vacía, no de servidor antiguo roto
+// URL válida: no vacía, debe tener protocolo http/https/file
 const isValidAvatarUrl = (url?: string): url is string =>
   !!url &&
   url.trim().length > 0 &&

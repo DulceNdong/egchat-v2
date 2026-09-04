@@ -1,87 +1,48 @@
 /**
- * FloatingHomeButton — Botón flotante draggable idéntico al de la versión web.
- * - Draggable a cualquier posición, snap al borde más cercano al soltar
- * - Toque sin arrastrar → navega a mensajería (home)
- * - Sin fondo blanco: gradiente directo sobre Animated.View circular
+ * FloatingHomeButton — Botón flotante directo a home.
+ * - Toque → navega a mensajería (home)
+ * - Sin arrastre para evitar conflictos con el gesto del sistema
  */
-import React, { useRef } from 'react';
-import { Animated, PanResponder, StyleSheet, Dimensions, Pressable } from 'react-native';
+import React from 'react';
+import { StyleSheet, View, Pressable } from 'react-native';
 import { router, usePathname } from 'expo-router';
 import Svg, { Path, Polyline } from 'react-native-svg';
 import { LinearGradient } from 'expo-linear-gradient';
 
-const { width: SW, height: SH } = Dimensions.get('window');
-const INIT_X = SW - 70;
-const INIT_Y = SH - 200;
 const BTN = 44;
 const HOME_ROUTE = '/(tabs)';
 
 export const FloatingHomeButton = () => {
   const pathname = usePathname();
-  // Ocultar en home principal (cualquier variante de ruta)
+
+  // Ocultar SOLO en la pantalla home (mensajería es el tab principal)
   const isHome =
+    pathname === '/(tabs)/mensajeria' ||
     pathname === '/(tabs)' ||
     pathname === '/(tabs)/' ||
     pathname === '/(tabs)/index' ||
-    pathname === '/index' ||
-    pathname === '/';
-  if (isHome) return null;
-  return <DraggableButton />;
+    pathname === '/' ||
+    pathname === '' ||
+    pathname === '/index';
+
+  // Ocultar en auth, welcome, llamadas
+  const isAuthOrSystem =
+    pathname.includes('/(auth)') ||
+    pathname.includes('/login') ||
+    pathname.includes('/welcome') ||
+    pathname.includes('/call/');
+
+  if (isHome || isAuthOrSystem) return null;
+  return <FloatingButton />;
 };
 
-const DraggableButton = () => {
-  const pan = useRef(new Animated.ValueXY({ x: INIT_X, y: INIT_Y })).current;
-  const isDragging = useRef(false);
-  const currentPos = useRef({ x: INIT_X, y: INIT_Y });
+const FloatingButton = () => {
   const navigateHome = () => {
     router.replace(HOME_ROUTE as any);
   };
 
-  pan.addListener(v => { currentPos.current = v; });
-
-  const panResponder = useRef(
-    PanResponder.create({
-      onStartShouldSetPanResponder: () => false,
-      onMoveShouldSetPanResponder: (_, gs) => Math.abs(gs.dx) > 5 || Math.abs(gs.dy) > 5,
-
-      onPanResponderGrant: () => {
-        isDragging.current = false;
-        pan.setOffset({ x: currentPos.current.x, y: currentPos.current.y });
-        pan.setValue({ x: 0, y: 0 });
-      },
-
-      onPanResponderMove: (_, gs) => {
-        isDragging.current = Math.abs(gs.dx) > 6 || Math.abs(gs.dy) > 6;
-        Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false })(_, gs);
-      },
-
-      onPanResponderRelease: () => {
-        pan.flattenOffset();
-        if (!isDragging.current) {
-          navigateHome();
-          return;
-        }
-        const rawX = currentPos.current.x;
-        const rawY = currentPos.current.y;
-        // Snap al borde más cercano
-        const snapX = rawX + BTN / 2 < SW / 2 ? 8 : SW - BTN - 8;
-        const clampY = Math.max(60, Math.min(SH - BTN - 80, rawY));
-        Animated.spring(pan, {
-          toValue: { x: snapX, y: clampY },
-          useNativeDriver: false,
-          tension: 120,
-          friction: 8,
-        }).start();
-      },
-    })
-  ).current;
-
   return (
-    <Animated.View
-      style={[st.container, { transform: pan.getTranslateTransform() }]}
-      {...panResponder.panHandlers}
-    >
-      {/* LinearGradient directamente como contenedor circular — sin fondo blanco */}
+    <View style={st.container} pointerEvents="box-none">
       <LinearGradient
         colors={['rgba(16,185,129,0.95)', 'rgba(59,130,246,0.95)']}
         start={{ x: 0, y: 0 }}
@@ -100,13 +61,15 @@ const DraggableButton = () => {
           </Svg>
         </Pressable>
       </LinearGradient>
-    </Animated.View>
+    </View>
   );
 };
 
 const st = StyleSheet.create({
   container: {
     position: 'absolute',
+    right: 18,
+    bottom: 90,
     width: BTN,
     height: BTN,
     borderRadius: BTN / 2,

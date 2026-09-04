@@ -1,17 +1,64 @@
-node_modules
-.expo
-.expo-shared
-dist
+# Dependencias (EAS las instala en el servidor)
+node_modules/
+
+# Pods de iOS (EAS los instala en el servidor con `pod install`)
+ios/Pods/
+ios/build/
+
+# Builds locales de Android
+android/build/
+android/.gradle/
+android/app/build/
+android/gradlew-*.log
+android/hs_err_pid*.log
+android/replay_pid*.log
+android/gradle_clang_matches.txt
+android/local.properties
+
+# Carpetas enormes que no deben subirse a EAS
+egchat-v2/
+ios-backup-*/
+build/
+dist/
+dist-web/
+web-build/
+
+# Cache y expo local
+.expo/
+.cache/
 *.log
-*.tmp
-*.zip
-.vscode
-.idea
-.gradle
-android/.gradle
-android/app/build
-android/build
-ios/build
-**/build
-yarn-error.log
-npm-debug.log*
+
+# Archivos de desarrollo/entorno
+.env.development
+.env.local
+
+# Git
+.git/
+
+# Editores e IDEs
+.vscode/
+.idea/
+.windsurf/
+.cursor/
+.kluster/
+
+# Archivos de diagnóstico y temporales
+tmp_eas_*.txt
+error-context.txt
+error-lines.txt
+build-log*.txt
+eas-build-log*.txt
+qr_data.txt
+qr.html
+*.bat
+*.ps1
+*.sh
+decodeBuildLog.js
+*.decoded.txt
+create_zip.py
+DEPLOY_GUIDE.md
+ARREGLAR_RENDER_DB.md
+BUILD.md
+BUILD_NATIVE.md
+setup-*.sql
+setup-avatars-bucket.sql

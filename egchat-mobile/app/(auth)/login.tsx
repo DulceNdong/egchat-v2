@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Typography, Spacing, BorderRadius, Shadow, FontSize, FontWeight } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
@@ -41,6 +42,8 @@ const getFlag = (code: string) =>
     ...code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0))
   );
 
+const LOGIN_DRAFT_KEY = 'egchat_login_draft_v1';
+
 export default function LoginScreen() {
   const [countryCode, setCountryCode] = useState('+240');
   const [phone, setPhone] = useState('');
@@ -55,6 +58,24 @@ export default function LoginScreen() {
   const fullPhone = countryCode + phone.replace(/\s/g, '');
 
   const doLogin = () => login(fullPhone, password);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const raw = await AsyncStorage.getItem(LOGIN_DRAFT_KEY);
+        if (!raw) return;
+        const draft = JSON.parse(raw) as { countryCode?: string; phone?: string; password?: string };
+        if (draft.countryCode) setCountryCode(draft.countryCode);
+        if (draft.phone) setPhone(draft.phone);
+        if (draft.password) setPassword(draft.password);
+      } catch {}
+    })();
+  }, []);
+
+  useEffect(() => {
+    const payload = JSON.stringify({ countryCode, phone, password });
+    AsyncStorage.setItem(LOGIN_DRAFT_KEY, payload).catch(() => {});
+  }, [countryCode, phone, password]);
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: C.bgPrimary }]}>
@@ -131,6 +152,9 @@ export default function LoginScreen() {
                   onChangeText={setPhone}
                   placeholder="222 XXX XXX"
                   keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="tel"
                   containerStyle={styles.phoneInputContainer}
                 />
               </View>
@@ -144,6 +168,9 @@ export default function LoginScreen() {
               showPasswordToggle
               onSubmitEditing={doLogin}
               returnKeyType="done"
+              autoCapitalize="none"
+              autoCorrect={false}
+              autoComplete="password"
             />
 
             {/* Error */}
@@ -336,7 +363,6 @@ const styles = StyleSheet.create({
     flex: 1,
     marginBottom: 0,
   },
-
   // Buttons
   loginBtn: {
     marginBottom: Spacing.md,

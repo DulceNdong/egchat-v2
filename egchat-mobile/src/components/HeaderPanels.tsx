@@ -4,6 +4,8 @@
 // Fiel a la versión web
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect } from 'react';
+import type { AppNotification } from '../store/appStore';
+export type { AppNotification };
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Modal, Pressable, Alert, Image, Animated, Dimensions,
@@ -14,24 +16,11 @@ import { router } from 'expo-router';
 import { authAPI } from '../api';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../theme';
 
-// ── Tipos ─────────────────────────────────────────────────────────
-export interface AppNotification {
-  id: string;
-  type: 'message' | 'payment' | 'system' | 'security' | 'taxi' | 'bet';
-  title: string;
-  body: string;
-  time: string;
-  read: boolean;
-  chatId?: string;
-}
-
 // ── Helpers ───────────────────────────────────────────────────────
 const colorForType = (type: AppNotification['type']) => {
   if (type === 'message')  return '#00b4e6';
   if (type === 'payment')  return '#00c8a0';
-  if (type === 'taxi')     return '#f59e0b';
-  if (type === 'security') return '#ef4444';
-  if (type === 'bet')      return '#a855f7';
+  if (type === 'call')     return '#f59e0b';
   return '#6b7280';
 };
 
@@ -48,17 +37,9 @@ const IconForType = ({ type }: { type: AppNotification['type'] }) => {
       <Line x1="2" y1="10" x2="22" y2="10"/>
     </Svg>
   );
-  if (type === 'taxi') return (
+  if (type === 'call') return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
-      <Rect x="1" y="3" width="15" height="13" rx="2"/>
-      <Path d="M16 8h4l3 3v5h-7V8z"/>
-      <Circle cx="5.5" cy="18.5" r="2.5"/>
-      <Circle cx="18.5" cy="18.5" r="2.5"/>
-    </Svg>
-  );
-  if (type === 'security') return (
-    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
-      <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+      <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.82a16 16 0 0 0 6.29 6.29l.96-.96a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
     </Svg>
   );
   return (
@@ -132,7 +113,7 @@ export const NotificationsPanel = ({
                 activeOpacity={0.7}
               >
                 {/* Icono tipo */}
-                <View style={[np.iconWrap, { backgroundColor: colorForType(n.type) + '18', borderColor: colorForType(n.type) + '30' }]}>
+                <View style={np.iconWrap}>
                   <IconForType type={n.type} />
                 </View>
                 {/* Texto */}
@@ -220,7 +201,9 @@ const np = StyleSheet.create({
   iconWrap: {
     width: 34, height: 34, borderRadius: 17,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, flexShrink: 0,
+    borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)',
+    backgroundColor: 'transparent',
+    flexShrink: 0,
   },
   itemText: { flex: 1, minWidth: 0 },
   itemTitle: { fontSize: FontSize.sm, fontWeight: FontWeight.medium, color: Colors.textPrimary, marginBottom: 2 },
@@ -259,6 +242,16 @@ const MenuIcon = ({ name }: { name: string }) => {
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Circle cx="12" cy="12" r="10"/><Path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><Line x1="12" y1="17" x2="12.01" y2="17"/></Svg>;
     case 'crear-grupo':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>;
+    case 'moments':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="8.5" cy="8.5" r="1.5"/><Polyline points="21 15 16 10 5 21"/></Svg>;
+    case 'broadcast':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M22 12h-4l-3 9L9 3l-3 9H2"/></Svg>;
+    case 'notas':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><Path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></Svg>;
+    case 'global-search':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/></Svg>;
+    case 'channels':
+      return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.4 2 2 0 0 1 3.6 1.22h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8 9a16 16 0 0 0 6 6l1.11-1.11a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></Svg>;
     case 'contactos':
       return <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round"><Rect x="5" y="2" width="14" height="20" rx="2"/><Line x1="9" y1="7" x2="15" y2="7"/><Line x1="9" y1="11" x2="15" y2="11"/><Line x1="9" y1="15" x2="13" y2="15"/></Svg>;
     case 'mensajes-arch':
@@ -310,6 +303,11 @@ export const HamburgerMenu = ({
     { id: 'perfil',         label: 'Mi Perfil',           sub: 'Ver y editar tu perfil'    },
     { id: 'nuevo-contacto', label: 'Nuevo contacto',       sub: 'Añadir a tu lista'         },
     { id: 'crear-grupo',    label: 'Crear grupo',          sub: 'Nuevo grupo de chat'       },
+    { id: 'global-search',  label: '🔍 Buscar en chats',   sub: 'Busca mensajes y contactos'},
+    { id: 'channels',       label: '📡 Canales',           sub: 'Canales oficiales y feeds' },
+    { id: 'business',       label: '💼 Perfil empresarial', sub: 'Catálogo y cuenta negocio' },
+    { id: 'moments',        label: '📸 Moments',           sub: 'Feed social de contactos'  },
+    { id: 'broadcast',      label: '📢 Difusión',          sub: 'Mensaje a múltiples chats' },
     { id: 'contactos',      label: 'Mis contactos',        sub: 'Ver todos tus contactos'   },
     { id: 'mensajes-arch',  label: 'Mensajes archivados',  sub: 'Chats archivados'          },
     { id: 'notificaciones', label: 'Notificaciones',       sub: 'Gestionar alertas'         },
@@ -319,19 +317,24 @@ export const HamburgerMenu = ({
     { id: 'salir',          label: 'Cerrar sesión',        sub: 'Salir de tu cuenta'        },
   ];
 
-  const handlePress = (id: string) => {
+  const handlePress = async (id: string) => {
     onClose();
-    setTimeout(() => {
+    setTimeout(async () => {
       switch (id) {
         case 'perfil':         router.push('/ajustes/perfil' as any); break;
         case 'nuevo-contacto': router.push('/contacts' as any); break;
         case 'crear-grupo':    router.push('/new-chat' as any); break;
+        case 'moments':        router.push('/moments' as any); break;
+        case 'broadcast':      router.push('/broadcast' as any); break;
+        case 'channels':       router.push('/channels' as any); break;
+        case 'global-search':  router.push('/global-search' as any); break;
+        case 'business':       router.push('/business-profile' as any); break;
         case 'contactos':      router.push('/contacts' as any); break;
-        case 'mensajes-arch':  router.push('/(tabs)/mensajeria' as any); break;
-        case 'notificaciones': router.push('/(tabs)/ajustes' as any); break;
-        case 'privacidad':     router.push('/ajustes/security' as any); break;
+        case 'mensajes-arch':  router.push('/ajustes/historial-chat' as any); break;
+        case 'notificaciones': router.push('/ajustes/notificaciones' as any); break;
+        case 'privacidad':     router.push('/ajustes/privacidad' as any); break;
         case 'ajustes':        router.push('/(tabs)/ajustes' as any); break;
-        case 'ayuda':          router.push('/(tabs)/ajustes' as any); break;
+        case 'ayuda':          router.push('/ajustes/acerca' as any); break;
         case 'salir':
           Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
             { text: 'Cancelar', style: 'cancel' },

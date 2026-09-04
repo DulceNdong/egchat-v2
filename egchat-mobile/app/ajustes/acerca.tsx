@@ -1,11 +1,17 @@
 import React from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet, Alert, Linking } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow,
 } from '../../src/components/settings/SettingsUI';
+import { useThemeContext } from '../../src/theme/ThemeContext';
+import { Colors } from '../../src/theme/colors';
+import { DarkColors } from '../../src/theme/darkMode';
 
 export default function AcercaScreen() {
+  const { isDark } = useThemeContext();
+  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const info = [
     { label: 'Versión', value: '2.5.5' },
     { label: 'Desarrollador', value: 'EGCHAT Team' },
@@ -16,10 +22,10 @@ export default function AcercaScreen() {
 
   return (
     <SettingsLayout title="Acerca de EGCHAT">
-      <View style={styles.hero}>
-        <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.logo}>
-          <Text style={{ fontSize: 32 }}>💬</Text>
-        </LinearGradient>
+      <View style={[styles.hero, { backgroundColor: C.bgPrimary }]}>
+        <View style={styles.logoWrap}>
+          <SpinningLogo size={90} glow={true} />
+        </View>
         <Text style={styles.appName}>EGCHAT</Text>
         <Text style={styles.version}>Versión 2.5.5</Text>
       </View>
@@ -38,19 +44,19 @@ export default function AcercaScreen() {
 
       <SettingsSection label="Legal" />
       <SettingsCard>
-        <SettingsRow label="Términos de servicio" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow label="Términos de servicio" onPress={() => Linking.openURL('https://egchat-v2.vercel.app/terms').catch(() => {})} />
         <SettingsDivider />
-        <SettingsRow label="Política de privacidad" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow label="Política de privacidad" onPress={() => Linking.openURL('https://egchat-v2.vercel.app/privacy').catch(() => {})} />
         <SettingsDivider />
-        <SettingsRow label="Licencias de código abierto" onPress={() => Alert.alert('Próximamente')} />
+        <SettingsRow label="Licencias de código abierto" onPress={() => Alert.alert('Licencias', 'React Native (MIT), Expo (MIT), Supabase (Apache 2.0), TweetNaCl (Public Domain)')} />
       </SettingsCard>
     </SettingsLayout>
   );
 }
 
 const styles = StyleSheet.create({
-  hero: { alignItems: 'center', paddingVertical: 32, backgroundColor: '#fff' },
-  logo: { width: 80, height: 80, borderRadius: 20, alignItems: 'center', justifyContent: 'center', marginBottom: 14 },
+  hero: { alignItems: 'center', paddingVertical: 32 },
+  logoWrap: { marginBottom: 14 },
   appName: { fontSize: 22, fontWeight: '700' },
   version: { fontSize: 14, color: '#8e8e93', marginTop: 4 },
   infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 13 },

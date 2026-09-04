@@ -49,7 +49,9 @@ export function MiTaxiMap({
   const region = useMemo(() => fitRegion(userLocation, destLocation), [userLocation, destLocation]);
 
   useEffect(() => {
-    mapRef.current?.animateToRegion(region, 600);
+    if (mapRef.current && typeof mapRef.current.animateToRegion === 'function') {
+      mapRef.current.animateToRegion(region, 600);
+    }
   }, [region]);
 
   const routeCoords = useMemo(() => {

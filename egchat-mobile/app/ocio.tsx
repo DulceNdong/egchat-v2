@@ -52,13 +52,13 @@ export default function OcioScreen() {
         <TouchableOpacity onPress={() => selected ? setSelected(null) : router.back()} style={styles.backBtn}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>{selected ? selected.title : '🎭 Ocio'}</Text>
+        <Text style={[styles.title, { color: C.textPrimary }]}>{selected ? selected.title : 'Ocio'}</Text>
       </View>
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.content}>
         {!selected ? (
           CATEGORIES.map(cat => (
             <TouchableOpacity key={cat.id} style={[styles.catCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => setSelected(cat)} activeOpacity={0.7}>
-              <View style={[styles.catIcon, { backgroundColor: cat.color + '20' }]}>
+              <View style={[styles.catIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
                 <Text style={styles.catEmoji}>{cat.icon}</Text>
               </View>
               <View style={styles.catInfo}>

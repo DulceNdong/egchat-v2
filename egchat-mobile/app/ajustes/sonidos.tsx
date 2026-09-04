@@ -6,6 +6,7 @@ import {
 import {
   getSoundSettings, saveSoundSettings, SoundSettings,
   MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES,
+  previewMessageTone, previewNotificationTone, previewRingtone,
 } from '../../src/hooks/useSounds';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
@@ -49,7 +50,13 @@ export default function SonidosScreen() {
             <TouchableOpacity
               style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13, gap: 12,
                 backgroundColor: active ? `${color}12` : 'transparent' }}
-              onPress={() => update(key, tone.id)}
+              onPress={async () => {
+                await update(key, tone.id);
+                if (tone.id === 'none') return;
+                if (key === 'messageTone') await previewMessageTone();
+                if (key === 'notificationTone') await previewNotificationTone();
+                if (key === 'ringtone') await previewRingtone();
+              }}
             >
               <Text style={{ flex: 1, fontWeight: active ? '700' : '500', color: active ? color : C.textPrimary }}>{tone.name}</Text>
               {active && <Text style={{ color }}>✓</Text>}

@@ -405,10 +405,10 @@ const App: React.FC = () => {
   const [isCameraOff, setIsCameraOff] = useState<boolean>(false);
   const [localStream, setLocalStream] = useState<MediaStream | null>(null);
   const [selectedNotif, setSelectedNotif] = useState<any>(null);
-  const [editWeather, setEditWeather] = useState<{ temp: string; city: string; condition: string }>({ temp: '28', city: 'Malabo', condition: 'sunny' });
+  const [editWeather, setEditWeather] = useState<{ temp: string; city: string; condition: string }>({ temp: '28', city: '...', condition: 'sunny' });
   const [weather, setWeather] = useState<{ temp: number; city: string; condition: string }>({
     temp: 28,
-    city: 'Malabo',
+    city: '...',
     condition: 'sunny'
   });
   const [homeButtonPos, setHomeButtonPos] = useState<{ x: number; y: number }>({ x: window.innerWidth - 70, y: window.innerHeight - 200 });
@@ -992,7 +992,7 @@ const App: React.FC = () => {
         }
       },
       () => {/* permiso denegado */},
-      { enableHighAccuracy: false, maximumAge: 5 * 60 * 1000, timeout: 10000 }
+      { enableHighAccuracy: false, maximumAge: 0, timeout: 10000 }
     );
 
     return () => {
@@ -12984,7 +12984,6 @@ if (typeof window !== 'undefined' && 'navigator' in window) {
     console.log(`✅ ${isHarmonyOS ? 'HarmonyOS' : 'Android'} keyboard fix activado`);
   }
 }
-
 
 
 

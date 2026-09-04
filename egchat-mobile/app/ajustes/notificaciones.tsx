@@ -9,6 +9,8 @@ import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
 import { getSoundSettings, saveSoundSettings } from '../../src/hooks/useSounds';
 import { registerForPushNotifications } from '../../src/notifications';
 import { Colors } from '../../src/theme';
+import { DNDSettingsModal } from '../../src/components/settings/DNDSettingsModal';
+import { getDNDSettings, isDNDActive, formatTime } from '../../src/services/doNotDisturb';
 
 export default function NotificacionesScreen() {
   const [msgs, setMsgs] = useState(true);
@@ -19,6 +21,9 @@ export default function NotificacionesScreen() {
   const [pushGranted, setPushGranted] = useState(false);
   const [volume, setVolume] = useState(0.7);
   const [vibration, setVibration] = useState(true);
+  const [showDND, setShowDND] = useState(false);
+  const [dndActive, setDndActive] = useState(false);
+  const [dndLabel, setDndLabel] = useState('');
 
   useEffect(() => {
     getCfgBool(CFG.notifMessages, true).then(setMsgs);
@@ -28,6 +33,10 @@ export default function NotificacionesScreen() {
     getCfgBool(CFG.notifPreview, true).then(setPreview);
     Notifications.getPermissionsAsync().then(({ status }) => setPushGranted(status === 'granted'));
     getSoundSettings().then(s => { setVolume(s.volume); setVibration(s.vibrationEnabled); });
+    getDNDSettings().then(s => {
+      setDndActive(isDNDActive(s));
+      setDndLabel(s.enabled ? `${formatTime(s.startHour, s.startMin)} – ${formatTime(s.endHour, s.endMin)}` : 'Desactivado');
+    });
   }, []);
 
   const activatePush = useCallback(async () => {
@@ -90,6 +99,26 @@ export default function NotificacionesScreen() {
           onValueChange={v => { setVibration(v); saveSoundSettings({ vibrationEnabled: v }); }}
         />
       </SettingsCard>
+
+      <SettingsSection label="No molestar" />
+      <SettingsCard>
+        <SettingsRow
+          label="Programar silencio"
+          value={dndActive ? '🔇 Activo' : dndLabel}
+          onPress={() => setShowDND(true)}
+        />
+      </SettingsCard>
+
+      <DNDSettingsModal
+        visible={showDND}
+        onClose={() => {
+          setShowDND(false);
+          getDNDSettings().then(s => {
+            setDndActive(isDNDActive(s));
+            setDndLabel(s.enabled ? `${formatTime(s.startHour, s.startMin)} – ${formatTime(s.endHour, s.endMin)}` : 'Desactivado');
+          });
+        }}
+      />
     </SettingsLayout>
   );
 }

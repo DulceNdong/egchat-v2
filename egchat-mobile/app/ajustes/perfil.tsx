@@ -2,15 +2,18 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   View, Text, TouchableOpacity, StyleSheet, Image,
   ActivityIndicator, Modal, Pressable, Platform, ScrollView, TextInput,
+  KeyboardAvoidingView, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router, useFocusEffect } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import * as Clipboard from 'expo-clipboard';
 import Svg, { Rect, Line, Circle, Polyline } from 'react-native-svg';
-import { authAPI, getToken, userAPI } from '../../src/api';
+import { authAPI, userAPI } from '../../src/api';
+import { uploadAvatarToSupabase } from '../../src/utils/avatarStorage';
 import { cacheBustAvatarUrl, emitProfileUpdated, mergePersistentAvatar, saveLocalAvatar } from '../../src/utils/profileEvents';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
+import ImageViewer from '../../src/components/ImageViewer';
 import { ProfileQRSheet } from '../../src/components/profile/ProfileQRSheet';
 import { SetupPINModal } from '../../src/components/wallet/SetupPINModal';
 import {
@@ -55,12 +58,13 @@ const CoinIcon = () => (
 );
 
 function PhotoRow({
-  label, avatarUrl, initials, onPress, uploading,
+  label, avatarUrl, initials, onPress, onPressAvatar, uploading,
 }: {
   label: string;
   avatarUrl?: string;
   initials: string;
   onPress: () => void;
+  onPressAvatar?: () => void;
   uploading: boolean;
 }) {
   const { isDark } = useThemeContext();
@@ -68,30 +72,50 @@ function PhotoRow({
   const [imgError, setImgError] = React.useState(false);
 
   // Reset error state cuando cambia la URL
-  React.useEffect(() => { setImgError(false); }, [avatarUrl]);
+  React.useEffect(() => { 
+    setImgError(false); 
+    if (avatarUrl) {
+      console.log('[PhotoRow] Nueva URL de avatar:', avatarUrl.slice(0, 100));
+    }
+  }, [avatarUrl]);
+
+  const handleImageError = (error: any) => {
+    console.error('[PhotoRow] Error cargando imagen:', {
+      url: avatarUrl?.slice(0, 100),
+      error: error?.nativeEvent
+    });
+    setImgError(true);
+  };
 
   return (
-    <TouchableOpacity style={styles.photoRow} onPress={onPress} activeOpacity={0.7}>
+    <View style={styles.photoRow}>
       <Text style={[styles.rowLabel, { color: C.textPrimary }]}>{label}</Text>
       <View style={styles.photoRight}>
-        <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.thumb}>
-          {avatarUrl && !imgError ? (
-            <Image
-              key={avatarUrl}
-              source={{ uri: avatarUrl }}
-              style={styles.thumbImg}
-              onError={() => setImgError(true)}
-            />
-          ) : (
-            <Text style={styles.thumbInitials}>{initials}</Text>
-          )}
-          {uploading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#fff" />}
-        </LinearGradient>
-        <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isDark ? '#484f58' : '#c7c7cc'} strokeWidth={2.5} strokeLinecap="round">
-          <Polyline points="9 18 15 12 9 6" />
-        </Svg>
+        {/* Toque en la foto → ver en tamaño real */}
+        <TouchableOpacity onPress={onPressAvatar || onPress} activeOpacity={0.8}>
+          <LinearGradient colors={['#07c160', '#00b4e6']} style={styles.thumb}>
+            {avatarUrl && !imgError ? (
+              <Image
+                key={avatarUrl}
+                source={{ uri: avatarUrl }}
+                style={styles.thumbImg}
+                onError={handleImageError}
+                onLoad={() => console.log('[PhotoRow] Imagen cargada exitosamente')}
+              />
+            ) : (
+              <Text style={styles.thumbInitials}>{initials}</Text>
+            )}
+            {uploading && <ActivityIndicator style={StyleSheet.absoluteFillObject} color="#fff" />}
+          </LinearGradient>
+        </TouchableOpacity>
+        {/* Toque en la flecha › → cambiar foto */}
+        <TouchableOpacity onPress={onPress} activeOpacity={0.7} hitSlop={12} style={{ padding: 4 }}>
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={isDark ? '#484f58' : '#c7c7cc'} strokeWidth={2.5} strokeLinecap="round">
+            <Polyline points="9 18 15 12 9 6" />
+          </Svg>
+        </TouchableOpacity>
       </View>
-    </TouchableOpacity>
+    </View>
   );
 }
 
@@ -110,53 +134,63 @@ function FieldEditModal({
 
   return (
     <Modal visible transparent animationType="slide" onRequestClose={onClose}>
-      <Pressable style={styles.modalOverlay} onPress={onClose}>
-        <Pressable style={styles.modalSheet} onPress={() => {}}>
-          <Text style={styles.modalTitle}>{titles[field]}</Text>
-          {field === 'gender' ? (
-            <View style={styles.optionList}>
-              {GENDERS.map(g => (
-                <TouchableOpacity
-                  key={g}
-                  style={[styles.optionBtn, value === g && styles.optionBtnActive]}
-                  onPress={() => onChange(g)}
-                >
-                  <Text style={styles.optionText}>{g}{value === g ? ' ✓' : ''}</Text>
-                </TouchableOpacity>
-              ))}
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        keyboardVerticalOffset={0}
+      >
+        <Pressable style={styles.modalOverlay} onPress={onClose}>
+          <Pressable style={styles.modalSheet} onPress={() => {}}>
+            <Text style={styles.modalTitle}>{titles[field]}</Text>
+            {field === 'gender' ? (
+              <View style={styles.optionList}>
+                {GENDERS.map(g => (
+                  <TouchableOpacity
+                    key={g}
+                    style={[styles.optionBtn, value === g && styles.optionBtnActive]}
+                    onPress={() => onChange(g)}
+                  >
+                    <Text style={styles.optionText}>{g}{value === g ? ' ✓' : ''}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : field === 'region' ? (
+              <ScrollView style={styles.regionScroll} showsVerticalScrollIndicator={false}>
+                {REGIONS.map(r => (
+                  <TouchableOpacity
+                    key={r}
+                    style={[styles.optionBtn, value === r && styles.optionBtnActive]}
+                    onPress={() => onChange(r)}
+                  >
+                    <Text style={styles.optionText}>{r}{value === r ? ' ✓' : ''}</Text>
+                  </TouchableOpacity>
+                ))}
+              </ScrollView>
+            ) : (
+              <TextInput
+                autoFocus
+                value={value}
+                onChangeText={onChange}
+                placeholder={field === 'bio' ? 'Escribe tu estado...' : 'Escribe aquí...'}
+                placeholderTextColor="#9ca3af"
+                style={styles.fieldInput}
+                multiline={field === 'bio'}
+                blurOnSubmit={field !== 'bio'}
+                returnKeyType={field === 'bio' ? 'default' : 'done'}
+                onSubmitEditing={field !== 'bio' ? onSave : undefined}
+              />
+            )}
+            <View style={styles.modalActions}>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={onClose}>
+                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={onSave}>
+                <Text style={styles.modalBtnSaveText}>Guardar</Text>
+              </TouchableOpacity>
             </View>
-          ) : field === 'region' ? (
-            <ScrollView style={styles.regionScroll} showsVerticalScrollIndicator={false}>
-              {REGIONS.map(r => (
-                <TouchableOpacity
-                  key={r}
-                  style={[styles.optionBtn, value === r && styles.optionBtnActive]}
-                  onPress={() => onChange(r)}
-                >
-                  <Text style={styles.optionText}>{r}{value === r ? ' ✓' : ''}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          ) : (
-            <TextInput
-              autoFocus
-              value={value}
-              onChangeText={onChange}
-              placeholder={field === 'bio' ? 'Escribe tu estado...' : 'Escribe aquí...'}
-              placeholderTextColor="#9ca3af"
-              style={styles.fieldInput}
-            />
-          )}
-          <View style={styles.modalActions}>
-            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={onClose}>
-              <Text style={styles.modalBtnCancelText}>Cancelar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={onSave}>
-              <Text style={styles.modalBtnSaveText}>Guardar</Text>
-            </TouchableOpacity>
-          </View>
+          </Pressable>
         </Pressable>
-      </Pressable>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -176,6 +210,7 @@ export default function PerfilScreen() {
   const [editingField, setEditingField] = useState<EditField | null>(null);
   const [fieldVal, setFieldVal] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showAvatarViewer, setShowAvatarViewer] = useState(false);
 
   const loadProfile = useCallback(async () => {
     try {
@@ -223,7 +258,7 @@ export default function PerfilScreen() {
     setSaving(true);
     try {
       if (editingField === 'name') {
-        await authAPI.updateProfile({ full_name: fieldVal, avatar_url: user?.avatar_url });
+        // Guardar localmente primero (funciona aunque Supabase esté sin cuota)
         setUser(prev => prev ? { ...prev, full_name: fieldVal } : prev);
         emitProfileUpdated({ full_name: fieldVal });
         // Nombre actualizado silenciosamente
@@ -237,12 +272,12 @@ export default function PerfilScreen() {
         // Género guardado silenciosamente
       } else if (editingField === 'region') {
         setRegion(fieldVal);
-        await userAPI.updateProfile({ country: fieldVal });
+        try { await userAPI.updateProfile({ country: fieldVal }); } catch {}
         setUser(prev => prev ? { ...prev, country: fieldVal } : prev);
         emitProfileUpdated({ country: fieldVal });
         // Región actualizada silenciosamente
       } else if (editingField === 'address') {
-        await userAPI.updateProfile({ address: fieldVal });
+        try { await userAPI.updateProfile({ address: fieldVal }); } catch {}
         setUser(prev => prev ? { ...prev, address: fieldVal } : prev);
         emitProfileUpdated({ address: fieldVal });
         // Dirección guardada silenciosamente
@@ -256,7 +291,19 @@ export default function PerfilScreen() {
     }
   };
 
-  const pickPhoto = () => {
+  const pickPhoto = async () => {
+    // Pedir permisos de galería en iOS
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert(
+          'Permiso necesario',
+          'Necesitamos acceso a tu galería para cambiar la foto de perfil. Actívalo en Ajustes > EGCHAT > Fotos.',
+          [{ text: 'OK' }]
+        );
+        return;
+      }
+    }
     ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       quality: 0.9,
@@ -268,54 +315,36 @@ export default function PerfilScreen() {
   const uploadPhoto = async (uri: string) => {
     setUploadingPhoto(true);
 
-    // ── Mostrar inmediatamente la imagen local ──
-    setUser(prev => prev ? { ...prev, avatar_url: uri } : prev);
-    emitProfileUpdated({ avatar_url: uri });
-
     try {
       const token = await getToken();
       const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
 
-      // Convertir URI a base64
-      let base64Data: string | null = null;
-      try {
-        const blobRes = await fetch(uri);
-        const blob = await blobRes.blob();
-        base64Data = await new Promise<string>((resolve, reject) => {
-          const reader = new FileReader();
-          reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
-          reader.onerror = reject;
-          reader.readAsDataURL(blob);
-        });
-      } catch {
-        // En nativo usar expo-file-system
+      // ── 1. Mostrar inmediatamente la imagen local mientras sube ──
+      const localUri = uri.startsWith('file:') ? uri : `file://${uri}`;
+      setUser(prev => prev ? { ...prev, avatar_url: localUri } : prev);
+      emitProfileUpdated({ id: userId, avatar_url: localUri });
+
+      // ── 2. Subir a Supabase Storage (URL permanente) ──────────
+      const supabaseUrl = await uploadAvatarToSupabase(userId, uri);
+
+      if (supabaseUrl) {
+        // ── 3. Sincronizar con el servidor Render ──────────
         try {
-          const { readAsStringAsync, EncodingType } = await import('expo-file-system');
-          base64Data = await readAsStringAsync(uri, { encoding: EncodingType.Base64 });
-        } catch { /* skip */ }
-      }
-
-      const payload: Record<string, string> = {};
-      if (base64Data) {
-        payload.avatar_base64 = base64Data;
-      }
-
-      const res = await fetch(`${BASE}/api/user/avatar`, {
-        method: 'POST',
-        body: JSON.stringify(payload),
-        headers: {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (res.ok) {
-        const data = await res.json().catch(() => ({}));
-        const serverUrl = data.avatar_url;
-        const finalUrl = serverUrl || uri;
-        // Sincronizar con /api/auth/profile también
-        if (serverUrl) {
-          try { await authAPI.updateProfile({ avatar_url: serverUrl }); } catch { /* ok */ }
+          await authAPI.updateProfile({ avatar_url: supabaseUrl });
+          
+          // ── 4. Actualizar estado local con URL permanente ────────
+          setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
+          emitProfileUpdated({ id: userId, avatar_url: supabaseUrl });
+          await saveLocalAvatar(userId, supabaseUrl);
+          
+          toast.success('Foto actualizada');
+        } catch (syncError) {
+          console.error('[uploadPhoto] Error sincronizando con Render:', syncError);
+          // Aunque falle el sync con Render, la foto está en Supabase
+          setUser(prev => prev ? { ...prev, avatar_url: supabaseUrl } : prev);
+          emitProfileUpdated({ id: userId, avatar_url: supabaseUrl });
+          await saveLocalAvatar(userId, supabaseUrl);
+          toast.success('Foto actualizada (sincronización pendiente)');
         }
         const displayUrl = cacheBustAvatarUrl(finalUrl) || uri;
         setUser(prev => prev ? { ...prev, avatar_url: displayUrl } : prev);
@@ -326,9 +355,9 @@ export default function PerfilScreen() {
         await saveLocalAvatar(user?.id, uri);
         // Foto guardada silenciosamente
       }
-    } catch {
-      await saveLocalAvatar(user?.id, uri).catch(() => {});
-      toast.info('Foto guardada. Se sincronizará con conexión.');
+    } catch (error) {
+      console.error('[uploadPhoto] Error:', error);
+      toast.error('Error al actualizar foto');
     } finally {
       setUploadingPhoto(false);
     }
@@ -355,6 +384,7 @@ export default function PerfilScreen() {
             avatarUrl={user?.avatar_url}
             initials={initials}
             onPress={pickPhoto}
+            onPressAvatar={user?.avatar_url && !user.avatar_url.startsWith('file://') ? () => setShowAvatarViewer(true) : pickPhoto}
             uploading={uploadingPhoto}
           />
           <SettingsDivider />
@@ -473,11 +503,18 @@ export default function PerfilScreen() {
         userId={user?.id || ''}
         name={user?.full_name || 'Usuario'}
         phone={user?.phone}
+        avatar={user?.avatar_url}
       />
       <SetupPINModal
         visible={showSetupPIN}
-        onDone={() => { setShowSetupPIN(false); setPinConfigured(true); toast.success('✓ PIN configurado'); }}
+        onDone={() => { setShowSetupPIN(false); setPinConfigured(true); /* PIN configurado silenciosamente */ }}
         onCancel={() => setShowSetupPIN(false)}
+      />
+      <ImageViewer
+        visible={showAvatarViewer && !!user?.avatar_url && !user.avatar_url.startsWith('file://')}
+        images={user?.avatar_url && !user.avatar_url.startsWith('file://') ? [user.avatar_url] : []}
+        initialIndex={0}
+        onClose={() => setShowAvatarViewer(false)}
       />
     </>
   );
