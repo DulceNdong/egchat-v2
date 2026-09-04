@@ -181,7 +181,7 @@ export default function CallHistoryScreen() {
 
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
-      <LinearGradient colors={['#00b4e6', '#0088cc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+      <LinearGradient colors={['#00b4e6', '#0088cc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 14 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
