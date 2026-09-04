@@ -15,20 +15,6 @@
 		98F911052D4047ECD31E2DE9 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = 880E0E44006E23AA966F8D34 /* ExpoModulesProvider.swift */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
 		EG001A0000000001 /* EGChatNativeModules.m in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000001 /* EGChatNativeModules.m */; };
-		EG001A0000000002 /* EGChatAudioRecorder.m in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000002 /* EGChatAudioRecorder.m */; };
-		EG001A0000000003 /* EGChatAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000003 /* EGChatAudioRecorder.swift */; };
-		EG001A0000000004 /* EGChatCallActivityAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000004 /* EGChatCallActivityAttributes.swift */; };
-		EG001A0000000005 /* EGChatCallModule.m in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000005 /* EGChatCallModule.m */; };
-		EG001A0000000006 /* EGChatCallModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000006 /* EGChatCallModule.swift */; };
-		EG001A0000000008 /* EGChatLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000008 /* EGChatLiveActivity.swift */; };
-		EG001A0000000009 /* EGChatLiveActivityModule.m in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000009 /* EGChatLiveActivityModule.m */; };
-		EG001A000000000A /* EGChatLiveActivityModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B000000000A /* EGChatLiveActivityModule.swift */; };
-		EG001A000000000B /* EGChatNotificationService.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B000000000B /* EGChatNotificationService.swift */; };
-		EG001A000000000C /* EGChatPushKit.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B000000000C /* EGChatPushKit.swift */; };
-		EG001A000000000D /* EGChatRichNotification.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B000000000D /* EGChatRichNotification.swift */; };
-		EG001A000000000E /* EGChatShareModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B000000000E /* EGChatShareModule.swift */; };
-		EG001A000000000F /* EGChatShortcuts.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B000000000F /* EGChatShortcuts.swift */; };
-		EG001A0000000010 /* EGChatFaceFilter.swift in Sources */ = {isa = PBXBuildFile; fileRef = EG001B0000000010 /* EGChatFaceFilter.swift */; };
 		F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = F11748412D0307B40044C1D9 /* AppDelegate.swift */; };
 /* End PBXBuildFile section */
 
