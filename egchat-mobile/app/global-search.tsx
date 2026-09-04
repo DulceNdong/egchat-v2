@@ -157,7 +157,7 @@ export default function GlobalSearchScreen() {
   const msgResults = results.filter(r => r.type === 'message');
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['top', 'left', 'right']}>
       {/* Header con barra de búsqueda */}
       <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
