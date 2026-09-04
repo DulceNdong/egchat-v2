@@ -68,6 +68,7 @@ export default function CallHistoryScreen() {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<CallFilter>('all');
   const [currentUserId, setCurrentUserId] = useState<string>('');
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     userAPI.getProfile()
