@@ -27,6 +27,7 @@ import type {
   PanGestureHandlerGestureEvent,
 } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
+import { BlurView } from 'expo-blur';
 import * as FileSystem from 'expo-file-system';
 import Svg, { Path, Line, Polyline, Circle, Polygon, Rect } from 'react-native-svg';
 
