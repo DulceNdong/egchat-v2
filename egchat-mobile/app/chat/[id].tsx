@@ -68,7 +68,7 @@ import { AvatarCropModal } from '../../src/components/AvatarCropModal';
 import { PhotoEditorModal } from '../../src/components/PhotoEditorModal';
 import {
   pickImageFromLibrary, pickImageFromCamera, pickVideo, pickVideoFromCamera,
-  pickDocument, pickContact, pickFile,
+  pickDocument, pickContact, pickFile, pickAudio,
   getCurrentLocationLabel, uploadAndSend, pickMultipleImages,
 } from '../../src/utils/chatMedia';
 import { haptics } from '../../src/hooks/useHaptics';
