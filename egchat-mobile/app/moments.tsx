@@ -332,9 +332,25 @@ export default function MomentsScreen() {
             contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
             ListEmptyComponent={
               <View style={s.empty}>
-                <Text style={s.emptyIcon}>📸</Text>
+                <View style={[s.emptyIconWrap, { backgroundColor: isDark ? '#1a2530' : '#f0faf6' }]}>
+                  <Svg width={48} height={48} viewBox="0 0 24 24" fill="none">
+                    {/* Cuerpo cámara */}
+                    <Path
+                      d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
+                      stroke="#07a472"
+                      strokeWidth={1.6}
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                    {/* Lente */}
+                    <Circle cx={12} cy={13} r={4} stroke="#07a472" strokeWidth={1.6} />
+                    {/* Destello superior derecho */}
+                    <Circle cx={18.5} cy={9.5} r={1} fill="#07a472" />
+                  </Svg>
+                </View>
+                <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Sin posts aún</Text>
                 <Text style={[s.emptyText, { color: C.textTertiary }]}>
-                  Sin posts aún. ¡Comparte algo con tus contactos!
+                  Comparte un momento con tus contactos
                 </Text>
               </View>
             }
