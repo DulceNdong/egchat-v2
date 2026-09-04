@@ -179,7 +179,7 @@ export default function ChannelsScreen() {
   );
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['left', 'right']}>
       {/* Header */}
       <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.headerBtn}>
