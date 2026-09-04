@@ -239,7 +239,8 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const Sharing = await import('expo-sharing').catch(() => null);
-      const FS = (await import('expo-file-system/legacy')).default;
+      const fsModule = await import('expo-file-system/legacy');
+      const FS = (fsModule as any).default ?? fsModule;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
         const dest = `${FS.cacheDirectory}egchat_save_${Date.now()}.jpg`;
@@ -261,7 +262,8 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const Sharing = await import('expo-sharing').catch(() => null);
-      const FS = (await import('expo-file-system/legacy')).default;
+      const fsModule = await import('expo-file-system/legacy');
+      const FS = (fsModule as any).default ?? fsModule;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
         const dest = `${FS.cacheDirectory}egchat_share_${Date.now()}.jpg`;
@@ -284,19 +286,21 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const Clipboard = await import('expo-clipboard');
-      await (Clipboard as any).default?.setStringAsync?.(item.uri) ?? (Clipboard as any).setStringAsync?.(item.uri);
+      const cb = (Clipboard as any).default ?? Clipboard;
+      await cb.setStringAsync(item.uri);
       Alert.alert('✓ Copiado', 'Enlace de imagen copiado');
     } catch {
       Alert.alert('Error', 'No se pudo copiar');
     }
   };
 
-  // ── 5. CREAR STICKER — redimensionar 512×512 y guardar ────────
+  // ── 5. CREAR STICKER — redimensionar 512×512 ─────────────────
   const handleSticker = async () => {
     onClose();
     try {
       const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
-      const FS = (await import('expo-file-system/legacy')).default;
+      const fsModule = await import('expo-file-system/legacy');
+      const FS = (fsModule as any).default ?? fsModule;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
         const dest = `${FS.cacheDirectory}egchat_stk_${Date.now()}.jpg`;
@@ -326,8 +330,7 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const { openURL } = await import('expo-linking');
-      const lensUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(item.uri)}`;
-      await openURL(lensUrl);
+      await openURL(`https://lens.google.com/uploadbyurl?url=${encodeURIComponent(item.uri)}`);
     } catch {
       Alert.alert('Error', 'No se pudo abrir el navegador');
     }
