@@ -295,12 +295,10 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
-      const fsModule = await import('expo-file-system/legacy');
-      const FS = (fsModule as any).default ?? fsModule;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
-        const dest = `${FS.cacheDirectory}egchat_stk_${Date.now()}.jpg`;
-        await FS.downloadAsync(item.uri, dest);
+        const dest = `${FileSystem.cacheDirectory}egchat_stk_${Date.now()}.jpg`;
+        await FileSystem.downloadAsync(item.uri, dest);
         localUri = dest;
       }
       const result = await manipulateAsync(
