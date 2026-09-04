@@ -26,6 +26,7 @@ const FREQUENCIES = [
 ];
 
 export default function DjangueAdminCreateScreen() {
+  const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [slogan, setSlogan] = useState('');
   const [description, setDescription] = useState('');
