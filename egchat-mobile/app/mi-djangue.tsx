@@ -155,18 +155,30 @@ export default function MiDjangueScreen() {
 
   // RENDER: Pantalla de Inicio
   const renderHome = () => (
-    <View style={s.tabContent}>
+    <ScrollView
+      style={s.tabContent}
+      contentContainerStyle={s.homeScroll}
+      showsVerticalScrollIndicator={false}
+      bounces={true}
+    >
+      {/* Logo + nombre */}
       <View style={s.logoContainer}>
-        <RotatingLogo />
+        <Animated.View style={{ transform: [{ rotate: logoRotation }] }}>
+          <Image
+            source={require('../assets/icon.png')}
+            style={{ width: 70, height: 70 }}
+            contentFit="contain"
+          />
+        </Animated.View>
         <Text style={s.brandName}>EGChat</Text>
-        <View style={s.divider}></View>
+        <View style={s.divider} />
         <Text style={s.productName}>Mi Djangue</Text>
       </View>
 
-      {/* Ilustración */}
+      {/* Ilustración compacta */}
       <View style={s.illustrationContainer}>
         <View style={s.illustration}>
-          <Svg width={200} height={200} viewBox="0 0 200 200">
+          <Svg width={150} height={150} viewBox="0 0 200 200">
             <Circle cx={100} cy={100} r={35} fill="#fff" opacity={0.9} />
             <Path
               d="M100 85v30M110 95h-20M110 105h-20"
@@ -196,6 +208,7 @@ export default function MiDjangueScreen() {
         </View>
       </View>
 
+      {/* Texto */}
       <View style={s.textContainer}>
         <Text style={s.title}>Ahorra en Grupo</Text>
         <Text style={s.subtitle}>
@@ -203,13 +216,15 @@ export default function MiDjangueScreen() {
         </Text>
       </View>
 
+      {/* Botones */}
       <View style={s.homeButtons}>
         <TouchableOpacity
           style={s.primaryButton}
           onPress={() => setActiveTab('my-djangues')}
+          activeOpacity={0.85}
         >
           <LinearGradient colors={['#fff', '#f5f5f5']} style={s.buttonGradient}>
-            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
               <Path
                 d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"
                 stroke="#00C8A0"
@@ -225,8 +240,9 @@ export default function MiDjangueScreen() {
         <TouchableOpacity
           style={s.secondaryButton}
           onPress={() => setActiveTab('create')}
+          activeOpacity={0.85}
         >
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
             <Circle cx={12} cy={12} r={10} stroke="#fff" strokeWidth={2} />
             <Path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
           </Svg>
@@ -234,41 +250,24 @@ export default function MiDjangueScreen() {
         </TouchableOpacity>
       </View>
 
+      {/* Footer features */}
       <View style={s.features}>
         <View style={s.featureRow}>
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path
-              d="M22 11.08V12a10 10 0 1 1-5.93-9.14"
-              stroke="#fff"
-              strokeWidth={2}
-              strokeLinecap="round"
-              opacity={0.7}
-            />
-            <Path
-              d="M22 4L12 14.01l-3-3"
-              stroke="#fff"
-              strokeWidth={2}
-              strokeLinecap="round"
-              opacity={0.7}
-            />
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+            <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.7} />
+            <Path d="M22 4L12 14.01l-3-3" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.7} />
           </Svg>
           <Text style={s.featureText}>Seguro y Confiable</Text>
         </View>
         <View style={s.featureRow}>
-          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path
-              d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"
-              stroke="#fff"
-              strokeWidth={2}
-              strokeLinecap="round"
-              opacity={0.7}
-            />
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none">
+            <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#fff" strokeWidth={2} strokeLinecap="round" opacity={0.7} />
             <Circle cx={9} cy={7} r={4} stroke="#fff" strokeWidth={2} opacity={0.7} />
           </Svg>
           <Text style={s.featureText}>Fácil para Todos</Text>
         </View>
       </View>
-    </View>
+    </ScrollView>
   );
 
   // RENDER: Mis Djangues
