@@ -8,7 +8,7 @@ import {
   ActivityIndicator, Alert, RefreshControl, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
@@ -41,6 +41,7 @@ interface DjangueInfo {
 }
 
 export default function DjangueSecretaryScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<DjangueInfo | null>(null);
   const [loading, setLoading] = useState(true);
@@ -201,7 +202,7 @@ export default function DjangueSecretaryScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.root} edges={['top']}>
+      <SafeAreaView style={s.root} edges={['left', 'right']}>
         <View style={s.center}>
           <ActivityIndicator size="large" color="#6366f1" />
           <Text style={s.loadingText}>Cargando panel del secretario...</Text>
@@ -294,9 +295,9 @@ export default function DjangueSecretaryScreen() {
   );
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.header}>
+      <LinearGradient colors={['#6366f1', '#4f46e5']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"

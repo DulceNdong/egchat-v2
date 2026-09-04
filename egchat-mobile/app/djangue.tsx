@@ -8,7 +8,7 @@ import {
   ActivityIndicator, RefreshControl, Animated,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, Rect, Polyline } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -234,6 +234,7 @@ function DjangueCard({ group, onPress, index }: { group: DjangueGroup; onPress: 
 
 // ── Pantalla principal ────────────────────────────────────────────
 export default function DjangueScreen() {
+  const insets = useSafeAreaInsets();
   const [groups, setGroups]     = useState<DjangueGroup[]>([]);
   const [loading, setLoading]   = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -266,9 +267,9 @@ export default function DjangueScreen() {
   const inactiveGroups  = groups.filter(g => g.status !== 'active');
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"

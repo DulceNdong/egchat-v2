@@ -20,7 +20,7 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, Defs, Stop } from 'react-native-svg';
 import { apiFetch } from '../src/api';
@@ -125,6 +125,7 @@ function PulseLoader() {
 
 // ── Componente principal ───────────────────────────────────────────
 export default function DjangueMemberScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<MemberData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -223,9 +224,9 @@ export default function DjangueMemberScreen() {
   );
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"

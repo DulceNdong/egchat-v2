@@ -6,7 +6,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView, TextInput,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';import Svg, { Line, Path, Circle } from 'react-native-svg';
 import { MINI_APPS, CATEGORIES, addRecentApp, type MiniAppCategory, searchMiniApps, type MiniApp } from '../src/miniapps/miniAppsStore';
 import { MiniAppIcon } from '../src/miniapps/MiniAppIcon';
@@ -24,6 +24,7 @@ const NATIVE_MINI_APP_ROUTES: Record<string, any> = {
 };
 
 export default function MiniAppsScreen() {
+  const insets = useSafeAreaInsets();
   const [search, setSearch]     = useState('');
   const [category, setCategory] = useState<MiniAppCategory | 'all'>('all');
 
@@ -46,9 +47,9 @@ export default function MiniAppsScreen() {
   };
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* ── Header ── */}
-      <LinearGradient colors={['#0f172a', '#1e3a5f']} style={s.header}>
+      <LinearGradient colors={['#0f172a', '#1e3a5f']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.iconBtn}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">

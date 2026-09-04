@@ -15,7 +15,7 @@ import {
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
   Animated, ScrollView,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Line, Polygon, Rect, Circle } from 'react-native-svg';
 import * as Speech from 'expo-speech';

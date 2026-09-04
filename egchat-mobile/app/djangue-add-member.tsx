@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
@@ -19,6 +19,7 @@ const initials = (name: string) =>
   name ? name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2) : '?';
 
 export default function DjangueAddMemberScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [phone, setPhone]     = useState('');
   const [loading, setLoading] = useState(false);
@@ -77,8 +78,8 @@ export default function DjangueAddMemberScreen() {
   };
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"

@@ -8,7 +8,7 @@ import {
   ActivityIndicator, Alert, Switch,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
@@ -23,6 +23,7 @@ const FREQUENCIES = [
 ];
 
 export default function DjangueAdminSettingsScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -168,7 +169,7 @@ export default function DjangueAdminSettingsScreen() {
 
   if (loading) {
     return (
-      <SafeAreaView style={s.root} edges={['top']}>
+      <SafeAreaView style={s.root} edges={['left', 'right']}>
         <View style={s.center}>
           <ActivityIndicator size="large" color="#C9A227" />
           <Text style={s.loadingText}>Cargando configuración...</Text>
@@ -178,8 +179,8 @@ export default function DjangueAdminSettingsScreen() {
   }
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
-      <LinearGradient colors={['#C9A227', '#A8790F']} style={s.header}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
+      <LinearGradient colors={['#C9A227', '#A8790F']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"

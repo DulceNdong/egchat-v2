@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
@@ -70,6 +70,7 @@ function Avatar({ uri, name, size = 40 }: { uri?: string | null; name: string; s
 }
 
 export default function DjangueAdminStatsScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<AdminStats | null>(null);
   const [loading, setLoading] = useState(true);
@@ -111,8 +112,8 @@ export default function DjangueAdminStatsScreen() {
   const complianceColor = data.overall_compliance_rate >= 90 ? '#10b981' : data.overall_compliance_rate >= 70 ? '#f59e0b' : '#ef4444';
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">

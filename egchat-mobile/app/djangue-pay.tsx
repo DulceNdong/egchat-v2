@@ -9,7 +9,7 @@ import {
   ActivityIndicator, Alert,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
@@ -32,6 +32,7 @@ interface WalletInfo {
 }
 
 export default function DjanguePayScreen() {
+  const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [group, setGroup]   = useState<DjangueInfo | null>(null);
   const [wallet, setWallet] = useState<WalletInfo | null>(null);
@@ -123,9 +124,9 @@ export default function DjanguePayScreen() {
     ? group.total_paid_this_turn / group.expected_total_this_turn : 0;
 
   return (
-    <SafeAreaView style={s.root} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"

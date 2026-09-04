@@ -4,7 +4,7 @@
  */
 import React, { useState } from 'react';
 import { View, Text, ScrollView, TouchableOpacity, StyleSheet, Dimensions } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Circle, Path, Line, G, Text as SvgText } from 'react-native-svg';
@@ -31,6 +31,7 @@ const seedGroup = () => ({
 });
 
 export default function DjangueDemoScreen() {
+  const insets = useSafeAreaInsets();
   const [group] = useState(seedGroup());
   const n = group.members.length;
   const beneficiary = group.members[group.turnIndex % n];
@@ -83,9 +84,9 @@ export default function DjangueDemoScreen() {
   };
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#10202B', '#2d3561']} style={s.header}>
+      <LinearGradient colors={['#10202B', '#2d3561']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
             <Text style={s.backText}>←</Text>

@@ -10,7 +10,7 @@ import {
   RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { Image } from 'expo-image';
@@ -144,6 +144,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
 }
 
 export default function DjangueListScreen() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState<'admin' | 'member'>('member');
   const [adminDjangues, setAdminDjangues] = useState<DjangueItem[]>([]);
   const [memberDjangues, setMemberDjangues] = useState<DjangueItem[]>([]);
@@ -171,9 +172,9 @@ export default function DjangueListScreen() {
   const currentList = activeTab === 'admin' ? adminDjangues : memberDjangues;
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
