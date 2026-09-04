@@ -165,10 +165,10 @@ export default function DjangueDetailScreen() {
   const pendingCount = (djangue.members || []).length - paidCount;
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.gradient}>
         {/* Header */}
-        <View style={s.header}>
+        <View style={[s.header, { paddingTop: insets.top + 18 }]}>
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={12}>
             <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
               <Line x1="19" y1="12" x2="5" y2="12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
