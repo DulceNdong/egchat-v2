@@ -152,6 +152,7 @@ const TypingDots = () => {
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
 export default function LiaScreen() {
+  const insets = useSafeAreaInsets();
   const [messages, setMessages] = useState<LIAMessage[]>(() => [...sessionHistory]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
