@@ -139,6 +139,238 @@ const IcoVideo = () => (
   </Svg>
 );
 
+// ─── Iconos del ShareSheet ────────────────────────────────────────
+const IcoSave = ({ color = '#111827' }: { color?: string }) => (
+  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8"/>
+    <Polyline points="16 6 12 2 8 6"/>
+    <Line x1="12" y1="2" x2="12" y2="15"/>
+  </Svg>
+);
+const IcoShareSheet = ({ color = '#111827' }: { color?: string }) => (
+  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Circle cx="18" cy="5" r="3"/>
+    <Circle cx="6" cy="12" r="3"/>
+    <Circle cx="18" cy="19" r="3"/>
+    <Line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/>
+    <Line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+  </Svg>
+);
+const IcoForwardSheet = ({ color = '#111827' }: { color?: string }) => (
+  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Polyline points="15 17 20 12 15 7"/>
+    <Path d="M4 18v-2a4 4 0 014-4h12"/>
+  </Svg>
+);
+const IcoInstagram = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <Rect x="2" y="2" width="20" height="20" rx="5"/>
+    <Path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z"/>
+    <Line x1="17.5" y1="6.5" x2="17.51" y2="6.5"/>
+  </Svg>
+);
+const IcoCopy = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <Rect x="9" y="9" width="13" height="13" rx="2"/>
+    <Path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/>
+  </Svg>
+);
+const IcoSticker = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M12 2a10 10 0 0110 10c0 5.52-4.48 10-10 10A10 10 0 012 12 10 10 0 0112 2z"/>
+    <Path d="M12 12c0 3.31-2.69 6-6 6"/>
+    <Path d="M12 12V2"/>
+  </Svg>
+);
+const IcoProfile = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <Circle cx="12" cy="8" r="4"/>
+    <Circle cx="12" cy="12" r="10"/>
+  </Svg>
+);
+const IcoSearch = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <Circle cx="11" cy="11" r="8"/>
+    <Line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    <Path d="M8 11h6M11 8v6"/>
+  </Svg>
+);
+const IcoWallpaper = () => (
+  <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#111827" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+    <Rect x="3" y="3" width="18" height="18" rx="2"/>
+    <Circle cx="8.5" cy="8.5" r="1.5"/>
+    <Polyline points="21 15 16 10 5 21"/>
+  </Svg>
+);
+const IcoCloseSheet = () => (
+  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth={2.5} strokeLinecap="round">
+    <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
+  </Svg>
+);
+
+// ─── ShareSheet ───────────────────────────────────────────────────
+interface ShareSheetProps {
+  visible: boolean;
+  item: MediaItem;
+  onClose: () => void;
+  onForward: () => void;
+  onSave: () => void;
+  onSetProfilePhoto?: () => void;
+  onSetWallpaper?: () => void;
+}
+
+const ShareSheet: React.FC<ShareSheetProps> = ({
+  visible, item, onClose, onForward, onSave,
+  onSetProfilePhoto, onSetWallpaper,
+}) => {
+  const slideAnim = useRef(new Animated.Value(400)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, {
+        toValue: 0, useNativeDriver: true,
+        tension: 65, friction: 11,
+      }).start();
+    } else {
+      Animated.timing(slideAnim, {
+        toValue: 400, duration: 220, useNativeDriver: true,
+      }).start();
+    }
+  }, [visible]);
+
+  if (!visible) return null;
+
+  const handleShare = async () => {
+    try { await Share.share({ url: item.uri, message: item.name || '' }); } catch {}
+    onClose();
+  };
+  const handleCopy = () => {
+    Clipboard.setString(item.uri);
+    Alert.alert('', 'Enlace copiado');
+    onClose();
+  };
+  const handleInstagram = async () => {
+    try { await Share.share({ url: item.uri }); } catch {}
+    onClose();
+  };
+
+  const secondaryOptions = [
+    { icon: <IcoInstagram />, label: 'Compartir en Instagram', onPress: handleInstagram },
+    { icon: <IcoCopy />,     label: 'Copiar',                  onPress: handleCopy },
+    { icon: <IcoSticker />,  label: 'Crear sticker',           onPress: onClose },
+    { icon: <IcoProfile />,  label: 'Elegir como mi foto del perfil', onPress: () => { onSetProfilePhoto?.(); onClose(); } },
+    { icon: <IcoSearch />,   label: 'Buscar en la web',        onPress: onClose },
+    { icon: <IcoWallpaper />,label: 'Establecer como fondo',   onPress: () => { onSetWallpaper?.(); onClose(); } },
+  ];
+
+  return (
+    <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
+      {/* Overlay oscuro */}
+      <TouchableOpacity style={ss.overlay} activeOpacity={1} onPress={onClose} />
+
+      <Animated.View style={[ss.sheet, { transform: [{ translateY: slideAnim }] }]}>
+        {/* Handle */}
+        <View style={ss.handle} />
+
+        {/* Cabecera con avatar + nombre + fecha + X */}
+        <View style={ss.sheetHeader}>
+          {item.type === 'image' || !item.type ? (
+            <Image source={{ uri: item.uri }} style={ss.previewThumb} resizeMode="cover" />
+          ) : (
+            <View style={[ss.previewThumb, ss.previewThumbPlaceholder]}>
+              <IcoDoc />
+            </View>
+          )}
+          <View style={{ flex: 1 }}>
+            <Text style={ss.sheetSender}>{item.senderName || 'Tú'}</Text>
+            {item.timestamp ? <Text style={ss.sheetDate}>{item.timestamp}</Text> : null}
+          </View>
+          <TouchableOpacity onPress={onClose} style={ss.closeBtn}>
+            <IcoCloseSheet />
+          </TouchableOpacity>
+        </View>
+
+        {/* Acciones principales */}
+        <View style={ss.mainActions}>
+          {[
+            { icon: <IcoSave />,         label: 'Guardar',    onPress: () => { onSave(); onClose(); } },
+            { icon: <IcoShareSheet />,   label: 'Compartir',  onPress: handleShare },
+            { icon: <IcoForwardSheet />, label: 'Reenviar',   onPress: () => { onForward(); onClose(); } },
+          ].map(a => (
+            <TouchableOpacity key={a.label} style={ss.mainAction} onPress={a.onPress} activeOpacity={0.7}>
+              <View style={ss.mainActionCircle}>{a.icon}</View>
+              <Text style={ss.mainActionLabel}>{a.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Separador */}
+        <View style={ss.sep} />
+
+        {/* Opciones secundarias */}
+        {secondaryOptions.map((opt, i) => (
+          <React.Fragment key={opt.label}>
+            <TouchableOpacity style={ss.secRow} onPress={opt.onPress} activeOpacity={0.7}>
+              <Text style={ss.secLabel}>{opt.label}</Text>
+              <View style={ss.secIcon}>{opt.icon}</View>
+            </TouchableOpacity>
+            {i < secondaryOptions.length - 1 && <View style={ss.secDivider} />}
+          </React.Fragment>
+        ))}
+
+        <View style={{ height: Platform.OS === 'ios' ? 34 : 16 }} />
+      </Animated.View>
+    </Modal>
+  );
+};
+
+const ss = StyleSheet.create({
+  overlay: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet: {
+    position: 'absolute', bottom: 0, left: 0, right: 0,
+    backgroundColor: '#fff', borderTopLeftRadius: 20, borderTopRightRadius: 20,
+    paddingTop: 10,
+  },
+  handle: {
+    width: 36, height: 4, borderRadius: 2, backgroundColor: '#D1D5DB',
+    alignSelf: 'center', marginBottom: 12,
+  },
+  sheetHeader: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingHorizontal: 16, paddingBottom: 16,
+  },
+  previewThumb: { width: 52, height: 52, borderRadius: 8 },
+  previewThumbPlaceholder: { backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  sheetSender: { fontSize: 15, fontWeight: '700', color: '#111827' },
+  sheetDate: { fontSize: 13, color: '#6B7280', marginTop: 2 },
+  closeBtn: {
+    width: 32, height: 32, borderRadius: 16,
+    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+  },
+  mainActions: {
+    flexDirection: 'row', justifyContent: 'space-around',
+    paddingHorizontal: 24, paddingBottom: 16,
+  },
+  mainAction: { alignItems: 'center', gap: 8, flex: 1 },
+  mainActionCircle: {
+    width: 60, height: 60, borderRadius: 16,
+    backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center',
+  },
+  mainActionLabel: { fontSize: 13, fontWeight: '600', color: '#111827' },
+  sep: { height: StyleSheet.hairlineWidth, backgroundColor: '#E5E7EB', marginBottom: 4 },
+  secRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 20, paddingVertical: 16,
+  },
+  secLabel: { fontSize: 15, color: '#111827', fontWeight: '400' },
+  secIcon: {
+    width: 38, height: 38, borderRadius: 10,
+    backgroundColor: '#F9FAFB', alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1, borderColor: '#E5E7EB',
+  },
+  secDivider: { height: StyleSheet.hairlineWidth, backgroundColor: '#F3F4F6', marginLeft: 20 },
+});
+
 // ─── Picker de reacciones ─────────────────────────────────────────
 const REACTIONS = ['❤️', '😂', '😮', '😢', '👏', '🔥'];
 
