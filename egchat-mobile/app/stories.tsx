@@ -1075,3 +1075,83 @@ const st = StyleSheet.create({
   musicPublishBtn: { flex: 1, backgroundColor: '#1db954', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 9, alignItems: 'center' },
   musicCancelBtn:  { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });
+
+// ── Estilos modal Añadir Estado ────────────────────────────────────
+const TILE_GAP = 10;
+const TILE_SIZE = (W - 48 - TILE_GAP) / 2;
+
+const stAdd = StyleSheet.create({
+  backdrop: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+  },
+  sheet: {
+    flex: 1,
+    justifyContent: 'flex-end',
+    paddingBottom: 32,
+    paddingHorizontal: 16,
+  },
+  card: {
+    borderRadius: 24,
+    padding: 20,
+    // glassmorphism — sin fondo sólido, color definido inline (claro/oscuro)
+    overflow: 'hidden',
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: 'rgba(255,255,255,0.18)',
+  },
+  title: {
+    fontSize: 18,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 4,
+  },
+  subtitle: {
+    fontSize: 13,
+    textAlign: 'center',
+    marginBottom: 18,
+  },
+  grid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: TILE_GAP,
+    justifyContent: 'space-between',
+    marginBottom: 12,
+  },
+  tile: {
+    width: TILE_SIZE,
+    borderRadius: 18,
+    paddingVertical: 18,
+    alignItems: 'center',
+    gap: 10,
+  },
+  tileWide: {
+    width: '100%',
+    borderRadius: 18,
+    paddingVertical: 14,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    gap: 14,
+  },
+  iconWrap: {
+    width: 52,
+    height: 52,
+    borderRadius: 16,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tileLabel: {
+    fontSize: 13,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  cancelBtn: {
+    paddingVertical: 14,
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  cancelText: {
+    fontSize: 15,
+    fontWeight: '600',
+  },
+});
