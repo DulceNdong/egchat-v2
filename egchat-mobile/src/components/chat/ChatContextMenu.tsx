@@ -378,10 +378,10 @@ export function ChatContextMenu({
 const s = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: Platform.OS === 'ios' ? 'rgba(0,0,0,0.28)' : 'rgba(0,0,0,0.52)',
     justifyContent: 'flex-end',
     alignItems: 'center',
-    paddingBottom: 24,
+    paddingBottom: 28,
     paddingHorizontal: 16,
   },
   panelWrap: {
