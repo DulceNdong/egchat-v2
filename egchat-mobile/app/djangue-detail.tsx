@@ -74,6 +74,7 @@ const FREQUENCY_LABELS: Record<string, string> = {
 };
 
 export default function DjangueDetailScreen() {
+  const insets = useSafeAreaInsets();
   const params = useLocalSearchParams();
   const djangueId = params.id as string;
 
