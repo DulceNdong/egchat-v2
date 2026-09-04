@@ -1006,16 +1006,13 @@ export default function ChatScreen() {
       const isPhoto = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'].includes(ext);
       if (isPhoto) {
         try {
-          const ml = await import('expo-media-library').catch(() => null);
-          if (ml) {
-            const perm = await (ml as any).requestPermissionsAsync?.();
-            if (perm?.status === 'granted') {
-              await (ml as any).saveToLibraryAsync(destPath);
-              toast.success('Guardado en galería ✓');
-              return;
-            }
+          // Usar Sharing nativo si está disponible (no requiere dependencia extra)
+          const Sharing = await import('expo-sharing').catch(() => null);
+          if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
+            await (Sharing as any).shareAsync(destPath, { dialogTitle: 'Guardar archivo' });
+            return;
           }
-        } catch { /* sin permisos o no disponible — usar Share */ }
+        } catch { /* usar Share de RN */ }
       }
 
       // Fallback: Share nativo
