@@ -10,7 +10,7 @@ import {
 } from 'react-native';
 import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, G } from 'react-native-svg';
 import { apiFetch } from '../src/api';
@@ -131,6 +131,7 @@ function TabIcon({ name, color = '#fff', size = 20 }: { name: string; color?: st
 }
 
 export default function MiDjangueScreen() {
+  const insets = useSafeAreaInsets();
   const [activeTab, setActiveTab] = useState('home');
   const [myDjangues, setMyDjangues] = useState<DjangueItem[]>([]);
   const [loading, setLoading] = useState(false);
