@@ -533,6 +533,7 @@ const s = StyleSheet.create({
   tabText: { fontSize: 15, fontWeight: '700', color: 'rgba(255,255,255,0.75)' },
   tabTextActive: { color: '#00C8A0', fontWeight: '800' },
   tabContent: { flex: 1 },
+  homeScroll: { flexGrow: 1, paddingBottom: 20 },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
   loadingTxt: { marginTop: 12, fontSize: 16, fontWeight: '700', color: 'rgba(255,255,255,0.85)', letterSpacing: 0.3 },
   empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 40, gap: 20 },
