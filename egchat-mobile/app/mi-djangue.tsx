@@ -136,6 +136,19 @@ export default function MiDjangueScreen() {
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Logo rotation
+  const logoRotation = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.timing(logoRotation, {
+        toValue: 1,
+        duration: 3000,
+        useNativeDriver: true,
+      })
+    ).start();
+  }, []);
+  const logoRotate = logoRotation.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
+
   const load = useCallback(async (isRefresh = false) => {
     if (!isRefresh) setLoading(true);
     try {
