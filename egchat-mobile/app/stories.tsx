@@ -541,6 +541,7 @@ export default function StoriesScreen() {
   const [activeEspacio, setActiveEspacio] = useState<Espacio | null>(null);
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
   const [myStoryMenu,  setMyStoryMenu]  = useState(false);
+  const [showAddModal, setShowAddModal] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const buStyles  = makeBuStyles(C);
