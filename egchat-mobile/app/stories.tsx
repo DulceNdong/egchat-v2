@@ -908,6 +908,110 @@ export default function StoriesScreen() {
           </View>
         </View>
       )}
+
+      {/* ── Modal Añadir Estado — Mosaico moderno ──────────────────── */}
+      <Modal
+        visible={showAddModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowAddModal(false)}
+      >
+        <Pressable style={stAdd.backdrop} onPress={() => setShowAddModal(false)}>
+          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
+        </Pressable>
+
+        <View style={stAdd.sheet} pointerEvents="box-none">
+          <View style={[stAdd.card, { backgroundColor: isDark ? 'rgba(18,24,32,0.82)' : 'rgba(255,255,255,0.78)' }]}>
+            {/* Título */}
+            <Text style={[stAdd.title, { color: C.textPrimary }]}>Añadir estado</Text>
+            <Text style={[stAdd.subtitle, { color: C.textTertiary }]}>¿Cómo quieres publicar?</Text>
+
+            {/* Grid 2×2 + fila inferior */}
+            <View style={stAdd.grid}>
+              {/* Texto rápido */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(0,200,160,0.15)' : 'rgba(0,200,160,0.10)' }]}
+                onPress={() => { setShowAddModal(false); createTextStatus().catch(() => Alert.alert('Error', 'No se pudo crear')); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#00c8a0' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M12 20h9" stroke="#fff" strokeWidth={2} strokeLinecap="round"/>
+                    <Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Texto rápido</Text>
+              </TouchableOpacity>
+
+              {/* Cámara */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(99,102,241,0.15)' : 'rgba(99,102,241,0.10)' }]}
+                onPress={async () => { setShowAddModal(false); const a = await pickImageFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'image'); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#6366f1' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                    <Circle cx={12} cy={13} r={4} stroke="#fff" strokeWidth={2}/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Cámara</Text>
+              </TouchableOpacity>
+
+              {/* Galería */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : 'rgba(245,158,11,0.10)' }]}
+                onPress={() => { setShowAddModal(false); pickFromGallery(); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#f59e0b' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Rect x={3} y={3} width={18} height={18} rx={3} stroke="#fff" strokeWidth={2}/>
+                    <Circle cx={8.5} cy={8.5} r={1.5} fill="#fff"/>
+                    <Path d="M21 15l-5-5L5 21" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Galería</Text>
+              </TouchableOpacity>
+
+              {/* Video galería */}
+              <TouchableOpacity
+                style={[stAdd.tile, { backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : 'rgba(239,68,68,0.10)' }]}
+                onPress={async () => { setShowAddModal(false); const a = await pickVideo().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#ef4444' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                    <Path d="M9.75 15.02 15.5 12l-5.75-3.02v6.04z" fill="#fff"/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Video galería</Text>
+              </TouchableOpacity>
+
+              {/* Video cámara — ancho completo */}
+              <TouchableOpacity
+                style={[stAdd.tileWide, { backgroundColor: isDark ? 'rgba(14,165,233,0.15)' : 'rgba(14,165,233,0.10)' }]}
+                onPress={async () => { setShowAddModal(false); const a = await pickVideoFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }}
+                activeOpacity={0.75}
+              >
+                <View style={[stAdd.iconWrap, { backgroundColor: '#0ea5e9' }]}>
+                  <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                    <Path d="M15 10l4.553-2.277A1 1 0 0 1 21 8.656v6.688a1 1 0 0 1-1.447.894L15 14v-4z" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+                    <Rect x={2} y={7} width={13} height={10} rx={2} stroke="#fff" strokeWidth={2}/>
+                  </Svg>
+                </View>
+                <Text style={[stAdd.tileLabel, { color: C.textPrimary }]}>Video cámara</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancelar */}
+            <TouchableOpacity style={stAdd.cancelBtn} onPress={() => setShowAddModal(false)} activeOpacity={0.7}>
+              <Text style={[stAdd.cancelText, { color: C.textTertiary }]}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
