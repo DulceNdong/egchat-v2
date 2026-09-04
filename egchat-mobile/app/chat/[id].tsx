@@ -1235,9 +1235,10 @@ export default function ChatScreen() {
       return;
     }
     if (action === 'file') {
+      setShowAttach(false);
       const asset = await pickDocument();
       if (asset) {
-        // F4 — preview antes de enviar
+        // Mostrar preview antes de enviar — el usuario confirma con caption opcional
         setMediaPreviewItem({ uri: asset.uri, fileName: asset.fileName, mimeType: asset.mimeType, type: 'file' });
       }
       return;
