@@ -348,10 +348,8 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
   ];
 
   const renderTile = (a: typeof row1[0]) => (
-    <TouchableOpacity key={a.label} style={ss.tile} onPress={a.onPress} activeOpacity={0.75}>
-      <View style={[ss.tileIcon, { backgroundColor: a.bg, borderColor: a.color + '40' }]}>
-        <View style={[ss.tileIconInner, { backgroundColor: a.color }]}>{a.icon}</View>
-      </View>
+    <TouchableOpacity key={a.label} style={ss.tile} onPress={a.onPress} activeOpacity={0.6}>
+      <View style={ss.tileIcon}>{a.icon}</View>
       <Text style={ss.tileLabel}>{a.label}</Text>
     </TouchableOpacity>
   );
