@@ -962,6 +962,70 @@ export default function ChatScreen() {
     setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
   }, [contextMsg]);
 
+  // ── Descargar imagen / video / archivo ────────────────────────
+  const handleDownloadMedia = useCallback(async () => {
+    setContextVisible(false);
+    if (!contextMsg) return;
+
+    const url = (contextMsg as any).file_url || (contextMsg as any).imageUrl;
+    if (!url) {
+      toast.error('No hay archivo para descargar');
+      return;
+    }
+
+    // En web: abrir en nueva pestaña
+    if (Platform.OS === 'web') {
+      try {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = url.split('/').pop() || 'archivo';
+        a.target = '_blank';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        toast.success('Descarga iniciada');
+      } catch {
+        toast.error('No se pudo descargar');
+      }
+      return;
+    }
+
+    // En nativo: descargar a directorio temporal y compartir/guardar
+    try {
+      toast.info('Descargando...');
+      const { FileSystem } = await import('expo-file-system/legacy');
+      const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'bin';
+      const fileName = `egchat_${Date.now()}.${ext}`;
+      const destPath = `${FileSystem.cacheDirectory}${fileName}`;
+
+      const { status } = await FileSystem.downloadAsync(url, destPath);
+      if (status !== 200) throw new Error('Error al descargar');
+
+      // Intentar guardar en la galería de fotos si es imagen o video
+      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'].includes(ext)) {
+        try {
+          const MediaLibrary = await import('expo-media-library').catch(() => null);
+          if (MediaLibrary) {
+            const perm = await MediaLibrary.requestPermissionsAsync();
+            if (perm.status === 'granted') {
+              await MediaLibrary.saveToLibraryAsync(destPath);
+              toast.success('Guardado en galería ✓');
+              return;
+            }
+          }
+        } catch { /* MediaLibrary no disponible — usar Share */ }
+      }
+
+      // Fallback: Share nativo (permite guardar en Files, WhatsApp, etc.)
+      await Share.share({
+        url: destPath,
+        title: fileName,
+      });
+    } catch (e: any) {
+      toast.error('No se pudo descargar', e?.message || '');
+    }
+  }, [contextMsg]);
+
   // Emitir "escribiendo..." al servidor con debounce
   const handleTextChange = useCallback((val: string) => {
     setText(val);
