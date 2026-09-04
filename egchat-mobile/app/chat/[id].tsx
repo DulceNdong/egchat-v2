@@ -2966,7 +2966,7 @@ const styles = StyleSheet.create({
   broadcastBlockText: { fontSize: 13, color: '#f97316', fontWeight: '600' },
 
   // Messages
-  messagesList: { paddingHorizontal: Spacing.sm + 2, paddingVertical: Spacing.sm, gap: 2 },
+  messagesList: { paddingHorizontal: Spacing.sm + 2, paddingTop: 4, paddingBottom: Spacing.sm, gap: 2 },
 
   // Bubble
   bubbleWrapper: { marginVertical: 1, flexDirection: 'row', alignItems: 'flex-end' },
