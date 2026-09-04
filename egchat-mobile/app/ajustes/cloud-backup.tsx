@@ -20,6 +20,7 @@ import { Colors } from '../../src/theme/colors';
 import { DarkColors } from '../../src/theme/darkMode';
 
 export default function CloudBackupScreen() {
+  const insets = useSafeAreaInsets();
   const [settings, setSettings] = useState<BackupSettings>({
     autoBackup: false, frequency: 'weekly', includeMedia: false, destination: 'server',
   });
