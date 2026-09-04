@@ -1270,7 +1270,7 @@ export default function ChatScreen() {
               status: 'pending', created_at: new Date().toISOString(),
             });
             try {
-              const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'text' });
+              const sent = await chatAPI.sendMessage(chatId, { text: msgText, type: 'location' });
               replaceOptimistic(tempId, sent);
             } catch {
               failOptimistic(tempId);
