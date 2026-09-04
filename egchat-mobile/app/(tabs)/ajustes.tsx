@@ -260,7 +260,7 @@ function AjustesScreenInner() {
                 )}
               </LinearGradient>
               <View style={styles.heroInfo}>
-                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Usuario'}</Text>
+                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Toca para añadir tu nombre'}</Text>
                 <Text style={[styles.heroSub, { color: C.textTertiary }]}>
                   {user?.id ? `ID: ${user.id.slice(0, 12).toUpperCase()}` : (user?.phone || '')}
                 </Text>
