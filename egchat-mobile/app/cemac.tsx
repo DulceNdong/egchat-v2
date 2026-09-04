@@ -4,7 +4,7 @@ import {
   TextInput, Modal, Pressable, ActivityIndicator, Linking,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
@@ -16,6 +16,7 @@ import {
 } from '../src/data/cemacData';
 
 export default function CemacScreen() {
+  const insets = useSafeAreaInsets();
   const [lang, setLang] = useState<Lang | null>(null);
   const [country, setCountry] = useState<CountryCode | null>(null);
   const [tab, setTab] = useState<CemacTab>('servicios');
