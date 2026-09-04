@@ -117,17 +117,19 @@ function AjustesScreenInner() {
         const data = await authAPI.me();
         const merged = await mergePersistentAvatar(data);
         // Solo actualizar si el servidor devuelve nombre real (no genérico)
-        const serverNameIsGeneric =
-          !merged?.full_name ||
-          merged.full_name === 'Usuario EGCHAT' ||
-          merged.full_name.startsWith('Usuario +') ||
-          merged.full_name.startsWith('Usuario ');
+        const isGenericNameStr = (n?: string | null) =>
+          !n ||
+          n === 'Usuario' ||
+          n === 'Usuario EGCHAT' ||
+          n.startsWith('Usuario +') ||
+          n.startsWith('Usuario ');
+        const serverNameIsGeneric = isGenericNameStr(merged?.full_name);
         setUser(prev => ({
           ...merged,
           // si el servidor da nombre genérico pero ya tenemos uno real en local, conservar el real
-          full_name: serverNameIsGeneric && prev?.full_name && !prev.full_name.startsWith('Usuario ')
+          full_name: serverNameIsGeneric && prev?.full_name && !isGenericNameStr(prev.full_name)
             ? prev.full_name
-            : merged.full_name || prev?.full_name || 'Usuario',
+            : isGenericNameStr(merged.full_name) ? (prev?.full_name && !isGenericNameStr(prev.full_name) ? prev.full_name : null) : merged.full_name,
           // conservar avatar local si el servidor no devuelve uno mejor
           avatar_url: merged.avatar_url || prev?.avatar_url,
         }));
