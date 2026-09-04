@@ -582,10 +582,10 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
 
   const handleSave = async () => {
     try {
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería'); return; }
-      await MediaLibrary.saveToLibraryAsync(current.uri);
-      Alert.alert('', 'Guardado en la galería ✓');
+      const filename = current.name || `egchat_${Date.now()}.jpg`;
+      const dest = `${FileSystem.documentDirectory}${filename}`;
+      await FileSystem.copyAsync({ from: current.uri, to: dest });
+      Alert.alert('', 'Guardado ✓');
     } catch {
       Alert.alert('Error', 'No se pudo guardar el archivo');
     }
