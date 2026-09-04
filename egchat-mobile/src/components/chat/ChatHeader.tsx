@@ -1,6 +1,6 @@
 // Header del chat — gradiente azul EGCHAT (App.tsx chat-header-fixed)
 import React from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
+import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Polygon, Rect, Circle, G } from 'react-native-svg';
