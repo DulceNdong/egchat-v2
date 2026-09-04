@@ -1233,7 +1233,8 @@ export const ChatMessageBubble = React.memo(({
     ));
   const pollData = message.type === 'poll' || message.text?.startsWith('📊')
     ? parsePoll(message.text || '') : null;
-  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg || !!pollData;
+  const isCardType = isMoneyMsg || isContactMsg || isLocationMsg || isCallMsg || !!pollData
+    || message.type === 'music';
 
   const renderAvatar = (side: 'left' | 'right') => {
     if (side === 'left' && isOwn) return null;
