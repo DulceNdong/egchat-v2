@@ -226,58 +226,154 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
 
   useEffect(() => {
     if (visible) {
-      Animated.spring(slideAnim, {
-        toValue: 0, useNativeDriver: true,
-        tension: 65, friction: 11,
-      }).start();
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, tension: 65, friction: 11 }).start();
     } else {
-      Animated.timing(slideAnim, {
-        toValue: 400, duration: 220, useNativeDriver: true,
-      }).start();
+      Animated.timing(slideAnim, { toValue: 400, duration: 220, useNativeDriver: true }).start();
     }
   }, [visible]);
 
   if (!visible) return null;
 
+  // ── 1. GUARDAR en galería del dispositivo ───────────────────────
+  const handleSave = async () => {
+    onClose();
+    try {
+      const { default: MediaLibrary } = await import('expo-media-library');
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitas permitir acceso a la galería'); return; }
+      // Si es URL remota, primero descargamos
+      let localUri = item.uri;
+      if (item.uri.startsWith('http')) {
+        const { default: FS } = await import('expo-file-system');
+        const dest = `${FS.cacheDirectory}egchat_save_${Date.now()}.jpg`;
+        await FS.downloadAsync(item.uri, dest);
+        localUri = dest;
+      }
+      await MediaLibrary.saveToLibraryAsync(localUri);
+      Alert.alert('✓ Guardado', 'Imagen guardada en tu galería');
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo guardar la imagen');
+    }
+  };
+
+  // ── 2. COMPARTIR con lista de contactos / apps del sistema ──────
   const handleShare = async () => {
-    try { await Share.share({ url: item.uri, message: item.name || '' }); } catch {}
     onClose();
-  };
-  const handleCopy = () => {
-    Clipboard.setString(item.uri);
-    Alert.alert('', 'Enlace copiado');
-    onClose();
-  };
-  const handleInstagram = async () => {
-    try { await Share.share({ url: item.uri }); } catch {}
-    onClose();
+    try {
+      const { default: Sharing } = await import('expo-sharing');
+      const isAvailable = await Sharing.isAvailableAsync();
+      if (isAvailable) {
+        let localUri = item.uri;
+        if (item.uri.startsWith('http')) {
+          const { default: FS } = await import('expo-file-system');
+          const dest = `${FS.cacheDirectory}egchat_share_${Date.now()}.jpg`;
+          await FS.downloadAsync(item.uri, dest);
+          localUri = dest;
+        }
+        await Sharing.shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: 'Compartir imagen' });
+      } else {
+        await Share.share({ url: item.uri, message: item.name || '' });
+      }
+    } catch {}
   };
 
-  // Acciones principales con colores pastel suaves
-  const mainActions = [
-    { icon: <IcoSave />,         label: 'Guardar',   color: '#10b981', bg: 'rgba(16,185,129,0.15)', onPress: () => { onSave(); onClose(); } },
-    { icon: <IcoShareSheet />,   label: 'Compartir', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', onPress: handleShare },
-    { icon: <IcoForwardSheet />, label: 'Reenviar',  color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', onPress: () => { onForward(); onClose(); } },
+  // ── 3. REENVIAR a contacto de EGChat ───────────────────────────
+  const handleForward = () => { onForward(); onClose(); };
+
+  // ── 4. COPIAR imagen al portapapeles ───────────────────────────
+  const handleCopy = async () => {
+    onClose();
+    try {
+      const { default: Clipboard } = await import('expo-clipboard');
+      // En móvil copiamos la URL; en iOS 14+ se puede copiar la imagen directamente
+      await Clipboard.setStringAsync(item.uri);
+      Alert.alert('✓ Copiado', 'Enlace de imagen copiado');
+    } catch {
+      Alert.alert('Error', 'No se pudo copiar');
+    }
+  };
+
+  // ── 5. CREAR STICKER — recortar a cuadrado y guardar ──────────
+  const handleSticker = async () => {
+    onClose();
+    try {
+      const { default: ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
+      const { default: MediaLibrary } = await import('expo-media-library');
+      let localUri = item.uri;
+      if (item.uri.startsWith('http')) {
+        const { default: FS } = await import('expo-file-system');
+        const dest = `${FS.cacheDirectory}egchat_stk_${Date.now()}.jpg`;
+        await FS.downloadAsync(item.uri, dest);
+        localUri = dest;
+      }
+      const result = await ImageManipulator.manipulateAsync(
+        localUri,
+        [{ resize: { width: 512, height: 512 } }],
+        { compress: 0.9, format: SaveFormat.WEBP }
+      );
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status === 'granted') await MediaLibrary.saveToLibraryAsync(result.uri);
+      Alert.alert('✓ Sticker creado', 'Guardado en tu galería como sticker 512×512');
+    } catch {
+      Alert.alert('Error', 'No se pudo crear el sticker');
+    }
+  };
+
+  // ── 6. FOTO DE PERFIL ──────────────────────────────────────────
+  const handleProfile = () => { onSetProfilePhoto?.(); onClose(); };
+
+  // ── 7. BUSCAR EN LA WEB (Google Lens / búsqueda por imagen) ────
+  const handleSearchWeb = async () => {
+    onClose();
+    try {
+      const { default: Linking } = await import('expo-linking');
+      // Google Lens para búsqueda por imagen
+      const lensUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(item.uri)}`;
+      const supported = await Linking.canOpenURL(lensUrl);
+      if (supported) {
+        await Linking.openURL(lensUrl);
+      } else {
+        // Fallback: Google Images search
+        await Linking.openURL(`https://www.google.com/searchbyimage?image_url=${encodeURIComponent(item.uri)}`);
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo abrir el navegador');
+    }
+  };
+
+  // ── 8. FONDO DE PANTALLA ───────────────────────────────────────
+  const handleWallpaper = () => { onSetWallpaper?.(); onClose(); };
+
+  // Grid 4 + 4
+  const row1 = [
+    { icon: <IcoSave />,         label: 'Guardar',    color: '#10b981', bg: 'rgba(16,185,129,0.2)',  onPress: handleSave },
+    { icon: <IcoShareSheet />,   label: 'Compartir',  color: '#6366f1', bg: 'rgba(99,102,241,0.2)',  onPress: handleShare },
+    { icon: <IcoForwardSheet />, label: 'Reenviar',   color: '#f59e0b', bg: 'rgba(245,158,11,0.2)',  onPress: handleForward },
+    { icon: <IcoCopy />,         label: 'Copiar',     color: '#0ea5e9', bg: 'rgba(14,165,233,0.2)',  onPress: handleCopy },
+  ];
+  const row2 = [
+    { icon: <IcoSticker />,   label: 'Sticker',     color: '#a855f7', bg: 'rgba(168,85,247,0.2)',  onPress: handleSticker },
+    { icon: <IcoProfile />,   label: 'Foto perfil', color: '#14b8a6', bg: 'rgba(20,184,166,0.2)',  onPress: handleProfile },
+    { icon: <IcoSearch />,    label: 'Buscar web',  color: '#f97316', bg: 'rgba(249,115,22,0.2)',  onPress: handleSearchWeb },
+    { icon: <IcoWallpaper />, label: 'Fondo',       color: '#ec4899', bg: 'rgba(236,72,153,0.2)',  onPress: handleWallpaper },
   ];
 
-  // Opciones secundarias en mosaico 3×2
-  const gridOptions = [
-    { icon: <IcoCopy />,      label: 'Copiar',        color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)',  onPress: handleCopy },
-    { icon: <IcoSticker />,   label: 'Sticker',       color: '#a855f7', bg: 'rgba(168,85,247,0.15)',  onPress: onClose },
-    { icon: <IcoProfile />,   label: 'Foto perfil',   color: '#14b8a6', bg: 'rgba(20,184,166,0.15)',  onPress: () => { onSetProfilePhoto?.(); onClose(); } },
-    { icon: <IcoSearch />,    label: 'Buscar web',    color: '#f97316', bg: 'rgba(249,115,22,0.15)',  onPress: onClose },
-    { icon: <IcoWallpaper />, label: 'Fondo',         color: '#ec4899', bg: 'rgba(236,72,153,0.15)',  onPress: () => { onSetWallpaper?.(); onClose(); } },
-  ];
+  const renderTile = (a: typeof row1[0]) => (
+    <TouchableOpacity key={a.label} style={ss.tile} onPress={a.onPress} activeOpacity={0.75}>
+      <View style={[ss.tileIcon, { backgroundColor: a.bg, borderColor: a.color + '40' }]}>
+        <View style={[ss.tileIconInner, { backgroundColor: a.color }]}>{a.icon}</View>
+      </View>
+      <Text style={ss.tileLabel}>{a.label}</Text>
+    </TouchableOpacity>
+  );
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      {/* Overlay con blur */}
       <Pressable style={ss.overlay} onPress={onClose}>
         <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
       </Pressable>
 
       <Animated.View style={[ss.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Fondo glassmorphism dark — transparente sobre la imagen */}
         <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
 
         {/* Handle */}
@@ -288,50 +384,24 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
           {item.type === 'image' || !item.type ? (
             <Image source={{ uri: item.uri }} style={ss.previewThumb} resizeMode="cover" />
           ) : (
-            <View style={[ss.previewThumb, ss.previewThumbPlaceholder]}>
-              <IcoDoc />
-            </View>
+            <View style={[ss.previewThumb, ss.previewThumbPlaceholder]}><IcoDoc /></View>
           )}
           <View style={{ flex: 1 }}>
             <Text style={ss.sheetSender}>{item.senderName || 'Tú'}</Text>
             {item.timestamp ? <Text style={ss.sheetDate}>{item.timestamp}</Text> : null}
           </View>
-          <TouchableOpacity onPress={onClose} style={ss.closeBtn}>
-            <IcoCloseSheet />
-          </TouchableOpacity>
+          <TouchableOpacity onPress={onClose} style={ss.closeBtn}><IcoCloseSheet /></TouchableOpacity>
         </View>
 
-        {/* ── Acciones principales ─ fila de 3 ── */}
-        <View style={ss.mainRow}>
-          {mainActions.map(a => (
-            <TouchableOpacity key={a.label} style={ss.mainTile} onPress={a.onPress} activeOpacity={0.75}>
-              <View style={[ss.mainCircle, { backgroundColor: a.bg, borderColor: a.color + '40' }]}>
-                <View style={[ss.mainCircleInner, { backgroundColor: a.color }]}>
-                  {a.icon}
-                </View>
-              </View>
-              <Text style={ss.mainLabel}>{a.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Fila 1 — 4 iconos */}
+        <View style={ss.row}>{row1.map(renderTile)}</View>
 
         <View style={ss.sep} />
 
-        {/* ── Mosaico 3×2 opciones secundarias ── */}
-        <View style={ss.grid}>
-          {gridOptions.map(opt => (
-            <TouchableOpacity key={opt.label} style={ss.gridTile} onPress={opt.onPress} activeOpacity={0.75}>
-              <View style={[ss.gridIcon, { backgroundColor: opt.bg, borderColor: opt.color + '30' }]}>
-                <View style={[ss.gridIconInner, { backgroundColor: opt.color }]}>
-                  {opt.icon}
-                </View>
-              </View>
-              <Text style={ss.gridLabel}>{opt.label}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
+        {/* Fila 2 — 4 iconos */}
+        <View style={ss.row}>{row2.map(renderTile)}</View>
 
-        <View style={{ height: Platform.OS === 'ios' ? 28 : 16 }} />
+        <View style={{ height: Platform.OS === 'ios' ? 24 : 12 }} />
       </Animated.View>
     </Modal>
   );
