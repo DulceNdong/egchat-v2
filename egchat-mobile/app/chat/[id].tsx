@@ -2234,6 +2234,7 @@ export default function ChatScreen() {
         onTranslate={handleTranslate}
         onEdit={handleEditMessage}
         onForward={handleForwardMessage}
+        onDownload={handleDownloadMedia}
         onEditHistory={() => {
           if (contextMsg?.edited) setEditHistoryMsg(contextMsg);
           setContextVisible(false);
