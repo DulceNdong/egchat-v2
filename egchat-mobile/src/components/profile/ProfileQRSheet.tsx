@@ -177,6 +177,33 @@ const s = StyleSheet.create({
   cornerBL: { bottom: 12, left: 12, borderRightWidth: 0, borderTopWidth: 0, borderBottomLeftRadius: 8 },
   cornerBR: { bottom: 12, right: 12, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 8 },
 
+  // QR center logo (avatar o iniciales)
+  qrLogoWrap: {
+    position: 'absolute',
+    top: '50%', left: '50%',
+    width: 44, height: 44,
+    marginTop: -22, marginLeft: -22,
+    borderRadius: 10,
+    borderWidth: 2.5,
+    borderColor: '#fff',
+    overflow: 'hidden',
+    backgroundColor: '#fff',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.15,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  qrLogoImg: { width: '100%', height: '100%' },
+  qrLogoInitials: {
+    width: '100%', height: '100%',
+    backgroundColor: '#00c8a0',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  qrLogoInitialsText: {
+    color: '#fff', fontSize: 20, fontWeight: '700', lineHeight: 24,
+  },
+
   hint: { fontSize: 12, color: '#9ca3af', textAlign: 'center', lineHeight: 18, marginBottom: 20 },
 
   actions: { flexDirection: 'row', gap: 10, width: '100%' },
