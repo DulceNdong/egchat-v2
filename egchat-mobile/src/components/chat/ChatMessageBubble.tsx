@@ -1099,6 +1099,9 @@ export const ChatMessageBubble = React.memo(({
   onReactionPress,
   onReplyTap,
   onTranscribed,
+  onOpenContact,
+  onContactCall,
+  onContactMessage,
 }: ChatMessageBubbleProps) => {
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
