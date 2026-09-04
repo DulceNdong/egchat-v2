@@ -405,6 +405,21 @@
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
 				98F911052D4047ECD31E2DE9 /* ExpoModulesProvider.swift in Sources */,
+				EG001A0000000001 /* EGChatNativeModules.m in Sources */,
+				EG001A0000000002 /* EGChatAudioRecorder.m in Sources */,
+				EG001A0000000003 /* EGChatAudioRecorder.swift in Sources */,
+				EG001A0000000004 /* EGChatCallActivityAttributes.swift in Sources */,
+				EG001A0000000005 /* EGChatCallModule.m in Sources */,
+				EG001A0000000006 /* EGChatCallModule.swift in Sources */,
+				EG001A0000000008 /* EGChatLiveActivity.swift in Sources */,
+				EG001A0000000009 /* EGChatLiveActivityModule.m in Sources */,
+				EG001A000000000A /* EGChatLiveActivityModule.swift in Sources */,
+				EG001A000000000B /* EGChatNotificationService.swift in Sources */,
+				EG001A000000000C /* EGChatPushKit.swift in Sources */,
+				EG001A000000000D /* EGChatRichNotification.swift in Sources */,
+				EG001A000000000E /* EGChatShareModule.swift in Sources */,
+				EG001A000000000F /* EGChatShortcuts.swift in Sources */,
+				EG001A0000000010 /* EGChatFaceFilter.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
