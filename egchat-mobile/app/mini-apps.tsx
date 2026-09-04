@@ -174,7 +174,7 @@ export default function MiniAppsScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#f8fafc' },
+  root: { flex: 1, backgroundColor: '#0f172a' },
   scroll: { flex: 1 },
 
   // Header
