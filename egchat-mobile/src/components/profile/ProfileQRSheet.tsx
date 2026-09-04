@@ -80,17 +80,31 @@ export function ProfileQRSheet({ visible, onClose, userId, name, phone, avatar }
                   resizeMode="contain"
                 />
               ) : QRCode ? (
-                // Nativo: react-native-qrcode-svg
-                <QRCode
-                  value={payload}
-                  size={200}
-                  backgroundColor="#ffffff"
-                  color="#0d0d0d"
-                  logo={require('../../../assets/logo-transparent.png')}
-                  logoSize={40}
-                  logoBackgroundColor="#fff"
-                  logoBorderRadius={8}
-                />
+                // Nativo: QR + avatar/iniciales superpuestos en el centro
+                <View>
+                  <QRCode
+                    value={payload}
+                    size={200}
+                    backgroundColor="#ffffff"
+                    color="#0d0d0d"
+                  />
+                  {/* Logo centrado: foto de perfil o iniciales */}
+                  <View style={s.qrLogoWrap}>
+                    {avatar ? (
+                      <Image
+                        source={{ uri: avatar }}
+                        style={s.qrLogoImg}
+                        resizeMode="cover"
+                      />
+                    ) : (
+                      <View style={s.qrLogoInitials}>
+                        <Text style={s.qrLogoInitialsText}>
+                          {name ? name.trim().charAt(0).toUpperCase() : '?'}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                </View>
               ) : (
                 <Image source={{ uri: webQrUrl }} style={s.qrImage} resizeMode="contain" />
               )}
