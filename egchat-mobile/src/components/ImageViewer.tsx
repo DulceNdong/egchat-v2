@@ -277,8 +277,8 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
       </Pressable>
 
       <Animated.View style={[ss.sheet, { transform: [{ translateY: slideAnim }] }]}>
-        {/* Fondo glassmorphism */}
-        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+        {/* Fondo glassmorphism dark — transparente sobre la imagen */}
+        <BlurView intensity={70} tint="dark" style={StyleSheet.absoluteFill} />
 
         {/* Handle */}
         <View style={ss.handle} />
