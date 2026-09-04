@@ -1775,6 +1775,25 @@ export default function ChatScreen() {
               m.id === msgId ? { ...m, voice_transcript: transcriptText } : m
             ));
           }}
+          onOpenContact={(phone, name, avatarUrl) => {
+            setCardContact({ phone, name, avatarUrl });
+          }}
+          onContactCall={(type, phone, name) => {
+            router.push({
+              pathname: '/call/[callId]',
+              params: {
+                callId: `call_${Date.now()}`,
+                targetName: name,
+                targetAvatar: '',
+                callType: type,
+                role: 'caller',
+                targetPhone: phone,
+              },
+            } as any);
+          }}
+          onContactMessage={(phone, name) => {
+            router.push({ pathname: '/chat/[id]', params: { id: phone, name } } as any);
+          }}
         />
       </TouchableOpacity>
     );
