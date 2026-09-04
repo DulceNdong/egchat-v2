@@ -239,12 +239,10 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const Sharing = await import('expo-sharing').catch(() => null);
-      const fsModule = await import('expo-file-system/legacy');
-      const FS = (fsModule as any).default ?? fsModule;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
-        const dest = `${FS.cacheDirectory}egchat_save_${Date.now()}.jpg`;
-        await FS.downloadAsync(item.uri, dest);
+        const dest = `${FileSystem.cacheDirectory}egchat_save_${Date.now()}.jpg`;
+        await FileSystem.downloadAsync(item.uri, dest);
         localUri = dest;
       }
       if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
@@ -262,12 +260,10 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
     try {
       const Sharing = await import('expo-sharing').catch(() => null);
-      const fsModule = await import('expo-file-system/legacy');
-      const FS = (fsModule as any).default ?? fsModule;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
-        const dest = `${FS.cacheDirectory}egchat_share_${Date.now()}.jpg`;
-        await FS.downloadAsync(item.uri, dest);
+        const dest = `${FileSystem.cacheDirectory}egchat_share_${Date.now()}.jpg`;
+        await FileSystem.downloadAsync(item.uri, dest);
         localUri = dest;
       }
       if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
