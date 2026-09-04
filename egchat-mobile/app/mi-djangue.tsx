@@ -176,7 +176,7 @@ export default function MiDjangueScreen() {
     >
       {/* Logo + nombre */}
       <View style={s.logoContainer}>
-        <Animated.View style={{ transform: [{ rotate: logoRotation }] }}>
+        <Animated.View style={{ transform: [{ rotate: logoRotate }] }}>
           <Image
             source={require('../assets/icon.png')}
             style={{ width: 70, height: 70 }}
