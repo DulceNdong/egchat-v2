@@ -617,15 +617,8 @@ export default function StoriesScreen() {
   }, [uploadStory]);
 
   const addStory = useCallback(async () => {
-    Alert.alert('Añadir estado', '¿Cómo quieres publicar?', [
-      { text: '✏️ Texto rápido',  onPress: () => createTextStatus().catch(() => Alert.alert('Error', 'No se pudo crear')) },
-      { text: '📷 Cámara',        onPress: async () => { const a = await pickImageFromCamera().catch(() => null);   if (a) await uploadStory(a.uri, 'image'); } },
-      { text: '🖼️ Galería',        onPress: pickFromGallery },
-      { text: '🎥 Video galería',  onPress: async () => { const a = await pickVideo().catch(() => null);             if (a) await uploadStory(a.uri, 'video'); } },
-      { text: '📹 Video cámara',   onPress: async () => { const a = await pickVideoFromCamera().catch(() => null);  if (a) await uploadStory(a.uri, 'video'); } },
-      { text: 'Cancelar', style: 'cancel' },
-    ]);
-  }, [createTextStatus, pickFromGallery, uploadStory]);
+    setShowAddModal(true);
+  }, []);
 
   const deleteStory = useCallback((storyId: string) => {
     Alert.alert('Eliminar estado', '¿Eliminar este estado?', [
