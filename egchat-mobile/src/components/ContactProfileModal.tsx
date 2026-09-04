@@ -6,7 +6,7 @@ import {
   Modal, SafeAreaView, Switch, Alert, Image, TextInput,
 } from 'react-native';
 import { Avatar } from './Avatar';
-import Svg, { Path, Rect, Circle, Line, Polyline, G } from 'react-native-svg';
+import Svg, { Path, Rect, Circle, Line, Polyline, Polygon, G } from 'react-native-svg';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Msg { id: string; from: 'me' | 'them'; text: string; time: string }
