@@ -993,34 +993,33 @@ export default function ChatScreen() {
     // En nativo: descargar a directorio temporal y compartir/guardar
     try {
       toast.info('Descargando...');
-      const { FileSystem } = await import('expo-file-system/legacy');
+      const fs = await import('expo-file-system/legacy');
+      const FS = (fs as any).default ?? fs;
       const ext = url.split('?')[0].split('.').pop()?.toLowerCase() || 'bin';
       const fileName = `egchat_${Date.now()}.${ext}`;
-      const destPath = `${FileSystem.cacheDirectory}${fileName}`;
+      const destPath = `${FS.cacheDirectory}${fileName}`;
 
-      const { status } = await FileSystem.downloadAsync(url, destPath);
-      if (status !== 200) throw new Error('Error al descargar');
+      const dlResult = await FS.downloadAsync(url, destPath);
+      if (dlResult.status !== 200) throw new Error('Error al descargar');
 
-      // Intentar guardar en la galería de fotos si es imagen o video
-      if (['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'].includes(ext)) {
+      // Intentar guardar en galería si es imagen/video
+      const isPhoto = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'mp4', 'mov', 'avi'].includes(ext);
+      if (isPhoto) {
         try {
-          const MediaLibrary = await import('expo-media-library').catch(() => null);
-          if (MediaLibrary) {
-            const perm = await MediaLibrary.requestPermissionsAsync();
-            if (perm.status === 'granted') {
-              await MediaLibrary.saveToLibraryAsync(destPath);
+          const ml = await import('expo-media-library').catch(() => null);
+          if (ml) {
+            const perm = await (ml as any).requestPermissionsAsync?.();
+            if (perm?.status === 'granted') {
+              await (ml as any).saveToLibraryAsync(destPath);
               toast.success('Guardado en galería ✓');
               return;
             }
           }
-        } catch { /* MediaLibrary no disponible — usar Share */ }
+        } catch { /* sin permisos o no disponible — usar Share */ }
       }
 
-      // Fallback: Share nativo (permite guardar en Files, WhatsApp, etc.)
-      await Share.share({
-        url: destPath,
-        title: fileName,
-      });
+      // Fallback: Share nativo
+      await Share.share({ url: destPath, title: fileName });
     } catch (e: any) {
       toast.error('No se pudo descargar', e?.message || '');
     }
