@@ -253,25 +253,38 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
     onClose();
   };
 
-  const secondaryOptions = [
-    { icon: <IcoInstagram />, label: 'Compartir en Instagram', onPress: handleInstagram },
-    { icon: <IcoCopy />,     label: 'Copiar',                  onPress: handleCopy },
-    { icon: <IcoSticker />,  label: 'Crear sticker',           onPress: onClose },
-    { icon: <IcoProfile />,  label: 'Elegir como mi foto del perfil', onPress: () => { onSetProfilePhoto?.(); onClose(); } },
-    { icon: <IcoSearch />,   label: 'Buscar en la web',        onPress: onClose },
-    { icon: <IcoWallpaper />,label: 'Establecer como fondo',   onPress: () => { onSetWallpaper?.(); onClose(); } },
+  // Acciones principales con colores pastel suaves
+  const mainActions = [
+    { icon: <IcoSave />,         label: 'Guardar',   color: '#10b981', bg: 'rgba(16,185,129,0.15)', onPress: () => { onSave(); onClose(); } },
+    { icon: <IcoShareSheet />,   label: 'Compartir', color: '#6366f1', bg: 'rgba(99,102,241,0.15)', onPress: handleShare },
+    { icon: <IcoForwardSheet />, label: 'Reenviar',  color: '#f59e0b', bg: 'rgba(245,158,11,0.15)', onPress: () => { onForward(); onClose(); } },
+  ];
+
+  // Opciones secundarias en mosaico 3×2
+  const gridOptions = [
+    { icon: <IcoInstagram />, label: 'Instagram',     color: '#e1306c', bg: 'rgba(225,48,108,0.15)',  onPress: handleInstagram },
+    { icon: <IcoCopy />,      label: 'Copiar',        color: '#0ea5e9', bg: 'rgba(14,165,233,0.15)',  onPress: handleCopy },
+    { icon: <IcoSticker />,   label: 'Sticker',       color: '#a855f7', bg: 'rgba(168,85,247,0.15)',  onPress: onClose },
+    { icon: <IcoProfile />,   label: 'Foto perfil',   color: '#14b8a6', bg: 'rgba(20,184,166,0.15)',  onPress: () => { onSetProfilePhoto?.(); onClose(); } },
+    { icon: <IcoSearch />,    label: 'Buscar web',    color: '#f97316', bg: 'rgba(249,115,22,0.15)',  onPress: onClose },
+    { icon: <IcoWallpaper />, label: 'Fondo',         color: '#ec4899', bg: 'rgba(236,72,153,0.15)',  onPress: () => { onSetWallpaper?.(); onClose(); } },
   ];
 
   return (
     <Modal visible={visible} transparent animationType="none" onRequestClose={onClose}>
-      {/* Overlay oscuro */}
-      <TouchableOpacity style={ss.overlay} activeOpacity={1} onPress={onClose} />
+      {/* Overlay con blur */}
+      <Pressable style={ss.overlay} onPress={onClose}>
+        <BlurView intensity={40} tint="dark" style={StyleSheet.absoluteFill} />
+      </Pressable>
 
       <Animated.View style={[ss.sheet, { transform: [{ translateY: slideAnim }] }]}>
+        {/* Fondo glassmorphism */}
+        <BlurView intensity={80} tint="light" style={StyleSheet.absoluteFill} />
+
         {/* Handle */}
         <View style={ss.handle} />
 
-        {/* Cabecera con avatar + nombre + fecha + X */}
+        {/* Cabecera */}
         <View style={ss.sheetHeader}>
           {item.type === 'image' || !item.type ? (
             <Image source={{ uri: item.uri }} style={ss.previewThumb} resizeMode="cover" />
@@ -289,35 +302,37 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
           </TouchableOpacity>
         </View>
 
-        {/* Acciones principales */}
-        <View style={ss.mainActions}>
-          {[
-            { icon: <IcoSave />,         label: 'Guardar',    onPress: () => { onSave(); onClose(); } },
-            { icon: <IcoShareSheet />,   label: 'Compartir',  onPress: handleShare },
-            { icon: <IcoForwardSheet />, label: 'Reenviar',   onPress: () => { onForward(); onClose(); } },
-          ].map(a => (
-            <TouchableOpacity key={a.label} style={ss.mainAction} onPress={a.onPress} activeOpacity={0.7}>
-              <View style={ss.mainActionCircle}>{a.icon}</View>
-              <Text style={ss.mainActionLabel}>{a.label}</Text>
+        {/* ── Acciones principales ─ fila de 3 ── */}
+        <View style={ss.mainRow}>
+          {mainActions.map(a => (
+            <TouchableOpacity key={a.label} style={ss.mainTile} onPress={a.onPress} activeOpacity={0.75}>
+              <View style={[ss.mainCircle, { backgroundColor: a.bg, borderColor: a.color + '40' }]}>
+                <View style={[ss.mainCircleInner, { backgroundColor: a.color }]}>
+                  {a.icon}
+                </View>
+              </View>
+              <Text style={ss.mainLabel}>{a.label}</Text>
             </TouchableOpacity>
           ))}
         </View>
 
-        {/* Separador */}
         <View style={ss.sep} />
 
-        {/* Opciones secundarias */}
-        {secondaryOptions.map((opt, i) => (
-          <React.Fragment key={opt.label}>
-            <TouchableOpacity style={ss.secRow} onPress={opt.onPress} activeOpacity={0.7}>
-              <Text style={ss.secLabel}>{opt.label}</Text>
-              <View style={ss.secIcon}>{opt.icon}</View>
+        {/* ── Mosaico 3×2 opciones secundarias ── */}
+        <View style={ss.grid}>
+          {gridOptions.map(opt => (
+            <TouchableOpacity key={opt.label} style={ss.gridTile} onPress={opt.onPress} activeOpacity={0.75}>
+              <View style={[ss.gridIcon, { backgroundColor: opt.bg, borderColor: opt.color + '30' }]}>
+                <View style={[ss.gridIconInner, { backgroundColor: opt.color }]}>
+                  {opt.icon}
+                </View>
+              </View>
+              <Text style={ss.gridLabel}>{opt.label}</Text>
             </TouchableOpacity>
-            {i < secondaryOptions.length - 1 && <View style={ss.secDivider} />}
-          </React.Fragment>
-        ))}
+          ))}
+        </View>
 
-        <View style={{ height: Platform.OS === 'ios' ? 34 : 16 }} />
+        <View style={{ height: Platform.OS === 'ios' ? 28 : 16 }} />
       </Animated.View>
     </Modal>
   );
