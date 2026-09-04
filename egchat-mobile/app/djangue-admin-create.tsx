@@ -392,7 +392,7 @@ export default function DjangueAdminCreateScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F1EAD9' },
+  root: { flex: 1, backgroundColor: '#C9A227' },
   header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
