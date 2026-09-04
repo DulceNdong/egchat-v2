@@ -499,35 +499,48 @@ const getCoverGradient = (title: string): [string, string] => {
   return COVER_PALETTES[Math.abs(hash) % COVER_PALETTES.length];
 };
 
-// ── MusicCard — tarjeta de música estilo Apple Music ──────────────
+// ── MusicCard — tarjeta de música con play/pausa y seek táctil ────
 const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
   const [playing, setPlaying]   = useState(false);
-  const [progress, setProgress] = useState(0);   // 0–1
-  const [duration, setDuration] = useState(0);   // segundos
-  const [position, setPosition] = useState(0);   // segundos
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [position, setPosition] = useState(0);
+  const [loading, setLoading]   = useState(false);
   const soundRef    = useRef<Audio.Sound | null>(null);
   const audioElRef  = useRef<HTMLAudioElement | null>(null);
+  const trackWidthRef = useRef(0);
   const spinAnim    = useRef(new Animated.Value(0)).current;
+  const pulseAnim   = useRef(new Animated.Value(1)).current;
   const isWeb       = typeof document !== 'undefined';
 
-  const rawText          = message.text || message.file_url?.split('/').pop() || '';
+  const rawText           = message.text || message.file_url?.split('/').pop() || '';
   const { title, artist } = parseTrackInfo(rawText);
-  const [gradA, gradB]   = getCoverGradient(title);
-  const url              = message.file_url || '';
+  const [gradA, gradB]    = getCoverGradient(title);
+  const url               = message.file_url || '';
+  const accentColor       = isOwn ? '#00c8a0' : '#667eea';
 
   const fmtTime = (s: number) =>
     `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 
-  // Disco giratorio cuando reproduce
+  // Animación disco giratorio
   useEffect(() => {
     if (playing) {
       Animated.loop(
-        Animated.timing(spinAnim, { toValue: 1, duration: 4000, useNativeDriver: true })
+        Animated.timing(spinAnim, { toValue: 1, duration: 5000, useNativeDriver: true })
+      ).start();
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.06, duration: 800, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1.0,  duration: 800, useNativeDriver: true }),
+        ])
       ).start();
     } else {
       spinAnim.stopAnimation();
+      pulseAnim.stopAnimation();
+      Animated.timing(pulseAnim, { toValue: 1, duration: 200, useNativeDriver: true }).start();
     }
   }, [playing]);
+
   const spin = spinAnim.interpolate({ inputRange: [0, 1], outputRange: ['0deg', '360deg'] });
 
   // Web: elemento <audio> oculto
@@ -535,15 +548,12 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
     if (!isWeb || !url) return;
     const el = new (window as any).Audio(url) as HTMLAudioElement;
     el.preload = 'metadata';
-    el.onloadedmetadata = () => setDuration(el.duration);
+    el.onloadedmetadata = () => setDuration(el.duration || 0);
     el.ontimeupdate = () => {
       setPosition(el.currentTime);
       setProgress(el.duration ? el.currentTime / el.duration : 0);
     };
-    el.onended = () => {
-      setPlaying(false); setProgress(0); setPosition(0);
-      el.currentTime = 0;
-    };
+    el.onended = () => { setPlaying(false); setProgress(0); setPosition(0); el.currentTime = 0; };
     audioElRef.current = el;
     return () => { el.pause(); el.src = ''; audioElRef.current = null; };
   }, [isWeb, url]);
@@ -566,7 +576,8 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           return;
         }
       }
-      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true });
+      setLoading(true);
+      await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, allowsRecordingIOS: false });
       const { sound } = await Audio.Sound.createAsync(
         { uri: url }, { shouldPlay: true },
         (st) => {
@@ -574,7 +585,7 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           const dur = (st.durationMillis || 0) / 1000;
           const pos = (st.positionMillis || 0) / 1000;
           setDuration(dur); setPosition(pos);
-          setProgress(dur ? pos / dur : 0);
+          setProgress(dur > 0 ? pos / dur : 0);
           if (st.didJustFinish) {
             setPlaying(false); setProgress(0); setPosition(0);
             sound.setPositionAsync(0).catch(() => {});
@@ -583,39 +594,68 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
       );
       soundRef.current = sound;
       setPlaying(true);
-    } catch {}
+    } catch {
+      // silenciar error de audio
+    } finally {
+      setLoading(false);
+    }
   }, [url, playing, isWeb]);
+
+  // Seek nativo via PanResponder en la barra de progreso
+  const seekPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / trackWidthRef.current));
+        applySeek(ratio);
+      },
+      onPanResponderMove: (evt) => {
+        const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / trackWidthRef.current));
+        applySeek(ratio);
+      },
+    })
+  ).current;
+
+  const applySeek = (ratio: number) => {
+    setProgress(ratio);
+    if (isWeb && audioElRef.current) {
+      audioElRef.current.currentTime = ratio * (audioElRef.current.duration || 0);
+      return;
+    }
+    soundRef.current?.getStatusAsync().then(st => {
+      if (st.isLoaded && st.durationMillis) {
+        soundRef.current?.setPositionAsync(ratio * st.durationMillis).catch(() => {});
+      }
+    }).catch(() => {});
+  };
 
   useEffect(() => () => { soundRef.current?.unloadAsync().catch(() => {}); }, []);
 
-  // Seek al tocar la barra de progreso (web)
-  const handleSeek = useCallback((ratio: number) => {
-    if (isWeb && audioElRef.current) {
-      audioElRef.current.currentTime = ratio * audioElRef.current.duration;
-    }
-  }, [isWeb]);
-
   const initials = title.slice(0, 2).toUpperCase();
+  const pct = Math.round(progress * 100);
 
   return (
     <View style={mc.card}>
-      {/* Portada de álbum */}
-      <View style={mc.cover}>
+      {/* ── Portada con disco giratorio ── */}
+      <Animated.View style={[mc.coverWrap, { transform: [{ scale: pulseAnim }] }]}>
         <LinearGradient colors={[gradA, gradB]} style={mc.coverGrad}>
           <Animated.View style={[mc.disc, { transform: [{ rotate: spin }] }]}>
-            <LinearGradient colors={['#1a1a2e', '#16213e']} style={mc.discInner}>
+            <LinearGradient colors={['#111827', '#1f2937']} style={mc.discInner}>
               <View style={mc.discHole} />
             </LinearGradient>
           </Animated.View>
           <Text style={mc.coverInitials}>{initials}</Text>
         </LinearGradient>
-        {/* Badge musical */}
-        <View style={mc.badge}>
-          <Text style={mc.badgeNote}>♪</Text>
+        {/* Badge verde Spotify-style */}
+        <View style={[mc.badge, { backgroundColor: accentColor }]}>
+          <Svg width={10} height={10} viewBox="0 0 24 24" fill="#fff">
+            <Path d="M9 18V5l12-2v13M6 21a3 3 0 1 0 0-6 3 3 0 0 0 0 6zm12-2a3 3 0 1 0 0-6 3 3 0 0 0 0 6z"/>
+          </Svg>
         </View>
-      </View>
+      </Animated.View>
 
-      {/* Info + controles */}
+      {/* ── Info + controles ── */}
       <View style={mc.right}>
         {/* Título y artista */}
         <View style={mc.titleRow}>
@@ -623,32 +663,36 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
           <Text style={mc.artist} numberOfLines={1}>{artist}</Text>
         </View>
 
-        {/* Barra de progreso */}
-        <TouchableOpacity
+        {/* Barra de progreso con seek táctil (nativo + web) */}
+        <View
           style={mc.progressTrack}
-          activeOpacity={0.8}
-          onPress={(e) => {
-            if (!isWeb) return;
-            // @ts-ignore
-            const rect = e.nativeEvent.target?.getBoundingClientRect?.();
-            if (rect) handleSeek((e.nativeEvent.pageX - rect.left) / rect.width);
-          }}
+          onLayout={e => { trackWidthRef.current = e.nativeEvent.layout.width; }}
+          {...seekPanResponder.panHandlers}
         >
-          <View style={[mc.progressFill, { width: `${Math.round(progress * 100)}%` as any }]} />
-          <View style={[mc.progressThumb, { left: `${Math.round(progress * 100)}%` as any }]} />
-        </TouchableOpacity>
+          <View style={[mc.progressBg]} />
+          <View style={[mc.progressFill, { width: `${pct}%` as any, backgroundColor: accentColor }]} />
+          <View style={[mc.progressThumb, { left: `${pct}%` as any, backgroundColor: accentColor }]} />
+        </View>
 
-        {/* Tiempo + botón play */}
+        {/* Tiempo + botón play central */}
         <View style={mc.controls}>
-          <Text style={mc.timeText}>
-            {position > 0 ? fmtTime(position) : '0:00'}
-          </Text>
-          <TouchableOpacity onPress={togglePlay} style={mc.playBtn} activeOpacity={0.85}>
+          <Text style={mc.timeText}>{position > 0 ? fmtTime(position) : '0:00'}</Text>
+
+          <TouchableOpacity
+            onPress={togglePlay}
+            style={mc.playBtn}
+            activeOpacity={0.85}
+            accessibilityLabel={playing ? 'Pausar' : 'Reproducir'}
+            accessibilityRole="button"
+            disabled={loading}
+          >
             <LinearGradient
               colors={isOwn ? ['#00c8a0', '#00b4e6'] : ['#667eea', '#764ba2']}
               style={mc.playBtnGrad}
             >
-              {playing ? (
+              {loading ? (
+                <ActivityIndicator color="#fff" size="small" />
+              ) : playing ? (
                 <View style={mc.pauseWrap}>
                   <View style={mc.pauseBar} />
                   <View style={mc.pauseBar} />
@@ -658,7 +702,8 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
               )}
             </LinearGradient>
           </TouchableOpacity>
-          <Text style={mc.timeText}>
+
+          <Text style={[mc.timeText, { textAlign: 'right' }]}>
             {duration > 0 ? fmtTime(duration) : '--:--'}
           </Text>
         </View>
@@ -671,86 +716,78 @@ const mc = StyleSheet.create({
   card: {
     flexDirection: 'row',
     gap: 12,
-    minWidth: 240,
-    maxWidth: 300,
-    paddingVertical: 6,
+    minWidth: 250,
+    maxWidth: 310,
+    paddingVertical: 4,
     alignItems: 'center',
   },
-  // Portada
-  cover: { position: 'relative', width: 72, height: 72, flexShrink: 0 },
+  coverWrap: { position: 'relative', width: 68, height: 68, flexShrink: 0 },
   coverGrad: {
-    width: 72, height: 72, borderRadius: 10,
+    width: 68, height: 68, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
     overflow: 'hidden',
   },
   disc: {
     position: 'absolute',
-    width: 50, height: 50, borderRadius: 25,
+    width: 48, height: 48, borderRadius: 24,
     alignItems: 'center', justifyContent: 'center',
-    opacity: 0.35,
+    opacity: 0.4,
   },
-  discInner: { width: 50, height: 50, borderRadius: 25, alignItems: 'center', justifyContent: 'center' },
-  discHole: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.6)' },
+  discInner: { width: 48, height: 48, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  discHole: { width: 7, height: 7, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.5)' },
   coverInitials: {
-    fontSize: 22, fontWeight: '900', color: 'rgba(255,255,255,0.9)',
-    textShadowColor: 'rgba(0,0,0,0.3)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
+    fontSize: 20, fontWeight: '900', color: 'rgba(255,255,255,0.92)',
+    textShadowColor: 'rgba(0,0,0,0.35)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 4,
   },
   badge: {
-    position: 'absolute', bottom: -4, right: -4,
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: '#1DB954',
+    position: 'absolute', bottom: -5, right: -5,
+    width: 22, height: 22, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     borderWidth: 2, borderColor: '#fff',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2, elevation: 3,
   },
-  badgeNote: { fontSize: 10, color: '#fff', fontWeight: '700' },
-  // Info
-  right: { flex: 1, gap: 6 },
-  titleRow: { gap: 2 },
-  title: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
-  artist: { fontSize: 12, color: '#6b7280', fontWeight: '500' },
-  // Progreso
+  right: { flex: 1, gap: 7 },
+  titleRow: { gap: 1 },
+  title: { fontSize: 13, fontWeight: '700', color: '#111827', lineHeight: 17 },
+  artist: { fontSize: 11, color: '#6b7280', fontWeight: '500' },
   progressTrack: {
-    height: 4, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.10)',
-    position: 'relative', overflow: 'visible',
+    height: 18, justifyContent: 'center',
+    position: 'relative',
+  },
+  progressBg: {
+    position: 'absolute', left: 0, right: 0,
+    height: 3, borderRadius: 2, backgroundColor: 'rgba(0,0,0,0.10)',
   },
   progressFill: {
-    height: 4, borderRadius: 2,
-    backgroundColor: '#1DB954',
-    position: 'absolute', left: 0, top: 0,
+    height: 3, borderRadius: 2,
+    position: 'absolute', left: 0, top: 7,
   },
   progressThumb: {
-    width: 10, height: 10, borderRadius: 5,
-    backgroundColor: '#1DB954',
-    position: 'absolute', top: -3,
+    width: 11, height: 11, borderRadius: 6,
+    position: 'absolute', top: 3,
     marginLeft: -5,
-    shadowColor: '#1DB954',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.6,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#1DB954',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.3, shadowRadius: 2, elevation: 3,
   },
-  // Controles
   controls: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  timeText: { fontSize: 10, color: '#9ca3af', fontWeight: '600', minWidth: 32 },
-  playBtn: { marginHorizontal: 4 },
+  timeText: { fontSize: 10, color: '#9ca3af', fontWeight: '600', minWidth: 34 },
+  playBtn: {},
   playBtnGrad: {
-    width: 38, height: 38, borderRadius: 19,
+    width: 36, height: 36, borderRadius: 18,
     alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 4,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.22, shadowRadius: 4, elevation: 5,
   },
   playTriangle: {
     width: 0, height: 0,
-    borderTopWidth: 7, borderBottomWidth: 7, borderLeftWidth: 13,
+    borderTopWidth: 6, borderBottomWidth: 6, borderLeftWidth: 11,
     borderTopColor: 'transparent', borderBottomColor: 'transparent',
     borderLeftColor: '#fff',
     marginLeft: 3,
   },
   pauseWrap: { flexDirection: 'row', gap: 4, alignItems: 'center' },
-  pauseBar: { width: 3, height: 14, borderRadius: 2, backgroundColor: '#fff' },
+  pauseBar: { width: 3, height: 13, borderRadius: 2, backgroundColor: '#fff' },
 });
 
 // ── Tarjeta CONTACTO ──────────────────────────────────────────────
