@@ -407,9 +407,8 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
   );
 };
 
-const GRID_GAP = 10;
-const GRID_COLS = 3;
-const GRID_TILE_W = (W - 28 - GRID_GAP * (GRID_COLS - 1)) / GRID_COLS;
+const TILE_GAP = 8;
+const TILE_W = (W - 28 - TILE_GAP * 3) / 4;
 
 const ss = StyleSheet.create({
   overlay: { ...StyleSheet.absoluteFillObject },
@@ -443,49 +442,32 @@ const ss = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.15)',
     alignItems: 'center', justifyContent: 'center',
   },
-  // Fila de 3 acciones principales
-  mainRow: {
-    flexDirection: 'row', justifyContent: 'space-around',
-    paddingHorizontal: 12, paddingBottom: 12,
+  // Filas de 4
+  row: {
+    flexDirection: 'row', justifyContent: 'space-between',
+    paddingHorizontal: 14, paddingVertical: 10,
+    gap: TILE_GAP,
   },
-  mainTile: { alignItems: 'center', gap: 5, flex: 1 },
-  mainCircle: {
-    width: 54, height: 54, borderRadius: 16,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-  },
-  mainCircleInner: {
-    width: 42, height: 42, borderRadius: 12,
+  tile: { width: TILE_W, alignItems: 'center', gap: 6 },
+  tileIcon: {
+    width: TILE_W, height: TILE_W,
+    borderRadius: 18, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
   },
-  mainLabel: { fontSize: 11, fontWeight: '600', color: 'rgba(255,255,255,0.9)' },
+  tileIconInner: {
+    width: TILE_W - 14, height: TILE_W - 14,
+    borderRadius: 14,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  tileLabel: {
+    fontSize: 10, fontWeight: '600',
+    color: 'rgba(255,255,255,0.85)', textAlign: 'center',
+  },
   sep: {
     height: StyleSheet.hairlineWidth,
     backgroundColor: 'rgba(255,255,255,0.15)',
-    marginHorizontal: 14, marginBottom: 10,
+    marginHorizontal: 14,
   },
-  // Grid 3+2 centrado
-  grid: {
-    flexDirection: 'row', flexWrap: 'wrap',
-    paddingHorizontal: 14, gap: 8,
-    marginBottom: 6,
-    justifyContent: 'center',
-  },
-  gridTile: {
-    width: GRID_TILE_W, alignItems: 'center', gap: 5,
-    paddingVertical: 10, borderRadius: 14,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  gridIcon: {
-    width: 42, height: 42, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-  },
-  gridIconInner: {
-    width: 32, height: 32, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  gridLabel: { fontSize: 10, fontWeight: '600', color: 'rgba(255,255,255,0.85)', textAlign: 'center' },
 });
 
 // ─── Picker de reacciones ─────────────────────────────────────────
