@@ -2235,6 +2235,13 @@ export default function ChatScreen() {
         onEdit={handleEditMessage}
         onForward={handleForwardMessage}
         onDownload={handleDownloadMedia}
+        onSelectMode={() => {
+          setContextVisible(false);
+          if (contextMsg) {
+            setIsSelectMode(true);
+            setSelectedIds(new Set([contextMsg.id]));
+          }
+        }}
         onEditHistory={() => {
           if (contextMsg?.edited) setEditHistoryMsg(contextMsg);
           setContextVisible(false);
