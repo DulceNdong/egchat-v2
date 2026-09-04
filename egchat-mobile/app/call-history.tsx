@@ -9,7 +9,7 @@ import {
   StyleSheet, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import Svg, { Path, Polygon, Rect, Line, Circle } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
