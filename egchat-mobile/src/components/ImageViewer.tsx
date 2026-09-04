@@ -576,10 +576,19 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
     thumbRef.current?.scrollToIndex({ index: newIdx, animated: true });
   };
 
-  const handleShare = async () => {
+  const handleShare = () => {
+    setShowShare(true);
+  };
+
+  const handleSave = async () => {
     try {
-      await Share.share({ url: current.uri, message: current.name || '' });
-    } catch {}
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería'); return; }
+      await MediaLibrary.saveToLibraryAsync(current.uri);
+      Alert.alert('', 'Guardado en la galería ✓');
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el archivo');
+    }
   };
 
   const handleDelete = () => {
