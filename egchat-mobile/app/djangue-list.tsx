@@ -285,7 +285,7 @@ export default function DjangueListScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F5F7FA' },
+  root: { flex: 1, backgroundColor: '#00C8A0' },
   header: { paddingBottom: 16 },
   headerRow: {
     flexDirection: 'row',
