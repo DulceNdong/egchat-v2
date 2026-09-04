@@ -329,18 +329,23 @@ export const authAPI = {
       if (isGenericName || serverUser?._offline) {
         const cached = await sessionManager.getUser();
         const cachedNameFromProfile = serverUser?.id ? await getLocalProfile(serverUser.id) : null;
-        
-        const realName = cachedNameFromProfile || 
-          (cached?.full_name && cached.full_name !== 'Usuario EGCHAT' && !cached.full_name.startsWith('Usuario ')
-            ? cached.full_name
-            : serverUser.full_name);
+
+        const isRealName = (n?: string | null) =>
+          !!n && n !== 'Usuario EGCHAT' && !n.startsWith('Usuario +') && !n.startsWith('Usuario ');
+
+        // Prioridad: 1) perfil local (AsyncStorage), 2) sesión guardada, 3) nombre del servidor (genérico)
+        const realName =
+          (isRealName(cachedNameFromProfile) ? cachedNameFromProfile : null) ||
+          (isRealName(cached?.full_name) ? cached!.full_name : null) ||
+          serverUser.full_name;
 
         const merged = {
           ...serverUser,
           full_name: realName,
-          avatar_url: cached?.avatar_url ?? serverUser.avatar_url,
+          // Preferir avatar del servidor si es válido, si no usar el cacheado
+          avatar_url: serverUser.avatar_url || cached?.avatar_url,
         };
-        
+
         if (token) await sessionManager.saveSession(merged, token);
         return merged;
       }

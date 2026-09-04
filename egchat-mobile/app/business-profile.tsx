@@ -262,7 +262,11 @@ export default function BusinessProfileScreen() {
                 {item.image
                   ? <Image source={{ uri: item.image }} style={s.catalogImg} resizeMode="cover" />
                   : <View style={[s.catalogImgPlaceholder, { backgroundColor: '#07a47215' }]}>
-                      <Text style={{ fontSize: 32 }}>📦</Text>
+                      <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                        <Path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
+                        <Polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+                        <Line x1="12" y1="22.08" x2="12" y2="12"/>
+                      </Svg>
                     </View>
                 }
                 <View style={s.catalogInfo}>
@@ -272,10 +276,18 @@ export default function BusinessProfileScreen() {
                 </View>
                 <View style={s.catalogActions}>
                   <TouchableOpacity onPress={() => { setEditItem(item); setShowAddItem(true); }} style={s.catalogBtn}>
-                    <Text style={[s.catalogBtnText, { color: C.textTertiary }]}>✏️</Text>
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/>
+                      <Path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/>
+                    </Svg>
                   </TouchableOpacity>
                   <TouchableOpacity onPress={() => handleDeleteItem(item.id)} style={s.catalogBtn}>
-                    <Text style={s.catalogBtnText}>🗑</Text>
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Polyline points="3 6 5 6 21 6"/>
+                      <Path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+                      <Path d="M10 11v6M14 11v6"/>
+                      <Path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+                    </Svg>
                   </TouchableOpacity>
                 </View>
               </View>

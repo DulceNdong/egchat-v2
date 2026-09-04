@@ -330,7 +330,7 @@ const styles = StyleSheet.create({
   header: {
     position: 'absolute', top: 0, left: 0, right: 0,
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm,
+    paddingHorizontal: Spacing.md, paddingBottom: Spacing.sm, paddingTop: Spacing.sm,
   },
   closeBtn: {
     width: 40, height: 40, borderRadius: 20,
