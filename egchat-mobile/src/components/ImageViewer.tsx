@@ -238,41 +238,40 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
   const handleSave = async () => {
     onClose();
     try {
-      const { default: MediaLibrary } = await import('expo-media-library');
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Permiso requerido', 'Necesitas permitir acceso a la galería'); return; }
-      // Si es URL remota, primero descargamos
+      const Sharing = await import('expo-sharing').catch(() => null);
+      const FS = (await import('expo-file-system/legacy')).default;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
-        const { default: FS } = await import('expo-file-system');
         const dest = `${FS.cacheDirectory}egchat_save_${Date.now()}.jpg`;
         await FS.downloadAsync(item.uri, dest);
         localUri = dest;
       }
-      await MediaLibrary.saveToLibraryAsync(localUri);
-      Alert.alert('✓ Guardado', 'Imagen guardada en tu galería');
-    } catch (e) {
+      if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
+        await (Sharing as any).shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: 'Guardar imagen' });
+      } else {
+        Alert.alert('✓ Descargado', 'Imagen lista para guardar');
+      }
+    } catch {
       Alert.alert('Error', 'No se pudo guardar la imagen');
     }
   };
 
-  // ── 2. COMPARTIR con lista de contactos / apps del sistema ──────
+  // ── 2. COMPARTIR con apps del sistema ──────────────────────────
   const handleShare = async () => {
     onClose();
     try {
-      const { default: Sharing } = await import('expo-sharing');
-      const isAvailable = await Sharing.isAvailableAsync();
-      if (isAvailable) {
-        let localUri = item.uri;
-        if (item.uri.startsWith('http')) {
-          const { default: FS } = await import('expo-file-system');
-          const dest = `${FS.cacheDirectory}egchat_share_${Date.now()}.jpg`;
-          await FS.downloadAsync(item.uri, dest);
-          localUri = dest;
-        }
-        await Sharing.shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: 'Compartir imagen' });
+      const Sharing = await import('expo-sharing').catch(() => null);
+      const FS = (await import('expo-file-system/legacy')).default;
+      let localUri = item.uri;
+      if (item.uri.startsWith('http')) {
+        const dest = `${FS.cacheDirectory}egchat_share_${Date.now()}.jpg`;
+        await FS.downloadAsync(item.uri, dest);
+        localUri = dest;
+      }
+      if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
+        await (Sharing as any).shareAsync(localUri, { mimeType: 'image/jpeg', dialogTitle: 'Compartir imagen' });
       } else {
-        await Share.share({ url: item.uri, message: item.name || '' });
+        await Share.share({ url: localUri, message: item.name || '' });
       }
     } catch {}
   };
@@ -284,36 +283,36 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
   const handleCopy = async () => {
     onClose();
     try {
-      const { default: Clipboard } = await import('expo-clipboard');
-      // En móvil copiamos la URL; en iOS 14+ se puede copiar la imagen directamente
-      await Clipboard.setStringAsync(item.uri);
+      const Clipboard = await import('expo-clipboard');
+      await (Clipboard as any).default?.setStringAsync?.(item.uri) ?? (Clipboard as any).setStringAsync?.(item.uri);
       Alert.alert('✓ Copiado', 'Enlace de imagen copiado');
     } catch {
       Alert.alert('Error', 'No se pudo copiar');
     }
   };
 
-  // ── 5. CREAR STICKER — recortar a cuadrado y guardar ──────────
+  // ── 5. CREAR STICKER — redimensionar 512×512 y guardar ────────
   const handleSticker = async () => {
     onClose();
     try {
-      const { default: ImageManipulator, SaveFormat } = await import('expo-image-manipulator');
-      const { default: MediaLibrary } = await import('expo-media-library');
+      const { manipulateAsync, SaveFormat } = await import('expo-image-manipulator');
+      const FS = (await import('expo-file-system/legacy')).default;
       let localUri = item.uri;
       if (item.uri.startsWith('http')) {
-        const { default: FS } = await import('expo-file-system');
         const dest = `${FS.cacheDirectory}egchat_stk_${Date.now()}.jpg`;
         await FS.downloadAsync(item.uri, dest);
         localUri = dest;
       }
-      const result = await ImageManipulator.manipulateAsync(
+      const result = await manipulateAsync(
         localUri,
         [{ resize: { width: 512, height: 512 } }],
         { compress: 0.9, format: SaveFormat.WEBP }
       );
-      const { status } = await MediaLibrary.requestPermissionsAsync();
-      if (status === 'granted') await MediaLibrary.saveToLibraryAsync(result.uri);
-      Alert.alert('✓ Sticker creado', 'Guardado en tu galería como sticker 512×512');
+      const Sharing = await import('expo-sharing').catch(() => null);
+      if (Sharing && (await (Sharing as any).isAvailableAsync?.())) {
+        await (Sharing as any).shareAsync(result.uri, { mimeType: 'image/webp', dialogTitle: 'Guardar sticker' });
+      }
+      Alert.alert('✓ Sticker listo', 'Sticker 512×512 generado');
     } catch {
       Alert.alert('Error', 'No se pudo crear el sticker');
     }
@@ -322,20 +321,13 @@ const ShareSheet: React.FC<ShareSheetProps> = ({
   // ── 6. FOTO DE PERFIL ──────────────────────────────────────────
   const handleProfile = () => { onSetProfilePhoto?.(); onClose(); };
 
-  // ── 7. BUSCAR EN LA WEB (Google Lens / búsqueda por imagen) ────
+  // ── 7. BUSCAR EN LA WEB (Google Lens) ─────────────────────────
   const handleSearchWeb = async () => {
     onClose();
     try {
-      const { default: Linking } = await import('expo-linking');
-      // Google Lens para búsqueda por imagen
+      const { openURL } = await import('expo-linking');
       const lensUrl = `https://lens.google.com/uploadbyurl?url=${encodeURIComponent(item.uri)}`;
-      const supported = await Linking.canOpenURL(lensUrl);
-      if (supported) {
-        await Linking.openURL(lensUrl);
-      } else {
-        // Fallback: Google Images search
-        await Linking.openURL(`https://www.google.com/searchbyimage?image_url=${encodeURIComponent(item.uri)}`);
-      }
+      await openURL(lensUrl);
     } catch {
       Alert.alert('Error', 'No se pudo abrir el navegador');
     }
