@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Rect, Circle, Line, Polyline } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { GQBank } from '../../data/serviciosFinancieros';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
