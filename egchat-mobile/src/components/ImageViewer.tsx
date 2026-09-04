@@ -12,7 +12,7 @@
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
-  View, Image, TouchableOpacity, Text, Modal, StyleSheet,
+  View, Image, TouchableOpacity, Pressable, Text, Modal, StyleSheet,
   Dimensions, FlatList, Animated, ActivityIndicator,
   StatusBar, Platform, Share, Alert, Clipboard,
 } from 'react-native';
