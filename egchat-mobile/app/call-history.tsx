@@ -180,7 +180,7 @@ export default function CallHistoryScreen() {
     : <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"><Path d="M17 7L7 17M17 17H7V7"/></Svg>;
 
   return (
-    <SafeAreaView style={s.root} edges={['top']}>
+    <SafeAreaView style={s.root} edges={['left', 'right']}>
       <LinearGradient colors={['#00b4e6', '#0088cc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
