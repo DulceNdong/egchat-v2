@@ -1,0 +1,15 @@
+{
+  "version": "v1",
+  "hooks": [
+    {
+      "name": "Auto commit & push al guardar",
+      "trigger": "PostFileSave",
+      "description": "Cada vez que Kiro guarda un archivo, hace commit de todos los cambios staged y hace push a origin/mobile automáticamente.",
+      "action": {
+        "type": "command",
+        "command": "cd /Users/raymonreddintone/Desktop/EGCHAT_NATIVA && git add -A && git diff --cached --quiet || git commit -m \"auto: cambios guardados por Kiro\" && git push origin mobile",
+        "timeout": 60
+      }
+    }
+  ]
+}

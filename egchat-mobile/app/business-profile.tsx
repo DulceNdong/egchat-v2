@@ -298,7 +298,11 @@ export default function BusinessProfileScreen() {
             onPress={() => { setEditItem(null); setShowAddItem(true); }}
           >
             <LinearGradient colors={['#07a472', '#00b4e6']} style={s.fabGrad}>
-              <Text style={s.fabText}>+ Añadir producto</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+                <Line x1="12" y1="5" x2="12" y2="19"/>
+                <Line x1="5" y1="12" x2="19" y2="12"/>
+              </Svg>
+              <Text style={s.fabText}>Añadir producto</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -377,8 +381,11 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
             {image
               ? <Image source={{ uri: image }} style={{ width: '100%', height: 160, borderRadius: 12 }} resizeMode="cover" />
               : <View style={[s.imgPlaceholder, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                  <Text style={{ fontSize: 32 }}>📷</Text>
-                  <Text style={{ color: C.textTertiary, marginTop: 6 }}>Añadir foto del producto</Text>
+                  <Svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                    <Circle cx="12" cy="13" r="4"/>
+                  </Svg>
+                  <Text style={{ color: C.textTertiary, marginTop: 8, fontSize: 14 }}>Añadir foto del producto</Text>
                 </View>
             }
           </TouchableOpacity>
@@ -444,7 +451,7 @@ const s = StyleSheet.create({
   saveBtnGrad: { paddingVertical: 15, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   emptycat: { alignItems: 'center', marginTop: 60, gap: 12, paddingHorizontal: 30 },
-  emptycatIcon: { fontSize: 52 },
+  emptycatIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#07a47215', alignItems: 'center', justifyContent: 'center' },
   emptycatText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
   catalogCard: { flex: 1, borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 10 },
   catalogImg: { width: '100%', height: 120 },
@@ -457,7 +464,7 @@ const s = StyleSheet.create({
   catalogBtn: { flex: 1, alignItems: 'center', paddingVertical: 8 },
   catalogBtnText: { fontSize: 16 },
   addItemFab: { position: 'absolute', left: 16, right: 16, borderRadius: 16, overflow: 'hidden' },
-  fabGrad: { paddingVertical: 14, alignItems: 'center' },
+  fabGrad: { paddingVertical: 14, alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 8 },
   fabText: { color: '#fff', fontSize: 15, fontWeight: '700' },
   imgPicker: { marginBottom: 16 },
   imgPlaceholder: { height: 160, borderRadius: 12, borderWidth: 1.5, borderStyle: 'dashed', alignItems: 'center', justifyContent: 'center', gap: 6 },

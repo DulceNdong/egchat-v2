@@ -124,8 +124,8 @@ function AjustesScreenInner() {
           merged.full_name.startsWith('Usuario ');
         setUser(prev => ({
           ...merged,
-          // si el servidor da nombre genérico pero ya tenemos uno real, conservar el real
-          full_name: serverNameIsGeneric && prev?.full_name && !serverNameIsGeneric
+          // si el servidor da nombre genérico pero ya tenemos uno real en local, conservar el real
+          full_name: serverNameIsGeneric && prev?.full_name && !prev.full_name.startsWith('Usuario ')
             ? prev.full_name
             : merged.full_name || prev?.full_name || 'Usuario',
           // conservar avatar local si el servidor no devuelve uno mejor

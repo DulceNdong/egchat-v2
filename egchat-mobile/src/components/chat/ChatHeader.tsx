@@ -2,7 +2,6 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Platform } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Polygon, Rect, Circle, G } from 'react-native-svg';
 import { EGAvatar } from '../ui';
 
@@ -35,7 +34,6 @@ export function ChatHeader({
   onGroupCall,
   onMenuPress,
 }: ChatHeaderProps) {
-  const insets = useSafeAreaInsets();
   const statusColor = isTyping ? '#a8ffdd' : isOnline ? '#a8ffdd' : 'rgba(255,255,255,0.6)';
   const statusText = isTyping ? 'Escribiendo...' : subtitle;
 
@@ -44,7 +42,7 @@ export function ChatHeader({
       colors={['#00b4e6', '#0088cc']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 0 }}
-      style={[s.wrap, { paddingTop: insets.top + (Platform.OS === 'ios' ? 4 : 6) }]}
+      style={[s.wrap, { paddingTop: Platform.OS === 'ios' ? 4 : 6 }]}
     >
       <TouchableOpacity onPress={onBack} style={s.iconBtn} hitSlop={10} activeOpacity={0.75}>
         <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
