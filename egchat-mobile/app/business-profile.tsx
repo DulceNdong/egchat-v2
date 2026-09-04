@@ -223,7 +223,12 @@ export default function BusinessProfileScreen() {
           ))}
 
           {/* Categoría */}
-          <Text style={[s.fieldLabel, { color: C.textTertiary, marginBottom: 8 }]}>Categoría</Text>
+          <View style={s.fieldLabelRow}>
+            <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
+            </Svg>
+            <Text style={[s.fieldLabel, { color: C.textTertiary }]}>Categoría</Text>
+          </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             {CATEGORIES.map(cat => (
               <TouchableOpacity
