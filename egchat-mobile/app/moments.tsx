@@ -487,9 +487,10 @@ const s = StyleSheet.create({
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 18, fontWeight: '700', color: '#fff', marginLeft: 4 },
   createBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', marginTop: 80, paddingHorizontal: 30 },
-  emptyIcon: { fontSize: 48, marginBottom: 12 },
-  emptyText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
+  empty: { alignItems: 'center', marginTop: 90, paddingHorizontal: 32 },
+  emptyIconWrap: { width: 96, height: 96, borderRadius: 28, alignItems: 'center', justifyContent: 'center', marginBottom: 20 },
+  emptyTitle: { fontSize: 17, fontWeight: '700', marginBottom: 6 },
+  emptyText: { fontSize: 14, textAlign: 'center', lineHeight: 20 },
 });
 
 const ps = StyleSheet.create({
