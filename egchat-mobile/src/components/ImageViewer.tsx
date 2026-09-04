@@ -400,6 +400,7 @@ const ss = StyleSheet.create({
     flexDirection: 'row', flexWrap: 'wrap',
     paddingHorizontal: 16, gap: GRID_GAP,
     marginBottom: 8,
+    justifyContent: 'center',
   },
   gridTile: {
     width: GRID_TILE_W, alignItems: 'center', gap: 7,
