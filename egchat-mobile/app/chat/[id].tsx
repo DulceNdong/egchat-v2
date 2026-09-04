@@ -1932,7 +1932,7 @@ export default function ChatScreen() {
             data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: inputBarHeight + activePanelHeight + 16 }]}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: inputBarHeight + activePanelHeight + 16, flexGrow: 1, justifyContent: 'flex-end' }]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
