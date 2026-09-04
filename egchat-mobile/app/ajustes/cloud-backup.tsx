@@ -28,7 +28,6 @@ export default function CloudBackupScreen() {
   const [progress, setProgress] = useState(0);
   const [progressMsg, setProgressMsg] = useState('');
   const [lastResult, setLastResult] = useState<{ size: number; chatCount: number } | null>(null);
-  const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
