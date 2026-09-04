@@ -296,7 +296,7 @@ export default function DjangueDemoScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#F1EAD9' },
+  root: { flex: 1, backgroundColor: '#10202B' },
   header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
