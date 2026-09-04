@@ -328,8 +328,12 @@ export const authAPI = {
           serverUser.full_name;
 
         const merged = {
+          ...cached,
           ...serverUser,
           full_name: realName,
+          // Siempre usar phone e id del servidor si están disponibles
+          phone: serverUser.phone || cached?.phone,
+          id: serverUser.id || cached?.id,
           // Preferir avatar del servidor si es válido, si no usar el cacheado
           avatar_url: serverUser.avatar_url || cached?.avatar_url,
         };
@@ -343,8 +347,17 @@ export const authAPI = {
         await saveLocalProfile(serverUser.id, serverUser.full_name);
       }
 
-      if (token) await sessionManager.saveSession(serverUser, token);
-      return serverUser;
+      // Siempre fusionar con caché para preservar campos que el servidor podría omitir
+      const cachedSession = await sessionManager.getUser();
+      const finalUser = {
+        ...cachedSession,
+        ...serverUser,
+        phone: serverUser.phone || cachedSession?.phone,
+        id: serverUser.id || cachedSession?.id,
+      };
+
+      if (token) await sessionManager.saveSession(finalUser, token);
+      return finalUser;
     } catch (err: any) {
       const msg = String(err?.message || '').toLowerCase();
 
