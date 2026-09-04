@@ -544,6 +544,7 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
   const opacity        = useRef(new Animated.Value(1)).current;
   const [idx, setIdx]  = useState(initialIndex);
   const [showReact, setShowReact] = useState(false);
+  const [showShare, setShowShare] = useState(false);
   const [barsVisible, setBarsVisible] = useState(true);
   const listRef        = useRef<FlatList>(null);
   const thumbRef       = useRef<FlatList>(null);
