@@ -78,7 +78,7 @@ function handleDeepLink(url: string | null) {
 
 function StatusBarController() {
   const { isDark } = useThemeContext();
-  return <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor={isDark ? '#0d1117' : Colors.bgPrimary} />;
+  return <StatusBar style="light" translucent backgroundColor="transparent" />;
 }
 
 const isAuthPath = (path: string) =>
