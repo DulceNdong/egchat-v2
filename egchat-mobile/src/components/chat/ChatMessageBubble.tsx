@@ -758,87 +758,103 @@ const mc = StyleSheet.create({
 //   línea 0: nombre
 //   línea 1: teléfono
 //   línea 2: avatar_url (opcional, puede estar vacío)
-const ContactCard = ({ text, isOwn }: { text: string; isOwn: boolean }) => {
+const ContactCard = ({
+  text,
+  isOwn,
+  onOpenContact,
+  onContactCall,
+  onContactMessage,
+}: {
+  text: string;
+  isOwn: boolean;
+  onOpenContact?: (phone: string, name: string, avatarUrl?: string) => void;
+  onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
+  onContactMessage?: (phone: string, name: string) => void;
+}) => {
   const lines = (text || '').split('\n');
   const name      = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
   const phone     = lines[1]?.replace(/^📞\s*/, '').trim() || '';
   const avatarUrl = lines[2]?.trim() || '';
   const isValidUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
+  const color = isOwn ? '#00c8a0' : '#00b4e6';
 
   return (
     <View style={cs.card}>
-      {/* Fila principal: avatar + datos */}
-      <View style={cs.row}>
-        {/* Avatar con foto de perfil si existe */}
-        <View style={cs.avatarWrap}>
-          {isValidUrl ? (
-            <Image
-              source={{ uri: avatarUrl }}
-              style={cs.avatarImg}
-              defaultSource={undefined}
-            />
-          ) : (
-            <EGAvatar name={name} size={48} />
-          )}
+      {/* Fila principal: avatar + datos — toca nombre/foto para abrir info */}
+      <TouchableOpacity
+        activeOpacity={0.75}
+        onPress={() => onOpenContact?.(phone, name, isValidUrl ? avatarUrl : undefined)}
+        accessibilityLabel={`Ver información de ${name}`}
+        accessibilityRole="button"
+      >
+        <View style={cs.row}>
+          <View style={cs.avatarWrap}>
+            {isValidUrl ? (
+              <Image source={{ uri: avatarUrl }} style={cs.avatarImg} />
+            ) : (
+              <EGAvatar name={name} size={48} />
+            )}
+          </View>
+          <View style={cs.info}>
+            <Text style={cs.name} numberOfLines={1}>{name}</Text>
+            {!!phone && <Text style={cs.phone}>{phone}</Text>}
+          </View>
         </View>
-        <View style={cs.info}>
-          <Text style={cs.name} numberOfLines={1}>{name}</Text>
-          {!!phone && <Text style={cs.phone}>{phone}</Text>}
-        </View>
-      </View>
+      </TouchableOpacity>
 
       {/* Separador */}
       <View style={[cs.divider, isOwn ? cs.divOwn : cs.divTheir]} />
 
-      {/* Acciones */}
+      {/* Acciones: Mensaje | Video | Audio */}
       <View style={cs.actions}>
+        {/* Enviar mensaje */}
         <TouchableOpacity
-          onPress={() => phone && Linking.openURL(`tel:${phone}`)}
+          onPress={() => onContactMessage?.(phone, name)}
           activeOpacity={0.7}
           style={cs.actionBtn}
-          accessibilityLabel="Llamar al contacto"
+          accessibilityLabel="Enviar mensaje"
           accessibilityRole="button"
         >
-          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
-            stroke={isOwn ? '#00c8a0' : '#00b4e6'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Mensaje</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        {/* Video llamada */}
+        <TouchableOpacity
+          onPress={() => onContactCall?.('video', phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Videollamada"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Polygon points="23 7 16 12 23 17 23 7"/>
+            <Rect x={1} y={5} width={15} height={14} rx={2}/>
+          </Svg>
+          <Text style={[cs.actionText, { color }]}>Video</Text>
+        </TouchableOpacity>
+
+        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
+
+        {/* Audio llamada */}
+        <TouchableOpacity
+          onPress={() => onContactCall?.('audio', phone, name)}
+          activeOpacity={0.7}
+          style={cs.actionBtn}
+          accessibilityLabel="Llamada de voz"
+          accessibilityRole="button"
+        >
+          <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+            stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
           </Svg>
-          <Text style={[cs.actionText, isOwn ? cs.actionOwn : cs.actionTheir]}>Llamar</Text>
-        </TouchableOpacity>
-
-        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
-
-        <TouchableOpacity
-          onPress={() => {}}
-          activeOpacity={0.7}
-          style={cs.actionBtn}
-          accessibilityLabel="Ver perfil del contacto"
-          accessibilityRole="button"
-        >
-          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
-            stroke={isOwn ? '#00c8a0' : '#00b4e6'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-            <Path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
-          </Svg>
-          <Text style={[cs.actionText, isOwn ? cs.actionOwn : cs.actionTheir]}>Ver perfil</Text>
-        </TouchableOpacity>
-
-        <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
-
-        <TouchableOpacity
-          onPress={() => phone && Linking.openURL(`https://wa.me/${phone.replace(/\D/g, '')}`)}
-          activeOpacity={0.7}
-          style={cs.actionBtn}
-          accessibilityLabel="Añadir contacto"
-          accessibilityRole="button"
-        >
-          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
-            stroke={isOwn ? '#00c8a0' : '#00b4e6'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-            <Path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-            <Path d="M8.5 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"/>
-            <Line x1="20" y1="8" x2="20" y2="14"/><Line x1="17" y1="11" x2="23" y2="11"/>
-          </Svg>
-          <Text style={[cs.actionText, isOwn ? cs.actionOwn : cs.actionTheir]}>+ Añadir</Text>
+          <Text style={[cs.actionText, { color }]}>Audio</Text>
         </TouchableOpacity>
       </View>
     </View>
