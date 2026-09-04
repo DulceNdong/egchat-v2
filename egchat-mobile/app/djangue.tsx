@@ -382,7 +382,7 @@ export default function DjangueScreen() {
 
 // ── Estilos ───────────────────────────────────────────────────────
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#1a1f3a' }, // Fondo azul oscuro profesional
+  root: { flex: 1, backgroundColor: '#00C8A0' }, // Fondo azul oscuro profesional
   header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 }, // Más padding bottom
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 },
   iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
