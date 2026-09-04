@@ -2650,6 +2650,37 @@ export default function ChatScreen() {
         }}
         onSendMoney={() => { setShowProfile(false); setShowQuickTransfer(true); }}
       />
+      {/* Modal de perfil para contacto compartido en tarjeta */}
+      {cardContact && (
+        <ContactProfileModal
+          visible={!!cardContact}
+          contact={{
+            id: cardContact.phone,
+            title: cardContact.name,
+            name: cardContact.name,
+            avatarUrl: cardContact.avatarUrl,
+            phone: cardContact.phone,
+            isGroup: false,
+            type: 'private',
+          }}
+          onClose={() => setCardContact(null)}
+          onStartCall={(type) => {
+            setCardContact(null);
+            router.push({
+              pathname: '/call/[callId]',
+              params: {
+                callId: `call_${Date.now()}`,
+                targetName: cardContact.name,
+                targetAvatar: cardContact.avatarUrl || '',
+                callType: type,
+                role: 'caller',
+                targetPhone: cardContact.phone,
+              },
+            } as any);
+          }}
+          onSendMoney={() => setCardContact(null)}
+        />
+      )}
       <QuickTransferModal
         visible={showQuickTransfer}
         onClose={() => setShowQuickTransfer(false)}
