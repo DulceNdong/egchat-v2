@@ -4,7 +4,7 @@ import {
   TextInput, Modal, Pressable, ActivityIndicator, Linking,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
@@ -16,8 +16,6 @@ import {
 } from '../src/data/cemacData';
 
 export default function CemacScreen() {
-  const insets = useSafeAreaInsets();
-  const safeTop = insets.top || 44; // fallback para iPhone con notch
   const [lang, setLang] = useState<Lang | null>(null);
   const [country, setCountry] = useState<CountryCode | null>(null);
   const [tab, setTab] = useState<CemacTab>('servicios');
@@ -89,8 +87,9 @@ export default function CemacScreen() {
       <LinearGradient
         colors={['#003d22', '#006b3c', '#00a86b', '#00c8a0', '#00b4e6']}
         locations={[0, 0.35, 0.65, 0.85, 1]}
-        style={{ flex: 1, paddingTop: safeTop }}
+        style={{ flex: 1 }}
       >
+        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <TouchableOpacity onPress={() => router.back()} style={s.welcomeBack}>
           <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Volver</Text>
@@ -144,6 +143,7 @@ export default function CemacScreen() {
               </View>
             </View>
           </ScrollView>
+        </SafeAreaView>
         </LinearGradient>
     );
   }
@@ -158,7 +158,7 @@ export default function CemacScreen() {
   ];
 
   return (
-    <View style={[s.container, { paddingTop: safeTop }]}>
+    <SafeAreaView style={s.container} edges={['top']}>
       <LinearGradient colors={[ctry?.g1 || '#00b96b', ctry?.g2 || '#00e5a0']} style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
           <Text style={s.backIcon}>‹</Text>
@@ -343,7 +343,7 @@ export default function CemacScreen() {
         </Pressable>
         </KeyboardAvoidingView>
       </Modal>
-    </View>
+    </SafeAreaView>
   );
 }
 

@@ -735,7 +735,7 @@ export default function StoriesScreen() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary, paddingTop: Math.max(insets.top, 44) }]} edges={['left', 'right']}>
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.bgPrimary} />
 
       {/* HEADER */}

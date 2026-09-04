@@ -10,7 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as ImagePicker from 'expo-image-picker';
-import Svg, { Path, Line, Polyline, Circle, Rect } from 'react-native-svg';
+import Svg, { Path, Line, Polyline, Circle, Rect, G } from 'react-native-svg';
 import { router } from 'expo-router';
 import { authAPI, getToken, getApiBase } from '../src/api';
 import { toast } from '../src/components/Toast';
@@ -156,14 +156,28 @@ export default function BusinessProfileScreen() {
 
       {/* Tabs */}
       <View style={[s.tabs, { borderBottomColor: C.borderLight }]}>
-        {(['profile', 'catalog'] as const).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[s.tabText, { color: tab === t ? '#07a472' : C.textTertiary }]}>
-              {t === 'profile' ? '📋 Perfil' : `🛍 Catálogo (${catalog.length})`}
-            </Text>
-            {tab === t && <View style={s.tabIndicator} />}
-          </TouchableOpacity>
-        ))}
+        <TouchableOpacity style={[s.tab, tab === 'profile' && s.tabActive]} onPress={() => setTab('profile')}>
+          <View style={s.tabInner}>
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={tab === 'profile' ? '#07a472' : C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Rect x="3" y="3" width="18" height="18" rx="2"/>
+              <Line x1="3" y1="9" x2="21" y2="9"/>
+              <Line x1="9" y1="21" x2="9" y2="9"/>
+            </Svg>
+            <Text style={[s.tabText, { color: tab === 'profile' ? '#07a472' : C.textTertiary }]}>Perfil</Text>
+          </View>
+          {tab === 'profile' && <View style={s.tabIndicator} />}
+        </TouchableOpacity>
+        <TouchableOpacity style={[s.tab, tab === 'catalog' && s.tabActive]} onPress={() => setTab('catalog')}>
+          <View style={s.tabInner}>
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={tab === 'catalog' ? '#07a472' : C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+              <Line x1="3" y1="6" x2="21" y2="6"/>
+              <Path d="M16 10a4 4 0 01-8 0"/>
+            </Svg>
+            <Text style={[s.tabText, { color: tab === 'catalog' ? '#07a472' : C.textTertiary }]}>Catálogo ({catalog.length})</Text>
+          </View>
+          {tab === 'catalog' && <View style={s.tabIndicator} />}
+        </TouchableOpacity>
       </View>
 
       {tab === 'profile' ? (
@@ -171,7 +185,12 @@ export default function BusinessProfileScreen() {
           {/* Avatar */}
           <TouchableOpacity style={s.avatarWrap} onPress={handlePickAvatar}>
             <EGAvatar src={profile.avatar} name={profile.name || 'Empresa'} size={80} />
-            <View style={s.avatarEdit}><Text style={{ color: '#fff', fontSize: 16 }}>📷</Text></View>
+            <View style={s.avatarEdit}>
+              <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+                <Circle cx="12" cy="13" r="4"/>
+              </Svg>
+            </View>
           </TouchableOpacity>
 
           {/* Campos */}
@@ -226,7 +245,13 @@ export default function BusinessProfileScreen() {
             columnWrapperStyle={{ gap: 10 }}
             ListEmptyComponent={
               <View style={s.emptycat}>
-                <Text style={s.emptycatIcon}>🛍</Text>
+                <View style={s.emptycatIconWrap}>
+                  <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                    <Path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                    <Line x1="3" y1="6" x2="21" y2="6"/>
+                    <Path d="M16 10a4 4 0 01-8 0"/>
+                  </Svg>
+                </View>
                 <Text style={[s.emptycatText, { color: C.textTertiary }]}>
                   Añade productos o servicios a tu catálogo
                 </Text>

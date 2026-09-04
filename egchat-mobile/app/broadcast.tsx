@@ -128,9 +128,9 @@ export default function BroadcastScreen() {
         {step === 1 ? (
           <TouchableOpacity
             onPress={() => selected.length > 0 && setStep(2)}
-            style={[s.headerBtn, selected.length === 0 && { opacity: 0.4 }]}
+            style={[s.headerBtnText, selected.length === 0 && { opacity: 0.4 }]}
           >
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Siguiente</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Siguiente</Text>
           </TouchableOpacity>
         ) : (
           <TouchableOpacity onPress={handleSend} style={s.headerBtn} disabled={sending}>
@@ -283,8 +283,9 @@ export default function BroadcastScreen() {
 
 const s = StyleSheet.create({
   root: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 12, paddingTop: 10, gap: 6 },
-  headerBtn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
+  header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 8, paddingBottom: 12, paddingTop: 10, gap: 4 },
+  headerBtn: { width: 40, height: 44, alignItems: 'center', justifyContent: 'center' },
+  headerBtnText: { height: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 6 },
   headerTitle: { color: '#fff', fontSize: 16, fontWeight: '700' },
   headerSub: { color: 'rgba(255,255,255,0.8)', fontSize: 12, marginTop: 1 },
   chipsBar: { borderBottomWidth: StyleSheet.hairlineWidth, maxHeight: 80 },

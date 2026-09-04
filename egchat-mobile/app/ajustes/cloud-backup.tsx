@@ -7,7 +7,7 @@ import {
   ActivityIndicator, Switch, ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import {
@@ -70,7 +70,7 @@ export default function CloudBackupScreen() {
   };
 
   return (
-    <View style={[s.root, { backgroundColor: C.bgPrimary, paddingTop: insets.top }]}>
+    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['top']}>
       {/* Header */}
       <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
         <TouchableOpacity onPress={() => router.back()} style={s.btn}>
@@ -81,7 +81,7 @@ export default function CloudBackupScreen() {
         <Text style={s.headerTitle}>Backup en la nube</Text>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
         {/* Estado actual */}
         <View style={[s.statusCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
           <View style={s.statusIcon}>
@@ -210,7 +210,7 @@ export default function CloudBackupScreen() {
           </Text>
         </View>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 

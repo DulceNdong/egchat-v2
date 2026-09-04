@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { authAPI, clearToken } from '../../src/api';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import SessionManager from '../../src/sessionManager';
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
@@ -103,9 +104,33 @@ function AjustesScreenInner() {
   useEffect(() => {
     const loadUser = async () => {
       try {
+        // 1️⃣ Mostrar inmediatamente los datos de la sesión local (sin esperar red)
+        const sessionManager = SessionManager.getInstance();
+        const cached = await sessionManager.getUser();
+        if (cached) {
+          const cachedMerged = await mergePersistentAvatar(cached);
+          setUser(cachedMerged);
+          setLoading(false); // quitar spinner enseguida con datos locales
+        }
+
+        // 2️⃣ Refrescar desde la API en background para obtener datos actualizados
         const data = await authAPI.me();
         const merged = await mergePersistentAvatar(data);
-        setUser(merged);
+        // Solo actualizar si el servidor devuelve nombre real (no genérico)
+        const serverNameIsGeneric =
+          !merged?.full_name ||
+          merged.full_name === 'Usuario EGCHAT' ||
+          merged.full_name.startsWith('Usuario +') ||
+          merged.full_name.startsWith('Usuario ');
+        setUser(prev => ({
+          ...merged,
+          // si el servidor da nombre genérico pero ya tenemos uno real, conservar el real
+          full_name: serverNameIsGeneric && prev?.full_name && !serverNameIsGeneric
+            ? prev.full_name
+            : merged.full_name || prev?.full_name || 'Usuario',
+          // conservar avatar local si el servidor no devuelve uno mejor
+          avatar_url: merged.avatar_url || prev?.avatar_url,
+        }));
       } catch (err) {
         console.error('[Ajustes] Error cargando usuario:', err);
       } finally {

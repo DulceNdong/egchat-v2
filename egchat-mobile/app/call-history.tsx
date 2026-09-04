@@ -179,26 +179,24 @@ export default function CallHistoryScreen() {
     : <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"><Path d="M17 7L7 17M17 17H7V7"/></Svg>;
 
   return (
-    <View style={s.root}>
+    <SafeAreaView style={s.root} edges={['top']}>
       <LinearGradient colors={['#00b4e6', '#0088cc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
-        <SafeAreaView edges={['top']}>
-          <View style={s.headerRow}>
-            <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-                <Line x1="19" y1="12" x2="5" y2="12"/>
-                <Path d="M12 19l-7-7 7-7"/>
-              </Svg>
-            </TouchableOpacity>
-            <Text style={s.title}>Historial de llamadas</Text>
-            <TouchableOpacity onPress={loadCallHistory} style={s.back} hitSlop={10}>
-              <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M23 4v6h-6"/>
-                <Path d="M1 20v-6h6"/>
-                <Path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-              </Svg>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
+        <View style={s.headerRow}>
+          <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <Line x1="19" y1="12" x2="5" y2="12"/>
+              <Path d="M12 19l-7-7 7-7"/>
+            </Svg>
+          </TouchableOpacity>
+          <Text style={s.title}>Historial de llamadas</Text>
+          <TouchableOpacity onPress={loadCallHistory} style={s.back} hitSlop={10}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M23 4v6h-6"/>
+              <Path d="M1 20v-6h6"/>
+              <Path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
+            </Svg>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       {/* Filtros */}
@@ -258,7 +256,7 @@ export default function CallHistoryScreen() {
           }}
         />
       )}
-    </View>
+    </SafeAreaView>
   );
 }
 
