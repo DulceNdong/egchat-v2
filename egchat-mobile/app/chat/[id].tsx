@@ -1286,7 +1286,8 @@ export default function ChatScreen() {
       return;
     }
     if (action === 'music') {
-      const asset = await pickDocument();
+      setShowAttach(false);
+      const asset = await pickAudio();
       if (asset) {
         await sendMedia(asset, { text: asset.fileName, type: 'audio' });
       }
