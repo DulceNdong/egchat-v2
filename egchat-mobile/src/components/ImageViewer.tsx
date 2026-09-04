@@ -437,18 +437,13 @@ const ss = StyleSheet.create({
   },
   tile: { width: TILE_W, alignItems: 'center', gap: 6 },
   tileIcon: {
-    width: TILE_W, height: TILE_W,
-    borderRadius: 18, borderWidth: 1,
+    width: 40, height: 40,
     alignItems: 'center', justifyContent: 'center',
   },
-  tileIconInner: {
-    width: TILE_W - 14, height: TILE_W - 14,
-    borderRadius: 14,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  tileIconInner: {}, // unused — kept for compat
   tileLabel: {
-    fontSize: 10, fontWeight: '600',
-    color: 'rgba(255,255,255,0.85)', textAlign: 'center',
+    fontSize: 11, fontWeight: '500',
+    color: 'rgba(255,255,255,0.9)', textAlign: 'center',
   },
   sep: {
     height: StyleSheet.hairlineWidth,
