@@ -27,7 +27,7 @@ import type {
   PanGestureHandlerGestureEvent,
 } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
-import * as MediaLibrary from 'expo-media-library';
+import * as FileSystem from 'expo-file-system';
 import Svg, { Path, Line, Polyline, Circle, Polygon, Rect } from 'react-native-svg';
 
 const { width: W, height: H } = Dimensions.get('window');
