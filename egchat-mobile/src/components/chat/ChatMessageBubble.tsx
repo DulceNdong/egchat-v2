@@ -1255,7 +1255,15 @@ export const ChatMessageBubble = React.memo(({
       {/* Tarjetas especiales */}
       {isCallMsg    && <CallCard message={message} isOwn={isOwn} onCallback={onCallback} />}
       {pollData     && <PollMessage poll={pollData} currentUserId={''} isOwn={isOwn} onVote={() => {}} />}
-      {isContactMsg && !!message.text && <ContactCard text={message.text} isOwn={isOwn} />}
+      {isContactMsg && !!message.text && (
+        <ContactCard
+          text={message.text}
+          isOwn={isOwn}
+          onOpenContact={onOpenContact}
+          onContactCall={onContactCall}
+          onContactMessage={onContactMessage}
+        />
+      )}
       {isLocationMsg && !!message.text && (
         <LocationCard
           text={message.text}
