@@ -1936,28 +1936,50 @@ export default function ChatScreen() {
             {/* #12 — Barra de acciones de selección múltiple */}
             {isSelectMode && (
               <View style={styles.multiSelectBar}>
-                <TouchableOpacity style={styles.multiSelectClose} onPress={exitSelectMode}>
-                  <Text style={styles.multiSelectCloseText}>✕</Text>
+                {/* Botón cerrar */}
+                <TouchableOpacity style={styles.multiSelectClose} onPress={exitSelectMode} activeOpacity={0.7}>
+                  <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth={2.5}>
+                    <Line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round"/>
+                    <Line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round"/>
+                  </Svg>
                 </TouchableOpacity>
-                <Text style={styles.multiSelectCount}>
-                  {selectedIds.size} seleccionado{selectedIds.size !== 1 ? 's' : ''}
-                </Text>
+
+                {/* Contador */}
+                <View style={styles.multiSelectCountWrap}>
+                  <Text style={styles.multiSelectCountNum}>{selectedIds.size}</Text>
+                  <Text style={styles.multiSelectCountLabel}>
+                    {selectedIds.size === 1 ? 'seleccionado' : 'seleccionados'}
+                  </Text>
+                </View>
+
+                {/* Acciones */}
                 <View style={styles.multiSelectActions}>
+                  {/* Reenviar */}
                   <TouchableOpacity
-                    style={[styles.multiSelectBtn, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
+                    style={[styles.multiSelectBtn, styles.multiSelectBtnForward, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
                     onPress={selectedIds.size > 0 ? handleForwardSelected : undefined}
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                   >
-                    <Text style={styles.multiSelectBtnIcon}>➡️</Text>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2}>
+                      <Path d="M22 2L11 13" strokeLinecap="round" strokeLinejoin="round"/>
+                      <Polyline points="22 2 15 22 11 13 2 9 22 2" strokeLinecap="round" strokeLinejoin="round"/>
+                    </Svg>
                     <Text style={styles.multiSelectBtnLabel}>Reenviar</Text>
                   </TouchableOpacity>
+
+                  {/* Eliminar */}
                   <TouchableOpacity
                     style={[styles.multiSelectBtn, styles.multiSelectBtnDanger, selectedIds.size === 0 && styles.multiSelectBtnDisabled]}
                     onPress={selectedIds.size > 0 ? handleDeleteSelected : undefined}
-                    activeOpacity={0.7}
+                    activeOpacity={0.75}
                   >
-                    <Text style={styles.multiSelectBtnIcon}>🗑</Text>
-                    <Text style={[styles.multiSelectBtnLabel, styles.multiSelectBtnLabelDanger]}>Eliminar</Text>
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2}>
+                      <Polyline points="3 6 5 6 21 6" strokeLinecap="round"/>
+                      <Path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" strokeLinecap="round"/>
+                      <Path d="M10 11v6M14 11v6" strokeLinecap="round"/>
+                      <Path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" strokeLinecap="round"/>
+                    </Svg>
+                    <Text style={styles.multiSelectBtnLabelDanger}>Eliminar</Text>
                   </TouchableOpacity>
                 </View>
               </View>
