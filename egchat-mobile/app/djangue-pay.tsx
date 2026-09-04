@@ -249,7 +249,7 @@ export default function DjanguePayScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#1a1f3a' },
+  root: { flex: 1, backgroundColor: '#00C8A0' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1f3a' },
   header: { paddingHorizontal: 16, paddingBottom: 16 },
   headerRow: { flexDirection: 'row', alignItems: 'center', paddingTop: 8, gap: 8 },
