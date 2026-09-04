@@ -7,7 +7,7 @@ import {
   ActivityIndicator, Switch, ScrollView,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Polyline, Circle } from 'react-native-svg';
 import { router } from 'expo-router';
 import {
