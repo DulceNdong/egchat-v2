@@ -502,7 +502,7 @@ export default function DjangueMemberScreen() {
 // ── Estilos ────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#1a1f3a' },
+  root: { flex: 1, backgroundColor: '#00C8A0' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: '#1a1f3a' },
   loadingTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, marginTop: 16 },
   errorTxt: { color: '#ef4444', fontSize: 15, textAlign: 'center', paddingHorizontal: 32 },
