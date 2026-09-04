@@ -461,7 +461,7 @@ export default function MiDjangueScreen() {
               style={[s.tab, activeTab === tab.id && s.tabActive]}
               onPress={() => setActiveTab(tab.id)}
             >
-              <TabIcon name={tab.icon} color={activeTab === tab.id ? '#00C8A0' : 'rgba(255,255,255,0.7)'} size={20} />
+              <TabIcon name={tab.icon} color={activeTab === tab.id ? '#00C8A0' : 'rgba(255,255,255,0.7)'} size={16} />
               <Text style={[s.tabText, activeTab === tab.id && s.tabTextActive]}>
                 {tab.label}
               </Text>
