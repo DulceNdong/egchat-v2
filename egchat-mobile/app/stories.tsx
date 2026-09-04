@@ -27,6 +27,7 @@ import { StoryMusicPicker, StoryMusicBadge, type StoryMusic } from '../src/compo
 import { Colors } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 
 const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000;
