@@ -1340,8 +1340,9 @@ export default function ChatScreen() {
     if (!chatId) return;
     const name = contact.full_name || contact.name || 'Contacto';
     const phone = contact.phone || '';
-    // Formato: nombre en primera línea, teléfono en segunda (sin emojis extra)
-    const msgText = `${name}\n${phone}`;
+    const avatarUrl = contact.avatar_url || '';
+    // Formato: línea 0 = nombre, línea 1 = teléfono, línea 2 = avatar_url
+    const msgText = `${name}\n${phone}\n${avatarUrl}`;
     const tempId = createTempMessageId();
     pushOptimistic({
       id: tempId, text: msgText, type: 'contact', sender_id: currentUserId,
