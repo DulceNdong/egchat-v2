@@ -1070,6 +1070,12 @@ export interface ChatMessageBubbleProps {
   onReplyTap?: (parentId: string) => void;
   /** C8 — Guardar transcripción de voz en el estado del chat */
   onTranscribed?: (msgId: string, transcript: string) => void;
+  /** Tarjeta contacto — abre info del contacto al tocar nombre/foto */
+  onOpenContact?: (phone: string, name: string, avatarUrl?: string) => void;
+  /** Tarjeta contacto — inicia llamada audio o video */
+  onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
+  /** Tarjeta contacto — envía mensaje al contacto */
+  onContactMessage?: (phone: string, name: string) => void;
 }
 
 export const ChatMessageBubble = React.memo(({
