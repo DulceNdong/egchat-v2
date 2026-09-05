@@ -82,8 +82,16 @@ export function QuickTransferModal({
     
     try {
       // 1. Verificar si el usuario tiene PIN configurado
-      const pinStatus = await authAPI.hasPinConfigured();
-      if (!pinStatus.hasPin) {
+      let hasPin = false;
+      try {
+        const pinStatus = await authAPI.hasPinConfigured();
+        hasPin = pinStatus.hasPin;
+      } catch {
+        // Si falla la verificación (servidor no disponible aún), asumir sin PIN
+        hasPin = false;
+      }
+
+      if (!hasPin) {
         setLoading(false);
         setShowSetupPin(true);
         return;
