@@ -82,13 +82,19 @@ export function QuickTransferModal({
     setError('');
     
     try {
-      // 1. Verificar si el usuario tiene PIN configurado
+      // 1. Verificar si el usuario tiene PIN configurado (local O servidor)
       let hasPin = false;
       try {
-        const pinStatus = await authAPI.hasPinConfigured();
-        hasPin = pinStatus.hasPin;
+        // Comprobar local primero (más rápido)
+        const localPin = await walletPIN.isSet();
+        if (localPin) {
+          hasPin = true;
+        } else {
+          // Si no hay PIN local, preguntar al servidor
+          const pinStatus = await authAPI.hasPinConfigured();
+          hasPin = pinStatus.hasPin;
+        }
       } catch {
-        // Si falla la verificación (servidor no disponible aún), asumir sin PIN
         hasPin = false;
       }
 
