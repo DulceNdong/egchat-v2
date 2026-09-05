@@ -21,9 +21,9 @@ import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/s
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import {
   createDepositIntent, confirmDeposit, pollPaymentStatus,
-  getPaymentHistory, createWithdrawIntent, confirmWithdraw,
+  createWithdrawIntent, confirmWithdraw,
   GATEWAY_INFO, formatGatewayFee, getNetAmount,
-  type PaymentGateway, type ExternalTransaction,
+  type PaymentGateway,
 } from '../../src/services/paymentGateway';
 import {
   Colors, Typography, Spacing, BorderRadius,
