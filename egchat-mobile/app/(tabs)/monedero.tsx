@@ -1153,18 +1153,14 @@ function MonederoScreenInner() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
-  const [externalHistory, setExternalHistory] = useState<ExternalTransaction[]>([]);
-
   const loadData = useCallback(async () => {
     try {
-      const [bal, txs, extTxs] = await Promise.all([
+      const [bal, txs] = await Promise.all([
         walletAPI.getBalance(),
         walletAPI.getTransactions(1),
-        getPaymentHistory(1, 10),
       ]);
       setBalance(bal.balance || 0);
       setTransactions(txs.transactions || []);
-      setExternalHistory(extTxs || []);
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
   }, []);
