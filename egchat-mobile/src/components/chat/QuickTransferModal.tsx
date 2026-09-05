@@ -60,6 +60,11 @@ export function QuickTransferModal({
     if (!visible) return;
     setAmount('');
     setError('');
+    setPinError('');
+    setShowPinModal(false);
+    setShowSetupPin(false);
+    setPendingTransfer(null);
+    transferExecuted.current = false; // resetear guard al abrir
     setLoadingBalance(true);
     walletAPI.getBalance()
       .then(r => setBalance(r.balance || 0))
