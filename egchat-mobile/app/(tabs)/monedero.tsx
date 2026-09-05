@@ -1393,79 +1393,21 @@ function MonederoScreenInner() {
           <View style={s.sectionBlock}>
             <View style={s.sectionHeader}>
               <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
-              <TouchableOpacity onPress={() => router.push('/historial-completo' as any)} activeOpacity={0.7}>
-                <Text style={s.verTodo}>Ver todo →</Text>
-              </TouchableOpacity>
             </View>
-
-          {/* 4d — Estadísticas del mes */}
-          {transactions.length > 0 && (() => {
-            const now = new Date();
-            const thisMonth = transactions.filter(tx => {
-              const d = new Date(tx.createdAt || tx.created_at || '');
-              return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear();
-            });
-            const totalIn  = thisMonth.filter(tx => isCredit(tx.type)).reduce((a, tx) => a + Math.abs(Number(tx.amount || 0)), 0);
-            const totalOut = thisMonth.filter(tx => !isCredit(tx.type)).reduce((a, tx) => a + Math.abs(Number(tx.amount || 0)), 0);
-            const max = Math.max(totalIn, totalOut, 1);
-            return (
-              <View style={[s.card, { backgroundColor: C.bgSecondary, marginBottom: 10 }]}>
-                <Text style={[s.sectionTitle, { color: C.textPrimary, marginBottom: 12 }]}>📊 ESTE MES</Text>
-                <View style={{ flexDirection: 'row', gap: 12, alignItems: 'flex-end', marginBottom: 10 }}>
-                  {[{ label: 'Recibido', value: totalIn, color: '#10b981' }, { label: 'Enviado', value: totalOut, color: '#ef4444' }].map(item => (
-                    <View key={item.label} style={{ flex: 1, alignItems: 'center', gap: 4 }}>
-                      <Text style={{ fontSize: 11, fontWeight: '700', color: item.color }}>
-                        {fmt(item.value)} XAF
-                      </Text>
-                      <View style={{ width: '100%', height: 80, justifyContent: 'flex-end' }}>
-                        <View style={{ width: '100%', height: Math.max(4, (item.value / max) * 80), backgroundColor: item.color, borderRadius: 4, opacity: 0.85 }} />
-                      </View>
-                      <Text style={{ fontSize: 11, color: C.textTertiary }}>{item.label}</Text>
-                    </View>
-                  ))}
-                </View>
-                <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-                  <Text style={{ fontSize: 12, color: C.textSecondary }}>{thisMonth.length} transacciones</Text>
-                  <Text style={{ fontSize: 12, color: totalIn >= totalOut ? '#10b981' : '#ef4444', fontWeight: '700' }}>
-                    {totalIn >= totalOut ? '▲' : '▼'} Neto: {fmt(Math.abs(totalIn - totalOut))} XAF
-                  </Text>
-                </View>
+            <TouchableOpacity
+              style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
+              onPress={() => router.push('/historial-completo' as any)}
+              activeOpacity={0.75}
+            >
+              <View style={[s.txIconWrap, { backgroundColor: '#EEF2F7' }]}>
+                <IcoTransfer color="#0E5F8A" />
               </View>
-            );
-          })()}
-
-            <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
-              {recentTx.length === 0 ? (
-                <View style={s.emptyWrap}>
-                  <Text style={s.emptyIcon}>💳</Text>
-                  <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin transacciones aún</Text>
-                </View>
-              ) : recentTx.map((tx, i) => (
-                <View key={tx.id || i}>
-                  <View style={s.txCard}>
-                    <View style={[s.txIconWrap, { backgroundColor: isCredit(tx.type) ? '#E8F8EE' : '#FEF2F2' }]}> 
-                      {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
-                    </View>
-                    <View style={s.txInfo}>
-                      <Text style={[s.txLabel, { color: C.textPrimary }]}> 
-                        {isCredit(tx.type) ? '↙️ Recibido' : '↗️ Enviado'}
-                      </Text>
-                      <Text style={[s.txDesc, { color: C.textSecondary }]}>{getTxDesc(tx)}</Text>
-                      <Text style={[s.txDate, { color: C.textTertiary }]}> 
-                        {formatDate(tx.created_at || tx.date || new Date().toISOString())}
-                      </Text>
-                    </View>
-                    <View style={s.txAmountWrap}>
-                      <Text style={[s.txAmount, { color: isCredit(tx.type) ? '#00c8a0' : '#ef4444' }]}> 
-                        {isCredit(tx.type) ? '+' : '-'}{fmt(tx.amount)}
-                      </Text>
-                      <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
-                    </View>
-                  </View>
-                  {i < recentTx.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
-                </View>
-              ))}
-            </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>Ver mis transferencias</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>Consulta tu historial completo</Text>
+              </View>
+              <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
+            </TouchableOpacity>
           </View>
 
           {/* ── Historial de pagos externos (Stripe / Orange / MTN) ── */}
