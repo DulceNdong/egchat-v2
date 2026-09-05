@@ -135,6 +135,11 @@ export function ChatMediaGallery({ visible, chatId, chatName, onClose }: Props) 
           initialIndex={viewerIndex}
           onClose={() => setViewerOpen(false)}
         />
+        <VideoViewerModal
+          visible={videoViewerOpen}
+          uri={videoUri}
+          onClose={() => setVideoViewerOpen(false)}
+        />
       </View>
     </Modal>
   );
