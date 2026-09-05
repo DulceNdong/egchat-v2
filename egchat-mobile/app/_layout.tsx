@@ -152,6 +152,18 @@ export default function RootLayout() {
       });
     }
 
+    // Transferencia recibida → notificación en campanita
+    if (event.type === 'transfer_received') {
+      const amount = event.amount ?? 0;
+      const sender = event.senderName || 'Usuario';
+      addNotification({
+        type: 'message',
+        title: '💸 Transferencia recibida',
+        body: `${sender} te ha enviado ${amount.toLocaleString()} XAF`,
+        chatId: undefined,
+      });
+    }
+
     if (event.type === 'sync_message' && event.chatId) {
       handleSyncMessage(event, { onNewMessage: () => {}, onChatUpdated: () => {} });
     }
