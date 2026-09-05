@@ -179,6 +179,8 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
   const [duration, setDuration] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showControls, setShowControls] = useState(true);
+  const [downloading, setDownloading] = useState(false);
+  const [downloadDone, setDownloadDone] = useState(false);
 
   // Fade de controles
   const controlsOpacity = useRef(new Animated.Value(1)).current;
