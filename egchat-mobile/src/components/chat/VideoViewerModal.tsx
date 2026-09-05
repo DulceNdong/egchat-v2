@@ -403,7 +403,7 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
           {/* Controles superpuestos */}
           <Animated.View style={[s.controls, { opacity: controlsOpacity }]} pointerEvents={showControls ? 'box-none' : 'none'}>
 
-            {/* Barra superior: cerrar + título */}
+            {/* Barra superior: cerrar + título + mute + descarga + compartir */}
             <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
               <TouchableOpacity style={s.iconBtn} onPress={onClose} activeOpacity={0.7}>
                 <IcoClose />
@@ -413,6 +413,20 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
               ) : null}
               <TouchableOpacity style={s.iconBtn} onPress={toggleMute} activeOpacity={0.7}>
                 {muted ? <IcoMute /> : <IcoVolume />}
+              </TouchableOpacity>
+              <TouchableOpacity style={s.iconBtn} onPress={handleShare} activeOpacity={0.7}>
+                <IcoShare />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[s.iconBtn, downloadDone && s.iconBtnDone]}
+                onPress={handleDownload}
+                activeOpacity={0.7}
+                disabled={downloading}
+              >
+                {downloading
+                  ? <ActivityIndicator size="small" color="#00c8a0" />
+                  : <IcoDownload downloading={downloadDone} />
+                }
               </TouchableOpacity>
             </View>
 
