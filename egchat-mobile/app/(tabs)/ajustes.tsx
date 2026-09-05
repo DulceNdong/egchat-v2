@@ -126,10 +126,10 @@ function AjustesScreenInner() {
         const serverNameIsGeneric = isGenericNameStr(merged?.full_name);
         setUser(prev => ({
           ...merged,
-          // si el servidor da nombre genérico pero ya tenemos uno real en local, conservar el real
-          full_name: serverNameIsGeneric && prev?.full_name && !isGenericNameStr(prev.full_name)
-            ? prev.full_name
-            : isGenericNameStr(merged.full_name) ? (prev?.full_name && !isGenericNameStr(prev.full_name) ? prev.full_name : null) : merged.full_name,
+          // Prioridad: 1) nombre real del servidor, 2) nombre real en caché, 3) nombre genérico del servidor
+          full_name: !serverNameIsGeneric
+            ? merged.full_name
+            : (prev?.full_name && !isGenericNameStr(prev.full_name) ? prev.full_name : merged.full_name),
           // conservar avatar local si el servidor no devuelve uno mejor
           avatar_url: merged.avatar_url || prev?.avatar_url,
         }));
