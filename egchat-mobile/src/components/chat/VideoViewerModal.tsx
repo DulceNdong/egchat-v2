@@ -214,6 +214,8 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
       setPosition(0);
       setDuration(0);
       setLoading(true);
+      setDownloading(false);
+      setDownloadDone(false);
       if (hideTimer.current) clearTimeout(hideTimer.current);
     }
   }, [visible]);
