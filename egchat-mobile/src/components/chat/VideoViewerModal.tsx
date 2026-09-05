@@ -493,6 +493,10 @@ const s = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
+  iconBtnDone: {
+    backgroundColor: 'rgba(0,200,160,0.15)',
+    borderRadius: 20,
+  },
   title: {
     flex: 1,
     color: '#fff',
