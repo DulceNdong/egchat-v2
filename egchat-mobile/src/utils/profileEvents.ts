@@ -74,6 +74,12 @@ export const persistAvatarFile = async (userId: string | undefined, avatarUrl?: 
   const oldInfo = await FileSystem.getInfoAsync(destination);
 
   if (avatarUrl.startsWith('file:')) {
+    // Verificar que el archivo origen existe antes de copiar
+    const srcInfo = await FileSystem.getInfoAsync(avatarUrl);
+    if (!srcInfo.exists) {
+      // Archivo local ya no existe — usar la URL directamente
+      return avatarUrl;
+    }
     if (oldInfo.exists) {
       await FileSystem.deleteAsync(destination, { idempotent: true });
     }
