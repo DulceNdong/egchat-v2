@@ -14,6 +14,7 @@ import { ReactionBubble, ReactionPopAnimation } from './ReactionBubble';
 import { PollMessage, parsePoll } from './PollMessage';
 import { ImageViewer } from '../ImageViewer';
 import { LinkPreview, extractUrl } from './LinkPreview';
+import { VideoViewerModal } from './VideoViewerModal';
 import { MarkdownText } from './MarkdownText';
 import type { ChatMessage } from '../../types/chat';
 
