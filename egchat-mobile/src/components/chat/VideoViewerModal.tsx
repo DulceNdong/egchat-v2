@@ -270,6 +270,79 @@ export function VideoViewerModal({ visible, uri, title, onClose }: VideoViewerMo
     } catch {}
   }, [muted]);
 
+  // Descarga el video al almacenamiento local y ofrece guardarlo
+  const handleDownload = useCallback(async () => {
+    if (downloading || !uri) return;
+    setDownloading(true);
+    try {
+      const FileSystem = require('expo-file-system');
+      const ext = uri.split('?')[0].split('.').pop() || 'mp4';
+      const fileName = `egchat_video_${Date.now()}.${ext}`;
+      const localUri = FileSystem.documentDirectory + fileName;
+
+      const result = await FileSystem.downloadAsync(uri, localUri);
+
+      if (result.status === 200) {
+        setDownloadDone(true);
+        // Intentar guardar en galería si expo-media-library está disponible
+        try {
+          const MediaLibrary = require('expo-media-library');
+          const { status } = await MediaLibrary.requestPermissionsAsync();
+          if (status === 'granted') {
+            await MediaLibrary.saveToLibraryAsync(result.uri);
+            Alert.alert('✅ Guardado', 'El video se guardó en tu galería de fotos.');
+            return;
+          }
+        } catch {}
+        // Sin media-library: abrir share sheet para que el usuario lo guarde
+        const Sharing = require('expo-sharing');
+        const canShare = await Sharing.isAvailableAsync();
+        if (canShare) {
+          await Sharing.shareAsync(result.uri, {
+            mimeType: 'video/mp4',
+            dialogTitle: 'Guardar video',
+            UTI: 'com.apple.quicktime-movie',
+          });
+        } else {
+          Alert.alert('Video descargado', `Guardado en: ${fileName}`);
+        }
+      } else {
+        Alert.alert('Error', 'No se pudo descargar el video.');
+      }
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo descargar el video.');
+    } finally {
+      setDownloading(false);
+    }
+  }, [uri, downloading]);
+
+  // Compartir video directamente con el share sheet del sistema
+  const handleShare = useCallback(async () => {
+    if (!uri) return;
+    try {
+      const Sharing = require('expo-sharing');
+      const canShare = await Sharing.isAvailableAsync();
+      if (!canShare) {
+        Alert.alert('Compartir no disponible', 'Esta función no está disponible en este dispositivo.');
+        return;
+      }
+      // Descargar primero a archivo local para poder compartir
+      const FileSystem = require('expo-file-system');
+      const ext = uri.split('?')[0].split('.').pop() || 'mp4';
+      const localUri = FileSystem.cacheDirectory + `share_video_${Date.now()}.${ext}`;
+      const result = await FileSystem.downloadAsync(uri, localUri);
+      if (result.status === 200) {
+        await Sharing.shareAsync(result.uri, {
+          mimeType: 'video/mp4',
+          dialogTitle: 'Compartir video',
+          UTI: 'com.apple.quicktime-movie',
+        });
+      }
+    } catch {
+      Alert.alert('Error', 'No se pudo compartir el video.');
+    }
+  }, [uri]);
+
   // ── Web fallback ─────────────────────────────────────────────
 
   if (Platform.OS === 'web') {
