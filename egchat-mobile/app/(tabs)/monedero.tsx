@@ -1410,58 +1410,7 @@ function MonederoScreenInner() {
             </TouchableOpacity>
           </View>
 
-          {/* ── Historial de pagos externos (Stripe / Orange / MTN) ── */}
-          {externalHistory.length > 0 && (
-            <View style={s.sectionBlock}>
-              <View style={s.sectionHeader}>
-                <Text style={[s.sectionTitle, { color: C.textPrimary }]}>PASARELA DE PAGO</Text>
-              </View>
-              <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
-                {externalHistory.map((tx, i) => {
-                  const info = GATEWAY_INFO[tx.gateway as PaymentGateway];
-                  const isIn = tx.type === 'deposit';
-                  const statusColor = tx.status === 'completed' ? '#00c8a0'
-                    : tx.status === 'pending' ? '#f59e0b'
-                    : '#ef4444';
-                  return (
-                    <View key={tx.id}>
-                      <View style={s.txCard}>
-                        <View style={[s.txIconWrap, { backgroundColor: isIn ? '#E8F8EE' : '#FEF2F2' }]}>
-                          <Text style={{ fontSize: 18 }}>{info?.icon || '💳'}</Text>
-                        </View>
-                        <View style={s.txInfo}>
-                          <Text style={[s.txLabel, { color: C.textPrimary }]}>
-                            {info?.label || tx.gateway}
-                          </Text>
-                          <Text style={[s.txDesc, { color: C.textSecondary }]}>
-                            {tx.description || (isIn ? 'Depósito' : 'Retiro')}
-                          </Text>
-                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-                            <View style={[{ width: 6, height: 6, borderRadius: 3, backgroundColor: statusColor }]} />
-                            <Text style={[s.txDate, { color: statusColor, fontWeight: '600' }]}>
-                              {tx.status === 'completed' ? 'Completado'
-                                : tx.status === 'pending' ? 'Pendiente'
-                                : tx.status === 'failed' ? 'Fallido' : tx.status}
-                            </Text>
-                            <Text style={[s.txDate, { color: C.textTertiary }]}>
-                              · {formatDate(tx.createdAt)}
-                            </Text>
-                          </View>
-                        </View>
-                        <View style={s.txAmountWrap}>
-                          <Text style={[s.txAmount, { color: isIn ? '#00c8a0' : '#ef4444' }]}>
-                            {isIn ? '+' : '-'}{fmt(tx.amount)}
-                          </Text>
-                          <Text style={[s.txCurrency, { color: C.textSecondary }]}>XAF</Text>
-                        </View>
-                      </View>
-                      {i < externalHistory.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          )}
+
         </ScrollView>
       </View>
 
