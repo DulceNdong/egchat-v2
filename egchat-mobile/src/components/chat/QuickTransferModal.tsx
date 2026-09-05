@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Line, Path } from 'react-native-svg';
 import { walletAPI, authAPI } from '../../api';
+import { walletPIN } from '../../services/walletPin';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../services/limits';
 import { EGAvatar } from '../ui';
 import { toast } from '../Toast';
