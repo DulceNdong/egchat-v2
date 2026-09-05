@@ -80,7 +80,9 @@ export function SetupPINModal({ visible, onDone, onCancel }: Props) {
       if (next.length === PIN_LEN) {
         setTimeout(async () => {
           if (next === pin1) {
+            // Guardar localmente Y en el servidor
             await walletPIN.save(pin1);
+            try { await authAPI.setupPin(pin1); } catch { /* continuar aunque falle el servidor */ }
             reset();
             onDone();
           } else {
