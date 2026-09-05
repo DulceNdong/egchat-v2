@@ -243,7 +243,7 @@ export default function LiaScreen() {
     <SafeAreaView style={[s.container, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
 
       {/* ── Header ── */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x:0,y:0 }} end={{ x:1,y:0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x:0,y:0 }} end={{ x:1,y:0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <View style={s.headerLeft}>
           <LiaAvatar size={40} speaking={speaking} />
           <View>
