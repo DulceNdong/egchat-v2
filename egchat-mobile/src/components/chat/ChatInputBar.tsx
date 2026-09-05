@@ -2,10 +2,9 @@
 import React, { useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Animated, Platform,
+  ActivityIndicator, Animated,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useKeyboardHeight } from '../../hooks/useKeyboardHeight';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { TextFormatBar } from './TextFormatBar';
@@ -16,6 +15,7 @@ export interface ChatInputBarProps {
   showAttach: boolean;
   showEmojis: boolean;
   isRecording: boolean;
+  keyboardVisible?: boolean;
   durationFormatted: string;
   amplitude?: number;
   sendScale: Animated.Value;
@@ -37,6 +37,7 @@ export function ChatInputBar({
   showAttach,
   showEmojis,
   isRecording,
+  keyboardVisible = false,
   durationFormatted,
   amplitude = 0,
   sendScale,
@@ -53,8 +54,7 @@ export function ChatInputBar({
 }: ChatInputBarProps) {
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
-  const { keyboardVisible } = useKeyboardHeight();
-  const bottomPadding = keyboardVisible ? 10 : Math.max(6, insets.bottom);
+  const bottomPadding = keyboardVisible ? 6 : Math.max(6, insets.bottom);
   // C6 — referencia de selección para insertar formato
   const selectionRef = useRef<{ start: number; end: number }>({ start: text.length, end: text.length });
 

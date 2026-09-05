@@ -41,6 +41,7 @@ export function QuickTransferModal({
   const [loading, setLoading] = useState(false);
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [error, setError] = useState('');
+  const transferExecuted = React.useRef(false); // guard contra doble ejecución
   
   // Estados para PIN
   const [showPinModal, setShowPinModal] = useState(false);

@@ -107,6 +107,8 @@ import {
 } from '../../src/features/chat/messageUtils';
 import Svg, { Path, Circle, Line, Polyline, Polygon, Rect } from 'react-native-svg';
 
+const KEYBOARD_INPUT_GAP = 0;
+
 // ── Tipos ─────────────────────────────────────────────────────────
 // ── Helpers ───────────────────────────────────────────────────────
 const formatTime = (dateStr: string) => {
@@ -309,7 +311,6 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
-  const keyboardOffset = useRef(new Animated.Value(0)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof createChatTypingChannel> | null>(null);
@@ -319,7 +320,9 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
-  const messagesBottomInset = bottomDockHeight + keyboardBottomOffset + 12;
+  const keyboardGap = keyboardBottomOffset > 0 ? KEYBOARD_INPUT_GAP : 0;
+  const dockBottomOffset = keyboardBottomOffset + keyboardGap;
+  const messagesBottomInset = bottomDockHeight + dockBottomOffset + 12;
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
@@ -333,25 +336,14 @@ export default function ChatScreen() {
       const windowHeight = Dimensions.get('window').height;
       const keyboardTop = event.endCoordinates?.screenY ?? windowHeight;
       const nextOffset = Math.max(0, windowHeight - keyboardTop);
-      const duration = Math.max(120, event.duration ?? 250);
 
+      Keyboard.scheduleLayoutAnimation(event);
       setKeyboardBottomOffset(nextOffset);
-      Animated.timing(keyboardOffset, {
-        toValue: nextOffset,
-        duration,
-        useNativeDriver: false,
-      }).start();
     };
 
     const hideKeyboard = (event: any) => {
-      const duration = Math.max(120, event.duration ?? 220);
-
+      Keyboard.scheduleLayoutAnimation(event);
       setKeyboardBottomOffset(0);
-      Animated.timing(keyboardOffset, {
-        toValue: 0,
-        duration,
-        useNativeDriver: false,
-      }).start();
     };
 
     const changeSub = Keyboard.addListener('keyboardWillChangeFrame', syncKeyboard);
@@ -361,7 +353,7 @@ export default function ChatScreen() {
       changeSub.remove();
       hideSub.remove();
     };
-  }, [keyboardOffset]);
+  }, []);
 
   // ── A2 Procesar mensajes programados cada 30s ──────────────────
   useEffect(() => {
@@ -2039,9 +2031,9 @@ export default function ChatScreen() {
         </View>
 
         {/* ── BOTTOM DOCK — acompaña al teclado con su misma animación ── */}
-        <Animated.View
+        <View
           onLayout={e => setBottomDockHeight(e.nativeEvent.layout.height)}
-          style={[styles.bottomDock, { bottom: Platform.OS === 'ios' ? keyboardOffset : 0 }]}
+          style={[styles.bottomDock, { bottom: Platform.OS === 'ios' ? dockBottomOffset : 0 }]}
         >
 
             {replyTo && (
@@ -2206,6 +2198,7 @@ export default function ChatScreen() {
                   showAttach={showAttach}
                   showEmojis={showEmojis}
                   isRecording={isRecording}
+                  keyboardVisible={keyboardBottomOffset > 0}
                   durationFormatted={durationFormatted}
                   sendScale={sendScale}
                   onChangeText={handleTextChange}
@@ -2280,7 +2273,7 @@ export default function ChatScreen() {
               </View>
             )}
           {/* ── FIN BOTTOM DOCK ── */}
-        </Animated.View>
+        </View>
 
       </View>
 
