@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
-  StyleSheet, Platform, ActivityIndicator,
+  StyleSheet, Platform, ActivityIndicator, Dimensions,
   Animated, Modal, Pressable, Alert, Image, Share, Keyboard,
-  KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
@@ -85,7 +84,6 @@ import {
 import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
 import { notifyReaction } from '../../src/notifications';
-import { useKeyboardHeight } from '../../src/hooks/useKeyboardHeight';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
 import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
 import { translateText } from '../../src/services/translator';
@@ -219,6 +217,8 @@ export default function ChatScreen() {
   const [showEmojis, setShowEmojis] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [inputBarHeight, setInputBarHeight] = useState(0);
+  const [bottomDockHeight, setBottomDockHeight] = useState(0);
+  const [keyboardBottomOffset, setKeyboardBottomOffset] = useState(0);
   const [showQuickTransfer, setShowQuickTransfer] = useState(false);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
@@ -309,6 +309,7 @@ export default function ChatScreen() {
   const flatListRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
+  const keyboardOffset = useRef(new Animated.Value(0)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const remoteTypingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const typingChannelRef = useRef<ReturnType<typeof createChatTypingChannel> | null>(null);
@@ -318,12 +319,48 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
-  const { keyboardVisible } = useKeyboardHeight();
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
     return () => clearAllMessageStatusTimers();
   }, []);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios') return undefined;
+
+    const syncKeyboard = (event: any) => {
+      const windowHeight = Dimensions.get('window').height;
+      const keyboardTop = event.endCoordinates?.screenY ?? windowHeight;
+      const nextOffset = Math.max(0, windowHeight - keyboardTop);
+      const duration = Math.max(120, event.duration ?? 250);
+
+      setKeyboardBottomOffset(nextOffset);
+      Animated.timing(keyboardOffset, {
+        toValue: nextOffset,
+        duration,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const hideKeyboard = (event: any) => {
+      const duration = Math.max(120, event.duration ?? 220);
+
+      setKeyboardBottomOffset(0);
+      Animated.timing(keyboardOffset, {
+        toValue: 0,
+        duration,
+        useNativeDriver: false,
+      }).start();
+    };
+
+    const changeSub = Keyboard.addListener('keyboardWillChangeFrame', syncKeyboard);
+    const hideSub = Keyboard.addListener('keyboardWillHide', hideKeyboard);
+
+    return () => {
+      changeSub.remove();
+      hideSub.remove();
+    };
+  }, [keyboardOffset]);
 
   // ── A2 Procesar mensajes programados cada 30s ──────────────────
   useEffect(() => {
@@ -683,7 +720,7 @@ export default function ChatScreen() {
       cancelAnimationFrame(frame);
       clearTimeout(timer);
     };
-  }, [messages.length, keyboardVisible, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
+  }, [messages.length, keyboardBottomOffset, bottomDockHeight, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
@@ -1915,11 +1952,7 @@ export default function ChatScreen() {
         </View>
       )}
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={0}
-      >
+      <View style={{ flex: 1 }}>
         <View style={[styles.chatBg, { flex: 1 }]}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
           <FlatList
@@ -1927,7 +1960,14 @@ export default function ChatScreen() {
             data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: 12, flexGrow: 1, justifyContent: 'flex-end' }]}
+            contentContainerStyle={[
+              styles.messagesList,
+              {
+                paddingBottom: bottomDockHeight + keyboardBottomOffset + 12,
+                flexGrow: 1,
+                justifyContent: 'flex-end',
+              },
+            ]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -1990,8 +2030,11 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── BOTTOM DOCK — acompaña al teclado dentro del layout nativo ── */}
-        <View style={styles.bottomDock}>
+        {/* ── BOTTOM DOCK — acompaña al teclado con su misma animación ── */}
+        <Animated.View
+          onLayout={e => setBottomDockHeight(e.nativeEvent.layout.height)}
+          style={[styles.bottomDock, { bottom: Platform.OS === 'ios' ? keyboardOffset : 0 }]}
+        >
 
             {replyTo && (
               <ReplyPreview
@@ -2229,9 +2272,9 @@ export default function ChatScreen() {
               </View>
             )}
           {/* ── FIN BOTTOM DOCK ── */}
-        </View>
+        </Animated.View>
 
-      </KeyboardAvoidingView>
+      </View>
 
       <ChatContextMenu
         visible={contextVisible}

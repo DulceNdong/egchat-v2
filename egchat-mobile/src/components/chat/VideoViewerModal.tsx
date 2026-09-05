@@ -1,6 +1,7 @@
 /**
  * VideoViewerModal — Visor de video a pantalla completa desde el chat.
- * - Controles: play/pause, seek bar, mute, pantalla completa, cerrar
+ * - Controles: play/pause, seek bar, mute, descargar, compartir, cerrar
+ * - Descarga con expo-file-system + share sheet con expo-sharing
  * - Fondo negro inmersivo
  * - Compatible iOS + Android + Web (fallback con <video>)
  */
@@ -16,9 +17,10 @@ import {
   TouchableWithoutFeedback,
   Animated,
   Platform,
+  Alert,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Line, Path, Polyline, Rect } from 'react-native-svg';
+import Svg, { Line, Path, Polyline, Rect, Circle } from 'react-native-svg';
 
 const { width: W, height: H } = Dimensions.get('window');
 
