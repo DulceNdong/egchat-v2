@@ -106,10 +106,15 @@ export function ChatMediaGallery({ visible, chatId, chatName, onClose }: Props) 
                 style={s.cell}
                 activeOpacity={0.8}
                 onPress={() => {
-                  const imgIndex = imageUris.indexOf(item.uri);
-                  if (imgIndex >= 0) {
-                    setViewerIndex(imgIndex);
-                    setViewerOpen(true);
+                  if (item.type === 'video') {
+                    setVideoUri(item.uri);
+                    setVideoViewerOpen(true);
+                  } else {
+                    const imgIndex = imageUris.indexOf(item.uri);
+                    if (imgIndex >= 0) {
+                      setViewerIndex(imgIndex);
+                      setViewerOpen(true);
+                    }
                   }
                 }}
               >
