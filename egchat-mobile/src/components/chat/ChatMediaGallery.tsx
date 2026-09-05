@@ -11,6 +11,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Line, Polyline } from 'react-native-svg';
 import { chatAPI } from '../../api';
 import { ImageViewer } from '../ImageViewer';
+import { VideoViewerModal } from './VideoViewerModal';
 
 const { width: W } = Dimensions.get('window');
 const CELL = (W - 4) / 3;
