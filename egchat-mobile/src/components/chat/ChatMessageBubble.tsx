@@ -22,6 +22,7 @@ import type { ChatMessage } from '../../types/chat';
 const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const videoRef = useRef<any>(null);
 
   const url = message.file_url || '';
@@ -31,13 +32,21 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
   const fileName = isHashName ? 'Video' : (rawName || 'Video');
   const ext = rawName.split('.').pop()?.toLowerCase() || 'mp4';
 
+  // Pausa el inline antes de abrir el visor para evitar doble audio
+  const openViewer = useCallback(async () => {
+    if (videoRef.current) {
+      try { await videoRef.current.pauseAsync(); } catch {}
+      setPlaying(false);
+    }
+    setViewerOpen(true);
+  }, []);
+
   const togglePlay = async () => {
     if (!videoRef.current) return;
     try {
       if (playing) {
         await videoRef.current.pauseAsync();
       } else {
-        // Asegurar que el audio suena aunque el iPhone esté en modo silencio
         await Audio.setAudioModeAsync({
           playsInSilentModeIOS: true,
           allowsRecordingIOS: false,
@@ -50,12 +59,11 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
     } catch {}
   };
 
-  // En web: usar elemento <video> nativo
+  // En web: usar elemento <video> nativo con fullscreen nativo del browser
   if (typeof document !== 'undefined') {
     return (
       <View style={vd.card}>
         <View style={vd.videoBox}>
-          {/* eslint-disable-next-line @typescript-eslint/ban-ts-comment */}
           {/* @ts-ignore */}
           <video
             src={url}
@@ -72,50 +80,94 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
     );
   }
 
-  // En nativo: miniatura oscura con botón play + expo-av Video
+  // En nativo: miniatura + play inline + botón expandir
   const { Video } = require('expo-av');
   return (
-    <View style={vd.card}>
-      <TouchableOpacity onPress={togglePlay} activeOpacity={0.9} style={vd.videoBox}>
-        <Video
-          ref={videoRef}
-          source={{ uri: url }}
-          style={vd.video}
-          resizeMode="cover"
-          shouldPlay={false}
-          isMuted={false}
-          onReadyForDisplay={() => setReady(true)}
-          onPlaybackStatusUpdate={(s: any) => {
-            if (s.didJustFinish) { setPlaying(false); }
-          }}
-        />
-        {/* Overlay oscuro cuando no reproduce */}
-        {!playing && (
-          <View style={vd.overlay}>
-            <View style={vd.playBtn}>
-              <View style={vd.playTriangle} />
+    <>
+      <View style={vd.card}>
+        {/* Área de video — toque abre pantalla completa, play inline secundario */}
+        <TouchableOpacity onPress={openViewer} activeOpacity={0.9} style={vd.videoBox}>
+          <Video
+            ref={videoRef}
+            source={{ uri: url }}
+            style={vd.video}
+            resizeMode="cover"
+            shouldPlay={false}
+            isMuted={false}
+            onReadyForDisplay={() => setReady(true)}
+            onPlaybackStatusUpdate={(s: any) => {
+              if (s.didJustFinish) setPlaying(false);
+            }}
+          />
+
+          {/* Overlay con play cuando está pausado */}
+          {!playing && (
+            <View style={vd.overlay}>
+              <View style={vd.playBtn}>
+                <View style={vd.playTriangle} />
+              </View>
             </View>
-          </View>
-        )}
-        {!ready && !playing && (
-          <View style={[vd.overlay, { justifyContent: 'center', alignItems: 'center' }]}>
-            <View style={vd.playBtn}>
-              <View style={vd.playTriangle} />
-            </View>
-          </View>
-        )}
-      </TouchableOpacity>
-      <View style={vd.meta}>
-        <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
-        <Text style={[vd.ext, { color: isOwn ? '#00c8a0' : '#00b4e6' }]}>{ext.toUpperCase()}</Text>
+          )}
+
+          {/* Botón expandir — esquina superior derecha */}
+          <TouchableOpacity
+            style={vd.expandBtn}
+            onPress={openViewer}
+            hitSlop={8}
+            activeOpacity={0.75}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M8 3H5a2 2 0 0 0-2 2v3" />
+              <Path d="M21 8V5a2 2 0 0 0-2-2h-3" />
+              <Path d="M3 16v3a2 2 0 0 0 2 2h3" />
+              <Path d="M16 21h3a2 2 0 0 0 2-2v-3" />
+            </Svg>
+          </TouchableOpacity>
+
+          {/* Botón play/pause inline — centro inferior */}
+          {ready && (
+            <TouchableOpacity
+              style={vd.inlinePlayBtn}
+              onPress={(e) => { e.stopPropagation?.(); togglePlay(); }}
+              hitSlop={8}
+              activeOpacity={0.75}
+            >
+              <View style={vd.inlinePlayCircle}>
+                {playing
+                  ? <View style={vd.pauseBars}><View style={vd.pauseBar}/><View style={vd.pauseBar}/></View>
+                  : <View style={vd.playTriangleSmall} />
+                }
+              </View>
+            </TouchableOpacity>
+          )}
+        </TouchableOpacity>
+
+        <View style={vd.meta}>
+          <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
+          <Text style={[vd.ext, { color: isOwn ? '#00c8a0' : '#00b4e6' }]}>{ext.toUpperCase()}</Text>
+        </View>
       </View>
-    </View>
+
+      {/* Visor a pantalla completa */}
+      <VideoViewerModal
+        visible={viewerOpen}
+        uri={url}
+        title={fileName}
+        onClose={() => setViewerOpen(false)}
+      />
+    </>
   );
 };
 
 const vd = StyleSheet.create({
   card: { minWidth: 200, maxWidth: 260 },
-  videoBox: { borderRadius: 10, overflow: 'hidden', backgroundColor: '#000', position: 'relative', marginBottom: 6 },
+  videoBox: {
+    borderRadius: 10,
+    overflow: 'hidden',
+    backgroundColor: '#000',
+    position: 'relative',
+    marginBottom: 6,
+  },
   video: { width: 260, height: 160 },
   overlay: {
     ...StyleSheet.absoluteFillObject,
@@ -137,16 +189,47 @@ const vd = StyleSheet.create({
     elevation: 6,
   },
   playTriangle: {
-    width: 0,
-    height: 0,
-    borderTopWidth: 9,
-    borderBottomWidth: 9,
-    borderLeftWidth: 16,
-    borderTopColor: 'transparent',
-    borderBottomColor: 'transparent',
-    borderLeftColor: '#111',
-    marginLeft: 4,
+    width: 0, height: 0,
+    borderTopWidth: 9, borderBottomWidth: 9, borderLeftWidth: 16,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: '#111', marginLeft: 4,
   },
+  // Botón expandir esquina superior derecha
+  expandBtn: {
+    position: 'absolute',
+    top: 8,
+    right: 8,
+    width: 28,
+    height: 28,
+    borderRadius: 6,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  // Play/pause inline pequeño abajo centro
+  inlinePlayBtn: {
+    position: 'absolute',
+    bottom: 8,
+    left: '50%' as any,
+    marginLeft: -16,
+  },
+  inlinePlayCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: 'rgba(0,0,0,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  playTriangleSmall: {
+    width: 0, height: 0,
+    borderTopWidth: 5, borderBottomWidth: 5, borderLeftWidth: 9,
+    borderTopColor: 'transparent', borderBottomColor: 'transparent',
+    borderLeftColor: '#fff', marginLeft: 2,
+  },
+  pauseBars: { flexDirection: 'row', gap: 3 },
+  pauseBar: { width: 3, height: 10, backgroundColor: '#fff', borderRadius: 1 },
+  // Meta
   meta: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingHorizontal: 2 },
   name: { fontSize: 12, fontWeight: '600', color: '#374151', flex: 1, marginRight: 6 },
   ext: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
