@@ -34,6 +34,8 @@ export function ChatMediaGallery({ visible, chatId, chatName, onClose }: Props) 
   const [loading, setLoading] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
   const [viewerIndex, setViewerIndex] = useState(0);
+  const [videoViewerOpen, setVideoViewerOpen] = useState(false);
+  const [videoUri, setVideoUri] = useState('');
   const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
