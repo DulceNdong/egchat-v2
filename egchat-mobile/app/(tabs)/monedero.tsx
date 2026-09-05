@@ -1203,8 +1203,6 @@ function MonederoScreenInner() {
   const overlayOpacity = zipAnim.interpolate({ inputRange: [0, 1], outputRange: [1, 0] });
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
-
-  if (loading) {
     return (
       <View style={[s.center, { backgroundColor: C.bgPrimary }]}>
         <ActivityIndicator size="large" color="#00c8a0" />
