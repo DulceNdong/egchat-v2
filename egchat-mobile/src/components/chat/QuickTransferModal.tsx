@@ -99,6 +99,14 @@ export function QuickTransferModal({
       }
 
       if (!hasPin) {
+        // Preparar la transferencia pendiente ANTES de mostrar el setup de PIN
+        // para que al completar el setup, ya esté lista
+        const to = recipientPhone || recipientId || contactName;
+        setPendingTransfer({
+          amount: num,
+          to,
+          description: `Chat: ${contactName}`,
+        });
         setLoading(false);
         setShowSetupPin(true);
         return;
