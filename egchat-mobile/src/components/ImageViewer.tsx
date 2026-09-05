@@ -47,7 +47,7 @@ export interface MediaItem {
 
 interface ImageViewerProps {
   visible: boolean;
-  items: MediaItem[];
+  items?: MediaItem[];
   initialIndex?: number;
   onClose: () => void;
   onReply?: (item: MediaItem) => void;

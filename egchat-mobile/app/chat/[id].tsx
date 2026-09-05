@@ -319,13 +319,6 @@ export default function ChatScreen() {
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
   const { keyboardVisible } = useKeyboardHeight();
-  const activePanelHeight = showAttach
-    ? 290
-    : showEmojis
-      ? 300
-      : showStickers
-        ? 320
-        : 0;
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
@@ -681,12 +674,15 @@ export default function ChatScreen() {
     flatListRef.current?.scrollToEnd({ animated });
   }, []);
 
-  // Mantener visible el último mensaje, el indicador de escritura y el input al cambiar teclado
+  // Mantener visible el último mensaje, el indicador de escritura y el input al cambiar el teclado.
   useEffect(() => {
     if (messages.length === 0) return;
-    const delay = keyboardVisible ? 40 : 0;
-    const timer = setTimeout(() => scrollToBottom(false), delay);
-    return () => clearTimeout(timer);
+    const frame = requestAnimationFrame(() => scrollToBottom(false));
+    const timer = setTimeout(() => scrollToBottom(false), 120);
+    return () => {
+      cancelAnimationFrame(frame);
+      clearTimeout(timer);
+    };
   }, [messages.length, keyboardVisible, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
@@ -1862,11 +1858,6 @@ export default function ChatScreen() {
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: '#00b4e6' }]} edges={['left', 'right']}>
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
-      >
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
@@ -1924,7 +1915,11 @@ export default function ChatScreen() {
         </View>
       )}
 
-      <View style={{ flex: 1 }}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
         <View style={[styles.chatBg, { flex: 1 }]}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
           <FlatList
@@ -1932,7 +1927,7 @@ export default function ChatScreen() {
             data={displayMessages}
             keyExtractor={item => item.id}
             renderItem={renderItem}
-            contentContainerStyle={[styles.messagesList, { paddingBottom: inputBarHeight + activePanelHeight + 16, flexGrow: 1, justifyContent: 'flex-end' }]}
+            contentContainerStyle={[styles.messagesList, { paddingBottom: 12, flexGrow: 1, justifyContent: 'flex-end' }]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
@@ -1943,7 +1938,6 @@ export default function ChatScreen() {
             updateCellsBatchingPeriod={50}
             windowSize={10}
             removeClippedSubviews={Platform.OS === 'android'}
-            maintainVisibleContentPosition={{ minIndexForVisible: 0 }}
             // ────────────────────────────────────────────────────────
             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 8 }} /> : null}
             ListFooterComponent={isTyping ? <TypingIndicator /> : null}
@@ -1996,8 +1990,8 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
 
-        {/* ── BOTTOM DOCK — sube/baja animado con el teclado ── */}
-        <Animated.View style={styles.bottomDock}>
+        {/* ── BOTTOM DOCK — acompaña al teclado dentro del layout nativo ── */}
+        <View style={styles.bottomDock}>
 
             {replyTo && (
               <ReplyPreview
@@ -2235,9 +2229,7 @@ export default function ChatScreen() {
               </View>
             )}
           {/* ── FIN BOTTOM DOCK ── */}
-        </Animated.View>
-
-      </View>
+        </View>
 
       </KeyboardAvoidingView>
 
