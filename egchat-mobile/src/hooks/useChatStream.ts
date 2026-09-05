@@ -10,6 +10,7 @@ import { getToken, getApiBase } from '../api';
 type StreamEvent = {
   type: 'new_message' | 'chat_updated' | 'connected' | 'heartbeat' | 'typing' | 'read'
        | 'sync_message' | 'session_revoked' | 'wallet_updated' | 'presence'
+       | 'transfer_received'
        | 'group_call_participant_joined' | 'group_call_participant_left'
        | 'group_call_offer' | 'group_call_answer' | 'group_call_ice';
   chatId?: string;
@@ -20,6 +21,10 @@ type StreamEvent = {
   messageIds?: string[];
   isTyping?: boolean;
   ts?: number;
+  // transfer_received
+  amount?: number;
+  senderName?: string;
+  newBalance?: number;
   // sync_message
   senderDeviceId?: string;
   // session_revoked
