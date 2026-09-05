@@ -1210,8 +1210,6 @@ function MonederoScreenInner() {
     );
   }
 
-  const recentTx = transactions.slice(0, 8);
-
   return (
     <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right']}>
 
