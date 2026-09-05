@@ -178,7 +178,17 @@ export const mergePersistentAvatar = async <T extends { id?: string; avatar_url?
 
   const localAvatar = await getLocalAvatar(userWithName.id!);
   if (localAvatar && FileSystem.documentDirectory && localAvatar.startsWith(FileSystem.documentDirectory)) {
-    return { ...userWithName, avatar_url: localAvatar };
+    // Verificar que el archivo local realmente existe antes de usarlo
+    try {
+      const info = await FileSystem.getInfoAsync(localAvatar);
+      if (info.exists) {
+        return { ...userWithName, avatar_url: localAvatar };
+      }
+      // Archivo no existe — limpiar la caché para evitar el error en el futuro
+      await AsyncStorage.removeItem(`${AVATAR_CACHE_PREFIX}${userWithName.id}`);
+    } catch {
+      await AsyncStorage.removeItem(`${AVATAR_CACHE_PREFIX}${userWithName.id}`);
+    }
   }
   if (localAvatar && isBrokenAvatarUrl(userWithName.avatar_url)) {
     return { ...userWithName, avatar_url: localAvatar };
