@@ -138,6 +138,9 @@ export function QuickTransferModal({
 
   const handlePinConfirm = async (pin: string) => {
     if (!pendingTransfer) return;
+    // Guard: evitar doble ejecución
+    if (transferExecuted.current) return;
+    transferExecuted.current = true;
     
     setPinLoading(true);
     setPinError('');
@@ -150,11 +153,11 @@ export function QuickTransferModal({
         await authAPI.verifyPin(pin);
       }
       
-      // Realizar la transferencia
+      // Realizar la transferencia — UNA SOLA VEZ
       await walletAPI.transfer(pendingTransfer.to, pendingTransfer.amount, pendingTransfer.description);
       await updateLimitForTransaction('transfer', pendingTransfer.amount);
       
-      // Generar código de referencia
+      // Generar código de referencia único
       const code = Math.floor(100000 + Math.random() * 900000).toString();
       const msgText = [
         '💸 Transferencia enviada',
@@ -165,10 +168,12 @@ export function QuickTransferModal({
         '✅ Completado',
       ].join('\n');
       
+      setShowPinModal(false);
+      setPendingTransfer(null);
       onTransferred(msgText);
-      // Transferencia completada - el mensaje ya se muestra en el chat
       onClose();
     } catch (e: any) {
+      transferExecuted.current = false; // resetear para permitir reintentar
       setPinError(e?.message || 'PIN incorrecto o transferencia fallida');
     } finally {
       setPinLoading(false);
