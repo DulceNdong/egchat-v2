@@ -319,6 +319,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
+  const messagesBottomInset = bottomDockHeight + keyboardBottomOffset + 12;
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
@@ -716,11 +717,13 @@ export default function ChatScreen() {
     if (messages.length === 0) return;
     const frame = requestAnimationFrame(() => scrollToBottom(false));
     const timer = setTimeout(() => scrollToBottom(false), 120);
+    const settledTimer = setTimeout(() => scrollToBottom(false), 280);
     return () => {
       cancelAnimationFrame(frame);
       clearTimeout(timer);
+      clearTimeout(settledTimer);
     };
-  }, [messages.length, keyboardBottomOffset, bottomDockHeight, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
+  }, [messages.length, messagesBottomInset, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
@@ -1963,7 +1966,7 @@ export default function ChatScreen() {
             contentContainerStyle={[
               styles.messagesList,
               {
-                paddingBottom: bottomDockHeight + keyboardBottomOffset + 12,
+                paddingBottom: 12,
                 flexGrow: 1,
                 justifyContent: 'flex-end',
               },
@@ -1980,7 +1983,12 @@ export default function ChatScreen() {
             removeClippedSubviews={Platform.OS === 'android'}
             // ────────────────────────────────────────────────────────
             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 8 }} /> : null}
-            ListFooterComponent={isTyping ? <TypingIndicator /> : null}
+            ListFooterComponent={(
+              <>
+                {isTyping && <TypingIndicator />}
+                <View style={{ height: messagesBottomInset }} />
+              </>
+            )}
             ListEmptyComponent={
               <View style={styles.emptyChat}>
                 <Text style={styles.emptyChatIcon}>💬</Text>

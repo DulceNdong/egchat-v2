@@ -54,7 +54,7 @@ export function ChatInputBar({
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
   const { keyboardVisible } = useKeyboardHeight();
-  const safeBottom = keyboardVisible ? 0 : insets.bottom;
+  const bottomPadding = keyboardVisible ? 10 : Math.max(6, insets.bottom);
   // C6 — referencia de selección para insertar formato
   const selectionRef = useRef<{ start: number; end: number }>({ start: text.length, end: text.length });
 
@@ -68,7 +68,7 @@ export function ChatInputBar({
 
   if (isRecording) {
     return (
-      <View style={[s.bar, { paddingBottom: safeBottom }]}>
+      <View style={[s.bar, { paddingBottom: bottomPadding }]}>
         <TouchableOpacity style={s.plusBtn} onPress={onToggleAttach} activeOpacity={0.8}>
           <Svg width={16} height={16} viewBox="0 0 24 24" fill="none"
             stroke='#00b4e6' strokeWidth={2.5} strokeLinecap="round">
@@ -98,7 +98,7 @@ export function ChatInputBar({
   return (
     <>
     <TextFormatBar visible={hasText} onFormat={handleFormat} />
-    <View style={[s.bar, { paddingBottom: safeBottom }]}>
+    <View style={[s.bar, { paddingBottom: bottomPadding }]}>
       <TouchableOpacity style={s.plusBtn} onPress={onToggleAttach} activeOpacity={0.8}>
         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none"
           stroke={showAttach ? '#00b4e6' : '#00b4e6'} strokeWidth={2.5} strokeLinecap="round">

@@ -174,14 +174,13 @@ export function QuickTransferModal({
 
   const handlePinSetupSuccess = () => {
     setShowSetupPin(false);
-    // Después de configurar el PIN, reintentamos la transferencia
-    if (pendingTransfer || amount) {
-      // PIN configurado silenciosamente
-      // Reactivar el proceso de transferencia
-      setTimeout(() => {
-        handleSend();
-      }, 500);
+    // Después de configurar el PIN, mostrar directamente el modal de verificación
+    // NO llamar handleSend() de nuevo para evitar loops
+    if (pendingTransfer) {
+      // Ya tenemos una transferencia pendiente, solo mostrar el modal de PIN
+      setShowPinModal(true);
     }
+    // Si no hay transferencia pendiente, el usuario puede pulsar Enviar de nuevo
   };
 
   const handlePinSetupClose = () => {
