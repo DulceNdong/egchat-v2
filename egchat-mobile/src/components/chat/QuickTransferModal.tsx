@@ -134,8 +134,12 @@ export function QuickTransferModal({
     setPinError('');
     
     try {
-      // Verificar PIN con el backend
-      await authAPI.verifyPin(pin);
+      // Verificar PIN: local primero, luego servidor como respaldo
+      const localValid = await walletPIN.verify(pin);
+      if (!localValid) {
+        // Si no hay PIN local, verificar con el servidor
+        await authAPI.verifyPin(pin);
+      }
       
       // Realizar la transferencia
       await walletAPI.transfer(pendingTransfer.to, pendingTransfer.amount, pendingTransfer.description);
