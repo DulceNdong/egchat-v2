@@ -20,6 +20,7 @@ import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuP
 import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
 import { ChatHeader } from '../../src/components/chat/ChatHeader';
 import { ChatInputBar } from '../../src/components/chat/ChatInputBar';
+import { NativeChatKeyboard } from '../../src/components/chat/NativeChatKeyboard';
 import { ScheduledMessageModal } from '../../src/components/chat/ScheduledMessageModal';
 import { processScheduledMessages } from '../../src/services/scheduledMessages';
 import { EditHistoryModal } from '../../src/components/chat/EditHistoryModal';
