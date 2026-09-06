@@ -254,9 +254,8 @@ final class EGChatKeyboardView: UIView {
     let keyW = available / n
     let startX = side + specialW + hGap
 
-    // Shift
-    let shiftTitle = caps ? "⬆︎" : "⇧"
-    let shift = KB(shiftTitle, fShift, cText, cSpec)
+    // Shift — blanco con flecha negra (igual al sistema iOS)
+    let shift = KB(caps ? "⬆︎" : "⇧", fShift, UIColor(red:0.07,green:0.07,blue:0.07,alpha:1), cNorm)
     shift.frame = CGRect(x: side, y: y, width: specialW, height: rowH)
     shift.onTap = { [weak self] in self?.caps.toggle(); self?.render() }
     kbView.addSubview(shift)
