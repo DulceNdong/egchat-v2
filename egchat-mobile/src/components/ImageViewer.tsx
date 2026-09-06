@@ -667,9 +667,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       const filename = current.name || `egchat_${Date.now()}.jpg`;
       const dest = `${FileSystem.cacheDirectory}${filename}`;
       await FileSystem.copyAsync({ from: current.uri, to: dest });
-      Alert.alert('', 'Guardado ✓');
+      toast.success('Guardado en galería');
     } catch {
-      Alert.alert('Error', 'No se pudo guardar el archivo');
+      toast.error('No se pudo guardar el archivo');
     }
   };
 
