@@ -611,37 +611,20 @@ function HomeScreenInner() {
         });
       })()}
 
-      {/* LIA-25 desactivado — PanResponder bloquea toques en iOS Release
+      {/* LIA-25 flotante arrastrable */}
       <Animated.View
+        style={[st.liaBtn, { left: liaPan.x, top: liaPan.y }]}
         {...liaPanResponder.panHandlers}
-        style={[
-          st.liaBtn,
-          {
-            transform: [
-              { translateX: liaPan.x },
-              { translateY: liaPan.y },
-              { scale: liaPulse },
-            ],
-          },
-        ]}
       >
-        <TouchableOpacity
-          activeOpacity={0.85}
-          onPress={() => {
-            if (!liaDragging.current) router.push('/(tabs)/lia' as any);
-          }}
+        <LinearGradient
+          colors={['#00C8A0', '#00B4E6']}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+          style={st.liaBtnGradient}
         >
-          <LinearGradient
-            colors={['#00C8A0', '#00B4E6']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={st.liaBtnGradient}
-          >
-            <SpinningLogo size={36} glow={false} />
-          </LinearGradient>
-        </TouchableOpacity>
+          <SpinningLogo size={36} glow={false} />
+        </LinearGradient>
       </Animated.View>
-      */}
 
       {/* ════════════════════════════════════════════════════════
           FAB + — Botón central flotante
