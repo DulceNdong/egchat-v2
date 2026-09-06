@@ -116,6 +116,7 @@ export function ChatInputBar({
         style={s.plusBtn}
         onPress={() => {
           setNativeKeyboardVisible(false);
+          onNativeKbChange?.(false);
           onToggleAttach();
         }}
         activeOpacity={0.8}
