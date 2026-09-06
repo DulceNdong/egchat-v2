@@ -519,7 +519,27 @@ export const contactsAPI = {
   unfavorite: (contactId: string) => del<void>(`/api/contacts/${contactId}/favorite`),
   add: (contact_user_id?: string, phone?: string, name?: string) =>
     post<any>('/api/contacts', { contact_user_id, phone, nickname: name }),
+  /** Eliminar por ID de fila (tabla contacts) */
   remove: (id: string) => del<void>(`/api/contacts/${id}`),
+  /**
+   * Eliminar contacto desde el chat usando el user_id del otro participante.
+   * Primero busca el registro en contacts y luego lo elimina.
+   * Devuelve true si se eliminó, false si no estaba en contactos.
+   */
+  removeByUserId: async (targetUserId: string): Promise<boolean> => {
+    try {
+      const contacts = await get<any[]>('/api/contacts');
+      const entry = contacts?.find(
+        (c: any) => (c.contact_user_id || c.user?.id || c.id) === targetUserId
+      );
+      if (!entry) return false;
+      const rowId = entry.id;
+      await del<void>(`/api/contacts/${rowId}`);
+      return true;
+    } catch {
+      return false;
+    }
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════
