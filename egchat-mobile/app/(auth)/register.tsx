@@ -410,14 +410,4 @@ const styles = StyleSheet.create({
   },
   phonePrefixText: { fontSize: FontSize.base, fontWeight: FontWeight.bold, color: Colors.textPrimary },
   phoneInputContainer: { flex: 1, marginBottom: 0 },
-  // OTP
-  otpHint: { fontSize: 13, marginBottom: 12, lineHeight: 18 },
-  otpInput: {
-    fontSize: 28, fontWeight: '700', letterSpacing: 12,
-    borderRadius: BorderRadius.md, borderWidth: 1.5,
-    paddingVertical: 14, paddingHorizontal: 20,
-    textAlign: 'center',
-  },
-  resendBtn: { alignItems: 'center', paddingVertical: 10, marginTop: 4 },
-  resendText: { fontSize: 14, fontWeight: '600' },
 });
