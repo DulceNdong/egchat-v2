@@ -148,9 +148,9 @@ export default function BarcosScreen() {
   }
 
   return (
-    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['top']}>
+    <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
       {/* Header */}
-      <View style={[st.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+      <View style={[st.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight, paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={goBack} style={st.backBtn}>
           <Text style={[st.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
