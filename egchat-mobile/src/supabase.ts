@@ -35,7 +35,7 @@ export const subscribeToChat = (
       {
         event: '*',
         schema: 'public',
-        table: 'chat_messages',
+        table: 'messages',
         filter: `chat_id=eq.${chatId}`,
       },
       (payload) => {
