@@ -3262,6 +3262,21 @@ const styles = StyleSheet.create({
   bottomSheetCompact: {
     marginBottom: -1,
   },
+  kbBackBtn: {
+    position: 'absolute',
+    top: 10,
+    right: 14,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: 'rgba(0,0,0,0.06)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    zIndex: 10,
+  },
+  kbBackBtnText: {
+    fontSize: 18,
+  },
 
   // Panel adjuntos — grid 2 columnas
   attachPanel: {
