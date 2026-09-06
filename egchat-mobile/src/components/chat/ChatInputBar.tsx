@@ -41,6 +41,7 @@ export function ChatInputBar({
   showEmojis,
   isRecording,
   keyboardVisible = false,
+  nativeKbOpen,
   durationFormatted,
   amplitude = 0,
   sendScale,
@@ -53,12 +54,20 @@ export function ChatInputBar({
   onStartRecording,
   onCancelRecording,
   onStopRecording,
+  onNativeKbChange,
   inputRef,
 }: ChatInputBarProps) {
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
   const [nativeKeyboardVisible, setNativeKeyboardVisible] = useState(false);
   const bottomPadding = keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom);
+
+  // Cuando el padre cierra el kb desde fuera (abre panel +), cerramos aquí también
+  React.useEffect(() => {
+    if (nativeKbOpen === false && nativeKeyboardVisible) {
+      setNativeKeyboardVisible(false);
+    }
+  }, [nativeKbOpen]);
   // C6 — referencia de selección para insertar formato
   const selectionRef = useRef<{ start: number; end: number }>({ start: text.length, end: text.length });
 
