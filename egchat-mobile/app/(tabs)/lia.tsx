@@ -326,6 +326,7 @@ export default function LiaScreen() {
           <ScrollView
             contentContainerStyle={[s.welcomeScroll, { paddingBottom: 16 }]}
             showsVerticalScrollIndicator={false}
+            style={{ flex: 1 }}
           >
             {/* Avatar grande con halo */}
             <View style={s.avatarHaloWrap}>
