@@ -75,6 +75,7 @@ export default function ApuestasScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const s = makeStyles(C);
+  const insets = useSafeAreaInsets();
 
   const [balance, setBalance] = useState(0);
   const [company, setCompany] = useState<Company | null>(null);
