@@ -3275,6 +3275,21 @@ const styles = StyleSheet.create({
     zIndex: 10,
     ...Shadow.md,
   },
+  homeFloat: {
+    position: 'absolute',
+    zIndex: 10,
+    ...Shadow.md,
+  },
+  homeFloatGrad: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.6)',
+    overflow: 'hidden',
+  },
   liaFloatGrad: {
     width: 36,
     height: 36,
