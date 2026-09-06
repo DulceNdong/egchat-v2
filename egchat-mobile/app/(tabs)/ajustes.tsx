@@ -350,7 +350,6 @@ function AjustesScreenInner() {
         onSwitch={(id) => { setShowAccountSwitcher(false); authAPI.me().then(setUser); }}
         onAddAccount={() => router.push('/(auth)/login' as any)}
       />
-      <DraggableHomeButton />
     </SafeAreaView>
   );
 }
