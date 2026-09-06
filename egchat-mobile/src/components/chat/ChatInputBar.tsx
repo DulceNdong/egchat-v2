@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { TextFormatBar } from './TextFormatBar';
-import { NativeChatKeyboard } from './NativeChatKeyboard';
 
 export interface ChatInputBarProps {
   text: string;
