@@ -594,6 +594,7 @@ export default function LiaScreen() {
           ) : (
             <View style={[s.inputWrap, { backgroundColor: isDark ? C.bgTertiary : '#F4FBFF', borderColor: isDark ? C.border : '#DFF0FA' }]}>
               <TextInput
+                ref={inputRef}
                 style={[s.input, { color: C.textPrimary }]}
                 value={input}
                 onChangeText={setInput}
