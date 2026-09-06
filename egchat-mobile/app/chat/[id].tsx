@@ -450,6 +450,11 @@ export default function ChatScreen() {
       playMessageReceived(); // ← sonido de mensaje recibido
     }
 
+    // Mensaje eliminado para todos — quitar de la UI inmediatamente
+    if (event.type === 'message_deleted' && event.chatId === chatId && event.messageId) {
+      setMessages(prev => prev.filter(m => m.id !== event.messageId));
+    }
+
     if (event.type === 'typing' && event.chatId === chatId) {
       const typing = Boolean(event.isTyping);
       setIsTyping(typing);
