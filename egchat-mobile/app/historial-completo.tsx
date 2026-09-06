@@ -56,12 +56,12 @@ export default function HistorialCompletoScreen() {
   });
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
+    <SafeAreaView style={s.container} edges={['left', 'right']}>
       <LinearGradient
         colors={['#e8f5f2', '#f0f7ff', '#eef4fb', '#e6f5f0']}
         style={StyleSheet.absoluteFillObject}
       />
-      <View style={s.header}>
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
         <Text style={s.title}>Historial Completo</Text>
         <TouchableOpacity onPress={() => router.back()} style={s.closeBtn}>
           <Svg width={16} height={16} viewBox="0 0 24 24" stroke="#0d0d0d" strokeWidth={2.5} strokeLinecap="round">
