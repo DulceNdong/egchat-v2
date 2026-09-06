@@ -390,10 +390,8 @@ final class EGChatKeyboardView: UIView {
       kbView.addSubview(btn)
     }
 
-    let del = KB("⌫", fSpecial, cText, cSpec)
-    del.frame = CGRect(x: W-side-delW, y: y, width: delW, height: rowH)
-    del.onTap = { [weak self] in guard let self, !self.cur.isEmpty else { return }; self.cur.removeLast(); self.emit() }
-    kbView.addSubview(del)
+    let del = makeDeleteKey(x: W-side-delW, y: y, w: delW, h: rowH)
+    _ = del
 
     return y + rowH
   }
