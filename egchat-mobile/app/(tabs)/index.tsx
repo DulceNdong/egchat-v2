@@ -213,11 +213,43 @@ function HomeScreenInner() {
   const fabRotate = useRef(new Animated.Value(0)).current;
   const fabOverlayOpacity = useRef(new Animated.Value(0)).current;
   const fabItemAnims = useRef(FAB_SERVICES.map(() => new Animated.Value(0))).current;
-  // LIA — sin PanResponder (bloqueaba toques en iOS)
-  const liaPulse = useRef(new Animated.Value(1)).current;
+  // LIA — arrastrable con makeDraggable (sin conflicto de gestos en iOS)
   const { width: SW, height: SH } = Dimensions.get('window');
-  const liaPan = useRef(new Animated.ValueXY({ x: SW - 60, y: SH - 220 })).current;
+  const BTN_SIZE = 44;
+  const liaPan = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH - 220 })).current;
   const liaDragging = useRef(false);
+
+  function makeDraggable(
+    pos: Animated.ValueXY,
+    dragging: React.MutableRefObject<boolean>,
+    onTap: () => void,
+  ) {
+    return PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
+      onPanResponderGrant: () => {
+        dragging.current = false;
+        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: (_, g) => {
+        if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) dragging.current = true;
+        Animated.event([null, { dx: pos.x, dy: pos.y }], { useNativeDriver: false })(_, g);
+      },
+      onPanResponderRelease: () => {
+        pos.flattenOffset();
+        if (!dragging.current) { onTap(); return; }
+        const curX = (pos.x as any)._value;
+        const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
+        const rawY = (pos.y as any)._value;
+        const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
+        Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
+        dragging.current = false;
+      },
+    });
+  }
+
+  const liaPanResponder = useRef(makeDraggable(liaPan, liaDragging, () => router.push('/(tabs)/lia' as any))).current;
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
