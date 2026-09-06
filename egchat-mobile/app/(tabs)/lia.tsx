@@ -184,8 +184,13 @@ const TypingDots = () => {
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
+// Altura real del tab bar (debe coincidir con _layout.tsx)
+const TAB_BAR_H = Platform.OS === 'ios' ? 92 : 72;
+
 export default function LiaScreen() {
   const insets = useSafeAreaInsets();
+  // Espacio total que ocupa el tab bar absoluto + safe area inferior
+  const tabBarOffset = TAB_BAR_H + (insets.bottom > 0 ? 0 : 0); // el tab ya incluye paddingBottom para safe area
   const [messages, setMessages] = useState<LIAMessage[]>(() => [...sessionHistory]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
