@@ -435,7 +435,6 @@ export default function LiaScreen() {
           {
             backgroundColor: isDark ? C.bgSecondary : '#fff',
             borderTopColor: isDark ? C.borderLight : '#E4EFF7',
-            paddingBottom: insets.bottom > 0 ? insets.bottom : 12,
           },
         ]}>
           {/* Botón micrófono */}
