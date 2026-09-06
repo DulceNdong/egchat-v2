@@ -2262,6 +2262,73 @@ export default function ChatScreen() {
           {/* ── FIN BOTTOM DOCK ── */}
         </View>
 
+        {/* ── PANELES ADJUNTOS/EMOJIS/STICKERS — fijos debajo de la barra ── */}
+        {!editingMessage && (showAttach || showEmojis || showStickers) && (
+          <Animated.View
+            style={[
+              styles.panelContainer,
+              { bottom: effectiveDockOffset - PANEL_HEIGHT, transform: [{ translateY: panelSlide }] },
+            ]}
+          >
+            {showAttach && (
+              <View style={[styles.bottomSheet, { height: PANEL_HEIGHT }]}>
+                <Pressable
+                  style={StyleSheet.absoluteFillObject}
+                  onPress={() => setShowAttach(false)}
+                />
+                <ChatAttachPanel onAction={handleAttachAction} />
+                {/* Botón volver al teclado */}
+                <TouchableOpacity
+                  style={styles.kbBackBtn}
+                  onPress={() => {
+                    setShowAttach(false);
+                    inputRef.current?.focus();
+                    setNativeKbOpen(true);
+                  }}
+                  activeOpacity={0.7}
+                  hitSlop={8}
+                >
+                  <Text style={styles.kbBackBtnText}>⌨️</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+            {showEmojis && (
+              <View style={[styles.bottomSheet, { height: PANEL_HEIGHT }]}>
+                <ChatEmojiPanel onPick={insertEmoji} onSendSticker={sendStickerMessage} />
+              </View>
+            )}
+            {showStickers && (
+              <View style={[styles.bottomSheet, { height: PANEL_HEIGHT }]}>
+                <StickerPanel
+                  onSelect={async (url) => {
+                    setShowStickers(false);
+                    const tempId = createTempMessageId();
+                    pushOptimistic({
+                      id: tempId,
+                      text: '🎭 Sticker',
+                      type: 'image',
+                      imageUrl: url,
+                      file_url: url,
+                      sender_id: currentUserId,
+                      status: 'pending',
+                      created_at: new Date().toISOString(),
+                    });
+                    try {
+                      const sent = await chatAPI.sendMessage(chatId!, {
+                        text: '🎭 Sticker',
+                        type: 'image',
+                        file_url: url,
+                      });
+                      replaceOptimistic(tempId, { ...sent, imageUrl: url, file_url: url });
+                    } catch { failOptimistic(tempId); }
+                  }}
+                  onClose={() => setShowStickers(false)}
+                />
+              </View>
+            )}
+          </Animated.View>
+        )}
+
       </View>
 
       <ChatContextMenu
