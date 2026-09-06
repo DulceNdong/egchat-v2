@@ -157,7 +157,7 @@ export function ChatInputBar({
           maxLength={4000}
           autoFocus={false}
           showSoftInputOnFocus={false}
-          onFocus={() => setNativeKeyboardVisible(true)}
+          onFocus={() => { setNativeKeyboardVisible(true); onNativeKbChange?.(true); }}
         />
 
         {hasText ? (
