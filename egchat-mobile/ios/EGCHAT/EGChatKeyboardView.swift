@@ -270,9 +270,8 @@ final class EGChatKeyboardView: UIView {
       kbView.addSubview(btn)
     }
 
-    // Borrar (⌫ con icono SF Symbol o texto)
-    let del = KB("⌫", fSpecial, cText, cSpec)
-    del.frame = CGRect(x: W - side - specialW, y: y, width: specialW, height: rowH)
+    // Borrar — icono SF Symbol igual al sistema iOS
+    let del = makeDeleteKey(x: W - side - specialW, y: y, w: specialW, h: rowH)
     del.onTap = { [weak self] in
       guard let self, !self.cur.isEmpty else { return }
       self.cur.removeLast(); self.emit()
