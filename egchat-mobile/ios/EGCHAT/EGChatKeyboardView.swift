@@ -287,6 +287,33 @@ final class EGChatKeyboardView: UIView {
 
   // Borrado rápido al mantener pulsado ⌫
   private var deleteTimer: Timer?
+
+  /// Crea la tecla de borrar con el icono SF Symbol del sistema
+  private func makeDeleteKey(x: CGFloat, y: CGFloat, w: CGFloat, h: CGFloat) -> UIControl {
+    let btn = KB("", fSpecial, cText, cSpec)
+    btn.frame = CGRect(x: x, y: y, width: w, height: h)
+    // Icono SF Symbol "delete.backward" igual al sistema
+    let img = UIImageView()
+    let config = UIImage.SymbolConfiguration(pointSize: 17, weight: .regular)
+    img.image = UIImage(systemName: "delete.backward", withConfiguration: config)
+    img.tintColor = cText
+    img.contentMode = .scaleAspectFit
+    img.translatesAutoresizingMaskIntoConstraints = false
+    btn.addSubview(img)
+    NSLayoutConstraint.activate([
+      img.centerXAnchor.constraint(equalTo: btn.centerXAnchor),
+      img.centerYAnchor.constraint(equalTo: btn.centerYAnchor),
+      img.widthAnchor.constraint(equalToConstant: 24),
+      img.heightAnchor.constraint(equalToConstant: 20),
+    ])
+    btn.onTap = { [weak self] in
+      guard let self, !self.cur.isEmpty else { return }
+      self.cur.removeLast(); self.emit()
+    }
+    btn.onLong = { [weak self] in self?.startFastDelete() }
+    kbView.addSubview(btn)
+    return btn
+  }
   private func startFastDelete() {
     deleteTimer?.invalidate()
     deleteTimer = Timer.scheduledTimer(withTimeInterval: 0.08, repeats: true) { [weak self] _ in
