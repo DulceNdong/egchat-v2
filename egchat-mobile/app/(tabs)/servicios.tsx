@@ -430,7 +430,6 @@ function ServiciosScreenInner() {
       <NoticiasModal      visible={activeModal === 'noticias'}      onClose={() => setActiveModal(null)} />
       <IdDigitalModal     visible={activeModal === 'id_digital'}    onClose={() => setActiveModal(null)} />
       <EmergenciasModal   visible={activeModal === 'emergencias'}   onClose={() => setActiveModal(null)} />
-      <DraggableHomeButton />
     </SafeAreaView>
   );
 }
