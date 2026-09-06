@@ -613,7 +613,7 @@ const s = StyleSheet.create({
   // Barra de input
   inputBar: {
     flexDirection: 'row', alignItems: 'flex-end', gap: 8,
-    paddingHorizontal: 12, paddingTop: 10,
+    paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12,
     borderTopWidth: 1,
   },
   micBtn: {
