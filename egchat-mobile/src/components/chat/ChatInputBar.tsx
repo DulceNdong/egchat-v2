@@ -17,6 +17,7 @@ export interface ChatInputBarProps {
   showEmojis: boolean;
   isRecording: boolean;
   keyboardVisible?: boolean;
+  nativeKbOpen?: boolean;           // true cuando el teclado custom está visible
   durationFormatted: string;
   amplitude?: number;
   sendScale: Animated.Value;
@@ -24,6 +25,7 @@ export interface ChatInputBarProps {
   onToggleAttach: () => void;
   onToggleEmojis: () => void;
   onToggleStickers?: () => void;
+  onNativeKbChange?: (open: boolean) => void;  // notifica al padre
   onSend: () => void;
   onLongPressSend?: () => void;
   onStartRecording: () => void;
