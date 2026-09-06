@@ -166,7 +166,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     backgroundColor: Colors.bgSecondary,
     borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingVertical: Spacing.sm, gap: Spacing.sm,
+    paddingHorizontal: Spacing.sm, paddingBottom: Spacing.sm, gap: Spacing.sm,
   },
   backBtn: { padding: Spacing.sm },
   backIcon: { fontSize: 28, color: Colors.textPrimary, lineHeight: 32 },
