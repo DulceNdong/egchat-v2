@@ -103,7 +103,10 @@ export function ChatInputBar({
     <View style={[s.bar, { paddingBottom: bottomPadding }]}>
       <TouchableOpacity
         style={s.plusBtn}
-        onPress={onToggleAttach}
+        onPress={() => {
+          setNativeKeyboardVisible(false);
+          onToggleAttach();
+        }}
         activeOpacity={0.8}
       >
         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none"
