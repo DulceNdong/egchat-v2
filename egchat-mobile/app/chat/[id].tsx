@@ -979,6 +979,16 @@ export default function ChatScreen() {
     if (contentOffset.y < 60 && hasMore && !loadingMore) loadMore();
   }, [hasMore, loadingMore, loadMore]);
 
+  // ── Cerrar teclado/emojis/panels al tocar fuera del input ──────
+  const dismissAll = useCallback(() => {
+    Keyboard.dismiss();
+    inputRef.current?.blur();
+    setShowEmojis(false);
+    setShowAttach(false);
+    setShowStickers(false);
+    setNativeKbOpen(false);
+  }, []);
+
   const handleCopy = useCallback(async () => {
     if (contextMsg?.text) await Clipboard.setStringAsync(contextMsg.text);
     setContextVisible(false);
