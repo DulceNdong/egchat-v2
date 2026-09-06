@@ -44,7 +44,6 @@ import { EGAvatar, OfflineBanner } from '../../src/components/ui';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
-import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
