@@ -1101,6 +1101,35 @@ export default function ChatScreen() {
     });
   }, [contextMsg]);
 
+  // ── Eliminar contacto desde el chat ────────────────────────────
+  const handleDeleteContact = useCallback(() => {
+    setContextVisible(false);
+    const targetUserId = otherParticipant?.user_id;
+    const targetName = chatName || 'este contacto';
+    if (!targetUserId) {
+      toast.error('No se pudo identificar al contacto');
+      return;
+    }
+    Alert.alert(
+      'Eliminar contacto',
+      `¿Quieres eliminar a ${targetName} de tus contactos?\n\nPodrás volver a agregarlo cuando quieras.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar contacto', style: 'destructive',
+          onPress: async () => {
+            const removed = await contactsAPI.removeByUserId(String(targetUserId));
+            if (removed) {
+              toast.success(`${targetName} eliminado de contactos`);
+            } else {
+              toast.info(`${targetName} no estaba en tus contactos`);
+            }
+          },
+        },
+      ]
+    );
+  }, [otherParticipant, chatName]);
+
   // ── Descargar imagen / video / archivo ────────────────────────
   const handleDownloadMedia = useCallback(async () => {
     setContextVisible(false);
