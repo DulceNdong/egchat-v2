@@ -2180,7 +2180,7 @@ export default function ChatScreen() {
                     />
                   </View>
                 )}
-              </View>
+              </Animated.View>
             )}
 
             {/* F1 — Respuestas rápidas */}
