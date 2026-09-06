@@ -2088,6 +2088,24 @@ export default function ChatScreen() {
             </TouchableOpacity>
           )}
 
+          {/* Botón HOME — arrastrable, abre homepage */}
+          <Animated.View
+            style={[styles.homeFloat, { left: homePos.x, top: homePos.y }]}
+            {...homePanResponder.panHandlers}
+          >
+            <LinearGradient
+              colors={['#00C8A0', '#00B4E6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.homeFloatGrad}
+            >
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <Polyline points="9 22 9 12 15 12 15 22"/>
+              </Svg>
+            </LinearGradient>
+          </Animated.View>
+
           <Animated.View
             style={[styles.liaFloat, { left: liaPos.x, top: liaPos.y, right: undefined, bottom: undefined }]}
             {...liaPanResponder.panHandlers}
