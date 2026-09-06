@@ -319,6 +319,39 @@ export default function ChatScreen() {
   const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
 
+  // ── Botón LIA arrastrable ──────────────────────────────────
+  const { width: SW, height: SH } = Dimensions.get('window');
+  const BTN_SIZE = 40;
+  const liaPos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.55 })).current;
+  const liaPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: () => {
+        liaPos.setOffset({ x: (liaPos.x as any)._value, y: (liaPos.y as any)._value });
+        liaPos.setValue({ x: 0, y: 0 });
+      },
+      onPanResponderMove: Animated.event(
+        [null, { dx: liaPos.x, dy: liaPos.y }],
+        { useNativeDriver: false }
+      ),
+      onPanResponderRelease: (_, g) => {
+        liaPos.flattenOffset();
+        // Snap al borde más cercano (izquierda o derecha)
+        const cur = (liaPos.x as any)._value;
+        const snapX = cur < SW / 2 ? 12 : SW - BTN_SIZE - 12;
+        const rawY = (liaPos.y as any)._value;
+        const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
+        Animated.spring(liaPos, {
+          toValue: { x: snapX, y: snapY },
+          useNativeDriver: false,
+          damping: 18,
+          stiffness: 200,
+        }).start();
+      },
+    })
+  ).current;
+
   // Altura del teclado custom / paneles — igual al teclado del sistema
   const PANEL_HEIGHT = 291;
   const panelSlide = useRef(new Animated.Value(PANEL_HEIGHT)).current;
