@@ -535,6 +535,7 @@ export default function LiaScreen() {
         <AttachPanel
           visible={showAttach}
           onClose={() => setShowAttach(false)}
+          onOpenKeyboard={openKeyboard}
           onSendText={send}
           isDark={isDark}
           C={C}
