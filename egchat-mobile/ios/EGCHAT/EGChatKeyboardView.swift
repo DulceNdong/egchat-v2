@@ -2,7 +2,7 @@ import UIKit
 import React
 
 // ─────────────────────────────────────────────────────────────
-// MARK: - Manager (bridge React Native)
+// MARK: - Manager
 // ─────────────────────────────────────────────────────────────
 
 @objc(EGChatKeyboardViewManager)
@@ -12,31 +12,29 @@ final class EGChatKeyboardViewManager: RCTViewManager {
 }
 
 // ─────────────────────────────────────────────────────────────
-// MARK: - Datos de idiomas y emojis
+// MARK: - Layouts por idioma
 // ─────────────────────────────────────────────────────────────
 
-private enum Lang: String, CaseIterable {
-  case es = "ES", en = "EN", fr = "FR"
-}
+private enum Lang: String, CaseIterable { case es = "ES", en = "EN", fr = "FR" }
 
 private let letterRows: [Lang: [[String]]] = [
   .es: [
     ["q","w","e","r","t","y","u","i","o","p"],
     ["a","s","d","f","g","h","j","k","l","ñ"],
     ["⇧","z","x","c","v","b","n","m","⌫"],
-    ["123","😊","espacio","intro"],
+    ["123","😊","espacio","↵"],
   ],
   .en: [
     ["q","w","e","r","t","y","u","i","o","p"],
     ["a","s","d","f","g","h","j","k","l"],
     ["⇧","z","x","c","v","b","n","m","⌫"],
-    ["123","😊","espacio","intro"],
+    ["123","😊","espacio","↵"],
   ],
   .fr: [
     ["a","z","e","r","t","y","u","i","o","p"],
     ["q","s","d","f","g","h","j","k","l","m"],
     ["⇧","w","x","c","v","b","n","⌫"],
-    ["123","😊","espacio","intro"],
+    ["123","😊","espacio","↵"],
   ],
 ]
 
@@ -44,10 +42,9 @@ private let numberRows: [[String]] = [
   ["1","2","3","4","5","6","7","8","9","0"],
   ["-","/",":",";","(",")","\u{20AC}","&","@","\""],
   ["ABC",".",",","?","!","'","⌫"],
-  ["ABC","😊","espacio","intro"],
+  ["ABC","😊","espacio","↵"],
 ]
 
-// Acentos / variantes por tecla
 private let accentMap: [String: [String]] = [
   "a": ["á","à","â","ä","ã","å"],
   "e": ["é","è","ê","ë"],
@@ -60,7 +57,6 @@ private let accentMap: [String: [String]] = [
   "z": ["ž"],
 ]
 
-// Emojis organizados por categoría
 private let emojiCategories: [(String, [String])] = [
   ("😊", ["😀","😁","😂","🤣","😃","😄","😅","😆","😉","😊",
           "😋","😎","😍","🥰","😘","😗","😙","😚","🙂","🤗",
@@ -73,33 +69,82 @@ private let emojiCategories: [(String, [String])] = [
   ("👋", ["👋","🤚","🖐","✋","🖖","👌","🤌","✌️","🤞","🤟",
           "🤘","🤙","👈","👉","👆","🖕","👇","☝️","👍","👎",
           "✊","👊","🤛","🤜","👏","🙌","👐","🤲","🤝","🙏",
-          "✍️","💅","🤳","💪","🦾","🦿","🦵","🦶","👂","🦻",
-          "👃","🫀","🫁","🧠","🦷","🦴","👀","👁","👅","👄"]),
+          "✍️","💅","🤳","💪","🦾","🦵","🦶","👂","🦻","👃"]),
   ("❤️", ["❤️","🧡","💛","💚","💙","💜","🖤","🤍","🤎","💔",
           "❣️","💕","💞","💓","💗","💖","💘","💝","💟","☮️",
-          "✝️","☯️","🕊","🌈","🌟","⭐","💫","✨","🎉","🎊",
-          "🎈","🎁","🎂","🎀","🏆","🥇","🎖","🏅","🥈","🥉"]),
+          "✨","🌟","⭐","💫","🎉","🎊","🎈","🎁","🎂","🏆"]),
   ("🐶", ["🐶","🐱","🐭","🐹","🐰","🦊","🐻","🐼","🐨","🐯",
           "🦁","🐮","🐷","🐸","🐵","🙈","🙉","🙊","🐔","🐧",
-          "🐦","🐤","🦆","🦅","🦉","🦇","🐺","🐗","🐴","🦄",
-          "🐝","🐛","🦋","🐌","🐞","🐜","🦟","🦗","🦂","🐢"]),
+          "🐦","🐤","🦆","🦅","🦉","🦇","🐺","🐴","🦄","🐝"]),
   ("🍎", ["🍎","🍊","🍋","🍇","🍓","🍒","🍑","🥭","🍍","🥥",
-          "🥝","🍅","🍆","🥑","🥦","🥬","🥒","🌽","🥕","🧅",
-          "🍔","🍕","🌮","🌯","🥗","🍜","🍝","🍛","🍣","🍱",
-          "🍦","🍩","🎂","🍫","🍬","🍭","☕","🧃","🥤","🍺"]),
+          "🥝","🍅","🍆","🥑","🥦","🌽","🥕","🍔","🍕","🌮",
+          "🍜","🍝","🍣","🍱","🍦","🍩","🎂","🍫","☕","🥤"]),
   ("⚽", ["⚽","🏀","🏈","⚾","🥎","🏐","🏉","🎾","🎱","🏓",
-          "🏸","🥊","🥋","⛳","🎯","🎳","🏹","🎣","🤿","🎽",
-          "🛹","🛷","🥌","🏋️","🤸","⛹️","🤺","🤼","🤾","🤽",
-          "🚴","🏊","🧘","🏄","🚵","🏇","🤼","🎮","🕹","🎲"]),
-  ("🚗", ["🚗","🚕","🚙","🚌","🚎","🏎","🚓","🚑","🚒","🚐",
-          "🛻","🚚","🚛","🚜","🏍","🛵","🚲","🛴","🛺","🚁",
-          "✈️","🚀","🛸","🚂","🚢","⛵","🛥","🛶","🚤","⛴",
-          "🗺","🏔","🌋","🏕","🏖","🏜","🏝","🏞","🏙","🌃"]),
-  ("💡", ["💡","🔦","🕯","🔌","🔋","💻","🖥","🖨","⌨️","🖱",
-          "📱","☎️","📞","📟","📠","📺","📷","📸","📹","📼",
-          "🔭","🔬","🧬","🧪","🧫","🧲","🔧","🔨","⚙️","🔩",
-          "🪛","🔑","🗝","🔐","🔒","🔓","🚪","📦","📬","📮"]),
+          "🏸","🥊","🥋","⛳","🎯","🎳","🏹","🎣","🎮","🕹"]),
+  ("🚗", ["🚗","🚕","🚙","🚌","🏎","🚓","🚑","🚒","🛻","🚚",
+          "🏍","🛵","🚲","🛴","🚁","✈️","🚀","🛸","🚂","🚢"]),
+  ("💡", ["💡","🔦","💻","🖥","📱","☎️","📷","📹","🔭","🔬",
+          "🧲","🔧","🔨","⚙️","🔑","🔐","🔒","🔓","📦","📬"]),
 ]
+
+// ─────────────────────────────────────────────────────────────
+// MARK: - UILabel como tecla (sin subrayado)
+// ─────────────────────────────────────────────────────────────
+
+/// Usamos UIControl + UILabel para evitar el subrayado automático
+/// que iOS aplica a UIButton(type: .system)
+private final class KeyButton: UIControl {
+  private let label = UILabel()
+  var onTap: (() -> Void)?
+  var onLongPress: (() -> Void)?
+
+  init(title: String, fontSize: CGFloat, weight: UIFont.Weight,
+       textColor: UIColor, bgColor: UIColor, radius: CGFloat = 10) {
+    super.init(frame: .zero)
+    backgroundColor = bgColor
+    layer.cornerRadius = radius
+    // Sin sombra, sin borde
+    layer.shadowOpacity = 0
+    layer.borderWidth = 0
+    clipsToBounds = true
+
+    label.text = title
+    label.font = UIFont.systemFont(ofSize: fontSize, weight: weight)
+    label.textColor = textColor
+    label.textAlignment = .center
+    label.translatesAutoresizingMaskIntoConstraints = false
+    addSubview(label)
+    NSLayoutConstraint.activate([
+      label.centerXAnchor.constraint(equalTo: centerXAnchor),
+      label.centerYAnchor.constraint(equalTo: centerYAnchor),
+    ])
+
+    addTarget(self, action: #selector(tapped), for: .touchUpInside)
+
+    let lp = UILongPressGestureRecognizer(target: self, action: #selector(longPressed(_:)))
+    lp.minimumPressDuration = 0.35
+    addGestureRecognizer(lp)
+
+    // Press visual
+    addTarget(self, action: #selector(pressDown), for: [.touchDown, .touchDragEnter])
+    addTarget(self, action: #selector(pressUp), for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
+  }
+
+  required init?(coder: NSCoder) { fatalError() }
+
+  func setTitle(_ t: String) { label.text = t }
+
+  @objc private func tapped() { onTap?() }
+  @objc private func longPressed(_ gr: UILongPressGestureRecognizer) {
+    if gr.state == .began { onLongPress?() }
+  }
+  @objc private func pressDown() {
+    UIView.animate(withDuration: 0.07) { self.alpha = 0.65; self.transform = CGAffineTransform(scaleX: 0.95, y: 0.95) }
+  }
+  @objc private func pressUp() {
+    UIView.animate(withDuration: 0.12) { self.alpha = 1; self.transform = .identity }
+  }
+}
 
 // ─────────────────────────────────────────────────────────────
 // MARK: - Vista principal
@@ -108,62 +153,51 @@ private let emojiCategories: [(String, [String])] = [
 @objc(EGChatKeyboardView)
 final class EGChatKeyboardView: UIView {
 
-  // Props React Native
   @objc var text: NSString = "" { didSet { currentText = text as String } }
   @objc var onChangeText: RCTBubblingEventBlock?
   @objc var onSubmit: RCTBubblingEventBlock?
 
-  // Estado interno
   private var currentText = ""
-  private var isNumbers = false
+  private var isNumbers   = false
   private var isUppercase = false
   private var currentLang: Lang = .es
-  private var showEmojis = false
+  private var showEmojis  = false
   private var currentEmojiCat = 0
 
-  // UI
-  private let mainStack   = UIStackView()   // teclado letras/números
-  private let emojiPanel  = UIView()        // panel emojis
-  private let feedback    = UIImpactFeedbackGenerator(style: .light)
-
-  // Press-largo para acentos
+  private let mainStack  = UIStackView()
+  private let emojiPanel = UIView()
+  private let feedback   = UIImpactFeedbackGenerator(style: .light)
   private var accentPopup: UIView?
-  private var longPressKey: String?
 
-  // Colores
-  private let bgColor      = UIColor(red: 0.82, green: 0.84, blue: 0.88, alpha: 1)
-  private let keyColor     = UIColor.white
-  private let specialColor = UIColor(red: 0.69, green: 0.72, blue: 0.77, alpha: 1)
-  private let keyText      = UIColor(red: 0.10, green: 0.10, blue: 0.10, alpha: 1)
+  // Paleta moderna oscura/clara adaptada
+  private let C = KeyboardColors()
 
-  // ── init ──────────────────────────────────────────────────
+  override init(frame: CGRect) { super.init(frame: frame); build() }
+  required init?(coder: NSCoder) { super.init(coder: coder); build() }
 
-  override init(frame: CGRect) { super.init(frame: frame); setup() }
-  required init?(coder: NSCoder) { super.init(coder: coder); setup() }
-
-  private func setup() {
-    backgroundColor = bgColor
+  private func build() {
+    backgroundColor = C.bg
     feedback.prepare()
     setupMainStack()
     setupEmojiPanel()
-    showEmojis ? showEmojiView() : showKeyboardView()
+    showKeyboardView()
   }
 
   // ─────────────────────────────────────────────────────────
-  // MARK: - Teclado principal
+  // MARK: Stack principal
   // ─────────────────────────────────────────────────────────
 
   private func setupMainStack() {
     mainStack.axis = .vertical
-    mainStack.spacing = 8
+    mainStack.spacing = 7
     mainStack.distribution = .fillEqually
     mainStack.translatesAutoresizingMaskIntoConstraints = false
     addSubview(mainStack)
     NSLayoutConstraint.activate([
-      mainStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 5),
-      mainStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -5),
+      mainStack.leadingAnchor.constraint(equalTo: leadingAnchor, constant: 4),
+      mainStack.trailingAnchor.constraint(equalTo: trailingAnchor, constant: -4),
       mainStack.topAnchor.constraint(equalTo: topAnchor, constant: 8),
-      mainStack.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -6),
+      mainStack.bottomAnchor.constraint(equalTo: safeAreaLayoutGuide.bottomAnchor, constant: -5),
     ])
   }
 
@@ -178,7 +212,6 @@ final class EGChatKeyboardView: UIView {
       for key in keys { row.addArrangedSubview(makeKey(key)) }
       mainStack.addArrangedSubview(row)
     }
-    // Fila de idiomas encima (solo en modo letras)
     if !isNumbers { insertLangRow() }
   }
 
@@ -189,58 +222,68 @@ final class EGChatKeyboardView: UIView {
     row.distribution = .fillEqually
 
     for lang in Lang.allCases {
-      let btn = UIButton(type: .system)
-      btn.setTitle(lang.rawValue, for: .normal)
-      btn.titleLabel?.font = UIFont.systemFont(ofSize: 12, weight: .semibold)
       let active = lang == currentLang
-      btn.setTitleColor(active ? .white : keyText, for: .normal)
-      btn.backgroundColor = active
-        ? UIColor(red: 0.0, green: 0.70, blue: 0.63, alpha: 1)
-        : specialColor
-      btn.layer.cornerRadius = 6
+      let btn = KeyButton(
+        title: lang.rawValue,
+        fontSize: 12,
+        weight: .bold,
+        textColor: active ? .white : C.keyText,
+        bgColor: active ? C.accent : C.specialKey,
+        radius: 8
+      )
       btn.translatesAutoresizingMaskIntoConstraints = false
-      btn.heightAnchor.constraint(equalToConstant: 28).isActive = true
-      btn.addAction(UIAction { [weak self] _ in
-        self?.currentLang = lang
+      btn.heightAnchor.constraint(equalToConstant: 30).isActive = true
+      let l = lang
+      btn.onTap = { [weak self] in
+        self?.currentLang = l
         self?.renderKeys()
-      }, for: .touchUpInside)
+      }
       row.addArrangedSubview(btn)
     }
-    // Insertar como primera fila
     mainStack.insertArrangedSubview(row, at: 0)
   }
 
   // ─────────────────────────────────────────────────────────
-  // MARK: - Crear tecla
+  // MARK: Crear tecla
   // ─────────────────────────────────────────────────────────
 
-  private func makeKey(_ key: String) -> UIButton {
-    let btn = UIButton(type: .system)
-    btn.setTitle(displayTitle(for: key), for: .normal)
-
+  private func makeKey(_ key: String) -> KeyButton {
     let isSpecial = specialKey(key)
-    let fontSize: CGFloat = key.count == 1 ? 20 : 15
-    btn.titleLabel?.font = UIFont.systemFont(ofSize: fontSize, weight: isSpecial ? .medium : .regular)
-    btn.setTitleColor(keyText, for: .normal)
-    btn.backgroundColor = isSpecial ? specialColor : keyColor
-    btn.layer.cornerRadius = 7
-    // Sin sombra debajo — solo borde sutil
-    btn.layer.borderWidth = 0
-    btn.layer.shadowOpacity = 0
+    let isSend    = key == "↵"
+    let isShift   = key == "⇧"
+
+    let fontSize: CGFloat = key.count == 1 ? 19 : 15
+    let weight: UIFont.Weight = isSpecial ? .semibold : .regular
+
+    let bg = isSend    ? C.accent
+           : isSpecial ? C.specialKey
+           : C.normalKey
+
+    let fg = isSend ? UIColor.white : C.keyText
+
+    let btn = KeyButton(title: displayTitle(for: key),
+                        fontSize: isShift ? 17 : fontSize,
+                        weight: weight,
+                        textColor: fg,
+                        bgColor: bg,
+                        radius: 10)
 
     btn.translatesAutoresizingMaskIntoConstraints = false
     let w = keyWidth(for: key)
     if w > 0 { btn.widthAnchor.constraint(equalToConstant: w).isActive = true }
+    btn.accessibilityIdentifier = key
 
-    // Acción normal
-    btn.addAction(UIAction { [weak self] _ in self?.handle(key) }, for: .touchUpInside)
+    btn.onTap = { [weak self] in self?.handle(key) }
 
-    // Press largo → popup acentos
-    if accentMap[key.lowercased()] != nil || accentMap[key] != nil {
-      let lp = UILongPressGestureRecognizer(target: self, action: #selector(handleLongPress(_:)))
-      lp.minimumPressDuration = 0.35
-      btn.addGestureRecognizer(lp)
-      btn.accessibilityIdentifier = key
+    // Press largo para acentos
+    if accentMap[key.lowercased()] != nil {
+      btn.onLongPress = { [weak self] in
+        guard let self else { return }
+        let base = self.isUppercase ? key.uppercased() : key
+        let vars = accentMap[key.lowercased()]!.map { self.isUppercase ? $0.uppercased() : $0 }
+        self.feedback.impactOccurred(intensity: 0.6)
+        self.showAccentPopup(variants: [base] + vars, sourceView: btn)
+      }
     }
 
     return btn
@@ -248,57 +291,48 @@ final class EGChatKeyboardView: UIView {
 
   private func displayTitle(for key: String) -> String {
     switch key {
-    case "⇧": return isUppercase ? "⬆︎" : "⇧"
+    case "⇧":     return isUppercase ? "⬆︎" : "⇧"
     case "espacio": return "espacio"
-    case "intro": return "↵"
-    case "😊": return "😊"
+    case "↵":      return "↵"
+    case "😊":     return "😊"
     default:
-      if key.count == 1 && !isNumbers {
-        return isUppercase ? key.uppercased() : key
-      }
-      return key
+      return (key.count == 1 && !isNumbers && isUppercase) ? key.uppercased() : key
     }
   }
 
   private func specialKey(_ key: String) -> Bool {
-    ["123","ABC","⌫","⇧","intro","😊","espacio"].contains(key)
+    ["123","ABC","⌫","⇧","↵","😊","espacio"].contains(key)
   }
 
   private func keyWidth(for key: String) -> CGFloat {
     switch key {
     case "espacio": return 200
-    case "intro":   return 90
-    case "123","ABC": return 78
-    case "⇧","⌫":  return 58
-    case "😊":      return 48
-    default:        return 0   // fillProportionally
+    case "↵":       return 88
+    case "123","ABC": return 76
+    case "⇧","⌫":   return 56
+    case "😊":       return 46
+    default:         return 0
     }
   }
 
   // ─────────────────────────────────────────────────────────
-  // MARK: - Manejo de teclas
+  // MARK: Manejo de teclas
   // ─────────────────────────────────────────────────────────
 
   private func handle(_ key: String) {
-    feedback.impactOccurred(intensity: 0.4)
+    feedback.impactOccurred(intensity: 0.35)
     feedback.prepare()
     dismissAccentPopup()
 
     switch key {
-    case "123":
-      isNumbers = true; renderKeys()
-    case "ABC":
-      isNumbers = false; renderKeys()
-    case "⇧":
-      isUppercase.toggle(); renderKeys()
+    case "123":   isNumbers = true;  renderKeys()
+    case "ABC":   isNumbers = false; renderKeys()
+    case "⇧":    isUppercase.toggle(); renderKeys()
     case "⌫":
       if !currentText.isEmpty { currentText.removeLast(); emitChange() }
-    case "espacio":
-      currentText.append(" "); emitChange()
-    case "intro":
-      onSubmit?([:])
-    case "😊":
-      showEmojis = true; showEmojiView()
+    case "espacio": currentText.append(" "); emitChange()
+    case "↵":      onSubmit?([:])
+    case "😊":     showEmojis = true; showEmojiView()
     default:
       let ch = (isUppercase && !isNumbers) ? key.uppercased() : key
       currentText.append(ch)
@@ -307,101 +341,86 @@ final class EGChatKeyboardView: UIView {
     }
   }
 
-  private func emitChange() {
-    onChangeText?(["text": currentText])
-  }
+  private func emitChange() { onChangeText?(["text": currentText]) }
 
   // ─────────────────────────────────────────────────────────
-  // MARK: - Press largo → popup acentos
+  // MARK: Popup acentos
   // ─────────────────────────────────────────────────────────
-
-  @objc private func handleLongPress(_ gr: UILongPressGestureRecognizer) {
-    guard gr.state == .began,
-          let btn = gr.view as? UIButton,
-          let key = btn.accessibilityIdentifier else { return }
-
-    let base = isUppercase ? key.uppercased() : key
-    let variants = accentMap[key.lowercased()]?.map { isUppercase ? $0.uppercased() : $0 } ?? []
-    guard !variants.isEmpty else { return }
-
-    feedback.impactOccurred(intensity: 0.6)
-    showAccentPopup(variants: [base] + variants, sourceView: btn)
-  }
 
   private func showAccentPopup(variants: [String], sourceView: UIView) {
     dismissAccentPopup()
-
-    let btnW: CGFloat = 36
-    let btnH: CGFloat = 44
-    let padding: CGFloat = 6
-    let totalW = CGFloat(variants.count) * (btnW + padding) + padding
+    let btnW: CGFloat = 38, btnH: CGFloat = 46, pad: CGFloat = 6
+    let totalW = CGFloat(variants.count) * (btnW + pad) + pad
 
     let popup = UIView()
-    popup.backgroundColor = UIColor(red: 0.22, green: 0.22, blue: 0.24, alpha: 0.97)
-    popup.layer.cornerRadius = 10
+    popup.backgroundColor = UIColor(red: 0.18, green: 0.18, blue: 0.20, alpha: 0.96)
+    popup.layer.cornerRadius = 12
+    popup.layer.shadowColor = UIColor.black.cgColor
+    popup.layer.shadowOpacity = 0.3
+    popup.layer.shadowRadius = 8
     popup.translatesAutoresizingMaskIntoConstraints = false
 
     let stack = UIStackView()
     stack.axis = .horizontal
-    stack.spacing = padding
+    stack.spacing = pad
     stack.translatesAutoresizingMaskIntoConstraints = false
     popup.addSubview(stack)
 
     for v in variants {
-      let b = UIButton(type: .system)
-      b.setTitle(v, for: .normal)
-      b.titleLabel?.font = UIFont.systemFont(ofSize: 20, weight: .medium)
-      b.setTitleColor(.white, for: .normal)
-      b.backgroundColor = .clear
+      let b = KeyButton(title: v, fontSize: 21, weight: .medium,
+                        textColor: .white, bgColor: .clear, radius: 8)
       b.widthAnchor.constraint(equalToConstant: btnW).isActive = true
       b.heightAnchor.constraint(equalToConstant: btnH).isActive = true
-      b.layer.cornerRadius = 7
       let char = v
-      b.addAction(UIAction { [weak self] _ in
+      b.onTap = { [weak self] in
         self?.currentText.append(char)
         self?.emitChange()
         self?.dismissAccentPopup()
         if self?.isUppercase == true { self?.isUppercase = false; self?.renderKeys() }
-      }, for: .touchUpInside)
+      }
       stack.addArrangedSubview(b)
     }
 
     NSLayoutConstraint.activate([
-      stack.leadingAnchor.constraint(equalTo: popup.leadingAnchor, constant: padding),
-      stack.trailingAnchor.constraint(equalTo: popup.trailingAnchor, constant: -padding),
+      stack.leadingAnchor.constraint(equalTo: popup.leadingAnchor, constant: pad),
+      stack.trailingAnchor.constraint(equalTo: popup.trailingAnchor, constant: -pad),
       stack.topAnchor.constraint(equalTo: popup.topAnchor, constant: 4),
       stack.bottomAnchor.constraint(equalTo: popup.bottomAnchor, constant: -4),
     ])
 
     addSubview(popup)
-
-    let srcFrame = sourceView.convert(sourceView.bounds, to: self)
-    var xPos = srcFrame.midX - totalW / 2
+    let src = sourceView.convert(sourceView.bounds, to: self)
+    var xPos = src.midX - totalW / 2
     xPos = max(4, min(xPos, bounds.width - totalW - 4))
-    let yPos = srcFrame.minY - btnH - 14
-
     NSLayoutConstraint.activate([
       popup.leadingAnchor.constraint(equalTo: leadingAnchor, constant: xPos),
-      popup.topAnchor.constraint(equalTo: topAnchor, constant: max(4, yPos)),
+      popup.topAnchor.constraint(equalTo: topAnchor, constant: max(4, src.minY - btnH - 12)),
       popup.widthAnchor.constraint(equalToConstant: totalW),
     ])
-
     popup.alpha = 0
-    UIView.animate(withDuration: 0.15) { popup.alpha = 1 }
+    UIView.animate(withDuration: 0.14) { popup.alpha = 1 }
     accentPopup = popup
   }
 
   private func dismissAccentPopup() {
-    accentPopup?.removeFromSuperview()
-    accentPopup = nil
+    accentPopup?.removeFromSuperview(); accentPopup = nil
+  }
+
+  override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
+    super.touchesBegan(touches, with: event)
+    guard accentPopup != nil,
+          let t = touches.first,
+          accentPopup?.bounds.contains(t.location(in: accentPopup)) == false
+    else { return }
+    dismissAccentPopup()
   }
 
   // ─────────────────────────────────────────────────────────
-  // MARK: - Panel de emojis
+  // MARK: Panel de emojis
   // ─────────────────────────────────────────────────────────
 
   private func setupEmojiPanel() {
-    emojiPanel.backgroundColor = bgColor
+    emojiPanel.backgroundColor = C.bg
     emojiPanel.translatesAutoresizingMaskIntoConstraints = false
     addSubview(emojiPanel)
     NSLayoutConstraint.activate([
@@ -411,13 +430,12 @@ final class EGChatKeyboardView: UIView {
       emojiPanel.bottomAnchor.constraint(equalTo: bottomAnchor),
     ])
     emojiPanel.isHidden = true
-    buildEmojiPanel()
   }
 
   private func buildEmojiPanel() {
     emojiPanel.subviews.forEach { $0.removeFromSuperview() }
 
-    // Barra superior: categorías + botón volver
+    // Barra de categorías
     let catBar = UIScrollView()
     catBar.showsHorizontalScrollIndicator = false
     catBar.translatesAutoresizingMaskIntoConstraints = false
@@ -430,40 +448,32 @@ final class EGChatKeyboardView: UIView {
     catBar.addSubview(catStack)
 
     for (i, (icon, _)) in emojiCategories.enumerated() {
-      let b = UIButton(type: .system)
-      b.setTitle(icon, for: .normal)
-      b.titleLabel?.font = UIFont.systemFont(ofSize: 22)
-      b.widthAnchor.constraint(equalToConstant: 40).isActive = true
-      b.heightAnchor.constraint(equalToConstant: 36).isActive = true
-      b.backgroundColor = i == currentEmojiCat
-        ? UIColor(red: 0.0, green: 0.70, blue: 0.63, alpha: 0.25)
-        : .clear
-      b.layer.cornerRadius = 8
+      let b = KeyButton(title: icon, fontSize: 22, weight: .regular,
+                        textColor: .label,
+                        bgColor: i == currentEmojiCat
+                          ? C.accent.withAlphaComponent(0.25)
+                          : .clear,
+                        radius: 8)
+      b.widthAnchor.constraint(equalToConstant: 42).isActive = true
+      b.heightAnchor.constraint(equalToConstant: 38).isActive = true
       let idx = i
-      b.addAction(UIAction { [weak self] _ in
-        self?.currentEmojiCat = idx
-        self?.buildEmojiPanel()
-      }, for: .touchUpInside)
+      b.onTap = { [weak self] in self?.currentEmojiCat = idx; self?.buildEmojiPanel() }
       catStack.addArrangedSubview(b)
     }
 
     // Botón volver al teclado
-    let backBtn = UIButton(type: .system)
-    backBtn.setTitle("⌨️", for: .normal)
-    backBtn.titleLabel?.font = UIFont.systemFont(ofSize: 22)
-    backBtn.widthAnchor.constraint(equalToConstant: 40).isActive = true
-    backBtn.heightAnchor.constraint(equalToConstant: 36).isActive = true
-    backBtn.addAction(UIAction { [weak self] _ in
-      self?.showEmojis = false
-      self?.showKeyboardView()
-    }, for: .touchUpInside)
+    let backBtn = KeyButton(title: "⌨️", fontSize: 20, weight: .regular,
+                            textColor: .label, bgColor: C.specialKey, radius: 8)
+    backBtn.widthAnchor.constraint(equalToConstant: 42).isActive = true
+    backBtn.heightAnchor.constraint(equalToConstant: 38).isActive = true
+    backBtn.onTap = { [weak self] in self?.showEmojis = false; self?.showKeyboardView() }
     catStack.addArrangedSubview(backBtn)
 
     NSLayoutConstraint.activate([
       catBar.leadingAnchor.constraint(equalTo: emojiPanel.leadingAnchor, constant: 4),
       catBar.trailingAnchor.constraint(equalTo: emojiPanel.trailingAnchor, constant: -4),
       catBar.topAnchor.constraint(equalTo: emojiPanel.topAnchor, constant: 6),
-      catBar.heightAnchor.constraint(equalToConstant: 40),
+      catBar.heightAnchor.constraint(equalToConstant: 44),
       catStack.leadingAnchor.constraint(equalTo: catBar.leadingAnchor),
       catStack.trailingAnchor.constraint(equalTo: catBar.trailingAnchor),
       catStack.topAnchor.constraint(equalTo: catBar.topAnchor),
@@ -477,12 +487,11 @@ final class EGChatKeyboardView: UIView {
     scroll.showsVerticalScrollIndicator = false
     scroll.translatesAutoresizingMaskIntoConstraints = false
     emojiPanel.addSubview(scroll)
-
     NSLayoutConstraint.activate([
       scroll.leadingAnchor.constraint(equalTo: emojiPanel.leadingAnchor, constant: 6),
       scroll.trailingAnchor.constraint(equalTo: emojiPanel.trailingAnchor, constant: -6),
       scroll.topAnchor.constraint(equalTo: catBar.bottomAnchor, constant: 4),
-      scroll.bottomAnchor.constraint(equalTo: emojiPanel.safeAreaLayoutGuide.bottomAnchor, constant: -6),
+      scroll.bottomAnchor.constraint(equalTo: emojiPanel.safeAreaLayoutGuide.bottomAnchor, constant: -4),
     ])
 
     let cols = 8
@@ -505,27 +514,22 @@ final class EGChatKeyboardView: UIView {
     for (i, emoji) in emojis.enumerated() {
       let col = i % cols
       let row = i / cols
-      let btn = UIButton(type: .system)
-      btn.setTitle(emoji, for: .normal)
-      btn.titleLabel?.font = UIFont.systemFont(ofSize: 28)
-      btn.frame = CGRect(
-        x: CGFloat(col) * cellSize,
-        y: CGFloat(row) * cellSize,
-        width: cellSize,
-        height: cellSize
-      )
+      let b = KeyButton(title: emoji, fontSize: 27, weight: .regular,
+                        textColor: .label, bgColor: .clear, radius: 8)
+      b.frame = CGRect(x: CGFloat(col)*cellSize, y: CGFloat(row)*cellSize,
+                       width: cellSize, height: cellSize)
       let e = emoji
-      btn.addAction(UIAction { [weak self] _ in
-        self?.feedback.impactOccurred(intensity: 0.3)
+      b.onTap = { [weak self] in
+        self?.feedback.impactOccurred(intensity: 0.28)
         self?.currentText.append(e)
         self?.emitChange()
-      }, for: .touchUpInside)
-      grid.addSubview(btn)
+      }
+      grid.addSubview(b)
     }
   }
 
   // ─────────────────────────────────────────────────────────
-  // MARK: - Mostrar / ocultar paneles
+  // MARK: Mostrar / ocultar paneles
   // ─────────────────────────────────────────────────────────
 
   private func showKeyboardView() {
@@ -539,14 +543,39 @@ final class EGChatKeyboardView: UIView {
     emojiPanel.isHidden = false
     buildEmojiPanel()
   }
+}
 
-  // Tocar fuera del popup lo cierra
-  override func touchesBegan(_ touches: Set<UITouch>, with event: UIEvent?) {
-    super.touchesBegan(touches, with: event)
-    if accentPopup != nil {
-      if let touch = touches.first, accentPopup?.bounds.contains(touch.location(in: accentPopup)) == false {
-        dismissAccentPopup()
-      }
+// ─────────────────────────────────────────────────────────────
+// MARK: - Paleta de colores adaptativa
+// ─────────────────────────────────────────────────────────────
+
+private struct KeyboardColors {
+  /// Fondo del teclado
+  var bg: UIColor {
+    UIColor { t in
+      t.userInterfaceStyle == .dark
+        ? UIColor(red: 0.14, green: 0.14, blue: 0.16, alpha: 1)
+        : UIColor(red: 0.82, green: 0.84, blue: 0.88, alpha: 1)
     }
   }
+  /// Tecla normal
+  var normalKey: UIColor {
+    UIColor { t in
+      t.userInterfaceStyle == .dark
+        ? UIColor(red: 0.28, green: 0.28, blue: 0.31, alpha: 1)
+        : UIColor.white
+    }
+  }
+  /// Tecla especial (shift, delete, 123…)
+  var specialKey: UIColor {
+    UIColor { t in
+      t.userInterfaceStyle == .dark
+        ? UIColor(red: 0.20, green: 0.20, blue: 0.23, alpha: 1)
+        : UIColor(red: 0.68, green: 0.71, blue: 0.76, alpha: 1)
+    }
+  }
+  /// Texto de teclas
+  var keyText: UIColor { UIColor.label }
+  /// Color de acento (idioma activo, tecla intro)
+  var accent: UIColor { UIColor(red: 0.0, green: 0.70, blue: 0.63, alpha: 1) }
 }
