@@ -1,5 +1,5 @@
 // Barra de input del chat
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Animated,
@@ -8,6 +8,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { TextFormatBar } from './TextFormatBar';
+import { NativeChatKeyboard } from './NativeChatKeyboard';
 
 export interface ChatInputBarProps {
   text: string;
@@ -54,7 +55,8 @@ export function ChatInputBar({
 }: ChatInputBarProps) {
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
-  const bottomPadding = keyboardVisible ? 6 : Math.max(6, insets.bottom);
+  const [nativeKeyboardVisible, setNativeKeyboardVisible] = useState(false);
+  const bottomPadding = keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom);
   // C6 — referencia de selección para insertar formato
   const selectionRef = useRef<{ start: number; end: number }>({ start: text.length, end: text.length });
 
@@ -99,7 +101,14 @@ export function ChatInputBar({
     <>
     <TextFormatBar visible={hasText} onFormat={handleFormat} />
     <View style={[s.bar, { paddingBottom: bottomPadding }]}>
-      <TouchableOpacity style={s.plusBtn} onPress={onToggleAttach} activeOpacity={0.8}>
+      <TouchableOpacity
+        style={s.plusBtn}
+        onPress={() => {
+          setNativeKeyboardVisible(false);
+          onToggleAttach();
+        }}
+        activeOpacity={0.8}
+      >
         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none"
           stroke={showAttach ? '#00b4e6' : '#00b4e6'} strokeWidth={2.5} strokeLinecap="round">
           <Line x1="12" y1="5" x2="12" y2="19" />
@@ -108,7 +117,14 @@ export function ChatInputBar({
       </TouchableOpacity>
 
       <View style={s.field}>
-        <TouchableOpacity style={s.iconInside} onPress={onToggleEmojis} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={s.iconInside}
+          onPress={() => {
+            setNativeKeyboardVisible(false);
+            onToggleEmojis();
+          }}
+          activeOpacity={0.8}
+        >
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none"
             stroke={showEmojis ? '#f59e0b' : '#9ca3af'} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
             <Circle cx="12" cy="12" r="10"/>
@@ -129,6 +145,8 @@ export function ChatInputBar({
           multiline
           maxLength={4000}
           autoFocus={false}
+          showSoftInputOnFocus={false}
+          onFocus={() => setNativeKeyboardVisible(true)}
         />
 
         {hasText ? (
@@ -161,6 +179,13 @@ export function ChatInputBar({
         )}
       </View>
     </View>
+    {nativeKeyboardVisible && (
+      <NativeChatKeyboard
+        text={text}
+        onChangeText={onChangeText}
+        onSubmit={onSend}
+      />
+    )}
     </>
   );
 }
