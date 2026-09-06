@@ -4,7 +4,7 @@ import {
   Modal, Pressable, TextInput, Linking, Alert,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { walletAPI } from '../src/api';
 import { COMPANIES, type Company, type BetSlipItem, type Match } from '../src/data/apuestasData';
