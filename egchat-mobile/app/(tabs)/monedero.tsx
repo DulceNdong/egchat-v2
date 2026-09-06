@@ -1455,7 +1455,6 @@ function MonederoScreenInner() {
           </ScrollView>
         </SafeAreaView>
       </Modal>
-      <DraggableHomeButton />
     </SafeAreaView>
   );
 }
