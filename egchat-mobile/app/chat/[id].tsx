@@ -2134,7 +2134,7 @@ export default function ChatScreen() {
 
             {/* Paneles adjuntos/emojis/stickers */}
             {!editingMessage && (showAttach || showEmojis || showStickers) && (
-              <View style={{ overflow: 'hidden' }}>
+              <Animated.View style={{ overflow: 'hidden', transform: [{ translateY: panelSlide }] }}>
                 {showAttach && (
                   <View style={[styles.bottomSheet, styles.bottomSheetCompact]}>
                     <Pressable
