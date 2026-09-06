@@ -318,10 +318,13 @@ export default function ChatScreen() {
   const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
 
-  // Animación deslizante para el panel de adjuntos/emojis/stickers (estilo WhatsApp)
-  const PANEL_HEIGHT = 290;
+  // Altura del teclado custom / paneles — igual al teclado del sistema
+  const PANEL_HEIGHT = 291;
   const panelSlide = useRef(new Animated.Value(PANEL_HEIGHT)).current;
   const prevPanelVisible = useRef(false);
+
+  // Cualquier panel abierto (attach/emojis/stickers/teclado custom)
+  const anyPanelOpen = !editingMessage && (showAttach || showEmojis || showStickers || nativeKbOpen);
 
   useEffect(() => {
     const visible = !editingMessage && (showAttach || showEmojis || showStickers);
