@@ -316,6 +316,31 @@ export default function ChatScreen() {
   const typingChannelRef = useRef<ReturnType<typeof createChatTypingChannel> | null>(null);
   const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
+
+  // Animación deslizante para el panel de adjuntos/emojis/stickers (estilo WhatsApp)
+  const PANEL_HEIGHT = 290;
+  const panelSlide = useRef(new Animated.Value(PANEL_HEIGHT)).current;
+  const prevPanelVisible = useRef(false);
+
+  useEffect(() => {
+    const visible = !editingMessage && (showAttach || showEmojis || showStickers);
+    if (visible && !prevPanelVisible.current) {
+      panelSlide.setValue(PANEL_HEIGHT);
+      Animated.spring(panelSlide, {
+        toValue: 0,
+        damping: 22,
+        stiffness: 280,
+        useNativeDriver: true,
+      }).start();
+    } else if (!visible && prevPanelVisible.current) {
+      Animated.timing(panelSlide, {
+        toValue: PANEL_HEIGHT,
+        duration: 180,
+        useNativeDriver: true,
+      }).start();
+    }
+    prevPanelVisible.current = visible;
+  }, [showAttach, showEmojis, showStickers, editingMessage]);
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
