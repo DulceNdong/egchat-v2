@@ -1,25 +1,28 @@
 // ══════════════════════════════════════════════════════════════════
-// EGCHAT — LIA-25 Asistente IA  (diseño mejorado)
+// EGCHAT — LIA-25 Asistente IA  (diseño mejorado v2)
+// Fixes: teclado pegado, sin espacio blanco, panel de adjuntos +
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, ScrollView, Dimensions,
+  Animated, ScrollView, Dimensions, Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Line, Polygon, Rect, Circle } from 'react-native-svg';
 import * as Speech from 'expo-speech';
+import * as ImagePicker from 'expo-image-picker';
+import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { liaAPI } from '../../src/api';
-import { Colors, Spacing, FontSize, FontWeight, Shadow } from '../../src/theme';
+import { Colors, Shadow } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 
 const SW = Dimensions.get('window').width;
 
-// ── Store de sesión ───────────────────────────────────────────────
+// ── Tipos ─────────────────────────────────────────────────────────
 interface LIAMessage {
   id: string;
   role: 'user' | 'assistant';
@@ -90,17 +93,14 @@ const BARS = [3, 5, 8, 12, 16, 20, 16, 12, 8, 5, 3, 5, 8, 12, 16, 20, 16, 12, 8,
 
 const LiaWave = ({ active, color = '#00C8A0' }: { active: boolean; color?: string }) => {
   const anims = useRef(BARS.map(() => new Animated.Value(0.3))).current;
-
   useEffect(() => {
     if (active) {
       const loops = anims.map((anim, i) =>
-        Animated.loop(
-          Animated.sequence([
-            Animated.delay(i * 40),
-            Animated.timing(anim, { toValue: 1, duration: 300 + (i % 4) * 80, useNativeDriver: true }),
-            Animated.timing(anim, { toValue: 0.3, duration: 300 + (i % 4) * 80, useNativeDriver: true }),
-          ])
-        )
+        Animated.loop(Animated.sequence([
+          Animated.delay(i * 40),
+          Animated.timing(anim, { toValue: 1, duration: 300 + (i % 4) * 80, useNativeDriver: true }),
+          Animated.timing(anim, { toValue: 0.3, duration: 300 + (i % 4) * 80, useNativeDriver: true }),
+        ]))
       );
       loops.forEach(l => l.start());
       return () => loops.forEach(l => l.stop());
@@ -108,20 +108,10 @@ const LiaWave = ({ active, color = '#00C8A0' }: { active: boolean; color?: strin
       anims.forEach(a => a.setValue(0.3));
     }
   }, [active]);
-
   return (
     <View style={{ flexDirection: 'row', alignItems: 'center', gap: 2, height: 28, paddingHorizontal: 4 }}>
       {BARS.map((h, i) => (
-        <Animated.View
-          key={i}
-          style={{
-            width: 3, borderRadius: 2,
-            backgroundColor: color,
-            height: h,
-            transform: [{ scaleY: anims[i] }],
-            opacity: anims[i],
-          }}
-        />
+        <Animated.View key={i} style={{ width: 3, borderRadius: 2, backgroundColor: color, height: h, transform: [{ scaleY: anims[i] }], opacity: anims[i] }} />
       ))}
     </View>
   );
@@ -135,11 +125,7 @@ const LiaAvatar = ({ size = 36, speaking = false }: { size?: number; speaking?: 
     style={[{
       width: size, height: size, borderRadius: size / 2,
       alignItems: 'center', justifyContent: 'center',
-    }, speaking && {
-      shadowColor: '#00C8A0',
-      shadowOffset: { width: 0, height: 0 },
-      shadowOpacity: 0.7, shadowRadius: 12, elevation: 10,
-    }]}
+    }, speaking && { shadowColor: '#00C8A0', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 12, elevation: 10 }]}
   >
     <Svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
       <Rect x="3" y="6" width="18" height="13" rx="3"/>
@@ -151,46 +137,98 @@ const LiaAvatar = ({ size = 36, speaking = false }: { size?: number; speaking?: 
   </LinearGradient>
 );
 
-// ── Puntos typing ─────────────────────────────────────────────────
+// ── Typing dots ───────────────────────────────────────────────────
 const TypingDots = () => {
-  const dots = [
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-    useRef(new Animated.Value(0)).current,
-  ];
+  const dots = [useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current, useRef(new Animated.Value(0)).current];
   useEffect(() => {
-    dots.forEach((dot, i) =>
-      Animated.loop(
-        Animated.sequence([
-          Animated.delay(i * 150),
-          Animated.timing(dot, { toValue: -5, duration: 300, useNativeDriver: true }),
-          Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
-        ])
-      ).start()
-    );
+    dots.forEach((dot, i) => Animated.loop(Animated.sequence([
+      Animated.delay(i * 150),
+      Animated.timing(dot, { toValue: -5, duration: 300, useNativeDriver: true }),
+      Animated.timing(dot, { toValue: 0, duration: 300, useNativeDriver: true }),
+    ])).start());
   }, []);
   return (
     <View style={s.typingRow}>
       <LiaAvatar size={30} />
       <View style={s.typingBubble}>
-        {dots.map((dot, i) => (
-          <Animated.View key={i} style={[s.dot, { transform: [{ translateY: dot }] }]} />
-        ))}
+        {dots.map((dot, i) => <Animated.View key={i} style={[s.dot, { transform: [{ translateY: dot }] }]} />)}
       </View>
     </View>
+  );
+};
+
+// ── Panel de adjuntos ─────────────────────────────────────────────
+interface AttachPanelProps {
+  visible: boolean;
+  onClose: () => void;
+  onSendText: (text: string) => void;
+  isDark: boolean;
+  C: typeof Colors;
+}
+
+const ATTACH_OPTIONS = [
+  { key: 'photo',    emoji: '🖼️',  label: 'Foto',      bg: '#E8F8F0', color: '#00C8A0' },
+  { key: 'video',    emoji: '🎬',  label: 'Video',     bg: '#EDE8FF', color: '#6B5BD6' },
+  { key: 'document', emoji: '📄',  label: 'Documento', bg: '#FFF5E0', color: '#F59E0B' },
+  { key: 'file',     emoji: '📎',  label: 'Archivo',   bg: '#E0F7F0', color: '#00B4A0' },
+];
+
+const AttachPanel = ({ visible, onClose, onSendText, isDark, C }: AttachPanelProps) => {
+  const slideAnim = useRef(new Animated.Value(200)).current;
+
+  useEffect(() => {
+    if (visible) {
+      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200 }).start();
+    } else {
+      Animated.timing(slideAnim, { toValue: 200, duration: 180, useNativeDriver: true }).start();
+    }
+  }, [visible]);
+
+  const handleOption = async (key: string) => {
+    onClose();
+    try {
+      if (key === 'photo') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') { onSendText('⚠️ Permiso de galería denegado'); return; }
+        const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85 });
+        if (!res.canceled && res.assets[0]) onSendText(`📷 Foto adjunta: ${res.assets[0].fileName || 'imagen.jpg'}`);
+      } else if (key === 'video') {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') { onSendText('⚠️ Permiso de galería denegado'); return; }
+        const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Videos });
+        if (!res.canceled && res.assets[0]) onSendText(`🎬 Video adjunto: ${res.assets[0].fileName || 'video.mp4'}`);
+      } else if (key === 'document' || key === 'file') {
+        const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
+        if (!res.canceled && res.assets[0]) onSendText(`📎 Archivo adjunto: ${res.assets[0].name}`);
+      }
+    } catch {
+      onSendText('⚠️ No se pudo adjuntar el archivo');
+    }
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View style={[s.attachPanel, { backgroundColor: isDark ? C.bgSecondary : '#fff', transform: [{ translateY: slideAnim }] }]}>
+      <View style={s.attachRow}>
+        {ATTACH_OPTIONS.map(opt => (
+          <TouchableOpacity key={opt.key} style={s.attachItem} onPress={() => handleOption(opt.key)} activeOpacity={0.75}>
+            <View style={[s.attachIcon, { backgroundColor: opt.bg }]}>
+              <Text style={{ fontSize: 26 }}>{opt.emoji}</Text>
+            </View>
+            <Text style={[s.attachLabel, { color: C.textSecondary }]}>{opt.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    </Animated.View>
   );
 };
 
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
-// Altura real del tab bar (debe coincidir con _layout.tsx)
-const TAB_BAR_H = Platform.OS === 'ios' ? 92 : 72;
-
 export default function LiaScreen() {
   const insets = useSafeAreaInsets();
-  // El tab bar es position:absolute con altura 72/92px — necesitamos ese espacio libre
-  const tabBarOffset = TAB_BAR_H;
   const [messages, setMessages] = useState<LIAMessage[]>(() => [...sessionHistory]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -200,6 +238,7 @@ export default function LiaScreen() {
   const [showChips, setShowChips] = useState(sessionHistory.length > 1);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingObj, setRecordingObj] = useState<Audio.Recording | null>(null);
+  const [showAttach, setShowAttach] = useState(false);
 
   const listRef = useRef<FlatList>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
@@ -245,6 +284,7 @@ export default function LiaScreen() {
     if (!msg || loading) return;
     setInput('');
     setError(null);
+    setShowAttach(false);
     setLastMsg(msg);
     const time = formatTime();
     const userMsg: LIAMessage = { id: Date.now().toString(), role: 'user', content: msg, time };
@@ -262,11 +302,7 @@ export default function LiaScreen() {
       setShowChips(true);
       if (res.reply.length < 250) {
         setSpeaking(true);
-        Speech.speak(res.reply, {
-          language: 'es-ES', rate: 1.0,
-          onDone: () => setSpeaking(false),
-          onError: () => setSpeaking(false),
-        });
+        Speech.speak(res.reply, { language: 'es-ES', rate: 1.0, onDone: () => setSpeaking(false), onError: () => setSpeaking(false) });
       }
     } catch (err: any) {
       setError(err?.message || 'No se pudo conectar con LIA-25. Inténtalo de nuevo.');
@@ -279,18 +315,12 @@ export default function LiaScreen() {
   const stopSpeaking = () => { Speech.stop(); setSpeaking(false); };
 
   const isFirstVisit = messages.length <= 1 && !loading && !showChips;
-  const statusLabel = loading
-    ? '● Escribiendo...'
-    : speaking
-    ? '🔊 Hablando...'
-    : isRecording
-    ? '🎙️ Escuchando...'
-    : '● Asistente inteligente';
+  const statusLabel = loading ? '● Escribiendo...' : speaking ? '🔊 Hablando...' : isRecording ? '🎙️ Escuchando...' : '● Asistente inteligente';
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['top', 'left', 'right']}>
 
-      {/* ── Header ───────────────────────────────────────────────── */}
+      {/* ── Header ── */}
       <LinearGradient
         colors={['#00C8A0', '#00B4E6']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
@@ -302,9 +332,7 @@ export default function LiaScreen() {
             <Text style={s.headerName}>Lia-25</Text>
             <Text style={s.headerSub}>{statusLabel}</Text>
           </View>
-          {(speaking || isRecording) && (
-            <LiaWave active={speaking || isRecording} color="rgba(255,255,255,0.85)" />
-          )}
+          {(speaking || isRecording) && <LiaWave active={speaking || isRecording} color="rgba(255,255,255,0.85)" />}
         </View>
         {speaking && (
           <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
@@ -313,40 +341,31 @@ export default function LiaScreen() {
         )}
       </LinearGradient>
 
+      {/* ── Cuerpo: KeyboardAvoidingView cubre TODO incluida la barra ── */}
       <KeyboardAvoidingView
         style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        {/* Contenedor principal con espacio para el tab bar absoluto */}
-        <View style={{ flex: 1, paddingBottom: tabBarOffset }}>
-
-        {/* ── Pantalla de bienvenida ───────────────────────────────── */}
+        {/* ── Pantalla de bienvenida ── */}
         {isFirstVisit ? (
           <ScrollView
-            contentContainerStyle={[s.welcomeScroll, { paddingBottom: 16 }]}
+            contentContainerStyle={s.welcomeScroll}
             showsVerticalScrollIndicator={false}
             style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
           >
-            {/* Avatar grande con halo */}
             <View style={s.avatarHaloWrap}>
               <View style={s.avatarHalo3} />
               <View style={s.avatarHalo2} />
               <View style={s.avatarHalo1} />
               <LiaAvatar size={80} speaking={false} />
             </View>
-
-            {/* Onda decorativa */}
             <View style={{ marginVertical: 10 }}>
               <LiaWave active={false} />
             </View>
-
             <Text style={[s.welcomeTitle, { color: C.textPrimary }]}>Hola, soy Lia-25</Text>
-            <Text style={[s.welcomeSub, { color: C.textSecondary }]}>
-              Tu asistente inteligente — Habla o escribe
-            </Text>
-
-            {/* Grid de sugerencias 2 columnas */}
+            <Text style={[s.welcomeSub, { color: C.textSecondary }]}>Tu asistente inteligente — Habla o escribe</Text>
             <View style={s.suggestionsGrid}>
               {SUGGESTIONS.map((sg, i) => (
                 <TouchableOpacity
@@ -355,18 +374,14 @@ export default function LiaScreen() {
                   onPress={() => send(sg.text)}
                   activeOpacity={0.75}
                 >
-                  <View style={[s.suggestionIconWrap, { backgroundColor: sg.bg }]}>
-                    {sg.icon}
-                  </View>
-                  <Text style={[s.suggestionText, { color: C.textPrimary }]} numberOfLines={2}>
-                    {sg.text}
-                  </Text>
+                  <View style={[s.suggestionIconWrap, { backgroundColor: sg.bg }]}>{sg.icon}</View>
+                  <Text style={[s.suggestionText, { color: C.textPrimary }]} numberOfLines={2}>{sg.text}</Text>
                 </TouchableOpacity>
               ))}
             </View>
           </ScrollView>
         ) : (
-          /* ── Lista de mensajes ─────────────────────────────────── */
+          /* ── Lista de mensajes ── */
           <FlatList
             ref={listRef}
             data={messages}
@@ -375,20 +390,14 @@ export default function LiaScreen() {
             showsVerticalScrollIndicator={false}
             onContentSizeChange={scrollToEnd}
             style={{ flex: 1 }}
+            keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isUser = item.role === 'user';
               return (
                 <View style={[s.row, isUser ? s.rowUser : s.rowAI]}>
                   {!isUser && <LiaAvatar size={30} />}
-                  <View style={[
-                    s.bubble,
-                    isUser
-                      ? s.bubbleUser
-                      : [s.bubbleAI, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.borderLight : '#E4EFF7' }],
-                  ]}>
-                    <Text style={[s.bubbleText, isUser ? s.textUser : { color: C.textPrimary }]}>
-                      {item.content}
-                    </Text>
+                  <View style={[s.bubble, isUser ? s.bubbleUser : [s.bubbleAI, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.borderLight : '#E4EFF7' }]]}>
+                    <Text style={[s.bubbleText, isUser ? s.textUser : { color: C.textPrimary }]}>{item.content}</Text>
                     <Text style={[s.timeText, isUser && s.timeUser]}>{item.time}</Text>
                   </View>
                   {isUser && <View style={s.userAvatarDot} />}
@@ -399,7 +408,7 @@ export default function LiaScreen() {
           />
         )}
 
-        {/* ── Banner de error ──────────────────────────────────────── */}
+        {/* ── Error banner ── */}
         {error && (
           <View style={s.errorBanner}>
             <Text style={s.errorText}>⚠️ {error}</Text>
@@ -409,14 +418,9 @@ export default function LiaScreen() {
           </View>
         )}
 
-        {/* ── Quick chips (solo cuando hay conversación) ───────────── */}
+        {/* ── Quick chips ── */}
         {showChips && !isFirstVisit && (
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            style={s.chipsScroll}
-            contentContainerStyle={s.chipsRow}
-          >
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chipsRow}>
             {QUICK_CHIPS.map(c => (
               <TouchableOpacity
                 key={c.text}
@@ -431,14 +435,35 @@ export default function LiaScreen() {
           </ScrollView>
         )}
 
-        {/* ── Barra de input ───────────────────────────────────────── */}
+        {/* ── Panel de adjuntos (slide up) ── */}
+        <AttachPanel
+          visible={showAttach}
+          onClose={() => setShowAttach(false)}
+          onSendText={send}
+          isDark={isDark}
+          C={C}
+        />
+
+        {/* ── Barra de input ── */}
         <View style={[
           s.inputBar,
           {
             backgroundColor: isDark ? C.bgSecondary : '#fff',
             borderTopColor: isDark ? C.borderLight : '#E4EFF7',
+            paddingBottom: insets.bottom > 0 ? insets.bottom : 10,
           },
         ]}>
+          {/* Botón + (adjuntos) o × (cerrar panel) */}
+          <TouchableOpacity
+            style={[s.attachBtn, showAttach && s.attachBtnActive]}
+            onPress={() => setShowAttach(v => !v)}
+            activeOpacity={0.8}
+          >
+            <Text style={{ fontSize: 22, color: showAttach ? '#fff' : '#00C8A0', fontWeight: '300', lineHeight: 26 }}>
+              {showAttach ? '×' : '+'}
+            </Text>
+          </TouchableOpacity>
+
           {/* Botón micrófono */}
           <TouchableOpacity
             style={[s.micBtn, isRecording && s.micBtnActive, { borderColor: isDark ? C.border : '#DFF0FA' }]}
@@ -457,7 +482,7 @@ export default function LiaScreen() {
             )}
           </TouchableOpacity>
 
-          {/* Input o onda de grabación */}
+          {/* Input o onda */}
           {isRecording ? (
             <View style={[s.inputWrap, { backgroundColor: '#FEF2F2', borderColor: '#FECACA', justifyContent: 'center', alignItems: 'center' }]}>
               <LiaWave active color="#EF4444" />
@@ -471,6 +496,7 @@ export default function LiaScreen() {
                 placeholder="Pregunta a Lia-25..."
                 placeholderTextColor={C.textTertiary}
                 onSubmitEditing={() => send()}
+                onFocus={() => setShowAttach(false)}
                 returnKeyType="send"
                 multiline
                 maxLength={500}
@@ -498,74 +524,40 @@ export default function LiaScreen() {
           </Animated.View>
         </View>
 
-        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
 
 // ── Estilos ───────────────────────────────────────────────────────
-const CARD_W = (SW - 16 * 2 - 10) / 2; // 2 columnas con gap 10 y padding 16
+const CARD_W = (SW - 16 * 2 - 10) / 2;
 
 const s = StyleSheet.create({
   container: { flex: 1 },
 
   // Header
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 14,
-  },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   headerName: { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.2 },
   headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.88)', fontWeight: '500', marginTop: 2 },
-  stopBtn: {
-    backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 6, marginLeft: 8,
-  },
+  stopBtn: { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginLeft: 8 },
   stopBtnText: { fontSize: 12, color: '#fff', fontWeight: '700' },
 
   // Bienvenida
-  welcomeScroll: {
-    alignItems: 'center', paddingHorizontal: 16, paddingTop: 32,
-  },
+  welcomeScroll: { alignItems: 'center', paddingHorizontal: 16, paddingTop: 28, paddingBottom: 20 },
   avatarHaloWrap: { alignItems: 'center', justifyContent: 'center', marginBottom: 4 },
-  avatarHalo3: {
-    position: 'absolute', width: 120, height: 120, borderRadius: 60,
-    backgroundColor: 'rgba(0,200,160,0.07)',
-  },
-  avatarHalo2: {
-    position: 'absolute', width: 100, height: 100, borderRadius: 50,
-    backgroundColor: 'rgba(0,200,160,0.12)',
-  },
-  avatarHalo1: {
-    position: 'absolute', width: 96, height: 96, borderRadius: 48,
-    backgroundColor: 'rgba(0,200,160,0.18)',
-  },
-  welcomeTitle: {
-    fontSize: 22, fontWeight: '800', letterSpacing: 0.3, textAlign: 'center', marginTop: 4,
-  },
-  welcomeSub: {
-    fontSize: 13, fontWeight: '500', textAlign: 'center', marginTop: 6, marginBottom: 24,
-    lineHeight: 19,
-  },
-  suggestionsGrid: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: 10,
-    justifyContent: 'center', width: '100%',
-  },
-  suggestionCard: {
-    width: CARD_W, borderRadius: 14, borderWidth: 1,
-    paddingHorizontal: 12, paddingVertical: 12,
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    ...Shadow.sm,
-  },
-  suggestionIconWrap: {
-    width: 36, height: 36, borderRadius: 10,
-    alignItems: 'center', justifyContent: 'center',
-  },
+  avatarHalo3: { position: 'absolute', width: 120, height: 120, borderRadius: 60, backgroundColor: 'rgba(0,200,160,0.07)' },
+  avatarHalo2: { position: 'absolute', width: 100, height: 100, borderRadius: 50, backgroundColor: 'rgba(0,200,160,0.12)' },
+  avatarHalo1: { position: 'absolute', width: 96, height: 96, borderRadius: 48, backgroundColor: 'rgba(0,200,160,0.18)' },
+  welcomeTitle: { fontSize: 22, fontWeight: '800', letterSpacing: 0.3, textAlign: 'center', marginTop: 4 },
+  welcomeSub: { fontSize: 13, fontWeight: '500', textAlign: 'center', marginTop: 6, marginBottom: 24, lineHeight: 19 },
+  suggestionsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, justifyContent: 'center', width: '100%' },
+  suggestionCard: { width: CARD_W, borderRadius: 14, borderWidth: 1, paddingHorizontal: 12, paddingVertical: 12, flexDirection: 'row', alignItems: 'center', gap: 10, ...Shadow.sm },
+  suggestionIconWrap: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   suggestionText: { flex: 1, fontSize: 12, fontWeight: '600', lineHeight: 17 },
 
   // Mensajes
-  list: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 6, gap: 10 },
+  list: { paddingHorizontal: 12, paddingTop: 14, paddingBottom: 8, gap: 10 },
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   rowUser: { justifyContent: 'flex-end' },
   rowAI: { justifyContent: 'flex-start' },
@@ -576,69 +568,48 @@ const s = StyleSheet.create({
   textUser: { color: '#fff' },
   timeText: { fontSize: 10, color: 'rgba(0,0,0,0.28)', marginTop: 5, textAlign: 'right' },
   timeUser: { color: 'rgba(255,255,255,0.65)' },
-  userAvatarDot: {
-    width: 8, height: 8, borderRadius: 4,
-    backgroundColor: '#00C8A0', marginBottom: 4,
-  },
+  userAvatarDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00C8A0', marginBottom: 4 },
 
   // Typing
   typingRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, marginTop: 4, paddingHorizontal: 12 },
-  typingBubble: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    paddingVertical: 13, paddingHorizontal: 16,
-    backgroundColor: '#fff', borderRadius: 18, borderBottomLeftRadius: 4,
-    borderWidth: 1, borderColor: '#E4EFF7', ...Shadow.sm,
-  },
+  typingBubble: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 13, paddingHorizontal: 16, backgroundColor: '#fff', borderRadius: 18, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: '#E4EFF7', ...Shadow.sm },
   dot: { width: 7, height: 7, borderRadius: 3.5, backgroundColor: '#00C8A0' },
 
   // Error
-  errorBanner: {
-    margin: 12, padding: 12, backgroundColor: '#FEF2F2',
-    borderRadius: 12, borderWidth: 1, borderColor: '#FECACA',
-    flexDirection: 'row', alignItems: 'center', gap: 8,
-  },
+  errorBanner: { margin: 12, padding: 12, backgroundColor: '#FEF2F2', borderRadius: 12, borderWidth: 1, borderColor: '#FECACA', flexDirection: 'row', alignItems: 'center', gap: 8 },
   errorText: { flex: 1, fontSize: 13, color: '#DC2626', lineHeight: 18 },
   retryBtn: { backgroundColor: '#DC2626', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
   retryText: { color: '#fff', fontSize: 12, fontWeight: '700' },
 
   // Quick chips
-  chipsScroll: { flexGrow: 0, marginVertical: 6 },
+  chipsScroll: { flexGrow: 0, marginVertical: 4 },
   chipsRow: { paddingHorizontal: 12, gap: 8 },
-  quickChip: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1,
-    ...Shadow.sm,
-  },
+  quickChip: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 20, paddingHorizontal: 12, paddingVertical: 7, borderWidth: 1, ...Shadow.sm },
   quickChipIcon: { fontSize: 12 },
   quickChipText: { fontSize: 12, fontWeight: '600' },
 
+  // Panel adjuntos
+  attachPanel: {
+    paddingHorizontal: 16, paddingVertical: 18,
+    borderTopWidth: 1, borderTopColor: '#E4EFF7',
+  },
+  attachRow: { flexDirection: 'row', justifyContent: 'space-around' },
+  attachItem: { alignItems: 'center', gap: 8 },
+  attachIcon: { width: 60, height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  attachLabel: { fontSize: 12, fontWeight: '600' },
+
   // Barra de input
-  inputBar: {
-    flexDirection: 'row', alignItems: 'flex-end', gap: 8,
-    paddingHorizontal: 12, paddingTop: 10, paddingBottom: 12,
-    borderTopWidth: 1,
-  },
-  micBtn: {
-    width: 44, height: 44, borderRadius: 22,
+  inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, paddingHorizontal: 10, paddingTop: 8, borderTopWidth: 1 },
+  attachBtn: {
+    width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, backgroundColor: 'transparent',
+    borderWidth: 1.5, borderColor: '#00C8A0',
   },
-  micBtnActive: {
-    backgroundColor: '#EF4444', borderColor: '#EF4444',
-    shadowColor: '#EF4444', shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.5, shadowRadius: 8, elevation: 6,
-  },
-  inputWrap: {
-    flex: 1, borderRadius: 22, paddingHorizontal: 16,
-    paddingVertical: Platform.OS === 'ios' ? 10 : 6,
-    minHeight: 44, justifyContent: 'center', borderWidth: 1,
-  },
+  attachBtnActive: { backgroundColor: '#00C8A0', borderColor: '#00C8A0' },
+  micBtn: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center', borderWidth: 1, backgroundColor: 'transparent' },
+  micBtnActive: { backgroundColor: '#EF4444', borderColor: '#EF4444', shadowColor: '#EF4444', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.5, shadowRadius: 8, elevation: 6 },
+  inputWrap: { flex: 1, borderRadius: 22, paddingHorizontal: 14, paddingVertical: Platform.OS === 'ios' ? 10 : 6, minHeight: 40, justifyContent: 'center', borderWidth: 1 },
   input: { fontSize: 14, maxHeight: 100, padding: 0 },
-  sendBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center',
-    shadowColor: '#00C8A0', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35, shadowRadius: 6, elevation: 4,
-  },
+  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center', shadowColor: '#00C8A0', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 6, elevation: 4 },
   sendBtnOff: { backgroundColor: '#E5E7EB', shadowOpacity: 0 },
 });
