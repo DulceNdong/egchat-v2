@@ -155,8 +155,8 @@ export default function ApuestasScreen() {
   // ── Hub de operadores ──
   if (!company) {
     return (
-      <SafeAreaView style={s.container} edges={['top']}>
-        <View style={s.header}>
+      <SafeAreaView style={s.container} edges={['left', 'right']}>
+        <View style={[s.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
             <Text style={s.backIcon}>‹</Text>
           </TouchableOpacity>
