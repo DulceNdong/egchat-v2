@@ -1000,23 +1000,8 @@ function MensajeriaScreenInner() {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* ══════════════════════════════════════════════════════════
-          LIA-25 — asistente flotante (igual que Home)
-      ══════════════════════════════════════════════════════════ */}
-      <TouchableOpacity
-        style={st.liaBtn}
-        onPress={() => router.push('/(tabs)/lia' as any)}
-        activeOpacity={0.85}
-      >
-        <LinearGradient
-          colors={['#00C8A0', '#00B4E6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={st.liaBtnGrad}
-        >
-          <SpinningLogo size={36} glow={false} />
-        </LinearGradient>
-      </TouchableOpacity>
+      {/* Botón HOME flotante arrastrable */}
+      <DraggableHomeButton />
 
       {/* ══════════════════════════════════════════════════════════
           PANELES DEL HEADER
