@@ -40,10 +40,10 @@ const COUNTRIES = [
 const getFlag = (code: string) =>
   String.fromCodePoint(...code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0)));
 
-// Barra de progreso — 4 pasos (nombre, teléfono, OTP, contraseña)
+// Barra de progreso — 3 pasos (nombre, teléfono, contraseña)
 const ProgressBar = ({ step }: { step: number }) => (
   <View style={styles.progressBar}>
-    {[1, 2, 3, 4].map(i => (
+    {[1, 2, 3].map(i => (
       <View
         key={i}
         style={[styles.progressSegment, { backgroundColor: i <= step ? Colors.accent : Colors.border }]}
