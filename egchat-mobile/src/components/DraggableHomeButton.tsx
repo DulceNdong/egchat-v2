@@ -12,7 +12,7 @@ import { router } from 'expo-router';
 import Svg, { Path, Polyline } from 'react-native-svg';
 
 const { width: SW, height: SH } = Dimensions.get('window');
-const BTN = 48;
+const BTN = 44;
 
 interface Props {
   initialX?: number;
