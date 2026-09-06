@@ -69,12 +69,6 @@ const NavIcon = ({ name, color, focused, size = 24 }: { name: string; color: str
 // ── Tab icon con indicador activo ──────────────────────────────────
 const TabIcon = ({ name, color, focused }: { name: string; color: string; focused: boolean }) => (
   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-    {focused && (
-      <View style={{
-        position: 'absolute', top: -6, width: 28, height: 3,
-        borderRadius: 2, backgroundColor: '#fff', opacity: 0.95,
-      }} />
-    )}
     <NavIcon name={name} color={color} focused={focused} size={24} />
   </View>
 );
