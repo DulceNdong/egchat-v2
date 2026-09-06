@@ -39,7 +39,7 @@ export function NativeChatKeyboard({
 
   return (
     <NativeKeyboard
-      style={[{ height: Platform.OS === 'ios' ? 244 : 236 }, style]}
+      style={[{ height: Platform.OS === 'ios' ? 291 : 252 }, style]}
       text={text}
       onChangeText={event => onChangeText(event.nativeEvent.text)}
       onSubmit={() => onSubmit?.()}
