@@ -2111,7 +2111,7 @@ export default function ChatScreen() {
               </Svg>
             </LinearGradient>
           </Animated.View>
-        </View>
+        </Pressable>
 
         {/* ── BOTTOM DOCK — acompaña al teclado con su misma animación ── */}
         <View
