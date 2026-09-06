@@ -324,9 +324,22 @@ export default function LiaScreen() {
   const [showAttach, setShowAttach] = useState(false);
 
   const listRef = useRef<FlatList>(null);
+  const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+
+  // Abrir panel: cierra teclado primero
+  const openAttach = useCallback(() => {
+    Keyboard.dismiss();
+    setShowAttach(true);
+  }, []);
+
+  // Abrir teclado: cierra panel primero
+  const openKeyboard = useCallback(() => {
+    setShowAttach(false);
+    setTimeout(() => inputRef.current?.focus(), 50);
+  }, []);
 
   const scrollToEnd = useCallback(() => {
     setTimeout(() => listRef.current?.scrollToEnd({ animated: true }), 100);
