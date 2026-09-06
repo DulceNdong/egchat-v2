@@ -497,6 +497,7 @@ export default function LiaScreen() {
           </Animated.View>
         </View>
 
+        </View>
       </KeyboardAvoidingView>
     </SafeAreaView>
   );
