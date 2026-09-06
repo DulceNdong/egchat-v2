@@ -319,15 +319,9 @@ export default function ChatScreen() {
   const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
 
-  // ── Botón LIA arrastrable ──────────────────────────────────
+  // ── Botones flotantes arrastrables ────────────────────────
   const { width: SW, height: SH } = Dimensions.get('window');
-  const BTN_SIZE = 40;
-  const liaPos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.55 })).current;
-  const liaDragging = useRef(false);
-
-  // ── Botón HOME arrastrable ─────────────────────────────────
-  const homePos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.65 })).current;
-  const homeDragging = useRef(false);
+  const BTN_SIZE = 44;
 
   function makeDraggable(
     pos: Animated.ValueXY,
@@ -359,7 +353,9 @@ export default function ChatScreen() {
     });
   }
 
-  const liaPanResponder  = useRef(makeDraggable(liaPos,  liaDragging,  () => router.push('/(tabs)/lia' as any))).current;
+  // HOME — abre homepage
+  const homePos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.60 })).current;
+  const homeDragging = useRef(false);
   const homePanResponder = useRef(makeDraggable(homePos, homeDragging, () => router.push('/(tabs)' as any))).current;
 
   // Altura del teclado custom / paneles — igual al teclado del sistema
