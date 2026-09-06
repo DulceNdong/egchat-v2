@@ -36,6 +36,7 @@ export default function HistorialCompletoScreen() {
   const [transactions, setTransactions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterId>('all');
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     try {
