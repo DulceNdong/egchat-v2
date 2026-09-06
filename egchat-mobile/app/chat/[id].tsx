@@ -9,7 +9,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { chatAPI, authAPI, getToken } from '../../src/api';
+import { chatAPI, authAPI, getToken, contactsAPI } from '../../src/api';
 import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
 import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPickerModal';
 import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
