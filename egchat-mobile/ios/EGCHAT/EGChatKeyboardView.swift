@@ -272,15 +272,7 @@ final class EGChatKeyboardView: UIView {
 
     // Borrar — icono SF Symbol igual al sistema iOS
     let del = makeDeleteKey(x: W - side - specialW, y: y, w: specialW, h: rowH)
-    del.onTap = { [weak self] in
-      guard let self, !self.cur.isEmpty else { return }
-      self.cur.removeLast(); self.emit()
-    }
-    // Press largo para borrar rápido
-    del.onLong = { [weak self] in
-      self?.startFastDelete()
-    }
-    kbView.addSubview(del)
+    _ = del
 
     return y + rowH
   }
