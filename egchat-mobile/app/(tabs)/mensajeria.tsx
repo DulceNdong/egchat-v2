@@ -1000,9 +1000,6 @@ function MensajeriaScreenInner() {
         </LinearGradient>
       </TouchableOpacity>
 
-      {/* Botón HOME flotante arrastrable */}
-      <DraggableHomeButton />
-
       {/* ══════════════════════════════════════════════════════════
           PANELES DEL HEADER
       ══════════════════════════════════════════════════════════ */}
