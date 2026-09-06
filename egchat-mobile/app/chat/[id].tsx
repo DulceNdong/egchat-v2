@@ -2330,6 +2330,17 @@ export default function ChatScreen() {
           </Animated.View>
         )}
 
+        {/* ── TECLADO CUSTOM — mismo espacio que los paneles ── */}
+        {!editingMessage && nativeKbOpen && !showAttach && !showEmojis && !showStickers && (
+          <View style={[styles.panelContainer, { bottom: 0 }]}>
+            <NativeChatKeyboard
+              text={text}
+              onChangeText={handleTextChange}
+              onSubmit={sendMessage}
+            />
+          </View>
+        )}
+
       </View>
 
       <ChatContextMenu
