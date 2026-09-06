@@ -160,26 +160,76 @@ const TypingDots = () => {
 interface AttachPanelProps {
   visible: boolean;
   onClose: () => void;
+  onOpenKeyboard: () => void;
   onSendText: (text: string) => void;
   isDark: boolean;
   C: typeof Colors;
 }
 
+// Iconos SVG para cada opción
+const AttachIcons: Record<string, JSX.Element> = {
+  photo: (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <Rect x="3" y="3" width="18" height="18" rx="3"/>
+      <Circle cx="8.5" cy="8.5" r="1.5" fill="#00C8A0" stroke="none"/>
+      <Polyline points="21 15 16 10 5 21"/>
+    </Svg>
+  ),
+  video: (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <Polygon points="23 7 16 12 23 17 23 7" fill="#6B5BD6" fillOpacity="0.15"/>
+      <Rect x="1" y="5" width="15" height="14" rx="2"/>
+    </Svg>
+  ),
+  document: (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+      <Polyline points="14 2 14 8 20 8"/>
+      <Line x1="9" y1="13" x2="15" y2="13"/>
+      <Line x1="9" y1="17" x2="13" y2="17"/>
+    </Svg>
+  ),
+  file: (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#00B4A0" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+    </Svg>
+  ),
+  location: (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/>
+      <Circle cx="12" cy="10" r="3" fill="#EF4444" fillOpacity="0.2"/>
+    </Svg>
+  ),
+  contact: (
+    <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#00B4E6" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
+      <Circle cx="12" cy="7" r="4" fill="#00B4E6" fillOpacity="0.15"/>
+    </Svg>
+  ),
+};
+
 const ATTACH_OPTIONS = [
-  { key: 'photo',    emoji: '🖼️',  label: 'Foto',      bg: '#E8F8F0', color: '#00C8A0' },
-  { key: 'video',    emoji: '🎬',  label: 'Video',     bg: '#EDE8FF', color: '#6B5BD6' },
-  { key: 'document', emoji: '📄',  label: 'Documento', bg: '#FFF5E0', color: '#F59E0B' },
-  { key: 'file',     emoji: '📎',  label: 'Archivo',   bg: '#E0F7F0', color: '#00B4A0' },
+  { key: 'photo',    label: 'Foto',      bg: '#E6FAF6', color: '#00C8A0' },
+  { key: 'video',    label: 'Video',     bg: '#F0EEFF', color: '#6B5BD6' },
+  { key: 'document', label: 'Documento', bg: '#FFF8E6', color: '#F59E0B' },
+  { key: 'file',     label: 'Archivo',   bg: '#E0F7F0', color: '#00B4A0' },
+  { key: 'location', label: 'Ubicación', bg: '#FEF2F2', color: '#EF4444' },
+  { key: 'contact',  label: 'Contacto',  bg: '#E6F8FF', color: '#00B4E6' },
 ];
 
-const AttachPanel = ({ visible, onClose, onSendText, isDark, C }: AttachPanelProps) => {
-  const slideAnim = useRef(new Animated.Value(200)).current;
+const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }: AttachPanelProps) => {
+  const slideAnim = useRef(new Animated.Value(220)).current;
 
   useEffect(() => {
     if (visible) {
-      Animated.spring(slideAnim, { toValue: 0, useNativeDriver: true, damping: 20, stiffness: 200 }).start();
+      Animated.spring(slideAnim, {
+        toValue: 0, useNativeDriver: true,
+        damping: 22, stiffness: 220, mass: 0.9,
+      }).start();
     } else {
-      Animated.timing(slideAnim, { toValue: 200, duration: 180, useNativeDriver: true }).start();
+      Animated.timing(slideAnim, {
+        toValue: 220, duration: 200, useNativeDriver: true,
+      }).start();
     }
   }, [visible]);
 
@@ -199,6 +249,10 @@ const AttachPanel = ({ visible, onClose, onSendText, isDark, C }: AttachPanelPro
       } else if (key === 'document' || key === 'file') {
         const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
         if (!res.canceled && res.assets[0]) onSendText(`📎 Archivo adjunto: ${res.assets[0].name}`);
+      } else if (key === 'location') {
+        onSendText('📍 Ubicación compartida');
+      } else if (key === 'contact') {
+        onSendText('👤 Contacto compartido');
       }
     } catch {
       onSendText('⚠️ No se pudo adjuntar el archivo');
@@ -208,17 +262,47 @@ const AttachPanel = ({ visible, onClose, onSendText, isDark, C }: AttachPanelPro
   if (!visible) return null;
 
   return (
-    <Animated.View style={[s.attachPanel, { backgroundColor: isDark ? C.bgSecondary : '#fff', transform: [{ translateY: slideAnim }] }]}>
-      <View style={s.attachRow}>
+    <Animated.View style={[
+      s.attachPanel,
+      { backgroundColor: isDark ? C.bgSecondary : '#FAFCFF', transform: [{ translateY: slideAnim }] },
+    ]}>
+      {/* Grid 3×2 */}
+      <View style={s.attachGrid}>
         {ATTACH_OPTIONS.map(opt => (
-          <TouchableOpacity key={opt.key} style={s.attachItem} onPress={() => handleOption(opt.key)} activeOpacity={0.75}>
-            <View style={[s.attachIcon, { backgroundColor: opt.bg }]}>
-              <Text style={{ fontSize: 26 }}>{opt.emoji}</Text>
+          <TouchableOpacity
+            key={opt.key}
+            style={s.attachItem}
+            onPress={() => handleOption(opt.key)}
+            activeOpacity={0.72}
+          >
+            <View style={[s.attachIconWrap, { backgroundColor: opt.bg }]}>
+              {AttachIcons[opt.key]}
             </View>
-            <Text style={[s.attachLabel, { color: C.textSecondary }]}>{opt.label}</Text>
+            <Text style={[s.attachLabel, { color: isDark ? C.textSecondary : '#374151' }]}>
+              {opt.label}
+            </Text>
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* Botón para abrir teclado */}
+      <TouchableOpacity
+        style={s.attachKeyboardBtn}
+        onPress={onOpenKeyboard}
+        activeOpacity={0.75}
+      >
+        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+          <Rect x="2" y="5" width="20" height="14" rx="2"/>
+          <Line x1="6" y1="10" x2="6" y2="10"/>
+          <Line x1="10" y1="10" x2="10" y2="10"/>
+          <Line x1="14" y1="10" x2="14" y2="10"/>
+          <Line x1="18" y1="10" x2="18" y2="10"/>
+          <Line x1="6" y1="14" x2="6" y2="14"/>
+          <Line x1="18" y1="14" x2="18" y2="14"/>
+          <Line x1="10" y1="14" x2="14" y2="14"/>
+        </Svg>
+        <Text style={s.attachKeyboardTxt}>Teclado</Text>
+      </TouchableOpacity>
     </Animated.View>
   );
 };
