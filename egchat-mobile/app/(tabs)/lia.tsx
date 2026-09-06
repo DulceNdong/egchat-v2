@@ -288,13 +288,13 @@ export default function LiaScreen() {
     : '● Asistente inteligente';
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['top', 'left', 'right']}>
 
       {/* ── Header ───────────────────────────────────────────────── */}
       <LinearGradient
         colors={['#00C8A0', '#00B4E6']}
         start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-        style={[s.header, { paddingTop: insets.top + 8 }]}
+        style={s.header}
       >
         <View style={s.headerLeft}>
           <LiaAvatar size={42} speaking={speaking} />
@@ -313,7 +313,11 @@ export default function LiaScreen() {
         )}
       </LinearGradient>
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={0}
+      >
 
         {/* ── Pantalla de bienvenida ───────────────────────────────── */}
         {isFirstVisit ? (
