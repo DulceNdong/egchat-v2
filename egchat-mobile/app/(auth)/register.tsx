@@ -123,7 +123,7 @@ export default function RegisterScreen() {
               <Text style={[styles.backText, { color: C.textPrimary }]}>← Atrás</Text>
             </TouchableOpacity>
             <Text style={[styles.title, { color: C.textPrimary }]}>Crear Cuenta</Text>
-            <Text style={[styles.stepLabel, { color: C.textSecondary }]}>Paso {step} de 4</Text>
+            <Text style={[styles.stepLabel, { color: C.textSecondary }]}>Paso {step} de 3</Text>
             <ProgressBar step={step} />
           </View>
 
