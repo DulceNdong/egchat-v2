@@ -2462,6 +2462,7 @@ export default function ChatScreen() {
         onEdit={handleEditMessage}
         onForward={handleForwardMessage}
         onDownload={handleDownloadMedia}
+        onDeleteContact={!isGroup ? handleDeleteContact : undefined}
         onSelectMode={() => {
           setContextVisible(false);
           if (contextMsg) {
