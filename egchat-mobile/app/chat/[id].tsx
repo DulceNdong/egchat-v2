@@ -3249,8 +3249,6 @@ const styles = StyleSheet.create({
   // LIA-25 flotante en el chat (36px como web)
   liaFloat: {
     position: 'absolute',
-    right: 12,
-    bottom: 120,
     zIndex: 10,
     ...Shadow.md,
   },
