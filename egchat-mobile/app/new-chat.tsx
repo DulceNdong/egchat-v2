@@ -35,6 +35,7 @@ export default function NewChatScreen() {
   const [adding, setAdding] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     const loadInitial = async () => {
