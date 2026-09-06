@@ -324,7 +324,7 @@ export default function LiaScreen() {
         {/* ── Pantalla de bienvenida ───────────────────────────────── */}
         {isFirstVisit ? (
           <ScrollView
-            contentContainerStyle={[s.welcomeScroll, { paddingBottom: tabBarOffset + 16 }]}
+            contentContainerStyle={[s.welcomeScroll, { paddingBottom: 16 }]}
             showsVerticalScrollIndicator={false}
           >
             {/* Avatar grande con halo */}
