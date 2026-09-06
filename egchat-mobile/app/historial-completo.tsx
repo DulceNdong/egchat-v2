@@ -135,7 +135,7 @@ const s = StyleSheet.create({
   container: { flex: 1 },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 16, paddingVertical: 12,
+    paddingHorizontal: 16, paddingBottom: 12,
   },
   title: { fontSize: 18, fontWeight: '700', color: '#0f4c3a' },
   closeBtn: {
