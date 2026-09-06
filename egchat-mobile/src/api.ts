@@ -442,6 +442,8 @@ export const chatAPI = {
     get<any[]>(`/api/contacts/search?q=${encodeURIComponent(query)}`),
   deleteMessage: (messageId: string) => del<void>(`/api/messages/${messageId}`),
   deleteMessageForMe: (messageId: string) => del<void>(`/api/messages/${messageId}/for-me`),
+  /** Elimina el chat + mensajes + contacto asociado permanentemente */
+  deleteChat: (chatId: string) => del<void>(`/api/chats/${chatId}`),
   sendTyping: (chatId: string) => post<void>(`/api/chats/${chatId}/typing`, {}),
   stopTyping: (chatId: string) => del<void>(`/api/chats/${chatId}/typing`),
 
