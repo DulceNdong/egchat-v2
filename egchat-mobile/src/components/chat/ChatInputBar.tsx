@@ -114,10 +114,7 @@ export function ChatInputBar({
       <View style={s.field}>
         <TouchableOpacity
           style={s.iconInside}
-          onPress={() => {
-            setNativeKeyboardVisible(false);
-            onToggleEmojis();
-          }}
+          onPress={onToggleEmojis}
           activeOpacity={0.8}
         >
           <Svg width={18} height={18} viewBox="0 0 24 24" fill="none"
