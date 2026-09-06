@@ -318,6 +318,8 @@ export default function LiaScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={0}
       >
+        {/* Contenedor principal con espacio para el tab bar absoluto */}
+        <View style={{ flex: 1, paddingBottom: tabBarOffset }}>
 
         {/* ── Pantalla de bienvenida ───────────────────────────────── */}
         {isFirstVisit ? (
