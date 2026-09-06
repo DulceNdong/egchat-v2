@@ -682,7 +682,12 @@ export default function ChatScreen() {
         }
         setIsTyping(false);
       } else if (event === 'UPDATE') {
-        setMessages(prev => mergeMessages(prev, [newMsg]));
+        // Si el UPDATE es un soft-delete, quitar el mensaje en lugar de mergearlo
+        if ((newMsg as any).deleted_at) {
+          setMessages(prev => prev.filter(m => m.id !== newMsg.id));
+        } else {
+          setMessages(prev => mergeMessages(prev, [newMsg]));
+        }
       }
     });
 
