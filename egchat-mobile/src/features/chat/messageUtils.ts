@@ -40,6 +40,11 @@ export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]) {
 
   for (const message of incoming) {
     const normalized = normalizeMessage(message);
+    // Ignorar mensajes con soft-delete — no deben aparecer en la UI
+    if ((normalized as any).deleted_at) {
+      byId.delete(normalized.id);
+      continue;
+    }
     const existing = byId.get(normalized.id);
     byId.set(normalized.id, existing ? { ...existing, ...normalized } : normalized);
   }
