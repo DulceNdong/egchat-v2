@@ -31,11 +31,27 @@ export function sortMessagesByCreatedAt(messages: ChatMessage[]) {
   return [...messages].sort((a, b) => getTime(a) - getTime(b));
 }
 
-export function mergeMessages(current: ChatMessage[], incoming: ChatMessage[]) {
+export function mergeMessages(
+  current: ChatMessage[],
+  incoming: ChatMessage[],
+  options?: { replaceAll?: boolean },
+) {
   const byId = new Map<string, ChatMessage>();
 
   for (const message of current) {
     byId.set(message.id, normalizeMessage(message));
+  }
+
+  // Cuando replaceAll=true (respuesta de polling con lista completa), los IDs
+  // no presentes en `incoming` son mensajes borrados — eliminarlos del mapa.
+  if (options?.replaceAll) {
+    const incomingIds = new Set(incoming.map(m => m.id));
+    // Solo comparar mensajes no temporales (los temp siempre viven en current)
+    for (const id of byId.keys()) {
+      if (!isTempMessage(id) && !incomingIds.has(id)) {
+        byId.delete(id);
+      }
+    }
   }
 
   for (const message of incoming) {
