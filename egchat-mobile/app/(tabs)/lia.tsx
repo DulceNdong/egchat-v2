@@ -1,16 +1,15 @@
 // ══════════════════════════════════════════════════════════════════
-// EGCHAT — LIA-25 Asistente IA  (diseño mejorado v2)
-// Fixes: teclado pegado, sin espacio blanco, panel de adjuntos +
+// EGCHAT — LIA-25 Asistente IA  (diseño mejorado v3)
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, ScrollView, Dimensions, Modal,
+  Animated, ScrollView, Dimensions, Keyboard,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Line, Polygon, Rect, Circle } from 'react-native-svg';
+import Svg, { Path, Line, Polygon, Rect, Circle, Polyline, G } from 'react-native-svg';
 import * as Speech from 'expo-speech';
 import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
