@@ -9,7 +9,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   TextInput, Modal, Pressable, Alert, ActivityIndicator,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
