@@ -2092,23 +2092,18 @@ export default function ChatScreen() {
             style={[styles.liaFloat, { left: liaPos.x, top: liaPos.y, right: undefined, bottom: undefined }]}
             {...liaPanResponder.panHandlers}
           >
-            <TouchableOpacity
-              onPress={() => router.push('/(tabs)/lia' as any)}
-              activeOpacity={0.85}
+            <LinearGradient
+              colors={['#00C8A0', '#00B4E6']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.liaFloatGrad}
             >
-              <LinearGradient
-                colors={['#00C8A0', '#00B4E6']}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 1 }}
-                style={styles.liaFloatGrad}
-              >
-                <Image
-                  source={require('../../assets/logo-transparent.png')}
-                  style={styles.liaFloatLogo}
-                  resizeMode="cover"
-                />
-              </LinearGradient>
-            </TouchableOpacity>
+              <Image
+                source={require('../../assets/logo-transparent.png')}
+                style={styles.liaFloatLogo}
+                resizeMode="cover"
+              />
+            </LinearGradient>
           </Animated.View>
         </View>
 
