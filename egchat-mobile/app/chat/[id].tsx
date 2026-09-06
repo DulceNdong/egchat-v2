@@ -2049,6 +2049,7 @@ export default function ChatScreen() {
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
+            onScrollBeginDrag={dismissAll}
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             // ── Optimizaciones de rendimiento ──────────────────────
             initialNumToRender={20}
