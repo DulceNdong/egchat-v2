@@ -15,6 +15,7 @@ import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { markAllRead } from '../../src/store/appStore';
 import { CardsScreen } from '../../src/components/services/CardsScreen';
+import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
 import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../../src/utils/bankAccounts';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
