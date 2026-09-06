@@ -73,7 +73,7 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
           <Text style={s.addTitle}>Añadir nueva tarjeta</Text>
           <View style={s.addRow}>
             {/* Escanear tarjeta */}
-            <TouchableOpacity style={s.scanBtn} onPress={() => Alert.alert('Escanear tarjeta', 'Usa la cámara para capturar los datos de la tarjeta (próximamente).')}>
+            <TouchableOpacity style={s.scanBtn} onPress={scanCard}>
               <View style={s.iconWrap}>
                 <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
                   <Rect x="2" y="7" width="20" height="14" rx="3" stroke="#3B7DD8" strokeWidth="1.8" fill="#EFF5FD"/>
