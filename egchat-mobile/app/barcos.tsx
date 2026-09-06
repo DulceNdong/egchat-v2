@@ -330,7 +330,7 @@ export default function BarcosScreen() {
 
 const st = StyleSheet.create({
   container: { flex: 1 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingVertical: 12, borderBottomWidth: 1 },
+  header: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingHorizontal: 16, paddingBottom: 12, borderBottomWidth: 1 },
   backBtn: { padding: 4 },
   backIcon: { fontSize: 28, lineHeight: 32 },
   headerTitle: { fontSize: 16, fontWeight: '700' },
