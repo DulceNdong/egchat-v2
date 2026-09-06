@@ -270,8 +270,8 @@ export default function ApuestasScreen() {
   // ── Casino ──
   if (company.type === 'casino') {
     return (
-      <SafeAreaView style={s.container} edges={['top']}>
-        <View style={s.header}>
+      <SafeAreaView style={s.container} edges={['left', 'right']}>
+        <View style={[s.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity onPress={goBack} style={s.backBtn}><Text style={s.backIcon}>‹</Text></TouchableOpacity>
           <Text style={[s.title, { flex: 1 }]}>{company.name}</Text>
         </View>
