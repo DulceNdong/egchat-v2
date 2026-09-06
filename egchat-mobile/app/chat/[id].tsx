@@ -2245,15 +2245,18 @@ export default function ChatScreen() {
                   showEmojis={showEmojis}
                   isRecording={isRecording}
                   keyboardVisible={keyboardBottomOffset > 0}
+                  nativeKbOpen={nativeKbOpen}
                   durationFormatted={durationFormatted}
                   sendScale={sendScale}
                   onChangeText={handleTextChange}
+                  onNativeKbChange={setNativeKbOpen}
                   onToggleAttach={() => {
                     setShowAttach(v => {
                       const n = !v;
                       if (n) {
                         setShowEmojis(false);
                         setShowStickers(false);
+                        setNativeKbOpen(false);
                         inputRef.current?.blur();
                         Keyboard.dismiss();
                       }
@@ -2266,6 +2269,7 @@ export default function ChatScreen() {
                       if (n) {
                         setShowAttach(false);
                         setShowStickers(false);
+                        setNativeKbOpen(false);
                         inputRef.current?.blur();
                         Keyboard.dismiss();
                       }
@@ -2278,6 +2282,7 @@ export default function ChatScreen() {
                       if (n) {
                         setShowAttach(false);
                         setShowEmojis(false);
+                        setNativeKbOpen(false);
                         inputRef.current?.blur();
                         Keyboard.dismiss();
                       }
