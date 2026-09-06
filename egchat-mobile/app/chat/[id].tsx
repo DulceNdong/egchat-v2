@@ -324,44 +324,43 @@ export default function ChatScreen() {
   const BTN_SIZE = 40;
   const liaPos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.55 })).current;
   const liaDragging = useRef(false);
-  const liaPanResponder = useRef(
-    PanResponder.create({
+
+  // ── Botón HOME arrastrable ─────────────────────────────────
+  const homePos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.65 })).current;
+  const homeDragging = useRef(false);
+
+  function makeDraggable(
+    pos: Animated.ValueXY,
+    dragging: React.MutableRefObject<boolean>,
+    onTap: () => void,
+  ) {
+    return PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
-        liaDragging.current = false;
-        liaPos.setOffset({ x: (liaPos.x as any)._value, y: (liaPos.y as any)._value });
-        liaPos.setValue({ x: 0, y: 0 });
+        dragging.current = false;
+        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (_, g) => {
-        if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) liaDragging.current = true;
-        Animated.event(
-          [null, { dx: liaPos.x, dy: liaPos.y }],
-          { useNativeDriver: false }
-        )(_, g);
+        if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) dragging.current = true;
+        Animated.event([null, { dx: pos.x, dy: pos.y }], { useNativeDriver: false })(_, g);
       },
-      onPanResponderRelease: (_, g) => {
-        liaPos.flattenOffset();
-        if (!liaDragging.current) {
-          // fue un tap — navegar a LIA
-          router.push('/(tabs)/lia' as any);
-          return;
-        }
-        // Snap al borde más cercano
-        const curX = (liaPos.x as any)._value;
+      onPanResponderRelease: () => {
+        pos.flattenOffset();
+        if (!dragging.current) { onTap(); return; }
+        const curX = (pos.x as any)._value;
         const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
-        const rawY = (liaPos.y as any)._value;
+        const rawY = (pos.y as any)._value;
         const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
-        Animated.spring(liaPos, {
-          toValue: { x: snapX, y: snapY },
-          useNativeDriver: false,
-          damping: 18,
-          stiffness: 200,
-        }).start();
-        liaDragging.current = false;
+        Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
+        dragging.current = false;
       },
-    })
-  ).current;
+    });
+  }
+
+  const liaPanResponder  = useRef(makeDraggable(liaPos,  liaDragging,  () => router.push('/(tabs)/lia' as any))).current;
+  const homePanResponder = useRef(makeDraggable(homePos, homeDragging, () => router.push('/(tabs)' as any))).current;
 
   // Altura del teclado custom / paneles — igual al teclado del sistema
   const PANEL_HEIGHT = 291;
