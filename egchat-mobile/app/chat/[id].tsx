@@ -715,7 +715,8 @@ export default function ChatScreen() {
           try {
             const fresh = await chatAPI.getMessages(chatId, 1, 20);
             if (!fresh?.length) return;
-            setMessages(prev => mergeMessages(prev, normalizeMessages(fresh)));
+            // replaceAll: true → los mensajes ausentes del servidor se consideran borrados
+            setMessages(prev => mergeMessages(prev, normalizeMessages(fresh), { replaceAll: true }));
           } catch {}
         }, 2000);
       }
