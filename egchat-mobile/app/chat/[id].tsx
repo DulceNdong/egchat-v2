@@ -1054,26 +1054,51 @@ export default function ChatScreen() {
 
   const handleDelete = useCallback(() => {
     setContextVisible(false);
-    Alert.alert('Eliminar mensaje', '¿Eliminar para todos?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive',
-        onPress: async () => {
-          if (!contextMsg) return;
-          try {
-            await chatAPI.deleteMessage(contextMsg.id);
+    if (!contextMsg) return;
+    const isTransfer = contextMsg.type === 'money' || contextMsg.text?.includes('💸');
+    const itemLabel = isTransfer ? 'transacción' : 'mensaje';
+    Alert.alert(
+      `Eliminar ${itemLabel}`,
+      `¿Eliminar este ${itemLabel} para todos?\n\nQuedará guardado en el historial durante 5 años antes de borrarse definitivamente.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar para todos', style: 'destructive',
+          onPress: async () => {
+            // Optimistic: quitar de UI inmediatamente
             setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
-          } catch {}
+            try {
+              await chatAPI.deleteMessage(contextMsg.id);
+              toast.success(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} eliminado para todos`);
+            } catch {
+              // Rollback si falla
+              toast.error(`No se pudo eliminar el ${itemLabel}`);
+              setMessages(prev => {
+                // Reinsertar el mensaje en su posición cronológica
+                const exists = prev.some(m => m.id === contextMsg.id);
+                if (exists) return prev;
+                return [...prev, contextMsg].sort(
+                  (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+              });
+            }
+          },
         },
-      },
-    ]);
+      ]
+    );
   }, [contextMsg]);
 
   const handleDeleteForMe = useCallback(() => {
     setContextVisible(false);
     if (!contextMsg) return;
-    chatAPI.deleteMessageForMe(contextMsg.id).catch(() => {});
+    const isTransfer = contextMsg.type === 'money' || contextMsg.text?.includes('💸');
+    const itemLabel = isTransfer ? 'transacción' : 'mensaje';
+    // Optimistic: quitar de UI inmediatamente
     setMessages(prev => prev.filter(m => m.id !== contextMsg.id));
+    toast.info(`${itemLabel.charAt(0).toUpperCase() + itemLabel.slice(1)} eliminado para ti`);
+    chatAPI.deleteMessageForMe(contextMsg.id).catch(() => {
+      // Silencioso — el filtro local ya ocultó el mensaje; el servidor puede fallar sin impacto visible
+    });
   }, [contextMsg]);
 
   // ── Descargar imagen / video / archivo ────────────────────────
