@@ -2150,6 +2150,19 @@ export default function ChatScreen() {
                       onPress={() => setShowAttach(false)}
                     />
                     <ChatAttachPanel onAction={handleAttachAction} />
+                    {/* Botón volver al teclado — esquina superior derecha */}
+                    <TouchableOpacity
+                      style={styles.kbBackBtn}
+                      onPress={() => {
+                        setShowAttach(false);
+                        inputRef.current?.focus();
+                        setNativeKbOpen(true);
+                      }}
+                      activeOpacity={0.7}
+                      hitSlop={8}
+                    >
+                      <Text style={styles.kbBackBtnText}>⌨️</Text>
+                    </TouchableOpacity>
                   </View>
                 )}
                 {showEmojis && (
