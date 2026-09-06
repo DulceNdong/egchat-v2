@@ -1,5 +1,5 @@
 // Barra de input del chat
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Animated,
