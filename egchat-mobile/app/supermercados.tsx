@@ -107,6 +107,7 @@ export default function SupermercadosScreen() {
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
 
   const cartTotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const cartItemsCount = cart.reduce((sum, item) => sum + item.qty, 0);
