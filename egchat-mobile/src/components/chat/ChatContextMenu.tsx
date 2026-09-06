@@ -53,6 +53,8 @@ export interface ChatContextMenuProps {
   onEditHistory?: () => void;
   onSelectMode?: () => void;
   onDownload?: () => void;
+  /** Eliminar contacto desde la pantalla de chat (solo chats privados) */
+  onDeleteContact?: () => void;
 }
 
 // ─── Tipo interno para cada celda de la cuadrícula ────────────────────────────
