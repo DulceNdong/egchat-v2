@@ -696,13 +696,51 @@ const s = StyleSheet.create({
 
   // Panel adjuntos
   attachPanel: {
-    paddingHorizontal: 16, paddingVertical: 18,
-    borderTopWidth: 1, borderTopColor: '#E4EFF7',
+    paddingHorizontal: 16,
+    paddingTop: 20,
+    paddingBottom: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#E4EFF7',
   },
-  attachRow: { flexDirection: 'row', justifyContent: 'space-around' },
-  attachItem: { alignItems: 'center', gap: 8 },
-  attachIcon: { width: 60, height: 60, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
-  attachLabel: { fontSize: 12, fontWeight: '600' },
+  attachGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    gap: 12,
+    marginBottom: 14,
+  },
+  attachItem: {
+    width: '30%',
+    alignItems: 'center',
+    gap: 7,
+  },
+  attachIconWrap: {
+    width: 64,
+    height: 64,
+    borderRadius: 18,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadow.sm,
+  },
+  attachLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    letterSpacing: 0.1,
+  },
+  attachKeyboardBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    paddingVertical: 8,
+    borderRadius: 12,
+    backgroundColor: '#F3F4F6',
+  },
+  attachKeyboardTxt: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#6B7280',
+  },
 
   // Barra de input
   inputBar: { flexDirection: 'row', alignItems: 'flex-end', gap: 6, paddingHorizontal: 10, paddingTop: 8, borderTopWidth: 1 },
