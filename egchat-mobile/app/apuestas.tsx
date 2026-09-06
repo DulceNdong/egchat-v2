@@ -19,7 +19,7 @@ const BRAND2 = '#00b4e6';
 
 const makeStyles = (C: typeof Colors) => StyleSheet.create({
   container: { flex: 1, backgroundColor: C.bgPrimary },
-  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 8, gap: 10, backgroundColor: C.bgSecondary, borderBottomWidth: 1, borderBottomColor: C.borderLight },
+  header: { flexDirection: 'row', alignItems: 'center', padding: 16, paddingTop: 16, gap: 10, backgroundColor: C.bgSecondary, borderBottomWidth: 1, borderBottomColor: C.borderLight },
   backBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: C.bgTertiary, alignItems: 'center', justifyContent: 'center' },
   backIcon: { fontSize: 28, color: C.textPrimary, lineHeight: 32 },
   title: { fontSize: 18, fontWeight: '800', color: C.textPrimary },
