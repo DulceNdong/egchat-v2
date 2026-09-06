@@ -74,7 +74,7 @@ export function ChatContextMenu(props: ChatContextMenuProps) {
     visible, message, isOwn, onClose,
     onCopy, onReply, onStar, onDelete, onDeleteForMe, onReaction,
     onTranslate, onPin, onEphemeral, onEdit, onForward,
-    onEditHistory, onSelectMode, onDownload,
+    onEditHistory, onSelectMode, onDownload, onDeleteContact,
   } = props;
 
   // ── Animación de entrada ────────────────────────────────────────
