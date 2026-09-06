@@ -85,6 +85,7 @@ export default function BarcosScreen() {
   const [bookingRef, setBookingRef] = useState('');
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
 
   const totalPrice = route ? route.price[ticketClass] * passengers : 0;
 
