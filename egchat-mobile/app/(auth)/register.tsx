@@ -84,54 +84,6 @@ export default function RegisterScreen() {
     }
   };
 
-  const startOtpTimer = () => {
-    setOtpResendTimer(60);
-    if (otpTimerRef.current) clearInterval(otpTimerRef.current);
-    otpTimerRef.current = setInterval(() => {
-      setOtpResendTimer(t => {
-        if (t <= 1) { clearInterval(otpTimerRef.current!); return 0; }
-        return t - 1;
-      });
-    }, 1000);
-  };
-
-  const sendOtp = async () => {
-    setOtpSending(true);
-    setLocalError('');
-    try {
-      const result = await authAPI.sendVerification(fullPhone);
-      setOtpSent(true);
-      startOtpTimer();
-      // En modo dev (sin Twilio), el backend devuelve el código para testing
-      if ((result as any)?.dev_code) {
-        setOtpCode((result as any).dev_code);
-        toast.info('Código de prueba autocompletado (modo dev)');
-      }
-    } catch (e: any) {
-      setLocalError(e?.message || 'No se pudo enviar el código');
-    } finally {
-      setOtpSending(false);
-    }
-  };
-
-  const verifyOtp = async () => {
-    if (otpCode.trim().length < 4) { setLocalError('Introduce el código de 6 dígitos'); return; }
-    setOtpVerifying(true);
-    setLocalError('');
-    try {
-      const result = await authAPI.verifyCode(fullPhone, otpCode.trim());
-      if (result.verified) {
-        setStep(3); // pasa a crear contraseña
-      } else {
-        setLocalError('Código incorrecto. Inténtalo de nuevo.');
-      }
-    } catch (e: any) {
-      setLocalError(e?.message || 'Error al verificar el código');
-    } finally {
-      setOtpVerifying(false);
-    }
-  };
-
   const goNext = async () => {
     setLocalError('');
     clearError();
@@ -141,17 +93,12 @@ export default function RegisterScreen() {
     } else if (step === 2) {
       if (!phone.trim()) { setLocalError('Introduce tu número de teléfono'); return; }
       if (phone.replace(/\s/g, '').length < 6) { setLocalError('Número de teléfono inválido'); return; }
-      if (!otpSent) {
-        // Primero verificamos que el teléfono no existe, luego mandamos OTP
-        try {
-          const { exists } = await authAPI.checkPhone(fullPhone);
-          if (exists) { setLocalError('Este número ya está registrado. Usa "Ya tengo cuenta".'); return; }
-        } catch {}
-        await sendOtp(); // queda en paso 2 con otpSent=true, mostrando input OTP
-      } else {
-        // Ya enviamos OTP, ahora verificamos
-        await verifyOtp();
-      }
+      // Verificar que el teléfono no esté ya registrado antes de avanzar
+      try {
+        const { exists } = await authAPI.checkPhone(fullPhone);
+        if (exists) { setLocalError('Este número ya está registrado. Usa "Ya tengo cuenta".'); return; }
+      } catch {}
+      setStep(3);
     } else if (step === 3) {
       if (password.length < 6) { setLocalError('La contraseña debe tener al menos 6 caracteres'); return; }
       if (password !== password2) { setLocalError('Las contraseñas no coinciden'); return; }
