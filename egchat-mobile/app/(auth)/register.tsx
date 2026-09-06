@@ -60,12 +60,6 @@ export default function RegisterScreen() {
   const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [password2, setPassword2] = useState('');
-  const [otpCode, setOtpCode] = useState('');
-  const [otpSent, setOtpSent] = useState(false);
-  const [otpSending, setOtpSending] = useState(false);
-  const [otpVerifying, setOtpVerifying] = useState(false);
-  const [otpResendTimer, setOtpResendTimer] = useState(0);
-  const otpTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const { register, isLoading, error: authError, clearError } = useAuth();
   const [localError, setLocalError] = useState('');
   const displayError = localError || authError;
