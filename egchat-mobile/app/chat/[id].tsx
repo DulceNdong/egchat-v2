@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   StyleSheet, Platform, ActivityIndicator, Dimensions,
-  Animated, Modal, Pressable, Alert, Image, Share, Keyboard,
+  Animated, Modal, Pressable, Alert, Image, Share, Keyboard, PanResponder,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
