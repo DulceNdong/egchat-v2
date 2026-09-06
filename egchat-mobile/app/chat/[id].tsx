@@ -1102,10 +1102,18 @@ export default function ChatScreen() {
   }, [contextMsg]);
 
   // ── Eliminar contacto desde el chat ────────────────────────────
+  // Nota: se define usando chat/currentUserId (disponibles) en lugar de
+  // otherParticipant/chatName (declarados más abajo en el render flow).
   const handleDeleteContact = useCallback(() => {
     setContextVisible(false);
-    const targetUserId = otherParticipant?.user_id;
-    const targetName = chatName || 'este contacto';
+    const _otherParticipant = chat?.participants?.find(
+      (p: any) => String(p.user_id) !== String(currentUserId)
+    );
+    const targetUserId = _otherParticipant?.user_id;
+    const targetName =
+      _otherParticipant?.full_name ||
+      (_otherParticipant as any)?.users?.full_name ||
+      'este contacto';
     if (!targetUserId) {
       toast.error('No se pudo identificar al contacto');
       return;
@@ -1128,7 +1136,7 @@ export default function ChatScreen() {
         },
       ]
     );
-  }, [otherParticipant, chatName]);
+  }, [chat, currentUserId]);
 
   // ── Descargar imagen / video / archivo ────────────────────────
   const handleDownloadMedia = useCallback(async () => {
