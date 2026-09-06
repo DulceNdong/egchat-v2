@@ -199,6 +199,13 @@ export function ChatContextMenu(props: ChatContextMenuProps) {
     onPress: () => { onDelete(); },
   });
 
+  // Eliminar contacto — solo en chats privados (onDeleteContact proporcionado)
+  if (onDeleteContact) grid.push({
+    key: 'deleteContact', icon: 'person-remove', label: 'Eliminar\ncontacto',
+    bg: '#FFF3E0',        color: '#E65100',       danger: true,
+    onPress: () => { onDeleteContact(); onClose(); },
+  });
+
   // ── Render ───────────────────────────────────────────────────────
   return (
     <Modal
