@@ -230,36 +230,6 @@ export default function RegisterScreen() {
                     />
                   </View>
                 </View>
-
-                {/* ── OTP: se muestra cuando ya se envió el código ── */}
-                {otpSent && (
-                  <View style={styles.fieldGroup}>
-                    <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>Código de verificación</Text>
-                    <Text style={[styles.otpHint, { color: C.textSecondary }]}>
-                      Enviamos un código SMS a {fullPhone}
-                    </Text>
-                    <TextInput
-                      style={[styles.otpInput, { backgroundColor: C.bgSecondary, borderColor: C.border, color: C.textPrimary }]}
-                      value={otpCode}
-                      onChangeText={setOtpCode}
-                      placeholder="------"
-                      placeholderTextColor={C.textTertiary}
-                      keyboardType="number-pad"
-                      maxLength={6}
-                      autoFocus
-                      textAlign="center"
-                    />
-                    <TouchableOpacity
-                      onPress={otpResendTimer === 0 ? sendOtp : undefined}
-                      disabled={otpResendTimer > 0 || otpSending}
-                      style={styles.resendBtn}
-                    >
-                      <Text style={[styles.resendText, { color: otpResendTimer > 0 ? C.textTertiary : Colors.accent }]}>
-                        {otpResendTimer > 0 ? `Reenviar en ${otpResendTimer}s` : 'Reenviar código'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                )}
               </>
             )}
 
