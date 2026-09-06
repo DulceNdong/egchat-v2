@@ -30,6 +30,7 @@ export default function ContactsScreen() {
   const [adding, setAdding] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
 
   const load = useCallback(async () => {
     try {
