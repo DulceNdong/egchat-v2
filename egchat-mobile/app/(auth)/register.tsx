@@ -265,15 +265,11 @@ export default function RegisterScreen() {
               title={
                 step === 3
                   ? (isLoading ? 'Registrando...' : 'Registrarme')
-                  : step === 2 && otpSent
-                    ? (otpVerifying ? 'Verificando...' : 'Verificar código')
-                    : step === 2 && !otpSent
-                      ? (otpSending ? 'Enviando SMS...' : 'Enviar código SMS')
-                      : (!name.trim() && step === 1 ? 'Escribe tu nombre primero' : 'Continuar →')
+                  : (!name.trim() && step === 1 ? 'Escribe tu nombre primero' : 'Continuar →')
               }
               onPress={goNext}
-              loading={isLoading || otpSending || otpVerifying}
-              disabled={(step === 1 && !name.trim()) || (step === 2 && otpSent && otpCode.trim().length < 4)}
+              loading={isLoading}
+              disabled={step === 1 && !name.trim()}
             />
           </View>
         </ScrollView>
