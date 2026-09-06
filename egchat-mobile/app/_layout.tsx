@@ -16,7 +16,7 @@ import { trackUserPresence } from '../src/supabase';
 import SessionManager from '../src/sessionManager';
 import { NativeCallKit } from '../src/native/CallKit';
 import { PushKit } from '../src/native/PushKit';
-import { FloatingHomeButton } from '../src/components/FloatingHomeButton';
+
 import {
   registerSession, heartbeatSession, handleSyncMessage, handleSessionRevoked,
 } from '../src/services/deviceSessions';
