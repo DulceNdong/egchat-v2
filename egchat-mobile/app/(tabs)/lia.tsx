@@ -374,6 +374,7 @@ export default function LiaScreen() {
             contentContainerStyle={s.list}
             showsVerticalScrollIndicator={false}
             onContentSizeChange={scrollToEnd}
+            style={{ flex: 1 }}
             renderItem={({ item }) => {
               const isUser = item.role === 'user';
               return (
