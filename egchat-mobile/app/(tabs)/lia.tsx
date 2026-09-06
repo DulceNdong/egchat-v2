@@ -189,8 +189,8 @@ const TAB_BAR_H = Platform.OS === 'ios' ? 92 : 72;
 
 export default function LiaScreen() {
   const insets = useSafeAreaInsets();
-  // Espacio total que ocupa el tab bar absoluto + safe area inferior
-  const tabBarOffset = TAB_BAR_H + (insets.bottom > 0 ? 0 : 0); // el tab ya incluye paddingBottom para safe area
+  // El tab bar es position:absolute con altura 72/92px — necesitamos ese espacio libre
+  const tabBarOffset = TAB_BAR_H;
   const [messages, setMessages] = useState<LIAMessage[]>(() => [...sessionHistory]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
