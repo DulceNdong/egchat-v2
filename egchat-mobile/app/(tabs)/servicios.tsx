@@ -13,6 +13,7 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { ServiceIcon } from '../../src/components/ServiceIcon';
+import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import {
   RecargaModal, InternetModal, CanalesModal,
   BancosModal, SegurosModal, FacturasModal, InversionModal, TarjetasModal,
