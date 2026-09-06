@@ -18,7 +18,6 @@ import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { SettingsSearch, SettingsSection, SettingsCard, SettingsDivider, SettingsRow } from '../../src/components/settings/SettingsUI';
-import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
