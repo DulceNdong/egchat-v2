@@ -147,7 +147,7 @@ export default function TabsLayout() {
         }}
       />
       <Tabs.Screen name="index" options={{ href: null }} />
-      <Tabs.Screen name="lia"   options={{ href: null }} />
+      <Tabs.Screen name="lia"   options={{ href: null, tabBarStyle: { display: 'none' } }} />
     </Tabs>
   );
 }
