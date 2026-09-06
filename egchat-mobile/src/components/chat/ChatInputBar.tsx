@@ -179,6 +179,13 @@ export function ChatInputBar({
         )}
       </View>
     </View>
+    {nativeKeyboardVisible && (
+      <NativeChatKeyboard
+        text={text}
+        onChangeText={onChangeText}
+        onSubmit={onSend}
+      />
+    )}
     </>
   );
 }
