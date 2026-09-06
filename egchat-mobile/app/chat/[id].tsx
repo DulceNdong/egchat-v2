@@ -323,23 +323,33 @@ export default function ChatScreen() {
   const { width: SW, height: SH } = Dimensions.get('window');
   const BTN_SIZE = 40;
   const liaPos = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH * 0.55 })).current;
+  const liaDragging = useRef(false);
   const liaPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
+        liaDragging.current = false;
         liaPos.setOffset({ x: (liaPos.x as any)._value, y: (liaPos.y as any)._value });
         liaPos.setValue({ x: 0, y: 0 });
       },
-      onPanResponderMove: Animated.event(
-        [null, { dx: liaPos.x, dy: liaPos.y }],
-        { useNativeDriver: false }
-      ),
+      onPanResponderMove: (_, g) => {
+        if (Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4) liaDragging.current = true;
+        Animated.event(
+          [null, { dx: liaPos.x, dy: liaPos.y }],
+          { useNativeDriver: false }
+        )(_, g);
+      },
       onPanResponderRelease: (_, g) => {
         liaPos.flattenOffset();
-        // Snap al borde más cercano (izquierda o derecha)
-        const cur = (liaPos.x as any)._value;
-        const snapX = cur < SW / 2 ? 12 : SW - BTN_SIZE - 12;
+        if (!liaDragging.current) {
+          // fue un tap — navegar a LIA
+          router.push('/(tabs)/lia' as any);
+          return;
+        }
+        // Snap al borde más cercano
+        const curX = (liaPos.x as any)._value;
+        const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
         const rawY = (liaPos.y as any)._value;
         const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
         Animated.spring(liaPos, {
@@ -348,6 +358,7 @@ export default function ChatScreen() {
           damping: 18,
           stiffness: 200,
         }).start();
+        liaDragging.current = false;
       },
     })
   ).current;
