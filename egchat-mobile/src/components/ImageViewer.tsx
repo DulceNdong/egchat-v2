@@ -29,6 +29,7 @@ import type {
 import { LinearGradient } from 'expo-linear-gradient';
 import { BlurView } from 'expo-blur';
 import * as FileSystem from 'expo-file-system/legacy';
+import { toast } from './Toast';
 import Svg, { Path, Line, Polyline, Circle, Polygon, Rect } from 'react-native-svg';
 
 const { width: W, height: H } = Dimensions.get('window');
