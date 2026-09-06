@@ -55,8 +55,7 @@ export function ChatInputBar({
 }: ChatInputBarProps) {
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
-  const [nativeKeyboardVisible, setNativeKeyboardVisible] = useState(false);
-  const bottomPadding = keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom);
+  const bottomPadding = keyboardVisible ? 6 : Math.max(6, insets.bottom);
   // C6 — referencia de selección para insertar formato
   const selectionRef = useRef<{ start: number; end: number }>({ start: text.length, end: text.length });
 
