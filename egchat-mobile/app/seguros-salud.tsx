@@ -45,6 +45,7 @@ export default function SegurosSaludScreen() {
   const [taxLoading, setTaxLoading] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets = useSafeAreaInsets();
 
   const consultarDGI = () => {
     if (!nif.trim()) { Alert.alert('Error', 'Introduce tu NIF'); return; }
