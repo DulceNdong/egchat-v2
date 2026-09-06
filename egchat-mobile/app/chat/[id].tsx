@@ -2031,7 +2031,7 @@ export default function ChatScreen() {
       )}
 
       <View style={{ flex: 1 }}>
-        <View style={[styles.chatBg, { flex: 1 }]}>
+        <Pressable style={[styles.chatBg, { flex: 1 }]} onPress={dismissAll}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
           <FlatList
             ref={flatListRef}
