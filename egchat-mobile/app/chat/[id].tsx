@@ -3280,6 +3280,12 @@ const styles = StyleSheet.create({
   kbBackBtnText: {
     fontSize: 18,
   },
+  panelContainer: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 10,
+  },
 
   // Panel adjuntos — grid 2 columnas
   attachPanel: {
