@@ -216,6 +216,7 @@ export default function ChatScreen() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
+  const [nativeKbOpen, setNativeKbOpen] = useState(false); // teclado custom visible
   const [showEmojis, setShowEmojis] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [inputBarHeight, setInputBarHeight] = useState(0);
