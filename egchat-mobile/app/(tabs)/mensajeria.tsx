@@ -582,17 +582,29 @@ function MensajeriaScreenInner() {
   }, [archivedChats, loadChats]);
 
   const deleteChatLocal = useCallback((chatId: string) => {
-    Alert.alert('Eliminar chat', '¿Eliminar este chat de la lista?', [
-      { text: 'Cancelar', style: 'cancel' },
-      {
-        text: 'Eliminar', style: 'destructive',
-        onPress: () => {
-          setChats(prev => prev.filter(c => c.id !== chatId));
-          toast.success('Chat eliminado');
+    Alert.alert(
+      'Eliminar chat',
+      'Se eliminará el chat, todos los mensajes y el contacto asociado. Esta acción no se puede deshacer.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar', style: 'destructive',
+          onPress: async () => {
+            // Quitar de la lista inmediatamente (optimista)
+            setChats(prev => prev.filter(c => c.id !== chatId));
+            try {
+              await chatAPI.deleteChat(chatId);
+              toast.success('Chat eliminado');
+            } catch {
+              // Si falla el servidor, recargar la lista real
+              loadChats();
+              toast.error('No se pudo eliminar el chat');
+            }
+          },
         },
-      },
-    ]);
-  }, []);
+      ]
+    );
+  }, [loadChats]);
 
   const openFavoriteContact = useCallback(async (contact: any) => {
     try {
