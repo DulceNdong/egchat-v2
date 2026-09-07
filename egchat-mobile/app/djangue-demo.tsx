@@ -298,14 +298,18 @@ export default function DjangueDemoScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#10202B' },
-  header: { paddingHorizontal: 16, paddingBottom: 20, paddingTop: 16 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
-  backText: { fontSize: 28, color: '#fff', fontWeight: '300' },
+  root: { flex: 1, backgroundColor: '#f8fafc' },
+  header: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingBottom: 12,
+    backgroundColor: '#fff',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#e2e8f0',
+    gap: 8,
+  },
+  backBtn: { width: 40, height: 40, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: '#f8fafc' },
   headerCenter: { flex: 1, alignItems: 'center' },
-  headerTitle: { fontSize: 20, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 13, color: 'rgba(255,255,255,0.7)', marginTop: 2, fontStyle: 'italic' },
+  headerTitle: { fontSize: 16, fontWeight: '800', color: '#1e293b' },
+  headerSub: { fontSize: 11, color: '#94a3b8', marginTop: 1, fontStyle: 'italic' },
   content: { flex: 1 },
   contentContainer: { padding: 16, gap: 16 },
   kpiGrid: { flexDirection: 'row', gap: 10 },
