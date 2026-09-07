@@ -297,56 +297,53 @@ export default function DjangueSecretaryScreen() {
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#6366f1', '#4f46e5']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={s.headerTitle}>Panel del Secretario</Text>
-            <Text style={s.headerSub}>{data.name}</Text>
-          </View>
-          {/* #16 — Botón de chat del grupo djangue */}
-          <TouchableOpacity
-            style={s.iconBtn}
-            hitSlop={12}
-            onPress={() => {
-              if (data.chat_group_id) {
-                router.push(`/chat/${data.chat_group_id}` as any);
-              } else {
-                Alert.alert('Chat no disponible', 'Este djangue aún no tiene grupo de chat.');
-              }
-            }}
-          >
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-            </Svg>
-          </TouchableOpacity>
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+            stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={s.headerTitle}>Panel del Secretario</Text>
+          <Text style={s.headerSub}>{data.name}</Text>
         </View>
+        <TouchableOpacity
+          style={s.iconBtn}
+          hitSlop={12}
+          onPress={() => {
+            if (data.chat_group_id) {
+              router.push(`/chat/${data.chat_group_id}` as any);
+            } else {
+              Alert.alert('Chat no disponible', 'Este djangue aún no tiene grupo de chat.');
+            }
+          }}
+        >
+          <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
+            stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
 
-        {/* Stats rápidas */}
-        <View style={s.statsRow}>
-          <View style={s.statItem}>
-            <Text style={s.statVal}>{data.paid_count}</Text>
-            <Text style={s.statLbl}>Pagaron</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={s.statVal}>{pendingMembers.length}</Text>
-            <Text style={s.statLbl}>Pendientes</Text>
-          </View>
-          <View style={s.statDivider} />
-          <View style={s.statItem}>
-            <Text style={s.statVal}>{justifiedMembers.length}</Text>
-            <Text style={s.statLbl}>Justificados</Text>
-          </View>
+      {/* Stats rápidas */}
+      <View style={s.statsRow}>
+        <View style={s.statItem}>
+          <Text style={s.statVal}>{data.paid_count}</Text>
+          <Text style={s.statLbl}>Pagaron</Text>
         </View>
-      </LinearGradient>
+        <View style={s.statDivider} />
+        <View style={s.statItem}>
+          <Text style={s.statVal}>{pendingMembers.length}</Text>
+          <Text style={s.statLbl}>Pendientes</Text>
+        </View>
+        <View style={s.statDivider} />
+        <View style={s.statItem}>
+          <Text style={s.statVal}>{justifiedMembers.length}</Text>
+          <Text style={s.statLbl}>Justificados</Text>
+        </View>
+      </View>
 
       {/* Tabs */}
       <View style={s.tabs}>
