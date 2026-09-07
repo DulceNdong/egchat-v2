@@ -243,7 +243,7 @@ export default function ChannelsScreen() {
           data={filtered}
           keyExtractor={c => c.id}
           renderItem={renderChannel}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#07a472']} />}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#00C8A0']} />}
           contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
           ListEmptyComponent={
             <View style={s.empty}>
