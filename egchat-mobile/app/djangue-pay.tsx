@@ -201,10 +201,7 @@ export default function DjanguePayScreen() {
                 <Text style={s.progressCount}>{group.paid_count} pagaron</Text>
               </View>
               <View style={s.progressBg}>
-                <LinearGradient
-                  colors={['#10b981', '#059669']}
-                  style={[s.progressFill, { width: `${Math.min(collectionProgress * 100, 100)}%` }]}
-                />
+                <View style={[s.progressFill, { width: `${Math.min(collectionProgress * 100, 100)}%` as any }]} />
               </View>
               <Text style={s.progressGoal}>
                 Recaudado: {fmtAmount(group.total_paid_this_turn, group.currency)} / {fmtAmount(group.expected_total_this_turn, group.currency)}
@@ -216,20 +213,15 @@ export default function DjanguePayScreen() {
               onPress={handlePay}
               disabled={paying || !hasFunds}
               activeOpacity={0.85}
-              style={{ borderRadius: 14, overflow: 'hidden', marginTop: 8 }}
+              style={[s.payBtn, (!hasFunds || paying) && { opacity: 0.5 }]}
             >
-              <LinearGradient
-                colors={!hasFunds ? ['#374151', '#374151'] : paying ? ['#374151', '#374151'] : ['#10b981', '#059669']}
-                style={s.payBtn}
-              >
-                {paying ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={s.payBtnTxt}>
-                    {hasFunds ? `💳 Confirmar — ${fmtAmount(group.quota_amount, group.currency)}` : 'Saldo insuficiente'}
-                  </Text>
-                )}
-              </LinearGradient>
+              {paying ? (
+                <ActivityIndicator color="#fff" />
+              ) : (
+                <Text style={s.payBtnTxt}>
+                  {hasFunds ? `💳 Confirmar — ${fmtAmount(group.quota_amount, group.currency)}` : 'Saldo insuficiente'}
+                </Text>
+              )}
             </TouchableOpacity>
 
             <Text style={s.disclaimer}>
