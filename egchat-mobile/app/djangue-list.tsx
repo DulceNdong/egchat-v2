@@ -119,7 +119,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
           </View>
         )}
         
-        {!djangue.is_my_turn && !djangue.paid_current_turn && (
+        {!djangue.is_my_turn && !hasPaid && (
           <View style={s.pendingBadge}>
             <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
               <Circle cx={12} cy={12} r={10} stroke="#ef4444" strokeWidth={2} />
