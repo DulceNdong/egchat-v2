@@ -20,6 +20,8 @@ import { useThemeContext } from '../src/theme/ThemeContext';
 import { Colors } from '../src/theme/colors';
 import { DarkColors } from '../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
+import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface MomentPost {
