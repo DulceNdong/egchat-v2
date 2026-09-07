@@ -137,8 +137,6 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
         )}
       </LinearGradient>
     </TouchableOpacity>
-  );
-}
 
 export default function DjangueListScreen() {
   const insets = useSafeAreaInsets();
