@@ -565,10 +565,13 @@ export default function StoriesScreen() {
   const loadStories = useCallback(async () => {
     try {
       const [data, me] = await Promise.allSettled([storiesAPI.getAll(), authAPI.me()]);
-      const meId = me.status === 'fulfilled' ? me.value?.id || '' : '';
-      if (me.status === 'fulfilled') setMyAvatarUrl(me.value?.avatar_url || me.value?.avatarUrl);
+      const resolvedMeId = me.status === 'fulfilled' ? me.value?.id || '' : '';
+      if (me.status === 'fulfilled') {
+        setMyAvatarUrl(me.value?.avatar_url || me.value?.avatarUrl);
+        setMeId(resolvedMeId);
+      }
       if (data.status === 'fulfilled' && Array.isArray(data.value)) {
-        const parsed = parseStoriesResponse(data.value, meId);
+        const parsed = parseStoriesResponse(data.value, resolvedMeId);
         setMyGroup(parsed.myGroup);
         setGroups(parsed.groups);
       }
