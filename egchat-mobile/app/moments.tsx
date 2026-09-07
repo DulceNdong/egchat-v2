@@ -337,12 +337,22 @@ export default function MomentsScreen() {
           </Svg>
         </TouchableOpacity>
         <Text style={s.headerTitle}>Moments</Text>
-        <TouchableOpacity style={s.createBtn} onPress={() => setShowCreate(true)}>
-          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-            <Line x1="12" y1="5" x2="12" y2="19"/>
-            <Line x1="5" y1="12" x2="19" y2="12"/>
-          </Svg>
-        </TouchableOpacity>
+        <View style={{ flexDirection: 'row', gap: 8 }}>
+          {/* Botón cámara — abre editor con cámara */}
+          <TouchableOpacity style={s.createBtn} onPress={() => setShowCamera(true)}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/>
+              <Circle cx="12" cy="13" r="4"/>
+            </Svg>
+          </TouchableOpacity>
+          {/* Botón texto — abre modal directo */}
+          <TouchableOpacity style={s.createBtn} onPress={() => { pendingMediaRef.current = null; setShowCreate(true); }}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+              <Line x1="12" y1="5" x2="12" y2="19"/>
+              <Line x1="5" y1="12" x2="19" y2="12"/>
+            </Svg>
+          </TouchableOpacity>
+        </View>
       </LinearGradient>
 
       {loading
