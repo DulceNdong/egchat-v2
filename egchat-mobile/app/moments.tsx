@@ -200,6 +200,27 @@ export default function MomentsScreen() {
     }
   }, [commentingPost, commentText]);
 
+  // ── Handler cámara → publicar Moment ──────────────────────────
+  const handleCameraDone = useCallback(async (media: MomentMedia) => {
+    setShowCamera(false);
+    // Subir la imagen/video a Supabase Storage para tener URL pública
+    let publicUrl = media.uri;
+    if (!media.uri.startsWith('http://') && !media.uri.startsWith('https://')) {
+      const uploaded = await uploadStoryMediaToSupabase(
+        currentUserId || 'unknown',
+        media.uri,
+        media.type === 'video' ? 'video' : 'image',
+      );
+      if (uploaded) publicUrl = uploaded;
+    }
+    // Abrir modal de texto con la imagen ya lista
+    setShowCreate(true);
+    // Guardamos la URL en un ref para que CreatePostModal la use como imagen precargada
+    pendingMediaRef.current = { ...media, uri: publicUrl };
+  }, [currentUserId]);
+
+  const pendingMediaRef = React.useRef<MomentMedia | null>(null);
+
   const renderPost = ({ item }: { item: MomentPost }) => (
     <View style={[ps.card, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
       {/* Cabecera */}
