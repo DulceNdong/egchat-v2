@@ -141,34 +141,34 @@ export default function DjangueAdminStatsScreen() {
             <Text style={s.metricLabel}>Total recaudado</Text>
           </View>
 
-          <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.metricCard}>
-            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+          <View style={[s.metricCard, { backgroundColor: '#f0f1fe', borderColor: '#c7d2fe' }]}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2} strokeLinecap="round">
               <Circle cx="12" cy="12" r="10" />
               <Path d="M12 6v6l4 2" />
             </Svg>
-            <Text style={s.metricValue}>{fmt(data.total_delivered, data.currency)}</Text>
+            <Text style={[s.metricValue, { color: '#4f46e5' }]}>{fmt(data.total_delivered, data.currency)}</Text>
             <Text style={s.metricLabel}>Total entregado</Text>
-          </LinearGradient>
+          </View>
 
-          <LinearGradient colors={['#f59e0b', '#d97706']} style={s.metricCard}>
-            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+          <View style={[s.metricCard, { backgroundColor: '#fef9c3', borderColor: '#fde68a' }]}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#d97706" strokeWidth={2} strokeLinecap="round">
               <Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" />
               <Line x1="12" y1="9" x2="12" y2="13" />
               <Line x1="12" y1="17" x2="12.01" y2="17" />
             </Svg>
-            <Text style={s.metricValue}>{fmt(data.total_penalties, data.currency)}</Text>
+            <Text style={[s.metricValue, { color: '#d97706' }]}>{fmt(data.total_penalties, data.currency)}</Text>
             <Text style={s.metricLabel}>Moras aplicadas</Text>
-          </LinearGradient>
+          </View>
 
-          <LinearGradient colors={['#8b5cf6', '#7c3aed']} style={s.metricCard}>
-            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+          <View style={[s.metricCard, { backgroundColor: '#faf5ff', borderColor: '#e9d5ff' }]}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth={2} strokeLinecap="round">
               <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
               <Circle cx="9" cy="7" r="4" />
               <Path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75" />
             </Svg>
-            <Text style={s.metricValue}>{data.active_members}</Text>
+            <Text style={[s.metricValue, { color: '#7c3aed' }]}>{data.active_members}</Text>
             <Text style={s.metricLabel}>Miembros activos</Text>
-          </LinearGradient>
+          </View>
         </View>
 
         {/* Progreso general */}
@@ -179,8 +179,7 @@ export default function DjangueAdminStatsScreen() {
             <Text style={s.progressTxt}>{Math.round((data.completed_turns / data.total_turns) * 100)}%</Text>
           </View>
           <View style={s.progressBg}>
-            <LinearGradient colors={['#10b981', '#059669']} 
-              style={[s.progressFill, { width: `${(data.completed_turns / data.total_turns) * 100}%` }]} />
+            <View style={[s.progressFill, { width: `${(data.completed_turns / data.total_turns) * 100}%` as any, backgroundColor: '#10b981' }]} />
           </View>
         </View>
 
