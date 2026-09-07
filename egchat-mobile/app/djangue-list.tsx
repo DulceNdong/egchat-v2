@@ -135,8 +135,10 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
             <Text style={s.paidText}>Al día</Text>
           </View>
         )}
-      </LinearGradient>
+      </View>
     </TouchableOpacity>
+  );
+}
 
 export default function DjangueListScreen() {
   const insets = useSafeAreaInsets();
