@@ -226,9 +226,27 @@ export default function DjangueMemberScreen() {
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          {data.group_logo && <Image source={{ uri: data.group_logo }} style={{ width: 32, height: 32, borderRadius: 8, marginBottom: 3 }} contentFit="cover" />}
+          <Text style={s.headerTitle} numberOfLines={1}>{data.group_name}</Text>
+          <Text style={s.headerSub}>{FREQ_LABELS[data.frequency]}</Text>
+        </View>
+        {data.chat_group_id && (
+          <TouchableOpacity onPress={openChat} style={s.iconBtn} hitSlop={12}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
+            </Svg>
+          </TouchableOpacity>
+        )}
+        {!data.chat_group_id && <View style={{ width: 40 }} />}
+      </View>          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
               stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Line x1="19" y1="12" x2="5" y2="12" />
