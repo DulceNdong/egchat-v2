@@ -496,6 +496,77 @@ export default function DjangueDetailScreen() {
             </TouchableOpacity>
           </View>
         )}
+
+        {/* ── Orden de turnos / calendario de repartos ── */}
+        {members.length > 0 && (
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Orden de cobros</Text>
+            <Text style={s.cardSub} style={{ marginTop: -8, marginBottom: 4 }}>
+              Quién recibe el fondo en cada turno
+            </Text>
+            {members
+              .slice()
+              .sort((a, b) => (a.turn_number ?? a.turn_order ?? 0) - (b.turn_number ?? b.turn_order ?? 0))
+              .map((m) => {
+                const turnNum = m.turn_number ?? m.turn_order ?? 0;
+                const isCurrent = turnNum === djangue.current_turn;
+                const isPast = turnNum < djangue.current_turn;
+                return (
+                  <View key={m.id} style={s.turnRow}>
+                    {/* Número de turno */}
+                    <View style={[
+                      s.turnNumBadge,
+                      isCurrent && { backgroundColor: freq.color + '20', borderColor: freq.color },
+                      isPast && { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' },
+                    ]}>
+                      <Text style={[
+                        s.turnNumTxt,
+                        isCurrent && { color: freq.color },
+                        isPast && { color: '#10b981' },
+                      ]}>
+                        {turnNum}
+                      </Text>
+                    </View>
+                    {/* Avatar */}
+                    {m.users?.avatar_url ? (
+                      <Image source={{ uri: m.users.avatar_url }} style={s.turnAvatar} contentFit="cover" />
+                    ) : (
+                      <View style={[s.turnAvatarPh, { backgroundColor: isCurrent ? freq.color + '20' : '#f1f5f9' }]}>
+                        <Text style={[s.turnAvatarInitials, { color: isCurrent ? freq.color : '#64748b' }]}>
+                          {initials(m.users?.full_name || '?')}
+                        </Text>
+                      </View>
+                    )}
+                    {/* Info */}
+                    <View style={{ flex: 1 }}>
+                      <Text style={[s.turnName, isCurrent && { fontWeight: '800', color: '#1e293b' }]}>
+                        {m.users?.full_name || 'Integrante'}
+                      </Text>
+                      <Text style={s.turnPhone}>{m.users?.phone}</Text>
+                    </View>
+                    {/* Estado */}
+                    {isCurrent && (
+                      <View style={[s.turnChip, { backgroundColor: freq.color + '18' }]}>
+                        <Text style={[s.turnChipTxt, { color: freq.color }]}>🎯 Turno actual</Text>
+                      </View>
+                    )}
+                    {isPast && (
+                      <View style={[s.turnChip, { backgroundColor: '#f0fdf4' }]}>
+                        <Text style={[s.turnChipTxt, { color: '#10b981' }]}>✓ Ya cobró</Text>
+                      </View>
+                    )}
+                    {!isCurrent && !isPast && (
+                      <View style={[s.turnChip, { backgroundColor: '#f8fafc' }]}>
+                        <Text style={[s.turnChipTxt, { color: '#94a3b8' }]}>
+                          Turno {turnNum - djangue.current_turn > 0 ? `+${turnNum - djangue.current_turn}` : turnNum}
+                        </Text>
+                      </View>
+                    )}
+                  </View>
+                );
+              })}
+          </View>
+        )}
       </ScrollView>
     </SafeAreaView>
   );
