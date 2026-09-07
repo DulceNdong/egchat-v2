@@ -86,17 +86,18 @@ export default function DjangueDemoScreen() {
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#10202B', '#2d3561']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-            <Text style={s.backText}>←</Text>
-          </TouchableOpacity>
-          <View style={s.headerCenter}>
-            <Text style={s.headerTitle}>{group.name}</Text>
-            <Text style={s.headerSub}>{group.slogan}</Text>
-          </View>
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12"/>
+            <Path d="M12 19l-7-7 7-7"/>
+          </Svg>
+        </TouchableOpacity>
+        <View style={s.headerCenter}>
+          <Text style={s.headerTitle}>{group.name}</Text>
+          <Text style={s.headerSub}>{group.slogan}</Text>
         </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView style={s.content} contentContainerStyle={s.contentContainer}>
         {/* KPIs */}
