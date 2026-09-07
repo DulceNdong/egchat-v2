@@ -239,19 +239,5 @@ const s = StyleSheet.create({
   },
   addBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
 });
-  previewName: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
-  previewPhone: { fontSize: 12, color: '#94a3b8', marginTop: 2 },
-  foundBadge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#dcfce7', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 5 },
-  foundTxt: { fontSize: 11, fontWeight: '700', color: '#15803d' },
-  infoBox: {
-    backgroundColor: '#fff', borderRadius: 14, padding: 16, gap: 10,
-    borderWidth: 1, borderColor: '#e0e7ff',
-  },
-  infoTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  infoTitle: { fontSize: 13, fontWeight: '700', color: '#6366f1' },
-  infoItem: { flexDirection: 'row', alignItems: 'flex-start', gap: 10 },
-  infoDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#6366f1', marginTop: 6, flexShrink: 0 },
-  infoTxt: { flex: 1, fontSize: 13, color: '#64748b', lineHeight: 20 },
-  addBtn: { paddingVertical: 15, alignItems: 'center', borderRadius: 14, backgroundColor: '#6366f1' },
   addBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
 });
