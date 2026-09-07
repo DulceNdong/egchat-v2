@@ -183,10 +183,21 @@ export default function DjangueDetailScreen() {
     }
   };
 
-  const handleOpenChat = () => {
+  const handleOpenChat = async () => {
     if (djangue?.chat_group_id) {
       router.push(`/chat/${djangue.chat_group_id}` as any);
-    } else {
+      return;
+    }
+    // Si no hay chat creado aún, intentar crearlo ahora
+    try {
+      const result = await apiFetch(`/api/djangue/${djangueId}/ensure-chat`, { method: 'POST' });
+      if (result?.chat_group_id) {
+        setDjangue(prev => prev ? { ...prev, chat_group_id: result.chat_group_id } : prev);
+        router.push(`/chat/${result.chat_group_id}` as any);
+      } else {
+        Alert.alert('Chat no disponible', 'No se pudo crear el grupo de chat. Intenta de nuevo.');
+      }
+    } catch {
       Alert.alert('Chat no disponible', 'Este djangue aún no tiene grupo de chat configurado.');
     }
   };
