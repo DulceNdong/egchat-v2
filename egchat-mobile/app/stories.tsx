@@ -596,7 +596,21 @@ export default function StoriesScreen() {
   const uploadStory = useCallback(async (uri: string, type: 'image' | 'video' = 'image') => {
     setUploading(true);
     try {
-      await storiesAPI.create({ media: [{ url: uri, type }], music: storyMusic ?? undefined } as any);
+      // Subir el archivo a Supabase Storage para obtener una URL pública
+      // permanente accesible desde cualquier dispositivo.
+      // Sin este paso, se guardaría la URI local (file://...) que solo
+      // existe en el dispositivo del emisor y aparecería en negro para los demás.
+      let mediaUrl = uri;
+      if (!uri.startsWith('http://') && !uri.startsWith('https://')) {
+        const uploaded = await uploadStoryMediaToSupabase(meId || 'unknown', uri, type);
+        if (uploaded) {
+          mediaUrl = uploaded;
+        } else {
+          Alert.alert('Error', 'No se pudo subir la imagen al servidor. Verifica tu conexión.');
+          return;
+        }
+      }
+      await storiesAPI.create({ media: [{ url: mediaUrl, type }], music: storyMusic ?? undefined } as any);
       setStoryMusic(null);
       await loadStories();
     } catch {
@@ -604,7 +618,7 @@ export default function StoriesScreen() {
     } finally {
       setUploading(false);
     }
-  }, [storyMusic, loadStories]);
+  }, [meId, storyMusic, loadStories]);
 
   const createTextStatus = useCallback(async () => {
     const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00c8a0"/><stop offset="100%" stop-color="#00b4e6"/></linearGradient></defs><rect width="1080" height="1920" fill="url(#g)"/><circle cx="200" cy="300" r="220" fill="rgba(255,255,255,0.1)"/><circle cx="900" cy="1600" r="300" fill="rgba(255,255,255,0.08)"/><text x="540" y="900" text-anchor="middle" font-family="Arial,sans-serif" font-size="96" font-weight="800" fill="#fff">Nuevo estado</text><text x="540" y="1020" text-anchor="middle" font-family="Arial,sans-serif" font-size="52" fill="rgba(255,255,255,0.85)">EGChat</text></svg>`;
