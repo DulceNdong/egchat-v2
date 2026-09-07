@@ -28,6 +28,7 @@ import type {
 } from 'react-native-gesture-handler';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as FileSystem from 'expo-file-system';
+import { toast } from './Toast';
 import Svg, { Path, Line, Polyline, Circle, Polygon, Rect } from 'react-native-svg';
 
 const { width: W, height: H } = Dimensions.get('window');
@@ -585,9 +586,9 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
       const filename = current.name || `egchat_${Date.now()}.jpg`;
       const dest = `${FileSystem.documentDirectory}${filename}`;
       await FileSystem.copyAsync({ from: current.uri, to: dest });
-      Alert.alert('', 'Guardado ✓');
+      toast.success('Guardado en galería');
     } catch {
-      Alert.alert('Error', 'No se pudo guardar el archivo');
+      toast.error('No se pudo guardar el archivo');
     }
   };
 
