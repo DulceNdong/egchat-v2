@@ -246,36 +246,7 @@ export default function DjangueMemberScreen() {
           </TouchableOpacity>
         )}
         {!data.chat_group_id && <View style={{ width: 40 }} />}
-      </View>          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
-            </Svg>
-          </TouchableOpacity>
-
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            {data.group_logo ? (
-              <Image
-                source={{ uri: data.group_logo }}
-                style={{ width: 40, height: 40, borderRadius: 20, marginBottom: 4 }}
-                contentFit="cover"
-              />
-            ) : null}
-            <Text style={s.headerTitle} numberOfLines={1}>{data.group_name}</Text>
-            <Text style={s.headerSub}>{FREQ_LABELS[data.frequency]}</Text>
-          </View>
-
-          {data.chat_group_id && (
-            <TouchableOpacity onPress={openChat} style={s.iconBtn} hitSlop={12}>
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
-                stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-                <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z" />
-              </Svg>
-            </TouchableOpacity>
-          )}
-        </View>
-      </LinearGradient>
+      </View>
 
       <ScrollView
         style={{ flex: 1 }}
@@ -289,10 +260,8 @@ export default function DjangueMemberScreen() {
         }
       >
         {/* Tu posición */}
-        <LinearGradient colors={['#312e81', '#4c1d95']} style={s.card}>
-          <View style={s.cardHeader}>
-            <Text style={s.cardLabel}>TU POSICIÓN</Text>
-          </View>
+        <View style={s.card}>
+          <Text style={s.cardLabel}>TU POSICIÓN</Text>
 
           <View style={{ alignItems: 'center', marginVertical: 8 }}>
             <View style={s.turnCircle}>
