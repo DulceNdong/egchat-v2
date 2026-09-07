@@ -237,7 +237,7 @@ export default function ChannelsScreen() {
 
       {/* Lista */}
       {loading ? (
-        <ActivityIndicator style={{ marginTop: 50 }} color={Colors.accent} size="large" />
+        <ActivityIndicator style={{ marginTop: 50 }} color={C.brand} size="large" />
       ) : (
         <FlatList
           data={filtered}
