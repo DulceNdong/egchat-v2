@@ -171,7 +171,7 @@ export default function DjangueAdminSettingsScreen() {
     return (
       <SafeAreaView style={s.root} edges={['left', 'right']}>
         <View style={s.center}>
-          <ActivityIndicator size="large" color="#C9A227" />
+          <ActivityIndicator size="large" color="#6366f1" />
           <Text style={s.loadingText}>Cargando configuración...</Text>
         </View>
       </SafeAreaView>
