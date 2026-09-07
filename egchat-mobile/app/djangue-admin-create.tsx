@@ -125,6 +125,7 @@ export default function DjangueAdminCreateScreen() {
           frequency,
           quota_amount: Number(quotaAmount),
           max_members: Number(maxMembers),
+          logo_url: logoUrl || undefined,
         }),
       });
 
