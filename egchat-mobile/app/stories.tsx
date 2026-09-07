@@ -532,6 +532,7 @@ export default function StoriesScreen() {
   const insets = useSafeAreaInsets();
   const [groups,       setGroups]       = useState<StoryGroup[]>([]);
   const [myGroup,      setMyGroup]      = useState<StoryGroup | null>(null);
+  const [meId,         setMeId]         = useState('');
   const [loading,      setLoading]      = useState(true);
   const [uploading,    setUploading]    = useState(false);
   const [storyMusic,   setStoryMusic]   = useState<StoryMusic | null>(null);
