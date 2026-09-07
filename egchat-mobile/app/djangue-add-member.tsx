@@ -239,5 +239,4 @@ const s = StyleSheet.create({
   },
   addBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
 });
-  addBtnTxt: { fontSize: 15, fontWeight: '800', color: '#fff' },
 });
