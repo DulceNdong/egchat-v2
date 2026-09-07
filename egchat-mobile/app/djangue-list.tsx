@@ -58,10 +58,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
       onPress={onPress}
       activeOpacity={0.85}
     >
-      <LinearGradient
-        colors={isAdmin ? ['#6366f1', '#4f46e5'] : ['#00C8A0', '#00B4E6']}
-        style={s.cardGradient}
-      >
+      <View style={s.cardGradient}>
         {/* Header */}
         <View style={s.cardHeader}>
           <View style={s.cardHeaderLeft}>
@@ -72,10 +69,10 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
                 contentFit="cover"
               />
             ) : (
-              <View style={s.logoPlaceholder}>
-                <Svg width={28} height={28} viewBox="0 0 24 24" fill="none">
-                  <Circle cx={12} cy={12} r={10} stroke="#fff" strokeWidth={2} />
-                  <Path d="M12 6v12M6 12h12" stroke="#fff" strokeWidth={2} strokeLinecap="round" />
+              <View style={[s.logoPlaceholder, { backgroundColor: isAdmin ? '#f0f1fe' : '#f0fdf4' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none">
+                  <Circle cx={12} cy={12} r={10} stroke={isAdmin ? '#6366f1' : '#10b981'} strokeWidth={2} />
+                  <Path d="M12 6v12M6 12h12" stroke={isAdmin ? '#6366f1' : '#10b981'} strokeWidth={2} strokeLinecap="round" />
                 </Svg>
               </View>
             )}
