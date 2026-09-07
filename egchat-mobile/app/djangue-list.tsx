@@ -52,6 +52,8 @@ const fmt = (n: number, c = 'XAF') => `${Number(n).toLocaleString('fr-FR')} ${c}
 
 function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () => void }) {
   const isAdmin = djangue.my_role === 'owner' || djangue.my_role === 'secretary';
+  // El servidor puede devolver el campo con cualquiera de los dos nombres
+  const hasPaid = djangue.paid_current_turn || djangue.my_paid_this_turn || false;
   
   return (
     <TouchableOpacity
