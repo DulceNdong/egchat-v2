@@ -157,7 +157,7 @@ export default function ChannelsScreen() {
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
             <Text style={[s.channelName, { color: C.textPrimary }]} numberOfLines={1}>{item.name}</Text>
           </View>
-          <Text style={[s.channelCat, { color: '#07a472' }]}>{item.category}</Text>
+          <Text style={[s.channelCat, { color: C.brand }]}>{item.category}</Text>
           {item.description && (
             <Text style={[s.channelDesc, { color: C.textTertiary }]} numberOfLines={1}>{item.description}</Text>
           )}
