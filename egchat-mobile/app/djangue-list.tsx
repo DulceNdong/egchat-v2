@@ -174,50 +174,44 @@ export default function DjangueListScreen() {
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-              <Line x1="19" y1="12" x2="5" y2="12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
-              <Path d="M12 19l-7-7 7-7" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
-            </Svg>
-          </TouchableOpacity>
-          
-          <Text style={s.headerTitle}>Mis Djangues</Text>
-          
-          <TouchableOpacity
-            onPress={() => router.push('/djangue-admin-create')}
-            style={s.iconBtn}
-            hitSlop={12}
-          >
-            <Svg width={24} height={24} viewBox="0 0 24 24" fill="none">
-              <Circle cx={12} cy={12} r={10} stroke="#fff" strokeWidth={2.5} />
-              <Path d="M12 8v8M8 12h8" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" />
-            </Svg>
-          </TouchableOpacity>
-        </View>
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <Text style={s.headerTitle}>Mis Djangues</Text>
+        <TouchableOpacity
+          onPress={() => router.push('/djangue-admin-create')}
+          style={s.iconBtn} hitSlop={12}
+        >
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2.5} strokeLinecap="round">
+            <Line x1="12" y1="5" x2="12" y2="19" />
+            <Line x1="5" y1="12" x2="19" y2="12" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
 
-        {/* Tabs */}
-        <View style={s.tabs}>
-          <TouchableOpacity
-            style={[s.tab, activeTab === 'member' && s.tabActive]}
-            onPress={() => setActiveTab('member')}
-          >
-            <Text style={[s.tabText, activeTab === 'member' && s.tabTextActive]}>
-              Participo ({memberDjangues.length})
-            </Text>
-          </TouchableOpacity>
-          
-          <TouchableOpacity
-            style={[s.tab, activeTab === 'admin' && s.tabActive]}
-            onPress={() => setActiveTab('admin')}
-          >
-            <Text style={[s.tabText, activeTab === 'admin' && s.tabTextActive]}>
-              Administro ({adminDjangues.length})
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
+      {/* Tabs */}
+      <View style={s.tabs}>
+        <TouchableOpacity
+          style={[s.tab, activeTab === 'member' && s.tabActive]}
+          onPress={() => setActiveTab('member')}
+        >
+          <Text style={[s.tabText, activeTab === 'member' && s.tabTextActive]}>
+            Participo ({memberDjangues.length})
+          </Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[s.tab, activeTab === 'admin' && s.tabActive]}
+          onPress={() => setActiveTab('admin')}
+        >
+          <Text style={[s.tabText, activeTab === 'admin' && s.tabTextActive]}>
+            Administro ({adminDjangues.length})
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Content */}
       {loading ? (
