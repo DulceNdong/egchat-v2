@@ -30,7 +30,7 @@ async function req<T>(path: string, options: RequestInit = {}): Promise<T> {
 }
 
 export const adminAPI = {
-  // Métricas
+  // Métricas existentes
   getOperational: () => req<any>('/api/admin/metrics/operational'),
   getChat:        () => req<any>('/api/admin/metrics/chat'),
   getWallet:      () => req<any>('/api/admin/metrics/wallet'),
@@ -38,6 +38,11 @@ export const adminAPI = {
   getInfra:       () => req<any>('/api/admin/metrics/infra'),
   getSqliteSync:  () => req<any>('/api/admin/metrics/sqlite-sync'),
   getUsersMetrics:() => req<any>('/api/admin/metrics/users'),
+
+  // Nuevas métricas reales
+  getDjangue:     () => req<any>('/api/admin/metrics/djangue'),
+  getMiniApps:    () => req<any>('/api/admin/metrics/miniapps'),
+  getPayments:    () => req<any>('/api/admin/metrics/payments'),
 
   // Auditoría
   getAuditLog: (params: Record<string, string>) => {
@@ -50,8 +55,10 @@ export const adminAPI = {
   // Seguridad
   blockIp:   (ip: string, duration: string, reason: string) =>
     req<any>('/api/admin/security/block-ip', { method: 'POST', body: JSON.stringify({ ip, duration, reason }) }),
-  blockUser: (userId: string, reason: string) =>
-    req<any>('/api/admin/security/block-user', { method: 'POST', body: JSON.stringify({ userId, reason }) }),
+  blockUser: (userId: string, reason: string, duration?: string) =>
+    req<any>('/api/admin/security/block-user', { method: 'POST', body: JSON.stringify({ userId, reason, duration }) }),
+  unblockUser: (userId: string) =>
+    req<any>('/api/admin/security/unblock-user', { method: 'POST', body: JSON.stringify({ userId }) }),
 
   // Admins
   getAdmins: () => req<any[]>('/api/admin/users'),

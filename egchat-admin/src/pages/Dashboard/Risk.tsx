@@ -221,17 +221,71 @@ export const RiskDashboard: React.FC = () => {
   const [pulse, setPulse] = useState(false);
   const [filter, setFilter] = useState<RiskLevel | 'all'>('all');
 
-  const refresh = useCallback(() => {
+  const refresh = useCallback(async () => {
     setPulse(true);
     setTimeout(() => setPulse(false), 500);
-    setData(generateMock());
+    try {
+      const { adminAPI } = await import('../../api/adminClient');
+      const [security, wallet, operational, payments] = await Promise.all([
+        adminAPI.getSecurity().catch(() => null),
+        adminAPI.getWallet().catch(() => null),
+        adminAPI.getOperational().catch(() => null),
+        adminAPI.getPayments().catch(() => null),
+      ]);
+
+      const mock = generateMock();
+
+      // Actualizar con datos reales de seguridad
+      if (security) {
+        mock.fraud.failedLoginsHour = security.failedLoginsHour || 0;
+        mock.fraud.suspiciousAccounts = security.blockedUsers || 0;
+      }
+
+      // Actualizar con datos reales de wallet
+      if (wallet) {
+        const failedPct = wallet.txCount > 0
+          ? Math.round(wallet.txFailed / (wallet.txCount + wallet.txFailed) * 1000) / 10
+          : 0;
+        mock.financial.failedTxPct = failedPct;
+        mock.financial.items[0].detail = `${failedPct}% — umbral: 2%`;
+        mock.financial.items[0].level = failedPct > 2 ? 'high' : failedPct > 1 ? 'medium' : 'low';
+
+        // Actualizar eventos con transacciones sospechosas
+        if (wallet.suspicious?.length > 0) {
+          const suspEvent: RiskEvent = {
+            id: 'sus-1', time: 'Ahora',
+            category: 'Financiero',
+            title: `${wallet.suspicious.length} transacción(es) sospechosa(s) detectada(s)`,
+            description: `Transacciones de alto valor en las últimas 24h`,
+            level: 'high', affected: 'Wallet', status: 'open',
+          };
+          mock.events = [suspEvent, ...mock.events.slice(0, 7)];
+          mock.summary.high += 1;
+          mock.fraud.alertsToday += wallet.suspicious.length;
+        }
+      }
+
+      // Actualizar con datos reales de operacional
+      if (operational) {
+        mock.operational.items.find(i => i.name === 'Disponibilidad')!.detail =
+          `${operational.uptime}% — objetivo: 99.9%`;
+        mock.operational.items.find(i => i.name === 'Disponibilidad')!.level =
+          operational.uptime >= 99.9 ? 'low' : operational.uptime >= 99 ? 'medium' : 'high';
+      }
+
+      mock.lastUpdate = new Date().toLocaleTimeString('es-GQ', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+      setData(mock);
+    } catch {
+      setData(generateMock());
+    }
   }, []);
 
   useEffect(() => {
+    refresh();
     const rt = setInterval(refresh, 30_000);
     const tt = setInterval(() => setTick(t => (t + 1) % 30), 1_000);
     return () => { clearInterval(rt); clearInterval(tt); };
-  }, [refresh]);
+  }, []);
 
   const d = data;
   const globalR = RISK[d.globalLevel];
