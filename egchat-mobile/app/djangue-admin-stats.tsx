@@ -133,13 +133,13 @@ export default function DjangueAdminStatsScreen() {
         
         {/* Métricas principales */}
         <View style={s.metricsGrid}>
-          <LinearGradient colors={['#10b981', '#059669']} style={s.metricCard}>
-            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+          <View style={[s.metricCard, { backgroundColor: '#f0fdf4', borderColor: '#bbf7d0' }]}>
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#10b981" strokeWidth={2} strokeLinecap="round">
               <Path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </Svg>
-            <Text style={s.metricValue}>{fmt(data.total_collected, data.currency)}</Text>
+            <Text style={[s.metricValue, { color: '#059669' }]}>{fmt(data.total_collected, data.currency)}</Text>
             <Text style={s.metricLabel}>Total recaudado</Text>
-          </LinearGradient>
+          </View>
 
           <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.metricCard}>
             <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
