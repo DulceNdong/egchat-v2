@@ -79,22 +79,20 @@ export default function DjangueAddMemberScreen() {
 
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={s.headerTitle}>Agregar Integrante</Text>
-            <Text style={s.headerSub}>Busca por número de teléfono</Text>
-          </View>
-          <View style={{ width: 36 }} />
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+            stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={s.headerTitle}>Agregar Integrante</Text>
+          <Text style={s.headerSub}>Busca por número de teléfono</Text>
         </View>
-      </LinearGradient>
+        <View style={{ width: 40 }} />
+      </View>
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}
@@ -107,8 +105,8 @@ export default function DjangueAddMemberScreen() {
               style={s.input}
               value={phone}
               onChangeText={setPhone}
-              placeholder="+240 ..."
-              placeholderTextColor="rgba(255,255,255,0.25)"
+              placeholder="+240 222..."
+              placeholderTextColor="#94a3b8"
               keyboardType="phone-pad"
               returnKeyType="search"
               onSubmitEditing={checkUser}
@@ -136,8 +134,8 @@ export default function DjangueAddMemberScreen() {
               {preview.avatar_url ? (
                 <Image source={{ uri: preview.avatar_url }} style={s.avatar} contentFit="cover" />
               ) : (
-                <View style={[s.avatar, { backgroundColor: '#6366f1', alignItems: 'center', justifyContent: 'center' }]}>
-                  <Text style={{ fontSize: 18, fontWeight: '700', color: '#fff' }}>{initials(preview.full_name)}</Text>
+                <View style={[s.avatar, { backgroundColor: '#f0f1fe', alignItems: 'center', justifyContent: 'center' }]}>
+                  <Text style={{ fontSize: 18, fontWeight: '800', color: '#6366f1' }}>{initials(preview.full_name)}</Text>
                 </View>
               )}
               <View style={{ flex: 1 }}>
@@ -145,20 +143,34 @@ export default function DjangueAddMemberScreen() {
                 <Text style={s.previewPhone}>{preview.phone}</Text>
               </View>
               <View style={s.foundBadge}>
-                <Text style={s.foundTxt}>✓ Encontrado</Text>
+                <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#15803d" strokeWidth={2.5} strokeLinecap="round">
+                  <Path d="M20 6L9 17l-5-5"/>
+                </Svg>
+                <Text style={s.foundTxt}>Encontrado</Text>
               </View>
             </View>
           )}
 
           {/* Info */}
           <View style={s.infoBox}>
-            <Text style={s.infoTitle}>ℹ️ Cómo funciona</Text>
-            <Text style={s.infoTxt}>
-              • El integrante debe tener cuenta en EGChat{'\n'}
-              • Se le asignará el siguiente número de turno{'\n'}
-              • Recibirá el fondo del grupo cuando sea su turno{'\n'}
-              • El responsable puede agregar hasta el máximo configurado
-            </Text>
+            <View style={s.infoTitleRow}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2} strokeLinecap="round">
+                <Circle cx="12" cy="12" r="10"/>
+                <Path d="M12 16v-4M12 8h.01"/>
+              </Svg>
+              <Text style={s.infoTitle}>Cómo funciona</Text>
+            </View>
+            {[
+              'El integrante debe tener cuenta en EGChat',
+              'Se le asignará el siguiente número de turno',
+              'Recibirá el fondo del grupo cuando sea su turno',
+              'Solo el responsable puede agregar hasta el máximo',
+            ].map((txt, i) => (
+              <View key={i} style={s.infoItem}>
+                <View style={s.infoDot} />
+                <Text style={s.infoTxt}>{txt}</Text>
+              </View>
+            ))}
           </View>
 
           {/* Botón agregar */}
@@ -166,18 +178,13 @@ export default function DjangueAddMemberScreen() {
             onPress={handleAdd}
             disabled={loading || !phone.trim()}
             activeOpacity={0.85}
-            style={{ borderRadius: 14, overflow: 'hidden' }}
+            style={[s.addBtn, (!phone.trim() || loading) && { opacity: 0.5 }]}
           >
-            <LinearGradient
-              colors={loading || !phone.trim() ? ['#374151', '#374151'] : ['#6366f1', '#4f46e5']}
-              style={s.addBtn}
-            >
-              {loading ? (
-                <ActivityIndicator color="#fff" />
-              ) : (
-                <Text style={s.addBtnTxt}>Agregar al Djangue</Text>
-              )}
-            </LinearGradient>
+            {loading ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={s.addBtnTxt}>Agregar al Djangue</Text>
+            )}
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
