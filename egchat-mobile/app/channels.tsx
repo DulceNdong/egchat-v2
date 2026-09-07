@@ -194,7 +194,7 @@ export default function ChannelsScreen() {
       <View style={[s.tabs, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
         {(['discover', 'following'] as const).map(t => (
           <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[s.tabText, { color: tab === t ? '#07a472' : C.textTertiary }]}>
+            <Text style={[s.tabText, { color: tab === t ? C.brand : C.textTertiary }]}>
               {t === 'discover' ? 'Descubrir' : 'Siguiendo'}
             </Text>
             {tab === t && <View style={s.tabIndicator} />}
