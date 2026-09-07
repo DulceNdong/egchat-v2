@@ -188,18 +188,40 @@ export default function DjangueDetailScreen() {
       router.push(`/chat/${djangue.chat_group_id}` as any);
       return;
     }
-    // Si no hay chat creado aún, intentar crearlo ahora
-    try {
-      const result = await apiFetch(`/api/djangue/${djangueId}/ensure-chat`, { method: 'POST' });
-      if (result?.chat_group_id) {
-        setDjangue(prev => prev ? { ...prev, chat_group_id: result.chat_group_id } : prev);
-        router.push(`/chat/${result.chat_group_id}` as any);
-      } else {
-        Alert.alert('Chat no disponible', 'No se pudo crear el grupo de chat. Intenta de nuevo.');
-      }
-    } catch {
-      Alert.alert('Chat no disponible', 'Este djangue aún no tiene grupo de chat configurado.');
-    }
+    // Intentar crear el chat directamente desde el cliente
+    Alert.alert(
+      'Crear chat del grupo',
+      'Este djangue no tiene chat aún. ¿Crear uno ahora?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Crear chat',
+          onPress: async () => {
+            try {
+              // Crear grupo de chat usando el endpoint estándar
+              const memberIds = (djangue?.members || []).map(m => m.user_id);
+              const chatGroup = await apiFetch('/api/chats/group', {
+                method: 'POST',
+                body: JSON.stringify({
+                  name: `💰 ${djangue?.name}`,
+                  participant_ids: memberIds,
+                }),
+              });
+              if (chatGroup?.id) {
+                // Vincular el chat al djangue en el servidor
+                try {
+                  await apiFetch(`/api/djangue/${djangueId}/ensure-chat`, { method: 'POST' });
+                } catch { /* puede fallar si no está desplegado aún */ }
+                setDjangue(prev => prev ? { ...prev, chat_group_id: chatGroup.id } : prev);
+                router.push(`/chat/${chatGroup.id}` as any);
+              }
+            } catch (e: any) {
+              Alert.alert('Error', e.message || 'No se pudo crear el chat');
+            }
+          },
+        },
+      ]
+    );
   };
 
   if (loading) {
