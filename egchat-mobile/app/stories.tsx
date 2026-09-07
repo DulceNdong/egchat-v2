@@ -1103,10 +1103,9 @@ const stAdd = StyleSheet.create({
   card: {
     borderRadius: 24,
     padding: 20,
-    // glassmorphism — sin fondo sólido, color definido inline (claro/oscuro)
     overflow: 'hidden',
     borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(255,255,255,0.18)',
+    borderColor: 'rgba(128,128,128,0.15)',
   },
   title: {
     fontSize: 18,
@@ -1128,26 +1127,10 @@ const stAdd = StyleSheet.create({
   },
   tile: {
     width: TILE_SIZE,
-    borderRadius: 18,
-    paddingVertical: 18,
+    borderRadius: 16,
+    paddingVertical: 22,
     alignItems: 'center',
     gap: 10,
-  },
-  tileWide: {
-    width: '100%',
-    borderRadius: 18,
-    paddingVertical: 14,
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    gap: 14,
-  },
-  iconWrap: {
-    width: 52,
-    height: 52,
-    borderRadius: 16,
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   tileLabel: {
     fontSize: 13,
