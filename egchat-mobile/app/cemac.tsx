@@ -90,8 +90,8 @@ export default function CemacScreen() {
         locations={[0, 0.35, 0.65, 0.85, 1]}
         style={{ flex: 1 }}
       >
-        <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        <TouchableOpacity onPress={() => router.back()} style={s.welcomeBack}>
+        <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
+        <TouchableOpacity onPress={() => router.back()} style={[s.welcomeBack, { paddingTop: insets.top + 12 }]}>
           <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
           <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Volver</Text>
         </TouchableOpacity>
