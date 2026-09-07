@@ -383,7 +383,7 @@ export default function DjangueAdminSettingsScreen() {
           activeOpacity={0.8}
         >
           <LinearGradient
-            colors={saving ? ['#9ca3af', '#6b7280'] : ['#C9A227', '#A8790F']}
+            colors={saving ? ['#9ca3af', '#6b7280'] : ['#6366f1', '#4f46e5']}
             style={s.saveBtnGrad}
           >
             {saving ? (
