@@ -29,7 +29,8 @@ interface DjangueItem {
   total_turns: number;
   my_turn_order: number;
   is_my_turn: boolean;
-  paid_current_turn: boolean;
+  paid_current_turn: boolean;   // campo del servidor = my_paid_this_turn
+  my_paid_this_turn?: boolean;  // alias del servidor
   next_payout_date: string | null;
   member_count: number;
 }
