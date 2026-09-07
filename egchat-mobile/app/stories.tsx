@@ -253,7 +253,7 @@ const StoryViewer = ({
           <EGAvatar src={group.userAvatar} name={group.userName} size={40} />
           <View style={sv.headerInfo}>
             <Text style={sv.headerName}>{group.userName}</Text>
-            <Text style={sv.headerMeta}>{timeAgo(story.created_at)} · {timeRemaining(story.created_at)} restante</Text>
+            <Text style={sv.headerMeta}>{timeAgo(story.created_at)} · {timeRemaining(story.created_at) === 'Expirado' ? 'Expirado' : `${timeRemaining(story.created_at)} restante`}</Text>
           </View>
           <TouchableOpacity onPress={onClose} style={sv.closeBtn} activeOpacity={0.7}>
             <MIcon name="close" size={20} color="#fff" />
