@@ -335,8 +335,8 @@ export default function DjangueDetailScreen() {
           </View>
         </View>
 
-        {/* ── Balance del monedero (solo admin) ── */}
-        {isAdmin && djangue.wallet != null && (
+        {/* ── Balance del monedero (visible para todos) ── */}
+        {djangue.wallet != null && (
           <View style={[s.card, s.walletCard]}>
             <View style={s.walletTop}>
               <View style={s.walletIconWrap}>
