@@ -269,55 +269,49 @@ export default function DjangueScreen() {
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={s.headerTitle}>Mi Djangue</Text>
-            <Text style={s.headerSub}>Caja de ahorro grupal</Text>
-          </View>
-          <TouchableOpacity
-            onPress={() => router.push('/djangue-create' as any)}
-            style={s.iconBtn} hitSlop={12}
-          >
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="12" y1="5" x2="12" y2="19" />
-              <Line x1="5" y1="12" x2="19" y2="12" />
-            </Svg>
-          </TouchableOpacity>
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+            stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={s.headerTitle}>Mi Djangue</Text>
+          <Text style={s.headerSub}>Caja de ahorro grupal</Text>
         </View>
+        <TouchableOpacity
+          onPress={() => router.push('/djangue-create' as any)}
+          style={s.iconBtn} hitSlop={12}
+        >
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+            stroke="#6366f1" strokeWidth={2.5} strokeLinecap="round">
+            <Line x1="12" y1="5" x2="12" y2="19" />
+            <Line x1="5" y1="12" x2="19" y2="12" />
+          </Svg>
+        </TouchableOpacity>
+      </View>
 
-        {/* Stats rápidas */}
-        {!loading && groups.length > 0 && (
-          <View style={s.statsRow}>
-            <View style={s.statItem}>
-              <Text style={s.statVal}>{activeGroups.length}</Text>
-              <Text style={s.statLbl}>Activos</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.statItem}>
-              <Text style={s.statVal}>
-                {groups.filter(g => g.is_my_turn).length}
-              </Text>
-              <Text style={s.statLbl}>Me toca</Text>
-            </View>
-            <View style={s.statDivider} />
-            <View style={s.statItem}>
-              <Text style={s.statVal}>
-                {groups.filter(g => !g.my_paid_this_turn && !g.is_my_turn && g.status === 'active').length}
-              </Text>
-              <Text style={s.statLbl}>Pendientes</Text>
-            </View>
+      {/* Stats rápidas */}
+      {!loading && groups.length > 0 && (
+        <View style={s.statsRow}>
+          <View style={s.statItem}>
+            <Text style={s.statVal}>{activeGroups.length}</Text>
+            <Text style={s.statLbl}>Activos</Text>
           </View>
-        )}
-      </LinearGradient>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={s.statVal}>{groups.filter(g => g.is_my_turn).length}</Text>
+            <Text style={s.statLbl}>Me toca</Text>
+          </View>
+          <View style={s.statDivider} />
+          <View style={s.statItem}>
+            <Text style={s.statVal}>{groups.filter(g => !g.my_paid_this_turn && !g.is_my_turn && g.status === 'active').length}</Text>
+            <Text style={s.statLbl}>Pendientes</Text>
+          </View>
+        </View>
+      )}
 
       {loading ? (
         <View style={s.center}>
