@@ -335,14 +335,14 @@ const s = StyleSheet.create({
 });
 
 const r = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)' },
-  turnBadge: { width: 32, height: 32, borderRadius: 16, backgroundColor: 'rgba(99,102,241,0.2)', alignItems: 'center', justifyContent: 'center' },
-  turnNum: { fontSize: 13, fontWeight: '700', color: '#a5b4fc' },
-  rankBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: 'rgba(245,158,11,0.2)', alignItems: 'center', justifyContent: 'center' },
-  rankTxt: { fontSize: 12, fontWeight: '700', color: '#f59e0b' },
-  iconBox: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f1f5f9' },
+  turnBadge: { width: 30, height: 30, borderRadius: 15, backgroundColor: '#f0f1fe', alignItems: 'center', justifyContent: 'center' },
+  turnNum: { fontSize: 12, fontWeight: '700', color: '#6366f1' },
+  rankBadge: { width: 28, height: 28, borderRadius: 14, backgroundColor: '#fef9c3', alignItems: 'center', justifyContent: 'center' },
+  rankTxt: { fontSize: 12, fontWeight: '700', color: '#d97706' },
+  iconBox: { width: 34, height: 34, borderRadius: 17, alignItems: 'center', justifyContent: 'center' },
   info: { flex: 1 },
-  name: { fontSize: 14, fontWeight: '700', color: '#fff' },
-  date: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 2 },
+  name: { fontSize: 13, fontWeight: '700', color: '#1e293b' },
+  date: { fontSize: 11, color: '#94a3b8', marginTop: 2 },
   amount: { fontSize: 13, fontWeight: '800', color: '#10b981' },
 });
