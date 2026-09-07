@@ -725,4 +725,25 @@ const s = StyleSheet.create({
   actionTitle: { fontSize: 14, fontWeight: '700', color: '#1e293b' },
   actionSub: { fontSize: 11, color: '#94a3b8', marginTop: 1 },
   actionSep: { height: StyleSheet.hairlineWidth, backgroundColor: '#f1f5f9' },
+
+  // Turnos de reparto
+  turnRow: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#f1f5f9',
+  },
+  turnNumBadge: {
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: '#e2e8f0',
+    backgroundColor: '#f8fafc', flexShrink: 0,
+  },
+  turnNumTxt: { fontSize: 13, fontWeight: '800', color: '#94a3b8' },
+  turnAvatar: { width: 36, height: 36, borderRadius: 10 },
+  turnAvatarPh: { width: 36, height: 36, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  turnAvatarInitials: { fontSize: 13, fontWeight: '800' },
+  turnName: { fontSize: 13, fontWeight: '600', color: '#64748b' },
+  turnPhone: { fontSize: 11, color: '#cbd5e1', marginTop: 1 },
+  turnChip: { borderRadius: 8, paddingHorizontal: 8, paddingVertical: 4 },
+  turnChipTxt: { fontSize: 10, fontWeight: '700' },
 });
