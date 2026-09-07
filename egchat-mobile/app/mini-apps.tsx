@@ -194,8 +194,8 @@ const s = StyleSheet.create({
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
 
   // Sección
-  sect: { paddingHorizontal: 16, marginTop: 20 },
-  sectTitle: { fontSize: 13, fontWeight: '700', color: '#94a3b8', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 12 },
+  sect: { paddingHorizontal: 16, marginTop: 16 },
+  sectTitle: { fontSize: 11, fontWeight: '700', color: '#94a3b8', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
 
   // Destacadas
   featRow: { marginHorizontal: -16 },
