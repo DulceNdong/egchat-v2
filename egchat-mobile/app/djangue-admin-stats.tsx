@@ -113,22 +113,20 @@ export default function DjangueAdminStatsScreen() {
 
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            {data.group_logo && <Image source={{ uri: data.group_logo }} style={{ width: 40, height: 40, borderRadius: 20, marginBottom: 4 }} contentFit="cover" />}
-            <Text style={s.headerTitle} numberOfLines={1}>Estadísticas</Text>
-            <Text style={s.headerSub}>{data.group_name}</Text>
-          </View>
-          <View style={{ width: 36 }} />
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          {data.group_logo && <Image source={{ uri: data.group_logo }} style={{ width: 32, height: 32, borderRadius: 8, marginBottom: 3 }} contentFit="cover" />}
+          <Text style={s.headerTitle} numberOfLines={1}>Estadísticas</Text>
+          <Text style={s.headerSub}>{data.group_name}</Text>
         </View>
-      </LinearGradient>
+        <View style={{ width: 40 }} />
+      </View>
 
       <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 14 }}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); load(true); }} tintColor="#6366f1" />}>
