@@ -153,6 +153,7 @@ export default function MomentsScreen() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
+  const [showCamera, setShowCamera] = useState(false);
   const [commentingPost, setCommentingPost] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
