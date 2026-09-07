@@ -501,9 +501,7 @@ export default function DjangueDetailScreen() {
         {members.length > 0 && (
           <View style={s.card}>
             <Text style={s.cardTitle}>Orden de cobros</Text>
-            <Text style={s.cardSub} style={{ marginTop: -8, marginBottom: 4 }}>
-              Quién recibe el fondo en cada turno
-            </Text>
+            <Text style={[s.cardSub, { marginBottom: 4 }]}>Quién recibe el fondo en cada turno</Text>
             {members
               .slice()
               .sort((a, b) => (a.turn_number ?? a.turn_order ?? 0) - (b.turn_number ?? b.turn_order ?? 0))
