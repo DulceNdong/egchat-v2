@@ -146,7 +146,7 @@ export default function ChannelsScreen() {
           <EGAvatar src={item.avatar_url} name={item.name} size={52} />
           {item.verified && (
             <View style={s.verifiedBadge}>
-              <Svg width={12} height={12} viewBox="0 0 24 24" fill="#07a472">
+              <Svg width={12} height={12} viewBox="0 0 24 24" fill="#00C8A0">
                 <Path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                 <Polyline points="22 4 12 14.01 9 11.01" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round"/>
               </Svg>
