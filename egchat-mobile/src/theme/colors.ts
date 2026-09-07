@@ -15,7 +15,7 @@ export const Colors = {
   textLink:      '#2563EB',
 
   // ── Acento EGCHAT ─────────────────────────────────────────────
-  // Header y bottom nav: gradiente #00c8a0 → #00b4e6
+  // Header y bottom nav: gradiente #00c8a0 → #00B4E6
   accent:      '#07C160',   // verde chats (burbujas propias, badges)
   accentLight: '#E8F8EE',
   accentDark:  '#059669',

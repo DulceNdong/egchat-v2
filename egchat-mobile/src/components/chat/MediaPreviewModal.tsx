@@ -106,7 +106,7 @@ export function MediaPreviewModal({ visible, item, onSend, onCancel, sending }: 
             activeOpacity={0.85}
           >
             <LinearGradient
-              colors={['#07a472', '#00b4e6']}
+              colors={['#00C8A0', '#00B4E6']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={s.sendGrad}
             >

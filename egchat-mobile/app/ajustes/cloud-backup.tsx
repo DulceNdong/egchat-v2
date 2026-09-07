@@ -70,9 +70,9 @@ export default function CloudBackupScreen() {
   };
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['left', 'right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.btn}>
           <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
             <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
@@ -85,7 +85,7 @@ export default function CloudBackupScreen() {
         {/* Estado actual */}
         <View style={[s.statusCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
           <View style={s.statusIcon}>
-            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.8} strokeLinecap="round">
+            <Svg width={28} height={28} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.8} strokeLinecap="round">
               <Polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
             </Svg>
           </View>
@@ -106,7 +106,7 @@ export default function CloudBackupScreen() {
           style={[s.backupBtn, backing && { opacity: 0.7 }]}
           activeOpacity={0.85}
         >
-          <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.backupBtnGrad}>
+          <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.backupBtnGrad}>
             {backing ? (
               <View style={{ alignItems: 'center', gap: 8 }}>
                 <ActivityIndicator color="#fff" />
@@ -139,7 +139,7 @@ export default function CloudBackupScreen() {
             <Switch
               value={settings.autoBackup}
               onValueChange={v => handleChangeSetting({ autoBackup: v })}
-              trackColor={{ false: '#d1d5db', true: '#07a472' }}
+              trackColor={{ false: '#d1d5db', true: '#00C8A0' }}
               thumbColor="#fff"
             />
           </View>
@@ -176,7 +176,7 @@ export default function CloudBackupScreen() {
             <Switch
               value={settings.includeMedia}
               onValueChange={v => handleChangeSetting({ includeMedia: v })}
-              trackColor={{ false: '#d1d5db', true: '#07a472' }}
+              trackColor={{ false: '#d1d5db', true: '#00C8A0' }}
               thumbColor="#fff"
             />
           </View>
@@ -201,8 +201,8 @@ export default function CloudBackupScreen() {
         </View>
 
         {/* Info */}
-        <View style={[s.infoBox, { backgroundColor: '#07a47210', borderColor: '#07a47230' }]}>
-          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2} strokeLinecap="round">
+        <View style={[s.infoBox, { backgroundColor: '#00C8A010', borderColor: '#00C8A030' }]}>
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
             <Circle cx="12" cy="12" r="10"/><Line x1="12" y1="8" x2="12" y2="12"/><Line x1="12" y1="16" x2="12.01" y2="16"/>
           </Svg>
           <Text style={s.infoText}>
@@ -220,7 +220,7 @@ const s = StyleSheet.create({
   btn: { width: 44, height: 44, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff', marginLeft: 4 },
   statusCard: { flexDirection: 'row', alignItems: 'center', gap: 14, borderRadius: 14, borderWidth: 1, padding: 16, marginBottom: 16 },
-  statusIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#07a47215', alignItems: 'center', justifyContent: 'center' },
+  statusIcon: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#00C8A015', alignItems: 'center', justifyContent: 'center' },
   statusTitle: { fontSize: 15, fontWeight: '700' },
   statusDate: { fontSize: 13, marginTop: 2 },
   statusInfo: { fontSize: 12, marginTop: 2 },
@@ -236,9 +236,9 @@ const s = StyleSheet.create({
   settingSub: { fontSize: 12, marginTop: 2 },
   divider: { height: StyleSheet.hairlineWidth, marginHorizontal: 14 },
   freqChip: { flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.05)', alignItems: 'center' },
-  freqChipActive: { backgroundColor: '#07a472' },
+  freqChipActive: { backgroundColor: '#00C8A0' },
   freqText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   freqTextActive: { color: '#fff' },
   infoBox: { flexDirection: 'row', gap: 10, borderRadius: 12, borderWidth: 1, padding: 12 },
-  infoText: { flex: 1, fontSize: 13, color: '#07a472', lineHeight: 18 },
+  infoText: { flex: 1, fontSize: 13, color: '#00C8A0', lineHeight: 18 },
 });

@@ -555,7 +555,7 @@ const ZoomableImage = ({
             <Animated.View style={[iz.frame, { transform: [{ scale }, { translateX }, { translateY }] }]}>
               {loading && (
                 <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-                  <ActivityIndicator size="large" color="#07a472" />
+                  <ActivityIndicator size="large" color="#00C8A0" />
                 </View>
               )}
               <Image
@@ -909,7 +909,7 @@ const s = StyleSheet.create({
     width: 52, height: 52, borderRadius: 6, overflow: 'hidden',
     borderWidth: 2, borderColor: 'transparent',
   },
-  thumbActive: { borderColor: '#07a472' },
+  thumbActive: { borderColor: '#00C8A0' },
   thumbImg: { width: '100%', height: '100%' },
   thumbPlaceholder: {
     width: '100%', height: '100%',

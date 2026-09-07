@@ -98,5 +98,5 @@ const s = StyleSheet.create({
   },
   info: { flex: 1 },
   name: { fontSize: 14, fontWeight: '600' },
-  atSign: { fontSize: 16, color: '#07a472', fontWeight: '700' },
+  atSign: { fontSize: 16, color: '#00C8A0', fontWeight: '700' },
 });

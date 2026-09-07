@@ -4,7 +4,7 @@ import { Colors, FontWeight } from '../../theme';
 
 // Paleta de colores para avatares por inicial (igual que la web)
 const PALETTE = [
-  '#00c8a0', '#00b4e6', '#6B5BD6', '#EC4899',
+  '#00c8a0', '#00B4E6', '#6B5BD6', '#EC4899',
   '#F59E0B', '#EF4444', '#10B981', '#F97316',
   '#0EA5E9', '#84CC16', '#06B6D4', '#8B5CF6',
 ];

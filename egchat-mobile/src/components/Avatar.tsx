@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
 const PALETTES = [
-  ['#00c8a0', '#00b4e6'],
+  ['#00c8a0', '#00B4E6'],
   ['#6B5BD6', '#8B5CF6'],
   ['#F59E0B', '#EF4444'],
   ['#EC4899', '#F43F5E'],

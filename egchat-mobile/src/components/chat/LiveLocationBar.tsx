@@ -53,7 +53,7 @@ export function LiveLocationBar({ active, onStop }: Props) {
 const s = StyleSheet.create({
   bar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: '#07a472', paddingHorizontal: 12, paddingVertical: 7, gap: 6,
+    backgroundColor: '#00C8A0', paddingHorizontal: 12, paddingVertical: 7, gap: 6,
   },
   dot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
   text: { flex: 1, color: '#fff', fontSize: 12, fontWeight: '600' },

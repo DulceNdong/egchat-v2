@@ -99,7 +99,7 @@ export default function TabsLayout() {
         },
         tabBarBackground: () => (
           <LinearGradient
-            colors={['#07a472', '#00b4e6']}
+            colors={['#00C8A0', '#00B4E6']}
             start={{ x: 0, y: 0 }}
             end={{ x: 1, y: 0 }}
             style={{ flex: 1 }}

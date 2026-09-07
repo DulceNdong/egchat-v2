@@ -67,7 +67,7 @@ export function LinkPreview({ url, isOwn }: Props) {
   if (loading) {
     return (
       <View style={[s.card, isOwn ? s.own : s.their]}>
-        <ActivityIndicator size="small" color="#07a472" />
+        <ActivityIndicator size="small" color="#00C8A0" />
       </View>
     );
   }
@@ -108,7 +108,7 @@ const s = StyleSheet.create({
   their: { borderColor: 'rgba(0,0,0,0.07)', backgroundColor: 'rgba(0,0,0,0.02)' },
   image: { width: '100%', height: 130 },
   body: { padding: 10, gap: 3 },
-  domain: { fontSize: 11, color: '#07a472', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
+  domain: { fontSize: 11, color: '#00C8A0', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.4 },
   title: { fontSize: 13, fontWeight: '700', color: '#111827', lineHeight: 18 },
   desc: { fontSize: 12, color: '#6b7280', lineHeight: 17 },
 });

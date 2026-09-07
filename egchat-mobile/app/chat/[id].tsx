@@ -1672,9 +1672,9 @@ export default function ChatScreen() {
     // ── Sección configuración ──
     {
       section: 'config',
-      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.8}><Circle cx="12" cy="12" r="10"/><Polyline points="12 6 12 12 16 14"/></Svg>,
+      icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.8}><Circle cx="12" cy="12" r="10"/><Polyline points="12 6 12 12 16 14"/></Svg>,
       label: ephemeralDuration > 0 ? `⏱ Mensajes temporales (activo)` : '⏱ Mensajes temporales',
-      color: ephemeralDuration > 0 ? '#07a472' : IC,
+      color: ephemeralDuration > 0 ? '#00C8A0' : IC,
       onPress: () => { setDrawerVisible(false); setShowEphemeralModal(true); },
     },
     {

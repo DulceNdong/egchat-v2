@@ -103,8 +103,8 @@ export default function BroadcastScreen() {
   }, [message, selected]);
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['left', 'right']}>
-      <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
+    <SafeAreaView style={[s.root, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
           onPress={step === 1 ? () => router.back() : () => setStep(1)}
           style={s.headerBtn}
@@ -224,7 +224,7 @@ export default function BroadcastScreen() {
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
           <View style={s.step2}>
             <View style={[s.infoBox, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2} strokeLinecap="round">
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
                 <Path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
               </Svg>
               <Text style={[s.infoText, { color: C.textTertiary }]}>
@@ -265,7 +265,7 @@ export default function BroadcastScreen() {
       {sending && (
         <View style={s.sendingOverlay}>
           <View style={s.sendingBox}>
-            <ActivityIndicator color="#07a472" size="large" />
+            <ActivityIndicator color="#00C8A0" size="large" />
             <Text style={s.sendingText}>
               Enviando {progress.sent}/{progress.total}...
             </Text>
@@ -302,7 +302,7 @@ const s = StyleSheet.create({
   contactName: { fontSize: 15, fontWeight: '600' },
   contactPhone: { fontSize: 12, marginTop: 2 },
   checkbox: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center' },
-  checkboxSel: { backgroundColor: '#07a472', borderColor: '#07a472' },
+  checkboxSel: { backgroundColor: '#00C8A0', borderColor: '#00C8A0' },
   empty: { textAlign: 'center', marginTop: 40, fontSize: 15 },
   // step 2
   step2: { flex: 1, padding: 16 },
@@ -321,5 +321,5 @@ const s = StyleSheet.create({
   sendingBox: { backgroundColor: '#fff', borderRadius: 20, padding: 28, alignItems: 'center', gap: 12, width: 240 },
   sendingText: { fontSize: 15, fontWeight: '600', color: '#111827' },
   progressBar: { width: '100%', height: 4, borderRadius: 2, backgroundColor: '#e5e7eb', overflow: 'hidden' },
-  progressFill: { height: 4, backgroundColor: '#07a472', borderRadius: 2 },
+  progressFill: { height: 4, backgroundColor: '#00C8A0', borderRadius: 2 },
 });

@@ -26,7 +26,7 @@ export function EphemeralSettingsModal({ visible, current, onSelect, onClose }: 
         <Pressable style={[s.panel, { backgroundColor: C.bgPrimary }]}>
           {/* Icono reloj */}
           <View style={s.iconWrap}>
-            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.8} strokeLinecap="round">
+            <Svg width={32} height={32} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.8} strokeLinecap="round">
               <Circle cx="12" cy="12" r="10"/>
               <Polyline points="12 6 12 12 16 14"/>
             </Svg>
@@ -45,7 +45,7 @@ export function EphemeralSettingsModal({ visible, current, onSelect, onClose }: 
                 {opt.label}
               </Text>
               {current === opt.value && (
-                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2.5} strokeLinecap="round">
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2.5} strokeLinecap="round">
                   <Path d="M20 6L9 17l-5-5"/>
                 </Svg>
               )}

@@ -111,7 +111,7 @@ export function CreateGroupModal({ visible, onClose, onGroupCreated }: Props) {
         <View style={[s.root, { backgroundColor: C.bgPrimary, paddingTop: insets.top }]}>
 
           {/* ── Header ── */}
-          <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+          <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
             <TouchableOpacity onPress={step === 1 ? onClose : () => setStep(1)} style={s.headerBtn}>
               <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
                 {step === 1
@@ -338,14 +338,14 @@ const s = StyleSheet.create({
     width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: '#d1d5db',
     alignItems: 'center', justifyContent: 'center',
   },
-  checkboxSelected: { backgroundColor: '#07a472', borderColor: '#07a472' },
+  checkboxSelected: { backgroundColor: '#00C8A0', borderColor: '#00C8A0' },
   empty: { textAlign: 'center', marginTop: 40, fontSize: 15 },
   // step 2
   step2: { flex: 1, paddingHorizontal: 20 },
   membersPreview: { flexDirection: 'row', justifyContent: 'center', marginTop: 30, marginBottom: 8 },
   memberAvatar: { borderRadius: 22, overflow: 'hidden', borderWidth: 2, borderColor: '#fff' },
   memberMore: {
-    width: 44, height: 44, borderRadius: 22, backgroundColor: '#07a472',
+    width: 44, height: 44, borderRadius: 22, backgroundColor: '#00C8A0',
     alignItems: 'center', justifyContent: 'center',
   },
   memberMoreText: { color: '#fff', fontWeight: '700', fontSize: 13 },

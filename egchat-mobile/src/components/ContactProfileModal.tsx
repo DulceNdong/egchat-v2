@@ -221,7 +221,7 @@ const Row = ({
       <Switch
         value={switchValue}
         onValueChange={onSwitchChange}
-        trackColor={{ false: '#D1D5DB', true: '#07a472' }}
+        trackColor={{ false: '#D1D5DB', true: '#00C8A0' }}
         thumbColor="#fff"
       />
     )}
@@ -328,10 +328,10 @@ export const ContactProfileModal: React.FC<Props> = ({
               {/* Acciones rápidas */}
               <View style={styles.quickActions}>
                 {[
-                  { icon: <IcoPhone color="#07a472" size={22} />, label: 'Llamar',   action: () => onStartCall?.('audio', cp) },
-                  { icon: <IcoVideoCall color="#07a472" size={22} />, label: 'Video', action: () => onStartCall?.('video', cp) },
-                  { icon: <IcoMessage color="#07a472" size={22} />,  label: 'Mensaje', action: onClose },
-                  { icon: <IcoSend color="#07a472" size={22} />,     label: 'Enviar',  action: () => { onClose(); onSendMoney?.(cp); } },
+                  { icon: <IcoPhone color="#00C8A0" size={22} />, label: 'Llamar',   action: () => onStartCall?.('audio', cp) },
+                  { icon: <IcoVideoCall color="#00C8A0" size={22} />, label: 'Video', action: () => onStartCall?.('video', cp) },
+                  { icon: <IcoMessage color="#00C8A0" size={22} />,  label: 'Mensaje', action: onClose },
+                  { icon: <IcoSend color="#00C8A0" size={22} />,     label: 'Enviar',  action: () => { onClose(); onSendMoney?.(cp); } },
                 ].map(a => (
                   <TouchableOpacity key={a.label} style={styles.quickAction} onPress={a.action} activeOpacity={0.7}>
                     <View style={styles.quickActionCircle}>{a.icon}</View>
@@ -446,7 +446,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                   />
                   <Divider />
                   <Row
-                    iconNode={<IcoShield color="#07a472" />}
+                    iconNode={<IcoShield color="#00C8A0" />}
                     label="Cifrado extremo a extremo"
                     sub="Los mensajes están cifrados"
                   />
@@ -592,7 +592,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                   sharedGroups.length > 0 ? sharedGroups.map((g: any) => (
                     <View key={g.id} style={styles.memberItem}>
                       <View style={styles.groupAvatarPlaceholder}>
-                        <IcoUsers color="#07a472" size={20} />
+                        <IcoUsers color="#00C8A0" size={20} />
                       </View>
                       <View style={styles.memberInfo}>
                         <Text style={styles.memberName}>{g.title || g.name}</Text>
@@ -670,7 +670,7 @@ const styles = StyleSheet.create({
   quickActionLabel: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
 
   addContactBtn: {
-    marginTop: 12, backgroundColor: '#07a472', borderRadius: 12,
+    marginTop: 12, backgroundColor: '#00C8A0', borderRadius: 12,
     paddingHorizontal: 24, paddingVertical: 10,
   },
   addContactBtnText: { fontSize: 14, fontWeight: '700', color: '#fff' },
@@ -684,8 +684,8 @@ const styles = StyleSheet.create({
   tab: { flex: 1, alignItems: 'center', paddingVertical: 14, position: 'relative' },
   tabActive: {},
   tabText: { fontSize: 14, fontWeight: '600', color: '#6B7280' },
-  tabTextActive: { color: '#07a472', fontWeight: '700' },
-  tabIndicator: { position: 'absolute', bottom: 0, width: 36, height: 2.5, borderRadius: 2, backgroundColor: '#07a472' },
+  tabTextActive: { color: '#00C8A0', fontWeight: '700' },
+  tabIndicator: { position: 'absolute', bottom: 0, width: 36, height: 2.5, borderRadius: 2, backgroundColor: '#00C8A0' },
 
   // Sección
   sectionHeader: {
@@ -724,7 +724,7 @@ const styles = StyleSheet.create({
   noteText: { fontSize: 15, color: '#111827', lineHeight: 22 },
   notePlaceholder: { fontSize: 15, color: '#9CA3AF', lineHeight: 22 },
   editNoteBtn: { paddingHorizontal: 54, paddingBottom: 14 },
-  editNoteBtnText: { fontSize: 14, color: '#07a472', fontWeight: '600' },
+  editNoteBtnText: { fontSize: 14, color: '#00C8A0', fontWeight: '600' },
 
   // Media
   mediaGrid: { flexDirection: 'row', flexWrap: 'wrap', padding: 2 },

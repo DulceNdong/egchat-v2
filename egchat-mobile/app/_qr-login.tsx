@@ -64,7 +64,7 @@ export default function QRLoginScreen() {
                 <Text style={s.btnCancelText}>Cancelar</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={confirm}>
-                <LinearGradient colors={['#00c8a0', '#00b4e6']} style={s.btnConfirm}>
+                <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.btnConfirm}>
                   <Text style={s.btnConfirmText}>Confirmar</Text>
                 </LinearGradient>
               </TouchableOpacity>

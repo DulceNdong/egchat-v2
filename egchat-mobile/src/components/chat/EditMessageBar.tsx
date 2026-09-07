@@ -78,9 +78,9 @@ export function EditMessageBar({ message, editText, onChangeText, onConfirm, onC
 const s = StyleSheet.create({
   wrap: { borderTopWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingTop: 8, paddingBottom: 4 },
   indicator: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 6 },
-  indicatorBar: { width: 3, height: 36, borderRadius: 2, backgroundColor: '#07a472' },
+  indicatorBar: { width: 3, height: 36, borderRadius: 2, backgroundColor: '#00C8A0' },
   indicatorText: { flex: 1 },
-  editLabel: { fontSize: 12, fontWeight: '700', color: '#07a472', marginBottom: 2 },
+  editLabel: { fontSize: 12, fontWeight: '700', color: '#00C8A0', marginBottom: 2 },
   originalText: { fontSize: 13 },
   cancelBtn: { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   inputRow: { flexDirection: 'row', alignItems: 'flex-end', gap: 8, paddingBottom: 4 },
@@ -90,7 +90,7 @@ const s = StyleSheet.create({
   },
   confirmBtn: {
     width: 40, height: 40, borderRadius: 20,
-    backgroundColor: '#07a472', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center',
   },
   confirmBtnDisabled: { opacity: 0.4 },
 });

@@ -171,7 +171,7 @@ export function PushToTalkButton({ chatId, currentUserId, otherName, onRecorded 
       >
         <View style={[s.btn, state === 'recording' && s.btnActive, state === 'transmitting' && s.btnTransmit]}>
           <Svg width={28} height={28} viewBox="0 0 24 24" fill="none"
-            stroke={state === 'recording' ? '#fff' : '#07a472'}
+            stroke={state === 'recording' ? '#fff' : '#00C8A0'}
             strokeWidth={2} strokeLinecap="round">
             <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
             <Path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
@@ -205,21 +205,21 @@ const s = StyleSheet.create({
   container: { alignItems: 'center', paddingVertical: 8 },
   statusBar: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 6, paddingHorizontal: 12, paddingVertical: 4, backgroundColor: 'rgba(7,164,114,0.12)', borderRadius: 12 },
   recDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ef4444' },
-  statusText: { fontSize: 13, fontWeight: '700', color: '#07a472' },
+  statusText: { fontSize: 13, fontWeight: '700', color: '#00C8A0' },
   statusHint: { fontSize: 11, color: '#6b7280' },
   btnWrap: { alignItems: 'center', justifyContent: 'center' },
   btn: {
     width: 64, height: 64, borderRadius: 32,
-    backgroundColor: '#07a47215', borderWidth: 2, borderColor: '#07a472',
+    backgroundColor: '#00C8A015', borderWidth: 2, borderColor: '#00C8A0',
     alignItems: 'center', justifyContent: 'center', gap: 2,
   },
-  btnActive: { backgroundColor: '#07a472', borderColor: '#07a472' },
+  btnActive: { backgroundColor: '#00C8A0', borderColor: '#00C8A0' },
   btnTransmit: { backgroundColor: '#00b4e6', borderColor: '#00b4e6' },
-  btnLabel: { fontSize: 10, fontWeight: '800', color: '#07a472', letterSpacing: 0.5 },
+  btnLabel: { fontSize: 10, fontWeight: '800', color: '#00C8A0', letterSpacing: 0.5 },
   lockSendBtn: {
     position: 'absolute', right: -10, top: 0,
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#07a472', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center',
   },
   hint: { fontSize: 11, color: '#9ca3af', marginTop: 4 },
 });

@@ -269,7 +269,7 @@ export default function MomentsScreen() {
         <View style={[ps.commentsSection, { backgroundColor: C.bgSecondary }]}>
           {item.comments.map(c => (
             <View key={c.id} style={ps.commentRow}>
-              <Text style={[ps.commentUser, { color: '#07a472' }]}>{c.user_name}: </Text>
+              <Text style={[ps.commentUser, { color: '#00C8A0' }]}>{c.user_name}: </Text>
               <Text style={[ps.commentText, { color: C.textPrimary }]}>{c.text}</Text>
             </View>
           ))}
@@ -291,7 +291,7 @@ export default function MomentsScreen() {
           />
           <TouchableOpacity onPress={handleComment} disabled={!commentText.trim()}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke={commentText.trim() ? '#07a472' : C.textTertiary}
+              stroke={commentText.trim() ? '#00C8A0' : C.textTertiary}
               strokeWidth={2} strokeLinecap="round">
               <Line x1="22" y1="2" x2="11" y2="13"/>
               <Polyline points="22 2 15 22 11 13 2 9 22 2"/>
@@ -303,9 +303,9 @@ export default function MomentsScreen() {
   );
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['left', 'right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
           <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
             <Line x1="19" y1="12" x2="5" y2="12"/>
@@ -328,7 +328,7 @@ export default function MomentsScreen() {
             data={posts}
             keyExtractor={p => p.id}
             renderItem={renderPost}
-            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#07a472']} />}
+            refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#00C8A0']} />}
             contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
             ListEmptyComponent={
               <View style={s.empty}>
@@ -337,15 +337,15 @@ export default function MomentsScreen() {
                     {/* Cuerpo cámara */}
                     <Path
                       d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"
-                      stroke="#07a472"
+                      stroke="#00C8A0"
                       strokeWidth={1.6}
                       strokeLinecap="round"
                       strokeLinejoin="round"
                     />
                     {/* Lente */}
-                    <Circle cx={12} cy={13} r={4} stroke="#07a472" strokeWidth={1.6} />
+                    <Circle cx={12} cy={13} r={4} stroke="#00C8A0" strokeWidth={1.6} />
                     {/* Destello superior derecho */}
-                    <Circle cx={18.5} cy={9.5} r={1} fill="#07a472" />
+                    <Circle cx={18.5} cy={9.5} r={1} fill="#00C8A0" />
                   </Svg>
                 </View>
                 <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Sin posts aún</Text>
@@ -418,7 +418,7 @@ function CreatePostModal({
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bgPrimary }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           style={[cm.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity onPress={onClose} style={cm.btn}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">

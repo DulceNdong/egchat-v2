@@ -177,7 +177,7 @@ const LocalPiP = ({
       {isVideo && localUrl && !isCamOff ? (
         <RTCView streamURL={localUrl} style={pip.video} objectFit="cover" mirror />
       ) : (
-        <LinearGradient colors={['#00c8a0', '#00b4e6']} style={[pip.video, pip.center]}>
+        <LinearGradient colors={['#00c8a0', '#00B4E6']} style={[pip.video, pip.center]}>
           <Text style={pip.initials}>
             {(name || 'Yo').slice(0, 2).toUpperCase()}
           </Text>
@@ -310,7 +310,7 @@ export default function GroupCallScreen() {
       // Solo yo — esperando participantes
       return (
         <View style={g.waiting}>
-          <LinearGradient colors={['#00c8a0', '#00b4e6']} style={g.waitingAvatar}>
+          <LinearGradient colors={['#00c8a0', '#00B4E6']} style={g.waitingAvatar}>
             <Text style={g.waitingInitials}>
               {(myUser?.full_name || 'Yo').slice(0, 2).toUpperCase()}
             </Text>

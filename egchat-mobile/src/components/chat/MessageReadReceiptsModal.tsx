@@ -120,7 +120,7 @@ export function MessageReadReceiptsModal({ visible, messageId, chatParticipants,
               renderItem={null}
               ListHeaderComponent={
                 <>
-                  <Section title="✓✓ Leído" items={read} color="#07a472" />
+                  <Section title="✓✓ Leído" items={read} color="#00C8A0" />
                   <Section title="✓✓ Entregado" items={delivered} color="#9ca3af" />
                   {pending.length > 0 && (
                     <>

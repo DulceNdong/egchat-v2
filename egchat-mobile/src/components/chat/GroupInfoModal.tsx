@@ -271,7 +271,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
       <View style={[s.root, { backgroundColor: C.bgPrimary, paddingTop: insets.top }]}>
 
         {/* Header */}
-        <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+        <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
           <TouchableOpacity onPress={onClose} style={s.btn}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
@@ -297,8 +297,8 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                 />
                 <TouchableOpacity onPress={handleSaveName} disabled={savingName} style={s.saveBtn}>
                   {savingName
-                    ? <ActivityIndicator size="small" color="#07a472" />
-                    : <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2.5} strokeLinecap="round"><Path d="M20 6L9 17l-5-5"/></Svg>
+                    ? <ActivityIndicator size="small" color="#00C8A0" />
+                    : <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2.5} strokeLinecap="round"><Path d="M20 6L9 17l-5-5"/></Svg>
                   }
                 </TouchableOpacity>
               </View>
@@ -359,7 +359,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                 </View>
               </View>
               {loadingLink
-                ? <ActivityIndicator size="small" color="#00b4e6" />
+                ? <ActivityIndicator size="small" color="#00B4E6" />
                 : <Text style={{ fontSize: 18 }}>↗️</Text>
               }
             </TouchableOpacity>
@@ -368,8 +368,8 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
           {/* Acciones */}
           <View style={[s.actionsRow, { borderColor: C.borderLight }]}>
             <TouchableOpacity style={s.actionBtn} onPress={handleAddMembers}>
-              <View style={[s.actionIcon, { backgroundColor: '#07a47220' }]}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2} strokeLinecap="round">
+              <View style={[s.actionIcon, { backgroundColor: '#00C8A020' }]}>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
                   <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
                   <Circle cx="9" cy="7" r="4"/>
                   <Line x1="19" y1="8" x2="19" y2="14"/>
@@ -426,7 +426,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
       {/* Modal añadir miembro */}
       <Modal visible={showAddMember} animationType="slide" presentationStyle="pageSheet" onRequestClose={() => setShowAddMember(false)}>
         <View style={[s.root, { backgroundColor: C.bgPrimary, paddingTop: insets.top }]}>
-          <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+          <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
             <TouchableOpacity onPress={() => setShowAddMember(false)} style={s.btn}>
               <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
                 <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
@@ -496,8 +496,8 @@ const s = StyleSheet.create({
   memberInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   memberName: { fontSize: 15, fontWeight: '600' },
   adminBadge: {
-    fontSize: 11, color: '#07a472', fontWeight: '700',
-    backgroundColor: '#07a47218', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
+    fontSize: 11, color: '#00C8A0', fontWeight: '700',
+    backgroundColor: '#00C8A018', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 8,
   },
   searchWrap: { margin: 10, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
   searchInput: { fontSize: 15 },
@@ -516,7 +516,7 @@ const s = StyleSheet.create({
     width: 46, height: 26, borderRadius: 13, backgroundColor: '#e5e7eb',
     justifyContent: 'center', paddingHorizontal: 2,
   },
-  toggleOn: { backgroundColor: '#00b4e6' },
+  toggleOn: { backgroundColor: '#00B4E6' },
   toggleThumb: {
     width: 22, height: 22, borderRadius: 11, backgroundColor: '#fff',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.2, shadowRadius: 2,

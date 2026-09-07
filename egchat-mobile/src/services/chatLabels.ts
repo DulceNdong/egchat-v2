@@ -18,7 +18,7 @@ export const DEFAULT_LABELS: ChatLabel[] = [
   { id: 'friends', name: 'Amigos', color: '#f59e0b', emoji: '👫' },
   { id: 'important', name: 'Importante', color: '#8b5cf6', emoji: '⭐' },
   { id: 'client', name: 'Cliente', color: '#06b6d4', emoji: '🤝' },
-  { id: 'personal', name: 'Personal', color: '#07a472', emoji: '🔒' },
+  { id: 'personal', name: 'Personal', color: '#00C8A0', emoji: '🔒' },
 ];
 
 type LabelMap = Record<string, string[]>; // chatId → labelIds[]

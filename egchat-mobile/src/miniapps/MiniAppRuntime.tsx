@@ -98,7 +98,7 @@ function PermissionsScreen({
             <Text style={ps.denyTxt}>Cancelar</Text>
           </TouchableOpacity>
           <TouchableOpacity style={ps.acceptBtn} onPress={onAccept}>
-            <LinearGradient colors={['#00c8a0', '#00b4e6']} style={ps.acceptGrad}>
+            <LinearGradient colors={['#00c8a0', '#00B4E6']} style={ps.acceptGrad}>
               <Text style={ps.acceptTxt}>Continuar</Text>
             </LinearGradient>
           </TouchableOpacity>
@@ -439,7 +439,7 @@ export function MiniAppRuntime({
   return (
     <View style={s.root}>
       {/* Barra de título */}
-      <LinearGradient colors={['#00b4e6', '#0088cc']} style={s.bar}>
+      <LinearGradient colors={['#00B4E6', '#0088cc']} style={s.bar}>
         <SafeAreaView edges={['top']}>
           <View style={s.barRow}>
             <TouchableOpacity

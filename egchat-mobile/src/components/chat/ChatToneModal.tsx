@@ -25,7 +25,7 @@ export function ChatToneModal({ visible, current, onSelect, onClose }: Props) {
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.panel, { backgroundColor: C.bgPrimary }]}>
           <View style={s.header}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2} strokeLinecap="round">
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
               <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
               <Path d="M13.73 21a2 2 0 0 1-3.46 0"/>
             </Svg>
@@ -41,7 +41,7 @@ export function ChatToneModal({ visible, current, onSelect, onClose }: Props) {
               <Text style={s.emoji}>{opt.emoji}</Text>
               <Text style={[s.label, { color: C.textPrimary }]}>{opt.label}</Text>
               {current === opt.id && (
-                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2.5} strokeLinecap="round">
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2.5} strokeLinecap="round">
                   <Path d="M20 6L9 17l-5-5"/>
                 </Svg>
               )}

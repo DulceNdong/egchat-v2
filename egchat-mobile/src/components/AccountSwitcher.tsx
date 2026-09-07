@@ -96,7 +96,7 @@ export function AccountSwitcher({
 
           {accounts.length < 3 && (
             <TouchableOpacity style={s.addBtn} onPress={() => { onClose(); onAddAccount(); }} activeOpacity={0.8}>
-              <LinearGradient colors={['#00c8a0', '#00b4e6']} style={s.addGrad}>
+              <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.addGrad}>
                 <Text style={s.addIcon}>+</Text>
               </LinearGradient>
               <Text style={s.addText}>Añadir cuenta</Text>

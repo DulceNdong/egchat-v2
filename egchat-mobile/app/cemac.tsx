@@ -86,7 +86,7 @@ export default function CemacScreen() {
   if (!country) {
     return (
       <LinearGradient
-        colors={['#003d22', '#006b3c', '#00a86b', '#00c8a0', '#00b4e6']}
+        colors={['#003d22', '#006b3c', '#00a86b', '#00c8a0', '#00B4E6']}
         locations={[0, 0.35, 0.65, 0.85, 1]}
         style={{ flex: 1 }}
       >

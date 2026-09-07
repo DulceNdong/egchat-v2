@@ -121,7 +121,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
             {/* Header */}
             <View style={s.header}>
               <View style={s.headerIcon}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2} strokeLinecap="round">
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
                   <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
                   <Circle cx="9" cy="7" r="4"/>
                   <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
@@ -182,7 +182,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
               <Text style={[s.membersTitle, { color: C.textTertiary }]}>PARTICIPANTES</Text>
               <View style={{ flexDirection: 'row', gap: 10 }}>
                 <TouchableOpacity onPress={selectAll}>
-                  <Text style={{ color: '#07a472', fontSize: 12, fontWeight: '700' }}>Todos</Text>
+                  <Text style={{ color: '#00C8A0', fontSize: 12, fontWeight: '700' }}>Todos</Text>
                 </TouchableOpacity>
                 <TouchableOpacity onPress={deselectAll}>
                   <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Ninguno</Text>
@@ -243,7 +243,7 @@ export function GroupPaymentModal({ visible, chatId, members, currentUserId, onC
 
             {/* Botón enviar */}
             <TouchableOpacity onPress={handleSend} disabled={sending} style={s.sendBtn}>
-              <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.sendGrad}>
+              <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.sendGrad}>
                 {sending
                   ? <ActivityIndicator color="#fff" />
                   : <Text style={s.sendText}>Enviar solicitud al grupo</Text>
@@ -262,7 +262,7 @@ const s = StyleSheet.create({
   sheet: { borderTopLeftRadius: 24, borderTopRightRadius: 24, padding: 20, paddingBottom: 34 },
   handle: { width: 36, height: 4, borderRadius: 2, backgroundColor: '#d1d5db', alignSelf: 'center', marginBottom: 16 },
   header: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 16 },
-  headerIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#07a47218', alignItems: 'center', justifyContent: 'center' },
+  headerIcon: { width: 38, height: 38, borderRadius: 19, backgroundColor: '#00C8A018', alignItems: 'center', justifyContent: 'center' },
   title: { flex: 1, fontSize: 17, fontWeight: '700' },
   inputRow: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, marginBottom: 10 },
   inputLabel: { fontSize: 11, fontWeight: '600', marginBottom: 4 },
@@ -270,16 +270,16 @@ const s = StyleSheet.create({
   conceptInput: { fontSize: 15 },
   splitModeRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   modeBtn: { flex: 1, paddingVertical: 8, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.05)', alignItems: 'center' },
-  modeBtnActive: { backgroundColor: '#07a47218' },
+  modeBtnActive: { backgroundColor: '#00C8A018' },
   modeBtnText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
-  modeBtnTextActive: { color: '#07a472' },
+  modeBtnTextActive: { color: '#00C8A0' },
   membersHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   membersTitle: { fontSize: 11, fontWeight: '700', letterSpacing: 0.5 },
   memberRow: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
   checkbox: { width: 22, height: 22, borderRadius: 11, borderWidth: 2, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center' },
-  checkboxSel: { backgroundColor: '#07a472', borderColor: '#07a472' },
+  checkboxSel: { backgroundColor: '#00C8A0', borderColor: '#00C8A0' },
   memberName: { flex: 1, fontSize: 14, fontWeight: '600' },
-  amount: { fontSize: 13, fontWeight: '700', color: '#07a472' },
+  amount: { fontSize: 13, fontWeight: '700', color: '#00C8A0' },
   customInput: { width: 90, borderBottomWidth: 1, paddingVertical: 2, fontSize: 14, textAlign: 'right' },
   totalRow: { borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 12, marginTop: 8, marginBottom: 14 },
   totalLabel: { fontSize: 14, fontWeight: '600' },

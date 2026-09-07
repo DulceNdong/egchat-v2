@@ -37,22 +37,22 @@ function TimePicker({ hour, min, onChange, label, C }: TimePickerProps) {
         {/* Hora */}
         <View style={[tp.selector, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
           <TouchableOpacity onPress={() => onChange(hour > 0 ? hour - 1 : 23, min)} style={tp.arrow}>
-            <Text style={{ color: '#07a472', fontSize: 18 }}>‹</Text>
+            <Text style={{ color: '#00C8A0', fontSize: 18 }}>‹</Text>
           </TouchableOpacity>
           <Text style={[tp.value, { color: C.textPrimary }]}>{String(hour).padStart(2, '0')}</Text>
           <TouchableOpacity onPress={() => onChange(hour < 23 ? hour + 1 : 0, min)} style={tp.arrow}>
-            <Text style={{ color: '#07a472', fontSize: 18 }}>›</Text>
+            <Text style={{ color: '#00C8A0', fontSize: 18 }}>›</Text>
           </TouchableOpacity>
         </View>
         <Text style={[tp.colon, { color: C.textPrimary }]}>:</Text>
         {/* Minutos */}
         <View style={[tp.selector, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
           <TouchableOpacity onPress={() => { const i = MINS.indexOf(min); onChange(hour, MINS[i > 0 ? i - 1 : MINS.length - 1]); }} style={tp.arrow}>
-            <Text style={{ color: '#07a472', fontSize: 18 }}>‹</Text>
+            <Text style={{ color: '#00C8A0', fontSize: 18 }}>‹</Text>
           </TouchableOpacity>
           <Text style={[tp.value, { color: C.textPrimary }]}>{String(min).padStart(2, '0')}</Text>
           <TouchableOpacity onPress={() => { const i = MINS.indexOf(min); onChange(hour, MINS[i < MINS.length - 1 ? i + 1 : 0]); }} style={tp.arrow}>
-            <Text style={{ color: '#07a472', fontSize: 18 }}>›</Text>
+            <Text style={{ color: '#00C8A0', fontSize: 18 }}>›</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -102,7 +102,7 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[s.root, { backgroundColor: C.bgPrimary, paddingTop: insets.top }]}>
-        <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+        <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
           <TouchableOpacity onPress={onClose} style={s.btn}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Line x1="19" y1="12" x2="5" y2="12"/><Path d="M12 19l-7-7 7-7"/>
@@ -128,7 +128,7 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
             <Switch
               value={settings.enabled}
               onValueChange={v => setSettings(p => ({ ...p, enabled: v }))}
-              trackColor={{ false: '#d1d5db', true: '#07a472' }}
+              trackColor={{ false: '#d1d5db', true: '#00C8A0' }}
               thumbColor="#fff"
             />
           </View>
@@ -181,7 +181,7 @@ export function DNDSettingsModal({ visible, onClose }: Props) {
                   <Switch
                     value={settings.allowCalls}
                     onValueChange={v => setSettings(p => ({ ...p, allowCalls: v }))}
-                    trackColor={{ false: '#d1d5db', true: '#07a472' }}
+                    trackColor={{ false: '#d1d5db', true: '#00C8A0' }}
                     thumbColor="#fff"
                   />
                 </View>
@@ -211,7 +211,7 @@ const s = StyleSheet.create({
     width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(0,0,0,0.05)',
   },
-  dayBtnActive: { backgroundColor: '#07a472' },
+  dayBtnActive: { backgroundColor: '#00C8A0' },
   dayText: { fontSize: 11, fontWeight: '700', color: '#6b7280' },
   dayTextActive: { color: '#fff' },
 });

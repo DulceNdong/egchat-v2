@@ -30,7 +30,7 @@ export function PollMessage({ poll, currentUserId, isOwn, onVote }: Props) {
   const totalVotes = poll.options.reduce((sum, o) => sum + o.votes.length, 0);
   const myVotes    = poll.options.filter(o => o.votes.includes(currentUserId)).map(o => o.id);
   const hasVoted   = myVotes.length > 0;
-  const accent     = isOwn ? '#00c8a0' : '#00b4e6';
+  const accent     = isOwn ? '#00c8a0' : '#00B4E6';
 
   return (
     <View style={ps.card}>

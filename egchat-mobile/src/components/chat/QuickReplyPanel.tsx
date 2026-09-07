@@ -48,7 +48,7 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: -2 }, shadowOpacity: 0.08, shadowRadius: 4, elevation: 4,
   },
   row: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 10, borderBottomWidth: StyleSheet.hairlineWidth },
-  shortcutBadge: { backgroundColor: '#07a47218', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
-  shortcutText: { fontSize: 12, fontWeight: '700', color: '#07a472' },
+  shortcutBadge: { backgroundColor: '#00C8A018', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8 },
+  shortcutText: { fontSize: 12, fontWeight: '700', color: '#00C8A0' },
   replyText: { flex: 1, fontSize: 13 },
 });

@@ -250,7 +250,7 @@ const QRModal = ({
   const [amount, setAmount] = useState('');
   const [concept, setConcept] = useState('');
   const isReceive = type === 'receive';
-  const gradient: [string, string] = isReceive ? ['#00c8a0', '#059669'] : ['#00b4e6', '#2563eb'];
+  const gradient: [string, string] = isReceive ? ['#00c8a0', '#059669'] : ['#00B4E6', '#2563eb'];
   const title = isReceive ? 'Recibir dinero' : 'Realizar pago';
   const sub = isReceive ? 'Muestra este QR para recibir' : 'Genera tu QR de cobro';
   const qrValue = userId
@@ -568,7 +568,7 @@ const RecargaModal = ({
         {/* SUCCESS */}
         {step === 'success' && (
           <View style={s.successWrap}>
-            <LinearGradient colors={['#00c8a0', '#00b4e6']} style={s.successCircle}>
+            <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.successCircle}>
               <IcoCheck />
             </LinearGradient>
             <Text style={s.successTitle}>{data.codigo ? '¡Código canjeado!' : '¡Recarga completada!'}</Text>
@@ -1679,7 +1679,7 @@ const s = StyleSheet.create({
   qrPhone:       { fontSize: 12, color: '#6b7280', marginTop: 2 },
   qrBalance:     { fontSize: 12, color: '#6B7280' },
   qrScanBtn:     { width: '100%', paddingVertical: 10, alignItems: 'center', borderWidth: 1, borderColor: 'rgba(0,180,230,0.35)', borderRadius: 10 },
-  qrScanBtnText: { fontSize: 13, fontWeight: '700', color: '#00b4e6' },
+  qrScanBtnText: { fontSize: 13, fontWeight: '700', color: '#00B4E6' },
   qrInput:       { width: '100%', backgroundColor: '#F7F8FA', borderRadius: 10, padding: 12, fontSize: 14, color: '#111827', borderWidth: 1, borderColor: '#E5E7EB' },
   qrCloseFullBtn:{ borderRadius: 12, paddingVertical: 12, paddingHorizontal: 32, marginTop: 4 },
   qrCloseBtnText:{ fontSize: 14, fontWeight: '700', color: '#fff' },

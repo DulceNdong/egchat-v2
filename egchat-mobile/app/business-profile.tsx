@@ -143,8 +143,8 @@ export default function BusinessProfileScreen() {
   }, [catalog]);
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#07a472' }]} edges={['left', 'right']}>
-      <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
+    <SafeAreaView style={[s.root, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.btn}>
           <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
             <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
@@ -158,23 +158,23 @@ export default function BusinessProfileScreen() {
       <View style={[s.tabs, { borderBottomColor: C.borderLight }]}>
         <TouchableOpacity style={[s.tab, tab === 'profile' && s.tabActive]} onPress={() => setTab('profile')}>
           <View style={s.tabInner}>
-            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={tab === 'profile' ? '#07a472' : C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={tab === 'profile' ? '#00C8A0' : C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <Rect x="3" y="3" width="18" height="18" rx="2"/>
               <Line x1="3" y1="9" x2="21" y2="9"/>
               <Line x1="9" y1="21" x2="9" y2="9"/>
             </Svg>
-            <Text style={[s.tabText, { color: tab === 'profile' ? '#07a472' : C.textTertiary }]}>Perfil</Text>
+            <Text style={[s.tabText, { color: tab === 'profile' ? '#00C8A0' : C.textTertiary }]}>Perfil</Text>
           </View>
           {tab === 'profile' && <View style={s.tabIndicator} />}
         </TouchableOpacity>
         <TouchableOpacity style={[s.tab, tab === 'catalog' && s.tabActive]} onPress={() => setTab('catalog')}>
           <View style={s.tabInner}>
-            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={tab === 'catalog' ? '#07a472' : C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={tab === 'catalog' ? '#00C8A0' : C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <Path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
               <Line x1="3" y1="6" x2="21" y2="6"/>
               <Path d="M16 10a4 4 0 01-8 0"/>
             </Svg>
-            <Text style={[s.tabText, { color: tab === 'catalog' ? '#07a472' : C.textTertiary }]}>Catálogo ({catalog.length})</Text>
+            <Text style={[s.tabText, { color: tab === 'catalog' ? '#00C8A0' : C.textTertiary }]}>Catálogo ({catalog.length})</Text>
           </View>
           {tab === 'catalog' && <View style={s.tabIndicator} />}
         </TouchableOpacity>
@@ -242,7 +242,7 @@ export default function BusinessProfileScreen() {
           </ScrollView>
 
           <TouchableOpacity onPress={handleSaveProfile} disabled={saving} style={s.saveBtn}>
-            <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtnGrad}>
+            <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtnGrad}>
               {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveBtnText}>Guardar perfil</Text>}
             </LinearGradient>
           </TouchableOpacity>
@@ -259,7 +259,7 @@ export default function BusinessProfileScreen() {
             ListEmptyComponent={
               <View style={s.emptycat}>
                 <View style={s.emptycatIconWrap}>
-                  <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                     <Path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
                     <Line x1="3" y1="6" x2="21" y2="6"/>
                     <Path d="M16 10a4 4 0 01-8 0"/>
@@ -274,8 +274,8 @@ export default function BusinessProfileScreen() {
               <View style={[s.catalogCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
                 {item.image
                   ? <Image source={{ uri: item.image }} style={s.catalogImg} resizeMode="cover" />
-                  : <View style={[s.catalogImgPlaceholder, { backgroundColor: '#07a47215' }]}>
-                      <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  : <View style={[s.catalogImgPlaceholder, { backgroundColor: '#00C8A015' }]}>
+                      <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
                         <Path d="M21 16V8a2 2 0 00-1-1.73l-7-4a2 2 0 00-2 0l-7 4A2 2 0 003 8v8a2 2 0 001 1.73l7 4a2 2 0 002 0l7-4A2 2 0 0021 16z"/>
                         <Polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
                         <Line x1="12" y1="22.08" x2="12" y2="12"/>
@@ -310,7 +310,7 @@ export default function BusinessProfileScreen() {
             style={[s.addItemFab, { bottom: insets.bottom + 16 }]}
             onPress={() => { setEditItem(null); setShowAddItem(true); }}
           >
-            <LinearGradient colors={['#07a472', '#00b4e6']} style={s.fabGrad}>
+            <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.fabGrad}>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
                 <Line x1="12" y1="5" x2="12" y2="19"/>
                 <Line x1="5" y1="12" x2="19" y2="12"/>
@@ -376,7 +376,7 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
       <View style={[s.root, { backgroundColor: C.bgPrimary, paddingTop: insets.top }]}>
-        <LinearGradient colors={['#07a472', '#00b4e6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
+        <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.header}>
           <TouchableOpacity onPress={onClose} style={s.btn}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
@@ -451,29 +451,29 @@ const s = StyleSheet.create({
   tabActive: {},
   tabInner: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   tabText: { fontSize: 14, fontWeight: '600' },
-  tabIndicator: { position: 'absolute', bottom: 0, width: 40, height: 2.5, borderRadius: 2, backgroundColor: '#07a472' },
+  tabIndicator: { position: 'absolute', bottom: 0, width: 40, height: 2.5, borderRadius: 2, backgroundColor: '#00C8A0' },
   avatarWrap: { alignSelf: 'center', position: 'relative', marginBottom: 20, marginTop: 4 },
-  avatarEdit: { position: 'absolute', bottom: -2, right: -2, width: 26, height: 26, borderRadius: 13, backgroundColor: '#07a472', alignItems: 'center', justifyContent: 'center' },
+  avatarEdit: { position: 'absolute', bottom: -2, right: -2, width: 26, height: 26, borderRadius: 13, backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center' },
   fieldGroup: { marginBottom: 14 },
   fieldLabelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 6 },
   fieldLabel: { fontSize: 11, fontWeight: '700', letterSpacing: 0.4 },
   input: { borderRadius: 12, borderWidth: 1, paddingHorizontal: 14, paddingVertical: 10, fontSize: 15 },
   catChip: { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.06)', marginRight: 6 },
-  catChipActive: { backgroundColor: '#07a472' },
+  catChipActive: { backgroundColor: '#00C8A0' },
   catText: { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   catTextActive: { color: '#fff' },
   saveBtn: { borderRadius: 16, overflow: 'hidden', marginTop: 8 },
   saveBtnGrad: { paddingVertical: 15, alignItems: 'center' },
   saveBtnText: { color: '#fff', fontSize: 16, fontWeight: '700' },
   emptycat: { alignItems: 'center', marginTop: 60, gap: 12, paddingHorizontal: 30 },
-  emptycatIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#07a47215', alignItems: 'center', justifyContent: 'center' },
+  emptycatIconWrap: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#00C8A015', alignItems: 'center', justifyContent: 'center' },
   emptycatText: { fontSize: 15, textAlign: 'center', lineHeight: 22 },
   catalogCard: { flex: 1, borderRadius: 14, borderWidth: 1, overflow: 'hidden', marginBottom: 10 },
   catalogImg: { width: '100%', height: 120 },
   catalogImgPlaceholder: { width: '100%', height: 120, alignItems: 'center', justifyContent: 'center' },
   catalogInfo: { padding: 10 },
   catalogName: { fontSize: 13, fontWeight: '700', marginBottom: 4 },
-  catalogPrice: { fontSize: 14, fontWeight: '800', color: '#07a472' },
+  catalogPrice: { fontSize: 14, fontWeight: '800', color: '#00C8A0' },
   outOfStock: { fontSize: 11, color: '#ef4444', fontWeight: '600', marginTop: 2 },
   catalogActions: { flexDirection: 'row', borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)' },
   catalogBtn: { flex: 1, alignItems: 'center', paddingVertical: 10 },

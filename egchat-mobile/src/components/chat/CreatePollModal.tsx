@@ -103,7 +103,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
       >
         {/* ── Header ── */}
         <LinearGradient
-          colors={['#07a472', '#00b4e6']}
+          colors={['#00C8A0', '#00B4E6']}
           start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
           style={[s.header, { paddingTop: insets.top + 10 }]}
         >
@@ -178,7 +178,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
 
           {options.map((opt, i) => (
             <View key={opt.id} style={[s.optionRow, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-              <View style={[s.optionNum, { backgroundColor: '#07a47220' }]}>
+              <View style={[s.optionNum, { backgroundColor: '#00C8A020' }]}>
                 <Text style={s.optionNumText}>{i + 1}</Text>
               </View>
               <TextInput
@@ -212,13 +212,13 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
 
           {options.length < 12 && (
             <TouchableOpacity
-              style={[s.addOptionBtn, { borderColor: '#07a47240', backgroundColor: isDark ? '#07a47210' : '#07a47208' }]}
+              style={[s.addOptionBtn, { borderColor: '#00C8A040', backgroundColor: isDark ? '#00C8A010' : '#00C8A008' }]}
               onPress={addOption}
               accessibilityLabel="Añadir opción"
               accessibilityRole="button"
             >
               <View style={s.addOptionIcon}>
-                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#07a472" strokeWidth={2.5} strokeLinecap="round">
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2.5} strokeLinecap="round">
                   <Circle cx="12" cy="12" r="9"/>
                   <Line x1="12" y1="8" x2="12" y2="16"/>
                   <Line x1="8" y1="12" x2="16" y2="12"/>
@@ -237,7 +237,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
             <Switch
               value={multipleChoice}
               onValueChange={setMultipleChoice}
-              trackColor={{ false: '#d1d5db', true: '#07a472' }}
+              trackColor={{ false: '#d1d5db', true: '#00C8A0' }}
               thumbColor="#fff"
               accessibilityLabel="Activar respuesta múltiple"
             />
@@ -335,7 +335,7 @@ const s = StyleSheet.create({
   optionNumText: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#07a472',
+    color: '#00C8A0',
   },
   optionInput: {
     flex: 1,
@@ -373,7 +373,7 @@ const s = StyleSheet.create({
   addOptionText: {
     fontSize: 14,
     fontWeight: '600',
-    color: '#07a472',
+    color: '#00C8A0',
   },
   advancedRow: {
     flexDirection: 'row',

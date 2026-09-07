@@ -144,7 +144,7 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
 
         <View style={vd.meta}>
           <Text style={vd.name} numberOfLines={1}>{fileName}</Text>
-          <Text style={[vd.ext, { color: isOwn ? '#00c8a0' : '#00b4e6' }]}>{ext.toUpperCase()}</Text>
+          <Text style={[vd.ext, { color: isOwn ? '#00c8a0' : '#00B4E6' }]}>{ext.toUpperCase()}</Text>
         </View>
       </View>
 
@@ -438,8 +438,8 @@ const VoiceCard = ({ message, isOwn, onTranscribed }: { message: ChatMessage; is
     }),
   ).current;
 
-  const accent   = isOwn ? '#00c8a0' : '#00b4e6';
-  const barFill  = isOwn ? '#00c8a0' : '#00b4e6';
+  const accent   = isOwn ? '#00c8a0' : '#00B4E6';
+  const barFill  = isOwn ? '#00c8a0' : '#00B4E6';
   const barEmpty = isOwn ? 'rgba(0,200,160,0.25)' : 'rgba(0,180,230,0.25)';
 
   return (
@@ -771,7 +771,7 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
             disabled={loading}
           >
             <LinearGradient
-              colors={isOwn ? ['#00c8a0', '#00b4e6'] : ['#667eea', '#764ba2']}
+              colors={isOwn ? ['#00c8a0', '#00B4E6'] : ['#667eea', '#764ba2']}
               style={mc.playBtnGrad}
             >
               {loading ? (
@@ -897,7 +897,7 @@ const ContactCard = ({
   const phone     = lines[1]?.replace(/^📞\s*/, '').trim() || '';
   const avatarUrl = lines[2]?.trim() || '';
   const isValidUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
-  const color = isOwn ? '#00c8a0' : '#00b4e6';
+  const color = isOwn ? '#00c8a0' : '#00B4E6';
 
   return (
     <View style={cs.card}>
@@ -1003,7 +1003,7 @@ const cs = StyleSheet.create({
   actionDivider: { width: 1, height: 20, marginHorizontal: 2 },
   actionText: { fontSize: 12, fontWeight: '700' },
   actionOwn: { color: '#00c8a0' },
-  actionTheir: { color: '#00b4e6' },
+  actionTheir: { color: '#00B4E6' },
 });
 
 // ── Tarjeta UBICACIÓN ─────────────────────────────────────────────
@@ -1051,7 +1051,7 @@ const ls = StyleSheet.create({
   btn: { paddingVertical: 6, borderRadius: 8, alignItems: 'center' },
   btnOwn: { backgroundColor: 'rgba(0,200,160,0.12)' },
   btnTheir: { backgroundColor: 'rgba(0,180,230,0.10)' },
-  btnText: { fontSize: 12, fontWeight: '700', color: '#00b4e6' },
+  btnText: { fontSize: 12, fontWeight: '700', color: '#00B4E6' },
   liveBadge: {
     position: 'absolute', top: 8, right: 8,
     backgroundColor: '#ef4444', borderRadius: 6,
@@ -1327,7 +1327,7 @@ export const ChatMessageBubble = React.memo(({
     if (isOwn) {
       return (
         <View style={s.avatarCol}>
-          <LinearGradient colors={['#00c8a0', '#00b4e6']} style={s.avatarRing}>
+          <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.avatarRing}>
             <EGAvatar src={myAvatar} name={myName || 'Yo'} size={36} />
           </LinearGradient>
         </View>
@@ -1343,7 +1343,7 @@ export const ChatMessageBubble = React.memo(({
       (rawSenderAvatar.startsWith('http://') || rawSenderAvatar.startsWith('https://') || rawSenderAvatar.startsWith('file://')) &&
       !rawSenderAvatar.includes('egchat-api-xlxj.onrender.com/static/avatars/');
     const senderAvatar = isValidSenderAvatar ? rawSenderAvatar : otherAvatar;
-    const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00b4e6'];
+    const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00B4E6'];
     return (
       <View style={s.avatarCol}>
         <LinearGradient colors={gradColors as [string, string]} style={s.avatarRing}>
@@ -1658,17 +1658,17 @@ const s = StyleSheet.create({
     elevation: 2,
   },
   moneyBubble: { padding: 0 },
-  senderName: { fontSize: 11, fontWeight: '700', color: '#00b4e6', marginBottom: 3 },
+  senderName: { fontSize: 11, fontWeight: '700', color: '#00B4E6', marginBottom: 3 },
   replyQuote: {
     borderLeftWidth: 3,
-    borderLeftColor: '#00b4e6',
+    borderLeftColor: '#00B4E6',
     backgroundColor: 'rgba(0,180,230,0.08)',
     borderRadius: 6,
     paddingHorizontal: 8,
     paddingVertical: 5,
     marginBottom: 6,
   },
-  replyAuthor: { fontSize: 11, fontWeight: '700', color: '#00b4e6', marginBottom: 2 },
+  replyAuthor: { fontSize: 11, fontWeight: '700', color: '#00B4E6', marginBottom: 2 },
   replyText: { fontSize: 12, color: '#6b7280' },
   replyImageRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   replyThumb: { width: 36, height: 36, borderRadius: 5, backgroundColor: '#e5e7eb' },
