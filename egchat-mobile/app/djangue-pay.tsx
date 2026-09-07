@@ -126,54 +126,47 @@ export default function DjanguePayScreen() {
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
       {/* Header */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} style={[s.header, { paddingTop: insets.top + 16 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="19" y1="12" x2="5" y2="12" />
-              <Path d="M12 19l-7-7 7-7" />
-            </Svg>
-          </TouchableOpacity>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            <Text style={s.headerTitle}>Pagar Cuota</Text>
-            <Text style={s.headerSub}>{group.name}</Text>
-          </View>
-          <View style={{ width: 36 }} />
+      <View style={[s.header, { paddingTop: insets.top + 10 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={s.iconBtn} hitSlop={12}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none"
+            stroke="#1e293b" strokeWidth={2.2} strokeLinecap="round">
+            <Line x1="19" y1="12" x2="5" y2="12" />
+            <Path d="M12 19l-7-7 7-7" />
+          </Svg>
+        </TouchableOpacity>
+        <View style={{ flex: 1, alignItems: 'center' }}>
+          <Text style={s.headerTitle}>Pagar Cuota</Text>
+          <Text style={s.headerSub}>{group.name}</Text>
         </View>
-      </LinearGradient>
+        <View style={{ width: 40 }} />
+      </View>
 
       <View style={s.content}>
         {paid ? (
           /* ── Pantalla de éxito ── */
           <View style={s.successBox}>
-            <LinearGradient colors={['#10b981', '#059669']} style={s.successCircle}>
-              <Svg width={40} height={40} viewBox="0 0 24 24" fill="none"
+            <View style={s.successCircle}>
+              <Svg width={36} height={36} viewBox="0 0 24 24" fill="none"
                 stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
                 <Path d="M20 6L9 17l-5-5" />
               </Svg>
-            </LinearGradient>
+            </View>
             <Text style={s.successTitle}>¡Cuota pagada!</Text>
             <Text style={s.successAmount}>{fmtAmount(group.quota_amount, group.currency)}</Text>
-            <Text style={s.successSub}>
-              Turno {group.current_turn} · {group.name}
-            </Text>
-            <Text style={s.successBalance}>
-              Tu saldo: {fmtAmount(wallet.balance, wallet.currency)}
-            </Text>
+            <Text style={s.successSub}>Turno {group.current_turn} · {group.name}</Text>
+            <Text style={s.successBalance}>Tu saldo: {fmtAmount(wallet.balance, wallet.currency)}</Text>
             <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
               <Text style={s.backBtnTxt}>Ver Djangue</Text>
             </TouchableOpacity>
           </View>
         ) : (
-          /* ── Pantalla de pago ── */
           <>
             {/* Importe */}
-            <LinearGradient colors={['#312e81', '#4c1d95']} style={s.amountCard}>
+            <View style={s.amountCard}>
               <Text style={s.amountLabel}>Cuota a pagar</Text>
               <Text style={s.amountValue}>{fmtAmount(group.quota_amount, group.currency)}</Text>
               <Text style={s.amountSub}>Turno {group.current_turn} de {group.total_turns}</Text>
-            </LinearGradient>
+            </View>
 
             {/* Saldo disponible */}
             <View style={[s.balanceCard, !hasFunds && s.balanceCardLow]}>
