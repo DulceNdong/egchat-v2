@@ -96,7 +96,7 @@ export default function MiniAppsScreen() {
                 <TouchableOpacity key={app.id} style={s.featCard} onPress={() => openApp(app)} activeOpacity={0.85}>
                   {/* Icono grande sin fondo */}
                   <View style={[s.featIconWrap, { borderColor: 'rgba(0,0,0,0.07)' }]}>
-                    <MiniAppIcon name={app.icon} color={app.accentColor} size={36} />
+                    <MiniAppIcon name={app.icon} color={app.accentColor} size={28} />
                   </View>
                   <Text style={s.featName}>{app.name}</Text>
                   <Text style={s.featDesc} numberOfLines={2}>{app.description}</Text>
