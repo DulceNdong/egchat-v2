@@ -19,6 +19,7 @@ import {
   pickImageFromCamera, pickImageFromLibrary,
   pickVideo, pickVideoFromCamera,
 } from '../src/utils/chatMedia';
+import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 import { MIcon } from '../src/components/ui/MIcon';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
 import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
