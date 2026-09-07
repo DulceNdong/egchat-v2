@@ -5,7 +5,7 @@ import App from './App';
 import './index.css';
 
 // Wake up Render backend on load (free tier sleeps after 15 min)
-const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api.onrender.com';
+const API_URL = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api-xlxj.onrender.com';
 fetch(`${API_URL}/health`).catch(() => {});
 
 // Top-level error boundary to catch white/black screen crashes

@@ -13,7 +13,7 @@ const config: CapacitorConfig = {
       'egchat-v2.vercel.app',
       '*.vercel.app',
       '*.supabase.co',
-      'egchat-api.onrender.com',
+      'egchat-api-xlxj.onrender.com',
       '*.onrender.com',
     ]
   },

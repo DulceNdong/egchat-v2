@@ -10,7 +10,7 @@ export const Login: React.FC = () => {
   const [serverStatus, setServerStatus] = useState<'checking'|'ok'|'sleeping'>('checking');
 
   useEffect(() => {
-    const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api.onrender.com';
+    const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api-xlxj.onrender.com';
     const ctrl = new AbortController();
     const timer = setTimeout(() => ctrl.abort(), 8000);
     fetch(`${API}/health`, { signal: ctrl.signal })

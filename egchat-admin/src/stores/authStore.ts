@@ -23,7 +23,7 @@ interface AuthState {
   clearError: () => void;
 }
 
-const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api.onrender.com';
+const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api-xlxj.onrender.com';
 
 export const useAuthStore = create<AuthState>()(
   persist(

@@ -22,7 +22,7 @@ import { showIncomingCall } from './call-manager';
 // ── Constantes ────────────────────────────────────────────────────────────────
 
 const API_BASE =
-  (import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com';
+  (import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com';
 
 // Clave de localStorage donde se guarda el token FCM para reutilizarlo
 const FCM_TOKEN_KEY = 'egchat_fcm_token';

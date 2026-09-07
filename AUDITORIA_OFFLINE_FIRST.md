@@ -143,7 +143,7 @@ allowNavigation: [
   'egchat-v2.vercel.app',
   '*.vercel.app',
   '*.supabase.co',
-  'egchat-api.onrender.com',
+  'egchat-api-xlxj.onrender.com',
   '*.onrender.com'
 ]
 ```
@@ -217,7 +217,7 @@ webContentsDebuggingEnabled: false
 import { supabase } from '@supabase/supabase-js'
 
 // URL del API
-BASE_URL: 'https://egchat-api.onrender.com/api'
+BASE_URL: 'https://egchat-api-xlxj.onrender.com/api'
 
 // Cliente NO usa Supabase directo desde el frontend
 // ✅ Todo pasa por el backend en Render (mejor seguridad)

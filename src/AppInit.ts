@@ -31,7 +31,7 @@ export async function initApp(): Promise<void> {
   // Lanzar en background sin bloquear la inicialización
   const apiUrl = (typeof (window as any).__API_URL__ !== 'undefined' && (window as any).__API_URL__)
     ? (window as any).__API_URL__.replace(/\/$/, '').replace(/\/api$/, '')
-    : 'https://egchat-api.onrender.com';
+    : 'https://egchat-api-xlxj.onrender.com';
   fetch(`${apiUrl}/health`, { method: 'GET', signal: AbortSignal.timeout(90000) })
     .then(() => console.log('[AppInit] ✅ Servidor activo'))
     .catch(() => console.log('[AppInit] ⏳ Servidor despertando...'));

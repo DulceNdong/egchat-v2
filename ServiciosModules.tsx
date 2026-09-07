@@ -1631,7 +1631,7 @@ const BILL_CATEGORIES = [
   { id:'otro',    label:'Otro',         provider:'',          icon:'📄', color:'#5A7090' },
 ];
 
-const API_BASE_SVC = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+const API_BASE_SVC = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '');
 const getTokenSvc = () => localStorage.getItem('token') || localStorage.getItem('egchat_token_backup') || '';
 
 // Mapeo proveedor → provider_key para las órdenes

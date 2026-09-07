@@ -14,7 +14,7 @@ command = "npm run build"
 
 [build.environment]
 NODE_VERSION = "20"
-VITE_API_URL = "https://egchat-api.onrender.com"
+VITE_API_URL = "https://egchat-api-xlxj.onrender.com"
 VITE_APP_VERSION = "2.5.3"
 VITE_ENV = "production"
 VITE_APP_URL = "https://profound-bavarois-c558ef.netlify.app"

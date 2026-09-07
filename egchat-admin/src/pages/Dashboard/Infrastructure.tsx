@@ -158,4 +158,4 @@ export const InfrastructureDashboard: React.FC = () => {
   );
 };
 
-const MOCK = { renderCpu: 25, renderRam: 40, supabaseConns: 12, supabaseMaxConns: 100, cdnHitRate: 94, services: [{ name: 'API Render', url: 'egchat-api.onrender.com', status: 'ok', latency: 142 }, { name: 'Neon DB', url: 'neon.tech', status: 'ok', latency: 12 }, { name: 'Vercel CDN', url: 'vercel.com', status: 'ok', latency: 22 }] };
+const MOCK = { renderCpu: 25, renderRam: 40, supabaseConns: 12, supabaseMaxConns: 100, cdnHitRate: 94, services: [{ name: 'API Render', url: 'egchat-api-xlxj.onrender.com', status: 'ok', latency: 142 }, { name: 'Neon DB', url: 'neon.tech', status: 'ok', latency: 12 }, { name: 'Vercel CDN', url: 'vercel.com', status: 'ok', latency: 22 }] };

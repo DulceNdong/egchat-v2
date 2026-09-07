@@ -25,7 +25,7 @@ interface ServiceProviderDashboardProps {
   viewPadding: { top: string; bottom: string };
 }
 
-const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '');
 const getToken = () => localStorage.getItem('token') || '';
 const apiFetch = (path: string, opts?: RequestInit) =>
   fetch(`${API_BASE}${path}`, { ...opts, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getToken()}`, ...(opts?.headers || {}) } });

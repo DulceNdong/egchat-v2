@@ -15,7 +15,7 @@
 
 const WS_BASE = (() => {
   const api = (import.meta as any).env?.VITE_API_URL
-    || 'https://egchat-api.onrender.com';
+    || 'https://egchat-api-xlxj.onrender.com';
   // http → ws  |  https → wss
   return api.replace(/^http/, 'ws').replace(/\/api$/, '') + '/ws';
 })();

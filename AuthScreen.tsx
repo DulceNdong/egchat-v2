@@ -9,7 +9,7 @@ const _apiUrl = (() => {
   try { if (typeof __API_URL__ !== 'undefined' && __API_URL__) return __API_URL__; } catch {}
   return (import.meta as any).env?.VITE_API_URL || '';
 })();
-const BASE = (!_apiUrl || _apiUrl.startsWith('/')) ? 'https://egchat-api.onrender.com/api' : (_apiUrl.endsWith('/api') ? _apiUrl : _apiUrl.replace(/\/$/, '') + '/api');
+const BASE = (!_apiUrl || _apiUrl.startsWith('/')) ? 'https://egchat-api-xlxj.onrender.com/api' : (_apiUrl.endsWith('/api') ? _apiUrl : _apiUrl.replace(/\/$/, '') + '/api');
 
 const COUNTRIES = [
   {code:'GQ',name:'Guinea Ecuatorial',phone:'+240'},

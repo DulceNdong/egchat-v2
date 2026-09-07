@@ -25,7 +25,7 @@ import {
 // ── Constantes ────────────────────────────────────────────────────
 
 const API_BASE    = (import.meta as any).env?.VITE_API_URL
-                    ?? 'https://egchat-api.onrender.com';
+                    ?? 'https://egchat-api-xlxj.onrender.com';
 const BATCH_SIZE  = 20;
 const MAX_RETRIES = 5;
 const RETRY_MS    = [5_000, 15_000, 30_000, 60_000, 120_000] as const;

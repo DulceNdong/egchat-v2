@@ -14,7 +14,7 @@ export default defineConfig({
     port: 3002,
     proxy: {
       '/api/admin': {
-        target: 'https://egchat-api.onrender.com',
+        target: 'https://egchat-api-xlxj.onrender.com',
         changeOrigin: true,
       },
     },

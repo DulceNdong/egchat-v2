@@ -32,7 +32,7 @@ const readAsDataUrl = (file: File): Promise<string> =>
   });
 
 // ─── HELPER: subir al backend (Supabase Storage via API) ─────────────────────
-const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com/api').replace(/\/api$/, '');
+const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com/api').replace(/\/api$/, '');
 
 async function uploadDocToServer(file: File, docName: string): Promise<string> {
   const token = localStorage.getItem('token') || localStorage.getItem('egchat_token') || '';

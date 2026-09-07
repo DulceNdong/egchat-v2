@@ -49,7 +49,7 @@ export function useRole(isAuthenticated: boolean): RoleInfo & {
       return;
     }
     try {
-      const BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+      const BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '');
       const token = authAPI.getToken();
       const res = await fetch(`${BASE}/api/me/role`, {
         headers: { 'Authorization': `Bearer ${token}` }

@@ -23,7 +23,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
 
   // URL del API: prioridad → variable de entorno → fallback producción
-  const apiUrl = env.VITE_API_URL || 'https://egchat-api.onrender.com';
+  const apiUrl = env.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com';
 
   console.log(`[vite] mode=${mode} | API_URL=${apiUrl}`);
 

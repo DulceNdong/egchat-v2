@@ -95,7 +95,7 @@ self.addEventListener('message', (e) => {
   }
 });
 
-const API_BASE = 'https://egchat-api.onrender.com';
+const API_BASE = 'https://egchat-api-xlxj.onrender.com';
 const VAPID_PUBLIC_KEY = 'BNeDJFYqIX59vgqEKxWfrI263knyPGHafMEK_WrMPeYaIm8bn62vcOah7hDlgIek4R4utB82g-cT9CwAtGn0wUs';
 
 self.addEventListener('pushsubscriptionchange', (e) => {

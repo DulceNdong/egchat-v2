@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 
 // Versión actual de esta APK — debe coincidir con versionCode en build.gradle
 const CURRENT_VERSION_CODE = 6;
-const API_BASE = (import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com';
+const API_BASE = (import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com';
 
 interface UpdateInfo {
   version: string;

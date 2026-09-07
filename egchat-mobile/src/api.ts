@@ -1,6 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-const DEFAULT_BASE = 'https://egchat-api.onrender.com';
+const DEFAULT_BASE = 'https://egchat-api-xlxj.onrender.com';
 const BASE = typeof process !== 'undefined' && process.env?.API_URL
   ? process.env.API_URL
   : DEFAULT_BASE;

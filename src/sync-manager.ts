@@ -20,7 +20,7 @@ import {
 
 // ── Constantes ────────────────────────────────────────────────────────────────
 
-const API_BASE    = (import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com';
+const API_BASE    = (import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com';
 const BATCH_SIZE  = 10;
 const MAX_RETRIES = 5;
 

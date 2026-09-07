@@ -18,7 +18,7 @@
 
     <!-- Permitir conexiones al backend principal (Render) — solo HTTPS -->
     <domain-config cleartextTrafficPermitted="false">
-        <domain includeSubdomains="true">egchat-api.onrender.com</domain>
+        <domain includeSubdomains="true">egchat-api-xlxj.onrender.com</domain>
         <domain includeSubdomains="true">onrender.com</domain>
         <trust-anchors>
             <certificates src="system" />

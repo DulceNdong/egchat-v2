@@ -44,7 +44,7 @@ const BASE = (() => {
     return u.endsWith('/api') ? u : u + '/api';
   }
   // 3. Fallback: producción en Render
-  return 'https://egchat-api.onrender.com/api';
+  return 'https://egchat-api-xlxj.onrender.com/api';
 })();
 
 // ── Token JWT — usa la misma clave que el backend espera ──────────

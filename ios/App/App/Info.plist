@@ -93,7 +93,7 @@
 				<key>NSIncludesSubdomains</key>
 				<true/>
 			</dict>
-			<key>egchat-api.onrender.com</key>
+			<key>egchat-api-xlxj.onrender.com</key>
 			<dict>
 				<key>NSExceptionAllowsInsecureHTTPLoads</key>
 				<false/>

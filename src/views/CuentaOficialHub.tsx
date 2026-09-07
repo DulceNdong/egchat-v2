@@ -26,7 +26,7 @@ interface Props {
 
 type ActiveModule = null | 'comunicacion' | 'business' | 'merchant' | 'provider' | 'director' | 'operator';
 
-const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '');
 const getToken = () => localStorage.getItem('token') || '';
 
 const OPERADORAS_KEYS = ['mo1','mo2','mo3','mo4','mo5','ip1','ip2','ip3','ip4','ip5','ip6','ip7','ip8','ip9','cc1','cc2','cc3','cc4','cc5','cc6','cc7'];

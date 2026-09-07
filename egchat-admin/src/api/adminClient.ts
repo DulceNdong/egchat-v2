@@ -1,4 +1,4 @@
-const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api.onrender.com';
+const API = import.meta.env.VITE_ADMIN_API_URL || 'https://egchat-api-xlxj.onrender.com';
 
 function getToken(): string {
   try {

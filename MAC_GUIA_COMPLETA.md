@@ -317,8 +317,8 @@ sudo xcodebuild -license accept
 
 ```
 Frontend:  https://egchat-v2.vercel.app
-API:       https://egchat-api.onrender.com
-WebSocket: wss://egchat-api.onrender.com/ws
+API:       https://egchat-api-xlxj.onrender.com
+WebSocket: wss://egchat-api-xlxj.onrender.com/ws
 ```
 
 ---

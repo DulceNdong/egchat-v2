@@ -22,7 +22,7 @@ interface OfficialAccountViewProps {
   onNewGroupChat?: () => void;
 }
 
-const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+const API_BASE = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '');
 const getToken = () => localStorage.getItem('token') || '';
 
 // Paleta de colores suaves
