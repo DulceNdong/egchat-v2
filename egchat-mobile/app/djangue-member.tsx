@@ -320,10 +320,8 @@ export default function DjangueMemberScreen() {
                   </Text>
                 </View>
 
-                <TouchableOpacity onPress={handlePay} activeOpacity={0.85}>
-                  <LinearGradient colors={['#10b981', '#059669']} style={s.payBtn}>
-                    <Text style={s.payBtnTxt}>💳 Pagar ahora</Text>
-                  </LinearGradient>
+                <TouchableOpacity onPress={handlePay} activeOpacity={0.85} style={s.payBtn}>
+                  <Text style={s.payBtnTxt}>💳 Pagar ahora</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={handleJustifyAbsence} style={s.justifyBtn}>
