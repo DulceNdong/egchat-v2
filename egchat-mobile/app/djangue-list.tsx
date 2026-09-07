@@ -83,7 +83,7 @@ function DjangueCard({ djangue, onPress }: { djangue: DjangueItem; onPress: () =
           </View>
           
           <Svg width={20} height={20} viewBox="0 0 24 24" fill="none">
-            <Path d="M9 18l6-6-6-6" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+            <Path d="M9 18l6-6-6-6" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
           </Svg>
         </View>
 
