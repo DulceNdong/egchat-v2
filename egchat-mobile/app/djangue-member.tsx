@@ -292,7 +292,7 @@ export default function DjangueMemberScreen() {
               )}
             </View>
           )}
-        </LinearGradient>
+        </View>
 
         {/* Estado de pago */}
         {!data.is_my_turn && data.status === 'active' && (
