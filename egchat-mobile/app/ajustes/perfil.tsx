@@ -58,6 +58,115 @@ const CoinIcon = () => (
   </Svg>
 );
 
+
+// ══════════════════════════════════════════════════════════════════
+// BANNER HEADER — portada + avatar superpuesto (estilo EGChat)
+// ══════════════════════════════════════════════════════════════════
+const BANNER_H = 160;
+const AVATAR_SZ = 84;
+
+function BannerHeader({
+  bannerUrl, avatarUrl, initials, fullName, bio,
+  uploadingAvatar, uploadingBanner,
+  onPickAvatar, onPickBanner, onViewAvatar,
+  C,
+}: {
+  bannerUrl?: string;
+  avatarUrl?: string;
+  initials: string;
+  fullName?: string;
+  bio?: string;
+  uploadingAvatar: boolean;
+  uploadingBanner: boolean;
+  onPickAvatar: () => void;
+  onPickBanner: () => void;
+  onViewAvatar: () => void;
+  C: typeof Colors;
+}) {
+  const [bannerErr, setBannerErr] = React.useState(false);
+  const [avatarErr, setAvatarErr] = React.useState(false);
+  React.useEffect(() => { setBannerErr(false); }, [bannerUrl]);
+  React.useEffect(() => { setAvatarErr(false); }, [avatarUrl]);
+
+  return (
+    <View style={bh.root}>
+      {/* PORTADA */}
+      <TouchableOpacity activeOpacity={0.88} onPress={onPickBanner} style={bh.bannerTouch} accessibilityLabel="Cambiar portada">
+        {bannerUrl && !bannerErr ? (
+          <Image source={{ uri: bannerUrl }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" onError={() => setBannerErr(true)} />
+        ) : (
+          <LinearGradient colors={['#00C8A0', '#00B4E6', '#a855f7']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={StyleSheet.absoluteFillObject as any} />
+        )}
+        <View style={bh.bannerOverlay} />
+        <View style={bh.bannerCamBtn}>
+          {uploadingBanner
+            ? <ActivityIndicator size="small" color="#fff" />
+            : <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+                <Rect x="1" y="5" width="22" height="15" rx="2" />
+                <Circle cx="12" cy="13" r="4" />
+              </Svg>
+          }
+          <Text style={bh.bannerCamText}>Portada</Text>
+        </View>
+      </TouchableOpacity>
+
+      {/* AVATAR superpuesto */}
+      <View style={bh.avatarRow}>
+        <View style={[bh.avatarWrap, { borderColor: C.bgPrimary, backgroundColor: C.bgSecondary }]}>
+          <TouchableOpacity
+            onPress={avatarUrl && !avatarUrl.startsWith('file://') ? onViewAvatar : onPickAvatar}
+            activeOpacity={0.85}
+            style={{ width: '100%', height: '100%' }}
+            accessibilityLabel="Ver o cambiar foto de perfil"
+          >
+            {avatarUrl && !avatarErr ? (
+              <Image key={avatarUrl} source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => setAvatarErr(true)} />
+            ) : (
+              <LinearGradient colors={['#00C8A0', '#00B4E6']} style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+                <Text style={bh.avatarInitials}>{initials}</Text>
+              </LinearGradient>
+            )}
+            {uploadingAvatar && (
+              <View style={bh.avatarUploading}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+          {/* Badge cámara */}
+          <TouchableOpacity style={bh.avatarCamBadge} onPress={onPickAvatar} activeOpacity={0.8} accessibilityLabel="Cambiar foto">
+            <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+              <Rect x="1" y="5" width="22" height="15" rx="2" />
+              <Circle cx="12" cy="13" r="4" />
+            </Svg>
+          </TouchableOpacity>
+        </View>
+
+        {/* Nombre y bio */}
+        <View style={bh.nameBlock}>
+          <Text style={[bh.name, { color: C.textPrimary }]} numberOfLines={1}>{fullName || 'Tu nombre'}</Text>
+          {!!bio && <Text style={[bh.bioLine, { color: C.textTertiary }]} numberOfLines={2}>{bio}</Text>}
+        </View>
+      </View>
+    </View>
+  );
+}
+
+const bh = StyleSheet.create({
+  root:           { backgroundColor: 'transparent', marginBottom: 16 },
+  bannerTouch:    { height: BANNER_H, position: 'relative', overflow: 'hidden' },
+  bannerOverlay:  { ...StyleSheet.absoluteFillObject as any, backgroundColor: 'rgba(0,0,0,0.10)' },
+  bannerCamBtn:   { position: 'absolute', bottom: 10, right: 12, flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 },
+  bannerCamText:  { color: '#fff', fontSize: 12, fontWeight: '600' },
+  avatarRow:      { flexDirection: 'row', alignItems: 'flex-end', paddingHorizontal: 16, marginTop: -(AVATAR_SZ / 2 + 4), gap: 12 },
+  avatarWrap:     { width: AVATAR_SZ + 6, height: AVATAR_SZ + 6, borderRadius: (AVATAR_SZ + 6) / 2, borderWidth: 3, overflow: 'hidden', position: 'relative' },
+  avatarInitials: { fontSize: 30, fontWeight: '800', color: '#fff' },
+  avatarUploading:{ ...StyleSheet.absoluteFillObject as any, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
+  avatarCamBadge: { position: 'absolute', bottom: 4, right: 4, width: 26, height: 26, borderRadius: 13, backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#fff' },
+  nameBlock:      { flex: 1, paddingBottom: 6, paddingTop: AVATAR_SZ / 2 + 8 },
+  name:           { fontSize: 18, fontWeight: '800', letterSpacing: -0.3 },
+  bioLine:        { fontSize: 12, marginTop: 2, lineHeight: 16 },
+});
+
 function PhotoRow({
   label, avatarUrl, initials, onPress, onPressAvatar, uploading,
 }: {
@@ -200,6 +309,7 @@ export default function PerfilScreen() {
   const [user, setUser] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [cropUri, setCropUri] = useState<string | null>(null);
   const [showProfileQR, setShowProfileQR] = useState(false);
   const [showSetupPIN, setShowSetupPIN] = useState(false);
@@ -292,6 +402,47 @@ export default function PerfilScreen() {
     }
   };
 
+
+  const pickBanner = async () => {
+    if (Platform.OS !== 'web') {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para cambiar la portada.');
+        return;
+      }
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.85,
+      aspect: [16, 9],
+    });
+    if (!result.canceled && result.assets[0]) {
+      await uploadBanner(result.assets[0].uri);
+    }
+  };
+
+  const uploadBanner = async (uri: string) => {
+    setUploadingBanner(true);
+    try {
+      const currentUserId = user?.id;
+      if (!currentUserId) return;
+      // Optimistic UI
+      setUser(prev => prev ? { ...prev, banner_url: uri } : prev);
+      // Subir a Supabase Storage (mismo bucket que avatares)
+      const supabaseUrl = await uploadAvatarToSupabase(currentUserId + '_banner', uri);
+      if (supabaseUrl) {
+        await authAPI.updateProfile({ banner_url: supabaseUrl });
+        setUser(prev => prev ? { ...prev, banner_url: supabaseUrl } : prev);
+        emitProfileUpdated({ banner_url: supabaseUrl });
+        toast.success('Portada actualizada');
+      }
+    } catch {
+      toast.error('Error al actualizar la portada');
+    } finally {
+      setUploadingBanner(false);
+    }
+  };
+
   const pickPhoto = async () => {
     // Pedir permisos de galería en iOS
     if (Platform.OS !== 'web') {
@@ -369,17 +520,22 @@ export default function PerfilScreen() {
   return (
     <>
       <SettingsLayout title="Perfil">
+        {/* Banner + avatar superpuesto */}
+        <BannerHeader
+          bannerUrl={user?.banner_url}
+          avatarUrl={user?.avatar_url}
+          initials={initials}
+          fullName={user?.full_name}
+          bio={bio}
+          uploadingAvatar={uploadingPhoto}
+          uploadingBanner={uploadingBanner}
+          onPickAvatar={pickPhoto}
+          onPickBanner={pickBanner}
+          onViewAvatar={() => setShowAvatarViewer(true)}
+          C={C}
+        />
         {/* Card 1 — Identidad */}
         <SettingsCard>
-          <PhotoRow
-            label="Foto de perfil"
-            avatarUrl={user?.avatar_url}
-            initials={initials}
-            onPress={pickPhoto}
-            onPressAvatar={user?.avatar_url && !user.avatar_url.startsWith('file://') ? () => setShowAvatarViewer(true) : pickPhoto}
-            uploading={uploadingPhoto}
-          />
-          <SettingsDivider />
           <SettingsRow
             label="Nombre"
             value={user?.full_name || '—'}

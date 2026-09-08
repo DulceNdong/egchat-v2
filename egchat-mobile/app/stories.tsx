@@ -1155,11 +1155,11 @@ export default function StoriesScreen() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['top', 'left', 'right']}>
-      <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.bgPrimary} />
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
+      <StatusBar barStyle="light-content" backgroundColor="#00C8A0" translucent />
 
       {/* HEADER */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.header}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[st.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
           <MIcon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
