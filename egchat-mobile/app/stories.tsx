@@ -531,6 +531,85 @@ const makeEdStyles = (C: typeof Colors) => StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════
+// TIPOS Y HELPERS — MOMENTOS
+// ══════════════════════════════════════════════════════════════════
+interface MomentPost {
+  id: string;
+  user_id: string;
+  user_name: string;
+  user_avatar?: string;
+  text?: string;
+  images?: string[];
+  likes: number;
+  liked_by_me: boolean;
+  comments: MomentComment[];
+  created_at: string;
+}
+interface MomentComment {
+  id: string;
+  user_id: string;
+  user_name: string;
+  text: string;
+  created_at: string;
+}
+const formatRelativeTime = (dateStr: string) => {
+  const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
+  if (diff < 60) return 'Hace un momento';
+  if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
+  if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
+  return `Hace ${Math.floor(diff / 86400)}d`;
+};
+const MOMENTS_CACHE = 'egchat_moments_v1';
+async function fetchMomentsData(): Promise<MomentPost[]> {
+  try {
+    const BASE = (await import('../src/api')).getApiBase();
+    const token = await (await import('../src/api')).getToken();
+    const res = await fetch(`${BASE}/api/moments`, { headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data) && data.length > 0) { await AsyncStorage.setItem(MOMENTS_CACHE, JSON.stringify(data)); return data; }
+    }
+  } catch {}
+  try { const c = await AsyncStorage.getItem(MOMENTS_CACHE); if (c) return JSON.parse(c); } catch {}
+  return [];
+}
+async function createMomentPost(text: string, images: string[]): Promise<MomentPost | null> {
+  try {
+    const BASE = (await import('../src/api')).getApiBase();
+    const token = await (await import('../src/api')).getToken();
+    const res = await fetch(`${BASE}/api/moments`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, images }),
+    });
+    if (res.ok) return res.json();
+  } catch {}
+  const me = await authAPI.me().catch(() => null);
+  return { id: `local-${Date.now()}`, user_id: me?.id || 'local', user_name: me?.full_name || 'Yo', user_avatar: me?.avatar_url, text, images, likes: 0, liked_by_me: false, comments: [], created_at: new Date().toISOString() };
+}
+async function toggleMomentLike(postId: string): Promise<boolean> {
+  try {
+    const BASE = (await import('../src/api')).getApiBase();
+    const token = await (await import('../src/api')).getToken();
+    const res = await fetch(`${BASE}/api/moments/${postId}/like`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+    if (res.ok) return (await res.json()).liked;
+  } catch {}
+  return true;
+}
+async function addMomentComment(postId: string, text: string): Promise<MomentComment | null> {
+  try {
+    const BASE = (await import('../src/api')).getApiBase();
+    const token = await (await import('../src/api')).getToken();
+    const res = await fetch(`${BASE}/api/moments/${postId}/comments`, {
+      method: 'POST', headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ text }),
+    });
+    if (res.ok) return res.json();
+  } catch {}
+  const me = await authAPI.me().catch(() => null);
+  return { id: `local-${Date.now()}`, user_id: me?.id || 'local', user_name: me?.full_name || 'Yo', text, created_at: new Date().toISOString() };
+}
+
+// ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
 export default function StoriesScreen() {
