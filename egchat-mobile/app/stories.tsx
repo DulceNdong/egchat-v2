@@ -687,6 +687,43 @@ export default function StoriesScreen() {
 
   useEffect(() => { loadStories(); }, [loadStories]);
 
+  // ── Moments helpers ──────────────────────────────────────────
+  const loadMoments = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setMomentRefreshing(true); else setMomentLoading(true);
+    try { const data = await fetchMomentsData(); setMomentPosts(data); }
+    finally { setMomentLoading(false); setMomentRefreshing(false); }
+  }, []);
+
+  useEffect(() => {
+    authAPI.me().then(me => setMomentCurrentUid(me?.id || '')).catch(() => {});
+  }, []);
+
+  const handleMomentLike = useCallback(async (postId: string) => {
+    setMomentPosts(prev => prev.map(p =>
+      p.id === postId ? { ...p, liked_by_me: !p.liked_by_me, likes: p.liked_by_me ? p.likes - 1 : p.likes + 1 } : p
+    ));
+    await toggleMomentLike(postId);
+  }, []);
+
+  const handleMomentComment = useCallback(async () => {
+    if (!commentingPost || !commentText.trim()) return;
+    const text = commentText.trim();
+    setCommentText('');
+    const comment = await addMomentComment(commentingPost, text);
+    if (comment) setMomentPosts(prev => prev.map(p => p.id === commentingPost ? { ...p, comments: [...p.comments, comment] } : p));
+  }, [commentingPost, commentText]);
+
+  const handleMomentCameraDone = useCallback(async (media: MomentMedia) => {
+    setShowMomentCamera(false);
+    let publicUrl = media.uri;
+    if (!media.uri.startsWith('http')) {
+      const uploaded = await uploadStoryMediaToSupabase(meId || 'unknown', media.uri, media.type === 'video' ? 'video' : 'image');
+      if (uploaded) publicUrl = uploaded;
+    }
+    pendingMediaRef.current = { ...media, uri: publicUrl };
+    setShowMomentCreate(true);
+  }, [meId]);
+
   const uploadStory = useCallback(async (uri: string, type: 'image' | 'video' = 'image') => {
     setUploading(true);
     try {
