@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
   View, Text, StyleSheet, TouchableOpacity, Alert,
-  Linking, Vibration, Dimensions, Animated,
+  Linking, Vibration, Dimensions, Animated, StatusBar,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Clipboard from 'expo-clipboard';
 import { router } from 'expo-router';
