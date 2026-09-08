@@ -320,6 +320,7 @@ export const HamburgerMenu = ({
     onClose();
     setTimeout(async () => {
       switch (id) {
+        case 'escanear-qr':    router.push('/_qr-scanner' as any); break;
         case 'perfil':         router.push('/ajustes/perfil' as any); break;
         case 'nuevo-contacto': router.push('/contacts' as any); break;
         case 'crear-grupo':    router.push('/new-chat' as any); break;
