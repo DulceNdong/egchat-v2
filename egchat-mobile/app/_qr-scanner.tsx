@@ -262,13 +262,13 @@ export default function QRScannerScreen() {
       </View>
 
       {/* Header */}
-      <SafeAreaView style={styles.header} edges={['top']}>
+      <View style={[styles.header, { paddingTop: insets.top + 8 }]}>
         <TouchableOpacity onPress={() => router.back()} style={styles.closeBtn}>
           <Text style={styles.closeBtnText}>✕</Text>
         </TouchableOpacity>
         <Text style={styles.title}>Escanear QR</Text>
         <View style={{ width: 40 }} />
-      </SafeAreaView>
+      </View>
 
       {/* Instrucción */}
       <View style={styles.hint}>
