@@ -744,6 +744,17 @@ export default function StoriesScreen() {
       await storiesAPI.create({ media: [{ url: mediaUrl, type }], music: storyMusic ?? undefined } as any);
       setStoryMusic(null);
       await loadStories();
+      // Notificar a contactos via push
+      try {
+        const me = await authAPI.me();
+        const stories = await storiesAPI.getAll();
+        const myLatest = Array.isArray(stories)
+          ? stories.find((s: any) => s.userId === me?.id || s.user_id === me?.id)
+          : null;
+        if (myLatest?.id && me?.full_name) {
+          notifyNewStory({ storyId: myLatest.id, authorName: me.full_name }).catch(() => {});
+        }
+      } catch {}
     } catch {
       Alert.alert('Error', 'No se pudo publicar el estado');
     } finally {
