@@ -413,7 +413,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
               {flash === 'on' ? <IcFlash size={22} /> : <IcFlashOff size={22} />}
             </TouchableOpacity>
           )}
-        </SafeAreaView>
+        </View>
 
         {/* Selector Foto / Video */}
         {!recording && (
