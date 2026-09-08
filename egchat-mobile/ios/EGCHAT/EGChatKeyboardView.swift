@@ -159,7 +159,6 @@ private final class KeyCalloutView: UIView {
     let path  = UIBezierPath(roundedRect: bRect, cornerRadius: radius)
 
     // Cola: triángulo centrado abajo del burbuja, apuntando hacia la tecla
-    let tailCX = bubbleW / 2
     // Ajustar la X de la cola para que apunte al centro real de la tecla
     let keyMidInLocal = keyFrame.midX - frame.minX
     let clampedTailCX = min(max(keyMidInLocal, tailW/2 + radius), bubbleW - tailW/2 - radius)
@@ -190,7 +189,6 @@ private final class KeyCalloutView: UIView {
              withAttributes: attrs)
 
     // Borde sutil (1 pt gris claro)
-    _ = tailCX  // silence unused warning
     UIColor(red: 0.78, green: 0.78, blue: 0.80, alpha: 1).setStroke()
     path.lineWidth = 0.5
     path.stroke()
