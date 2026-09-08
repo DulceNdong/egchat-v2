@@ -897,6 +897,19 @@ export default function StoriesScreen() {
           )}
         </View>
         <View style={st.headerActions}>
+          {/* Botón EN VIVO */}
+          <TouchableOpacity
+            style={[st.headerBtn, { backgroundColor: '#ff3b30', paddingHorizontal: 10, width: 'auto' as any, borderRadius: 16 }]}
+            onPress={() => setShowLive(true)}
+            activeOpacity={0.8}
+            accessibilityRole="button"
+            accessibilityLabel="Iniciar transmisión en vivo"
+          >
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' }} />
+              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>EN VIVO</Text>
+            </View>
+          </TouchableOpacity>
           <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir desde galería">
             <MIcon name="image" size={21} color={C.textSecondary} />
           </TouchableOpacity>
