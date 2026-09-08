@@ -999,6 +999,15 @@ function MensajeriaScreenInner() {
                   currentUserId={currentUserId}
                   staticRow
                   onLongPress={() => handleChatLongPress(item)}
+                  contentTypes={(() => {
+                    // Obtener userId del contacto (solo chats privados)
+                    if (item.type !== 'private') return undefined;
+                    const other = item.participants.find(
+                      (p: any) => String(p.user_id) !== String(currentUserId)
+                    );
+                    if (!other) return undefined;
+                    return newContentMap[other.user_id];
+                  })()}
                 />
               </SwipeChatItem>
             )}
