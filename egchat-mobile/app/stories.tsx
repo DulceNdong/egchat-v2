@@ -851,6 +851,20 @@ export default function StoriesScreen() {
   const [chCategory,   setChCategory]   = React.useState('Todos');
   const [chTab,        setChTab]        = React.useState<'discover'|'following'>('discover');
   const [chDetail,     setChDetail]     = React.useState<any | null>(null);
+  const [chSportFilter,setChSportFilter]= React.useState<string>('Todos');
+
+  const SPORT_FILTERS = [
+    { id: 'Todos', label: 'Todos', emoji: '🏆' },
+    { id: 'Futbol', label: 'Fútbol', emoji: '⚽' },
+    { id: 'Baloncesto', label: 'Basket', emoji: '🏀' },
+    { id: 'Tennis', label: 'Tenis', emoji: '🎾' },
+    { id: 'Atletismo', label: 'Atletismo', emoji: '🏃' },
+    { id: 'Natacion', label: 'Natación', emoji: '🏊' },
+    { id: 'Boxeo', label: 'Boxeo', emoji: '🥊' },
+    { id: 'Rugby', label: 'Rugby', emoji: '🏉' },
+    { id: 'Ciclismo', label: 'Ciclismo', emoji: '🚴' },
+    { id: 'Formula1', label: 'F1', emoji: '🏎️' },
+  ];
 
   const CH_CATEGORIES = [
     { id: 'Todos',          emoji: '🌐' },
@@ -1086,7 +1100,7 @@ export default function StoriesScreen() {
                     {chDetail.banner_url && <Image source={{ uri: chDetail.banner_url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />}
                   </LinearGradient>
                   <TouchableOpacity
-                    style={{ position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}
+                    style={{ position: 'absolute', top: 14, left: 14, width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' }}
                     onPress={() => setChDetail(null)}
                   >
                     <MIcon name="arrow-back" size={20} color="#fff" />
@@ -1120,37 +1134,98 @@ export default function StoriesScreen() {
                   </Text>
                 </View>
                 <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.borderLight }} />
+
+                {/* Sub-filtros deportivos */}
+                {chDetail.category === 'Deportes' && (
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    contentContainerStyle={{ paddingHorizontal: 12, gap: 6, paddingVertical: 8 }}
+                    style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight }}
+                  >
+                    {SPORT_FILTERS.map(sf => (
+                      <TouchableOpacity
+                        key={sf.id}
+                        onPress={() => setChSportFilter(sf.id)}
+                        style={{
+                          flexDirection: 'row', alignItems: 'center', gap: 4,
+                          paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
+                          backgroundColor: chSportFilter === sf.id ? '#16a34a' : C.bgTertiary,
+                          borderWidth: 1.5,
+                          borderColor: chSportFilter === sf.id ? '#16a34a' : C.borderLight,
+                        }}
+                        activeOpacity={0.8}
+                      >
+                        <Text style={{ fontSize: 13 }}>{sf.emoji}</Text>
+                        <Text style={{
+                          fontSize: 12, fontWeight: '700',
+                          color: chSportFilter === sf.id ? '#fff' : C.textSecondary,
+                        }}>{sf.label}</Text>
+                      </TouchableOpacity>
+                    ))}
+                  </ScrollView>
+                )}
+
                 {/* Posts del canal */}
-                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-                  {chDetail.posts?.length > 0 ? chDetail.posts.map((p: any) => (
-                    <View key={p.id} style={[chst.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'center' }}>
-                        <View style={[chst.postAvatar, { backgroundColor: BRAND }]}>
-                          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{(p.avatar||chDetail.name||'?').slice(0,2).toUpperCase()}</Text>
+                <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 40 }}>
+                  {(() => {
+                    const allPosts = chDetail.posts || [];
+                    const filtered = chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
+                      ? allPosts.filter((p: any) => p.sport === chSportFilter || p.category === chSportFilter || (p.tags || []).includes(chSportFilter))
+                      : allPosts;
+                    if (filtered.length === 0) {
+                      return (
+                        <View style={{ alignItems: 'center', paddingVertical: 48 }}>
+                          <MIcon name="sports" size={52} color={C.border} />
+                          <Text style={{ color: C.textSecondary, marginTop: 14, fontSize: 16, fontWeight: '700' }}>
+                            {chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
+                              ? `Sin noticias de ${SPORT_FILTERS.find(s => s.id === chSportFilter)?.label || chSportFilter}`
+                              : 'Sin publicaciones aun'}
+                          </Text>
+                          <Text style={{ color: C.textTertiary, marginTop: 6, fontSize: 13, textAlign: 'center', paddingHorizontal: 24 }}>
+                            {chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
+                              ? 'Prueba otra modalidad o vuelve mas tarde'
+                              : 'Las publicaciones del canal aparecerán aquí'}
+                          </Text>
                         </View>
-                        <View style={{ flex: 1 }}>
-                          <Text style={{ color: C.textPrimary, fontSize: 13, fontWeight: '700' }}>{p.author||chDetail.name}</Text>
-                          <Text style={{ color: C.textTertiary, fontSize: 11 }}>{p.time||''}{p.isOfficial ? ' · Oficial' : ''}</Text>
+                      );
+                    }
+                    return filtered.map((p: any) => (
+                      <View key={p.id} style={[chst.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
+                        {/* Etiqueta de deporte si aplica */}
+                        {p.sport && (
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
+                            <Text style={{ fontSize: 11 }}>
+                              {SPORT_FILTERS.find(s => s.id === p.sport)?.emoji || '🏆'}
+                            </Text>
+                            <Text style={{ fontSize: 11, fontWeight: '700', color: '#16a34a' }}>{p.sport}</Text>
+                          </View>
+                        )}
+                        <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'center' }}>
+                          <View style={[chst.postAvatar, { backgroundColor: BRAND }]}>
+                            <Text style={{ color: '#fff', fontWeight: '800', fontSize: 11 }}>
+                              {(p.avatar||chDetail.name||'?').slice(0,2).toUpperCase()}
+                            </Text>
+                          </View>
+                          <View style={{ flex: 1 }}>
+                            <Text style={{ color: C.textPrimary, fontSize: 13, fontWeight: '700' }}>{p.author||chDetail.name}</Text>
+                            <Text style={{ color: C.textTertiary, fontSize: 11 }}>{p.time||''}{p.isOfficial ? ' · Oficial' : ''}</Text>
+                          </View>
+                        </View>
+                        <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 21 }}>{p.text}</Text>
+                        <View style={{ flexDirection: 'row', gap: 16, marginTop: 10 }}>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <MIcon name="favorite-border" size={14} color={C.textTertiary} />
+                            <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.likes||0}</Text>
+                          </View>
+                          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                            <MIcon name="chat-bubble-outline" size={14} color={C.textTertiary} />
+                            <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.comments||0}</Text>
+                          </View>
                         </View>
                       </View>
-                      <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 20 }}>{p.text}</Text>
-                      <View style={{ flexDirection: 'row', gap: 16, marginTop: 10 }}>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <MIcon name="favorite-border" size={14} color={C.textTertiary} />
-                          <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.likes||0}</Text>
-                        </View>
-                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-                          <MIcon name="chat-bubble-outline" size={14} color={C.textTertiary} />
-                          <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.comments||0}</Text>
-                        </View>
-                      </View>
-                    </View>
-                  )) : (
-                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
-                      <MIcon name="campaign" size={48} color={C.border} />
-                      <Text style={{ color: C.textSecondary, marginTop: 12, fontSize: 15, fontWeight: '600' }}>Sin publicaciones aun</Text>
-                    </View>
-                  )}
+                    ));
+                  })()}
                 </ScrollView>
               </>
             )}
@@ -1163,11 +1238,11 @@ export default function StoriesScreen() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle="light-content" backgroundColor="#00C8A0" translucent />
 
       {/* HEADER */}
-      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[st.header, { paddingTop: insets.top + 10 }]}>
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[st.header, { paddingTop: 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
           <MIcon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>

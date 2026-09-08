@@ -707,13 +707,12 @@ const styles = StyleSheet.create({
   profileStatus: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginTop: 2 },
 
   // Quick actions
-  quickActions: { flexDirection: 'row', gap: 8, marginTop: 20, paddingHorizontal: 4 },
-  quickAction: { alignItems: 'center', gap: 6, flex: 1 },
+  quickActions: { flexDirection: 'row', gap: 4, marginTop: 16, paddingHorizontal: 8, marginBottom: 4 },
+  quickAction: { alignItems: 'center', gap: 5, flex: 1 },
   quickActionCircle: {
-    width: 50, height: 50, borderRadius: 25,
-    borderWidth: 1.5, borderColor: '#E5E7EB',
+    width: 46, height: 46, borderRadius: 23,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: 'transparent',
   },
   quickActionLabel: { fontSize: 11, color: '#6B7280', fontWeight: '600' },
 
