@@ -238,8 +238,8 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
           contentTypes={contentTypes}
         />
         {chat.type === 'group' && (
-          <View style={st.groupBadge}>
-            <Text style={st.groupBadgeText}>👥</Text>
+          <View style={[st.groupBadge, chat.name?.startsWith('💰') && st.groupBadgeDjangue]}>
+            <Text style={st.groupBadgeText}>{chat.name?.startsWith('💰') ? '💰' : '👥'}</Text>
           </View>
         )}
       </View>
