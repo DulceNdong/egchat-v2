@@ -363,7 +363,7 @@ export default function MomentsScreen() {
             keyExtractor={p => p.id}
             renderItem={renderPost}
             refreshControl={<RefreshControl refreshing={refreshing} onRefresh={() => load(true)} colors={['#00C8A0']} />}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1, backgroundColor: C.bgPrimary }}
             ListEmptyComponent={
               <View style={s.empty}>
                 <View style={[s.emptyIconWrap, { backgroundColor: isDark ? '#1a2530' : '#f0faf6' }]}>
