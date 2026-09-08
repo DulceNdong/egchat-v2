@@ -628,6 +628,7 @@ export default function StoriesScreen() {
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
   const [myStoryMenu,  setMyStoryMenu]  = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showLive,     setShowLive]     = useState(false);
   // ── Momentos state ────────────────────────────────────────────
   const [momentPosts,     setMomentPosts]     = useState<MomentPost[]>([]);
   const [momentLoading,   setMomentLoading]   = useState(false);
