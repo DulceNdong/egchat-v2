@@ -77,6 +77,7 @@ interface Chat {
 
 type FilterType = 'individual' | 'grupos' | 'dinero' | 'archivar';
 type ArchiveSubFilter = 'individual' | 'group';
+type GroupSubFilter = 'all' | 'normal' | 'djangue';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const formatTime = (dateStr: string) => {
