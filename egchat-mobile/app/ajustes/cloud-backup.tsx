@@ -81,7 +81,7 @@ export default function CloudBackupScreen() {
         <Text style={s.headerTitle}>Backup en la nube</Text>
       </LinearGradient>
 
-      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80 }}>
+      <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80, backgroundColor: C.bgPrimary }}>
         {/* Estado actual */}
         <View style={[s.statusCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
           <View style={s.statusIcon}>

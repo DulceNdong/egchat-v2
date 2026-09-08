@@ -181,7 +181,7 @@ export default function BusinessProfileScreen() {
       </View>
 
       {tab === 'profile' ? (
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, backgroundColor: C.bgPrimary }}>
           {/* Avatar */}
           <TouchableOpacity style={s.avatarWrap} onPress={handlePickAvatar}>
             <EGAvatar src={profile.avatar} name={profile.name || 'Empresa'} size={80} />
@@ -253,7 +253,7 @@ export default function BusinessProfileScreen() {
           <FlatList
             data={catalog}
             keyExtractor={i => i.id}
-            contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 80 }}
+            contentContainerStyle={{ padding: 12, paddingBottom: insets.bottom + 80, backgroundColor: C.bgPrimary }}
             numColumns={2}
             columnWrapperStyle={{ gap: 10 }}
             ListEmptyComponent={
@@ -389,7 +389,7 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
             </Svg>
           </TouchableOpacity>
         </LinearGradient>
-        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40 }}>
+        <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, backgroundColor: C.bgPrimary }}>
           <TouchableOpacity style={s.imgPicker} onPress={handlePickImage}>
             {image
               ? <Image source={{ uri: image }} style={{ width: '100%', height: 160, borderRadius: 12 }} resizeMode="cover" />
