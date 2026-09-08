@@ -5,6 +5,7 @@ import {
   View, Text, TouchableOpacity, ScrollView, StyleSheet,
   Modal, SafeAreaView, Switch, Alert, Image, TextInput,
 } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from './Avatar';
 import Svg, { Path, Rect, Circle, Line, Polyline, Polygon, G } from 'react-native-svg';
 
