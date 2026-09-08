@@ -2386,10 +2386,12 @@ const chst = StyleSheet.create({
   // ── CARD de canal ─────────────────────────────────────────────
   channelCard:  { borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, marginBottom: 2 },
 
-  // Banner compacto
-  bannerWrap:   { height: 72, position: 'relative', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  // Banner limpio — fondo neutro + icono SVG
+  bannerWrap:   { height: 68, position: 'relative', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  bannerIconWrap: { width: 48, height: 48, borderRadius: 14, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(0,0,0,0.05)' },
+  bannerAccent: { position: 'absolute', bottom: 0, left: 0, right: 0, height: 2, opacity: 0.7 },
   bannerEmoji:  { fontSize: 28, opacity: 0.85 },
-  officialBadge:{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.40)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  officialBadge:{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.30)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
   officialText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
   // Fila inferior de la card
