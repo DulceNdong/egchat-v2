@@ -45,6 +45,8 @@ import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
+import { useNewContentIndicators, type ContentType } from '../../src/hooks/useNewContentIndicators';
+import { AvatarWithRing } from '../../src/components/AvatarWithRing';
 import {
   Colors, Typography, Spacing, BorderRadius,
   FontSize, FontWeight, Shadow,
