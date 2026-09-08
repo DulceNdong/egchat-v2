@@ -497,6 +497,8 @@ final class EGChatKeyboardView: UIView {
     for (i,k) in keys.enumerated() {
       let btn = KB(k, fLetter, cText, cNorm)
       btn.frame = CGRect(x: startX+CGFloat(i)*(keyW+hGap), y: y, width: keyW, height: rowH)
+      btn.showsKeyPopup = true
+      btn.popupContainer = self
       btn.onTap = { [weak self] in self?.handle(k) }
       kbView.addSubview(btn)
     }
