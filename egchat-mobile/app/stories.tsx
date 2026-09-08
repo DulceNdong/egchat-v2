@@ -628,6 +628,16 @@ export default function StoriesScreen() {
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
   const [myStoryMenu,  setMyStoryMenu]  = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  // ── Momentos state ────────────────────────────────────────────
+  const [momentPosts,     setMomentPosts]     = useState<MomentPost[]>([]);
+  const [momentLoading,   setMomentLoading]   = useState(false);
+  const [momentRefreshing,setMomentRefreshing]= useState(false);
+  const [momentCurrentUid,setMomentCurrentUid]= useState('');
+  const [commentingPost,  setCommentingPost]  = useState<string | null>(null);
+  const [commentText,     setCommentText]     = useState('');
+  const [showMomentCreate,setShowMomentCreate]= useState(false);
+  const [showMomentCamera,setShowMomentCamera]= useState(false);
+  const pendingMediaRef = React.useRef<MomentMedia | null>(null);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const buStyles  = makeBuStyles(C);

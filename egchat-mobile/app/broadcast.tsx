@@ -103,7 +103,7 @@ export default function BroadcastScreen() {
   }, [message, selected]);
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['top','bottom','left','right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['left','right']}>
       <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity
           onPress={step === 1 ? () => router.back() : () => setStep(1)}
