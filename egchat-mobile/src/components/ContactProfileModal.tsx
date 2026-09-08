@@ -306,25 +306,48 @@ export const ContactProfileModal: React.FC<Props> = ({
 
           <ScrollView style={{ flex: 1 }} showsVerticalScrollIndicator={false}>
 
-            {/* ── Avatar + nombre ── */}
-            <View style={styles.profileSection}>
-              <TouchableOpacity onPress={() => setShowPhotoModal(true)} activeOpacity={0.85}>
-                <Avatar
-                  name={cp.title || cp.name || '?'}
-                  size={100}
-                  photo={cp.avatarUrl || cp.avatar_url || cp.photo}
-                  status={cp.status}
-                  showStatus={!isGroup}
-                />
+            {/* ── Banner + Avatar superpuesto + nombre ── */}
+            <View style={styles.profileHeader}>
+              {/* PORTADA */}
+              <TouchableOpacity onPress={() => setShowPhotoModal(true)} activeOpacity={0.88} style={styles.bannerTouch}>
+                {cp.banner_url ? (
+                  <Image source={{ uri: cp.banner_url }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" />
+                ) : (
+                  <LinearGradient
+                    colors={isGroup ? ['#7c3aed', '#00B4E6'] : ['#00C8A0', '#00B4E6']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+                    style={StyleSheet.absoluteFillObject as any}
+                  />
+                )}
+                <View style={styles.bannerOverlay} />
               </TouchableOpacity>
-              <Text style={styles.profileName}>{cp.title || cp.name}</Text>
-              <Text style={[
-                styles.profileStatus,
-                cp.status === 'online' && { color: '#22c55e' },
-                cp.status === 'away' && { color: '#f59e0b' },
-              ]}>
-                {cp.status === 'online' ? 'En línea' : cp.status === 'away' ? 'Ausente' : 'Desconectado'}
-              </Text>
+
+              {/* AVATAR superpuesto en borde del banner */}
+              <View style={styles.avatarOverlapRow}>
+                <TouchableOpacity onPress={() => setShowPhotoModal(true)} activeOpacity={0.85} style={styles.avatarOverlapWrap}>
+                  <Avatar
+                    name={cp.title || cp.name || '?'}
+                    size={86}
+                    photo={cp.avatarUrl || cp.avatar_url || cp.photo}
+                    status={cp.status}
+                    showStatus={!isGroup}
+                  />
+                  {/* Estado online como borde de color */}
+                  {!isGroup && cp.status === 'online' && <View style={styles.onlineDot} />}
+                </TouchableOpacity>
+
+                {/* Nombre y estado a la derecha */}
+                <View style={styles.nameBlock}>
+                  <Text style={styles.profileName} numberOfLines={1}>{cp.title || cp.name}</Text>
+                  <Text style={[
+                    styles.profileStatus,
+                    cp.status === 'online' && { color: '#22c55e' },
+                    cp.status === 'away' && { color: '#f59e0b' },
+                  ]}>
+                    {cp.status === 'online' ? '● En linea' : cp.status === 'away' ? '● Ausente' : '○ Desconectado'}
+                  </Text>
+                </View>
+              </View>
 
               {/* Acciones rápidas */}
               <View style={styles.quickActions}>
@@ -650,14 +673,38 @@ const styles = StyleSheet.create({
   headerBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: 17, fontWeight: '700', color: '#111827' },
 
-  // Perfil
-  profileSection: {
-    backgroundColor: '#fff', paddingVertical: 28, paddingHorizontal: 16,
-    alignItems: 'center', gap: 6,
+  // Perfil — banner + avatar superpuesto
+  profileHeader: {
+    backgroundColor: '#fff',
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#E5E7EB',
+    paddingBottom: 16,
   },
-  profileName: { fontSize: 22, fontWeight: '800', color: '#111827', marginTop: 10, textAlign: 'center' },
-  profileStatus: { fontSize: 13, fontWeight: '500', color: '#6B7280' },
+  bannerTouch: {
+    height: 150, position: 'relative', overflow: 'hidden',
+  },
+  bannerOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.08)',
+  },
+  avatarOverlapRow: {
+    flexDirection: 'row', alignItems: 'flex-end',
+    paddingHorizontal: 16, marginTop: -43, gap: 12,
+  },
+  avatarOverlapWrap: {
+    width: 92, height: 92, borderRadius: 46,
+    borderWidth: 3, borderColor: '#fff', overflow: 'hidden',
+    backgroundColor: '#f3f4f6', position: 'relative',
+  },
+  onlineDot: {
+    position: 'absolute', bottom: 4, right: 4,
+    width: 16, height: 16, borderRadius: 8,
+    backgroundColor: '#22c55e', borderWidth: 2, borderColor: '#fff',
+  },
+  nameBlock: {
+    flex: 1, paddingBottom: 4, paddingTop: 46,
+  },
+  profileName: { fontSize: 19, fontWeight: '800', color: '#111827', letterSpacing: -0.2 },
+  profileStatus: { fontSize: 12, fontWeight: '600', color: '#6B7280', marginTop: 2 },
 
   // Quick actions
   quickActions: { flexDirection: 'row', gap: 8, marginTop: 20, paddingHorizontal: 4 },

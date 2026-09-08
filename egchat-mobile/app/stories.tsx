@@ -1942,8 +1942,11 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         {/* Feed de comentarios */}
         {isLive && (
           <View style={[lv.commentsPanel, { bottom: insets.bottom + 80 }]}>
-            <ScrollView ref={scrollRef} style={{ maxHeight: 180 }}
-              onContentSizeChange={() => scrollRef.current?.scrollToEnd?.({ animated: true })}
+            <ScrollView
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              ref={scrollRef as any}
+              style={{ maxHeight: 180 }}
+              onContentSizeChange={() => (scrollRef.current as any)?.scrollToEnd?.({ animated: true })}
               showsVerticalScrollIndicator={false}>
               {comments.map(c => (
                 <View key={c.id} style={lv.commentRow}>
