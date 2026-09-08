@@ -326,6 +326,9 @@ function MensajeriaScreenInner() {
   const [showWeather, setShowWeather] = useState(false);
   // Clima y notificaciones desde el store global
   const { weather, notifications } = useAppStore();
+
+  // ── Indicadores de contenido nuevo (anillo en avatares) ───────
+  const { indicators: newContentMap } = useNewContentIndicators(currentUserId);
   const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
   const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
   const [archivedChats, setArchivedChats] = useState<ArchivedChat[]>([]);
