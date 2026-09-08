@@ -22,6 +22,7 @@ import { DarkColors } from '../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
 import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
+import { notifyNewMoment } from '../src/notifications';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface MomentPost {
