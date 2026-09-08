@@ -4,7 +4,7 @@
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
-  View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView,
+  View, Text, FlatList, TouchableOpacity, StyleSheet, ScrollView, RefreshControl,
   Modal, Pressable, ActivityIndicator, Image, Dimensions,
   Animated, Alert, TextInput, Platform, StatusBar,
   KeyboardAvoidingView,
@@ -32,8 +32,6 @@ import Svg, { Path, Circle, Rect, G } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
-import { toast } from '../src/components/Toast';
-import { FlatList, RefreshControl } from 'react-native';
 
 const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000;
@@ -1273,4 +1271,395 @@ const stAdd = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
+});
+
+// ══════════════════════════════════════════════════════════════════
+// LIVE STREAM MODAL
+// Broadcast en vivo: cámara + reacciones en tiempo real
+// Espectadores se conectan via Supabase Realtime
+// ══════════════════════════════════════════════════════════════════
+import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
+import { getToken, getApiBase } from '../src/api';
+import { supabase } from '../src/supabase';
+
+interface LiveReaction { id: string; emoji: string; userName: string; }
+interface LiveComment  { id: string; text: string; userName: string; createdAt: number; }
+interface LiveViewer   { userId: string; userName: string; avatarUrl?: string; }
+
+interface LiveStreamModalProps {
+  visible: boolean;
+  hostId: string;
+  hostName: string;
+  hostAvatar?: string;
+  onClose: () => void;
+}
+
+const LIVE_REACTIONS = ['❤️', '🔥', '😂', '👏', '😮', '💯', '🎉', '✨'];
+
+function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: LiveStreamModalProps) {
+  const insets = useSafeAreaInsets();
+  const { isDark } = useThemeContext();
+
+  // Permisos
+  const [camPerm, requestCamPerm] = useCameraPermissions();
+  const [micPerm, requestMicPerm] = useMicrophonePermissions();
+
+  // Estado del live
+  const [isLive,       setIsLive]       = useState(false);
+  const [liveId,       setLiveId]       = useState<string | null>(null);
+  const [viewers,      setViewers]      = useState<LiveViewer[]>([]);
+  const [reactions,    setReactions]    = useState<LiveReaction[]>([]);
+  const [comments,     setComments]     = useState<LiveComment[]>([]);
+  const [commentDraft, setCommentDraft] = useState('');
+  const [facing,       setFacing]       = useState<CameraType>('front');
+  const [flash,        setFlash]        = useState<'off' | 'on'>('off');
+  const [duration,     setDuration]     = useState(0);
+  const [showEffects,  setShowEffects]  = useState(false);
+  const [selectedEffect, setSelectedEffect] = useState<string>('none');
+
+  const cameraRef    = useRef<CameraView>(null);
+  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
+  const channelRef   = useRef<any>(null);
+  const commentsEnd  = useRef<any>(null);
+
+  // ── Efectos de cámara disponibles ─────────────────────────────
+  const EFFECTS = [
+    { id: 'none',    label: 'Normal',   emoji: '🎥' },
+    { id: 'beauty',  label: 'Beauty',   emoji: '✨' },
+    { id: 'retro',   label: 'Retro',    emoji: '📷' },
+    { id: 'vivid',   label: 'Vívido',   emoji: '🌈' },
+    { id: 'dramatic',label: 'Dramático',emoji: '🎭' },
+    { id: 'neon',    label: 'Neón',     emoji: '💜' },
+  ];
+
+  // ── Limpiar al cerrar ──────────────────────────────────────────
+  useEffect(() => {
+    if (!visible) {
+      stopLive();
+    }
+  }, [visible]);
+
+  // ── Iniciar live ───────────────────────────────────────────────
+  const startLive = useCallback(async () => {
+    if (!camPerm?.granted) { await requestCamPerm(); }
+    if (!micPerm?.granted) { await requestMicPerm(); }
+    if (!camPerm?.granted || !micPerm?.granted) {
+      Alert.alert('Permisos', 'Necesitas cámara y micrófono para el live');
+      return;
+    }
+
+    try {
+      const BASE  = getApiBase();
+      const token = await getToken();
+      const res   = await fetch(`${BASE}/api/live/start`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title: 'En vivo' }),
+      });
+
+      let id = `live-${Date.now()}`;
+      if (res.ok) {
+        const data = await res.json();
+        id = data.liveId || id;
+      }
+
+      setLiveId(id);
+      setIsLive(true);
+      setDuration(0);
+
+      // Timer de duración
+      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+
+      // Suscribirse al canal Supabase Realtime para recibir reacciones y comentarios
+      const channel = supabase.channel(`live:${id}`)
+        .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
+          const r: LiveReaction = { id: `r-${Date.now()}-${Math.random()}`, emoji: payload.emoji, userName: payload.userName };
+          setReactions(prev => [...prev.slice(-20), r]);
+          // Eliminar reacción flotante tras 3s
+          setTimeout(() => setReactions(prev => prev.filter(x => x.id !== r.id)), 3000);
+        })
+        .on('broadcast', { event: 'comment' }, ({ payload }: any) => {
+          const c: LiveComment = { id: `c-${Date.now()}`, text: payload.text, userName: payload.userName, createdAt: Date.now() };
+          setComments(prev => [...prev.slice(-50), c]);
+        })
+        .on('broadcast', { event: 'viewer_join' }, ({ payload }: any) => {
+          setViewers(prev => {
+            const exists = prev.find(v => v.userId === payload.userId);
+            if (exists) return prev;
+            return [...prev, { userId: payload.userId, userName: payload.userName, avatarUrl: payload.avatarUrl }];
+          });
+        })
+        .on('broadcast', { event: 'viewer_leave' }, ({ payload }: any) => {
+          setViewers(prev => prev.filter(v => v.userId !== payload.userId));
+        })
+        .subscribe();
+
+      channelRef.current = channel;
+    } catch (e) {
+      Alert.alert('Error', 'No se pudo iniciar el live');
+    }
+  }, [camPerm, micPerm, requestCamPerm, requestMicPerm]);
+
+  // ── Detener live ───────────────────────────────────────────────
+  const stopLive = useCallback(async () => {
+    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
+    if (channelRef.current) {
+      await supabase.removeChannel(channelRef.current);
+      channelRef.current = null;
+    }
+    if (liveId) {
+      try {
+        const BASE  = getApiBase();
+        const token = await getToken();
+        await fetch(`${BASE}/api/live/${liveId}/end`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      } catch {}
+    }
+    setIsLive(false);
+    setLiveId(null);
+    setViewers([]);
+    setReactions([]);
+    setComments([]);
+    setDuration(0);
+  }, [liveId]);
+
+  // ── Enviar comentario del host ─────────────────────────────────
+  const sendComment = useCallback(async () => {
+    const text = commentDraft.trim();
+    if (!text || !liveId) return;
+    setCommentDraft('');
+    const c: LiveComment = { id: `c-${Date.now()}`, text, userName: hostName || 'Yo', createdAt: Date.now() };
+    setComments(prev => [...prev.slice(-50), c]);
+    try {
+      await channelRef.current?.send({ type: 'broadcast', event: 'comment', payload: { text, userName: hostName || 'Yo' } });
+    } catch {}
+  }, [commentDraft, liveId, hostName]);
+
+  const formatDuration = (s: number) =>
+    `${Math.floor(s / 3600).toString().padStart(2, '0')}:${Math.floor((s % 3600) / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
+
+  if (!visible) return null;
+
+  return (
+    <Modal visible={visible} animationType="slide" statusBarTranslucent onRequestClose={() => { stopLive(); onClose(); }}>
+      <View style={lv.root}>
+        {/* Fondo — cámara o negro si no está en live */}
+        {isLive ? (
+          <CameraView
+            ref={cameraRef}
+            style={StyleSheet.absoluteFill}
+            facing={facing}
+            flash={flash}
+          />
+        ) : (
+          <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={StyleSheet.absoluteFill} />
+        )}
+
+        {/* Overlay suave */}
+        <View style={lv.overlay} pointerEvents="none" />
+
+        {/* ── HEADER ─────────────────────────────────────────── */}
+        <SafeAreaView style={lv.header}>
+          <TouchableOpacity
+            style={lv.closeBtn}
+            onPress={() => { Alert.alert('Terminar live', '¿Quieres terminar la transmisión?', [
+              { text: 'Cancelar', style: 'cancel' },
+              { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
+            ]); }}
+          >
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+              <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
+            </Svg>
+          </TouchableOpacity>
+
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            {isLive ? (
+              <View style={lv.liveBadge}>
+                <View style={lv.liveDot} />
+                <Text style={lv.liveBadgeText}>EN VIVO  {formatDuration(duration)}</Text>
+              </View>
+            ) : (
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Live</Text>
+            )}
+          </View>
+
+          {/* Contador de espectadores */}
+          <View style={lv.viewersBadge}>
+            <Text style={{ fontSize: 13 }}>👁️</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{viewers.length}</Text>
+          </View>
+        </SafeAreaView>
+
+        {/* ── REACCIONES FLOTANTES ────────────────────────────── */}
+        <View style={lv.floatingReactions} pointerEvents="none">
+          {reactions.map(r => (
+            <Animated.Text key={r.id} style={lv.floatingEmoji}>{r.emoji}</Animated.Text>
+          ))}
+        </View>
+
+        {/* ── PANEL LATERAL ───────────────────────────────────── */}
+        {isLive && (
+          <View style={[lv.sidebar, { bottom: insets.bottom + 200 }]}>
+            {/* Voltear cámara */}
+            <TouchableOpacity style={lv.sideBtn} onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}>
+              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                <Path d="M1 4v6h6" /><Path d="M23 20v-6h-6" />
+                <Path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
+              </Svg>
+            </TouchableOpacity>
+            {/* Flash */}
+            <TouchableOpacity style={lv.sideBtn} onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')}>
+              <Text style={{ fontSize: 22 }}>{flash === 'off' ? '⚡' : '🔦'}</Text>
+            </TouchableOpacity>
+            {/* Efectos */}
+            <TouchableOpacity style={[lv.sideBtn, showEffects && lv.sideBtnActive]} onPress={() => setShowEffects(s => !s)}>
+              <Text style={{ fontSize: 22 }}>🎭</Text>
+              <Text style={lv.sideBtnLabel}>Efectos</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+
+        {/* ── PANEL DE EFECTOS ────────────────────────────────── */}
+        {showEffects && isLive && (
+          <View style={[lv.effectsPanel, { bottom: insets.bottom + 200 }]}>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 12 }}>
+              {EFFECTS.map(ef => (
+                <TouchableOpacity
+                  key={ef.id}
+                  style={[lv.effectBtn, selectedEffect === ef.id && lv.effectBtnActive]}
+                  onPress={() => { setSelectedEffect(ef.id); setShowEffects(false); }}
+                >
+                  <Text style={{ fontSize: 24 }}>{ef.emoji}</Text>
+                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{ef.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── COMENTARIOS ─────────────────────────────────────── */}
+        {isLive && (
+          <View style={[lv.commentsPanel, { bottom: insets.bottom + 70 }]}>
+            <ScrollView
+              ref={commentsEnd}
+              style={{ maxHeight: 200 }}
+              onContentSizeChange={() => commentsEnd.current?.scrollToEnd?.({ animated: true })}
+              showsVerticalScrollIndicator={false}
+            >
+              {comments.map(c => (
+                <View key={c.id} style={lv.commentRow}>
+                  <Text style={lv.commentUser}>{c.userName} </Text>
+                  <Text style={lv.commentText}>{c.text}</Text>
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        {/* ── INPUT DE COMENTARIO (host) ───────────────────────── */}
+        {isLive && (
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+            style={[lv.inputWrap, { paddingBottom: insets.bottom + 12 }]}
+          >
+            <View style={lv.inputRow}>
+              <TextInput
+                style={lv.input}
+                value={commentDraft}
+                onChangeText={setCommentDraft}
+                placeholder="Escribe un comentario..."
+                placeholderTextColor="rgba(255,255,255,0.4)"
+                returnKeyType="send"
+                onSubmitEditing={sendComment}
+              />
+              <TouchableOpacity onPress={sendComment} disabled={!commentDraft.trim()} style={lv.sendBtn}>
+                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={commentDraft.trim() ? '#00C8A0' : 'rgba(255,255,255,0.3)'} strokeWidth={2} strokeLinecap="round">
+                  <Line x1="22" y1="2" x2="11" y2="13" /><Polyline points="22 2 15 22 11 13 2 9 22 2" />
+                </Svg>
+              </TouchableOpacity>
+            </View>
+          </KeyboardAvoidingView>
+        )}
+
+        {/* ── BOTÓN INICIAR / STOP ─────────────────────────────── */}
+        {!isLive ? (
+          <View style={[lv.startWrap, { paddingBottom: insets.bottom + 32 }]}>
+            <Text style={lv.startHint}>Tus contactos recibirán una notificación</Text>
+            <TouchableOpacity style={lv.startBtn} onPress={startLive} activeOpacity={0.85}>
+              <LinearGradient colors={['#ff3b30', '#ff6b35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={lv.startBtnGrad}>
+                <View style={lv.startDot} />
+                <Text style={lv.startBtnText}>Iniciar transmisión en vivo</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onClose} style={{ marginTop: 14 }}>
+              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={[lv.stopWrap, { paddingBottom: insets.bottom + 32 }]}>
+            <TouchableOpacity
+              style={lv.stopBtn}
+              onPress={() => Alert.alert('Terminar live', '¿Seguro?', [
+                { text: 'Cancelar', style: 'cancel' },
+                { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
+              ])}
+            >
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>⏹ Terminar live</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+    </Modal>
+  );
+}
+
+// ── Estilos Live ──────────────────────────────────────────────────
+const lv = StyleSheet.create({
+  root:            { flex: 1, backgroundColor: '#000' },
+  overlay:         { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
+  header:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 },
+  closeBtn:        { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
+  liveBadge:       { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ff3b30', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16 },
+  liveDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
+  liveBadgeText:   { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
+  viewersBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14 },
+
+  // Reacciones flotantes
+  floatingReactions: { position: 'absolute', right: 16, bottom: '35%', gap: 8, alignItems: 'center' },
+  floatingEmoji:     { fontSize: 36, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
+
+  // Sidebar
+  sidebar:         { position: 'absolute', right: 14, gap: 12 },
+  sideBtn:         { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', gap: 2 },
+  sideBtnActive:   { backgroundColor: 'rgba(0,200,160,0.3)', borderWidth: 1.5, borderColor: '#00C8A0' },
+  sideBtnLabel:    { color: '#fff', fontSize: 9, fontWeight: '600' },
+
+  // Efectos
+  effectsPanel:    { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.75)', paddingVertical: 12 },
+  effectBtn:       { alignItems: 'center', gap: 4, padding: 8, borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent', minWidth: 64 },
+  effectBtnActive: { borderColor: '#00C8A0', backgroundColor: 'rgba(0,200,160,0.2)' },
+
+  // Comentarios
+  commentsPanel:   { position: 'absolute', left: 12, right: 70 },
+  commentRow:      { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
+  commentUser:     { color: '#00C8A0', fontWeight: '700', fontSize: 13 },
+  commentText:     { color: '#fff', fontSize: 13 },
+
+  // Input
+  inputWrap:       { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 12 },
+  inputRow:        { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 24, paddingHorizontal: 14, paddingVertical: 8 },
+  input:           { flex: 1, color: '#fff', fontSize: 14 },
+  sendBtn:         { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+
+  // Start / Stop
+  startWrap:       { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 24 },
+  startHint:       { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 16, textAlign: 'center' },
+  startBtn:        { width: '100%', borderRadius: 30, overflow: 'hidden' },
+  startBtnGrad:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
+  startDot:        { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
+  startBtnText:    { color: '#fff', fontWeight: '800', fontSize: 17 },
+  stopWrap:        { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 24 },
+  stopBtn:         { backgroundColor: 'rgba(255,59,48,0.85)', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
 });
