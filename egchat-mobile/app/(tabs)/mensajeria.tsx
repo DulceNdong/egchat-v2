@@ -212,8 +212,9 @@ const IconRefresh = () => (
 );
 
 // ── ChatItem ──────────────────────────────────────────────────────
-const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow }: {
+const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow, contentTypes }: {
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
+  contentTypes?: ContentType[];
 }) => {
   const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
   const chatName = chat.type === 'private'
@@ -227,9 +228,14 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
 
   const body = (
     <>
-      {/* Avatar con badge de grupo */}
+      {/* Avatar con anillo de contenido nuevo */}
       <View style={{ position: 'relative' }}>
-        <EGAvatar src={avatarSrc} name={chatName} size={50} />
+        <AvatarWithRing
+          src={avatarSrc}
+          name={chatName}
+          size={50}
+          contentTypes={contentTypes}
+        />
         {chat.type === 'group' && (
           <View style={st.groupBadge}>
             <Text style={st.groupBadgeText}>👥</Text>
