@@ -2399,8 +2399,7 @@ const chst = StyleSheet.create({
   cardAvatar:   { borderRadius: 22, borderWidth: 2.5, overflow: 'hidden' },
   cardInfo:     { flex: 1, minWidth: 0 },
   chName:       { fontSize: 14, fontWeight: '700', letterSpacing: -0.1 },
-  catTag:       { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
-  catTagText:   { fontSize: 10, fontWeight: '700' },
+  catTagText:   { fontSize: 11, fontWeight: '700' },
   chFollowers:  { fontSize: 10 },
   chDesc:       { fontSize: 11, lineHeight: 15, marginTop: 2 },
 
