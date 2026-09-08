@@ -464,6 +464,12 @@ function CreatePostModal({
         setText('');
         setImages([]);
         toast.success('¡Moment publicado! 🎉');
+        // Notificar a contactos via push
+        notifyNewMoment({
+          momentId: post.id,
+          authorName: post.user_name,
+          preview: text.trim() || (images.length > 0 ? '📸 Nueva foto' : undefined),
+        }).catch(() => {});
       }
     } finally {
       setCreating(false);
