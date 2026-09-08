@@ -710,13 +710,19 @@ function MensajeriaScreenInner() {
     const last = c.last_message?.text || '';
     if (!matchesSearch(name, last)) return false;
     if (filter === 'individual') return c.type === 'private';
-    if (filter === 'grupos') return c.type === 'group';
+    if (filter === 'grupos') {
+      if (c.type !== 'group') return false;
+      const isDjangue = c.name?.startsWith('💰');
+      if (groupSubFilter === 'djangue') return !!isDjangue;
+      if (groupSubFilter === 'normal') return !isDjangue;
+      return true; // 'all'
+    }
     if (filter === 'dinero') {
       return last.includes('XAF') || last.includes('💸') || last.includes('Transferencia') || last.includes('📌');
     }
     if (filter === 'archivar') return false;
     return true;
-  }), [chats, archivedIds, currentUserId, filter, searchQuery]);
+  }), [chats, archivedIds, currentUserId, filter, groupSubFilter, searchQuery]);
 
   const filteredArchived = useMemo(() => archivedChats.filter(c => {
     const isGrp = c.isGroup || c.type === 'group';
