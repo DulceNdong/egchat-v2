@@ -866,16 +866,86 @@ export default function StoriesScreen() {
     { id: 'Formula1', label: 'F1', emoji: '🏎️' },
   ];
 
-  const CH_CATEGORIES = [
-    { id: 'Todos',          emoji: '🌐' },
-    { id: 'Gobierno',       emoji: '🏛️' },
-    { id: 'Noticias',       emoji: '📰' },
-    { id: 'Musica',         emoji: '🎵' },
-    { id: 'Deportes',       emoji: '⚽' },
-    { id: 'Negocios',       emoji: '💼' },
-    { id: 'Tecnologia',     emoji: '💻' },
-    { id: 'Salud',          emoji: '🏥' },
-    { id: 'Entretenimiento',emoji: '🎬' },
+  const CH_CATEGORIES: { id: string; Icon: (props: { color: string; size?: number }) => React.JSX.Element }[] = [
+    {
+      id: 'Todos',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Circle cx="12" cy="12" r="10"/><Line x1="2" y1="12" x2="22" y2="12"/>
+          <Path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Gobierno',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Line x1="3" y1="22" x2="21" y2="22"/><Line x1="6" y1="18" x2="6" y2="11"/>
+          <Line x1="10" y1="18" x2="10" y2="11"/><Line x1="14" y1="18" x2="14" y2="11"/>
+          <Line x1="18" y1="18" x2="18" y2="11"/><Path d="M12 2L2 7h20L12 2z"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Noticias',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+          <Line x1="16" y1="8" x2="10" y2="8"/><Line x1="16" y1="12" x2="10" y2="12"/><Line x1="16" y1="16" x2="14" y2="16"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Musica',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M9 18V5l12-2v13"/>
+          <Circle cx="6" cy="18" r="3"/><Circle cx="18" cy="16" r="3"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Deportes',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Circle cx="12" cy="12" r="10"/>
+          <Path d="M12 8v4l3 3"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Negocios',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x="2" y="7" width="20" height="14" rx="2"/><Path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+          <Line x1="12" y1="12" x2="12" y2="12"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Tecnologia',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x="2" y="3" width="20" height="14" rx="2"/><Line x1="8" y1="21" x2="16" y2="21"/><Line x1="12" y1="17" x2="12" y2="21"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Salud',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+        </Svg>
+      ),
+    },
+    {
+      id: 'Entretenimiento',
+      Icon: ({ color, size = 14 }) => (
+        <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+          <Polyline points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/>
+        </Svg>
+      ),
+    },
   ];
 
   const loadChannels = React.useCallback(async (showRefresh = false) => {
