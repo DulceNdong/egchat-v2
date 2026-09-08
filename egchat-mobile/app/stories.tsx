@@ -847,48 +847,169 @@ export default function StoriesScreen() {
   }, [recentGroups, groups, myGroup, uploading, MyBubble, C, car]);
 
   // ── Espacio Dulce ─────────────────────────────────────────────
-  const EspacioDulceTab = useCallback(() => (
-    <View style={{ padding: 16 }}>
-      <LinearGradient colors={[BRAND + '22', BRAND2 + '11']} style={ed.liveBanner}>
-        <View style={ed.liveDot} />
-        <Text style={ed.liveText}>En vivo — Espacio Dulce</Text>
-      </LinearGradient>
-      <Text style={ed.sectionLabel}>CANALES</Text>
-      <View style={ed.grid}>
-        {espacios.filter(e => e.type === 'publico').map(esp => (
-          <TouchableOpacity key={esp.id} style={ed.card} onPress={() => setActiveEspacio(esp)} activeOpacity={0.85}>
-            <LinearGradient colors={[esp.coverColor, esp.coverColor + 'aa']} style={ed.banner}>
-              <Text style={{ fontSize: 30 }}>{esp.emoji}</Text>
-            </LinearGradient>
-            <View style={ed.cardBody}>
-              <Text style={ed.cardName} numberOfLines={1}>{esp.name}</Text>
-              <Text style={ed.cardSub}>{formatFollowers(esp.followers)} seguidores</Text>
-              <TouchableOpacity style={[ed.followBtn, esp.following && ed.followingBtn]} onPress={() => toggleFollow(esp.id)}>
-                <Text style={[ed.followText, esp.following && ed.followingText]}>{esp.following ? 'Siguiendo' : 'Seguir'}</Text>
+  // ── Canales Dulce (ex channels.tsx) ─────────────────────────
+  const [chList,       setChList]       = React.useState<any[]>([]);
+  const [chLoading,    setChLoading]    = React.useState(false);
+  const [chRefreshing, setChRefreshing] = React.useState(false);
+  const [chSearch,     setChSearch]     = React.useState('');
+  const [chCategory,   setChCategory]   = React.useState('Todos');
+  const [chTab,        setChTab]        = React.useState<'discover'|'following'>('discover');
+
+  const CH_CATEGORIES = ['Todos','Noticias','Tecnologia','Negocios','Deportes','Salud','Entretenimiento'];
+  const FOLLOWED_KEY_CH = 'egchat_followed_channels';
+
+  const loadChannels = React.useCallback(async (showRefresh = false) => {
+    if (showRefresh) setChRefreshing(true); else setChLoading(true);
+    try {
+      const api = await import('../src/api');
+      const BASE = api.getApiBase();
+      const token = await api.getToken();
+      const res = await fetch(`${BASE}/api/channels`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) { const data = await res.json(); setChList(data); }
+    } catch {}
+    finally { setChLoading(false); setChRefreshing(false); }
+  }, []);
+
+  const handleChFollow = React.useCallback(async (ch: any) => {
+    try {
+      const api = await import('../src/api');
+      const BASE = api.getApiBase();
+      const token = await api.getToken();
+      const res = await fetch(`${BASE}/api/channels/${ch.id}/follow`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const { followed } = await res.json();
+        setChList(prev => prev.map((c: any) => c.id === ch.id ? { ...c, followed, followers_count: followed ? (c.followers_count||0)+1 : Math.max((c.followers_count||0)-1,0) } : c));
+      } else {
+        setChList(prev => prev.map((c: any) => c.id === ch.id ? { ...c, followed: !c.followed } : c));
+      }
+    } catch {
+      setChList(prev => prev.map((c: any) => c.id === ch.id ? { ...c, followed: !c.followed } : c));
+    }
+  }, []);
+
+  const chFiltered = React.useMemo(() => chList.filter((ch: any) => {
+    if (chTab === 'following' && !ch.followed) return false;
+    if (chCategory !== 'Todos' && ch.category !== chCategory) return false;
+    if (chSearch && !ch.name.toLowerCase().includes(chSearch.toLowerCase())) return false;
+    return true;
+  }), [chList, chTab, chCategory, chSearch]);
+
+  const formatChCount = (n: number) => {
+    if (n >= 1000000) return `${(n/1000000).toFixed(1)}M`;
+    if (n >= 1000) return `${(n/1000).toFixed(1)}K`;
+    return String(n || 0);
+  };
+
+  const CanalesDulceTab = React.useCallback(() => {
+    // Cargar al primer acceso
+    React.useEffect(() => { if (chList.length === 0) loadChannels(); }, []);
+    return (
+      <View style={{ flex: 1 }}>
+        {/* Sub-tabs: Descubrir / Siguiendo */}
+        <View style={[chst.tabs, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+          {(['discover','following'] as const).map(t => (
+            <TouchableOpacity key={t} style={[chst.tab, chTab === t && chst.tabActive]} onPress={() => setChTab(t)}>
+              <Text style={[chst.tabText, { color: chTab === t ? BRAND : C.textTertiary }]}>
+                {t === 'discover' ? 'Descubrir' : 'Siguiendo'}
+              </Text>
+              {chTab === t && <View style={[chst.tabIndicator, { backgroundColor: BRAND }]} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Buscador */}
+        <View style={[chst.searchWrap, { backgroundColor: C.bgSecondary }]}>
+          <MIcon name="search" size={18} color={C.textTertiary} />
+          <TextInput
+            style={[chst.searchInput, { color: C.textPrimary }]}
+            placeholder="Buscar canales..."
+            placeholderTextColor={C.textTertiary}
+            value={chSearch}
+            onChangeText={setChSearch}
+          />
+        </View>
+
+        {/* Categorias */}
+        {chTab === 'discover' && (
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingVertical: 8 }}>
+            {CH_CATEGORIES.map(cat => (
+              <TouchableOpacity
+                key={cat}
+                style={[chst.catChip, chCategory === cat && { backgroundColor: BRAND }]}
+                onPress={() => setChCategory(cat)}
+              >
+                <Text style={[chst.catChipText, chCategory === cat && { color: '#fff' }]}>{cat}</Text>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <Text style={[ed.sectionLabel, { marginTop: 16 }]}>COMUNIDADES</Text>
-      <View style={ed.grid}>
-        {espacios.filter(e => e.type === 'comunidad').map(esp => (
-          <TouchableOpacity key={esp.id} style={ed.card} onPress={() => setActiveEspacio(esp)} activeOpacity={0.85}>
-            <LinearGradient colors={[esp.coverColor, esp.coverColor + 'aa']} style={ed.banner}>
-              <Text style={{ fontSize: 30 }}>{esp.emoji}</Text>
-            </LinearGradient>
-            <View style={ed.cardBody}>
-              <Text style={ed.cardName} numberOfLines={1}>{esp.name}</Text>
-              <Text style={ed.cardSub}>{formatFollowers(esp.followers)} miembros</Text>
-              <TouchableOpacity style={[ed.followBtn, esp.following && ed.followingBtn]} onPress={() => toggleFollow(esp.id)}>
-                <Text style={[ed.followText, esp.following && ed.followingText]}>{esp.following ? 'Unido' : 'Unirse'}</Text>
+            ))}
+          </ScrollView>
+        )}
+
+        {/* Lista de canales */}
+        {chLoading ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
+            <ActivityIndicator color={BRAND} size="large" />
+          </View>
+        ) : (
+          <FlatList
+            data={chFiltered}
+            keyExtractor={(c: any) => c.id}
+            style={{ flex: 1, backgroundColor: C.bgPrimary }}
+            refreshControl={<RefreshControl refreshing={chRefreshing} onRefresh={() => loadChannels(true)} colors={[BRAND]} tintColor={BRAND} />}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            renderItem={({ item: ch }: { item: any }) => (
+              <TouchableOpacity
+                style={[chst.card, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}
+                onPress={() => router.push({ pathname: '/channel-detail', params: { id: ch.id, name: ch.name } } as any)}
+                activeOpacity={0.75}
+              >
+                <View style={chst.cardLeft}>
+                  <View style={{ position: 'relative' }}>
+                    <EGAvatar src={ch.avatar_url} name={ch.name} size={52} />
+                    {ch.verified && (
+                      <View style={chst.verifiedBadge}>
+                        <MIcon name="verified" size={12} color={BRAND} />
+                      </View>
+                    )}
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[chst.channelName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
+                    <Text style={[chst.channelCat, { color: BRAND }]}>{ch.category}</Text>
+                    {!!ch.description && (
+                      <Text style={[chst.channelDesc, { color: C.textTertiary }]} numberOfLines={1}>{ch.description}</Text>
+                    )}
+                    <Text style={[chst.followers, { color: C.textTertiary }]}>
+                      {formatChCount(ch.followers_count || ch.followers || 0)} seguidores
+                    </Text>
+                  </View>
+                </View>
+                <TouchableOpacity
+                  style={[chst.followBtn, ch.followed && { backgroundColor: BRAND + '20', borderColor: BRAND }]}
+                  onPress={() => handleChFollow(ch)}
+                  activeOpacity={0.8}
+                >
+                  <Text style={[chst.followBtnText, { color: BRAND }]}>
+                    {ch.followed ? 'Siguiendo' : 'Seguir'}
+                  </Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </View>
-          </TouchableOpacity>
-        ))}
+            )}
+            ListEmptyComponent={
+              <View style={st.empty}>
+                <MIcon name="cell-tower" size={52} color={C.border} />
+                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>
+                  {chTab === 'following' ? 'No sigues ningun canal' : 'Sin canales disponibles'}
+                </Text>
+                <Text style={[st.emptySub, { color: C.textTertiary }]}>
+                  {chTab === 'following' ? 'Descubre canales en la pestana Descubrir' : 'Los canales apareceran aqui'}
+                </Text>
+              </View>
+            }
+          />
+        )}
       </View>
-    </View>
-  ), [espacios, toggleFollow]);
+    );
+  }, [chList, chLoading, chRefreshing, chSearch, chCategory, chTab, chFiltered, C]);
+
 
   // ── Render ────────────────────────────────────────────────────
   return (
@@ -1034,7 +1155,7 @@ export default function StoriesScreen() {
       {/* ── TAB: CANALES DULCE ───────────────────────────────── */}
       {activeTab === 'canales' && (
         <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} showsVerticalScrollIndicator={false}>
-          <EspacioDulceTab />
+          <CanalesDulceTab />
         </ScrollView>
       )}
 
