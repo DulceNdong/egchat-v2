@@ -879,6 +879,7 @@ export default function StoriesScreen() {
 
   // ── Render ────────────────────────────────────────────────────
   return (
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.bgPrimary} />
 
       {/* HEADER */}
@@ -888,110 +889,258 @@ export default function StoriesScreen() {
         </TouchableOpacity>
         <View style={st.headerCenter}>
           <Text style={[st.headerTitle, { color: C.textPrimary }]}>Estados</Text>
-          {recentGroups.length > 0 && (
+          {activeTab === 'estados' && recentGroups.length > 0 && (
             <View style={[st.headerBadge, { backgroundColor: BRAND }]}>
               <Text style={st.headerBadgeText}>{recentGroups.length}</Text>
             </View>
           )}
         </View>
         <View style={st.headerActions}>
-          {/* Botón EN VIVO */}
-          <TouchableOpacity
-            style={[st.headerBtn, { backgroundColor: '#ff3b30', paddingHorizontal: 10, width: 'auto' as any, borderRadius: 16 }]}
-            onPress={() => setShowLive(true)}
-            activeOpacity={0.8}
-            accessibilityRole="button"
-            accessibilityLabel="Iniciar transmisión en vivo"
-          >
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
-              <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' }} />
-              <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', letterSpacing: 0.5 }}>EN VIVO</Text>
-            </View>
-          </TouchableOpacity>
-          <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir desde galería">
-            <MIcon name="image" size={21} color={C.textSecondary} />
-          </TouchableOpacity>
-          <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Añadir estado">
-            <MIcon name="photo-camera" size={21} color={C.textSecondary} />
-          </TouchableOpacity>
+          {activeTab === 'estados' && (
+            <>
+              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Galeria">
+                <MIcon name="image" size={21} color={C.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo estado">
+                <MIcon name="photo-camera" size={21} color={C.textSecondary} />
+              </TouchableOpacity>
+            </>
+          )}
+          {activeTab === 'momentos' && (
+            <>
+              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={() => setShowMomentCamera(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Camara momentos">
+                <MIcon name="photo-camera" size={21} color={C.textSecondary} />
+              </TouchableOpacity>
+              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo momento">
+                <MIcon name="add" size={21} color={C.textSecondary} />
+              </TouchableOpacity>
+            </>
+          )}
         </View>
       </View>
 
-      {loading ? (
-        <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
-          <ActivityIndicator size="large" color={BRAND} />
-        </View>
-      ) : (
-        <ScrollView style={{ backgroundColor: C.bgPrimary }} showsVerticalScrollIndicator={false}>
-          {/* TABS */}
-          <View style={[st.tabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-            {([
-              { id: 'recientes' as StoryTab, label: 'Recientes', count: recentGroups.length },
-              { id: 'vistos'    as StoryTab, label: 'Vistos',    count: seenGroups.length },
-              { id: 'dulce'     as StoryTab, label: '✦ Dulce',   count: 0 },
-            ]).map(t => (
-              <TouchableOpacity key={t.id} style={[st.tab, activeTab === t.id && st.tabActive]}
-                onPress={() => setActiveTab(t.id)} activeOpacity={0.8}
-                accessibilityRole="tab" accessibilityState={{ selected: activeTab === t.id }}>
-                <Text style={[st.tabText, { color: C.textTertiary }, activeTab === t.id && { color: C.textPrimary, fontWeight: '700' }]}>
-                  {t.label}{t.count > 0 ? ` ${t.count}` : ''}
-                </Text>
-                {activeTab === t.id && <View style={[st.tabIndicator, { backgroundColor: BRAND }]} />}
-              </TouchableOpacity>
-            ))}
-          </View>
+      {/* TABS */}
+      <View style={[st.tabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+        {([
+          { id: 'estados'   as StoryTab, label: 'Estados'  },
+          { id: 'streaming' as StoryTab, label: 'Vivos'    },
+          { id: 'canales'   as StoryTab, label: 'Canales Dulce' },
+          { id: 'momentos'  as StoryTab, label: 'Momentos' },
+        ]).map(t => (
+          <TouchableOpacity
+            key={t.id}
+            style={[st.tab, activeTab === t.id && st.tabActive]}
+            onPress={() => {
+              setActiveTab(t.id);
+              if (t.id === 'momentos' && momentPosts.length === 0) loadMoments();
+            }}
+            activeOpacity={0.8}
+            accessibilityRole="tab"
+            accessibilityState={{ selected: activeTab === t.id }}
+          >
+            <Text style={[st.tabText, { color: C.textTertiary }, activeTab === t.id && { color: C.textPrimary, fontWeight: '700' }]}>
+              {t.label}
+            </Text>
+            {activeTab === t.id && <View style={[st.tabIndicator, { backgroundColor: BRAND }]} />}
+          </TouchableOpacity>
+        ))}
+      </View>
 
-          {activeTab === 'dulce' ? <EspacioDulceTab /> : (
-            <>
-              {activeTab === 'recientes' && <StoriesCarousel />}
-              {displayedGroups.length > 0 && (
-                <View style={st.feedLabel}>
-                  <Text style={[st.feedLabelText, { color: C.textTertiary }]}>{activeTab === 'recientes' ? 'TODOS LOS ESTADOS' : 'YA VISTOS'}</Text>
-                </View>
-              )}
-              {displayedGroups.length > 0 ? displayedGroups.map(group => {
-                const globalIdx = groups.findIndex(g => g.userId === group.userId);
-                return (
-                  <StoryCard
-                    key={group.userId}
-                    group={group}
-                    C={C}
-                    onPress={() => setViewingGroup(myGroup ? globalIdx + 1 : globalIdx)}
-                  />
-                );
-              }) : (
-                <View style={st.empty}>
-                  <MIcon name={activeTab === 'recientes' ? 'auto-awesome' : 'task-alt'} size={52} color={C.border} />
-                  <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{activeTab === 'recientes' ? 'Todo al día' : 'Sin estados vistos'}</Text>
-                  <Text style={[st.emptySub, { color: C.textTertiary }]}>{activeTab === 'recientes' ? 'No hay estados nuevos de tus contactos' : 'Los estados que veas aparecerán aquí'}</Text>
-                  {activeTab === 'recientes' && (
-                    <TouchableOpacity style={st.emptyBtn} onPress={addStory} activeOpacity={0.85}>
-                      <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
-                        <MIcon name="add" size={18} color="#fff" />
-                        <Text style={st.emptyBtnText}>Publicar estado</Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  )}
-                </View>
-              )}
-            </>
-          )}
+      {/* ── TAB: ESTADOS ─────────────────────────────────────── */}
+      {activeTab === 'estados' && (
+        loading ? (
+          <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
+            <ActivityIndicator size="large" color={BRAND} />
+          </View>
+        ) : (
+          <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} showsVerticalScrollIndicator={false}>
+            <StoriesCarousel />
+            {recentGroups.length > 0 && (
+              <View style={st.feedLabel}>
+                <Text style={[st.feedLabelText, { color: C.textTertiary }]}>TODOS LOS ESTADOS</Text>
+              </View>
+            )}
+            {recentGroups.length > 0 ? recentGroups.map(group => {
+              const globalIdx = groups.findIndex(g => g.userId === group.userId);
+              return (
+                <StoryCard
+                  key={group.userId}
+                  group={group}
+                  C={C}
+                  onPress={() => setViewingGroup(myGroup ? globalIdx + 1 : globalIdx)}
+                />
+              );
+            }) : (
+              <View style={st.empty}>
+                <MIcon name="auto-awesome" size={52} color={C.border} />
+                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>Todo al dia</Text>
+                <Text style={[st.emptySub, { color: C.textTertiary }]}>No hay estados nuevos de tus contactos</Text>
+                <TouchableOpacity style={st.emptyBtn} onPress={addStory} activeOpacity={0.85}>
+                  <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
+                    <MIcon name="add" size={18} color="#fff" />
+                    <Text style={st.emptyBtnText}>Publicar estado</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+          </ScrollView>
+        )
+      )}
+
+      {/* ── TAB: STREAMINGS / VIVOS ───────────────────────────── */}
+      {activeTab === 'streaming' && (
+        <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+          <LinearGradient colors={[BRAND + '22', BRAND2 + '11']} style={st.liveBannerCard}>
+            <View style={st.liveDotLarge} />
+            <View style={{ flex: 1 }}>
+              <Text style={[st.liveBannerTitle, { color: C.textPrimary }]}>Streamings en vivo</Text>
+              <Text style={[st.liveBannerSub, { color: C.textSecondary }]}>Proximos streams en directo</Text>
+            </View>
+            <MIcon name="live-tv" size={32} color={BRAND} />
+          </LinearGradient>
+          <View style={st.liveEmpty}>
+            <MIcon name="videocam" size={64} color={C.border} />
+            <Text style={[st.emptyTitle, { color: C.textSecondary, marginTop: 16 }]}>Sin streams activos</Text>
+            <Text style={[st.emptySub, { color: C.textTertiary, textAlign: 'center' }]}>
+              Cuando alguien inicie un directo aparecera aqui en tiempo real
+            </Text>
+            <TouchableOpacity
+              style={[st.emptyBtn, { marginTop: 24 }]}
+              onPress={() => Alert.alert('Proximamente', 'La funcion de streaming llegara muy pronto')}
+              activeOpacity={0.85}
+            >
+              <LinearGradient colors={['#ef4444', '#f97316']} style={st.emptyBtnGrad}>
+                <MIcon name="fiber-manual-record" size={14} color="#fff" />
+                <Text style={st.emptyBtnText}>Iniciar directo</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
         </ScrollView>
       )}
 
-      {/* MODAL MENÚ */}
+      {/* ── TAB: CANALES DULCE ───────────────────────────────── */}
+      {activeTab === 'canales' && (
+        <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} showsVerticalScrollIndicator={false}>
+          <EspacioDulceTab />
+        </ScrollView>
+      )}
+
+      {/* ── TAB: MOMENTOS ────────────────────────────────────── */}
+      {activeTab === 'momentos' && (
+        momentLoading ? (
+          <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
+            <ActivityIndicator size="large" color={BRAND} />
+          </View>
+        ) : (
+          <FlatList
+            data={momentPosts}
+            keyExtractor={p => p.id}
+            style={{ flex: 1, backgroundColor: C.bgPrimary }}
+            refreshControl={<RefreshControl refreshing={momentRefreshing} onRefresh={() => loadMoments(true)} colors={[BRAND]} tintColor={BRAND} />}
+            contentContainerStyle={{ paddingBottom: 40 }}
+            ListEmptyComponent={
+              <View style={st.empty}>
+                <MIcon name="photo-camera" size={52} color={C.border} />
+                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>Sin momentos aun</Text>
+                <Text style={[st.emptySub, { color: C.textTertiary }]}>Comparte un momento con tus contactos</Text>
+                <TouchableOpacity style={st.emptyBtn} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.85}>
+                  <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
+                    <MIcon name="add" size={18} color="#fff" />
+                    <Text style={st.emptyBtnText}>Publicar momento</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            }
+            renderItem={({ item }) => (
+              <View style={[mps.card, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
+                <View style={mps.header}>
+                  <EGAvatar src={item.user_avatar} name={item.user_name} size={44} />
+                  <View style={mps.headerInfo}>
+                    <Text style={[mps.userName, { color: C.textPrimary }]}>{item.user_name}</Text>
+                    <Text style={[mps.time, { color: C.textTertiary }]}>{formatRelativeTime(item.created_at)}</Text>
+                  </View>
+                  {item.user_id === momentCurrentUid && (
+                    <TouchableOpacity onPress={() => Alert.alert('Post', 'Opciones', [
+                      { text: 'Eliminar', style: 'destructive', onPress: () => setMomentPosts(p => p.filter(x => x.id !== item.id)) },
+                      { text: 'Cancelar', style: 'cancel' },
+                    ])}>
+                      <MIcon name="more-vert" size={18} color={C.textTertiary} />
+                    </TouchableOpacity>
+                  )}
+                </View>
+                {!!item.text && <Text style={[mps.text, { color: C.textPrimary }]}>{item.text}</Text>}
+                {item.images && item.images.length > 0 && (
+                  <View style={mps.imagesGrid}>
+                    {item.images.slice(0, 4).map((uri, i) => (
+                      <Image
+                        key={i}
+                        source={{ uri }}
+                        style={[mps.image, item.images!.length === 1 && mps.imageSingle, item.images!.length === 2 && mps.imageHalf]}
+                        resizeMode="cover"
+                      />
+                    ))}
+                  </View>
+                )}
+                <View style={mps.actions}>
+                  <TouchableOpacity style={mps.actionBtn} onPress={() => handleMomentLike(item.id)}>
+                    <MIcon name={item.liked_by_me ? 'favorite' : 'favorite-border'} size={18} color={item.liked_by_me ? '#ef4444' : C.textTertiary} />
+                    <Text style={[mps.actionCount, { color: item.liked_by_me ? '#ef4444' : C.textTertiary }]}>{item.likes > 0 ? item.likes : ''}</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity style={mps.actionBtn} onPress={() => setCommentingPost(commentingPost === item.id ? null : item.id)}>
+                    <MIcon name="chat-bubble-outline" size={18} color={C.textTertiary} />
+                    <Text style={[mps.actionCount, { color: C.textTertiary }]}>{item.comments.length > 0 ? item.comments.length : ''}</Text>
+                  </TouchableOpacity>
+                </View>
+                {item.comments.length > 0 && (
+                  <View style={[mps.commentsSection, { backgroundColor: C.bgSecondary }]}>
+                    {item.comments.map(c => (
+                      <View key={c.id} style={mps.commentRow}>
+                        <Text style={[mps.commentUser, { color: BRAND }]}>{c.user_name}: </Text>
+                        <Text style={[mps.commentText, { color: C.textPrimary }]}>{c.text}</Text>
+                      </View>
+                    ))}
+                  </View>
+                )}
+                {commentingPost === item.id && (
+                  <View style={[mps.commentInput, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
+                    <TextInput
+                      style={[mps.commentInputText, { color: C.textPrimary }]}
+                      placeholder="Escribe un comentario..."
+                      placeholderTextColor={C.textTertiary}
+                      value={commentText}
+                      onChangeText={setCommentText}
+                      autoFocus
+                      returnKeyType="send"
+                      onSubmitEditing={handleMomentComment}
+                    />
+                    <TouchableOpacity onPress={handleMomentComment} disabled={!commentText.trim()}>
+                      <MIcon name="send" size={20} color={commentText.trim() ? BRAND : C.textTertiary} />
+                    </TouchableOpacity>
+                  </View>
+                )}
+              </View>
+            )}
+          />
+        )
+      )}
+
+      {/* MODAL MENU MI ESTADO */}
       <Modal visible={myStoryMenu} transparent animationType="fade" onRequestClose={() => setMyStoryMenu(false)}>
         <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
           <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={[st.menuCard, { borderColor: C.borderLight }]}>
             {([
-              { icon: 'image'        as const, color: '#a855f7', label: 'Subir foto/video',  onPress: () => { addStory();                              setMyStoryMenu(false); } },
-              { icon: 'add-circle'   as const, color: BRAND,     label: 'Añadir estado',     onPress: () => { addStory();                              setMyStoryMenu(false); } },
-              { icon: 'visibility'   as const, color: BRAND2,    label: 'Ver mi estado',     onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
+              { icon: 'image'      as const, color: '#a855f7', label: 'Subir foto/video', onPress: () => { addStory(); setMyStoryMenu(false); } },
+              { icon: 'add-circle' as const, color: BRAND,     label: 'Anadir estado',   onPress: () => { addStory(); setMyStoryMenu(false); } },
+              { icon: 'visibility' as const, color: BRAND2,    label: 'Ver mi estado',   onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
             ] as const).map((item, idx, arr) => (
-              <TouchableOpacity key={item.label}
+              <TouchableOpacity
+                key={item.label}
                 style={[st.menuItem, idx < arr.length - 1 && { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight }]}
-                onPress={item.onPress} activeOpacity={0.75}
-                accessibilityRole="button" accessibilityLabel={item.label}>
+                onPress={item.onPress}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel={item.label}
+              >
                 <View style={[st.menuIconWrap, { backgroundColor: item.color + '22' }]}>
                   <MIcon name={item.icon} size={18} color={item.color} />
                 </View>
@@ -1000,9 +1149,13 @@ export default function StoriesScreen() {
               </TouchableOpacity>
             ))}
             {myGroup?.storyId && myStories.length > 0 && (
-              <TouchableOpacity style={st.menuItem}
-                onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }} activeOpacity={0.75}
-                accessibilityRole="button" accessibilityLabel="Eliminar mi estado">
+              <TouchableOpacity
+                style={st.menuItem}
+                onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Eliminar mi estado"
+              >
                 <View style={[st.menuIconWrap, { backgroundColor: '#ef444422' }]}>
                   <MIcon name="delete" size={18} color="#ef4444" />
                 </View>
@@ -1014,7 +1167,7 @@ export default function StoriesScreen() {
         </Pressable>
       </Modal>
 
-      {/* VISOR */}
+      {/* VISOR DE STORIES */}
       {viewingGroup !== null && allGroupsForViewer.length > 0 && (
         <StoryViewer
           groups={allGroupsForViewer}
@@ -1043,11 +1196,11 @@ export default function StoriesScreen() {
                   </View>
                   <View style={{ flex: 1 }}>
                     <Text style={{ color: C.textPrimary, fontSize: 14, fontWeight: '700' }}>{p.author}</Text>
-                    <Text style={{ color: C.textTertiary, fontSize: 11, marginTop: 1 }}>{p.time}{p.isOfficial ? ' · Oficial ✓' : ''}</Text>
+                    <Text style={{ color: C.textTertiary, fontSize: 11, marginTop: 1 }}>{p.time}{p.isOfficial ? ' · Oficial' : ''}</Text>
                   </View>
                 </View>
                 <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 20 }}>{p.text}</Text>
-                <Text style={{ color: C.textSecondary, fontSize: 12, marginTop: 10 }}>❤️ {p.likes} · 💬 {p.comments}</Text>
+                <Text style={{ color: C.textSecondary, fontSize: 12, marginTop: 10 }}>likes: {p.likes} · comentarios: {p.comments}</Text>
               </View>
             ))}
           </ScrollView>
@@ -1061,7 +1214,7 @@ export default function StoriesScreen() {
           <StoryMusicBadge music={storyMusic} />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             <TouchableOpacity style={st.musicPublishBtn} onPress={() => addStory()}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Publicar con música</Text>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Publicar con musica</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.musicCancelBtn, { backgroundColor: C.bgTertiary }]} onPress={() => setStoryMusic(null)}>
               <MIcon name="close" size={16} color={C.textPrimary} />
@@ -1070,93 +1223,183 @@ export default function StoriesScreen() {
         </View>
       )}
 
-      {/* ── Modal Añadir Estado — compacto ────────────────────────── */}
-      <Modal
-        visible={showAddModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowAddModal(false)}
-      >
+      {/* MODAL CREAR MOMENTO */}
+      <MomentCreateModal
+        visible={showMomentCreate}
+        onClose={() => setShowMomentCreate(false)}
+        onCreated={(post) => { setMomentPosts(prev => [post, ...prev]); setShowMomentCreate(false); }}
+        C={C}
+        isDark={isDark}
+      />
+
+      {/* MODAL ANADIR ESTADO */}
+      <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
         <Pressable style={stAdd.backdrop} onPress={() => setShowAddModal(false)}>
           <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
         </Pressable>
-
         <View style={stAdd.sheet} pointerEvents="box-none">
           <View style={[stAdd.card, { backgroundColor: isDark ? 'rgba(18,24,32,0.94)' : 'rgba(255,255,255,0.97)' }]}>
-            <Text style={[stAdd.title, { color: C.textPrimary }]}>Añadir estado</Text>
-
-            {/* Fila de iconos — sin fondos, solo icono + label */}
+            <Text style={[stAdd.title, { color: C.textPrimary }]}>Anadir estado</Text>
             <View style={stAdd.row}>
               <TouchableOpacity style={stAdd.item} onPress={() => { setShowAddModal(false); createTextStatus().catch(() => {}); }} activeOpacity={0.6}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                  <Path d="M12 20h9" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round"/>
-                  <Path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-                </Svg>
+                <MIcon name="edit" size={22} color={C.textSecondary} />
                 <Text style={[stAdd.label, { color: C.textTertiary }]}>Texto</Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={stAdd.item} onPress={async () => { setShowAddModal(false); const a = await pickImageFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'image'); }} activeOpacity={0.6}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                  <Path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-                  <Circle cx={12} cy={13} r={4} stroke={C.textSecondary} strokeWidth={2}/>
-                </Svg>
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Cámara</Text>
+                <MIcon name="photo-camera" size={22} color={C.textSecondary} />
+                <Text style={[stAdd.label, { color: C.textTertiary }]}>Camara</Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={stAdd.item} onPress={() => { setShowAddModal(false); pickFromGallery(); }} activeOpacity={0.6}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                  <Rect x={3} y={3} width={18} height={18} rx={3} stroke={C.textSecondary} strokeWidth={2}/>
-                  <Circle cx={8.5} cy={8.5} r={1.5} fill={C.textSecondary}/>
-                  <Path d="M21 15l-5-5L5 21" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-                </Svg>
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Galería</Text>
+                <MIcon name="image" size={22} color={C.textSecondary} />
+                <Text style={[stAdd.label, { color: C.textTertiary }]}>Galeria</Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={stAdd.item} onPress={async () => { setShowAddModal(false); const a = await pickVideo().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }} activeOpacity={0.6}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                  <Path d="M22.54 6.42a2.78 2.78 0 0 0-1.95-1.96C18.88 4 12 4 12 4s-6.88 0-8.59.46A2.78 2.78 0 0 0 1.46 6.42 29 29 0 0 0 1 12a29 29 0 0 0 .46 5.58 2.78 2.78 0 0 0 1.95 1.96C5.12 20 12 20 12 20s6.88 0 8.59-.46a2.78 2.78 0 0 0 1.95-1.96A29 29 0 0 0 23 12a29 29 0 0 0-.46-5.58z" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-                  <Path d="M9.75 15.02 15.5 12l-5.75-3.02v6.04z" fill={C.textSecondary}/>
-                </Svg>
+                <MIcon name="videocam" size={22} color={C.textSecondary} />
                 <Text style={[stAdd.label, { color: C.textTertiary }]}>Video</Text>
               </TouchableOpacity>
-
               <TouchableOpacity style={stAdd.item} onPress={async () => { setShowAddModal(false); const a = await pickVideoFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }} activeOpacity={0.6}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none">
-                  <Path d="M15 10l4.553-2.277A1 1 0 0 1 21 8.656v6.688a1 1 0 0 1-1.447.894L15 14v-4z" stroke={C.textSecondary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
-                  <Rect x={2} y={7} width={13} height={10} rx={2} stroke={C.textSecondary} strokeWidth={2}/>
-                </Svg>
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Videocám</Text>
-              </TouchableOpacity>
-
-              {/* Botón EN VIVO */}
-              <TouchableOpacity
-                style={stAdd.item}
-                onPress={() => { setShowAddModal(false); setShowLive(true); }}
-                activeOpacity={0.6}
-              >
-                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#ff3b30', alignItems: 'center', justifyContent: 'center' }}>
-                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
-                </View>
-                <Text style={[stAdd.label, { color: '#ff3b30', fontWeight: '700' }]}>En vivo</Text>
+                <MIcon name="fiber-manual-record" size={22} color={C.textSecondary} />
+                <Text style={[stAdd.label, { color: C.textTertiary }]}>Grabar</Text>
               </TouchableOpacity>
             </View>
+            <TouchableOpacity style={stAdd.cancelBtn} onPress={() => setShowAddModal(false)} activeOpacity={0.7}>
               <Text style={[stAdd.cancelText, { color: C.textTertiary }]}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
-
-      {/* ── Live Stream Modal ──────────────────────────────────── */}
-      <LiveStreamModal
-        visible={showLive}
-        hostId={meId}
-        hostName=""
-        hostAvatar={myAvatarUrl}
-        onClose={() => setShowLive(false)}
-      />
     </SafeAreaView>
   );
 }
+
+// ══════════════════════════════════════════════════════════════════
+// MODAL CREAR MOMENTO (extraido para limpieza)
+// ══════════════════════════════════════════════════════════════════
+function MomentCreateModal({
+  visible, onClose, onCreated, C, isDark,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onCreated: (p: MomentPost) => void;
+  C: typeof Colors;
+  isDark: boolean;
+}) {
+  const [text, setText] = React.useState('');
+  const [images, setImages] = React.useState<string[]>([]);
+  const [creating, setCreating] = React.useState(false);
+  const insets = useSafeAreaInsets();
+
+  const handlePickImage = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Sin permiso para galeria'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.85,
+    });
+    if (!result.canceled) {
+      setImages(prev => [...prev, ...result.assets.map(a => a.uri)].slice(0, 9));
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!text.trim() && images.length === 0) { Alert.alert('Escribe algo o anade una foto'); return; }
+    setCreating(true);
+    try {
+      const post = await createMomentPost(text.trim(), images);
+      if (post) { onCreated(post); setText(''); setImages([]); }
+    } finally { setCreating(false); }
+  };
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bgPrimary }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingBottom: 12, paddingTop: insets.top + 10, gap: 8 }}>
+          <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
+            <MIcon name="close" size={22} color="#fff" />
+          </TouchableOpacity>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Nuevo momento</Text>
+          <TouchableOpacity onPress={handleCreate} disabled={creating}
+            style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16 }}>
+            {creating
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Publicar</Text>}
+          </TouchableOpacity>
+        </LinearGradient>
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+          <TextInput
+            style={{ fontSize: 16, minHeight: 120, textAlignVertical: 'top', borderRadius: 10, borderWidth: 1, borderColor: C.borderLight, padding: 12, lineHeight: 22, color: C.textPrimary }}
+            placeholder="Que esta pasando?"
+            placeholderTextColor={C.textTertiary}
+            value={text}
+            onChangeText={setText}
+            multiline
+            maxLength={500}
+            autoFocus
+          />
+          <Text style={{ fontSize: 11, textAlign: 'right', marginTop: 4, marginBottom: 16, color: C.textTertiary }}>{text.length}/500</Text>
+          {images.length > 0 ? (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+              {images.map((uri, i) => (
+                <View key={i} style={{ position: 'relative', width: 80, height: 80 }}>
+                  <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 8 }} />
+                  <TouchableOpacity
+                    style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' }}
+                    onPress={() => setImages(prev => prev.filter((_, j) => j !== i))}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>x</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {images.length < 9 && (
+                <TouchableOpacity
+                  style={{ width: 80, height: 80, borderRadius: 8, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.borderLight, alignItems: 'center', justifyContent: 'center' }}
+                  onPress={handlePickImage}
+                >
+                  <MIcon name="add" size={24} color={C.textTertiary} />
+                </TouchableOpacity>
+              )}
+            </View>
+          ) : (
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.borderLight, borderRadius: 10, padding: 16, marginTop: 8 }}
+              onPress={handlePickImage}
+            >
+              <MIcon name="image" size={24} color={C.textTertiary} />
+              <Text style={{ fontSize: 15, color: C.textTertiary }}>Anadir fotos</Text>
+            </TouchableOpacity>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════════
+// ESTILOS MOMENTOS
+// ══════════════════════════════════════════════════════════════════
+const mps = StyleSheet.create({
+  card:            { paddingVertical: 16, paddingHorizontal: 16, borderBottomWidth: StyleSheet.hairlineWidth, marginBottom: 2 },
+  header:          { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 10 },
+  headerInfo:      { flex: 1 },
+  userName:        { fontSize: 15, fontWeight: '700' },
+  time:            { fontSize: 12, marginTop: 1 },
+  text:            { fontSize: 15, lineHeight: 22, marginBottom: 10 },
+  imagesGrid:      { flexDirection: 'row', flexWrap: 'wrap', gap: 2, marginBottom: 10 },
+  image:           { width: 120, height: 120, borderRadius: 6 },
+  imageSingle:     { width: '100%', height: 220, borderRadius: 10 },
+  imageHalf:       { width: '49%', height: 160, borderRadius: 8 },
+  actions:         { flexDirection: 'row', gap: 20, paddingTop: 6, paddingBottom: 4 },
+  actionBtn:       { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  actionCount:     { fontSize: 13, fontWeight: '600' },
+  commentsSection: { borderRadius: 10, padding: 10, marginTop: 8, gap: 4 },
+  commentRow:      { flexDirection: 'row', flexWrap: 'wrap' },
+  commentUser:     { fontSize: 13, fontWeight: '700' },
+  commentText:     { fontSize: 13, flex: 1 },
+  commentInput:    { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 8, borderTopWidth: StyleSheet.hairlineWidth, paddingTop: 8 },
+  commentInputText:{ flex: 1, fontSize: 14, paddingVertical: 6 },
+});
 
 // ══════════════════════════════════════════════════════════════════
 // ESTILOS PRINCIPALES
@@ -1180,14 +1423,13 @@ const st = StyleSheet.create({
 
   tabsWrap: {
     flexDirection: 'row',
-    paddingHorizontal: 16, paddingTop: 4,
+    paddingHorizontal: 8, paddingTop: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
-  tab:          { flex: 1, alignItems: 'center', paddingVertical: 12, position: 'relative' },
+  tab:          { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
   tabActive:    {},
-  tabText:      { fontSize: 13, fontWeight: '600' },
-  tabTextActive:{},
-  tabIndicator: { position: 'absolute', bottom: 0, left: '20%', right: '20%', height: 2.5, borderRadius: 2 },
+  tabText:      { fontSize: 12, fontWeight: '600' },
+  tabIndicator: { position: 'absolute', bottom: 0, left: '15%', right: '15%', height: 2.5, borderRadius: 2 },
 
   feedLabel:     { paddingHorizontal: 16, paddingTop: 20, paddingBottom: 10 },
   feedLabelText: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2 },
@@ -1199,10 +1441,16 @@ const st = StyleSheet.create({
   emptyBtnGrad: { flexDirection: 'row', alignItems: 'center', gap: 6, paddingHorizontal: 22, paddingVertical: 12 },
   emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 
+  // Streaming tab
+  liveBannerCard:  { flexDirection: 'row', alignItems: 'center', gap: 12, borderRadius: 16, padding: 16, marginBottom: 24, borderWidth: 1, borderColor: BRAND + '33' },
+  liveDotLarge:    { width: 12, height: 12, borderRadius: 6, backgroundColor: '#ef4444' },
+  liveBannerTitle: { fontSize: 16, fontWeight: '800', marginBottom: 2 },
+  liveBannerSub:   { fontSize: 12 },
+  liveEmpty:       { alignItems: 'center', paddingVertical: 40 },
+
   menuBackdrop:   { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'flex-end', paddingBottom: 34 },
   menuCard:       { marginHorizontal: 14, borderRadius: 20, overflow: 'hidden', borderWidth: 1 },
   menuItem:       { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 14, paddingHorizontal: 16 },
-  menuItemBorder: { borderBottomWidth: StyleSheet.hairlineWidth },
   menuIconWrap:   { width: 34, height: 34, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
   menuItemText:   { flex: 1, fontSize: 15, fontWeight: '600' },
 
@@ -1218,448 +1466,17 @@ const st = StyleSheet.create({
   musicCancelBtn:  { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
 });
 
-// ── Estilos modal Añadir Estado ────────────────────────────────────
+const TILE_GAP = 10;
+const TILE_SIZE = (W - 48 - TILE_GAP) / 2;
+
 const stAdd = StyleSheet.create({
-  backdrop: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.4)',
-  },
-  sheet: {
-    flex: 1,
-    justifyContent: 'flex-end',
-    paddingBottom: 28,
-    paddingHorizontal: 16,
-  },
-  card: {
-    borderRadius: 20,
-    paddingTop: 16,
-    paddingBottom: 6,
-    paddingHorizontal: 12,
-    borderWidth: StyleSheet.hairlineWidth,
-    borderColor: 'rgba(128,128,128,0.15)',
-  },
-  title: {
-    fontSize: 14,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginBottom: 14,
-  },
-  row: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'flex-start',
-    marginBottom: 8,
-  },
-  item: {
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 6,
-    paddingHorizontal: 4,
-    minWidth: 52,
-  },
-  label: {
-    fontSize: 10,
-    fontWeight: '500',
-    textAlign: 'center',
-  },
-  cancelBtn: {
-    paddingVertical: 12,
-    alignItems: 'center',
-    marginTop: 2,
-  },
-  cancelText: {
-    fontSize: 14,
-    fontWeight: '500',
-  },
-});
-
-// ══════════════════════════════════════════════════════════════════
-// LIVE STREAM MODAL
-// Broadcast en vivo: cámara + reacciones en tiempo real
-// Espectadores se conectan via Supabase Realtime
-// ══════════════════════════════════════════════════════════════════
-import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { getToken, getApiBase } from '../src/api';
-import { supabase } from '../src/supabase';
-
-interface LiveReaction { id: string; emoji: string; userName: string; }
-interface LiveComment  { id: string; text: string; userName: string; createdAt: number; }
-interface LiveViewer   { userId: string; userName: string; avatarUrl?: string; }
-
-interface LiveStreamModalProps {
-  visible: boolean;
-  hostId: string;
-  hostName: string;
-  hostAvatar?: string;
-  onClose: () => void;
-}
-
-const LIVE_REACTIONS = ['❤️', '🔥', '😂', '👏', '😮', '💯', '🎉', '✨'];
-
-function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: LiveStreamModalProps) {
-  const insets = useSafeAreaInsets();
-  const { isDark } = useThemeContext();
-
-  // Permisos
-  const [camPerm, requestCamPerm] = useCameraPermissions();
-  const [micPerm, requestMicPerm] = useMicrophonePermissions();
-
-  // Estado del live
-  const [isLive,       setIsLive]       = useState(false);
-  const [liveId,       setLiveId]       = useState<string | null>(null);
-  const [viewers,      setViewers]      = useState<LiveViewer[]>([]);
-  const [reactions,    setReactions]    = useState<LiveReaction[]>([]);
-  const [comments,     setComments]     = useState<LiveComment[]>([]);
-  const [commentDraft, setCommentDraft] = useState('');
-  const [facing,       setFacing]       = useState<CameraType>('front');
-  const [flash,        setFlash]        = useState<'off' | 'on'>('off');
-  const [duration,     setDuration]     = useState(0);
-  const [showEffects,  setShowEffects]  = useState(false);
-  const [selectedEffect, setSelectedEffect] = useState<string>('none');
-
-  const cameraRef    = useRef<CameraView>(null);
-  const timerRef     = useRef<ReturnType<typeof setInterval> | null>(null);
-  const channelRef   = useRef<any>(null);
-  const commentsEnd  = useRef<any>(null);
-
-  // ── Efectos de cámara disponibles ─────────────────────────────
-  const EFFECTS = [
-    { id: 'none',    label: 'Normal',   emoji: '🎥' },
-    { id: 'beauty',  label: 'Beauty',   emoji: '✨' },
-    { id: 'retro',   label: 'Retro',    emoji: '📷' },
-    { id: 'vivid',   label: 'Vívido',   emoji: '🌈' },
-    { id: 'dramatic',label: 'Dramático',emoji: '🎭' },
-    { id: 'neon',    label: 'Neón',     emoji: '💜' },
-  ];
-
-  // ── Limpiar al cerrar ──────────────────────────────────────────
-  useEffect(() => {
-    if (!visible) {
-      stopLive();
-    }
-  }, [visible]);
-
-  // ── Iniciar live ───────────────────────────────────────────────
-  const startLive = useCallback(async () => {
-    if (!camPerm?.granted) { await requestCamPerm(); }
-    if (!micPerm?.granted) { await requestMicPerm(); }
-    if (!camPerm?.granted || !micPerm?.granted) {
-      Alert.alert('Permisos', 'Necesitas cámara y micrófono para el live');
-      return;
-    }
-
-    try {
-      const BASE  = getApiBase();
-      const token = await getToken();
-      const res   = await fetch(`${BASE}/api/live/start`, {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'En vivo' }),
-      });
-
-      let id = `live-${Date.now()}`;
-      if (res.ok) {
-        const data = await res.json();
-        id = data.liveId || id;
-      }
-
-      setLiveId(id);
-      setIsLive(true);
-      setDuration(0);
-
-      // Timer de duración
-      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
-
-      // Suscribirse al canal Supabase Realtime para recibir reacciones y comentarios
-      const channel = supabase.channel(`live:${id}`)
-        .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
-          const r: LiveReaction = { id: `r-${Date.now()}-${Math.random()}`, emoji: payload.emoji, userName: payload.userName };
-          setReactions(prev => [...prev.slice(-20), r]);
-          // Eliminar reacción flotante tras 3s
-          setTimeout(() => setReactions(prev => prev.filter(x => x.id !== r.id)), 3000);
-        })
-        .on('broadcast', { event: 'comment' }, ({ payload }: any) => {
-          const c: LiveComment = { id: `c-${Date.now()}`, text: payload.text, userName: payload.userName, createdAt: Date.now() };
-          setComments(prev => [...prev.slice(-50), c]);
-        })
-        .on('broadcast', { event: 'viewer_join' }, ({ payload }: any) => {
-          setViewers(prev => {
-            const exists = prev.find(v => v.userId === payload.userId);
-            if (exists) return prev;
-            return [...prev, { userId: payload.userId, userName: payload.userName, avatarUrl: payload.avatarUrl }];
-          });
-        })
-        .on('broadcast', { event: 'viewer_leave' }, ({ payload }: any) => {
-          setViewers(prev => prev.filter(v => v.userId !== payload.userId));
-        })
-        .subscribe();
-
-      channelRef.current = channel;
-    } catch (e) {
-      Alert.alert('Error', 'No se pudo iniciar el live');
-    }
-  }, [camPerm, micPerm, requestCamPerm, requestMicPerm]);
-
-  // ── Detener live ───────────────────────────────────────────────
-  const stopLive = useCallback(async () => {
-    if (timerRef.current) { clearInterval(timerRef.current); timerRef.current = null; }
-    if (channelRef.current) {
-      await supabase.removeChannel(channelRef.current);
-      channelRef.current = null;
-    }
-    if (liveId) {
-      try {
-        const BASE  = getApiBase();
-        const token = await getToken();
-        await fetch(`${BASE}/api/live/${liveId}/end`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-        });
-      } catch {}
-    }
-    setIsLive(false);
-    setLiveId(null);
-    setViewers([]);
-    setReactions([]);
-    setComments([]);
-    setDuration(0);
-  }, [liveId]);
-
-  // ── Enviar comentario del host ─────────────────────────────────
-  const sendComment = useCallback(async () => {
-    const text = commentDraft.trim();
-    if (!text || !liveId) return;
-    setCommentDraft('');
-    const c: LiveComment = { id: `c-${Date.now()}`, text, userName: hostName || 'Yo', createdAt: Date.now() };
-    setComments(prev => [...prev.slice(-50), c]);
-    try {
-      await channelRef.current?.send({ type: 'broadcast', event: 'comment', payload: { text, userName: hostName || 'Yo' } });
-    } catch {}
-  }, [commentDraft, liveId, hostName]);
-
-  const formatDuration = (s: number) =>
-    `${Math.floor(s / 3600).toString().padStart(2, '0')}:${Math.floor((s % 3600) / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
-
-  if (!visible) return null;
-
-  return (
-    <Modal visible={visible} animationType="slide" statusBarTranslucent onRequestClose={() => { stopLive(); onClose(); }}>
-      <View style={lv.root}>
-        {/* Fondo — cámara o negro si no está en live */}
-        {isLive ? (
-          <CameraView
-            ref={cameraRef}
-            style={StyleSheet.absoluteFill}
-            facing={facing}
-            flash={flash}
-          />
-        ) : (
-          <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={StyleSheet.absoluteFill} />
-        )}
-
-        {/* Overlay suave */}
-        <View style={lv.overlay} pointerEvents="none" />
-
-        {/* ── HEADER ─────────────────────────────────────────── */}
-        <SafeAreaView style={lv.header}>
-          <TouchableOpacity
-            style={lv.closeBtn}
-            onPress={() => { Alert.alert('Terminar live', '¿Quieres terminar la transmisión?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
-            ]); }}
-          >
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
-              <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
-            </Svg>
-          </TouchableOpacity>
-
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            {isLive ? (
-              <View style={lv.liveBadge}>
-                <View style={lv.liveDot} />
-                <Text style={lv.liveBadgeText}>EN VIVO  {formatDuration(duration)}</Text>
-              </View>
-            ) : (
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 16 }}>Live</Text>
-            )}
-          </View>
-
-          {/* Contador de espectadores */}
-          <View style={lv.viewersBadge}>
-            <Text style={{ fontSize: 13 }}>👁️</Text>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{viewers.length}</Text>
-          </View>
-        </SafeAreaView>
-
-        {/* ── REACCIONES FLOTANTES ────────────────────────────── */}
-        <View style={lv.floatingReactions} pointerEvents="none">
-          {reactions.map(r => (
-            <Animated.Text key={r.id} style={lv.floatingEmoji}>{r.emoji}</Animated.Text>
-          ))}
-        </View>
-
-        {/* ── PANEL LATERAL ───────────────────────────────────── */}
-        {isLive && (
-          <View style={[lv.sidebar, { bottom: insets.bottom + 200 }]}>
-            {/* Voltear cámara */}
-            <TouchableOpacity style={lv.sideBtn} onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}>
-              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-                <Path d="M1 4v6h6" /><Path d="M23 20v-6h-6" />
-                <Path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15" />
-              </Svg>
-            </TouchableOpacity>
-            {/* Flash */}
-            <TouchableOpacity style={lv.sideBtn} onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')}>
-              <Text style={{ fontSize: 22 }}>{flash === 'off' ? '⚡' : '🔦'}</Text>
-            </TouchableOpacity>
-            {/* Efectos */}
-            <TouchableOpacity style={[lv.sideBtn, showEffects && lv.sideBtnActive]} onPress={() => setShowEffects(s => !s)}>
-              <Text style={{ fontSize: 22 }}>🎭</Text>
-              <Text style={lv.sideBtnLabel}>Efectos</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ── PANEL DE EFECTOS ────────────────────────────────── */}
-        {showEffects && isLive && (
-          <View style={[lv.effectsPanel, { bottom: insets.bottom + 200 }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 10, paddingHorizontal: 12 }}>
-              {EFFECTS.map(ef => (
-                <TouchableOpacity
-                  key={ef.id}
-                  style={[lv.effectBtn, selectedEffect === ef.id && lv.effectBtnActive]}
-                  onPress={() => { setSelectedEffect(ef.id); setShowEffects(false); }}
-                >
-                  <Text style={{ fontSize: 24 }}>{ef.emoji}</Text>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{ef.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ── COMENTARIOS ─────────────────────────────────────── */}
-        {isLive && (
-          <View style={[lv.commentsPanel, { bottom: insets.bottom + 70 }]}>
-            <ScrollView
-              ref={commentsEnd}
-              style={{ maxHeight: 200 }}
-              onContentSizeChange={() => commentsEnd.current?.scrollToEnd?.({ animated: true })}
-              showsVerticalScrollIndicator={false}
-            >
-              {comments.map(c => (
-                <View key={c.id} style={lv.commentRow}>
-                  <Text style={lv.commentUser}>{c.userName} </Text>
-                  <Text style={lv.commentText}>{c.text}</Text>
-                </View>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ── INPUT DE COMENTARIO (host) ───────────────────────── */}
-        {isLive && (
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[lv.inputWrap, { paddingBottom: insets.bottom + 12 }]}
-          >
-            <View style={lv.inputRow}>
-              <TextInput
-                style={lv.input}
-                value={commentDraft}
-                onChangeText={setCommentDraft}
-                placeholder="Escribe un comentario..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
-                returnKeyType="send"
-                onSubmitEditing={sendComment}
-              />
-              <TouchableOpacity onPress={sendComment} disabled={!commentDraft.trim()} style={lv.sendBtn}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={commentDraft.trim() ? '#00C8A0' : 'rgba(255,255,255,0.3)'} strokeWidth={2} strokeLinecap="round">
-                  <Line x1="22" y1="2" x2="11" y2="13" /><Polyline points="22 2 15 22 11 13 2 9 22 2" />
-                </Svg>
-              </TouchableOpacity>
-            </View>
-          </KeyboardAvoidingView>
-        )}
-
-        {/* ── BOTÓN INICIAR / STOP ─────────────────────────────── */}
-        {!isLive ? (
-          <View style={[lv.startWrap, { paddingBottom: insets.bottom + 32 }]}>
-            <Text style={lv.startHint}>Tus contactos recibirán una notificación</Text>
-            <TouchableOpacity style={lv.startBtn} onPress={startLive} activeOpacity={0.85}>
-              <LinearGradient colors={['#ff3b30', '#ff6b35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={lv.startBtnGrad}>
-                <View style={lv.startDot} />
-                <Text style={lv.startBtnText}>Iniciar transmisión en vivo</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 14 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={[lv.stopWrap, { paddingBottom: insets.bottom + 32 }]}>
-            <TouchableOpacity
-              style={lv.stopBtn}
-              onPress={() => Alert.alert('Terminar live', '¿Seguro?', [
-                { text: 'Cancelar', style: 'cancel' },
-                { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
-              ])}
-            >
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 14 }}>⏹ Terminar live</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-      </View>
-    </Modal>
-  );
-}
-
-// ── Estilos Live ──────────────────────────────────────────────────
-const lv = StyleSheet.create({
-  root:            { flex: 1, backgroundColor: '#000' },
-  overlay:         { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.15)' },
-  header:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 },
-  closeBtn:        { width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' },
-  liveBadge:       { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ff3b30', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 16 },
-  liveDot:         { width: 7, height: 7, borderRadius: 4, backgroundColor: '#fff' },
-  liveBadgeText:   { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
-  viewersBadge:    { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: 'rgba(0,0,0,0.4)', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 14 },
-
-  // Reacciones flotantes
-  floatingReactions: { position: 'absolute', right: 16, bottom: '35%', gap: 8, alignItems: 'center' },
-  floatingEmoji:     { fontSize: 36, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 3 },
-
-  // Sidebar
-  sidebar:         { position: 'absolute', right: 14, gap: 12 },
-  sideBtn:         { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  sideBtnActive:   { backgroundColor: 'rgba(0,200,160,0.3)', borderWidth: 1.5, borderColor: '#00C8A0' },
-  sideBtnLabel:    { color: '#fff', fontSize: 9, fontWeight: '600' },
-
-  // Efectos
-  effectsPanel:    { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.75)', paddingVertical: 12 },
-  effectBtn:       { alignItems: 'center', gap: 4, padding: 8, borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent', minWidth: 64 },
-  effectBtnActive: { borderColor: '#00C8A0', backgroundColor: 'rgba(0,200,160,0.2)' },
-
-  // Comentarios
-  commentsPanel:   { position: 'absolute', left: 12, right: 70 },
-  commentRow:      { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 4 },
-  commentUser:     { color: '#00C8A0', fontWeight: '700', fontSize: 13 },
-  commentText:     { color: '#fff', fontSize: 13 },
-
-  // Input
-  inputWrap:       { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 12 },
-  inputRow:        { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 24, paddingHorizontal: 14, paddingVertical: 8 },
-  input:           { flex: 1, color: '#fff', fontSize: 14 },
-  sendBtn:         { width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
-
-  // Start / Stop
-  startWrap:       { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 24 },
-  startHint:       { color: 'rgba(255,255,255,0.5)', fontSize: 13, marginBottom: 16, textAlign: 'center' },
-  startBtn:        { width: '100%', borderRadius: 30, overflow: 'hidden' },
-  startBtnGrad:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 16 },
-  startDot:        { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
-  startBtnText:    { color: '#fff', fontWeight: '800', fontSize: 17 },
-  stopWrap:        { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 24 },
-  stopBtn:         { backgroundColor: 'rgba(255,59,48,0.85)', paddingHorizontal: 28, paddingVertical: 12, borderRadius: 24 },
+  backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
+  sheet:    { flex: 1, justifyContent: 'flex-end', paddingBottom: 32, paddingHorizontal: 16 },
+  card:     { borderRadius: 24, padding: 20, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(128,128,128,0.15)' },
+  title:    { fontSize: 18, fontWeight: '700', textAlign: 'center', marginBottom: 16 },
+  row:      { flexDirection: 'row', flexWrap: 'wrap', justifyContent: 'space-around', gap: 12, marginBottom: 12 },
+  item:     { alignItems: 'center', gap: 6, width: 60 },
+  label:    { fontSize: 12, fontWeight: '600', textAlign: 'center' },
+  cancelBtn:  { paddingVertical: 14, alignItems: 'center', marginTop: 4 },
+  cancelText: { fontSize: 15, fontWeight: '600' },
 });
