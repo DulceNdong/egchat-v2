@@ -1656,16 +1656,15 @@ const st = StyleSheet.create({
 
   header: {
     flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 14, paddingTop: 6, paddingBottom: 14,
-    borderBottomWidth: StyleSheet.hairlineWidth,
+    paddingHorizontal: 14, paddingTop: 10, paddingBottom: 14,
   },
-  backBtn:         { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginRight: 10 },
+  backBtn:         { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', marginRight: 10, backgroundColor: 'rgba(255,255,255,0.2)' },
   headerCenter:    { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
   headerTitle:     { fontSize: 20, fontWeight: '800', letterSpacing: -0.3 },
   headerBadge:     { borderRadius: 10, paddingHorizontal: 7, paddingVertical: 2 },
   headerBadgeText: { fontSize: 11, fontWeight: '800', color: '#fff' },
   headerActions:   { flexDirection: 'row', gap: 4 },
-  headerBtn:       { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center' },
+  headerBtn:       { width: 38, height: 38, borderRadius: 19, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.2)' },
 
   tabsWrap: {
     flexDirection: 'row',
