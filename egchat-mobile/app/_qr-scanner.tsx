@@ -228,6 +228,7 @@ export default function QRScannerScreen() {
 
   return (
     <View style={styles.container}>
+      <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
