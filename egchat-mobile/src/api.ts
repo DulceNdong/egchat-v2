@@ -390,7 +390,7 @@ export const authAPI = {
     }
   },
 
-  updateProfile: (data: { full_name?: string; avatar_url?: string }) =>
+  updateProfile: (data: { full_name?: string; avatar_url?: string; banner_url?: string }) =>
     put<any>('/api/auth/profile', data),
 
   sendVerification: (phone: string) =>
