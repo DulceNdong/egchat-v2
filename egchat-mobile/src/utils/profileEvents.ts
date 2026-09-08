@@ -8,6 +8,7 @@ export type ProfileUpdatePatch = {
   phone?: string;
   email?: string;
   avatar_url?: string;
+  banner_url?: string;
   country?: string;
   address?: string;
 };
