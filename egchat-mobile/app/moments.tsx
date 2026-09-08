@@ -417,17 +417,28 @@ export default function MomentsScreen() {
 
 // ── Modal crear post ──────────────────────────────────────────────
 function CreatePostModal({
-  visible, onClose, onCreated, C,
+  visible, onClose, onCreated, C, pendingMedia,
 }: {
   visible: boolean;
   onClose: () => void;
   onCreated: (p: MomentPost) => void;
   C: typeof Colors;
+  pendingMedia?: MomentMedia | null;
 }) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<string[]>([]);
   const [creating, setCreating] = useState(false);
   const insets = useSafeAreaInsets();
+
+  // Precargar imagen que viene de la cámara
+  React.useEffect(() => {
+    if (visible && pendingMedia?.uri) {
+      setImages([pendingMedia.uri]);
+    } else if (!visible) {
+      setText('');
+      setImages([]);
+    }
+  }, [visible, pendingMedia]);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -451,7 +462,7 @@ function CreatePostModal({
         onCreated(post);
         setText('');
         setImages([]);
-        toast.success('Post publicado');
+        toast.success('¡Moment publicado! 🎉');
       }
     } finally {
       setCreating(false);
