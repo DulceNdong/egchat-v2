@@ -1514,6 +1514,15 @@ export default function StoriesScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* ── Live Stream Modal ──────────────────────────────────── */}
+      <LiveStreamModal
+        visible={showLive}
+        hostId={meId}
+        hostName={myGroup?.userName || ''}
+        hostAvatar={myAvatarUrl}
+        onClose={() => setShowLive(false)}
+      />
     </SafeAreaView>
   );
 }
