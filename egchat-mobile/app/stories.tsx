@@ -648,7 +648,7 @@ export default function StoriesScreen() {
   const myStories      = myGroup?.stories || [];
   const recentGroups   = useMemo(() => groups.filter(g => !g.seen), [groups]);
   const seenGroups     = useMemo(() => groups.filter(g =>  g.seen), [groups]);
-  const displayedGroups = activeTab === 'recientes' ? recentGroups : seenGroups;
+  const displayedGroups = activeTab === 'estados' ? recentGroups : seenGroups;
 
   const allGroupsForViewer = useMemo<StoryGroup[]>(() => [
     ...(myGroup ? [{ ...myGroup, userName: 'Mi estado' }] : []),
