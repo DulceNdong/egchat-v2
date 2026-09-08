@@ -2207,57 +2207,71 @@ const lv = StyleSheet.create({
   stopBtnGrad:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 40, paddingVertical: 16 },
 });
 
-// ── Estilos Canales Dulce — EGChat Edition ──────────────────
+// ── Estilos Canales Dulce — EGChat Edition (compacto) ─────────
 const chst = StyleSheet.create({
-  // Layout
-  topBar:       { borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingBottom: 8, paddingTop: 6, gap: 8 },
-  subTabs:      { flexDirection: 'row', gap: 0 },
-  subTab:       { flex: 1, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
-  subTabText:   { fontSize: 14, fontWeight: '700' },
-  searchRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
-  searchInput:  { flex: 1, fontSize: 14 },
+  // Barra superior
+  topBar:       { borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingBottom: 6, paddingTop: 4, gap: 6 },
+  subTabs:      { flexDirection: 'row' },
+  subTab:       { flex: 1, alignItems: 'center', paddingVertical: 7, borderBottomWidth: 2, borderBottomColor: 'transparent' },
+  subTabText:   { fontSize: 13, fontWeight: '700' },
 
-  // Categorias
-  catChip:      { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)' },
+  // Buscador
+  searchRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 9, paddingHorizontal: 10, paddingVertical: 7 },
+  searchInput:  { flex: 1, fontSize: 13 },
+
+  // Chips categoría
+  catChip:      { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 10, paddingVertical: 5, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.10)' },
   catChipText:  { fontSize: 12, fontWeight: '600', color: '#6b7280' },
 
-  // Label sección
-  sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, marginBottom: 8, marginLeft: 2 },
+  // Etiqueta sección
+  sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.5, marginBottom: 6, marginLeft: 2, marginTop: 4 },
 
-  // Card de canal
-  channelCard:   { borderRadius: 16, overflow: 'hidden', borderWidth: 1, marginBottom: 2 },
-  channelBanner: { height: 100, alignItems: 'center', justifyContent: 'center', position: 'relative' },
-  verifiedPill:  { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
-  avatarRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, marginTop: -22, marginBottom: 8 },
-  avatarWrap:    { borderRadius: 28, borderWidth: 3, overflow: 'hidden' },
-  followPill:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.15)' },
-  followPillText:{ fontSize: 12, fontWeight: '700' },
-  chName:        { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
-  catTag:        { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
-  catTagText:    { fontSize: 11, fontWeight: '700' },
-  chFollowers:   { fontSize: 11 },
-  chDesc:        { fontSize: 13, lineHeight: 18, marginTop: 6 },
-  lastPostWrap:  { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, padding: 8, marginTop: 8 },
-  lastPostText:  { fontSize: 12, flex: 1 },
+  // ── CARD de canal ─────────────────────────────────────────────
+  channelCard:  { borderRadius: 14, overflow: 'hidden', borderWidth: StyleSheet.hairlineWidth, marginBottom: 2 },
 
-  // Posts dentro del canal
-  postCard:   { borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1 },
-  postAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  // Banner compacto
+  bannerWrap:   { height: 72, position: 'relative', alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  bannerEmoji:  { fontSize: 28, opacity: 0.85 },
+  officialBadge:{ position: 'absolute', top: 8, right: 8, flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: 'rgba(0,0,0,0.40)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  officialText: { color: '#fff', fontSize: 10, fontWeight: '700' },
 
-  // (legacy — pueden quedar referencias)
+  // Fila inferior de la card
+  cardBody:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 12, paddingVertical: 10, gap: 10 },
+  cardAvatar:   { borderRadius: 22, borderWidth: 2.5, overflow: 'hidden' },
+  cardInfo:     { flex: 1, minWidth: 0 },
+  chName:       { fontSize: 14, fontWeight: '700', letterSpacing: -0.1 },
+  catTag:       { flexDirection: 'row', alignItems: 'center', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
+  catTagText:   { fontSize: 10, fontWeight: '700' },
+  chFollowers:  { fontSize: 10 },
+  chDesc:       { fontSize: 11, lineHeight: 15, marginTop: 2 },
+
+  // Botón seguir compacto
+  followBtn:    { paddingHorizontal: 12, paddingVertical: 6, borderRadius: 14, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.15)' },
+  followBtnText:{ fontSize: 12, fontWeight: '700' },
+
+  // Posts dentro del detalle
+  postCard:     { borderRadius: 12, padding: 12, marginBottom: 8, borderWidth: StyleSheet.hairlineWidth },
+  postAvatar:   { width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center' },
+  lastPostWrap: { flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 7, padding: 7, marginTop: 5 },
+  lastPostText: { fontSize: 11, flex: 1 },
+
+  // Legacy (por si alguna referencia suelta)
   tabs:          { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
-  tab:           { flex: 1, alignItems: 'center', paddingVertical: 11, position: 'relative' },
+  tab:           { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
   tabActive:     {},
-  tabText:       { fontSize: 14, fontWeight: '600' },
-  tabIndicator:  { position: 'absolute', bottom: 0, width: 32, height: 2.5, borderRadius: 2 },
-  card:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
-  cardLeft:      { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  channelName:   { fontSize: 15, fontWeight: '700' },
-  channelCat:    { fontSize: 11, fontWeight: '700', marginTop: 1 },
-  channelDesc:   { fontSize: 12, marginTop: 2 },
-  followers:     { fontSize: 11, marginTop: 3 },
-  verifiedBadge: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
-  followBtn:     { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1.5, borderColor: '#00C8A0' },
-  followBtnText: { fontSize: 13, fontWeight: '700' },
+  tabText:       { fontSize: 13, fontWeight: '600' },
+  tabIndicator:  { position: 'absolute', bottom: 0, width: 28, height: 2, borderRadius: 2 },
+  card:          { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingVertical: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  cardLeft:      { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
+  channelName:   { fontSize: 14, fontWeight: '700' },
+  channelCat:    { fontSize: 10, fontWeight: '700', marginTop: 1 },
+  channelDesc:   { fontSize: 11, marginTop: 2 },
+  followers:     { fontSize: 10, marginTop: 2 },
+  verifiedBadge: { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  followPill:    { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.12)' },
+  followPillText:{ fontSize: 11, fontWeight: '700' },
+  avatarRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 12, marginTop: -18, marginBottom: 6 },
+  avatarWrap:    { borderRadius: 22, borderWidth: 2.5, overflow: 'hidden' },
+  channelBanner: { height: 72, alignItems: 'center', justifyContent: 'center', position: 'relative' },
 });
 

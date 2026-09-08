@@ -303,6 +303,7 @@ export const HamburgerMenu = ({
     { id: 'perfil',         label: 'Mi Perfil',           sub: 'Ver y editar tu perfil'    },
     { id: 'nuevo-contacto', label: 'Nuevo contacto',       sub: 'Añadir a tu lista'         },
     { id: 'crear-grupo',    label: 'Crear grupo',          sub: 'Nuevo grupo de chat'       },
+    { id: 'escanear-qr',    label: '📷 Escanear QR',       sub: 'Escanea códigos y contactos'},
     { id: 'global-search',  label: '🔍 Buscar en chats',   sub: 'Busca mensajes y contactos'},
     { id: 'business',       label: '💼 Perfil empresarial', sub: 'Catálogo y cuenta negocio' },
     { id: 'broadcast',      label: '📢 Difusión',          sub: 'Mensaje a múltiples chats' },
