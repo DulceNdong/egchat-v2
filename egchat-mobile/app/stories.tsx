@@ -15,6 +15,7 @@ import { BlurView } from 'expo-blur';
 import { ResizeMode, Video } from 'expo-av';
 import { router } from 'expo-router';
 import { storiesAPI, authAPI } from '../src/api';
+import { notifyNewStory, notifyLiveStarted } from '../src/notifications';
 import {
   pickImageFromCamera, pickImageFromLibrary,
   pickVideo, pickVideoFromCamera,
