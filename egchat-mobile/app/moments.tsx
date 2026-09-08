@@ -327,7 +327,7 @@ export default function MomentsScreen() {
   );
 
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: '#00C8A0' }]} edges={['left', 'right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
       {/* Header */}
       <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 10 }]}>
         <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
@@ -395,12 +395,21 @@ export default function MomentsScreen() {
       {/* Modal crear post */}
       <CreatePostModal
         visible={showCreate}
-        onClose={() => setShowCreate(false)}
+        onClose={() => { setShowCreate(false); pendingMediaRef.current = null; }}
         onCreated={(post) => {
           setPosts(prev => [post, ...prev]);
           setShowCreate(false);
+          pendingMediaRef.current = null;
         }}
         C={C}
+        pendingMedia={pendingMediaRef.current}
+      />
+
+      {/* Editor de cámara */}
+      <MomentCameraEditor
+        visible={showCamera}
+        onClose={() => setShowCamera(false)}
+        onDone={handleCameraDone}
       />
     </SafeAreaView>
   );
