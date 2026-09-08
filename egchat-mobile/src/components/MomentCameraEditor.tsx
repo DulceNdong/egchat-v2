@@ -349,16 +349,14 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
           {textLayers.map(layer => (
             <DraggableTextLayer
               key={layer.id}
-              layer={layer}
-              onEdit={(l) => {
+              {...({ layer, onEdit: (l: EditorTextLayer) => {
                 setDraftText(l.text);
                 setTextColor(l.color);
                 setTextSize(l.fontSize);
                 setTextBold(l.bold);
                 setEditingText(l);
                 setActiveTab('text');
-              }}
-              onDelete={(id) => setTextLayers(prev => prev.filter(l => l.id !== id))}
+              }, onDelete: (id: string) => setTextLayers(prev => prev.filter(l => l.id !== id)) } as any)}
             />
           ))}
 
