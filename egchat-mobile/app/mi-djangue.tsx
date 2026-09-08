@@ -481,7 +481,7 @@ export default function MiDjangueScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#00C8A0' },
+  root: { flex: 1, backgroundColor: '#fff' },
   gradient: { flex: 1 },
   header: {
     flexDirection: 'row',
