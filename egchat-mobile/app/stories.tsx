@@ -1870,7 +1870,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       onRequestClose={() => { stopLive(); onClose(); }}>
       <View style={lv.root}>
         {isLive
-          ? <CameraView ref={cameraRef} style={StyleSheet.absoluteFill} facing={facing} flash={flash} />
+          ? <CameraView ref={cameraRef as any} style={StyleSheet.absoluteFill} facing={facing} flash={flash} />
           : <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={StyleSheet.absoluteFill} />
         }
         <View style={lv.overlay} pointerEvents="none" />
