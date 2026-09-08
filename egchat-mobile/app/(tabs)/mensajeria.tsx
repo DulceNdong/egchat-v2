@@ -865,6 +865,30 @@ function MensajeriaScreenInner() {
               })}
             </ScrollView>
           </View>
+
+          {/* Subtabs Djangue / Normal — solo visible en filtro Grupos */}
+          {filter === 'grupos' && (
+            <View style={[st.groupSubTabsWrap, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
+              {([
+                { id: 'all' as GroupSubFilter,     label: 'Todos',    emoji: '👥' },
+                { id: 'normal' as GroupSubFilter,  label: 'Mis grupos', emoji: '💬' },
+                { id: 'djangue' as GroupSubFilter, label: 'Djangues',  emoji: '💰' },
+              ]).map(sub => {
+                const active = groupSubFilter === sub.id;
+                return (
+                  <TouchableOpacity
+                    key={sub.id}
+                    style={[st.groupSubTab, active && st.groupSubTabActive]}
+                    onPress={() => setGroupSubFilter(sub.id)}
+                    activeOpacity={0.75}
+                  >
+                    <Text style={st.groupSubTabEmoji}>{sub.emoji}</Text>
+                    <Text style={[st.groupSubTabText, active && st.groupSubTabTextActive]}>{sub.label}</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          )}
         </View>
 
 
