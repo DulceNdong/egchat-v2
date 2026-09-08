@@ -257,3 +257,76 @@ export async function notifyReaction(params: {
     });
   } catch { /* silencioso */ }
 }
+
+// ── Notificación de Moment nuevo ──────────────────────────────────────────
+/**
+ * Llama al servidor para que envíe push a todos los contactos del usuario
+ * cuando publica un Moment nuevo.
+ */
+export async function notifyNewMoment(params: {
+  momentId: string;
+  authorName: string;
+  preview?: string;   // texto del moment o descripción
+}) {
+  try {
+    const authToken = await getToken();
+    if (!authToken) return;
+    await fetch(`${API_BASE}/api/moments/${params.momentId}/notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({
+        authorName: params.authorName,
+        preview: params.preview || 'Ha publicado un nuevo Moment',
+      }),
+    });
+  } catch { /* silencioso */ }
+}
+
+// ── Notificación de Story/Estado nuevo ──────────────────────────────────────
+/**
+ * Llama al servidor para que envíe push a todos los contactos cuando se
+ * publica un estado nuevo.
+ */
+export async function notifyNewStory(params: {
+  storyId: string;
+  authorName: string;
+}) {
+  try {
+    const authToken = await getToken();
+    if (!authToken) return;
+    await fetch(`${API_BASE}/api/stories/${params.storyId}/notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ authorName: params.authorName }),
+    });
+  } catch { /* silencioso */ }
+}
+
+// ── Notificación de Live iniciado ────────────────────────────────────────────
+/**
+ * Llama al servidor para que envíe push urgente a todos los contactos cuando
+ * el usuario inicia una transmisión en vivo.
+ */
+export async function notifyLiveStarted(params: {
+  liveId: string;
+  hostName: string;
+}) {
+  try {
+    const authToken = await getToken();
+    if (!authToken) return;
+    await fetch(`${API_BASE}/api/live/${params.liveId}/notify`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ hostName: params.hostName }),
+    });
+  } catch { /* silencioso */ }
+}
