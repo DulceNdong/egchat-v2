@@ -34,7 +34,7 @@ const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000;
 const BUBBLE_SIZE = 72;
 
-type StoryTab = 'recientes' | 'vistos' | 'dulce';
+type StoryTab = 'estados' | 'streaming' | 'canales' | 'momentos';
 
 // ── Paleta de marca (se usa en el visor inmersivo y gradientes) ───
 const BRAND   = '#00c8a0';
