@@ -476,7 +476,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
       <View style={s.camRoot}>
         {/* Visor de cámara */}
         <CameraView
-          ref={cameraRef}
+          ref={cameraRef as any}
           style={StyleSheet.absoluteFill}
           facing={facing}
           flash={flash}
