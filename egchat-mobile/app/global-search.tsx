@@ -214,7 +214,7 @@ export default function GlobalSearchScreen() {
               ...msgResults.map((r, i) => ({ ...r, id: `msg_${r.messageId || i}` })),
             ] as any[]}
             keyExtractor={item => item.id}
-            contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+            contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1, backgroundColor: C.bgPrimary }}
             renderItem={({ item }) => {
               if (item.type === 'header') {
                 return (

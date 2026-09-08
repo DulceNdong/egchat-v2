@@ -186,7 +186,7 @@ export default function BroadcastScreen() {
               <FlatList
                 data={filtered}
                 keyExtractor={c => getUserId(c)}
-                contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+                contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1, backgroundColor: C.bgPrimary }}
                 renderItem={({ item }) => {
                   const sel = !!selected.find(s => getUserId(s) === getUserId(item));
                   return (
@@ -249,7 +249,7 @@ export default function BroadcastScreen() {
             <FlatList
               data={selected}
               keyExtractor={c => getUserId(c)}
-              contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
+              contentContainerStyle={{ paddingBottom: insets.bottom + 20, flexGrow: 1, backgroundColor: C.bgPrimary }}
               renderItem={({ item }) => (
                 <View style={[s.recipientRow, { borderBottomColor: C.borderLight }]}>
                   <EGAvatar src={getAvatar(item)} name={getName(item)} size={40} />

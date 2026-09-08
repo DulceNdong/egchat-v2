@@ -1130,8 +1130,6 @@ export default function StoriesScreen() {
                 <Text style={[stAdd.label, { color: C.textTertiary }]}>Videocám</Text>
               </TouchableOpacity>
             </View>
-
-            <TouchableOpacity style={stAdd.cancelBtn} onPress={() => setShowAddModal(false)} activeOpacity={0.7}>
               <Text style={[stAdd.cancelText, { color: C.textTertiary }]}>Cancelar</Text>
             </TouchableOpacity>
           </View>
