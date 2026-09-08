@@ -1779,17 +1779,38 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
   const [duration,        setDuration]        = useState(0);
   const [showEffects,     setShowEffects]     = useState(false);
   const [selectedEffect,  setSelectedEffect]  = useState('none');
+  const [viewerCountAnim] = useState(new Animated.Value(1));
+  const [pulseAnim]       = useState(new Animated.Value(1));
+  const [startBtnAnim]    = useState(new Animated.Value(1));
 
   const cameraRef   = useRef<CameraView>(null);
   const timerRef2   = useRef<ReturnType<typeof setInterval> | null>(null);
   const channelRef2 = useRef<any>(null);
   const scrollRef   = useRef<any>(null);
 
+  // Animación de pulso en el dot EN VIVO
+  useEffect(() => {
+    if (isLive) {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(pulseAnim, { toValue: 1.4, duration: 700, useNativeDriver: true }),
+          Animated.timing(pulseAnim, { toValue: 1,   duration: 700, useNativeDriver: true }),
+        ])
+      ).start();
+    }
+  }, [isLive]);
+
   useEffect(() => {
     if (!visible) { stopLive(); }
   }, [visible]);
 
   const startLive = useCallback(async () => {
+    // Animación del botón
+    Animated.sequence([
+      Animated.timing(startBtnAnim, { toValue: 0.94, duration: 100, useNativeDriver: true }),
+      Animated.timing(startBtnAnim, { toValue: 1,    duration: 100, useNativeDriver: true }),
+    ]).start();
+
     if (!camPerm?.granted)  await requestCamPerm();
     if (!micPerm?.granted)  await requestMicPerm();
     if (!camPerm?.granted || !micPerm?.granted) {
@@ -1811,11 +1832,8 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       setIsLive(true);
       setDuration(0);
       timerRef2.current = setInterval(() => setDuration(d => d + 1), 1000);
-
-      // Notificar a contactos
       notifyLiveStarted({ liveId: id, hostName: hostName || 'Tu contacto' }).catch(() => {});
 
-      // Supabase Realtime — escuchar reacciones y comentarios del público
       const ch = supabase.channel(`live:${id}`)
         .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
           const r: LiveReaction = { id: `r-${Date.now()}-${Math.random()}`, emoji: payload.emoji, userName: payload.userName };
@@ -1829,6 +1847,10 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         })
         .on('broadcast', { event: 'viewer_join' }, ({ payload }: any) => {
           setViewers(prev => prev.find(v => v.userId === payload.userId) ? prev : [...prev, payload]);
+          Animated.sequence([
+            Animated.timing(viewerCountAnim, { toValue: 1.3, duration: 200, useNativeDriver: true }),
+            Animated.timing(viewerCountAnim, { toValue: 1,   duration: 200, useNativeDriver: true }),
+          ]).start();
         })
         .on('broadcast', { event: 'viewer_leave' }, ({ payload }: any) => {
           setViewers(prev => prev.filter(v => v.userId !== payload.userId));
@@ -1866,117 +1888,188 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
   if (!visible) return null;
 
   return (
-    <Modal visible={visible} animationType="slide" statusBarTranslucent
+    <Modal visible={visible} animationType="fade" statusBarTranslucent
       onRequestClose={() => { stopLive(); onClose(); }}>
       <View style={lv.root}>
+
+        {/* Fondo: cámara o gradiente premium */}
         {isLive
           ? <CameraView ref={cameraRef as any} style={StyleSheet.absoluteFill} facing={facing} flash={flash} />
-          : <LinearGradient colors={['#0a0a0a', '#1a1a2e', '#16213e']} style={StyleSheet.absoluteFill} />
+          : <LinearGradient colors={['#0d0d1a', '#1a0533', '#0d1a33']} style={StyleSheet.absoluteFill} />
         }
+
+        {/* Overlay sutil */}
         <View style={lv.overlay} pointerEvents="none" />
 
-        {/* Header */}
-        <SafeAreaView style={lv.header}>
+        {/* ── PRE-LIVE: pantalla de inicio ── */}
+        {!isLive && (
+          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
+            {/* Logo animado */}
+            <View style={lv.preLiveLogo}>
+              <LinearGradient colors={['#ff3b30', '#ff6b35', '#ff3b30']} style={lv.preLiveLogoGrad}>
+                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
+                  <Circle cx="12" cy="12" r="3" fill="#fff"/>
+                  <Circle cx="12" cy="12" r="6" stroke="#fff" strokeWidth={1.5} strokeOpacity={0.5}/>
+                  <Circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth={1} strokeOpacity={0.25}/>
+                </Svg>
+              </LinearGradient>
+            </View>
+            <Text style={lv.preLiveTitle}>Transmisión en vivo</Text>
+            <Text style={lv.preLiveSub}>Tus contactos verán tu emisión en tiempo real</Text>
+
+            {/* Stats decorativos */}
+            <View style={lv.preLiveStats}>
+              {[
+                { icon: '👁️', label: 'Espectadores en vivo' },
+                { icon: '💬', label: 'Comentarios en tiempo real' },
+                { icon: '❤️', label: 'Reacciones animadas' },
+              ].map((item, i) => (
+                <View key={i} style={lv.preLiveStat}>
+                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
+                  <Text style={lv.preLiveStatText}>{item.label}</Text>
+                </View>
+              ))}
+            </View>
+          </View>
+        )}
+
+        {/* ── HEADER ── */}
+        <View style={[lv.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity style={lv.closeBtn}
-            onPress={() => Alert.alert('Terminar', '¿Terminar la transmisión?', [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
-            ])}>
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+            onPress={() => isLive
+              ? Alert.alert('Terminar', '¿Terminar la transmisión?', [
+                  { text: 'Cancelar', style: 'cancel' },
+                  { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
+                ])
+              : onClose()
+            }>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
             </Svg>
           </TouchableOpacity>
-          <View style={{ flex: 1, alignItems: 'center' }}>
-            {isLive
-              ? <View style={lv.liveBadge}><View style={lv.liveDot}/><Text style={lv.liveBadgeText}>EN VIVO  {fmt(duration)}</Text></View>
-              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 17 }}>Transmisión en vivo</Text>
-            }
-          </View>
-          <View style={lv.viewersBadge}>
-            <Text style={{ fontSize: 13 }}>👁️</Text>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{viewers.length}</Text>
-          </View>
-        </SafeAreaView>
 
-        {/* Reacciones flotantes */}
-        <View style={lv.floatingReactions} pointerEvents="none">
-          {reactions.map(r => <Text key={r.id} style={lv.floatingEmoji}>{r.emoji}</Text>)}
+          <View style={{ flex: 1, alignItems: 'center' }}>
+            {isLive ? (
+              <View style={lv.liveBadge}>
+                <Animated.View style={[lv.liveDot, { transform: [{ scale: pulseAnim }] }]} />
+                <Text style={lv.liveBadgeText}>EN VIVO  {fmt(duration)}</Text>
+              </View>
+            ) : (
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17, letterSpacing: 0.3 }}>Transmisión en vivo</Text>
+            )}
+          </View>
+
+          {isLive && (
+            <Animated.View style={[lv.viewersBadge, { transform: [{ scale: viewerCountAnim }] }]}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                <Circle cx="12" cy="12" r="3"/>
+              </Svg>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 13 }}>{viewers.length}</Text>
+            </Animated.View>
+          )}
         </View>
 
-        {/* Sidebar de controles */}
+        {/* ── REACCIONES FLOTANTES ── */}
+        <View style={lv.floatingReactions} pointerEvents="none">
+          {reactions.map(r => (
+            <Text key={r.id} style={lv.floatingEmoji}>{r.emoji}</Text>
+          ))}
+        </View>
+
+        {/* ── SIDEBAR DE CONTROLES (solo en live) ── */}
         {isLive && (
-          <View style={[lv.sidebar, { bottom: insets.bottom + 210 }]}>
+          <View style={[lv.sidebar, { bottom: insets.bottom + 220 }]}>
+            {/* Girar cámara */}
             <TouchableOpacity style={lv.sideBtn} onPress={() => setFacing(f => f === 'back' ? 'front' : 'back')}>
-              <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
                 <Path d="M1 4v6h6"/><Path d="M23 20v-6h-6"/>
                 <Path d="M20.49 9A9 9 0 0 0 5.64 5.64L1 10m22 4l-4.64 4.36A9 9 0 0 1 3.51 15"/>
               </Svg>
             </TouchableOpacity>
-            <TouchableOpacity style={lv.sideBtn} onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')}>
-              <Text style={{ fontSize: 22 }}>{flash === 'off' ? '⚡' : '🔦'}</Text>
+
+            {/* Flash */}
+            <TouchableOpacity style={[lv.sideBtn, flash === 'on' && lv.sideBtnActive]} onPress={() => setFlash(f => f === 'off' ? 'on' : 'off')}>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill={flash === 'on' ? '#FFD60A' : 'none'} stroke={flash === 'on' ? '#FFD60A' : '#fff'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                <Polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+              </Svg>
             </TouchableOpacity>
+
+            {/* Efectos */}
             <TouchableOpacity style={[lv.sideBtn, showEffects && lv.sideBtnActive]} onPress={() => setShowEffects(s => !s)}>
-              <Text style={{ fontSize: 22 }}>🎭</Text>
+              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                <Path d="M12 2L15.09 8.26L22 9.27L17 14.14L18.18 21.02L12 17.77L5.82 21.02L7 14.14L2 9.27L8.91 8.26L12 2Z"/>
+              </Svg>
               <Text style={lv.sideBtnLabel}>Efectos</Text>
             </TouchableOpacity>
           </View>
         )}
 
-        {/* Panel de efectos */}
+        {/* ── PANEL DE EFECTOS ── */}
         {showEffects && isLive && (
-          <View style={[lv.effectsPanel, { bottom: insets.bottom + 210 }]}>
+          <View style={[lv.effectsPanel, { bottom: insets.bottom + 220 }]}>
             <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingHorizontal: 12 }}>
+              contentContainerStyle={{ gap: 10, paddingHorizontal: 14, paddingVertical: 4 }}>
               {LIVE_EFFECTS.map(ef => (
                 <TouchableOpacity key={ef.id}
                   style={[lv.effectBtn, selectedEffect === ef.id && lv.effectBtnActive]}
                   onPress={() => { setSelectedEffect(ef.id); setShowEffects(false); }}>
-                  <Text style={{ fontSize: 26 }}>{ef.emoji}</Text>
-                  <Text style={{ color: '#fff', fontSize: 10, fontWeight: '600' }}>{ef.label}</Text>
+                  <View style={[lv.effectThumb, { backgroundColor: selectedEffect === ef.id ? 'rgba(0,200,160,0.2)' : 'rgba(255,255,255,0.1)' }]}>
+                    <Text style={{ fontSize: 28 }}>{ef.emoji}</Text>
+                  </View>
+                  <Text style={{ color: selectedEffect === ef.id ? '#00C8A0' : '#fff', fontSize: 10, fontWeight: '700', marginTop: 3 }}>{ef.label}</Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Feed de comentarios */}
+        {/* ── COMENTARIOS ── */}
         {isLive && (
-          <View style={[lv.commentsPanel, { bottom: insets.bottom + 80 }]}>
+          <View style={[lv.commentsPanel, { bottom: insets.bottom + 88 }]}>
             <ScrollView
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
               ref={scrollRef as any}
-              style={{ maxHeight: 180 }}
+              style={{ maxHeight: 200 }}
               onContentSizeChange={() => (scrollRef.current as any)?.scrollToEnd?.({ animated: true })}
               showsVerticalScrollIndicator={false}>
               {comments.map(c => (
                 <View key={c.id} style={lv.commentRow}>
-                  <Text style={lv.commentUser}>{c.userName} </Text>
-                  <Text style={lv.commentText}>{c.text}</Text>
+                  <View style={lv.commentAvatar}>
+                    <Text style={{ fontSize: 10, color: '#fff', fontWeight: '800' }}>
+                      {c.userName.slice(0, 2).toUpperCase()}
+                    </Text>
+                  </View>
+                  <View style={lv.commentBubble}>
+                    <Text style={lv.commentUser}>{c.userName}</Text>
+                    <Text style={lv.commentText}>{c.text}</Text>
+                  </View>
                 </View>
               ))}
             </ScrollView>
           </View>
         )}
 
-        {/* Input de comentario */}
+        {/* ── INPUT COMENTARIO ── */}
         {isLive && (
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-            style={[lv.inputWrap, { paddingBottom: insets.bottom + 12 }]}>
+            style={[lv.inputWrap, { paddingBottom: insets.bottom + 14 }]}>
             <View style={lv.inputRow}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth={2} strokeLinecap="round">
+                <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+              </Svg>
               <TextInput
                 style={lv.input}
                 value={commentDraft}
                 onChangeText={setCommentDraft}
                 placeholder="Añade un comentario..."
-                placeholderTextColor="rgba(255,255,255,0.4)"
+                placeholderTextColor="rgba(255,255,255,0.35)"
                 returnKeyType="send"
                 onSubmitEditing={sendComment}
               />
-              <TouchableOpacity onPress={sendComment} disabled={!commentDraft.trim()} style={lv.sendBtn}>
-                <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
-                  stroke={commentDraft.trim() ? '#00C8A0' : 'rgba(255,255,255,0.3)'}
-                  strokeWidth={2} strokeLinecap="round">
+              <TouchableOpacity onPress={sendComment} disabled={!commentDraft.trim()}
+                style={[lv.sendBtn, commentDraft.trim() && { backgroundColor: '#00C8A0' }]}>
+                <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
                   <Line x1="22" y1="2" x2="11" y2="13"/><Polyline points="22 2 15 22 11 13 2 9 22 2"/>
                 </Svg>
               </TouchableOpacity>
@@ -1984,32 +2077,50 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
           </KeyboardAvoidingView>
         )}
 
-        {/* CTA iniciar / detener */}
-        {!isLive ? (
-          <View style={[lv.startWrap, { paddingBottom: insets.bottom + 36 }]}>
-            <Text style={lv.startHint}>Tus contactos recibirán una notificación 🔔</Text>
-            <TouchableOpacity style={lv.startBtn} onPress={startLive} activeOpacity={0.85}>
-              <LinearGradient colors={['#ff3b30', '#ff6b35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                style={lv.startBtnGrad}>
-                <View style={lv.startDot}/>
-                <Text style={lv.startBtnText}>Iniciar transmisión en vivo</Text>
-              </LinearGradient>
-            </TouchableOpacity>
-            <TouchableOpacity onPress={onClose} style={{ marginTop: 16 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={[lv.stopWrap, { paddingBottom: insets.bottom + 36 }]}>
-            <TouchableOpacity style={lv.stopBtn}
-              onPress={() => Alert.alert('Terminar live', '¿Seguro?', [
-                { text: 'No', style: 'cancel' },
-                { text: 'Sí, terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
-              ])}>
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15 }}>⏹  Terminar live</Text>
+        {/* ── BOTÓN INICIAR ── */}
+        {!isLive && (
+          <View style={[lv.startWrap, { paddingBottom: insets.bottom + 40 }]}>
+            <View style={lv.startHintRow}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.5)" strokeWidth={2} strokeLinecap="round">
+                <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+                <Path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+              </Svg>
+              <Text style={lv.startHint}>Tus contactos recibirán una notificación</Text>
+            </View>
+            <Animated.View style={{ width: '100%', transform: [{ scale: startBtnAnim }] }}>
+              <TouchableOpacity style={lv.startBtn} onPress={startLive} activeOpacity={0.9}>
+                <LinearGradient colors={['#ff3b30', '#ff6b35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                  style={lv.startBtnGrad}>
+                  <Animated.View style={[lv.startDot, { transform: [{ scale: pulseAnim }] }]}/>
+                  <Text style={lv.startBtnText}>Iniciar transmisión en vivo</Text>
+                </LinearGradient>
+              </TouchableOpacity>
+            </Animated.View>
+            <TouchableOpacity onPress={onClose} style={lv.cancelBtn}>
+              <Text style={lv.cancelBtnText}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         )}
+
+        {/* ── BOTÓN TERMINAR ── */}
+        {isLive && (
+          <View style={[lv.stopWrap, { paddingBottom: insets.bottom + 40 }]}>
+            <TouchableOpacity style={lv.stopBtn}
+              onPress={() => Alert.alert('Terminar live', '¿Seguro que quieres terminar?', [
+                { text: 'No', style: 'cancel' },
+                { text: 'Sí, terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
+              ])}>
+              <LinearGradient colors={['rgba(255,59,48,0.9)', 'rgba(255,30,30,0.95)']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={lv.stopBtnGrad}>
+                <Svg width={18} height={18} viewBox="0 0 24 24" fill="#fff">
+                  <Rect x="3" y="3" width="18" height="18" rx="3" fill="#fff"/>
+                </Svg>
+                <Text style={{ color: '#fff', fontWeight: '800', fontSize: 15, letterSpacing: 0.3 }}>Terminar live</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+        )}
+
       </View>
     </Modal>
   );
