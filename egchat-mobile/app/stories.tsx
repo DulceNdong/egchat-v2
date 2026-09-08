@@ -1097,16 +1097,20 @@ export default function StoriesScreen() {
         {/* Filtro de categorias */}
         {chTab === 'discover' && (
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 6, paddingVertical: 10 }}>
-            {CH_CATEGORIES.map(cat => (
-              <TouchableOpacity
-                key={cat.id}
-                style={[chst.catChip, chCategory === cat.id && { backgroundColor: BRAND, borderColor: BRAND }]}
-                onPress={() => setChCategory(cat.id)}
-              >
-                <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
-                <Text style={[chst.catChipText, chCategory === cat.id && { color: '#fff' }]}>{cat.id}</Text>
-              </TouchableOpacity>
-            ))}
+            {CH_CATEGORIES.map(cat => {
+              const active = chCategory === cat.id;
+              const iconColor = active ? '#fff' : '#64748b';
+              return (
+                <TouchableOpacity
+                  key={cat.id}
+                  style={[chst.catChip, active && { backgroundColor: BRAND, borderColor: BRAND }]}
+                  onPress={() => setChCategory(cat.id)}
+                >
+                  <cat.Icon color={iconColor} size={13} />
+                  <Text style={[chst.catChipText, active && { color: '#fff' }]}>{cat.id}</Text>
+                </TouchableOpacity>
+              );
+            })}
           </ScrollView>
         )}
 
