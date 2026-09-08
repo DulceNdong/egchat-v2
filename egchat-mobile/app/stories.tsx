@@ -1058,64 +1058,56 @@ const st = StyleSheet.create({
 });
 
 // ── Estilos modal Añadir Estado ────────────────────────────────────
-const TILE_GAP = 10;
-const TILE_SIZE = (W - 48 - TILE_GAP) / 2;
-
 const stAdd = StyleSheet.create({
   backdrop: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(0,0,0,0.4)',
   },
   sheet: {
     flex: 1,
     justifyContent: 'flex-end',
-    paddingBottom: 32,
+    paddingBottom: 28,
     paddingHorizontal: 16,
   },
   card: {
-    borderRadius: 24,
-    padding: 20,
-    overflow: 'hidden',
+    borderRadius: 20,
+    paddingTop: 16,
+    paddingBottom: 6,
+    paddingHorizontal: 12,
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(128,128,128,0.15)',
   },
   title: {
-    fontSize: 18,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 18,
-  },
-  grid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: TILE_GAP,
-    justifyContent: 'space-between',
-    marginBottom: 12,
-  },
-  tile: {
-    width: TILE_SIZE,
-    borderRadius: 16,
-    paddingVertical: 22,
-    alignItems: 'center',
-    gap: 10,
-  },
-  tileLabel: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
+    textAlign: 'center',
+    marginBottom: 14,
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  item: {
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: 6,
+    paddingHorizontal: 4,
+    minWidth: 52,
+  },
+  label: {
+    fontSize: 10,
+    fontWeight: '500',
     textAlign: 'center',
   },
   cancelBtn: {
-    paddingVertical: 14,
+    paddingVertical: 12,
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 2,
   },
   cancelText: {
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 14,
+    fontWeight: '500',
   },
 });
