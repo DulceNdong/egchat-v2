@@ -564,6 +564,7 @@ function MensajeriaScreenInner() {
     }
     setArchiveUnlocked(false);
     setFilter(id);
+    if (id !== 'grupos') setGroupSubFilter('all');
   };
 
   const archiveChat = useCallback(async (chat: Chat) => {
