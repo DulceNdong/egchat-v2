@@ -389,7 +389,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
         </View>
 
         {/* Header cámara */}
-        <SafeAreaView edges={['top']} style={s.camHeader}>
+        <View style={[s.camHeader, { paddingTop: insets.top + 8 }]}>
           <TouchableOpacity style={s.camIconBtn} onPress={onClose}>
             <IcClose size={22} />
           </TouchableOpacity>
