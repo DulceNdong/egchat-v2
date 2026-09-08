@@ -67,6 +67,7 @@ export default function QRScannerScreen() {
   const [scanned, setScanned] = useState(false);
   const [processing, setProcessing] = useState(false);
   const [lastData, setLastData] = useState('');
+  const insets = useSafeAreaInsets();
 
   const handleScan = async ({ data }: { data: string }) => {
     if (scanned || processing || data === lastData) return;
