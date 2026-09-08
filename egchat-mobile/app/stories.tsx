@@ -1929,3 +1929,25 @@ const lv = StyleSheet.create({
   stopWrap:         { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 28 },
   stopBtn:          { backgroundColor: 'rgba(255,59,48,0.9)', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 26 },
 });
+
+// ── Estilos Canales Dulce ─────────────────────────────────────
+const chst = StyleSheet.create({
+  tabs:          { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
+  tab:           { flex: 1, alignItems: 'center', paddingVertical: 11, position: 'relative' },
+  tabActive:     {},
+  tabText:       { fontSize: 14, fontWeight: '600' },
+  tabIndicator:  { position: 'absolute', bottom: 0, width: 32, height: 2.5, borderRadius: 2 },
+  searchWrap:    { flexDirection: 'row', alignItems: 'center', gap: 8, margin: 10, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
+  searchInput:   { flex: 1, fontSize: 15 },
+  catChip:       { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.06)' },
+  catChipText:   { fontSize: 13, fontWeight: '600', color: '#6b7280' },
+  card:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
+  cardLeft:      { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
+  channelName:   { fontSize: 15, fontWeight: '700' },
+  channelCat:    { fontSize: 11, fontWeight: '700', marginTop: 1 },
+  channelDesc:   { fontSize: 12, marginTop: 2 },
+  followers:     { fontSize: 11, marginTop: 3 },
+  verifiedBadge: { position: 'absolute', bottom: -2, right: -2, width: 18, height: 18, borderRadius: 9, backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center' },
+  followBtn:     { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1.5, borderColor: '#00C8A0' },
+  followBtnText: { fontSize: 13, fontWeight: '700' },
+});
