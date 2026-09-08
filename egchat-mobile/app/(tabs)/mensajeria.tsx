@@ -1389,7 +1389,38 @@ const st = StyleSheet.create({
     backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
+  groupBadgeDjangue: {
+    backgroundColor: '#fef9c3',
+  },
   groupBadgeText: { fontSize: 10 },
+
+  // ── Group subtabs ────────────────────────────────────────────────
+  groupSubTabsWrap: {
+    flexDirection: 'row',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 6,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
+  groupSubTab: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 4,
+    paddingVertical: 7,
+    borderRadius: 20,
+    backgroundColor: '#f1f5f9',
+    borderWidth: 1,
+    borderColor: '#e2e8f0',
+  },
+  groupSubTabActive: {
+    backgroundColor: '#6366f1',
+    borderColor: '#6366f1',
+  },
+  groupSubTabEmoji: { fontSize: 13 },
+  groupSubTabText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  groupSubTabTextActive: { color: '#fff' },
   emptySub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
   retryBtn: {
     marginTop: Spacing.lg,
