@@ -54,10 +54,19 @@ private let emojiCategories: [(String,[String])] = [
 
 // ── KeyButton ─────────────────────────────────────────────────
 
+/// Forma de la burbuja de popup al presionar una tecla.
+/// `showPopup` = true activa el callout estilo iOS sobre la tecla.
 private final class KB: UIControl {
   private let lbl = UILabel()
-  var onTap: (()->Void)?
+  var onTap:  (()->Void)?
   var onLong: (()->Void)?
+  /// Si es true, al presionar se muestra el callout iOS encima de la tecla.
+  var showsKeyPopup: Bool = false
+  /// Referencia débil a la vista contenedora donde se ancla el popup.
+  weak var popupContainer: UIView?
+
+  // Vista de callout activa
+  private var callout: KeyCalloutView?
 
   init(_ title: String, _ font: UIFont, _ fg: UIColor, _ bg: UIColor, radius: CGFloat = 5) {
     super.init(frame: .zero)
@@ -74,17 +83,118 @@ private final class KB: UIControl {
       lbl.centerYAnchor.constraint(equalTo: centerYAnchor),
     ])
     addTarget(self, action: #selector(tap),  for: .touchUpInside)
-    addTarget(self, action: #selector(down), for: [.touchDown,.touchDragEnter])
-    addTarget(self, action: #selector(up),   for: [.touchUpInside,.touchUpOutside,.touchCancel,.touchDragExit])
+    addTarget(self, action: #selector(down), for: [.touchDown, .touchDragEnter])
+    addTarget(self, action: #selector(up),   for: [.touchUpInside, .touchUpOutside, .touchCancel, .touchDragExit])
     let lp = UILongPressGestureRecognizer(target: self, action: #selector(longp(_:)))
     lp.minimumPressDuration = 0.35; addGestureRecognizer(lp)
   }
   required init?(coder: NSCoder) { fatalError() }
+
   func setTitle(_ t: String) { lbl.text = t }
+  var currentTitle: String? { lbl.text }
+
   @objc private func tap()  { onTap?() }
   @objc private func longp(_ g: UILongPressGestureRecognizer) { if g.state == .began { onLong?() } }
-  @objc private func down() { UIView.animate(withDuration:0.05){ self.transform = CGAffineTransform(scaleX:0.93,y:0.93); self.alpha = 0.7 } }
-  @objc private func up()   { UIView.animate(withDuration:0.1){ self.transform = .identity; self.alpha = 1 } }
+
+  @objc private func down() {
+    guard showsKeyPopup, let container = popupContainer, let text = lbl.text, !text.isEmpty else {
+      // Teclas especiales: efecto suave de escala como antes
+      UIView.animate(withDuration: 0.05) { self.alpha = 0.7 }
+      return
+    }
+    // Mostrar callout encima de la tecla
+    callout?.removeFromSuperview()
+    let c = KeyCalloutView(letter: text, keyFrame: convert(bounds, to: container))
+    container.addSubview(c)
+    callout = c
+    c.alpha = 0
+    UIView.animate(withDuration: 0.06) { c.alpha = 1 }
+  }
+
+  @objc private func up() {
+    guard showsKeyPopup, callout != nil else {
+      UIView.animate(withDuration: 0.1) { self.alpha = 1 }
+      return
+    }
+    let c = callout; callout = nil
+    UIView.animate(withDuration: 0.08, animations: { c?.alpha = 0 }) { _ in c?.removeFromSuperview() }
+  }
+}
+
+// ── Callout popup estilo iOS ───────────────────────────────────
+/// Dibuja la burbuja con la letra grande que aparece encima de la tecla
+/// al presionar, igual al teclado nativo de iOS.
+private final class KeyCalloutView: UIView {
+  private let letter: String
+  private let keyFrame: CGRect
+
+  // Dimensiones del callout (aprox. proporción iOS)
+  private let bubbleW: CGFloat  = 44
+  private let bubbleH: CGFloat  = 54
+  private let tailH:   CGFloat  = 12
+  private let tailW:   CGFloat  = 16
+  private let radius:  CGFloat  = 10
+
+  init(letter: String, keyFrame: CGRect) {
+    self.letter   = letter
+    self.keyFrame = keyFrame
+    // El frame total cubre la posición X centrada sobre la tecla, y sube encima
+    let totalH = bubbleH + tailH
+    let cx = keyFrame.midX
+    // Limitar a pantalla
+    let screenW = UIScreen.main.bounds.width
+    let bx = min(max(cx - bubbleW/2, 4), screenW - bubbleW - 4)
+    let by = keyFrame.minY - totalH - 4   // 4 pt de margen sobre la tecla
+    super.init(frame: CGRect(x: bx, y: by, width: bubbleW, height: totalH))
+    backgroundColor = .clear
+    isUserInteractionEnabled = false
+  }
+  required init?(coder: NSCoder) { fatalError() }
+
+  override func draw(_ rect: CGRect) {
+    guard let ctx = UIGraphicsGetCurrentContext() else { return }
+
+    // ── Construir path: rectángulo redondeado + cola triangular ──
+    let bRect = CGRect(x: 0, y: 0, width: bubbleW, height: bubbleH)
+    let path  = UIBezierPath(roundedRect: bRect, cornerRadius: radius)
+
+    // Cola: triángulo centrado abajo del burbuja, apuntando hacia la tecla
+    let tailCX = bubbleW / 2
+    // Ajustar la X de la cola para que apunte al centro real de la tecla
+    let keyMidInLocal = keyFrame.midX - frame.minX
+    let clampedTailCX = min(max(keyMidInLocal, tailW/2 + radius), bubbleW - tailW/2 - radius)
+    let tailPath = UIBezierPath()
+    tailPath.move(to:    CGPoint(x: clampedTailCX - tailW/2, y: bubbleH))
+    tailPath.addLine(to: CGPoint(x: clampedTailCX,           y: bubbleH + tailH))
+    tailPath.addLine(to: CGPoint(x: clampedTailCX + tailW/2, y: bubbleH))
+    tailPath.close()
+    path.append(tailPath)
+
+    // Sombra sutil
+    ctx.setShadow(offset: CGSize(width: 0, height: 2), blur: 6,
+                  color: UIColor.black.withAlphaComponent(0.22).cgColor)
+
+    // Fondo blanco igual al iOS
+    UIColor.white.setFill()
+    path.fill()
+
+    // Letra grande centrada en el burbuja
+    let attrs: [NSAttributedString.Key: Any] = [
+      .font:            UIFont.systemFont(ofSize: 28, weight: .light),
+      .foregroundColor: UIColor(red: 0.07, green: 0.07, blue: 0.07, alpha: 1),
+    ]
+    let str   = NSString(string: letter)
+    let sSize = str.size(withAttributes: attrs)
+    str.draw(at: CGPoint(x: (bubbleW - sSize.width)/2,
+                         y: (bubbleH - sSize.height)/2),
+             withAttributes: attrs)
+
+    // Borde sutil (1 pt gris claro)
+    _ = tailCX  // silence unused warning
+    UIColor(red: 0.78, green: 0.78, blue: 0.80, alpha: 1).setStroke()
+    path.lineWidth = 0.5
+    path.stroke()
+  }
 }
 
 // ── EGChatKeyboardView ────────────────────────────────────────
