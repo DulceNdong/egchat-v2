@@ -843,44 +843,54 @@ export default function StoriesScreen() {
   }, [recentGroups, groups, myGroup, uploading, MyBubble, C, car]);
 
   // ── Espacio Dulce ─────────────────────────────────────────────
-  // ── Canales Dulce (ex channels.tsx) ─────────────────────────
+  // ── Canales Dulce — EGChat Edition ─────────────────────────
   const [chList,       setChList]       = React.useState<any[]>([]);
   const [chLoading,    setChLoading]    = React.useState(false);
   const [chRefreshing, setChRefreshing] = React.useState(false);
   const [chSearch,     setChSearch]     = React.useState('');
   const [chCategory,   setChCategory]   = React.useState('Todos');
   const [chTab,        setChTab]        = React.useState<'discover'|'following'>('discover');
+  const [chDetail,     setChDetail]     = React.useState<any | null>(null);
 
-  const CH_CATEGORIES = ['Todos','Noticias','Tecnologia','Negocios','Deportes','Salud','Entretenimiento'];
-  const FOLLOWED_KEY_CH = 'egchat_followed_channels';
+  const CH_CATEGORIES = [
+    { id: 'Todos',          emoji: '🌐' },
+    { id: 'Gobierno',       emoji: '🏛️' },
+    { id: 'Noticias',       emoji: '📰' },
+    { id: 'Musica',         emoji: '🎵' },
+    { id: 'Deportes',       emoji: '⚽' },
+    { id: 'Negocios',       emoji: '💼' },
+    { id: 'Tecnologia',     emoji: '💻' },
+    { id: 'Salud',          emoji: '🏥' },
+    { id: 'Entretenimiento',emoji: '🎬' },
+  ];
 
   const loadChannels = React.useCallback(async (showRefresh = false) => {
     if (showRefresh) setChRefreshing(true); else setChLoading(true);
     try {
       const api = await import('../src/api');
-      const BASE = api.getApiBase();
       const token = await api.getToken();
-      const res = await fetch(`${BASE}/api/channels`, { headers: { Authorization: `Bearer ${token}` } });
+      const res = await fetch(`${api.getApiBase()}/api/channels`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
       if (res.ok) { const data = await res.json(); setChList(data); }
     } catch {}
     finally { setChLoading(false); setChRefreshing(false); }
   }, []);
 
   const handleChFollow = React.useCallback(async (ch: any) => {
+    // Optimistic update
+    setChList(prev => prev.map((c: any) =>
+      c.id === ch.id
+        ? { ...c, followed: !c.followed, followers_count: !c.followed ? (c.followers_count||0)+1 : Math.max((c.followers_count||0)-1,0) }
+        : c
+    ));
     try {
       const api = await import('../src/api');
-      const BASE = api.getApiBase();
       const token = await api.getToken();
-      const res = await fetch(`${BASE}/api/channels/${ch.id}/follow`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
-      if (res.ok) {
-        const { followed } = await res.json();
-        setChList(prev => prev.map((c: any) => c.id === ch.id ? { ...c, followed, followers_count: followed ? (c.followers_count||0)+1 : Math.max((c.followers_count||0)-1,0) } : c));
-      } else {
-        setChList(prev => prev.map((c: any) => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-      }
-    } catch {
-      setChList(prev => prev.map((c: any) => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-    }
+      await fetch(`${api.getApiBase()}/api/channels/${ch.id}/follow`, {
+        method: 'POST', headers: { Authorization: `Bearer ${token}` },
+      });
+    } catch {}
   }, []);
 
   const chFiltered = React.useMemo(() => chList.filter((ch: any) => {
@@ -891,120 +901,256 @@ export default function StoriesScreen() {
   }), [chList, chTab, chCategory, chSearch]);
 
   const formatChCount = (n: number) => {
-    if (n >= 1000000) return `${(n/1000000).toFixed(1)}M`;
-    if (n >= 1000) return `${(n/1000).toFixed(1)}K`;
-    return String(n || 0);
+    if ((n||0) >= 1000000) return `${((n||0)/1000000).toFixed(1)}M`;
+    if ((n||0) >= 1000) return `${((n||0)/1000).toFixed(1)}K`;
+    return String(n||0);
   };
 
+  // Card visual tipo "canal" — banner + info
+  const ChannelCard = React.useCallback(({ ch, onFollow, onOpen }: { ch: any; onFollow: () => void; onOpen: () => void }) => {
+    const catColor = ch.category === 'Gobierno' ? '#1d4ed8' : ch.category === 'Musica' ? '#7c3aed' : ch.category === 'Deportes' ? '#16a34a' : ch.category === 'Noticias' ? '#dc2626' : ch.category === 'Negocios' ? '#b45309' : ch.category === 'Tecnologia' ? '#0891b2' : BRAND;
+    const catEmoji = CH_CATEGORIES.find(c => c.id === ch.category)?.emoji || '📡';
+    return (
+      <TouchableOpacity style={[chst.channelCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={onOpen} activeOpacity={0.88}>
+        {/* Banner superior con gradiente de color de categoría */}
+        <LinearGradient colors={[catColor, catColor + '88']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={chst.channelBanner}>
+          {ch.banner_url
+            ? <Image source={{ uri: ch.banner_url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
+            : <Text style={{ fontSize: 38 }}>{catEmoji}</Text>
+          }
+          {ch.verified && (
+            <View style={chst.verifiedPill}>
+              <MIcon name="verified" size={12} color="#fff" />
+              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', marginLeft: 3 }}>Oficial</Text>
+            </View>
+          )}
+        </LinearGradient>
+
+        {/* Avatar superpuesto */}
+        <View style={chst.avatarRow}>
+          <View style={[chst.avatarWrap, { borderColor: C.bgSecondary }]}>
+            <EGAvatar src={ch.avatar_url} name={ch.name} size={44} />
+          </View>
+          <TouchableOpacity
+            style={[chst.followPill, ch.followed && { backgroundColor: BRAND + '20', borderColor: BRAND }]}
+            onPress={onFollow}
+            activeOpacity={0.8}
+          >
+            <MIcon name={ch.followed ? 'notifications-active' : 'notifications-none'} size={14} color={ch.followed ? BRAND : C.textTertiary} />
+            <Text style={[chst.followPillText, { color: ch.followed ? BRAND : C.textTertiary }]}>
+              {ch.followed ? 'Suscrito' : 'Suscribirse'}
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Info */}
+        <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
+          <Text style={[chst.chName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
+            <View style={[chst.catTag, { backgroundColor: catColor + '20' }]}>
+              <Text style={[chst.catTagText, { color: catColor }]}>{catEmoji} {ch.category}</Text>
+            </View>
+            <Text style={[chst.chFollowers, { color: C.textTertiary }]}>
+              {formatChCount(ch.followers_count||0)} suscritos
+            </Text>
+          </View>
+          {!!ch.description && (
+            <Text style={[chst.chDesc, { color: C.textTertiary }]} numberOfLines={2}>{ch.description}</Text>
+          )}
+          {ch.last_post?.text && (
+            <View style={[chst.lastPostWrap, { backgroundColor: C.bgTertiary }]}>
+              <MIcon name="campaign" size={13} color={C.textTertiary} />
+              <Text style={[chst.lastPostText, { color: C.textSecondary }]} numberOfLines={1}>{ch.last_post.text}</Text>
+            </View>
+          )}
+        </View>
+      </TouchableOpacity>
+    );
+  }, [C, CH_CATEGORIES]);
+
   const CanalesDulceTab = React.useCallback(() => {
-    // Cargar al primer acceso
     React.useEffect(() => { if (chList.length === 0) loadChannels(); }, []);
+    const featured = chFiltered[0] || null;
+    const rest = chFiltered.slice(1);
     return (
       <View style={{ flex: 1 }}>
-        {/* Sub-tabs: Descubrir / Siguiendo */}
-        <View style={[chst.tabs, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-          {(['discover','following'] as const).map(t => (
-            <TouchableOpacity key={t} style={[chst.tab, chTab === t && chst.tabActive]} onPress={() => setChTab(t)}>
-              <Text style={[chst.tabText, { color: chTab === t ? BRAND : C.textTertiary }]}>
-                {t === 'discover' ? 'Descubrir' : 'Siguiendo'}
-              </Text>
-              {chTab === t && <View style={[chst.tabIndicator, { backgroundColor: BRAND }]} />}
-            </TouchableOpacity>
-          ))}
+        {/* Barra superior: sub-tabs + busqueda */}
+        <View style={[chst.topBar, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+          <View style={chst.subTabs}>
+            {(['discover','following'] as const).map(t => (
+              <TouchableOpacity key={t} style={[chst.subTab, chTab === t && { borderBottomColor: BRAND, borderBottomWidth: 2.5 }]} onPress={() => setChTab(t)}>
+                <Text style={[chst.subTabText, { color: chTab === t ? BRAND : C.textTertiary }]}>
+                  {t === 'discover' ? 'Explorar' : 'Mis canales'}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+          <View style={[chst.searchRow, { backgroundColor: C.bgTertiary }]}>
+            <MIcon name="search" size={16} color={C.textTertiary} />
+            <TextInput
+              style={[chst.searchInput, { color: C.textPrimary }]}
+              placeholder="Buscar..."
+              placeholderTextColor={C.textTertiary}
+              value={chSearch}
+              onChangeText={setChSearch}
+            />
+            {!!chSearch && (
+              <TouchableOpacity onPress={() => setChSearch('')}>
+                <MIcon name="close" size={16} color={C.textTertiary} />
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
 
-        {/* Buscador */}
-        <View style={[chst.searchWrap, { backgroundColor: C.bgSecondary }]}>
-          <MIcon name="search" size={18} color={C.textTertiary} />
-          <TextInput
-            style={[chst.searchInput, { color: C.textPrimary }]}
-            placeholder="Buscar canales..."
-            placeholderTextColor={C.textTertiary}
-            value={chSearch}
-            onChangeText={setChSearch}
-          />
-        </View>
-
-        {/* Categorias */}
+        {/* Filtro de categorias */}
         {chTab === 'discover' && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingVertical: 8 }}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ paddingHorizontal: 12, gap: 6, paddingVertical: 10 }}>
             {CH_CATEGORIES.map(cat => (
               <TouchableOpacity
-                key={cat}
-                style={[chst.catChip, chCategory === cat && { backgroundColor: BRAND }]}
-                onPress={() => setChCategory(cat)}
+                key={cat.id}
+                style={[chst.catChip, chCategory === cat.id && { backgroundColor: BRAND, borderColor: BRAND }]}
+                onPress={() => setChCategory(cat.id)}
               >
-                <Text style={[chst.catChipText, chCategory === cat && { color: '#fff' }]}>{cat}</Text>
+                <Text style={{ fontSize: 13 }}>{cat.emoji}</Text>
+                <Text style={[chst.catChipText, chCategory === cat.id && { color: '#fff' }]}>{cat.id}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         )}
 
-        {/* Lista de canales */}
         {chLoading ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center' }}>
             <ActivityIndicator color={BRAND} size="large" />
           </View>
         ) : (
           <FlatList
-            data={chFiltered}
+            data={chTab === 'discover' && !chSearch && chCategory === 'Todos' ? rest : chFiltered}
             keyExtractor={(c: any) => c.id}
-            style={{ flex: 1, backgroundColor: C.bgPrimary }}
+            style={{ flex: 1 }}
+            contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 60, paddingTop: 4 }}
             refreshControl={<RefreshControl refreshing={chRefreshing} onRefresh={() => loadChannels(true)} colors={[BRAND]} tintColor={BRAND} />}
-            contentContainerStyle={{ paddingBottom: 40 }}
-            renderItem={({ item: ch }: { item: any }) => (
-              <TouchableOpacity
-                style={[chst.card, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}
-                onPress={() => router.push({ pathname: '/channel-detail', params: { id: ch.id, name: ch.name } } as any)}
-                activeOpacity={0.75}
-              >
-                <View style={chst.cardLeft}>
-                  <View style={{ position: 'relative' }}>
-                    <EGAvatar src={ch.avatar_url} name={ch.name} size={52} />
-                    {ch.verified && (
-                      <View style={chst.verifiedBadge}>
-                        <MIcon name="verified" size={12} color={BRAND} />
-                      </View>
-                    )}
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[chst.channelName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
-                    <Text style={[chst.channelCat, { color: BRAND }]}>{ch.category}</Text>
-                    {!!ch.description && (
-                      <Text style={[chst.channelDesc, { color: C.textTertiary }]} numberOfLines={1}>{ch.description}</Text>
-                    )}
-                    <Text style={[chst.followers, { color: C.textTertiary }]}>
-                      {formatChCount(ch.followers_count || ch.followers || 0)} seguidores
-                    </Text>
-                  </View>
+            ListHeaderComponent={
+              // Canal destacado solo en Explorar sin filtros
+              chTab === 'discover' && !chSearch && chCategory === 'Todos' && featured ? (
+                <View style={{ marginBottom: 16 }}>
+                  <Text style={[chst.sectionLabel, { color: C.textTertiary }]}>DESTACADO</Text>
+                  <ChannelCard
+                    ch={featured}
+                    onFollow={() => handleChFollow(featured)}
+                    onOpen={() => setChDetail(featured)}
+                  />
                 </View>
-                <TouchableOpacity
-                  style={[chst.followBtn, ch.followed && { backgroundColor: BRAND + '20', borderColor: BRAND }]}
-                  onPress={() => handleChFollow(ch)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={[chst.followBtnText, { color: BRAND }]}>
-                    {ch.followed ? 'Siguiendo' : 'Seguir'}
-                  </Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
+              ) : null
+            }
+            renderItem={({ item: ch }: { item: any }) => (
+              <ChannelCard
+                ch={ch}
+                onFollow={() => handleChFollow(ch)}
+                onOpen={() => setChDetail(ch)}
+              />
             )}
+            ItemSeparatorComponent={() => <View style={{ height: 10 }} />}
             ListEmptyComponent={
-              <View style={st.empty}>
-                <MIcon name="cell-tower" size={52} color={C.border} />
+              <View style={[st.empty, { marginTop: 40 }]}>
+                <MIcon name="cell-tower" size={56} color={C.border} />
                 <Text style={[st.emptyTitle, { color: C.textSecondary }]}>
-                  {chTab === 'following' ? 'No sigues ningun canal' : 'Sin canales disponibles'}
+                  {chTab === 'following' ? 'Sin canales suscritos' : 'Sin resultados'}
                 </Text>
                 <Text style={[st.emptySub, { color: C.textTertiary }]}>
-                  {chTab === 'following' ? 'Descubre canales en la pestana Descubrir' : 'Los canales apareceran aqui'}
+                  {chTab === 'following' ? 'Explora y suscribete a canales' : 'Prueba otra busqueda o categoria'}
                 </Text>
               </View>
             }
           />
         )}
+
+        {/* Panel detalle canal */}
+        <Modal visible={!!chDetail} animationType="slide" onRequestClose={() => setChDetail(null)}>
+          <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
+            {chDetail && (
+              <>
+                {/* Header con banner */}
+                <View style={{ position: 'relative' }}>
+                  <LinearGradient
+                    colors={[chDetail.category === 'Gobierno' ? '#1d4ed8' : chDetail.category === 'Musica' ? '#7c3aed' : chDetail.category === 'Deportes' ? '#16a34a' : BRAND, BRAND2]}
+                    style={{ height: 160 }}
+                  >
+                    {chDetail.banner_url && <Image source={{ uri: chDetail.banner_url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />}
+                  </LinearGradient>
+                  <TouchableOpacity
+                    style={{ position: 'absolute', top: 12, left: 12, width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(0,0,0,0.4)', alignItems: 'center', justifyContent: 'center' }}
+                    onPress={() => setChDetail(null)}
+                  >
+                    <MIcon name="arrow-back" size={20} color="#fff" />
+                  </TouchableOpacity>
+                  {/* Avatar superpuesto en el banner */}
+                  <View style={{ position: 'absolute', bottom: -28, left: 20, borderRadius: 32, borderWidth: 3, borderColor: C.bgPrimary, overflow: 'hidden' }}>
+                    <EGAvatar src={chDetail.avatar_url} name={chDetail.name} size={56} />
+                  </View>
+                </View>
+                {/* Info canal */}
+                <View style={{ paddingHorizontal: 16, paddingTop: 36, paddingBottom: 16 }}>
+                  <View style={{ flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' }}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={{ fontSize: 20, fontWeight: '800', color: C.textPrimary }}>{chDetail.name}</Text>
+                      <Text style={{ fontSize: 12, color: BRAND, fontWeight: '700', marginTop: 2 }}>{chDetail.category}</Text>
+                    </View>
+                    <TouchableOpacity
+                      style={[chst.followPill, chDetail.followed && { backgroundColor: BRAND + '20', borderColor: BRAND }, { paddingHorizontal: 16, paddingVertical: 9 }]}
+                      onPress={() => { handleChFollow(chDetail); setChDetail((p: any) => p ? { ...p, followed: !p.followed } : p); }}
+                      activeOpacity={0.8}
+                    >
+                      <MIcon name={chDetail.followed ? 'notifications-active' : 'notifications-none'} size={15} color={chDetail.followed ? BRAND : C.textTertiary} />
+                      <Text style={[chst.followPillText, { color: chDetail.followed ? BRAND : C.textTertiary, fontSize: 13 }]}>
+                        {chDetail.followed ? 'Suscrito' : 'Suscribirse'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                  <Text style={{ fontSize: 13, color: C.textTertiary, marginTop: 6, lineHeight: 20 }}>{chDetail.description}</Text>
+                  <Text style={{ fontSize: 12, color: C.textTertiary, marginTop: 4 }}>
+                    {formatChCount(chDetail.followers_count||0)} suscritos
+                  </Text>
+                </View>
+                <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.borderLight }} />
+                {/* Posts del canal */}
+                <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
+                  {chDetail.posts?.length > 0 ? chDetail.posts.map((p: any) => (
+                    <View key={p.id} style={[chst.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
+                      <View style={{ flexDirection: 'row', gap: 10, marginBottom: 8, alignItems: 'center' }}>
+                        <View style={[chst.postAvatar, { backgroundColor: BRAND }]}>
+                          <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{(p.avatar||chDetail.name||'?').slice(0,2).toUpperCase()}</Text>
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text style={{ color: C.textPrimary, fontSize: 13, fontWeight: '700' }}>{p.author||chDetail.name}</Text>
+                          <Text style={{ color: C.textTertiary, fontSize: 11 }}>{p.time||''}{p.isOfficial ? ' · Oficial' : ''}</Text>
+                        </View>
+                      </View>
+                      <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 20 }}>{p.text}</Text>
+                      <View style={{ flexDirection: 'row', gap: 16, marginTop: 10 }}>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <MIcon name="favorite-border" size={14} color={C.textTertiary} />
+                          <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.likes||0}</Text>
+                        </View>
+                        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4 }}>
+                          <MIcon name="chat-bubble-outline" size={14} color={C.textTertiary} />
+                          <Text style={{ fontSize: 12, color: C.textTertiary }}>{p.comments||0}</Text>
+                        </View>
+                      </View>
+                    </View>
+                  )) : (
+                    <View style={{ alignItems: 'center', paddingVertical: 40 }}>
+                      <MIcon name="campaign" size={48} color={C.border} />
+                      <Text style={{ color: C.textSecondary, marginTop: 12, fontSize: 15, fontWeight: '600' }}>Sin publicaciones aun</Text>
+                    </View>
+                  )}
+                </ScrollView>
+              </>
+            )}
+          </SafeAreaView>
+        </Modal>
       </View>
     );
-  }, [chList, chLoading, chRefreshing, chSearch, chCategory, chTab, chFiltered, C]);
+  }, [chList, chLoading, chRefreshing, chSearch, chCategory, chTab, chFiltered, chDetail, C, ChannelCard]);
 
 
   // ── Render ────────────────────────────────────────────────────
@@ -1895,17 +2041,49 @@ const lv = StyleSheet.create({
   stopBtn:          { backgroundColor: 'rgba(255,59,48,0.9)', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 26 },
 });
 
-// ── Estilos Canales Dulce ─────────────────────────────────────
+// ── Estilos Canales Dulce — EGChat Edition ──────────────────
 const chst = StyleSheet.create({
+  // Layout
+  topBar:       { borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 12, paddingBottom: 8, paddingTop: 6, gap: 8 },
+  subTabs:      { flexDirection: 'row', gap: 0 },
+  subTab:       { flex: 1, alignItems: 'center', paddingVertical: 8, borderBottomWidth: 2.5, borderBottomColor: 'transparent' },
+  subTabText:   { fontSize: 14, fontWeight: '700' },
+  searchRow:    { flexDirection: 'row', alignItems: 'center', gap: 8, borderRadius: 10, paddingHorizontal: 10, paddingVertical: 7 },
+  searchInput:  { flex: 1, fontSize: 14 },
+
+  // Categorias
+  catChip:      { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.1)' },
+  catChipText:  { fontSize: 12, fontWeight: '600', color: '#6b7280' },
+
+  // Label sección
+  sectionLabel: { fontSize: 10, fontWeight: '800', letterSpacing: 1.4, marginBottom: 8, marginLeft: 2 },
+
+  // Card de canal
+  channelCard:   { borderRadius: 16, overflow: 'hidden', borderWidth: 1, marginBottom: 2 },
+  channelBanner: { height: 100, alignItems: 'center', justifyContent: 'center', position: 'relative' },
+  verifiedPill:  { position: 'absolute', top: 10, right: 10, flexDirection: 'row', alignItems: 'center', backgroundColor: 'rgba(0,0,0,0.45)', borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3 },
+  avatarRow:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 14, marginTop: -22, marginBottom: 8 },
+  avatarWrap:    { borderRadius: 28, borderWidth: 3, overflow: 'hidden' },
+  followPill:    { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 20, borderWidth: 1.5, borderColor: 'rgba(0,0,0,0.15)' },
+  followPillText:{ fontSize: 12, fontWeight: '700' },
+  chName:        { fontSize: 16, fontWeight: '800', letterSpacing: -0.2 },
+  catTag:        { flexDirection: 'row', alignItems: 'center', borderRadius: 10, paddingHorizontal: 8, paddingVertical: 3 },
+  catTagText:    { fontSize: 11, fontWeight: '700' },
+  chFollowers:   { fontSize: 11 },
+  chDesc:        { fontSize: 13, lineHeight: 18, marginTop: 6 },
+  lastPostWrap:  { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: 8, padding: 8, marginTop: 8 },
+  lastPostText:  { fontSize: 12, flex: 1 },
+
+  // Posts dentro del canal
+  postCard:   { borderRadius: 14, padding: 14, marginBottom: 10, borderWidth: 1 },
+  postAvatar: { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+
+  // (legacy — pueden quedar referencias)
   tabs:          { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth },
   tab:           { flex: 1, alignItems: 'center', paddingVertical: 11, position: 'relative' },
   tabActive:     {},
   tabText:       { fontSize: 14, fontWeight: '600' },
   tabIndicator:  { position: 'absolute', bottom: 0, width: 32, height: 2.5, borderRadius: 2 },
-  searchWrap:    { flexDirection: 'row', alignItems: 'center', gap: 8, margin: 10, borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8 },
-  searchInput:   { flex: 1, fontSize: 15 },
-  catChip:       { paddingHorizontal: 14, paddingVertical: 6, borderRadius: 16, backgroundColor: 'rgba(0,0,0,0.06)' },
-  catChipText:   { fontSize: 13, fontWeight: '600', color: '#6b7280' },
   card:          { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14, borderBottomWidth: StyleSheet.hairlineWidth },
   cardLeft:      { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
   channelName:   { fontSize: 15, fontWeight: '700' },
@@ -1916,3 +2094,4 @@ const chst = StyleSheet.create({
   followBtn:     { paddingHorizontal: 14, paddingVertical: 7, borderRadius: 16, borderWidth: 1.5, borderColor: '#00C8A0' },
   followBtnText: { fontSize: 13, fontWeight: '700' },
 });
+
