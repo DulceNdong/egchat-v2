@@ -322,9 +322,7 @@ export const HamburgerMenu = ({
         case 'perfil':         router.push('/ajustes/perfil' as any); break;
         case 'nuevo-contacto': router.push('/contacts' as any); break;
         case 'crear-grupo':    router.push('/new-chat' as any); break;
-        case 'moments':        router.push('/moments' as any); break;
         case 'broadcast':      router.push('/broadcast' as any); break;
-        case 'channels':       router.push('/channels' as any); break;
         case 'global-search':  router.push('/global-search' as any); break;
         case 'business':       router.push('/business-profile' as any); break;
         case 'contactos':      router.push('/contacts' as any); break;
