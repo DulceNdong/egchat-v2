@@ -24,7 +24,6 @@ import {
 import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 import { MIcon } from '../src/components/ui/MIcon';
 import { parseStoriesResponse, initialsFor, type StoryGroup } from '../src/utils/storyParser';
-import { ESPACIOS, formatFollowers, type Espacio } from '../src/data/espacioDulce';
 import { EGAvatar } from '../src/components/ui';
 import { StoryMusicPicker, StoryMusicBadge, type StoryMusic } from '../src/components/StoryMusicPicker';
 import { Colors } from '../src/theme';
@@ -624,8 +623,6 @@ export default function StoriesScreen() {
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<number | null>(null);
   const [activeTab,    setActiveTab]    = useState<StoryTab>('estados');
-  const [espacios,     setEspacios]     = useState(ESPACIOS);
-  const [activeEspacio, setActiveEspacio] = useState<Espacio | null>(null);
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
   const [myStoryMenu,  setMyStoryMenu]  = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -683,9 +680,7 @@ export default function StoriesScreen() {
     setGroups(prev => prev.map(g => g.userId === group.userId ? { ...g, seen: true } : g));
   }, []);
 
-  const toggleFollow = useCallback((id: string) => {
-    setEspacios(prev => prev.map(e => e.id === id ? { ...e, following: !e.following } : e));
-  }, []);
+
 
   useEffect(() => { loadStories(); }, [loadStories]);
 
@@ -1311,36 +1306,6 @@ export default function StoriesScreen() {
           onStoryView={markViewed}
         />
       )}
-
-      {/* MODAL ESPACIO DULCE */}
-      <Modal visible={!!activeEspacio} animationType="slide" onRequestClose={() => setActiveEspacio(null)}>
-        <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
-          <LinearGradient colors={[activeEspacio?.coverColor || BRAND, 'transparent']} style={st.espModalHeader}>
-            <TouchableOpacity onPress={() => setActiveEspacio(null)} style={[st.backBtn, { backgroundColor: 'rgba(0,0,0,0.25)' }]} activeOpacity={0.7}>
-              <MIcon name="arrow-back" size={22} color="#fff" />
-            </TouchableOpacity>
-            <Text style={st.espModalTitle}>{activeEspacio?.emoji} {activeEspacio?.name}</Text>
-          </LinearGradient>
-          <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <Text style={[st.espModalDesc, { color: C.textSecondary }]}>{activeEspacio?.description}</Text>
-            {activeEspacio?.posts.map(p => (
-              <View key={p.id} style={[st.postCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                <View style={st.postHead}>
-                  <View style={[st.postAvatar, { backgroundColor: p.color }]}>
-                    <Text style={{ color: '#fff', fontWeight: '800', fontSize: 12 }}>{p.avatar.slice(0, 2)}</Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={{ color: C.textPrimary, fontSize: 14, fontWeight: '700' }}>{p.author}</Text>
-                    <Text style={{ color: C.textTertiary, fontSize: 11, marginTop: 1 }}>{p.time}{p.isOfficial ? ' · Oficial' : ''}</Text>
-                  </View>
-                </View>
-                <Text style={{ color: C.textPrimary, fontSize: 14, lineHeight: 20 }}>{p.text}</Text>
-                <Text style={{ color: C.textSecondary, fontSize: 12, marginTop: 10 }}>likes: {p.likes} · comentarios: {p.comments}</Text>
-              </View>
-            ))}
-          </ScrollView>
-        </SafeAreaView>
-      </Modal>
 
       {/* MUSIC PICKER */}
       <StoryMusicPicker visible={showMusicPicker} selected={storyMusic} onSelect={setStoryMusic} onClose={() => setShowMusicPicker(false)} />
