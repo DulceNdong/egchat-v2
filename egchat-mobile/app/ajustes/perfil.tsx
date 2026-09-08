@@ -42,6 +42,7 @@ interface UserProfile {
   country?: string;
   address?: string;
   avatar_url?: string;
+  banner_url?: string;
 }
 
 const QrIcon = ({ color = '#8e8e93' }: { color?: string }) => (
