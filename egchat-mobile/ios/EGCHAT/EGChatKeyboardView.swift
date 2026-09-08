@@ -247,9 +247,12 @@ final class EGChatKeyboardView: UIView {
 
   private func setup() {
     backgroundColor = cBg
+    // El popup de tecla necesita salir del bounds del kbView hacia arriba
+    clipsToBounds = false
     fb.prepare()
     for v in [kbView, emojiRoot] {
       v.translatesAutoresizingMaskIntoConstraints = false
+      v.clipsToBounds = false
       addSubview(v)
       NSLayoutConstraint.activate([
         v.topAnchor.constraint(equalTo: topAnchor),
