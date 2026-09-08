@@ -1676,6 +1676,13 @@ export default function StoriesScreen() {
         hostAvatar={myAvatarUrl}
         onClose={() => setShowLive(false)}
       />
+
+      {/* ── Moment Camera Editor ──────────────────────────────── */}
+      <MomentCameraEditor
+        visible={showMomentCamera}
+        onClose={() => setShowMomentCamera(false)}
+        onDone={handleMomentCameraDone}
+      />
     </SafeAreaView>
   );
 }
