@@ -905,64 +905,72 @@ export default function StoriesScreen() {
     if ((n||0) >= 1000) return `${((n||0)/1000).toFixed(1)}K`;
     return String(n||0);
   };
-
-  // Card visual tipo "canal" — banner + info
+  // Card compacta de canal — diseño EGChat moderno
   const ChannelCard = React.useCallback(({ ch, onFollow, onOpen }: { ch: any; onFollow: () => void; onOpen: () => void }) => {
-    const catColor = ch.category === 'Gobierno' ? '#1d4ed8' : ch.category === 'Musica' ? '#7c3aed' : ch.category === 'Deportes' ? '#16a34a' : ch.category === 'Noticias' ? '#dc2626' : ch.category === 'Negocios' ? '#b45309' : ch.category === 'Tecnologia' ? '#0891b2' : BRAND;
-    const catEmoji = CH_CATEGORIES.find(c => c.id === ch.category)?.emoji || '📡';
+    const catColor =
+      ch.category === 'Gobierno'        ? '#1d4ed8' :
+      ch.category === 'Musica'          ? '#7c3aed' :
+      ch.category === 'Deportes'        ? '#16a34a' :
+      ch.category === 'Noticias'        ? '#dc2626' :
+      ch.category === 'Negocios'        ? '#b45309' :
+      ch.category === 'Tecnologia'      ? '#0891b2' :
+      ch.category === 'Salud'           ? '#0d9488' :
+      ch.category === 'Entretenimiento' ? '#d97706' : BRAND;
+    const catEmoji = CH_CATEGORIES.find((c: any) => c.id === ch.category)?.emoji || '📡';
+
     return (
-      <TouchableOpacity style={[chst.channelCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={onOpen} activeOpacity={0.88}>
-        {/* Banner superior con gradiente de color de categoría */}
-        <LinearGradient colors={[catColor, catColor + '88']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={chst.channelBanner}>
-          {ch.banner_url
-            ? <Image source={{ uri: ch.banner_url }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-            : <Text style={{ fontSize: 38 }}>{catEmoji}</Text>
-          }
+      <TouchableOpacity
+        style={[chst.channelCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
+        onPress={onOpen}
+        activeOpacity={0.87}
+      >
+        {/* BANNER compacto */}
+        <View style={chst.bannerWrap}>
+          <LinearGradient
+            colors={[catColor, catColor + 'bb']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject as any}
+          />
+          {!!ch.banner_url && (
+            <Image source={{ uri: ch.banner_url }} style={[StyleSheet.absoluteFillObject as any, { opacity: 0.7 }]} resizeMode="cover" />
+          )}
+          <Text style={chst.bannerEmoji}>{catEmoji}</Text>
           {ch.verified && (
-            <View style={chst.verifiedPill}>
-              <MIcon name="verified" size={12} color="#fff" />
-              <Text style={{ color: '#fff', fontSize: 10, fontWeight: '700', marginLeft: 3 }}>Oficial</Text>
+            <View style={chst.officialBadge}>
+              <MIcon name="verified" size={11} color="#fff" />
+              <Text style={chst.officialText}>Oficial</Text>
             </View>
           )}
-        </LinearGradient>
+        </View>
 
-        {/* Avatar superpuesto */}
-        <View style={chst.avatarRow}>
-          <View style={[chst.avatarWrap, { borderColor: C.bgSecondary }]}>
-            <EGAvatar src={ch.avatar_url} name={ch.name} size={44} />
+        {/* Fila inferior: avatar + info + botón */}
+        <View style={chst.cardBody}>
+          <View style={[chst.cardAvatar, { borderColor: C.bgSecondary }]}>
+            <EGAvatar src={ch.avatar_url} name={ch.name} size={36} />
+          </View>
+          <View style={chst.cardInfo}>
+            <Text style={[chst.chName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 }}>
+              <View style={[chst.catTag, { backgroundColor: catColor + '18' }]}>
+                <Text style={[chst.catTagText, { color: catColor }]}>{catEmoji} {ch.category}</Text>
+              </View>
+              <Text style={[chst.chFollowers, { color: C.textTertiary }]}>
+                {formatChCount(ch.followers_count||0)}
+              </Text>
+            </View>
+            {!!ch.description && (
+              <Text style={[chst.chDesc, { color: C.textTertiary }]} numberOfLines={1}>{ch.description}</Text>
+            )}
           </View>
           <TouchableOpacity
-            style={[chst.followPill, ch.followed && { backgroundColor: BRAND + '20', borderColor: BRAND }]}
+            style={[chst.followBtn, ch.followed && { backgroundColor: BRAND + '18', borderColor: BRAND }]}
             onPress={onFollow}
             activeOpacity={0.8}
           >
-            <MIcon name={ch.followed ? 'notifications-active' : 'notifications-none'} size={14} color={ch.followed ? BRAND : C.textTertiary} />
-            <Text style={[chst.followPillText, { color: ch.followed ? BRAND : C.textTertiary }]}>
-              {ch.followed ? 'Suscrito' : 'Suscribirse'}
+            <Text style={[chst.followBtnText, { color: ch.followed ? BRAND : C.textSecondary }]}>
+              {ch.followed ? 'Suscrito' : 'Seguir'}
             </Text>
           </TouchableOpacity>
-        </View>
-
-        {/* Info */}
-        <View style={{ paddingHorizontal: 14, paddingBottom: 14 }}>
-          <Text style={[chst.chName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 2 }}>
-            <View style={[chst.catTag, { backgroundColor: catColor + '20' }]}>
-              <Text style={[chst.catTagText, { color: catColor }]}>{catEmoji} {ch.category}</Text>
-            </View>
-            <Text style={[chst.chFollowers, { color: C.textTertiary }]}>
-              {formatChCount(ch.followers_count||0)} suscritos
-            </Text>
-          </View>
-          {!!ch.description && (
-            <Text style={[chst.chDesc, { color: C.textTertiary }]} numberOfLines={2}>{ch.description}</Text>
-          )}
-          {ch.last_post?.text && (
-            <View style={[chst.lastPostWrap, { backgroundColor: C.bgTertiary }]}>
-              <MIcon name="campaign" size={13} color={C.textTertiary} />
-              <Text style={[chst.lastPostText, { color: C.textSecondary }]} numberOfLines={1}>{ch.last_post.text}</Text>
-            </View>
-          )}
         </View>
       </TouchableOpacity>
     );
@@ -2129,38 +2137,74 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
 // ── Estilos LiveStreamModal ───────────────────────────────────────
 const lv = StyleSheet.create({
   root:             { flex: 1, backgroundColor: '#000' },
-  overlay:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.12)' },
-  header:           { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 8 },
-  closeBtn:         { width: 40, height: 40, borderRadius: 20, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
-  liveBadge:        { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#ff3b30', paddingHorizontal: 14, paddingVertical: 6, borderRadius: 18 },
+  overlay:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.08)' },
+
+  // Pre-live
+  preLiveLogo:      { marginBottom: 28 },
+  preLiveLogoGrad:  { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.6, shadowRadius: 24 },
+  preLiveTitle:     { color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: -0.5, marginBottom: 10 },
+  preLiveSub:       { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 40, marginBottom: 36, lineHeight: 20 },
+  preLiveStats:     { gap: 14, width: '80%' },
+  preLiveStat:      { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  preLiveStatText:  { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600' },
+
+  // Header
+  header:           { position: 'absolute', top: 0, left: 0, right: 0, flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 14, zIndex: 10 },
+  closeBtn:         { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+
+  // Badge EN VIVO
+  liveBadge:        { flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#ff3b30', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20, shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.5, shadowRadius: 10 },
   liveDot:          { width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' },
-  liveBadgeText:    { color: '#fff', fontWeight: '800', fontSize: 12, letterSpacing: 0.5 },
-  viewersBadge:     { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(0,0,0,0.45)', paddingHorizontal: 10, paddingVertical: 6, borderRadius: 16 },
-  floatingReactions:{ position: 'absolute', right: 16, bottom: '35%', gap: 10, alignItems: 'center' },
-  floatingEmoji:    { fontSize: 38, textShadowColor: 'rgba(0,0,0,0.4)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4 },
-  sidebar:          { position: 'absolute', right: 14, gap: 12 },
-  sideBtn:          { width: 52, height: 52, borderRadius: 26, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', gap: 2 },
-  sideBtnActive:    { backgroundColor: 'rgba(0,200,160,0.3)', borderWidth: 2, borderColor: '#00C8A0' },
-  sideBtnLabel:     { color: '#fff', fontSize: 9, fontWeight: '600' },
-  effectsPanel:     { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.78)', paddingVertical: 14 },
-  effectBtn:        { alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 8, borderRadius: 12, borderWidth: 1.5, borderColor: 'transparent', minWidth: 64 },
-  effectBtnActive:  { borderColor: '#00C8A0', backgroundColor: 'rgba(0,200,160,0.15)' },
-  commentsPanel:    { position: 'absolute', left: 12, right: 70 },
-  commentRow:       { flexDirection: 'row', flexWrap: 'wrap', marginBottom: 5 },
-  commentUser:      { color: '#00C8A0', fontWeight: '700', fontSize: 13 },
-  commentText:      { color: '#fff', fontSize: 13 },
+  liveBadgeText:    { color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 1 },
+
+  // Viewers
+  viewersBadge:     { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+
+  // Reacciones flotantes
+  floatingReactions:{ position: 'absolute', right: 16, bottom: '35%', gap: 12, alignItems: 'center' },
+  floatingEmoji:    { fontSize: 40, textShadowColor: 'rgba(0,0,0,0.5)', textShadowOffset: { width: 1, height: 2 }, textShadowRadius: 6 },
+
+  // Sidebar
+  sidebar:          { position: 'absolute', right: 14, gap: 14 },
+  sideBtn:          { width: 54, height: 54, borderRadius: 27, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center', gap: 2, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.4, shadowRadius: 8 },
+  sideBtnActive:    { backgroundColor: 'rgba(0,200,160,0.25)', borderColor: '#00C8A0' },
+  sideBtnLabel:     { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '700' },
+
+  // Efectos
+  effectsPanel:     { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', paddingVertical: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
+  effectBtn:        { alignItems: 'center', gap: 4, paddingHorizontal: 4 },
+  effectBtnActive:  { },
+  effectThumb:      { width: 68, height: 68, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
+
+  // Comentarios
+  commentsPanel:    { position: 'absolute', left: 12, right: 74 },
+  commentRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 8, marginBottom: 8 },
+  commentAvatar:    { width: 26, height: 26, borderRadius: 13, backgroundColor: 'rgba(0,200,160,0.7)', alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  commentBubble:    { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 14, paddingHorizontal: 10, paddingVertical: 6, flexShrink: 1 },
+  commentUser:      { color: '#00C8A0', fontWeight: '800', fontSize: 12 },
+  commentText:      { color: '#fff', fontSize: 13, lineHeight: 18 },
+
+  // Input
   inputWrap:        { position: 'absolute', bottom: 0, left: 0, right: 0, paddingHorizontal: 14 },
-  inputRow:         { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: 'rgba(255,255,255,0.12)', borderRadius: 26, paddingHorizontal: 14, paddingVertical: 8 },
+  inputRow:         { flexDirection: 'row', alignItems: 'center', gap: 10, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 28, paddingHorizontal: 16, paddingVertical: 10, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
   input:            { flex: 1, color: '#fff', fontSize: 14 },
-  sendBtn:          { width: 34, height: 34, alignItems: 'center', justifyContent: 'center' },
+  sendBtn:          { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(255,255,255,0.1)' },
+
+  // Botón iniciar
   startWrap:        { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 28 },
-  startHint:        { color: 'rgba(255,255,255,0.55)', fontSize: 13, marginBottom: 18, textAlign: 'center' },
-  startBtn:         { width: '100%', borderRadius: 32, overflow: 'hidden' },
-  startBtnGrad:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingVertical: 17 },
+  startHintRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
+  startHint:        { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
+  startBtn:         { width: '100%', borderRadius: 32, overflow: 'hidden', shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20 },
+  startBtnGrad:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 18 },
   startDot:         { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
-  startBtnText:     { color: '#fff', fontWeight: '800', fontSize: 17 },
+  startBtnText:     { color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 },
+  cancelBtn:        { marginTop: 20, paddingVertical: 10 },
+  cancelBtnText:    { color: 'rgba(255,255,255,0.4)', fontSize: 15 },
+
+  // Botón terminar
   stopWrap:         { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 28 },
-  stopBtn:          { backgroundColor: 'rgba(255,59,48,0.9)', paddingHorizontal: 32, paddingVertical: 14, borderRadius: 26 },
+  stopBtn:          { borderRadius: 28, overflow: 'hidden', shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 6 }, shadowOpacity: 0.4, shadowRadius: 16 },
+  stopBtnGrad:      { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 10, paddingHorizontal: 40, paddingVertical: 16 },
 });
 
 // ── Estilos Canales Dulce — EGChat Edition ──────────────────
