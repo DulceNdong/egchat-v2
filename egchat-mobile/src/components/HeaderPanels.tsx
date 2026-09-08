@@ -247,31 +247,24 @@ const MenuIcon = ({ name }: { name: string }) => {
     case 'escanear-qr':
       return (
         <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-          {/* Esquina sup-izq */}
           <Path d="M3 7V5a2 2 0 0 1 2-2h2"/>
           <Path d="M17 3h2a2 2 0 0 1 2 2v2"/>
-          {/* Esquina inf-der */}
           <Path d="M21 17v2a2 2 0 0 1-2 2h-2"/>
           <Path d="M7 21H5a2 2 0 0 1-2-2v-2"/>
-          {/* Cuadrado izq-sup */}
           <Rect x="7" y="7" width="3" height="3" rx="0.5"/>
-          {/* Cuadrado der-inf */}
           <Rect x="14" y="14" width="3" height="3" rx="0.5"/>
-          {/* Línea central */}
-          <Path d="M7 14h3v1"/>
-          <Path d="M14 7h1v3"/>
-          <Path d="M10 14h1"/>
-          <Path d="M14 10h3"/>
+          <Path d="M14 7h3v3"/>
+          <Path d="M7 14v3h3"/>
         </Svg>
       );
     case 'business':
       return (
         <Svg {...s} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-          {/* Edificio/maletín moderno */}
-          <Path d="M3 9h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V9z"/>
-          <Path d="M8 9V6a1 1 0 0 1 1-1h6a1 1 0 0 1 1 1v3"/>
-          <Path d="M3 13h18"/>
-          <Path d="M12 13v4"/>
+          <Path d="M3 21h18"/>
+          <Path d="M5 21V7l7-4 7 4v14"/>
+          <Path d="M9 21v-4a3 3 0 0 1 6 0v4"/>
+          <Rect x="9" y="9" width="2" height="2" rx="0.3"/>
+          <Rect x="13" y="9" width="2" height="2" rx="0.3"/>
         </Svg>
       );
     case 'broadcast':
