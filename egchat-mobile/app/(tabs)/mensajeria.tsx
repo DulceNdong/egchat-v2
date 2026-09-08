@@ -336,6 +336,7 @@ function MensajeriaScreenInner() {
   const [archivePassword, setArchivePasswordState] = useState('');
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
   const [archiveSubFilter, setArchiveSubFilter] = useState<ArchiveSubFilter>('individual');
+  const [groupSubFilter, setGroupSubFilter] = useState<GroupSubFilter>('all');
   const [showArchiveSetup, setShowArchiveSetup] = useState(false);
   const [showArchiveUnlock, setShowArchiveUnlock] = useState(false);
   const [archivePwdInput, setArchivePwdInput] = useState('');
