@@ -1000,7 +1000,8 @@ export default function StoriesScreen() {
       ch.category === 'Tecnologia'      ? '#0891b2' :
       ch.category === 'Salud'           ? '#0d9488' :
       ch.category === 'Entretenimiento' ? '#d97706' : BRAND;
-    const catEmoji = CH_CATEGORIES.find((c: any) => c.id === ch.category)?.emoji || '📡';
+    const catDef = CH_CATEGORIES.find(c => c.id === ch.category);
+    const CatIcon = catDef?.Icon;
 
     return (
       <TouchableOpacity
@@ -1008,17 +1009,18 @@ export default function StoriesScreen() {
         onPress={onOpen}
         activeOpacity={0.87}
       >
-        {/* BANNER compacto */}
-        <View style={chst.bannerWrap}>
-          <LinearGradient
-            colors={[catColor, catColor + 'bb']}
-            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-            style={StyleSheet.absoluteFillObject as any}
-          />
+        {/* BANNER — fondo neutro, icono SVG centrado, acento de color en borde inferior */}
+        <View style={[chst.bannerWrap, { backgroundColor: C.bgTertiary }]}>
           {!!ch.banner_url && (
-            <Image source={{ uri: ch.banner_url }} style={[StyleSheet.absoluteFillObject as any, { opacity: 0.7 }]} resizeMode="cover" />
+            <Image source={{ uri: ch.banner_url }} style={[StyleSheet.absoluteFillObject as any, { opacity: 0.45 }]} resizeMode="cover" />
           )}
-          <Text style={chst.bannerEmoji}>{catEmoji}</Text>
+          {CatIcon && (
+            <View style={chst.bannerIconWrap}>
+              <CatIcon color={catColor} size={28} />
+            </View>
+          )}
+          {/* Línea de acento inferior */}
+          <View style={[chst.bannerAccent, { backgroundColor: catColor }]} />
           {ch.verified && (
             <View style={chst.officialBadge}>
               <MIcon name="verified" size={11} color="#fff" />
@@ -1034,12 +1036,11 @@ export default function StoriesScreen() {
           </View>
           <View style={chst.cardInfo}>
             <Text style={[chst.chName, { color: C.textPrimary }]} numberOfLines={1}>{ch.name}</Text>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 }}>
-              <View style={[chst.catTag, { backgroundColor: catColor + '18' }]}>
-                <Text style={[chst.catTagText, { color: catColor }]}>{catEmoji} {ch.category}</Text>
-              </View>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 2 }}>
+              {CatIcon && <CatIcon color={catColor} size={11} />}
+              <Text style={[chst.catTagText, { color: catColor }]}>{ch.category}</Text>
               <Text style={[chst.chFollowers, { color: C.textTertiary }]}>
-                {formatChCount(ch.followers_count||0)}
+                · {formatChCount(ch.followers_count||0)}
               </Text>
             </View>
             {!!ch.description && (
