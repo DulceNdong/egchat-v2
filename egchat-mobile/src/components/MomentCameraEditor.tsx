@@ -379,7 +379,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
                 <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
               </Svg>
             </TouchableOpacity>
-            {music && <StoryMusicBadge music={music} onRemove={() => setMusic(null)} />}
+            {music && <StoryMusicBadge music={music} />}
             <TouchableOpacity onPress={handleDone} style={s.editorDoneBtn} disabled={processing}>
               {processing
                 ? <ActivityIndicator color="#fff" size="small" />
