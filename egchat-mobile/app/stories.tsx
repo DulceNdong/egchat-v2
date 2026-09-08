@@ -1270,7 +1270,7 @@ export default function StoriesScreen() {
             <View style={st.liveDotLarge} />
             <View style={{ flex: 1 }}>
               <Text style={[st.liveBannerTitle, { color: C.textPrimary }]}>Streamings en vivo</Text>
-              <Text style={[st.liveBannerSub, { color: C.textSecondary }]}>Proximos streams en directo</Text>
+              <Text style={[st.liveBannerSub, { color: C.textSecondary }]}>Inicia o únete a un directo</Text>
             </View>
             <MIcon name="live-tv" size={32} color={BRAND} />
           </LinearGradient>
@@ -1278,11 +1278,11 @@ export default function StoriesScreen() {
             <MIcon name="videocam" size={64} color={C.border} />
             <Text style={[st.emptyTitle, { color: C.textSecondary, marginTop: 16 }]}>Sin streams activos</Text>
             <Text style={[st.emptySub, { color: C.textTertiary, textAlign: 'center' }]}>
-              Cuando alguien inicie un directo aparecera aqui en tiempo real
+              Cuando alguien inicie un directo aparecerá aquí en tiempo real
             </Text>
             <TouchableOpacity
               style={[st.emptyBtn, { marginTop: 24 }]}
-              onPress={() => Alert.alert('Proximamente', 'La funcion de streaming llegara muy pronto')}
+              onPress={() => setShowLive(true)}
               activeOpacity={0.85}
             >
               <LinearGradient colors={['#ef4444', '#f97316']} style={st.emptyBtnGrad}>
