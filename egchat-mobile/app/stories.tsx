@@ -1129,12 +1129,33 @@ export default function StoriesScreen() {
                 </Svg>
                 <Text style={[stAdd.label, { color: C.textTertiary }]}>Videocám</Text>
               </TouchableOpacity>
+
+              {/* Botón EN VIVO */}
+              <TouchableOpacity
+                style={stAdd.item}
+                onPress={() => { setShowAddModal(false); setShowLive(true); }}
+                activeOpacity={0.6}
+              >
+                <View style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: '#ff3b30', alignItems: 'center', justifyContent: 'center' }}>
+                  <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
+                </View>
+                <Text style={[stAdd.label, { color: '#ff3b30', fontWeight: '700' }]}>En vivo</Text>
+              </TouchableOpacity>
             </View>
               <Text style={[stAdd.cancelText, { color: C.textTertiary }]}>Cancelar</Text>
             </TouchableOpacity>
           </View>
         </View>
       </Modal>
+
+      {/* ── Live Stream Modal ──────────────────────────────────── */}
+      <LiveStreamModal
+        visible={showLive}
+        hostId={meId}
+        hostName=""
+        hostAvatar={myAvatarUrl}
+        onClose={() => setShowLive(false)}
+      />
     </SafeAreaView>
   );
 }
