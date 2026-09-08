@@ -276,7 +276,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
           ))}
 
           {/* Header del editor */}
-          <SafeAreaView edges={['top']} style={s.edHeader}>
+          <View style={[s.edHeader, { paddingTop: insets.top + 8 }]}>
             <TouchableOpacity style={s.edIconBtn} onPress={() => setCaptured(null)}>
               <IcClose size={22} />
             </TouchableOpacity>
