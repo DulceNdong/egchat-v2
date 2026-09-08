@@ -871,9 +871,40 @@ function MensajeriaScreenInner() {
           {filter === 'grupos' && (
             <View style={[st.groupSubTabsWrap, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
               {([
-                { id: 'all' as GroupSubFilter,     label: 'Todos',    emoji: '👥' },
-                { id: 'normal' as GroupSubFilter,  label: 'Mis grupos', emoji: '💬' },
-                { id: 'djangue' as GroupSubFilter, label: 'Djangues',  emoji: '💰' },
+                {
+                  id: 'all' as GroupSubFilter,
+                  label: 'Todos',
+                  Icon: ({ active }: { active: boolean }) => (
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                      stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+                      <Circle cx="9" cy="7" r="4"/>
+                      <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+                      <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                    </Svg>
+                  ),
+                },
+                {
+                  id: 'normal' as GroupSubFilter,
+                  label: 'Mis grupos',
+                  Icon: ({ active }: { active: boolean }) => (
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                      stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                    </Svg>
+                  ),
+                },
+                {
+                  id: 'djangue' as GroupSubFilter,
+                  label: 'Djangues',
+                  Icon: ({ active }: { active: boolean }) => (
+                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+                      stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+                      <Line x1="12" y1="1" x2="12" y2="23"/>
+                      <Path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+                    </Svg>
+                  ),
+                },
               ]).map(sub => {
                 const active = groupSubFilter === sub.id;
                 return (
@@ -883,7 +914,7 @@ function MensajeriaScreenInner() {
                     onPress={() => setGroupSubFilter(sub.id)}
                     activeOpacity={0.75}
                   >
-                    <Text style={st.groupSubTabEmoji}>{sub.emoji}</Text>
+                    <sub.Icon active={active} />
                     <Text style={[st.groupSubTabText, active && st.groupSubTabTextActive]}>{sub.label}</Text>
                   </TouchableOpacity>
                 );
