@@ -295,7 +295,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
             >
               {processing ? <ActivityIndicator color={BLACK} size="small" /> : <Text style={s.doneBtnTxt}>Usar</Text>}
             </TouchableOpacity>
-          </SafeAreaView>
+          </View>
 
           {/* Barra de herramientas lateral derecha */}
           <View style={[s.edSidebar, { bottom: insets.bottom + 140 }]}>
