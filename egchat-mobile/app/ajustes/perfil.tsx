@@ -516,6 +516,8 @@ export default function PerfilScreen() {
 
   const initials = user?.full_name?.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || 'U';
   const userIdShort = user?.id ? user.id.slice(0, 8).toUpperCase() : '—';
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
   return (
     <>
