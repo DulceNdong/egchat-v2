@@ -1159,14 +1159,14 @@ export default function StoriesScreen() {
       <StatusBar barStyle={isDark ? 'light-content' : 'dark-content'} backgroundColor={C.bgPrimary} />
 
       {/* HEADER */}
-      <View style={[st.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-        <TouchableOpacity onPress={() => router.back()} style={[st.backBtn, { backgroundColor: C.bgTertiary }]} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
-          <MIcon name="arrow-back" size={22} color={C.textPrimary} />
+      <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={st.header}>
+        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
+          <MIcon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={st.headerCenter}>
-          <Text style={[st.headerTitle, { color: C.textPrimary }]}>Estados</Text>
+          <Text style={[st.headerTitle, { color: '#fff' }]}>Estados</Text>
           {activeTab === 'estados' && recentGroups.length > 0 && (
-            <View style={[st.headerBadge, { backgroundColor: BRAND }]}>
+            <View style={[st.headerBadge, { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
               <Text style={st.headerBadgeText}>{recentGroups.length}</Text>
             </View>
           )}
@@ -1174,26 +1174,26 @@ export default function StoriesScreen() {
         <View style={st.headerActions}>
           {activeTab === 'estados' && (
             <>
-              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Galeria">
-                <MIcon name="image" size={21} color={C.textSecondary} />
+              <TouchableOpacity style={st.headerBtn} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Galeria">
+                <MIcon name="image" size={21} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo estado">
-                <MIcon name="photo-camera" size={21} color={C.textSecondary} />
+              <TouchableOpacity style={st.headerBtn} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo estado">
+                <MIcon name="photo-camera" size={21} color="#fff" />
               </TouchableOpacity>
             </>
           )}
           {activeTab === 'momentos' && (
             <>
-              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={() => setShowMomentCamera(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Camara momentos">
-                <MIcon name="photo-camera" size={21} color={C.textSecondary} />
+              <TouchableOpacity style={st.headerBtn} onPress={() => setShowMomentCamera(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Camara momentos">
+                <MIcon name="photo-camera" size={21} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={[st.headerBtn, { backgroundColor: C.bgTertiary }]} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo momento">
-                <MIcon name="add" size={21} color={C.textSecondary} />
+              <TouchableOpacity style={st.headerBtn} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo momento">
+                <MIcon name="add" size={21} color="#fff" />
               </TouchableOpacity>
             </>
           )}
         </View>
-      </View>
+      </LinearGradient>
 
       {/* TABS */}
       <View style={[st.tabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
