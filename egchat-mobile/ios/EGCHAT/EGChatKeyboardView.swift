@@ -381,6 +381,8 @@ final class EGChatKeyboardView: UIView {
       let btn = KB(title, fLetter, cText, cNorm)
       btn.frame = CGRect(x: startX + CGFloat(i)*(keyW+hGap), y: y, width: keyW, height: rowH)
       btn.accessibilityIdentifier = k
+      btn.showsKeyPopup = true
+      btn.popupContainer = self
       btn.onTap = { [weak self] in self?.handle(k) }
       kbView.addSubview(btn)
     }
