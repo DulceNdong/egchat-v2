@@ -1619,9 +1619,6 @@ const stAdd = StyleSheet.create({
 // LIVE STREAM MODAL
 // Broadcast en vivo con cámara, efectos y reacciones en tiempo real
 // ══════════════════════════════════════════════════════════════════
-import { CameraView, useCameraPermissions, useMicrophonePermissions } from 'expo-camera';
-import { getToken, getApiBase } from '../src/api';
-import { supabase } from '../src/supabase';
 
 interface LiveReaction { id: string; emoji: string; userName: string; }
 interface LiveComment  { id: string; text: string; userName: string; createdAt: number; }
