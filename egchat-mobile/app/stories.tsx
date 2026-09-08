@@ -622,7 +622,7 @@ export default function StoriesScreen() {
   const [storyMusic,   setStoryMusic]   = useState<StoryMusic | null>(null);
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<number | null>(null);
-  const [activeTab,    setActiveTab]    = useState<StoryTab>('recientes');
+  const [activeTab,    setActiveTab]    = useState<StoryTab>('estados');
   const [espacios,     setEspacios]     = useState(ESPACIOS);
   const [activeEspacio, setActiveEspacio] = useState<Espacio | null>(null);
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
