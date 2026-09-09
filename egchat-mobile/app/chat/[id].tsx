@@ -74,6 +74,8 @@ import {
 import { haptics } from '../../src/hooks/useHaptics';
 import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
 import { useOffline } from '../../src/hooks/useOffline';
+import { useNetworkStatus } from '../../src/store/offlineStore';
+import { useOfflineQueue, enqueueMessage } from '../../src/hooks/useOfflineQueue';
 import { toast } from '../../src/components/Toast';
 import {
   createChatTypingChannel,
