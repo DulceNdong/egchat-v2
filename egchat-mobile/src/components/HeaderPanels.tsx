@@ -310,8 +310,8 @@ export const HamburgerMenu = ({
   useEffect(() => {
     if (visible) {
       Animated.parallel([
-        Animated.timing(scaleAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
-        Animated.timing(opacityAnim, { toValue: 1, duration: 180, useNativeDriver: true }),
+        Animated.timing(scaleAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
+        Animated.timing(opacityAnim, { toValue: 1, duration: 140, useNativeDriver: true }),
       ]).start();
     } else {
       scaleAnim.setValue(0.92);
