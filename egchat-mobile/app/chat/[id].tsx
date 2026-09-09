@@ -322,6 +322,9 @@ export default function ChatScreen() {
   const retryingMessagesRef = useRef<Set<string>>(new Set());
   const { isDark } = useThemeContext();
 
+  // ── FLAG_SECURE: bloquea capturas de pantalla en modo incógnito ──
+  useScreenSecurity(`chat_${chatId}`, isIncognito);
+
   // ── Botones flotantes arrastrables ────────────────────────
   const { width: SW, height: SH } = Dimensions.get('window');
   const BTN_SIZE = 44;
