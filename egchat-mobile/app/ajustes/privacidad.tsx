@@ -55,12 +55,31 @@ export default function PrivacidadScreen() {
   const [statusVis, setStatusVis] = useState('todos');
   const [blocked, setBlocked] = useState<BlockedContact[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     getCfgString(CFG.lastSeen, 'todos').then(setLastSeen);
     getCfgString(CFG.photoVis, 'todos').then(setPhotoVis);
     getCfgString(CFG.statusVis, 'todos').then(setStatusVis);
     loadBlocked();
+  }, []);
+
+  // Actualiza una opción localmente Y sincroniza con backend
+  const updatePrivacy = useCallback(async (
+    field: 'lastSeen' | 'photoVis' | 'statusVis',
+    value: string,
+    cfgKey: string,
+    setter: (v: string) => void,
+  ) => {
+    setter(value);
+    setCfg(cfgKey, value);
+    setSyncing(true);
+    const payload: Record<string, string> = {};
+    if (field === 'lastSeen') payload.lastSeen = value;
+    if (field === 'photoVis') payload.photoVis = value;
+    if (field === 'statusVis') payload.statusVis = value;
+    await syncPrivacyToBackend(payload);
+    setSyncing(false);
   }, []);
 
   const loadBlocked = async () => {
