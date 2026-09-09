@@ -88,6 +88,7 @@ import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
 import { notifyReaction } from '../../src/notifications';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
+import { useScreenSecurity } from '../../src/services/screenSecurity';
 import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
 import { translateText } from '../../src/services/translator';
 import { ReactionDetailModal } from '../../src/components/chat/ReactionDetailModal';
