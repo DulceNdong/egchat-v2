@@ -1,9 +1,12 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Alert } from 'react-native';
 import {
-  SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsToggleRow,
+  SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsToggleRow, SettingsRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgBool, setCfgBool, getCfgString, setCfg } from '../../src/services/settingsPrefs';
+import {
+  syncPhoneContacts, getLastSyncTime, formatLastSync, hasContactsPermission,
+} from '../../src/services/contactSync';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
