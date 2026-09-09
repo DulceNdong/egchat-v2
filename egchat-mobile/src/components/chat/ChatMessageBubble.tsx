@@ -1301,7 +1301,17 @@ export const ChatMessageBubble = React.memo(({
 
   const time = formatTime(message.created_at);
   const canRetry = isOwn && message.status === 'failed';
-  const imageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
+  const rawImageUri = message.type === 'image' ? message.imageUrl || message.file_url : undefined;
+  // Auto-descarga de imagen si hay WiFi (no bloquea el render; usa la remota mientras descarga)
+  const [imageUri, setImageUri] = useState<string | undefined>(rawImageUri);
+  useEffect(() => {
+    if (!rawImageUri || typeof rawImageUri !== 'string') return;
+    let cancelled = false;
+    downloadMediaIfNeeded(rawImageUri, 'image').then(local => {
+      if (!cancelled) setImageUri(local);
+    });
+    return () => { cancelled = true; };
+  }, [rawImageUri]);
   const canOpenImage = !!imageUri && !canRetry;
   const showUploadState = isOwn && message.status === 'pending' && !!message.uploadState;
   const uploadPercent = Math.max(5, Math.min(99, Math.round((message.uploadProgress || 0.05) * 100)));
