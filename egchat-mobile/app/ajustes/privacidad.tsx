@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { Alert, ActivityIndicator, View, Text, StyleSheet } from 'react-native';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
@@ -9,6 +9,32 @@ import { CFG, getCfgString, setCfg } from '../../src/services/settingsPrefs';
 import { getToken, getApiBase } from '../../src/api';
 import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
+
+// ── Sincroniza configuración de privacidad con el backend ─────────
+async function syncPrivacyToBackend(settings: {
+  lastSeen?: string;
+  photoVis?: string;
+  statusVis?: string;
+}): Promise<void> {
+  try {
+    const token = await getToken();
+    const base = getApiBase();
+    await fetch(`${base}/api/auth/privacy`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({
+        last_seen_visibility: settings.lastSeen,
+        photo_visibility: settings.photoVis,
+        status_visibility: settings.statusVis,
+      }),
+    });
+  } catch {
+    // Silencioso — la preferencia local ya se guardó
+  }
+}
 
 const VIS_OPTS = [
   { id: 'todos', label: 'Todos' },
