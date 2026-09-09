@@ -854,16 +854,16 @@ export default function StoriesScreen() {
   const [chSportFilter,setChSportFilter]= React.useState<string>('Todos');
 
   const SPORT_FILTERS = [
-    { id: 'Todos', label: 'Todos', emoji: '🏆' },
-    { id: 'Futbol', label: 'Fútbol', emoji: '⚽' },
-    { id: 'Baloncesto', label: 'Basket', emoji: '🏀' },
-    { id: 'Tennis', label: 'Tenis', emoji: '🎾' },
-    { id: 'Atletismo', label: 'Atletismo', emoji: '🏃' },
-    { id: 'Natacion', label: 'Natación', emoji: '🏊' },
-    { id: 'Boxeo', label: 'Boxeo', emoji: '🥊' },
-    { id: 'Rugby', label: 'Rugby', emoji: '🏉' },
-    { id: 'Ciclismo', label: 'Ciclismo', emoji: '🚴' },
-    { id: 'Formula1', label: 'F1', emoji: '🏎️' },
+    { id: 'Todos',      label: 'Todo',      icon: 'grid-view' },
+    { id: 'Futbol',     label: 'Fútbol',    icon: 'sports-soccer' },
+    { id: 'Baloncesto', label: 'Basket',    icon: 'sports-basketball' },
+    { id: 'Tennis',     label: 'Tenis',     icon: 'sports-tennis' },
+    { id: 'Atletismo',  label: 'Atletismo', icon: 'directions-run' },
+    { id: 'Natacion',   label: 'Natación',  icon: 'pool' },
+    { id: 'Boxeo',      label: 'Boxeo',     icon: 'sports-mma' },
+    { id: 'Rugby',      label: 'Rugby',     icon: 'sports-rugby' },
+    { id: 'Ciclismo',   label: 'Ciclismo',  icon: 'directions-bike' },
+    { id: 'Formula1',   label: 'F1',        icon: 'speed' },
   ];
 
   const CH_CATEGORIES: { id: string; Icon: (props: { color: string; size?: number }) => React.JSX.Element }[] = [
@@ -1210,34 +1210,41 @@ export default function StoriesScreen() {
                 </View>
                 <View style={{ height: StyleSheet.hairlineWidth, backgroundColor: C.borderLight }} />
 
-                {/* Sub-filtros deportivos */}
+                {/* Sub-filtros deportivos — diseño limpio sin fondos */}
                 {chDetail.category === 'Deportes' && (
                   <ScrollView
                     horizontal
                     showsHorizontalScrollIndicator={false}
-                    contentContainerStyle={{ paddingHorizontal: 12, gap: 6, paddingVertical: 8 }}
+                    contentContainerStyle={{ paddingHorizontal: 14, gap: 0, paddingVertical: 0 }}
                     style={{ borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: C.borderLight }}
                   >
-                    {SPORT_FILTERS.map(sf => (
-                      <TouchableOpacity
-                        key={sf.id}
-                        onPress={() => setChSportFilter(sf.id)}
-                        style={{
-                          flexDirection: 'row', alignItems: 'center', gap: 4,
-                          paddingHorizontal: 12, paddingVertical: 6, borderRadius: 16,
-                          backgroundColor: chSportFilter === sf.id ? '#16a34a' : C.bgTertiary,
-                          borderWidth: 1.5,
-                          borderColor: chSportFilter === sf.id ? '#16a34a' : C.borderLight,
-                        }}
-                        activeOpacity={0.8}
-                      >
-                        <Text style={{ fontSize: 13 }}>{sf.emoji}</Text>
-                        <Text style={{
-                          fontSize: 12, fontWeight: '700',
-                          color: chSportFilter === sf.id ? '#fff' : C.textSecondary,
-                        }}>{sf.label}</Text>
-                      </TouchableOpacity>
-                    ))}
+                    {SPORT_FILTERS.map((sf: any) => {
+                      const active = chSportFilter === sf.id;
+                      return (
+                        <TouchableOpacity
+                          key={sf.id}
+                          onPress={() => setChSportFilter(sf.id)}
+                          style={{
+                            alignItems: 'center', justifyContent: 'center',
+                            paddingHorizontal: 14, paddingVertical: 10,
+                            borderBottomWidth: active ? 2 : 0,
+                            borderBottomColor: active ? '#16a34a' : 'transparent',
+                          }}
+                          activeOpacity={0.75}
+                        >
+                          <MIcon
+                            name={sf.icon}
+                            size={20}
+                            color={active ? '#16a34a' : C.textTertiary}
+                          />
+                          <Text style={{
+                            fontSize: 10, fontWeight: active ? '700' : '500',
+                            color: active ? '#16a34a' : C.textTertiary,
+                            marginTop: 3, letterSpacing: 0.2,
+                          }}>{sf.label}</Text>
+                        </TouchableOpacity>
+                      );
+                    })}
                   </ScrollView>
                 )}
 
@@ -1271,7 +1278,7 @@ export default function StoriesScreen() {
                         {p.sport && (
                           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 8 }}>
                             <Text style={{ fontSize: 11 }}>
-                              {SPORT_FILTERS.find(s => s.id === p.sport)?.emoji || '🏆'}
+                
                             </Text>
                             <Text style={{ fontSize: 11, fontWeight: '700', color: '#16a34a' }}>{p.sport}</Text>
                           </View>

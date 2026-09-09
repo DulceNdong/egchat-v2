@@ -1,109 +1,188 @@
-import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
-import { useOffline } from '../../hooks/useOffline';
+/**
+ * OfflineBanner — Toast flotante global de conectividad
+ *
+ * - position: absolute → NO empuja el layout ni distorsiona nada
+ * - Aparece en la parte superior, sobre todo el contenido
+ * - Se anima hacia abajo al aparecer y hacia arriba al desaparecer
+ * - Muestra "Sin conexión" offline y "Conectado" brevemente al reconectar
+ * - Se coloca en _layout.tsx una sola vez para toda la app
+ */
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useNetworkStatus } from '../../store/offlineStore';
 import { useThemeContext } from '../../theme/ThemeContext';
-import { FontSize, FontWeight } from '../../theme';
+
+type BannerState = 'hidden' | 'offline' | 'reconnected';
 
 export function OfflineBanner() {
-  const { isOnline, isChecking } = useOffline();
+  const { isOnline, isChecking } = useNetworkStatus();
   const { isDark } = useThemeContext();
+  const insets = useSafeAreaInsets();
 
-  // Animación de rotación del spinner
+  const [bannerState, setBannerState] = useState<BannerState>('hidden');
+  const prevOnlineRef = useRef<boolean | null>(null);
+  const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Animaciones
+  const translateY = useRef(new Animated.Value(-60)).current;
   const spinAnim = useRef(new Animated.Value(0)).current;
-  // Animación de entrada/salida (altura)
-  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  const isVisible = !isChecking && !isOnline;
-
+  // Spinner loop
   useEffect(() => {
-    // Spinner continuo
     Animated.loop(
       Animated.timing(spinAnim, {
         toValue: 1,
-        duration: 1000,
+        duration: 900,
         easing: Easing.linear,
         useNativeDriver: true,
-      })
+      }),
     ).start();
   }, [spinAnim]);
 
-  useEffect(() => {
-    Animated.timing(slideAnim, {
-      toValue: isVisible ? 1 : 0,
-      duration: 300,
-      easing: Easing.out(Easing.quad),
-      useNativeDriver: false,
+  const slideIn = () => {
+    Animated.spring(translateY, {
+      toValue: 0,
+      useNativeDriver: true,
+      speed: 20,
+      bounciness: 4,
     }).start();
-  }, [isVisible, slideAnim]);
+  };
+
+  const slideOut = (onDone?: () => void) => {
+    Animated.timing(translateY, {
+      toValue: -60,
+      duration: 250,
+      easing: Easing.in(Easing.quad),
+      useNativeDriver: true,
+    }).start(() => onDone?.());
+  };
+
+  // Lógica de estados
+  useEffect(() => {
+    if (isChecking) return;
+
+    const prev = prevOnlineRef.current;
+    prevOnlineRef.current = isOnline;
+
+    if (hideTimerRef.current) {
+      clearTimeout(hideTimerRef.current);
+      hideTimerRef.current = null;
+    }
+
+    if (!isOnline) {
+      // Sin conexión → mostrar banner offline
+      setBannerState('offline');
+      slideIn();
+    } else if (prev === false && isOnline) {
+      // Reconectado → mostrar "Conectado" 2.5s y esconder
+      setBannerState('reconnected');
+      slideIn();
+      hideTimerRef.current = setTimeout(() => {
+        slideOut(() => setBannerState('hidden'));
+      }, 2500);
+    } else if (prev === null) {
+      // Primera carga con conexión → no mostrar nada
+      setBannerState('hidden');
+    }
+
+    return () => {
+      if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
+    };
+  }, [isOnline, isChecking]);
+
+  if (bannerState === 'hidden') return null;
 
   const spin = spinAnim.interpolate({
     inputRange: [0, 1],
     outputRange: ['0deg', '360deg'],
   });
 
-  const bannerHeight = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 28],
-  });
-
-  const bannerOpacity = slideAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0, 1],
-  });
+  const isOffline = bannerState === 'offline';
+  const topOffset = insets.top + (Platform.OS === 'android' ? 4 : 0);
 
   return (
     <Animated.View
       style={[
-        s.banner,
-        isDark ? s.bannerDark : s.bannerLight,
-        { height: bannerHeight, opacity: bannerOpacity, overflow: 'hidden' },
+        s.container,
+        { top: topOffset, transform: [{ translateY }] },
       ]}
+      pointerEvents="none"
     >
-      {/* Spinner circular tipo WhatsApp */}
-      <Animated.View style={[s.spinner, { transform: [{ rotate: spin }] }]}>
-        <View style={s.spinnerInner} />
-      </Animated.View>
-
-      <Text style={[s.text, isDark && s.textDark]}>
-        Esperando conexión...
-      </Text>
+      <View style={[s.pill, isOffline ? s.pillOffline : s.pillOnline, isDark && s.pillDark]}>
+        {isOffline ? (
+          <>
+            <Animated.View style={[s.spinner, { transform: [{ rotate: spin }] }]} />
+            <Text style={s.textOffline}>Sin conexión</Text>
+          </>
+        ) : (
+          <>
+            <View style={s.dot} />
+            <Text style={s.textOnline}>Conectado</Text>
+          </>
+        )}
+      </View>
     </Animated.View>
   );
 }
 
 const s = StyleSheet.create({
-  banner: {
+  container: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    zIndex: 9999,
+    alignItems: 'center',
+    pointerEvents: 'none',
+  },
+  pill: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 8,
-    paddingHorizontal: 12,
+    gap: 7,
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.18,
+    shadowRadius: 6,
+    elevation: 8,
   },
-  bannerLight: {
-    backgroundColor: '#F0F2F5',
+  pillOffline: {
+    backgroundColor: '#1c1c1e',
   },
-  bannerDark: {
-    backgroundColor: '#1A1A1A',
+  pillOnline: {
+    backgroundColor: '#00C8A0',
   },
+  pillDark: {
+    shadowOpacity: 0.4,
+  },
+  // Spinner arco para offline
   spinner: {
-    width: 14,
-    height: 14,
-    borderRadius: 7,
-    borderWidth: 2,
-    borderColor: '#25D366',
-    borderTopColor: 'transparent',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    borderWidth: 1.8,
+    borderColor: 'rgba(255,255,255,0.35)',
+    borderTopColor: '#fff',
   },
-  spinnerInner: {
-    // solo para que el View tenga dimensiones correctas
-    width: 10,
-    height: 10,
+  // Punto verde para "conectado"
+  dot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#fff',
   },
-  text: {
-    fontSize: FontSize.xs,
-    fontWeight: FontWeight.semibold,
-    color: '#555',
+  textOffline: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.1,
   },
-  textDark: {
-    color: '#aaa',
+  textOnline: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+    letterSpacing: 0.1,
   },
 });
