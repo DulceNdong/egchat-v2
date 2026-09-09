@@ -1119,6 +1119,7 @@ function MensajeriaScreenInner() {
       <HamburgerMenu
         visible={showMenu}
         onClose={() => setShowMenu(false)}
+        user={currentUser}
       />
       <WeatherModal
         visible={showWeather}
