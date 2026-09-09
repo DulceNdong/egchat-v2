@@ -1765,12 +1765,14 @@ function MomentCreateModal({
   };
 
   const handleCreate = async () => {
-    if (!text.trim() && images.length === 0) { Alert.alert('Escribe algo o anade una foto'); return; }
+    if (!text.trim() && images.length === 0) { Alert.alert('Escribe algo o añade una foto'); return; }
     setCreating(true);
+    if (images.length > 0) setUploadingImages(true);
     try {
       const post = await createMomentPost(text.trim(), images);
+      setUploadingImages(false);
       if (post) { onCreated(post); setText(''); setImages([]); }
-    } finally { setCreating(false); }
+    } finally { setCreating(false); setUploadingImages(false); }
   };
 
   return (
