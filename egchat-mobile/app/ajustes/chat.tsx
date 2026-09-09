@@ -33,12 +33,22 @@ export default function ChatSettingsScreen() {
   const [readReceipts, setReadReceipts] = useState(true);
   const [savePhotos, setSavePhotos] = useState(false);
   const [fontSz, setFontSz] = useState<ChatFontSize>('medium');
+  const [syncingReceipts, setSyncingReceipts] = useState(false);
 
   useEffect(() => {
     getCfgBool(CFG.enterSend, false).then(setEnterSend);
     getCfgBool(CFG.readReceipts, true).then(setReadReceipts);
     getCfgBool(CFG.savePhotos, false).then(setSavePhotos);
     getCfgString(CFG.fontSizeChat, 'medium').then(v => setFontSz((v as ChatFontSize) || 'medium'));
+  }, []);
+
+  const handleReadReceiptsChange = useCallback(async (v: boolean) => {
+    setReadReceipts(v);
+    await setCfgBool(CFG.readReceipts, v);
+    setSyncingReceipts(true);
+    await syncReadReceiptsToBackend(v);
+    setSyncingReceipts(false);
+    toast.show(v ? '●● Confirmaciones de lectura activadas' : '●● Confirmaciones de lectura desactivadas');
   }, []);
 
   const labels: Record<ChatFontSize, string> = { small: 'Pequeña', medium: 'Normal', large: 'Grande' };
