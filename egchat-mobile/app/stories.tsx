@@ -2364,12 +2364,18 @@ const lv = StyleSheet.create({
   overlay:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.08)' },
 
   // Pre-live
-  preLiveLogo:      { marginBottom: 28 },
-  preLiveLogoGrad:  { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center', shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.6, shadowRadius: 24 },
-  preLiveTitle:     { color: '#fff', fontSize: 26, fontWeight: '900', letterSpacing: -0.5, marginBottom: 10 },
-  preLiveSub:       { color: 'rgba(255,255,255,0.5)', fontSize: 14, textAlign: 'center', paddingHorizontal: 40, marginBottom: 36, lineHeight: 20 },
+  preLiveLogo:      { width: 88, height: 88, borderRadius: 44, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)', alignItems: 'center', justifyContent: 'center', marginBottom: 24 },
+  preLiveLogoGrad:  { width: 96, height: 96, borderRadius: 48, alignItems: 'center', justifyContent: 'center' },
+  preLiveTitle:     { color: '#fff', fontSize: 28, fontWeight: '800', letterSpacing: -0.5, marginBottom: 8 },
+  preLiveSub:       { color: 'rgba(255,255,255,0.45)', fontSize: 13, textAlign: 'center', marginBottom: 40, lineHeight: 19 },
+  preLiveFeatures:  { width: '100%', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)', borderRadius: 18, overflow: 'hidden', marginBottom: 0 },
+  featureRow:       { flexDirection: 'row', alignItems: 'center', gap: 14, paddingVertical: 16, paddingHorizontal: 18 },
+  featureRowBorder: { borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.07)' },
+  featureIcon:      { width: 36, height: 36, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)', alignItems: 'center', justifyContent: 'center' },
+  featureLabel:     { color: 'rgba(255,255,255,0.85)', fontSize: 13, fontWeight: '600', marginBottom: 2 },
+  featureSub:       { color: 'rgba(255,255,255,0.35)', fontSize: 11 },
   preLiveStats:     { gap: 14, width: '80%' },
-  preLiveStat:      { flexDirection: 'row', alignItems: 'center', gap: 14, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 14, padding: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)' },
+  preLiveStat:      { flexDirection: 'row', alignItems: 'center', gap: 14 },
   preLiveStatText:  { color: 'rgba(255,255,255,0.7)', fontSize: 13, fontWeight: '600' },
 
   // Header
