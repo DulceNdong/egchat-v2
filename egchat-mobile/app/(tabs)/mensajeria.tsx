@@ -491,12 +491,15 @@ function MensajeriaScreenInner() {
   useEffect(() => {
     const init = async () => {
       try {
-        // Primero obtener el userId, luego cargar chats con él
         const me = await authAPI.me().catch(() => null);
         const uid = me?.id || '';
         if (uid) setCurrentUserId(uid);
         if (me) setCurrentUser({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
         await loadChats(uid);
+
+        // Sincronizar contactos del teléfono en segundo plano (máx 1 vez/24h)
+        // No bloqueamos la UI — corre en background sin await
+        syncPhoneContacts().catch(() => {});
       } finally {
         // noop
       }
