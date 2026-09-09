@@ -12,6 +12,7 @@ import { registerForPushNotifications, setupNotificationListeners, clearBadge } 
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
+import { OfflineBanner } from '../src/components/ui';
 import { trackUserPresence } from '../src/supabase';
 import SessionManager from '../src/sessionManager';
 import { NativeCallKit } from '../src/native/CallKit';
