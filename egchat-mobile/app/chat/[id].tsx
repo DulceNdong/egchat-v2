@@ -686,8 +686,10 @@ export default function ChatScreen() {
         if (event === 'INSERT') {
           // Marcar como leído inmediatamente (estamos en el chat activo)
           chatAPI.markAsRead(chatId, newMsg.id).catch(() => {});
-          // Broadcast de lectura para que el emisor vea checks azules al instante
-          broadcastReadReceipt(chatId, currentUserId, [newMsg.id]);
+          // Broadcast de lectura solo si el usuario tiene readReceipts activados
+          if (showReadReceipts) {
+            broadcastReadReceipt(chatId, currentUserId, [newMsg.id]);
+          }
           playMessageReceived(); // ← sonido en mensajes via Realtime
         }
         setIsTyping(false);
