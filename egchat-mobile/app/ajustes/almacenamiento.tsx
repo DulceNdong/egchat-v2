@@ -80,7 +80,6 @@ export default function AlmacenamientoScreen() {
         text: 'Limpiar',
         style: 'destructive',
         onPress: async () => {
-          // Limpiar caché de mensajes y chats de AsyncStorage
           const keys = await AsyncStorage.getAllKeys();
           const toRemove = keys.filter(k =>
             k.startsWith('chat_messages_') ||
@@ -88,18 +87,31 @@ export default function AlmacenamientoScreen() {
             k.startsWith('egchat_local_stories')
           );
           await AsyncStorage.multiRemove(toRemove);
-
-          // Re-calcular
-          const [asyncMB, cacheMB] = await Promise.all([
-            estimateAsyncStorageMB(),
-            estimateCacheMB(),
-          ]);
-          setCacheSize(cacheMB);
-          setUsed(asyncMB + cacheMB);
+          await calcStorage();
           Alert.alert('✓', `Caché limpiada. ${toRemove.length} elementos eliminados.`);
         },
       },
     ]);
+  };
+
+  const clearMediaCacheAction = () => {
+    const label = mediaCacheSize > 0 ? `${mediaCacheSize.toFixed(1)} MB` : 'vacío';
+    Alert.alert(
+      'Limpiar media descargada',
+      `Esto eliminará las fotos y audios descargados localmente (${label}). Podrán volver a descargarse cuando los necesites.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Limpiar',
+          style: 'destructive',
+          onPress: async () => {
+            await clearMediaCache();
+            await calcStorage();
+            Alert.alert('✓', 'Media descargada eliminada correctamente.');
+          },
+        },
+      ],
+    );
   };
 
   // Barra de progreso: max ~500 MB estimado para un móvil medio
