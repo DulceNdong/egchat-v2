@@ -370,7 +370,7 @@ export const HamburgerMenu = ({
           ]);
           break;
       }
-    }, 120);
+    }, 50);
   };
 
   if (!visible) return null;
