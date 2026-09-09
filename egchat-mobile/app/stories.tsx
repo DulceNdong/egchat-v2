@@ -1748,6 +1748,7 @@ function MomentCreateModal({
   const [text, setText] = React.useState('');
   const [images, setImages] = React.useState<string[]>([]);
   const [creating, setCreating] = React.useState(false);
+  const [uploadingImages, setUploadingImages] = React.useState(false);
   const insets = useSafeAreaInsets();
 
   const handlePickImage = async () => {
