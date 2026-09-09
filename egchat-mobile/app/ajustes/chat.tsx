@@ -1,12 +1,32 @@
-import React, { useEffect, useState } from 'react';
-import { TouchableOpacity, Text } from 'react-native';
+import React, { useEffect, useState, useCallback } from 'react';
+import { TouchableOpacity, Text, ActivityIndicator, View } from 'react-native';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgBool, setCfgBool, getCfgString, setCfg } from '../../src/services/settingsPrefs';
+import { getToken, getApiBase } from '../../src/api';
+import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
 
 type ChatFontSize = 'small' | 'medium' | 'large';
+
+// ── Sincroniza la preferencia de confirmaciones de lectura con el backend ─────
+async function syncReadReceiptsToBackend(enabled: boolean): Promise<void> {
+  try {
+    const token = await getToken();
+    const base = getApiBase();
+    await fetch(`${base}/api/auth/read-receipts`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ read_receipts_enabled: enabled }),
+    });
+  } catch {
+    // silencioso — la preferencia local ya se guardó
+  }
+}
 
 export default function ChatSettingsScreen() {
   const [enterSend, setEnterSend] = useState(false);
