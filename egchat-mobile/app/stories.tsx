@@ -2115,30 +2115,50 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
 
         {/* ── PRE-LIVE: pantalla de inicio ── */}
         {!isLive && (
-          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center' }]}>
-            {/* Logo animado */}
-            <View style={lv.preLiveLogo}>
-              <LinearGradient colors={['#ff3b30', '#ff6b35', '#ff3b30']} style={lv.preLiveLogoGrad}>
-                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none">
-                  <Circle cx="12" cy="12" r="3" fill="#fff"/>
-                  <Circle cx="12" cy="12" r="6" stroke="#fff" strokeWidth={1.5} strokeOpacity={0.5}/>
-                  <Circle cx="12" cy="12" r="9" stroke="#fff" strokeWidth={1} strokeOpacity={0.25}/>
-                </Svg>
-              </LinearGradient>
-            </View>
-            <Text style={lv.preLiveTitle}>Transmisión en vivo</Text>
-            <Text style={lv.preLiveSub}>Tus contactos verán tu emisión en tiempo real</Text>
+          <View style={[StyleSheet.absoluteFill, { alignItems: 'center', justifyContent: 'center', paddingHorizontal: 28 }]}>
 
-            {/* Stats decorativos */}
-            <View style={lv.preLiveStats}>
+            {/* Icono central — sin fondo de color */}
+            <View style={lv.preLiveLogo}>
+              <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                <Circle cx="12" cy="12" r="2" fill="#fff" stroke="none"/>
+                <Path d="M5.636 5.636a9 9 0 0 0 0 12.728M18.364 5.636a9 9 0 0 1 0 12.728"/>
+                <Path d="M8.464 8.464a5 5 0 0 0 0 7.072M15.536 8.464a5 5 0 0 1 0 7.072"/>
+              </Svg>
+            </View>
+
+            <Text style={lv.preLiveTitle}>En vivo</Text>
+            <Text style={lv.preLiveSub}>Tus contactos recibirán una notificación al instante</Text>
+
+            {/* Features — sin fondo, solo línea separadora */}
+            <View style={lv.preLiveFeatures}>
               {[
-                { icon: '👁️', label: 'Espectadores en vivo' },
-                { icon: '💬', label: 'Comentarios en tiempo real' },
-                { icon: '❤️', label: 'Reacciones animadas' },
-              ].map((item, i) => (
-                <View key={i} style={lv.preLiveStat}>
-                  <Text style={{ fontSize: 20 }}>{item.icon}</Text>
-                  <Text style={lv.preLiveStatText}>{item.label}</Text>
+                {
+                  path: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
+                  label: 'Espectadores en tiempo real',
+                  sub: 'Mira quién está viendo',
+                },
+                {
+                  path: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
+                  label: 'Comentarios en vivo',
+                  sub: 'Interactúa con tu audiencia',
+                },
+                {
+                  path: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
+                  label: 'Reacciones animadas',
+                  sub: 'Emojis en tiempo real',
+                },
+              ].map((item, i, arr) => (
+                <View key={i} style={[lv.featureRow, i < arr.length - 1 && lv.featureRowBorder]}>
+                  <View style={lv.featureIcon}>
+                    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
+                      stroke="rgba(255,255,255,0.7)" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+                      <Path d={item.path} />
+                    </Svg>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={lv.featureLabel}>{item.label}</Text>
+                    <Text style={lv.featureSub}>{item.sub}</Text>
+                  </View>
                 </View>
               ))}
             </View>
