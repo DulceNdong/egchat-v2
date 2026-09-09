@@ -149,14 +149,29 @@ export default function AlmacenamientoScreen() {
 
           <SettingsSection label="Descarga automática" />
           <SettingsCard>
-            <SettingsToggleRow label="Solo con Wi-Fi" value={autoWifi} onValueChange={v => { setAutoWifi(v); setCfgBool(CFG.autoDlWifi, v); }} />
+            <SettingsToggleRow
+              label="Solo con Wi-Fi"
+              description="Fotos y audios"
+              value={autoWifi}
+              onValueChange={v => { setAutoWifi(v); setCfgBool(CFG.autoDlWifi, v); }}
+            />
             <SettingsDivider />
-            <SettingsToggleRow label="Con datos móviles" value={autoData} onValueChange={v => { setAutoData(v); setCfgBool(CFG.autoDlData, v); }} />
+            <SettingsToggleRow
+              label="Con datos móviles"
+              description="Puede generar consumo"
+              value={autoData}
+              onValueChange={v => { setAutoData(v); setCfgBool(CFG.autoDlData, v); }}
+            />
           </SettingsCard>
 
           <SettingsSection label="Gestión" />
           <SettingsCard>
-            <SettingsRow label={`Liberar espacio (${cacheSize.toFixed(1)} MB caché)`} danger onPress={clearCache} />
+            <SettingsRow
+              label={`Limpiar media descargada${mediaCacheSize > 0 ? ` (${mediaCacheSize.toFixed(1)} MB)` : ''}`}
+              onPress={clearMediaCacheAction}
+            />
+            <SettingsDivider />
+            <SettingsRow label={`Liberar caché de la app (${cacheSize.toFixed(1)} MB)`} danger onPress={clearCache} />
           </SettingsCard>
         </>
       )}
