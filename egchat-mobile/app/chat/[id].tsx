@@ -390,7 +390,8 @@ export default function ChatScreen() {
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
-  const { isOnline, saveCache, readCache } = useOffline();
+  const { isOnline: _isOnlineFromOffline, saveCache, readCache } = useOffline();
+  const { isOnline } = useNetworkStatus();
   const keyboardGap = keyboardBottomOffset > 0 ? KEYBOARD_INPUT_GAP : 0;
   const dockBottomOffset = keyboardBottomOffset + keyboardGap;
   // Cuando un panel (attach/emojis/stickers) está abierto, la barra sube igual que con el teclado
