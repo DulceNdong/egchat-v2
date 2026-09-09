@@ -171,6 +171,16 @@ const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
   return isValidAvatarUrl(raw) ? raw : undefined;
 };
 
+const getParticipantBanner = (participant?: Chat['participants'][number]): string | null => {
+  const raw =
+    (participant as any)?.banner_url ||
+    (participant as any)?.users?.banner_url ||
+    (participant as any)?.user?.banner_url;
+  if (!raw || typeof raw !== 'string') return null;
+  if (!raw.startsWith('https://') && !raw.startsWith('http://')) return null;
+  return raw;
+};
+
 const sortChatsByActivity = (items: Chat[] = []) =>
   [...items].sort((a, b) => {
     const bTime = new Date(b.updated_at || b.last_message?.created_at || 0).getTime();
