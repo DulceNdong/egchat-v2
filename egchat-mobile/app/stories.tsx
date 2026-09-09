@@ -573,19 +573,53 @@ async function fetchMomentsData(): Promise<MomentPost[]> {
   try { const c = await AsyncStorage.getItem(MOMENTS_CACHE); if (c) return JSON.parse(c); } catch {}
   return [];
 }
-async function createMomentPost(text: string, images: string[]): Promise<MomentPost | null> {
+async function createMomentPost(text: string, localImages: string[]): Promise<MomentPost | null> {
   try {
-    const BASE = (await import('../src/api')).getApiBase();
-    const token = await (await import('../src/api')).getToken();
+    const { getApiBase, getToken } = await import('../src/api');
+    const BASE  = getApiBase();
+    const token = await getToken();
+
+    // ── Subir imágenes locales a Supabase Storage antes de POST ──
+    // Las URIs locales (file://) solo existen en el dispositivo emisor.
+    // Las subimos al bucket 'stories' (carpeta moments/) para obtener
+    // URLs públicas https:// visibles desde cualquier dispositivo.
+    const me = await authAPI.me().catch(() => null);
+    const userId = me?.id || 'anon';
+
+    const uploadedImages: string[] = [];
+    for (const uri of localImages) {
+      if (uri.startsWith('http://') || uri.startsWith('https://')) {
+        // Ya es una URL pública — no necesita subirse
+        uploadedImages.push(uri);
+      } else {
+        // URI local — subir a Storage
+        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'image');
+        if (publicUrl) uploadedImages.push(publicUrl);
+        // Si falla la subida, se omite esa imagen (no se bloquea el post)
+      }
+    }
+
     const res = await fetch(`${BASE}/api/moments`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, images }),
+      body: JSON.stringify({ text, images: uploadedImages }),
     });
     if (res.ok) return res.json();
   } catch {}
+  // Fallback local (sin conexión)
   const me = await authAPI.me().catch(() => null);
-  return { id: `local-${Date.now()}`, user_id: me?.id || 'local', user_name: me?.full_name || 'Yo', user_avatar: me?.avatar_url, text, images, likes: 0, liked_by_me: false, comments: [], created_at: new Date().toISOString() };
+  return {
+    id: `local-${Date.now()}`,
+    user_id: me?.id || 'local',
+    user_name: me?.full_name || 'Yo',
+    user_avatar: me?.avatar_url,
+    text,
+    images: localImages, // Mostrar local para el propio usuario aunque no se subió
+    likes: 0,
+    liked_by_me: false,
+    comments: [],
+    created_at: new Date().toISOString(),
+  };
 }
 async function toggleMomentLike(postId: string): Promise<boolean> {
   try {
