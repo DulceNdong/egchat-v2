@@ -2321,11 +2321,13 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
             </View>
             <Animated.View style={{ width: '100%', transform: [{ scale: startBtnAnim }] }}>
               <TouchableOpacity style={lv.startBtn} onPress={startLive} activeOpacity={0.9}>
-                <LinearGradient colors={['#ff3b30', '#ff6b35']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-                  style={lv.startBtnGrad}>
-                  <Animated.View style={[lv.startDot, { transform: [{ scale: pulseAnim }] }]}/>
-                  <Text style={lv.startBtnText}>Iniciar transmisión en vivo</Text>
-                </LinearGradient>
+                <View style={lv.startBtnGrad}>
+                  <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                    <Circle cx="12" cy="12" r="2" fill="#fff" stroke="none"/>
+                    <Path d="M5.636 5.636a9 9 0 0 0 0 12.728M18.364 5.636a9 9 0 0 1 0 12.728"/>
+                  </Svg>
+                  <Text style={lv.startBtnText}>Iniciar en vivo</Text>
+                </View>
               </TouchableOpacity>
             </Animated.View>
             <TouchableOpacity onPress={onClose} style={lv.cancelBtn}>
