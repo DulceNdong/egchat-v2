@@ -401,18 +401,27 @@ export const HamburgerMenu = ({
               </View>
             )}
             <View style={hm.userInfo}>
-              <Text style={hm.userName} numberOfLines={1}>{user?.full_name || 'Usuario'}</Text>
+              <Text style={hm.userName} numberOfLines={1}>{user?.full_name || 'Cargando...'}</Text>
               <Text style={hm.userStatus}>● En línea</Text>
             </View>
           </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} bounces={false} style={hm.scroll}>
+          <ScrollView
+            showsVerticalScrollIndicator={false}
+            bounces={false}
+            style={hm.scroll}
+            scrollEventThrottle={16}
+            decelerationRate="normal"
+            overScrollMode="never"
+            removeClippedSubviews={false}
+          >
             {items.map((item, i) => (
               <TouchableOpacity
                 key={item.id}
                 style={[hm.item, i < items.length - 1 && hm.itemBorder]}
                 onPress={() => handlePress(item.id)}
-                activeOpacity={0.65}
+                activeOpacity={0.5}
+                delayPressIn={0}
               >
                 <View style={hm.iconWrap}>
                   <MenuIcon name={item.id} />
