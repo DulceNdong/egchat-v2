@@ -2425,11 +2425,11 @@ const lv = StyleSheet.create({
   // Botón iniciar
   startWrap:        { position: 'absolute', bottom: 0, left: 0, right: 0, alignItems: 'center', paddingHorizontal: 28 },
   startHintRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 20 },
-  startHint:        { color: 'rgba(255,255,255,0.5)', fontSize: 13 },
-  startBtn:         { width: '100%', borderRadius: 32, overflow: 'hidden', shadowColor: '#ff3b30', shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.5, shadowRadius: 20 },
-  startBtnGrad:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 18 },
+  startHint:        { color: 'rgba(255,255,255,0.4)', fontSize: 12 },
+  startBtn:         { width: '100%', borderRadius: 16, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  startBtnGrad:     { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, paddingVertical: 17, backgroundColor: 'rgba(255,255,255,0.08)' },
   startDot:         { width: 10, height: 10, borderRadius: 5, backgroundColor: '#fff' },
-  startBtnText:     { color: '#fff', fontWeight: '900', fontSize: 17, letterSpacing: 0.3 },
+  startBtnText:     { color: '#fff', fontWeight: '700', fontSize: 16, letterSpacing: 0.2 },
   cancelBtn:        { marginTop: 20, paddingVertical: 10 },
   cancelBtnText:    { color: 'rgba(255,255,255,0.4)', fontSize: 15 },
 
