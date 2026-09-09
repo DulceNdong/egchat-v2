@@ -625,9 +625,8 @@ export default function ChatScreen() {
         // 2. Marcar TODOS los mensajes del chat como leídos (nuevo endpoint)
         //    Esto actualiza status → 'read' en BD y el backend emite SSE al emisor
         markChatAsRead(chatId);
-        // 3. Emitir broadcast inmediato por Supabase para máxima velocidad
-        //    (el emisor lo recibe en < 200ms antes de que BD propague)
-        if (me?.id) {
+        // 3. Emitir broadcast inmediato por Supabase (solo si readReceipts activados)
+        if (me?.id && showReadReceipts) {
           const unreadIds = msgList
             .filter(m => m.sender_id !== me.id && m.status !== 'read')
             .map(m => m.id);
