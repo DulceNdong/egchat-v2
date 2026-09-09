@@ -1787,7 +1787,10 @@ function MomentCreateModal({
           <TouchableOpacity onPress={handleCreate} disabled={creating}
             style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16 }}>
             {creating
-              ? <ActivityIndicator color="#fff" size="small" />
+              ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                  <ActivityIndicator color="#fff" size="small" />
+                  <Text style={{ color: '#fff', fontSize: 12 }}>{uploadingImages ? 'Subiendo...' : 'Publicando...'}</Text>
+                </View>
               : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Publicar</Text>}
           </TouchableOpacity>
         </LinearGradient>
