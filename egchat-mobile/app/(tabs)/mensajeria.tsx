@@ -484,6 +484,7 @@ function MensajeriaScreenInner() {
         const me = await authAPI.me().catch(() => null);
         const uid = me?.id || '';
         if (uid) setCurrentUserId(uid);
+        if (me) setCurrentUser({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
         await loadChats(uid);
       } finally {
         // noop
