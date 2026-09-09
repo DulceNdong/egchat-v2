@@ -59,7 +59,12 @@ export default function ChatSettingsScreen() {
       <SettingsCard>
         <SettingsToggleRow label="Enter para enviar" value={enterSend} onValueChange={v => { setEnterSend(v); setCfgBool(CFG.enterSend, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Confirmaciones de lectura (●●●)" value={readReceipts} onValueChange={v => { setReadReceipts(v); setCfgBool(CFG.readReceipts, v); }} />
+        <SettingsToggleRow
+          label="Confirmaciones de lectura (●●)"
+          description={syncingReceipts ? 'Guardando…' : (readReceipts ? 'Activadas' : 'Desactivadas')}
+          value={readReceipts}
+          onValueChange={handleReadReceiptsChange}
+        />
         <SettingsDivider />
         <SettingsToggleRow label="Guardar fotos automáticamente" value={savePhotos} onValueChange={v => { setSavePhotos(v); setCfgBool(CFG.savePhotos, v); }} />
       </SettingsCard>
