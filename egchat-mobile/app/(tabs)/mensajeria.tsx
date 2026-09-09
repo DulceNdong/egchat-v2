@@ -40,7 +40,7 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useOffline } from '../../src/hooks/useOffline';
-import { EGAvatar, OfflineBanner } from '../../src/components/ui';
+import { EGAvatar } from '../../src/components/ui';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
