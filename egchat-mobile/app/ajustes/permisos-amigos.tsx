@@ -48,6 +48,10 @@ export default function PermisosAmigosScreen() {
   const [findMe, setFindMe] = useState('Todos');
   const [autoAccept, setAutoAccept] = useState(false);
   const [muteUnknown, setMuteUnknown] = useState(true);
+  const [syncing, setSyncing] = useState(false);
+  const [lastSync, setLastSync] = useState<string>('');
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
   useEffect(() => {
     getCfgString(CFG.permAdd, 'Todos').then(setAddMe);
@@ -55,6 +59,35 @@ export default function PermisosAmigosScreen() {
     getCfgString(CFG.permFind, 'Todos').then(setFindMe);
     getCfgBool(CFG.autoAccept, false).then(setAutoAccept);
     getCfgBool(CFG.muteUnknown, true).then(setMuteUnknown);
+    getLastSyncTime().then(d => setLastSync(formatLastSync(d)));
+  }, []);
+
+  const handleSyncContacts = useCallback(async () => {
+    setSyncing(true);
+    try {
+      const result = await syncPhoneContacts(true); // force=true → no espera 24h
+
+      if (result.permissionDenied) {
+        Alert.alert(
+          'Permiso requerido',
+          'Para sincronizar, ve a Ajustes del sistema y activa el permiso de Contactos para EGChat.',
+        );
+        return;
+      }
+
+      const msg = result.newContacts > 0
+        ? `✅ ${result.newContacts} contacto${result.newContacts > 1 ? 's' : ''} nuevo${result.newContacts > 1 ? 's' : ''} encontrado${result.newContacts > 1 ? 's' : ''} en EGChat.`
+        : result.totalFound > 0
+          ? `✅ Todos tus contactos ya estaban agregados (${result.totalFound} en EGChat).`
+          : '✅ Ningún contacto tuyo usa EGChat aún.';
+
+      Alert.alert('Sincronización completa', msg);
+      getLastSyncTime().then(d => setLastSync(formatLastSync(d)));
+    } catch {
+      Alert.alert('Error', 'No se pudo sincronizar. Verifica tu conexión.');
+    } finally {
+      setSyncing(false);
+    }
   }, []);
 
   return (
