@@ -6,6 +6,7 @@ import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
+import { clearMediaCache, getMediaCacheSize } from '../../src/services/autoDownload';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
