@@ -188,22 +188,28 @@ export default function PrivacidadScreen() {
           label="Última vez"
           value={lastSeen}
           options={VIS_OPTS}
-          onChange={v => { setLastSeen(v); setCfg(CFG.lastSeen, v); }}
+          onChange={v => updatePrivacy('lastSeen', v, CFG.lastSeen, setLastSeen)}
         />
         <SettingsDivider />
         <VisibilityRow
           label="Foto de perfil"
           value={photoVis}
           options={VIS_OPTS}
-          onChange={v => { setPhotoVis(v); setCfg(CFG.photoVis, v); }}
+          onChange={v => updatePrivacy('photoVis', v, CFG.photoVis, setPhotoVis)}
         />
         <SettingsDivider />
         <VisibilityRow
           label="Estado / Historia"
           value={statusVis}
           options={VIS_OPTS}
-          onChange={v => { setStatusVis(v); setCfg(CFG.statusVis, v); }}
+          onChange={v => updatePrivacy('statusVis', v, CFG.statusVis, setStatusVis)}
         />
+        {syncing && (
+          <View style={{ paddingHorizontal: 16, paddingBottom: 8, flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+            <ActivityIndicator size="small" color={Colors.accent} />
+            <Text style={{ fontSize: 12, color: Colors.accent }}>Guardando…</Text>
+          </View>
+        )}
       </SettingsCard>
 
       <SettingsSection label={`Contactos bloqueados${blocked.length > 0 ? ` (${blocked.length})` : ''}`} />
