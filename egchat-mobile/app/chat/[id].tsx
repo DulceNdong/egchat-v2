@@ -1259,6 +1259,33 @@ export default function ChatScreen() {
     setMessages(prev => markMessageFailed(prev, tempId));
   }, []);
 
+  // ── Cola offline — procesa mensajes encolados al reconectar ──────
+  useOfflineQueue({
+    chatId: chatId!,
+    sendText: async (payload) => {
+      const real = await chatAPI.sendMessage(chatId!, {
+        text: payload.text,
+        type: payload.type,
+        reply_to: payload.reply_to,
+      });
+      return real;
+    },
+    onSent: ({ tempId: qTempId, realMessage }) => {
+      // Reemplazar el mensaje pendiente con el real del servidor
+      setMessages(prev => {
+        const exists = prev.find(m => m.id === qTempId);
+        if (exists) {
+          return replaceTempMessage(prev, qTempId, { ...realMessage, status: 'delivered' });
+        }
+        // Si ya no está en pantalla (usuario cerró y reabrió el chat), insertar normalmente
+        return mergeMessages(prev, [{ ...realMessage, status: 'delivered' }]);
+      });
+    },
+    onFailed: ({ tempId: qTempId }) => {
+      setMessages(prev => markMessageFailed(prev, qTempId));
+    },
+  });
+
   const retryMessage = useCallback(async (message: Message) => {
     if (!chatId || message.status !== 'failed') return;
     if (!isOnline) {
