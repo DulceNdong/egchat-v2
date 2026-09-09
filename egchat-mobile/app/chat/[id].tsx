@@ -447,9 +447,11 @@ export default function ChatScreen() {
       if (msg.sender_id === currentUserId) return;
       const enriched = normalizeMessage(msg);
       setMessages(prev => mergeMessages(prev, [enriched]));
-      // Marcar como leído y notificar al emisor con checks azules
+      // Marcar como leído y notificar al emisor con checks azules (si los receipts están activados)
       chatAPI.markAsRead(chatId, msg.id).catch(() => {});
-      broadcastReadReceipt(chatId, currentUserId, [msg.id]);
+      if (showReadReceipts) {
+        broadcastReadReceipt(chatId, currentUserId, [msg.id]);
+      }
       setIsTyping(false);
       playMessageReceived(); // ← sonido de mensaje recibido
     }
