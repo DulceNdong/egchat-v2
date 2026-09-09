@@ -459,6 +459,7 @@ export default function RootLayout() {
               </View>
             )}
             <ToastContainer />
+            <OfflineBanner />
           </ThemeProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
