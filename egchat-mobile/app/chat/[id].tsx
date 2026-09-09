@@ -852,9 +852,17 @@ export default function ChatScreen() {
     setMessages(prev => mergeMessages(prev, [tempMsg]));
 
     if (!isOnline) {
-      setMessages(prev => markMessageFailed(prev, tempId));
+      // Encolar en AsyncStorage — se enviará al reconectar aunque se cierre la app
+      await enqueueMessage({
+        chatId: chatId!,
+        tempId,
+        text: trimmed,
+        type: 'text',
+        reply_to: replyTo?.id,
+        createdAt: tempMsg.created_at,
+      });
+      // Dejar el mensaje como 'pending' (no failed) para que el usuario sepa que está encolado
       setSending(false);
-      toast.info('Sin conexión', 'El mensaje queda listo para reintentar');
       return;
     }
 
