@@ -734,7 +734,6 @@ function MensajeriaScreenInner() {
 
   return (
     <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
-      <OfflineBanner />
 
       {/* ══════════════════════════════════════════════════════════
           HEADER — Logo + Temp + Bell + Menu (igual que Home)
