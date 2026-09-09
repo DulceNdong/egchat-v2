@@ -107,6 +107,29 @@ export default function PermisosAmigosScreen() {
         <SettingsDivider />
         <SettingsToggleRow label="Silenciar desconocidos" value={muteUnknown} onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteUnknown, v); }} />
       </SettingsCard>
+
+      <SettingsSection label="Contactos del teléfono" />
+      <SettingsCard>
+        <View style={styles.syncRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.syncTitle, { color: C.textPrimary }]}>Sincronizar agenda</Text>
+            <Text style={[styles.syncSub, { color: C.textSecondary }]}>
+              {lastSync ? `Última sincronización: ${lastSync}` : 'Nunca sincronizado'}
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.syncBtn, syncing && { opacity: 0.6 }]}
+            onPress={handleSyncContacts}
+            disabled={syncing}
+            activeOpacity={0.7}
+          >
+            {syncing
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={styles.syncBtnText}>Sincronizar</Text>
+            }
+          </TouchableOpacity>
+        </View>
+      </SettingsCard>
     </SettingsLayout>
   );
 }
