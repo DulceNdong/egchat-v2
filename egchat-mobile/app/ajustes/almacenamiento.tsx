@@ -38,24 +38,27 @@ export default function AlmacenamientoScreen() {
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const [used, setUsed] = useState(0);
   const [cacheSize, setCacheSize] = useState(0);
+  const [mediaCacheSize, setMediaCacheSize] = useState(0);
   const [loading, setLoading] = useState(true);
   const [autoWifi, setAutoWifi] = useState(true);
   const [autoData, setAutoData] = useState(false);
 
+  const calcStorage = async () => {
+    const [asyncMB, cacheMB, mediaCacheBytes] = await Promise.all([
+      estimateAsyncStorageMB(),
+      estimateCacheMB(),
+      getMediaCacheSize(),
+    ]);
+    const mediaMB = parseFloat((mediaCacheBytes / (1024 * 1024)).toFixed(1));
+    setMediaCacheSize(mediaMB);
+    setCacheSize(cacheMB);
+    setUsed(asyncMB + cacheMB);
+    setLoading(false);
+  };
+
   useEffect(() => {
     getCfgBool(CFG.autoDlWifi, true).then(setAutoWifi);
     getCfgBool(CFG.autoDlData, false).then(setAutoData);
-
-    // Calcular uso real de almacenamiento
-    const calcStorage = async () => {
-      const [asyncMB, cacheMB] = await Promise.all([
-        estimateAsyncStorageMB(),
-        estimateCacheMB(),
-      ]);
-      setCacheSize(cacheMB);
-      setUsed(asyncMB + cacheMB);
-      setLoading(false);
-    };
     calcStorage();
   }, []);
 
