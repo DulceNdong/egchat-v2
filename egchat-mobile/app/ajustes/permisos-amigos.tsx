@@ -140,4 +140,16 @@ const styles = StyleSheet.create({
   optRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   optChip: { paddingHorizontal: 10, paddingVertical: 6, borderRadius: 8, borderWidth: 1, borderColor: '#e5e7eb' },
   optChipActive: { borderColor: Colors.accent, backgroundColor: 'rgba(7,193,96,0.1)' },
+  syncRow: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingVertical: 14, gap: 12,
+  },
+  syncTitle: { fontSize: 16, fontWeight: '500' },
+  syncSub: { fontSize: 12, marginTop: 2 },
+  syncBtn: {
+    backgroundColor: Colors.accent,
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderRadius: 8, minWidth: 100, alignItems: 'center',
+  },
+  syncBtnText: { color: '#fff', fontWeight: '600', fontSize: 14 },
 });
