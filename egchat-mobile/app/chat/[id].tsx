@@ -2895,7 +2895,10 @@ export default function ChatScreen() {
           title: chatName,
           name: chatName,
           avatarUrl: chatAvatar,
+          avatar_url: chatAvatar,
+          banner_url: (otherParticipant as any)?.banner_url || null,
           phone: otherPhone,
+          status: isOtherOnline ? 'online' : 'offline',
           isGroup,
           type: isGroup ? 'group' : 'private',
         }}
