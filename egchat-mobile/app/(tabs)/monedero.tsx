@@ -346,6 +346,28 @@ const QRModal = ({
   );
 };
 
+const qrs = StyleSheet.create({
+  overlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
+  card:          { backgroundColor: '#fff', borderRadius: 24, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' },
+  header:        { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', marginBottom: 20 },
+  title:         { fontSize: 18, fontWeight: '700', color: '#111827' },
+  sub:           { fontSize: 12, color: '#9ca3af', marginTop: 2 },
+  closeBtn:      { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
+  qrWrap:        { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+  avatarOverlay: { position: 'absolute', width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 3, borderColor: '#fff' },
+  avatarImg:     { width: 44, height: 44, borderRadius: 22 },
+  avatarFallback:{ backgroundColor: '#6366f1', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial: { color: '#fff', fontSize: 18, fontWeight: '700' },
+  name:          { fontSize: 16, fontWeight: '700', color: '#111827', marginTop: 4 },
+  phone:         { fontSize: 13, color: '#6b7280', marginTop: 2 },
+  balancePill:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f0fdf4', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 10, marginBottom: 16 },
+  balanceTxt:    { fontSize: 13, color: '#16a34a', fontWeight: '600' },
+  scanBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12, borderWidth: 1.5, borderColor: '#00C8A0', marginBottom: 10, width: '100%', justifyContent: 'center' },
+  scanBtnTxt:    { fontSize: 14, fontWeight: '600', color: '#00C8A0' },
+  closeFullBtn:  { paddingVertical: 12, width: '100%', alignItems: 'center' },
+  closeFullTxt:  { fontSize: 14, fontWeight: '600', color: '#6b7280' },
+});
+
 // ── Modal Recarga ─────────────────────────────────────────────────
 type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success'
            | 'stripe' | 'orange_money' | 'mtn_mobile' | 'polling';
