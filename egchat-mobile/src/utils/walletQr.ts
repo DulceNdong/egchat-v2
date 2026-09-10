@@ -14,6 +14,7 @@ export function buildPayQr(userId: string, amount?: string, concept?: string): s
 
 export interface ParsedPayQr {
   userId?: string;
+  name?: string;
   amount?: string;
   concept?: string;
 }
