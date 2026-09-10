@@ -99,7 +99,10 @@ export function OfflineBanner() {
   });
 
   const isOffline = bannerState === 'offline';
-  const topOffset = insets.top + (Platform.OS === 'android' ? 4 : 0);
+  // Debajo del header (safe area + altura del header ~56px)
+  // así no tapa el clima ni la geolocalización
+  const HEADER_HEIGHT = 56;
+  const topOffset = insets.top + HEADER_HEIGHT + 6;
 
   return (
     <Animated.View
