@@ -1072,7 +1072,9 @@ const HistorialModal = ({
           <View style={s.histHeader}>
             <Text style={s.histTitle}>Historial Completo</Text>
             <TouchableOpacity onPress={onClose} style={s.histCloseBtn}>
-              <Text style={{ fontSize: 18, color: '#374151' }}>✕</Text>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#374151" strokeWidth={2.5} strokeLinecap="round">
+                <Path d="M18 6L6 18"/><Path d="M6 6l12 12"/>
+              </Svg>
             </TouchableOpacity>
           </View>
 
