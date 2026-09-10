@@ -1368,7 +1368,10 @@ function MonederoScreenInner() {
                   <View key={transfer.id}>
                     <View style={s.pendingRow}>
                       <View style={s.pendingIcon}>
-                        <Text>⏱</Text>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2} strokeLinecap="round">
+                          <Circle cx="12" cy="12" r="10"/>
+                          <Polyline points="12 6 12 12 16 14"/>
+                        </Svg>
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={[s.bankName, { color: C.textPrimary }]}> 
