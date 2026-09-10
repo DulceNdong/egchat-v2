@@ -22,6 +22,7 @@ import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type MenuItem = { label: string; route: string; value?: string };
 
