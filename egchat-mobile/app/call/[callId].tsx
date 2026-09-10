@@ -386,6 +386,20 @@ export default function CallScreen() {
         </View>
       )}
 
+      {/* Banner de pantalla compartida */}
+      {isSharingScreen && (
+        <View style={[s.sharingBanner, { top: insets.top + 48 }]}>
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth={2.5} strokeLinecap="round">
+            <Rect x="2" y="3" width="20" height="14" rx="2"/>
+            <Path d="M8 21h8M12 17v4"/>
+          </Svg>
+          <Text style={s.sharingText}>Compartiendo pantalla</Text>
+          <TouchableOpacity onPress={toggleScreenShare} hitSlop={8}>
+            <Text style={[s.sharingText, { color: '#ef4444', fontWeight: '700' }]}>Detener</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
       {/* Minimizar */}
       <TouchableOpacity
         style={[s.minimizeBtn, { top: topOffset }]}
