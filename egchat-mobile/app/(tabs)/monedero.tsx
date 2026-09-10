@@ -3,9 +3,9 @@ import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
-  TextInput, Animated, KeyboardAvoidingView, Platform,
+  TextInput, Animated, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
