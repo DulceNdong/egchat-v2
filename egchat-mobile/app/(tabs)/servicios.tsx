@@ -271,12 +271,22 @@ const drawerStyles = StyleSheet.create({
   drawer: {
     width: '75%', height: '100%',
     backgroundColor: Colors.bgSecondary,
-    padding: Spacing.xl, paddingTop: 60, gap: Spacing.xs,
+    paddingHorizontal: 20, paddingBottom: 32, gap: 4,
   },
-  title: { fontSize: FontSize.xl, fontWeight: FontWeight.bold, color: Colors.textPrimary, marginBottom: Spacing.lg },
-  item: { flexDirection: 'row', alignItems: 'center', gap: Spacing.md, paddingVertical: Spacing.md, borderBottomWidth: 1, borderBottomColor: Colors.borderLight },
+  title: { fontSize: 20, fontWeight: '700', color: Colors.textPrimary, marginBottom: 20, letterSpacing: -0.3 },
+  item: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    paddingVertical: 13,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    borderBottomColor: Colors.borderLight,
+  },
+  itemIconWrap: {
+    width: 36, height: 36, borderRadius: 10,
+    backgroundColor: '#6366f1' + '12',
+    alignItems: 'center', justifyContent: 'center',
+  },
   itemIcon: { fontSize: 22, width: 30, textAlign: 'center' },
-  itemLabel: { fontSize: FontSize.base, color: Colors.textPrimary, fontWeight: FontWeight.semibold },
+  itemLabel: { flex: 1, fontSize: 14, color: Colors.textPrimary, fontWeight: '600' },
 });
 
 // ── Pantalla principal ────────────────────────────────────────────
