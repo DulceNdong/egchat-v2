@@ -115,11 +115,11 @@ const ServiceModal = ({
 
 // ── Modal Noticias ────────────────────────────────────────────────
 const NEWS_SOURCES = [
-  { icon: '📰', name: 'La Gaceta de Guinea',   desc: 'Diario oficial y noticias nacionales', url: 'https://lagacetadeguinea.com' },
-  { icon: '📡', name: 'TVGE Noticias',          desc: 'Televisión de Guinea Ecuatorial',      url: 'https://tvge.gq' },
-  { icon: '🌍', name: 'Noticias CEMAC',         desc: 'Noticias de la región CEMAC',          url: 'https://cemac.int' },
-  { icon: '📻', name: 'Radio Nacional GQ',      desc: 'Radio pública de Guinea Ecuatorial',   url: '' },
-  { icon: '💼', name: 'Economía GQ',            desc: 'Noticias económicas y empresariales',  url: '' },
+  { name: 'La Gaceta de Guinea',   desc: 'Diario oficial y noticias nacionales', url: 'https://lagacetadeguinea.com' },
+  { name: 'TVGE Noticias',          desc: 'Televisión de Guinea Ecuatorial',      url: 'https://tvge.gq' },
+  { name: 'Noticias CEMAC',         desc: 'Noticias de la región CEMAC',          url: 'https://cemac.int' },
+  { name: 'Radio Nacional GQ',      desc: 'Radio pública de Guinea Ecuatorial',   url: '' },
+  { name: 'Economía GQ',            desc: 'Noticias económicas y empresariales',  url: '' },
 ];
 
 const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
