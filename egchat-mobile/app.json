@@ -9,15 +9,24 @@
     "ios": {
       "bundleIdentifier": "com.reddington120.egchat",
       "supportsTablet": false,
+      "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.associated-domains": [
           "applinks:egchat-app.vercel.app"
-        ]
+        ],
+        "com.apple.developer.push-to-talk": true,
+        "aps-environment": "production"
       },
       "infoPlist": {
         "UIBackgroundModes": [
           "audio",
-          "fetch"
+          "fetch",
+          "remote-notification",
+          "voip",
+          "processing"
+        ],
+        "BGTaskSchedulerPermittedIdentifiers": [
+          "com.reddington120.egchat.refresh"
         ],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
