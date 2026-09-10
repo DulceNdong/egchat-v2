@@ -1468,6 +1468,7 @@ function MonederoScreenInner() {
         userId={userId}
         userName={userName}
         userPhone={userPhone}
+        userAvatar={user?.avatar_url || user?.avatarUrl}
         onClose={() => setShowQR(false)}
       />
       <RecargaModal visible={showRecarga} balance={balance} onClose={() => setShowRecarga(false)} onSuccess={loadData} />
