@@ -13,11 +13,12 @@ export default function AcercaScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const info = [
-    { label: 'Versión', value: '2.5.5' },
+    { label: 'Versión', value: '2.6.4' },
+    { label: 'Plataforma', value: 'React Native + Expo' },
     { label: 'Desarrollador', value: 'EGCHAT Team' },
     { label: 'País', value: 'Guinea Ecuatorial' },
     { label: 'Licencia', value: 'Propietaria' },
-    { label: 'Backend', value: 'Neon + Render' },
+    { label: 'Backend', value: 'Supabase + Render' },
   ];
 
   return (
