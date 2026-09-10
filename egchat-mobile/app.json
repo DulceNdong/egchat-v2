@@ -81,6 +81,18 @@
     "plugins": [
       "expo-router",
       [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#00c8a0",
+          "defaultChannel": "egchat-messages",
+          "sounds": [
+            "./assets/notification.wav"
+          ],
+          "iosDisplayInForeground": true
+        }
+      ],
+      [
         "expo-camera",
         {
           "cameraPermission": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
@@ -92,10 +104,16 @@
         "expo-location",
         {
           "locationAlwaysAndWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios como MiTaxi.",
-          "locationWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos."
+          "locationWhenInUsePermission": "EGCHAT necesita tu ubicación para compartirla en chats y usar servicios cercanos.",
+          "isIosBackgroundLocationEnabled": true,
+          "isAndroidBackgroundLocationEnabled": true
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-task-manager",
+        {}
+      ]
     ],
     "platforms": [
       "ios",
