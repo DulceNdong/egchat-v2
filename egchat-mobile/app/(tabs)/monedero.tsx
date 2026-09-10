@@ -240,88 +240,108 @@ const SectionHead = ({
   </LinearGradient>
 );
 
-// ── Modal QR (Recibir / Pagar) ────────────────────────────────────
+// ── Modal QR (Recibir) ────────────────────────────────────────────
 const QRModal = ({
-  visible, type, balance, userId, userName, userPhone, onClose,
+  visible, type, balance, userId, userName, userPhone, userAvatar, onClose,
 }: {
   visible: boolean; type: 'receive' | 'pay'; balance: number;
-  userId: string; userName: string; userPhone: string; onClose: () => void;
+  userId: string; userName: string; userPhone: string;
+  userAvatar?: string; onClose: () => void;
 }) => {
-  const [amount, setAmount] = useState('');
-  const [concept, setConcept] = useState('');
   const isReceive = type === 'receive';
-  const gradient: [string, string] = isReceive ? ['#00c8a0', '#059669'] : ['#00B4E6', '#2563eb'];
-  const title = isReceive ? 'Recibir dinero' : 'Realizar pago';
-  const sub = isReceive ? 'Muestra este QR para recibir' : 'Genera tu QR de cobro';
-  const qrValue = userId
-    ? (isReceive ? buildReceiveQr(userId) : buildPayQr(userId, amount, concept))
-    : 'egchat://pay/pending';
+  const qrValue = userId ? buildReceiveQr(userId) : 'egchat://pay/pending';
+  const insets = useSafeAreaInsets();
+
+  // Modo pago → abre escáner directamente
+  useEffect(() => {
+    if (visible && !isReceive) {
+      onClose();
+      setTimeout(() => router.push('/_qr-scanner' as any), 100);
+    }
+  }, [visible, isReceive]);
+
+  if (!isReceive) return null;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <Pressable style={s.qrOverlay} onPress={onClose}>
-        <Pressable style={s.qrCard} onPress={() => {}}>
-          <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.qrHeaderTitle}>{title}</Text>
-              <Text style={s.qrHeaderSub}>{sub}</Text>
+      <Pressable style={qrs.overlay} onPress={onClose}>
+        <Pressable style={qrs.card} onPress={() => {}}>
+
+          {/* Header limpio */}
+          <View style={qrs.header}>
+            <View>
+              <Text style={qrs.title}>Recibir dinero</Text>
+              <Text style={qrs.sub}>Muestra este código para recibir</Text>
             </View>
-            <TouchableOpacity onPress={onClose} style={s.qrCloseBtn}>
-              <Text style={{ color: '#fff', fontSize: 16, fontWeight: '700' }}>✕</Text>
-            </TouchableOpacity>
-          </LinearGradient>
-
-          <View style={s.qrBody}>
-            <View style={s.qrCodeWrap}>
-              {userId ? (
-                <QRCode value={qrValue} size={200} backgroundColor="#fff" color="#0d0d0d" />
-              ) : (
-                <ActivityIndicator color="#00c8a0" />
-              )}
-            </View>
-
-            <Text style={s.qrName}>{userName || 'Mi Monedero EGCHAT'}</Text>
-            {!!userPhone && <Text style={s.qrPhone}>{userPhone}</Text>}
-            <Text style={s.qrBalance}>{fmt(balance)} XAF disponibles</Text>
-
-            {!isReceive && (
-              <View style={{ width: '100%', gap: 8, marginTop: 8 }}>
-                <TextInput
-                  style={s.qrInput}
-                  value={amount}
-                  onChangeText={setAmount}
-                  placeholder="Monto (XAF)"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-                <TextInput
-                  style={s.qrInput}
-                  value={concept}
-                  onChangeText={setConcept}
-                  placeholder="Concepto (opcional)"
-                  placeholderTextColor="#9CA3AF"
-                />
-              </View>
-            )}
-
-            <TouchableOpacity
-              style={s.qrScanBtn}
-              onPress={() => { onClose(); router.push('/_qr-scanner' as any); }}
-              activeOpacity={0.85}
-            >
-              <Text style={s.qrScanBtnText}>Escanear QR de pago</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity onPress={onClose} activeOpacity={0.85}>
-              <LinearGradient colors={gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.qrCloseFullBtn}>
-                <Text style={s.qrCloseBtnText}>Cerrar</Text>
-              </LinearGradient>
+            <TouchableOpacity style={qrs.closeBtn} onPress={onClose}>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2.5} strokeLinecap="round">
+                <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
+              </Svg>
             </TouchableOpacity>
           </View>
+
+          {/* QR con foto de perfil centrada */}
+          <View style={qrs.qrWrap}>
+            {userId ? (
+              <>
+                <QRCode
+                  value={qrValue}
+                  size={200}
+                  backgroundColor="#fff"
+                  color="#0d0d0d"
+                />
+                {/* Avatar superpuesto en el centro del QR */}
+                <View style={qrs.avatarOverlay}>
+                  {userAvatar ? (
+                    <Image
+                      source={{ uri: userAvatar }}
+                      style={qrs.avatarImg}
+                    />
+                  ) : (
+                    <View style={[qrs.avatarImg, qrs.avatarFallback]}>
+                      <Text style={qrs.avatarInitial}>
+                        {(userName || 'U')[0].toUpperCase()}
+                      </Text>
+                    </View>
+                  )}
+                </View>
+              </>
+            ) : (
+              <ActivityIndicator color="#00C8A0" size="large" />
+            )}
+          </View>
+
+          {/* Info usuario */}
+          <Text style={qrs.name}>{userName || 'Mi Monedero'}</Text>
+          {!!userPhone && <Text style={qrs.phone}>{userPhone}</Text>}
+          <View style={qrs.balancePill}>
+            <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
+              <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+              <Path d="M3 10h17"/><Circle cx="17" cy="14" r="1.5" fill="#00C8A0" stroke="none"/>
+            </Svg>
+            <Text style={qrs.balanceTxt}>{fmt(balance)} XAF disponibles</Text>
+          </View>
+
+          {/* Botón escanear */}
+          <TouchableOpacity
+            style={qrs.scanBtn}
+            onPress={() => { onClose(); setTimeout(() => router.push('/_qr-scanner' as any), 100); }}
+            activeOpacity={0.8}
+          >
+            <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
+              <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
+              <Rect x="14" y="14" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/>
+            </Svg>
+            <Text style={qrs.scanBtnTxt}>Escanear QR de pago</Text>
+          </TouchableOpacity>
+
+          {/* Cerrar */}
+          <TouchableOpacity style={qrs.closeFullBtn} onPress={onClose} activeOpacity={0.85}>
+            <Text style={qrs.closeFullTxt}>Cerrar</Text>
+          </TouchableOpacity>
+
         </Pressable>
       </Pressable>
-        </KeyboardAvoidingView>
     </Modal>
   );
 };
