@@ -217,28 +217,54 @@ const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () 
 );
 
 // ── Drawer lateral ────────────────────────────────────────────────
-const DrawerMenu = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
-    <Pressable style={drawerStyles.overlay} onPress={onClose}>
-      <Pressable style={drawerStyles.drawer} onPress={() => {}}>
-        <Text style={drawerStyles.title}>Menú</Text>
-        {[
-          { icon: '🤖', label: 'LIA-25 — IA Asistente',  action: () => { onClose(); router.push('/(tabs)/lia' as any); } },
-          { icon: '🗺️', label: 'Mapa de Malabo',          action: () => { onClose(); router.push('/map' as any); } },
-          { icon: '📲', label: 'Escanear QR',             action: () => { onClose(); router.push('/_qr-scanner' as any); } },
-          { icon: '👥', label: 'Contactos',               action: () => { onClose(); router.push('/contacts' as any); } },
-          { icon: '📖', label: 'Estados / Stories',       action: () => { onClose(); router.push('/stories' as any); } },
-          { icon: '⚙️', label: 'Ajustes',                 action: () => { onClose(); router.push('/(tabs)/ajustes' as any); } },
-        ].map(item => (
-          <TouchableOpacity key={item.label} style={drawerStyles.item} onPress={item.action} activeOpacity={0.7}>
-            <Text style={drawerStyles.itemIcon}>{item.icon}</Text>
-            <Text style={drawerStyles.itemLabel}>{item.label}</Text>
-          </TouchableOpacity>
-        ))}
+import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+
+const IcoDrawerItem = ({ id }: { id: string }) => {
+  const stroke = '#6366f1';
+  const props = { width: 20, height: 20, viewBox: '0 0 24 24', fill: 'none' as const, stroke, strokeWidth: 1.9, strokeLinecap: 'round' as const, strokeLinejoin: 'round' as const };
+  switch (id) {
+    case 'lia':         return <Svg {...props}><Circle cx="12" cy="12" r="10"/><Path d="M12 8v4l3 3"/></Svg>;
+    case 'map':         return <Svg {...props}><Path d="M21 10c0 7-9 13-9 13S3 17 3 10a9 9 0 1 1 18 0z"/><Circle cx="12" cy="10" r="3"/></Svg>;
+    case 'qr':          return <Svg {...props}><Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/><Rect x="14" y="14" width="3" height="3"/></Svg>;
+    case 'contacts':    return <Svg {...props}><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></Svg>;
+    case 'stories':     return <Svg {...props}><Circle cx="12" cy="12" r="10"/><Path d="M8.56 2.75c4.37 6.03 6.02 9.42 8.03 17.72m2.54-15.38c-3.72 4.35-8.94 5.66-16.88 5.85m19.5 1.9c-3.5-3.32-4.72-8.91-5.43-15.16"/></Svg>;
+    case 'settings':    return <Svg {...props}><Path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><Circle cx="12" cy="12" r="3"/></Svg>;
+    default:            return <Svg {...props}><Circle cx="12" cy="12" r="10"/></Svg>;
+  }
+};
+
+const DrawerMenu = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => {
+  const insets = useSafeAreaInsets();
+  const ITEMS = [
+    { id: 'lia',      label: 'LIA-25 — IA Asistente',  action: () => { onClose(); router.push('/(tabs)/lia' as any); } },
+    { id: 'map',      label: 'Mapa de Malabo',          action: () => { onClose(); router.push('/map' as any); } },
+    { id: 'qr',       label: 'Escanear QR',             action: () => { onClose(); router.push('/_qr-scanner' as any); } },
+    { id: 'contacts', label: 'Contactos',               action: () => { onClose(); router.push('/contacts' as any); } },
+    { id: 'stories',  label: 'Estados / Stories',       action: () => { onClose(); router.push('/stories' as any); } },
+    { id: 'settings', label: 'Ajustes',                 action: () => { onClose(); router.push('/(tabs)/ajustes' as any); } },
+  ];
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <Pressable style={drawerStyles.overlay} onPress={onClose}>
+        <Pressable style={[drawerStyles.drawer, { paddingTop: insets.top + 24 }]} onPress={() => {}}>
+          <Text style={drawerStyles.title}>Menú</Text>
+          {ITEMS.map(item => (
+            <TouchableOpacity key={item.id} style={drawerStyles.item} onPress={item.action} activeOpacity={0.7}>
+              <View style={drawerStyles.itemIconWrap}>
+                <IcoDrawerItem id={item.id} />
+              </View>
+              <Text style={drawerStyles.itemLabel}>{item.label}</Text>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2} strokeLinecap="round">
+                <Path d="M9 18l6-6-6-6"/>
+              </Svg>
+            </TouchableOpacity>
+          ))}
+        </Pressable>
       </Pressable>
-    </Pressable>
-  </Modal>
-);
+    </Modal>
+  );
+};
 
 const drawerStyles = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.45)', justifyContent: 'flex-end', alignItems: 'flex-end' },
