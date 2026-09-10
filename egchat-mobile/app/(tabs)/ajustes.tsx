@@ -211,7 +211,7 @@ function AjustesScreenInner() {
         <React.Fragment key={item.route}>
           <SettingsRow
             label={item.label}
-            value={item.label === 'Almacenamiento' ? `${storageUsed} MB` : item.value}
+            value={item.label === 'Almacenamiento' ? (storageUsed > 0 ? `${storageUsed} KB` : '—') : item.value}
             onPress={() => navigate(item.route)}
           />
           {i < items.length - 1 && <SettingsDivider />}
