@@ -1,18 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+// EGCHAT — Contactos (diseño moderno v2)
+// Lista de contactos con búsqueda, favoritos, añadir por teléfono,
+// separadores de letras, estado online, acciones rápidas
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity, StyleSheet,
-  TextInput, ActivityIndicator, Alert,
+  TextInput, ActivityIndicator, Alert, RefreshControl,
+  SectionList,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
+import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
 import { contactsAPI, chatAPI } from '../src/api';
 import { EGAvatar } from '../src/components/ui';
-import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight } from '../src/theme';
+import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
-import Svg, { Path, Circle } from 'react-native-svg';
 
-const normalizePhoneForLookup = (raw: string) => {
+// ── Normalizar teléfono ───────────────────────────────────────────
+const normalizePhone = (raw: string) => {
   const trimmed = String(raw || '').trim();
   const digits = trimmed.replace(/\D/g, '');
   if (!digits) return trimmed;
@@ -22,42 +27,99 @@ const normalizePhoneForLookup = (raw: string) => {
   return digits;
 };
 
+// ── Helpers de campo ──────────────────────────────────────────────
+const getName    = (c: any) => c?.user?.full_name || c?.full_name || c?.name || c?.nickname || 'Usuario';
+const getPhone   = (c: any) => c?.user?.phone     || c?.phone     || '';
+const getAvatar  = (c: any) => c?.user?.avatar_url || c?.avatar_url || '';
+const getUserId  = (c: any) => c?.contact_user_id  || c?.user?.id  || c?.id;
+
+// ── Iconos SVG ────────────────────────────────────────────────────
+const IcoBack = ({ color }: { color: string }) => (
+  <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M19 12H5"/><Path d="M12 19l-7-7 7-7"/>
+  </Svg>
+);
+const IcoSearch = ({ color }: { color: string }) => (
+  <Svg width={17} height={17} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
+    <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
+  </Svg>
+);
+const IcoChat = ({ color }: { color: string }) => (
+  <Svg width={19} height={19} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.9} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+  </Svg>
+);
+const IcoStar = ({ color, filled }: { color: string; filled?: boolean }) => (
+  <Svg width={16} height={16} viewBox="0 0 24 24" fill={filled ? color : 'none'} stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M12 2l3.09 6.26L22 9.27l-5 4.87L18.18 21 12 17.77 5.82 21 7 14.14 2 9.27l6.91-1.01L12 2z"/>
+  </Svg>
+);
+const IcoUserPlus = ({ color }: { color: string }) => (
+  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+    <Circle cx="9" cy="7" r="4"/>
+    <Line x1="19" y1="8" x2="19" y2="14"/>
+    <Line x1="16" y1="11" x2="22" y2="11"/>
+  </Svg>
+);
+const IcoUsers = ({ color }: { color: string }) => (
+  <Svg width={44} height={44} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+    <Circle cx="9" cy="7" r="4"/>
+    <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+    <Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+  </Svg>
+);
+const IcoClose = ({ color }: { color: string }) => (
+  <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round">
+    <Path d="M18 6L6 18"/><Path d="M6 6l12 12"/>
+  </Svg>
+);
+
+// ── Pantalla principal ────────────────────────────────────────────
 export default function ContactsScreen() {
-  const [contacts, setContacts] = useState<any[]>([]);
-  const [query, setQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [addPhone, setAddPhone] = useState('');
-  const [adding, setAdding] = useState(false);
+  const [contacts,   setContacts]   = useState<any[]>([]);
+  const [query,      setQuery]      = useState('');
+  const [loading,    setLoading]    = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [addPhone,   setAddPhone]   = useState('');
+  const [adding,     setAdding]     = useState(false);
+  const [showAdd,    setShowAdd]    = useState(false);
+
   const { isDark } = useThemeContext();
-  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const C      = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
-  const load = useCallback(async () => {
+  // ── Cargar contactos ─────────────────────────────────────────
+  const load = useCallback(async (isRefresh = false) => {
+    if (isRefresh) setRefreshing(true);
     try {
       const data = await contactsAPI.getAll();
       setContacts(data || []);
     } catch {}
-    finally { setLoading(false); }
+    finally { setLoading(false); setRefreshing(false); }
   }, []);
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => { load(); }, [load]);
 
+  // ── Añadir contacto ──────────────────────────────────────────
   const addContact = useCallback(async () => {
-    const phone = normalizePhoneForLookup(addPhone);
+    const phone = normalizePhone(addPhone);
     if (!phone) return;
     setAdding(true);
     try {
       const contact = await contactsAPI.add(undefined, phone);
       setAddPhone('');
+      setShowAdd(false);
       load();
-      Alert.alert('Contacto añadido', '¿Quieres iniciar un chat ahora?', [
+      Alert.alert('✅ Contacto añadido', '¿Quieres abrir el chat ahora?', [
         { text: 'Luego', style: 'cancel' },
         {
           text: 'Abrir chat',
           onPress: async () => {
-            const userId = contact?.contact_user_id || contact?.user?.id || contact?.id;
-            if (!userId) return;
-            const chat = await chatAPI.createPrivate(userId);
+            const uid = getUserId(contact);
+            if (!uid) return;
+            const chat = await chatAPI.createPrivate(uid);
             router.replace(`/chat/${chat.id}` as any);
           },
         },
@@ -66,18 +128,29 @@ export default function ContactsScreen() {
       try {
         const chat = await chatAPI.createPrivate(undefined, phone);
         setAddPhone('');
+        setShowAdd(false);
         router.replace(`/chat/${chat.id}` as any);
       } catch {
-        Alert.alert(
-          'Usuario no encontrado',
-          `El número ${phone} no aparece registrado en EGCHAT.`,
-        );
+        Alert.alert('No encontrado', `El número ${phone} no está registrado en EGCHAT.`);
       }
     } finally { setAdding(false); }
   }, [addPhone, load]);
 
+  // ── Abrir chat ───────────────────────────────────────────────
+  const openChat = useCallback(async (contact: any) => {
+    const uid = getUserId(contact);
+    if (!uid) { Alert.alert('Error', 'Contacto sin usuario asociado'); return; }
+    try {
+      const chat = await chatAPI.createPrivate(uid);
+      router.push(`/chat/${chat.id}` as any);
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'No se pudo abrir el chat');
+    }
+  }, []);
+
+  // ── Eliminar contacto ────────────────────────────────────────
   const removeContact = useCallback((id: string, name: string) => {
-    Alert.alert('Eliminar contacto', `¿Eliminar a ${name}?`, [
+    Alert.alert('Eliminar contacto', `¿Eliminar a ${name} de tus contactos?`, [
       { text: 'Cancelar', style: 'cancel' },
       {
         text: 'Eliminar', style: 'destructive',
@@ -89,159 +162,312 @@ export default function ContactsScreen() {
     ]);
   }, []);
 
-  const getRealUser = (item: any) => item?.user || item;
-  const getRealUserId = (item: any) => item?.contact_user_id || item?.user?.id || item?.id;
-  const getDisplayName = (item: any) => {
-    const realUser = getRealUser(item);
-    return realUser?.full_name || item?.full_name || item?.name || item?.nickname || 'Usuario';
-  };
-  const getDisplayPhone = (item: any) => {
-    const realUser = getRealUser(item);
-    return realUser?.phone || item?.phone || '';
-  };
-  const getDisplayAvatar = (item: any) => {
-    const realUser = getRealUser(item);
-    return realUser?.avatar_url || item?.avatar_url || '';
-  };
-
-  const openChat = useCallback(async (contact: any) => {
-    const userId = getRealUserId(contact);
-    if (!userId) {
-      Alert.alert('Contacto incompleto', 'Este contacto no tiene usuario asociado.');
-      return;
-    }
+  // ── Favorito toggle ──────────────────────────────────────────
+  const toggleFav = useCallback(async (contact: any) => {
+    const isFav = !!contact.is_favorite;
+    setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, is_favorite: !isFav } : c));
     try {
-      const chat = await chatAPI.createPrivate(userId);
-      router.replace(`/chat/${chat.id}` as any);
-    } catch (e: any) {
-      Alert.alert('Error', e?.message || 'No se pudo abrir el chat');
+      if (isFav) await contactsAPI.unfavorite(contact.id);
+      else       await contactsAPI.favorite(contact.id);
+    } catch {
+      setContacts(prev => prev.map(c => c.id === contact.id ? { ...c, is_favorite: isFav } : c));
     }
   }, []);
 
-  const filtered = query
-    ? contacts.filter(c =>
-        getDisplayName(c).toLowerCase().includes(query.toLowerCase()) ||
-        getDisplayPhone(c).includes(query)
-      )
-    : contacts;
+  // ── Filtrado + secciones por letra ───────────────────────────
+  const sections = useMemo(() => {
+    const list = query
+      ? contacts.filter(c =>
+          getName(c).toLowerCase().includes(query.toLowerCase()) ||
+          getPhone(c).includes(query)
+        )
+      : contacts;
+
+    if (list.length === 0) return [];
+
+    // Favoritos primero
+    const favs  = list.filter(c => c.is_favorite);
+    const rest  = list.filter(c => !c.is_favorite);
+
+    const grouped: Record<string, any[]> = {};
+    rest.forEach(c => {
+      const letter = getName(c)[0]?.toUpperCase() || '#';
+      if (!grouped[letter]) grouped[letter] = [];
+      grouped[letter].push(c);
+    });
+
+    const result: { title: string; data: any[] }[] = [];
+    if (favs.length > 0) result.push({ title: '⭐ Favoritos', data: favs });
+    Object.keys(grouped).sort().forEach(letter => {
+      result.push({ title: letter, data: grouped[letter] });
+    });
+    return result;
+  }, [contacts, query]);
+
+  // ── Item de contacto ─────────────────────────────────────────
+  const renderContact = useCallback(({ item }: { item: any }) => (
+    <TouchableOpacity
+      style={[st.item, { backgroundColor: C.bgPrimary }]}
+      onPress={() => openChat(item)}
+      onLongPress={() => removeContact(item.id, getName(item))}
+      activeOpacity={0.7}
+    >
+      <View style={st.avatarWrap}>
+        <EGAvatar src={getAvatar(item)} name={getName(item)} size={48} />
+      </View>
+      <View style={st.info}>
+        <Text style={[st.name, { color: C.textPrimary }]} numberOfLines={1}>{getName(item)}</Text>
+        <Text style={[st.phone, { color: C.textTertiary }]} numberOfLines={1}>{getPhone(item)}</Text>
+      </View>
+      <View style={st.actions}>
+        <TouchableOpacity
+          style={st.actionBtn}
+          onPress={() => toggleFav(item)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <IcoStar color={item.is_favorite ? '#f59e0b' : C.textTertiary} filled={!!item.is_favorite} />
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[st.actionBtn, st.chatBtn]}
+          onPress={() => openChat(item)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <IcoChat color="#fff" />
+        </TouchableOpacity>
+      </View>
+    </TouchableOpacity>
+  ), [C, openChat, removeContact, toggleFav]);
+
+  const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
+    <View style={[st.sectionHeader, { backgroundColor: C.bgSecondary }]}>
+      <Text style={[st.sectionTitle, { color: C.textTertiary }]}>{section.title}</Text>
+    </View>
+  ), [C]);
+
+  const renderSeparator = useCallback(() => (
+    <View style={[st.separator, { backgroundColor: C.borderLight, marginLeft: 76 }]} />
+  ), [C]);
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
-      <View style={[styles.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight, paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
-          <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
+    <SafeAreaView style={[st.root, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
+
+      {/* ── Header ──────────────────────────────────────────── */}
+      <View style={[st.header, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight, paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}>
+          <IcoBack color={C.textPrimary} />
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>Contactos</Text>
-        <Text style={styles.count}>{contacts.length}</Text>
-      </View>
-      <View style={styles.addBar}>
-        <TextInput style={[styles.addInput, { backgroundColor: C.bgSecondary, borderColor: C.border, color: C.textPrimary }]} value={addPhone} onChangeText={setAddPhone} placeholder="Añadir por teléfono..." placeholderTextColor={C.textTertiary} keyboardType="phone-pad" />
-        <TouchableOpacity style={[styles.addBtn, !addPhone.trim() && styles.addBtnDisabled]} onPress={addContact} disabled={!addPhone.trim() || adding}>
-          {adding ? <ActivityIndicator size="small" color={Colors.white} /> : <Text style={styles.addBtnText}>+</Text>}
+        <View style={st.headerCenter}>
+          <Text style={[st.headerTitle, { color: C.textPrimary }]}>Contactos</Text>
+          {contacts.length > 0 && (
+            <View style={st.countBadge}>
+              <Text style={st.countText}>{contacts.length}</Text>
+            </View>
+          )}
+        </View>
+        <TouchableOpacity
+          style={[st.addIconBtn, { backgroundColor: '#6366f1' + '18', borderColor: '#6366f1' + '33' }]}
+          onPress={() => setShowAdd(v => !v)}
+          hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+        >
+          <IcoUserPlus color="#6366f1" />
         </TouchableOpacity>
-      </View>
-      <View style={[styles.searchBar, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
-        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
-          <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
-        </Svg>
-        <TextInput style={[styles.searchInput, { color: C.textPrimary }]} value={query} onChangeText={setQuery} placeholder="Buscar contacto..." placeholderTextColor={C.textTertiary} />
       </View>
 
-      {loading ? (
-        <View style={styles.center}><ActivityIndicator size="large" color={Colors.accent} /></View>
-      ) : filtered.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyIcon}>👥</Text>
-          <Text style={[styles.emptyText, { color: C.textPrimary }]}>{query ? 'Sin resultados' : 'No tienes contactos aún'}</Text>
-          <Text style={[styles.emptySub, { color: C.textSecondary }]}>Añade un contacto por su número de teléfono</Text>
-        </View>
-      ) : (
-        <FlatList
-          data={filtered}
-          keyExtractor={item => getRealUserId(item) || item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => openChat(item)} onLongPress={() => removeContact(item.id, getDisplayName(item) || 'Contacto')} activeOpacity={0.7}>
-              <EGAvatar src={getDisplayAvatar(item)} name={getDisplayName(item)} size={46} />
-              <View style={styles.info}>
-                <Text style={[styles.name, { color: C.textPrimary }]}>{getDisplayName(item)}</Text>
-                <Text style={[styles.userId, { color: C.textTertiary }]}>ID: {String(getRealUserId(item) || '').slice(-8).toUpperCase()}</Text>
-                <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
-              </View>
-              <TouchableOpacity onPress={() => openChat(item)} style={styles.chatBtn}>
-                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={Colors.accent} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
-                  <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                </Svg>
+      {/* ── Añadir contacto (colapsable) ────────────────────── */}
+      {showAdd && (
+        <View style={[st.addBar, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+          <View style={[st.addInputWrap, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
+            <TextInput
+              style={[st.addInput, { color: C.textPrimary }]}
+              value={addPhone}
+              onChangeText={setAddPhone}
+              placeholder="+240 xxx xxx xxx"
+              placeholderTextColor={C.textTertiary}
+              keyboardType="phone-pad"
+              returnKeyType="done"
+              onSubmitEditing={addContact}
+              autoFocus
+            />
+            {addPhone.length > 0 && (
+              <TouchableOpacity onPress={() => setAddPhone('')} style={st.clearBtn}>
+                <IcoClose color={C.textTertiary} />
               </TouchableOpacity>
+            )}
+          </View>
+          <TouchableOpacity
+            style={[st.addBtn, (!addPhone.trim() || adding) && st.addBtnDisabled]}
+            onPress={addContact}
+            disabled={!addPhone.trim() || adding}
+            activeOpacity={0.85}
+          >
+            {adding
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={st.addBtnText}>Añadir</Text>}
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* ── Barra búsqueda ───────────────────────────────────── */}
+      <View style={[st.searchWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+        <View style={[st.searchBar, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
+          <IcoSearch color={C.textTertiary} />
+          <TextInput
+            style={[st.searchInput, { color: C.textPrimary }]}
+            value={query}
+            onChangeText={setQuery}
+            placeholder="Buscar contacto..."
+            placeholderTextColor={C.textTertiary}
+            returnKeyType="search"
+          />
+          {query.length > 0 && (
+            <TouchableOpacity onPress={() => setQuery('')} style={st.clearBtn}>
+              <IcoClose color={C.textTertiary} />
             </TouchableOpacity>
           )}
-          ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: C.borderLight }]} />}
+        </View>
+      </View>
+
+      {/* ── Contenido ────────────────────────────────────────── */}
+      {loading ? (
+        <View style={st.center}>
+          <ActivityIndicator size="large" color="#6366f1" />
+        </View>
+      ) : sections.length === 0 ? (
+        <View style={st.center}>
+          <IcoUsers color={C.border} />
+          <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
+            {query ? 'Sin resultados' : 'No tienes contactos aún'}
+          </Text>
+          <Text style={[st.emptySub, { color: C.textSecondary }]}>
+            {query ? 'Prueba con otro nombre o número' : 'Toca el icono + para añadir tu primer contacto'}
+          </Text>
+          {!query && (
+            <TouchableOpacity
+              style={st.emptyAddBtn}
+              onPress={() => setShowAdd(true)}
+              activeOpacity={0.85}
+            >
+              <Text style={st.emptyAddBtnText}>Añadir contacto</Text>
+            </TouchableOpacity>
+          )}
+        </View>
+      ) : (
+        <SectionList
+          sections={sections}
+          keyExtractor={item => getUserId(item) || item.id}
+          renderItem={renderContact}
+          renderSectionHeader={renderSectionHeader}
+          ItemSeparatorComponent={renderSeparator}
           showsVerticalScrollIndicator={false}
+          stickySectionHeadersEnabled
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => load(true)}
+              tintColor="#6366f1"
+              colors={['#6366f1']}
+            />
+          }
+          ListFooterComponent={<View style={{ height: 40 }} />}
         />
       )}
     </SafeAreaView>
   );
 }
 
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.bgPrimary },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing.xl },
+// ── Estilos ───────────────────────────────────────────────────────
+const ACCENT = '#6366f1';
+
+const st = StyleSheet.create({
+  root: { flex: 1 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: 32, gap: 12 },
+
+  // Header
   header: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    borderBottomWidth: 1, borderBottomColor: Colors.borderLight,
-    paddingHorizontal: Spacing.sm, paddingBottom: Spacing.md,
-    gap: Spacing.sm,
+    paddingHorizontal: 14, paddingBottom: 12,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 10,
   },
-  backBtn: { padding: Spacing.sm },
-  backIcon: { fontSize: 30, color: Colors.textPrimary, lineHeight: 34 },
-  title: { ...Typography.headerTitle, color: Colors.textPrimary, flex: 1 },
-  count: {
-    fontSize: FontSize.sm, color: Colors.white,
-    backgroundColor: Colors.accent,
-    borderRadius: 12, paddingHorizontal: 8, paddingVertical: 2,
-    fontWeight: FontWeight.bold,
+  backBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  headerCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8 },
+  headerTitle: { fontSize: 19, fontWeight: '700', letterSpacing: -0.3 },
+  countBadge: {
+    backgroundColor: ACCENT,
+    borderRadius: 12, paddingHorizontal: 7, paddingVertical: 2,
   },
+  countText: { color: '#fff', fontSize: 11, fontWeight: '700' },
+  addIconBtn: {
+    width: 38, height: 38, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1,
+  },
+
+  // Add bar
   addBar: {
     flexDirection: 'row', alignItems: 'center',
-    margin: Spacing.md, gap: Spacing.sm,
+    paddingHorizontal: 14, paddingVertical: 10,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+    gap: 8,
   },
-  addInput: {
-    flex: 1, backgroundColor: Colors.bgSecondary,
-    borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: Spacing.md, paddingVertical: Spacing.sm + 2,
-    fontSize: FontSize.base, color: Colors.textPrimary,
+  addInputWrap: {
+    flex: 1, flexDirection: 'row', alignItems: 'center',
+    borderRadius: 12, borderWidth: 1,
+    paddingHorizontal: 12,
   },
+  addInput: { flex: 1, fontSize: 15, paddingVertical: 10 },
   addBtn: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.accent,
-    alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 18, paddingVertical: 10,
+    borderRadius: 12, backgroundColor: ACCENT,
   },
-  addBtnDisabled: { backgroundColor: Colors.border },
-  addBtnText: { fontSize: 24, color: Colors.white, lineHeight: 28 },
+  addBtnDisabled: { backgroundColor: '#9ca3af' },
+  addBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
+  clearBtn: { padding: 4 },
+
+  // Search
+  searchWrap: {
+    paddingHorizontal: 14, paddingVertical: 8,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   searchBar: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Colors.bgSecondary,
-    marginHorizontal: Spacing.md, marginBottom: Spacing.sm,
-    borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Colors.border,
-    paddingHorizontal: Spacing.md, gap: Spacing.sm,
+    borderRadius: 12, borderWidth: 1,
+    paddingHorizontal: 12, gap: 8,
   },
-  searchIcon: { fontSize: 14 },
-  searchInput: { flex: 1, fontSize: FontSize.base, color: Colors.textPrimary, paddingVertical: Spacing.sm + 2 },
+  searchInput: { flex: 1, fontSize: 14, paddingVertical: 9 },
+
+  // Section header
+  sectionHeader: {
+    paddingHorizontal: 16, paddingVertical: 5,
+  },
+  sectionTitle: { fontSize: 12, fontWeight: '700', letterSpacing: 0.5 },
+
+  // Contact item
   item: {
     flexDirection: 'row', alignItems: 'center',
-    paddingVertical: Spacing.listItemPaddingV,
-    paddingHorizontal: Spacing.listItemPaddingH,
-    backgroundColor: Colors.bgSecondary,
-    gap: Spacing.listItemGap,
+    paddingHorizontal: 16, paddingVertical: 10,
+    gap: 12,
   },
-  info: { flex: 1 },
-  name: { fontSize: FontSize.base, fontWeight: FontWeight.semibold, color: Colors.textPrimary },
-  userId: { fontSize: FontSize.xs, color: Colors.textTertiary, marginTop: 1, fontWeight: FontWeight.medium },
-  phone: { fontSize: FontSize.sm, color: Colors.textTertiary, marginTop: 2 },
-  chatBtn: { padding: Spacing.sm },
-  chatBtnIcon: { fontSize: 20 },
-  separator: { height: 1, backgroundColor: Colors.borderLight, marginLeft: Spacing.listItemPaddingH + 46 + Spacing.listItemGap },
-  emptyIcon: { fontSize: 48, marginBottom: Spacing.md },
-  emptyText: { fontSize: FontSize.lg, fontWeight: FontWeight.semibold, color: Colors.textPrimary, marginBottom: Spacing.sm },
-  emptySub: { fontSize: FontSize.sm, color: Colors.textSecondary, textAlign: 'center' },
+  avatarWrap: { position: 'relative' },
+  info: { flex: 1, minWidth: 0 },
+  name:  { fontSize: 15, fontWeight: '600' },
+  phone: { fontSize: 12, marginTop: 2 },
+  separator: { height: StyleSheet.hairlineWidth },
+
+  // Actions
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  actionBtn: {
+    width: 34, height: 34, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  chatBtn: { backgroundColor: ACCENT },
+
+  // Empty
+  emptyTitle: { fontSize: 17, fontWeight: '700', textAlign: 'center', marginTop: 8 },
+  emptySub:   { fontSize: 13, textAlign: 'center', lineHeight: 20 },
+  emptyAddBtn: {
+    marginTop: 16, paddingHorizontal: 24, paddingVertical: 12,
+    borderRadius: 14, backgroundColor: ACCENT,
+  },
+  emptyAddBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
