@@ -46,7 +46,16 @@
       },
       "ios": {
         "autoIncrement": true,
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "autoCredentials": true,
+        "enterpriseProvisioning": "universal",
+        "capabilities": {
+          "push-notifications": true,
+          "associated-domains": true,
+          "background-fetch": true,
+          "background-processing": true,
+          "voip": true
+        }
       }
     }
   },
@@ -55,6 +64,11 @@
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
         "track": "internal"
+      },
+      "ios": {
+        "appleId": "reddington120@icloud.com",
+        "ascAppId": "PENDING_APP_STORE_APP_ID",
+        "appleTeamId": "PENDING_TEAM_ID"
       }
     }
   }
