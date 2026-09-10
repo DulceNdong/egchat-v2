@@ -6,15 +6,17 @@ import { getDatabase, ref, onValue, set, onDisconnect, serverTimestamp } from 'f
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import type { ChatMessage } from './types/chat';
 
-// ── Config Firebase (obtener de Firebase Console > Project Settings) ─
+// ── Config Firebase ────────────────────────────────────────────────
+// Variables definidas en egchat-mobile/.env (prefijo EXPO_PUBLIC_)
+// Obtener de: Firebase Console → Configuración del proyecto → Tus apps
 const FIREBASE_CONFIG = {
-  apiKey: process.env.EXPO_PUBLIC_FIREBASE_API_KEY || 'AIzaSy...',
-  authDomain: process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN || 'egchat-xxxxx.firebaseapp.com',
-  databaseURL: process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL || 'https://egchat-xxxxx-default-rtdb.firebaseio.com',
-  projectId: process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID || 'egchat-xxxxx',
-  storageBucket: process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET || 'egchat-xxxxx.appspot.com',
-  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '123456789',
-  appId: process.env.EXPO_PUBLIC_FIREBASE_APP_ID || '1:123456789:web:abc123',
+  apiKey:            process.env.EXPO_PUBLIC_FIREBASE_API_KEY            || '',
+  authDomain:        process.env.EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN        || 'egchat-4efe7.firebaseapp.com',
+  databaseURL:       process.env.EXPO_PUBLIC_FIREBASE_DATABASE_URL       || 'https://egchat-4efe7-default-rtdb.firebaseio.com',
+  projectId:         process.env.EXPO_PUBLIC_FIREBASE_PROJECT_ID         || 'egchat-4efe7',
+  storageBucket:     process.env.EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET     || 'egchat-4efe7.appspot.com',
+  messagingSenderId: process.env.EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
+  appId:             process.env.EXPO_PUBLIC_FIREBASE_APP_ID              || '',
 };
 
 // Inicializar Firebase
