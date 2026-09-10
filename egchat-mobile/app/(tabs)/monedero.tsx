@@ -444,7 +444,10 @@ const RecargaModal = ({
               gradient={['#065F46', '#00c8a0']} icon={<IcoTransfer color="#fff" />} />
             <View style={[s.infoBox, { alignItems: 'center', paddingVertical: 20 }]}>
               <View style={s.qrMiniBox}>
-                <Text style={{ fontSize: 40 }}>📲</Text>
+                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="5" y="2" width="14" height="20" rx="2"/>
+                  <Line x1="12" y1="18" x2="12" y2="18"/>
+                </Svg>
               </View>
               <Text style={s.infoValue}>Comparte tu número para recibir</Text>
               <Text style={s.infoLabel}>Sin comisión entre usuarios EGCHAT</Text>
