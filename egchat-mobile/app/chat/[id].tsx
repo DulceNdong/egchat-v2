@@ -326,6 +326,9 @@ export default function ChatScreen() {
   // ── FLAG_SECURE: bloquea capturas de pantalla en modo incógnito ──
   useScreenSecurity(`chat_${chatId}`, isIncognito);
 
+  // ── iOS Privacy Blur: oculta el chat en el app switcher ───────────
+  const { showBlur } = useIOSPrivacyBlur(isIncognito);
+
   // ── Botones flotantes arrastrables ────────────────────────
   const { width: SW, height: SH } = Dimensions.get('window');
   const BTN_SIZE = 44;
