@@ -123,18 +123,32 @@ const NEWS_SOURCES = [
 ];
 
 const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="📰 Noticias" onClose={onClose}>
+  <ServiceModal visible={visible} title="Noticias" onClose={onClose}>
     <Text style={styles.sectionLabel}>Fuentes de noticias</Text>
     {NEWS_SOURCES.map(n => (
       <TouchableOpacity key={n.name} style={styles.providerCard}
         onPress={() => n.url ? Linking.openURL(n.url) : Alert.alert(n.name, n.desc)}
         activeOpacity={0.7}>
-        <Text style={styles.providerDotEmoji}>{n.icon}</Text>
+        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: '#6366f1' + '15', alignItems: 'center', justifyContent: 'center' }}>
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v16a2 2 0 0 1-2 2zm0 0a2 2 0 0 1-2-2v-9c0-1.1.9-2 2-2h2"/>
+            <Line x1="16" y1="8" x2="10" y2="8"/><Line x1="16" y1="12" x2="10" y2="12"/><Line x1="16" y1="16" x2="14" y2="16"/>
+          </Svg>
+        </View>
         <View style={styles.providerInfo}>
           <Text style={styles.providerName}>{n.name}</Text>
           <Text style={styles.providerCat}>{n.desc}</Text>
         </View>
-        <Text style={styles.providerArrow}>{n.url ? '🔗' : '›'}</Text>
+        {n.url ? (
+          <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/>
+            <Polyline points="15 3 21 3 21 9"/><Line x1="10" y1="14" x2="21" y2="3"/>
+          </Svg>
+        ) : (
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2} strokeLinecap="round">
+            <Path d="M9 18l6-6-6-6"/>
+          </Svg>
+        )}
       </TouchableOpacity>
     ))}
   </ServiceModal>
