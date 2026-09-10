@@ -752,6 +752,12 @@ export default function ChatScreen() {
 
   // Fallback: consultar online_status del otro usuario cada 15s
   // (por si Supabase Presence no funciona en web)
+  // También obtiene last_seen y last_seen_visibility para respetar la privacidad
+  const [otherUserPrivacy, setOtherUserPrivacy] = useState<{
+    lastSeen: string | null;
+    visibility: 'todos' | 'contactos' | 'nadie';
+  }>({ lastSeen: null, visibility: 'todos' });
+
   useEffect(() => {
     const _isGroup = chat?.type === 'group';
     const _otherParticipant = chat?.participants?.find((p: any) => String(p.user_id) !== String(currentUserId));
@@ -766,11 +772,17 @@ export default function ChatScreen() {
           headers: { Authorization: `Bearer ${token}` },
         });
         const user = await res.json();
+        // Actualizar estado online respetando la visibilidad que devuelve el backend
         if (user?.online_status) {
           setOnlineUserIds(prev => prev.includes(uid) ? prev : [...prev, uid]);
         } else {
           setOnlineUserIds(prev => prev.filter(id => id !== uid));
         }
+        // Guardar preferencia de privacidad y última vez
+        setOtherUserPrivacy({
+          lastSeen: user?.last_seen || null,
+          visibility: (user?.last_seen_visibility as any) || 'todos',
+        });
       } catch {}
     };
 
