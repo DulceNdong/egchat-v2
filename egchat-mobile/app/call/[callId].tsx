@@ -44,6 +44,40 @@ export default function CallScreen() {
   const [activeFilter, setActiveFilter] = useState<FilterId>('none');
   const [showFilters, setShowFilters] = useState(false);
   const [videoSize, setVideoSize] = useState({ width: 300, height: 400 });
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
+
+  // ── Screen Share — usando react-native-webrtc getDisplayMedia ────
+  const screenStreamRef = useRef<any>(null);
+
+  const toggleScreenShare = useCallback(async () => {
+    if (Platform.OS === 'web') return; // web no soportado en este contexto
+    try {
+      if (isSharingScreen) {
+        // Detener screen share — volver a cámara
+        screenStreamRef.current?.getTracks?.().forEach((t: any) => t.stop());
+        screenStreamRef.current = null;
+        setIsSharingScreen(false);
+        return;
+      }
+      // Intentar getDisplayMedia (solo Android 10+ y versiones recientes de react-native-webrtc)
+      const { mediaDevices } = require('react-native-webrtc');
+      if (!mediaDevices?.getDisplayMedia) {
+        Alert.alert(
+          'No disponible',
+          'La compartición de pantalla requiere Android 10 o superior y un build nativo (no Expo Go).',
+        );
+        return;
+      }
+      const screenStream = await mediaDevices.getDisplayMedia({ video: true });
+      screenStreamRef.current = screenStream;
+      setIsSharingScreen(true);
+      // Notificar al usuario
+      Alert.alert('Compartiendo pantalla', 'Tu pantalla es visible para el otro participante. Toca el botón azul para detener.');
+    } catch (e: any) {
+      if (e?.message?.includes('cancel') || e?.message?.includes('denied')) return;
+      Alert.alert('Error', 'No se pudo iniciar la compartición de pantalla.');
+    }
+  }, [isSharingScreen]);
 
   // ── FASE 3: FaceFilter AR ─────────────────────────────────────────
   const [faces, setFaces] = useState<FaceData[]>([]);
