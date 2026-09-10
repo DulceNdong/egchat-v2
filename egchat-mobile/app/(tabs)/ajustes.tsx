@@ -93,7 +93,21 @@ function AjustesScreenInner() {
   const [user, setUser] = useState<{ id?: string; full_name?: string; phone?: string; email?: string; avatar_url?: string } | null>(null);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [storageUsed] = useState(() => Math.round(Math.random() * 200 + 50));
+  const [storageUsed, setStorageUsed] = useState(0);
+
+  useEffect(() => {
+    // Calcular almacenamiento aproximado desde AsyncStorage
+    const calcStorage = async () => {
+      try {
+        const keys = await AsyncStorage.getAllKeys();
+        let total = 0;
+        const pairs = await AsyncStorage.multiGet(keys);
+        pairs.forEach(([, v]) => { if (v) total += v.length * 2; }); // UTF-16 ~ 2 bytes/char
+        setStorageUsed(Math.round(total / 1024)); // KB → mostrar en KB
+      } catch { setStorageUsed(0); }
+    };
+    calcStorage();
+  }, []);
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
