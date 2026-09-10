@@ -1751,3 +1751,26 @@ export default function MonederoScreen() {
     </TabErrorBoundary>
   );
 }
+
+// ── Estilos QRModal rediseñado ────────────────────────────────────
+const qrs = StyleSheet.create({
+  overlay:        { flex: 1, backgroundColor: 'rgba(0,0,0,0.5)', alignItems: 'center', justifyContent: 'center', padding: 20 },
+  card:           { width: '100%', maxWidth: 340, backgroundColor: '#fff', borderRadius: 24, overflow: 'hidden' },
+  header:         { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', paddingHorizontal: 20, paddingTop: 20, paddingBottom: 4 },
+  title:          { fontSize: 17, fontWeight: '800', color: '#111827' },
+  sub:            { fontSize: 12, color: '#9CA3AF', marginTop: 2 },
+  closeBtn:       { width: 30, height: 30, borderRadius: 15, backgroundColor: '#F3F4F6', alignItems: 'center', justifyContent: 'center' },
+  qrWrap:         { alignSelf: 'center', position: 'relative', marginVertical: 16 },
+  avatarOverlay:  { position: 'absolute', top: '50%', left: '50%', transform: [{ translateX: -20 }, { translateY: -20 }], zIndex: 10 },
+  avatarImg:      { width: 40, height: 40, borderRadius: 20, borderWidth: 2.5, borderColor: '#fff' },
+  avatarFallback: { backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center' },
+  avatarInitial:  { color: '#fff', fontSize: 16, fontWeight: '800' },
+  name:           { fontSize: 15, fontWeight: '700', color: '#111827', textAlign: 'center' },
+  phone:          { fontSize: 12, color: '#6B7280', textAlign: 'center', marginTop: 2 },
+  balancePill:    { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#F0FDF4', paddingHorizontal: 12, paddingVertical: 5, borderRadius: 20, marginTop: 8, marginBottom: 16 },
+  balanceTxt:     { fontSize: 12, fontWeight: '600', color: '#059669' },
+  scanBtn:        { flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: 20, marginBottom: 10, paddingVertical: 12, borderWidth: 1.5, borderColor: 'rgba(0,200,160,0.3)', borderRadius: 12, justifyContent: 'center' },
+  scanBtnTxt:     { fontSize: 13, fontWeight: '700', color: '#00C8A0' },
+  closeFullBtn:   { marginHorizontal: 20, marginBottom: 20, paddingVertical: 13, backgroundColor: '#F3F4F6', borderRadius: 12, alignItems: 'center' },
+  closeFullTxt:   { fontSize: 14, fontWeight: '600', color: '#6B7280' },
+});
