@@ -13,7 +13,10 @@
         "gradleCommand": ":app:assembleDebug"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1"
       },
       "ios": {
         "simulator": false,
@@ -28,10 +31,14 @@
         "gradleCommand": ":app:assembleRelease"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1"
       },
       "ios": {
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release"
       }
     },
     "production": {
@@ -42,11 +49,15 @@
         "buildType": "app-bundle"
       },
       "env": {
-        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1"
       },
       "ios": {
         "autoIncrement": true,
-        "resourceClass": "m-medium"
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release"
       }
     }
   },
