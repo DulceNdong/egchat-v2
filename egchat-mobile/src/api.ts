@@ -505,8 +505,8 @@ export const walletAPI = {
     post<any>('/api/wallet/deposit', { amount, method, reference }),
   withdraw: (amount: number, method: string, destination: string) =>
     post<any>('/api/wallet/withdraw', { amount, method, destination }),
-  transfer: (to: string, amount: number, concept?: string) =>
-    post<any>('/api/wallet/transfer', { to, amount, concept }),
+  transfer: (to: string, amount: number, concept?: string, pin?: string) =>
+    post<any>('/api/wallet/transfer', { to, amount, concept, pin }),
   redeemCode: (code: string) =>
     post<any>('/api/wallet/recharge-code', { code }),
 };
