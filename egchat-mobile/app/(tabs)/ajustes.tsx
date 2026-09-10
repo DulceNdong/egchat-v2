@@ -322,7 +322,7 @@ function AjustesScreenInner() {
                 {renderMenuCard(
                   section.items.map(item =>
                     item.label === 'Almacenamiento'
-                      ? { ...item, value: `${storageUsed} MB` }
+                      ? { ...item, value: storageUsed > 0 ? `${storageUsed} KB` : '—' }
                       : item,
                   ),
                 )}
