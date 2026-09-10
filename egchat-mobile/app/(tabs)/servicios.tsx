@@ -211,10 +211,10 @@ const EMERGENCY_NUMBERS = [
 ];
 
 const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="⚠️ Emergencias" onClose={onClose}>
+  <ServiceModal visible={visible} title="Emergencias" onClose={onClose}>
     <View style={{ backgroundColor: '#FEF2F2', borderRadius: BorderRadius.lg, padding: Spacing.md, marginBottom: Spacing.md, borderWidth: 1, borderColor: '#FECACA' }}>
       <Text style={{ fontSize: FontSize.sm, color: '#991B1B', textAlign: 'center', fontWeight: FontWeight.semibold }}>
-        ⚠️ En caso de emergencia real, llama directamente al número correspondiente
+        En caso de emergencia real, llama directamente al número correspondiente
       </Text>
     </View>
     <Text style={styles.sectionLabel}>Números de emergencia</Text>
@@ -222,15 +222,21 @@ const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () 
       <TouchableOpacity key={e.name} style={[styles.providerCard, { borderLeftWidth: 3, borderLeftColor: e.color }]}
         onPress={() => Alert.alert(e.name, `Número: ${e.number}`, [
           { text: 'Cancelar', style: 'cancel' },
-          { text: '📞 Llamar ahora', style: 'destructive', onPress: () => Linking.openURL(`tel:${e.number}`) },
+          { text: 'Llamar ahora', style: 'destructive', onPress: () => Linking.openURL(`tel:${e.number}`) },
         ])}
         activeOpacity={0.7}>
-        <Text style={styles.providerDotEmoji}>{e.icon}</Text>
+        <View style={{ width: 36, height: 36, borderRadius: 10, backgroundColor: e.color + '15', alignItems: 'center', justifyContent: 'center' }}>
+          <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={e.color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 13a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.62 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
+          </Svg>
+        </View>
         <View style={styles.providerInfo}>
           <Text style={styles.providerName}>{e.name}</Text>
           <Text style={[styles.providerCat, { color: e.color, fontWeight: FontWeight.bold }]}>{e.number}</Text>
         </View>
-        <Text style={styles.callIcon}>📞</Text>
+        <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9ca3af" strokeWidth={2} strokeLinecap="round">
+          <Path d="M9 18l6-6-6-6"/>
+        </Svg>
       </TouchableOpacity>
     ))}
   </ServiceModal>
