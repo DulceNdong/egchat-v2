@@ -422,6 +422,15 @@ export default function GroupCallScreen() {
             </Svg>
           </CtrlBtn>
 
+          {/* Compartir pantalla */}
+          <CtrlBtn active={isSharingScreen} onPress={toggleScreenShare}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Rect x="2" y="3" width="20" height="14" rx="2"/>
+              <Path d="M8 21h8M12 17v4"/>
+              <Path d="M9 9l3-3 3 3M12 6v7"/>
+            </Svg>
+          </CtrlBtn>
+
           {/* Chat lateral */}
           <CtrlBtn active={showChat} onPress={() => setShowChat(v => !v)}>
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
