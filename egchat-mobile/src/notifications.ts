@@ -1,7 +1,7 @@
 /**
  * notifications.ts — Notificaciones nativas con expo-notifications
- * Funciona con el teléfono hibernado gracias a FCM (Firebase Cloud Messaging)
- * NOTA: Push desactivado temporalmente (sin Apple Developer Program)
+ * Funciona con el teléfono hibernado gracias a FCM (Android) y APNs (iOS)
+ * Push y VoIP activos — Apple Developer Program configurado
  */
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
