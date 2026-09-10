@@ -2,16 +2,12 @@
 // screenSecurity.ts — Prevención de capturas de pantalla
 //
 // En Android: usa FLAG_SECURE via expo-screen-capture
-// En iOS: difumina la app cuando pasa al background (misma técnica
-//         que usaban WhatsApp y Telegram antes de que iOS lo permitiera)
-//
-// Aplica automáticamente en:
-//  - Chats en modo incógnito
-//  - Chats con E2E activado (configuración del usuario)
+// En iOS: overlay blur cuando la app pasa a background/screenshot
+//         (misma técnica que WhatsApp y Telegram)
 // ══════════════════════════════════════════════════════════════════
 import { Platform, AppState, type AppStateStatus } from 'react-native';
 
-// expo-screen-capture es opcional — si no está instalado, degradamos silenciosamente
+// expo-screen-capture es opcional — degradamos silenciosamente si no está
 let ScreenCapture: {
   preventScreenCaptureAsync: (key?: string) => Promise<void>;
   allowScreenCaptureAsync: (key?: string) => Promise<void>;
@@ -20,59 +16,30 @@ let ScreenCapture: {
 try {
   ScreenCapture = require('expo-screen-capture');
 } catch {
-  // No está instalado — modo degradado
+  // No instalado — modo degradado
 }
 
 const SECURE_CONTEXTS = new Set<string>();
 
-/**
- * Activa la protección contra capturas de pantalla para un contexto específico.
- * @param contextKey Clave única del contexto (ej: chatId, 'wallet', 'settings')
- */
 export async function enableScreenSecurity(contextKey: string): Promise<void> {
   SECURE_CONTEXTS.add(contextKey);
   if (ScreenCapture) {
-    try {
-      await ScreenCapture.preventScreenCaptureAsync(contextKey);
-    } catch {
-      // Algunos dispositivos no soportan esto
-    }
+    try { await ScreenCapture.preventScreenCaptureAsync(contextKey); } catch {}
   }
 }
 
-/**
- * Desactiva la protección para un contexto.
- * Si otros contextos seguros siguen activos, la protección se mantiene.
- */
 export async function disableScreenSecurity(contextKey: string): Promise<void> {
   SECURE_CONTEXTS.delete(contextKey);
   if (ScreenCapture) {
-    try {
-      await ScreenCapture.allowScreenCaptureAsync(contextKey);
-    } catch {}
+    try { await ScreenCapture.allowScreenCaptureAsync(contextKey); } catch {}
   }
 }
 
-/**
- * ¿Hay algún contexto seguro activo en este momento?
- */
 export function isScreenSecure(): boolean {
   return SECURE_CONTEXTS.size > 0;
 }
 
-/**
- * Hook de React para activar/desactivar protección según condición.
- * Se limpia automáticamente al desmontar el componente.
- *
- * @example
- * ```tsx
- * import { useScreenSecurity } from '../services/screenSecurity';
- *
- * // En el ChatScreen:
- * useScreenSecurity(`chat_${chatId}`, isIncognito || isE2EEnabled);
- * ```
- */
-import { useEffect } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 
 export function useScreenSecurity(contextKey: string, active: boolean): void {
   useEffect(() => {
@@ -80,28 +47,61 @@ export function useScreenSecurity(contextKey: string, active: boolean): void {
       disableScreenSecurity(contextKey);
       return;
     }
-
     enableScreenSecurity(contextKey);
-
-    // Cleanup al desmontar
-    return () => {
-      disableScreenSecurity(contextKey);
-    };
+    return () => { disableScreenSecurity(contextKey); };
   }, [contextKey, active]);
 }
 
-// ── Bloqueo de captura de pantalla en iOS via AppState ────────────
-// iOS no permite FLAG_SECURE, pero sí podemos detectar cuando
-// el usuario hace screenshot (AppState 'inactive' momentáneo).
-// Esta implementación notifica, pero no puede bloquear en iOS.
+// ── iOS Privacy Blur ──────────────────────────────────────────────
+// En iOS no existe FLAG_SECURE. La solución estándar (usada por
+// Signal, Telegram) es mostrar un overlay opaco/blur cuando la app
+// pasa a 'inactive' (background, app switcher o screenshot).
+// El overlay desaparece al volver a 'active'.
 
+/**
+ * Hook que devuelve `showBlur: true` cuando iOS detecta que la app
+ * está en background/switcher y la pantalla es un contexto seguro.
+ *
+ * Uso en chat/[id].tsx:
+ *   const { showBlur } = useIOSPrivacyBlur(isIncognito);
+ *   // Renderizar <PrivacyBlurOverlay visible={showBlur} /> sobre el contenido
+ */
+export function useIOSPrivacyBlur(active: boolean): { showBlur: boolean } {
+  const [showBlur, setShowBlur] = useState(false);
+
+  useEffect(() => {
+    if (Platform.OS !== 'ios' || !active) {
+      setShowBlur(false);
+      return;
+    }
+
+    const handleChange = (nextState: AppStateStatus) => {
+      if (!active) return;
+      // 'inactive' = app switcher, incoming call, screenshot
+      // 'background' = app minimizada
+      if (nextState === 'inactive' || nextState === 'background') {
+        setShowBlur(true);
+      } else if (nextState === 'active') {
+        setShowBlur(false);
+      }
+    };
+
+    const sub = AppState.addEventListener('change', handleChange);
+    return () => {
+      sub.remove();
+      setShowBlur(false);
+    };
+  }, [active]);
+
+  return { showBlur };
+}
+
+// ── Screenshot attempt callback ───────────────────────────────────
 let screenshotCallback: (() => void) | null = null;
 
 if (Platform.OS === 'ios') {
   let prevState: AppStateStatus = AppState.currentState;
-
   AppState.addEventListener('change', (nextState: AppStateStatus) => {
-    // En iOS, la app pasa a 'inactive' justo cuando se toma un screenshot
     if (prevState === 'active' && nextState === 'inactive' && isScreenSecure()) {
       screenshotCallback?.();
     }
@@ -109,11 +109,6 @@ if (Platform.OS === 'ios') {
   });
 }
 
-/**
- * Registra un callback que se llama cuando se detecta un intento de captura.
- * En Android: el sistema bloquea la captura antes de llamar esto.
- * En iOS: la captura ya ocurrió, pero se notifica al usuario.
- */
 export function onScreenshotAttempt(cb: () => void): () => void {
   screenshotCallback = cb;
   return () => { screenshotCallback = null; };
