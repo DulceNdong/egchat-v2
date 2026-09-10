@@ -848,8 +848,42 @@ export const ImageViewer: React.FC<ImageViewerProps> = ({
         onClose={() => setShowShare(false)}
         onForward={() => { onForward?.(current); closeWithFade(); }}
         onSave={handleSave}
-        onSetProfilePhoto={() => {/* TODO */}}
-        onSetWallpaper={() => {/* TODO */}}
+        onSetProfilePhoto={async () => {
+          try {
+            const { uploadAvatarToSupabase } = await import('../../src/utils/avatarStorage').catch(() => import('../utils/avatarStorage'));
+            const { authAPI } = await import('../../src/api').catch(() => import('../api'));
+            const me = await authAPI.me().catch(() => null);
+            if (!me?.id) return;
+            let localUri = current.uri;
+            if (current.uri.startsWith('http')) {
+              const dest = `${FileSystem.cacheDirectory}egchat_avatar_${Date.now()}.jpg`;
+              await FileSystem.downloadAsync(current.uri, dest);
+              localUri = dest;
+            }
+            const url = await uploadAvatarToSupabase(me.id, localUri);
+            if (url) {
+              await authAPI.updateProfile({ avatar_url: url });
+              Alert.alert('✅', 'Foto de perfil actualizada');
+            }
+          } catch {
+            Alert.alert('Error', 'No se pudo actualizar la foto de perfil');
+          }
+        }}
+        onSetWallpaper={async () => {
+          try {
+            const { setChatWallpaperId } = await import('../../src/utils/chatWallpaper').catch(() => import('../utils/chatWallpaper'));
+            // Guardar la URI como wallpaper personalizado del chat activo
+            const chatId = (current as any).chatId;
+            if (chatId) {
+              await setChatWallpaperId(chatId, `custom:${current.uri}`);
+              Alert.alert('✅', 'Fondo del chat actualizado');
+            } else {
+              Alert.alert('Info', 'Abre el chat primero para establecer el fondo');
+            }
+          } catch {
+            Alert.alert('Error', 'No se pudo establecer el fondo');
+          }
+        }}
       />
     </Modal>
   );
