@@ -156,22 +156,28 @@ const NoticiasModal = ({ visible, onClose }: { visible: boolean; onClose: () => 
 
 // ── Modal ID Digital ──────────────────────────────────────────────
 const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
-  <ServiceModal visible={visible} title="🪪 ID Digital" onClose={onClose}>
+  <ServiceModal visible={visible} title="ID Digital" onClose={onClose}>
     <View style={[styles.infoCard, { alignItems: 'center', marginBottom: Spacing.md }]}>
-      <Text style={{ fontSize: 60, marginBottom: Spacing.md }}>🪪</Text>
+      <View style={{ width: 72, height: 72, borderRadius: 20, backgroundColor: '#6366f1' + '15', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing.md }}>
+        <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="#6366f1" strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+          <Rect x="2" y="5" width="20" height="14" rx="2"/>
+          <Circle cx="8" cy="12" r="2"/>
+          <Path d="M14 10h4M14 14h4"/>
+        </Svg>
+      </View>
       <Text style={[styles.infoCardTitle, { textAlign: 'center' }]}>Identidad Digital EGCHAT</Text>
       <Text style={[styles.providerCat, { textAlign: 'center', marginTop: Spacing.sm }]}>
         Tu identidad digital verificada en Guinea Ecuatorial
       </Text>
     </View>
     {[
-      { icon: '✅', label: 'DNI verificado',        desc: 'Documento de identidad vinculado' },
-      { icon: '📱', label: 'Número verificado',     desc: 'Teléfono confirmado por SMS' },
-      { icon: '🔒', label: 'Cuenta segura',         desc: 'Autenticación de dos factores activa' },
-      { icon: '🌍', label: 'Zona CEMAC',            desc: 'Válido en los 6 países CEMAC' },
+      { color: '#22c55e', label: 'DNI verificado',        desc: 'Documento de identidad vinculado' },
+      { color: '#6366f1', label: 'Número verificado',     desc: 'Teléfono confirmado por SMS' },
+      { color: '#0ea5e9', label: 'Cuenta segura',         desc: 'Autenticación de dos factores activa' },
+      { color: '#f59e0b', label: 'Zona CEMAC',            desc: 'Válido en los 6 países CEMAC' },
     ].map(item => (
       <View key={item.label} style={styles.providerCard}>
-        <Text style={styles.providerDotEmoji}>{item.icon}</Text>
+        <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: item.color, marginRight: 4 }} />
         <View style={styles.providerInfo}>
           <Text style={styles.providerName}>{item.label}</Text>
           <Text style={styles.providerCat}>{item.desc}</Text>
@@ -187,7 +193,7 @@ const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
           { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
         ]);
       }}>
-      <Text style={styles.callBtnText}>🪪 Verificar mi identidad</Text>
+      <Text style={styles.callBtnText}>Verificar mi identidad</Text>
     </TouchableOpacity>
   </ServiceModal>
 );
