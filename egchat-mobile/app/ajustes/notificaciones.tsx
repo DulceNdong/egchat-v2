@@ -8,6 +8,7 @@ import {
 import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
 import { getSoundSettings, saveSoundSettings } from '../../src/hooks/useSounds';
 import { registerForPushNotifications } from '../../src/notifications';
+import { runPushDiagnostic } from '../../src/pushDiagnostic';
 import { Colors } from '../../src/theme';
 import { DNDSettingsModal } from '../../src/components/settings/DNDSettingsModal';
 import { getDNDSettings, isDNDActive, formatTime } from '../../src/services/doNotDisturb';
