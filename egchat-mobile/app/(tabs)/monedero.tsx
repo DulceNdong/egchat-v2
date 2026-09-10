@@ -1340,7 +1340,11 @@ function MonederoScreenInner() {
               activeOpacity={0.75}
             >
               <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.cardPreviewGrad}>
-                <Text style={s.cardPreviewIcon}>💳</Text>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <Line x1="2" y1="10" x2="22" y2="10"/>
+                  <Line x1="6" y1="15" x2="10" y2="15"/>
+                </Svg>
               </LinearGradient>
               <View style={{ flex: 1 }}>
                 <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
