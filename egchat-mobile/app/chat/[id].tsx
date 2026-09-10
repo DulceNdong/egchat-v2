@@ -1678,9 +1678,29 @@ export default function ChatScreen() {
   const chatAvatar = isGroup ? chat?.avatar_url : getParticipantAvatar(otherParticipant);
   const otherPhone = getParticipantPhone(otherParticipant);
   const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(String(otherParticipant.user_id));
+
+  // Construir subtitle respetando last_seen_visibility del contacto
   const chatSubtitle = isGroup
     ? `${chat?.participants?.length || 0} miembros`
-    : isOtherOnline ? 'En línea' : 'Desconectado';
+    : (() => {
+        if (otherUserPrivacy.visibility === 'nadie') {
+          return ''; // El contacto eligió no mostrar su estado
+        }
+        if (isOtherOnline) return 'En línea';
+        if (otherUserPrivacy.lastSeen) {
+          const diff = Date.now() - new Date(otherUserPrivacy.lastSeen).getTime();
+          const mins = Math.floor(diff / 60000);
+          const hours = Math.floor(diff / 3600000);
+          const days = Math.floor(diff / 86400000);
+          if (mins < 1) return 'Visto hace un momento';
+          if (mins < 60) return `Visto hace ${mins} min`;
+          if (hours < 24) return `Visto hace ${hours}h`;
+          if (days === 1) return 'Visto ayer';
+          if (days < 7) return `Visto hace ${days} días`;
+          return `Visto el ${new Date(otherUserPrivacy.lastSeen).toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}`;
+        }
+        return '';
+      })();
 
   // C3 — broadcast mode: solo admins escriben
   const broadcastMode = isGroup && chat?.settings?.broadcast_mode === true;
