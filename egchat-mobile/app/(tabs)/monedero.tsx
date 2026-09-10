@@ -240,7 +240,7 @@ const SectionHead = ({
   </LinearGradient>
 );
 
-// ── Modal QR (Recibir) ────────────────────────────────────────────
+// ── Modal QR (Recibir / Pagar) ────────────────────────────────────
 const QRModal = ({
   visible, type, balance, userId, userName, userPhone, userAvatar, onClose,
 }: {
@@ -250,28 +250,17 @@ const QRModal = ({
 }) => {
   const isReceive = type === 'receive';
   const qrValue = userId ? buildReceiveQr(userId) : 'egchat://pay/pending';
-  const insets = useSafeAreaInsets();
-
-  // Modo pago → abre escáner directamente
-  useEffect(() => {
-    if (visible && !isReceive) {
-      onClose();
-      setTimeout(() => router.push('/_qr-scanner' as any), 100);
-    }
-  }, [visible, isReceive]);
-
-  if (!isReceive) return null;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
       <Pressable style={qrs.overlay} onPress={onClose}>
         <Pressable style={qrs.card} onPress={() => {}}>
 
-          {/* Header limpio */}
+          {/* Header */}
           <View style={qrs.header}>
             <View>
-              <Text style={qrs.title}>Recibir dinero</Text>
-              <Text style={qrs.sub}>Muestra este código para recibir</Text>
+              <Text style={qrs.title}>{isReceive ? 'Recibir dinero' : 'Realizar pago'}</Text>
+              <Text style={qrs.sub}>{isReceive ? 'Muestra este código para recibir' : 'Muestra tu QR o escanea el de otro'}</Text>
             </View>
             <TouchableOpacity style={qrs.closeBtn} onPress={onClose}>
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2.5} strokeLinecap="round">
@@ -290,18 +279,12 @@ const QRModal = ({
                   backgroundColor="#fff"
                   color="#0d0d0d"
                 />
-                {/* Avatar superpuesto en el centro del QR */}
                 <View style={qrs.avatarOverlay}>
                   {userAvatar ? (
-                    <Image
-                      source={{ uri: userAvatar }}
-                      style={qrs.avatarImg}
-                    />
+                    <Image source={{ uri: userAvatar }} style={qrs.avatarImg} />
                   ) : (
                     <View style={[qrs.avatarImg, qrs.avatarFallback]}>
-                      <Text style={qrs.avatarInitial}>
-                        {(userName || 'U')[0].toUpperCase()}
-                      </Text>
+                      <Text style={qrs.avatarInitial}>{(userName || 'U')[0].toUpperCase()}</Text>
                     </View>
                   )}
                 </View>
@@ -322,7 +305,7 @@ const QRModal = ({
             <Text style={qrs.balanceTxt}>{fmt(balance)} XAF disponibles</Text>
           </View>
 
-          {/* Botón escanear */}
+          {/* Botón escanear QR de otro usuario para pagar */}
           <TouchableOpacity
             style={qrs.scanBtn}
             onPress={() => { onClose(); setTimeout(() => router.push('/_qr-scanner' as any), 100); }}
@@ -332,7 +315,7 @@ const QRModal = ({
               <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
               <Rect x="14" y="14" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/>
             </Svg>
-            <Text style={qrs.scanBtnTxt}>Escanear QR de pago</Text>
+            <Text style={qrs.scanBtnTxt}>Escanear QR para pagar</Text>
           </TouchableOpacity>
 
           {/* Cerrar */}
@@ -346,27 +329,6 @@ const QRModal = ({
   );
 };
 
-const qrs = StyleSheet.create({
-  overlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', padding: 20 },
-  card:          { backgroundColor: '#fff', borderRadius: 24, padding: 24, width: '100%', maxWidth: 360, alignItems: 'center' },
-  header:        { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', width: '100%', marginBottom: 20 },
-  title:         { fontSize: 18, fontWeight: '700', color: '#111827' },
-  sub:           { fontSize: 12, color: '#9ca3af', marginTop: 2 },
-  closeBtn:      { width: 32, height: 32, borderRadius: 16, backgroundColor: '#f3f4f6', alignItems: 'center', justifyContent: 'center' },
-  qrWrap:        { position: 'relative', alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
-  avatarOverlay: { position: 'absolute', width: 44, height: 44, borderRadius: 22, overflow: 'hidden', borderWidth: 3, borderColor: '#fff' },
-  avatarImg:     { width: 44, height: 44, borderRadius: 22 },
-  avatarFallback:{ backgroundColor: '#6366f1', alignItems: 'center', justifyContent: 'center' },
-  avatarInitial: { color: '#fff', fontSize: 18, fontWeight: '700' },
-  name:          { fontSize: 16, fontWeight: '700', color: '#111827', marginTop: 4 },
-  phone:         { fontSize: 13, color: '#6b7280', marginTop: 2 },
-  balancePill:   { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: '#f0fdf4', borderRadius: 20, paddingHorizontal: 12, paddingVertical: 5, marginTop: 10, marginBottom: 16 },
-  balanceTxt:    { fontSize: 13, color: '#16a34a', fontWeight: '600' },
-  scanBtn:       { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 18, paddingVertical: 11, borderRadius: 12, borderWidth: 1.5, borderColor: '#00C8A0', marginBottom: 10, width: '100%', justifyContent: 'center' },
-  scanBtnTxt:    { fontSize: 14, fontWeight: '600', color: '#00C8A0' },
-  closeFullBtn:  { paddingVertical: 12, width: '100%', alignItems: 'center' },
-  closeFullTxt:  { fontSize: 14, fontWeight: '600', color: '#6b7280' },
-});
 
 // ── Modal Recarga ─────────────────────────────────────────────────
 type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm' | 'success'
