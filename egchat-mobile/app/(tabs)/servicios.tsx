@@ -200,14 +200,14 @@ const IdDigitalModal = ({ visible, onClose }: { visible: boolean; onClose: () =>
 
 // ── Modal Emergencias ─────────────────────────────────────────────
 const EMERGENCY_NUMBERS = [
-  { icon: '🚒', name: 'Bomberos',              number: '115',              color: '#EF4444' },
-  { icon: '🚑', name: 'Ambulancia / SAMU',     number: '116',              color: '#DC2626' },
-  { icon: '👮', name: 'Policía Nacional',       number: '114',              color: '#1E3A5F' },
-  { icon: '🏥', name: 'Hospital General',       number: '+240 333 09 50 00', color: '#DC2626' },
-  { icon: '⚡', name: 'Averías SEGESA',         number: '+240 333 09 70 00', color: '#EAB308' },
-  { icon: '💧', name: 'Averías SNGE',           number: '+240 333 09 71 00', color: '#0EA5E9' },
-  { icon: '🛡️', name: 'Guardia Civil',          number: '112',              color: '#374151' },
-  { icon: '🌊', name: 'Protección Civil',       number: '+240 333 09 72 00', color: '#0369A1' },
+  { name: 'Bomberos',              number: '115',               color: '#EF4444' },
+  { name: 'Ambulancia / SAMU',     number: '116',               color: '#DC2626' },
+  { name: 'Policía Nacional',       number: '114',               color: '#1E3A5F' },
+  { name: 'Hospital General',       number: '+240 333 09 50 00', color: '#DC2626' },
+  { name: 'Averías SEGESA',         number: '+240 333 09 70 00', color: '#EAB308' },
+  { name: 'Averías SNGE',           number: '+240 333 09 71 00', color: '#0EA5E9' },
+  { name: 'Guardia Civil',          number: '112',               color: '#374151' },
+  { name: 'Protección Civil',       number: '+240 333 09 72 00', color: '#0369A1' },
 ];
 
 const EmergenciasModal = ({ visible, onClose }: { visible: boolean; onClose: () => void }) => (
