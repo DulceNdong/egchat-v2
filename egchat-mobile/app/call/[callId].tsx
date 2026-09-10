@@ -451,6 +451,21 @@ export default function CallScreen() {
             )}
           </TouchableOpacity>
 
+          {/* Compartir pantalla */}
+          <TouchableOpacity
+            style={[s.ctrlBtn, isSharingScreen && s.ctrlBtnActive]}
+            onPress={toggleScreenShare}
+            activeOpacity={0.8}
+            accessibilityLabel={isSharingScreen ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
+          >
+            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+              <Rect x="2" y="3" width="20" height="14" rx="2"/>
+              <Path d="M8 21h8M12 17v4"/>
+              {isSharingScreen && <Path d="M9 9l3-3 3 3M12 6v7" stroke={ACCENT} strokeWidth={2.5}/>}
+              {!isSharingScreen && <Path d="M9 9l3-3 3 3M12 6v7"/>}
+            </Svg>
+          </TouchableOpacity>
+
           {/* Colgar — botón central rojo */}
           <TouchableOpacity onPress={hangUp} activeOpacity={0.85}>
             <LinearGradient colors={['#ff3b30', '#c0392b']} style={s.hangupBtn}>
