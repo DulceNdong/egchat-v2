@@ -3009,6 +3009,9 @@ export default function ChatScreen() {
           ) : null}
         </Pressable>
       </Modal>
+
+      {/* iOS Privacy Blur — oculta el chat cuando está en background/app-switcher */}
+      <PrivacyBlurOverlay visible={showBlur} />
     </SafeAreaView>
   );
 }
