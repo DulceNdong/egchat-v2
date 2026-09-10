@@ -632,6 +632,14 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(0,0,0,0.75)', paddingHorizontal: 16, paddingBottom: 8,
   },
   signalingText: { color: '#fff', fontSize: 11, textAlign: 'center' },
+  sharingBanner: {
+    position: 'absolute', left: 16, right: 16, zIndex: 25,
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    backgroundColor: 'rgba(0,0,0,0.72)', borderRadius: 10,
+    paddingHorizontal: 12, paddingVertical: 7,
+    borderWidth: 1, borderColor: `${ACCENT}55`,
+  },
+  sharingText: { color: ACCENT, fontSize: 12, fontWeight: '600', flex: 1 },
   minimizeBtn: {
     position: 'absolute', left: 16, zIndex: 20,
     flexDirection: 'row', alignItems: 'center', gap: 5,
