@@ -533,9 +533,6 @@ const styles = StyleSheet.create({
   serviceIconBox: {
     width: 54, height: 54, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(0,0,0,0.07)',
-    backgroundColor: 'transparent',
   },
   serviceEmoji: { fontSize: 26 },
   serviceLabel: {
