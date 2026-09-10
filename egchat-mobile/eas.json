@@ -46,16 +46,7 @@
       },
       "ios": {
         "autoIncrement": true,
-        "resourceClass": "m-medium",
-        "autoCredentials": true,
-        "enterpriseProvisioning": "universal",
-        "capabilities": {
-          "push-notifications": true,
-          "associated-domains": true,
-          "background-fetch": true,
-          "background-processing": true,
-          "voip": true
-        }
+        "resourceClass": "m-medium"
       }
     }
   },
