@@ -28,7 +28,7 @@
           "processing"
         ],
         "BGTaskSchedulerPermittedIdentifiers": [
-          "com.reddington120.egchat.refresh"
+          "com.jallzstores.egchat.refresh"
         ],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
