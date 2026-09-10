@@ -1092,7 +1092,11 @@ const HistorialModal = ({
           <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
             {filtered.length === 0 ? (
               <View style={s.emptyWrap}>
-                <Text style={s.emptyIcon}>📭</Text>
+                <Svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="#d1d5db" strokeWidth={1.4} strokeLinecap="round" strokeLinejoin="round">
+                  <Rect x="2" y="5" width="20" height="14" rx="2"/>
+                  <Line x1="2" y1="10" x2="22" y2="10"/>
+                  <Circle cx="7" cy="15" r="1" fill="#d1d5db"/>
+                </Svg>
                 <Text style={s.emptyText}>Sin transacciones</Text>
                 <Text style={s.emptySub}>No hay movimientos en esta categoría</Text>
               </View>
