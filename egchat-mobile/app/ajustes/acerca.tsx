@@ -28,7 +28,7 @@ export default function AcercaScreen() {
           <SpinningLogo size={90} glow={true} />
         </View>
         <Text style={styles.appName}>EGCHAT</Text>
-        <Text style={styles.version}>Versión 2.5.5</Text>
+        <Text style={styles.version}>Versión 2.6.4</Text>
       </View>
 
       <SettingsCard>
