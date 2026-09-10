@@ -407,7 +407,7 @@ function ServiciosScreenInner() {
                     activeOpacity={0.5}
                     delayPressIn={0}
                   >
-                    <View style={styles.serviceIconBox}>
+                    <View style={[styles.serviceIconBox, { backgroundColor: s.color + '15' }]}>
                       <ServiceIcon name={s.svgIcon} size={26} color={s.color} />
                     </View>
                     <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
