@@ -41,6 +41,7 @@
         "NSLocationAlwaysAndWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para servicios como MiTaxi y ubicación en vivo.",
         "NSDocumentsFolderUsageDescription": "EGCHAT necesita acceso a documentos para enviarlos en el chat.",
         "NSLocalNetworkUsageDescription": "EGCHAT necesita acceder a la red local para conectar con el servidor de desarrollo en tu Mac.",
+        "NSFaceIDUsageDescription": "EGCHAT usa Face ID para verificar tu identidad al acceder a datos protegidos.",
         "NSBonjourServices": [
           "_expo._tcp"
         ],
