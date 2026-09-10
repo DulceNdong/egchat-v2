@@ -223,7 +223,32 @@ export default function GroupCallScreen() {
   const [chatMessages, setChatMessages] = useState<{ id: string; name: string; text: string; ts: number }[]>([]);
   const [chatText, setChatText] = useState('');
   const [joinToasts, setJoinToasts] = useState<string[]>([]);
+  const [isSharingScreen, setIsSharingScreen] = useState(false);
+  const screenStreamRef = useRef<any>(null);
   const sseRef = useRef<XMLHttpRequest | null>(null);
+
+  const toggleScreenShare = useCallback(async () => {
+    try {
+      if (isSharingScreen) {
+        screenStreamRef.current?.getTracks?.().forEach((t: any) => t.stop());
+        screenStreamRef.current = null;
+        setIsSharingScreen(false);
+        return;
+      }
+      const { mediaDevices } = require('react-native-webrtc');
+      if (!mediaDevices?.getDisplayMedia) {
+        Alert.alert('No disponible', 'Compartir pantalla requiere Android 10+ y build nativo.');
+        return;
+      }
+      const screenStream = await mediaDevices.getDisplayMedia({ video: true });
+      screenStreamRef.current = screenStream;
+      setIsSharingScreen(true);
+    } catch (e: any) {
+      if (!e?.message?.includes('cancel') && !e?.message?.includes('denied')) {
+        Alert.alert('Error', 'No se pudo iniciar compartición de pantalla.');
+      }
+    }
+  }, [isSharingScreen]);
 
   const fmt = (s: number) =>
     `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(s % 60).padStart(2, '0')}`;
