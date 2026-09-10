@@ -8,7 +8,7 @@
  * - Se coloca en _layout.tsx una sola vez para toda la app
  */
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Animated, Easing, Platform } from 'react-native';
+import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNetworkStatus } from '../../store/offlineStore';
 import { useThemeContext } from '../../theme/ThemeContext';
