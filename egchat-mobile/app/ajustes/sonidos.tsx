@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { Platform, View, Text, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider,
 } from '../../src/components/settings/SettingsUI';
