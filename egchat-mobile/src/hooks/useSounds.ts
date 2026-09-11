@@ -36,6 +36,48 @@ export const saveSoundSettings = async (settings: Partial<SoundSettings>) => {
   } catch {}
 };
 
+// ── Mapeo de IDs de tono → asset ──────────────────────────────────
+// Cada tono tiene su propio archivo WAV en assets/
+const MESSAGE_TONE_ASSETS: Record<string, any> = {
+  egchat:  require('../../assets/egchat.wav'),
+  notif:   require('../../assets/notif.wav'),
+  ding:    require('../../assets/ding.wav'),
+  chime:   require('../../assets/chime.wav'),
+  pop:     require('../../assets/pop.wav'),
+  bubble:  require('../../assets/bubble.wav'),
+};
+
+const RINGTONE_ASSETS: Record<string, any> = {
+  classic:      require('../../assets/classic.wav'),
+  modern:       require('../../assets/modern.wav'),
+  digital:      require('../../assets/digital.wav'),
+  marimba:      require('../../assets/marimba.wav'),
+  // vibrate_only y none no tienen asset — se manejan con lógica especial
+};
+
+// Los tonos de notificación reutilizan el mismo conjunto que mensajes
+const NOTIFICATION_TONE_ASSETS: Record<string, any> = {
+  pop:    require('../../assets/pop.wav'),
+  ding:   require('../../assets/ding.wav'),
+  chime:  require('../../assets/chime.wav'),
+  bubble: require('../../assets/bubble.wav'),
+};
+
+/** Fallback si el ID no está en el mapa */
+const FALLBACK_ASSET = require('../../assets/notification.wav');
+
+function getMessageAsset(toneId: string): any {
+  return MESSAGE_TONE_ASSETS[toneId] ?? FALLBACK_ASSET;
+}
+
+function getRingtoneAsset(toneId: string): any {
+  return RINGTONE_ASSETS[toneId] ?? FALLBACK_ASSET;
+}
+
+function getNotificationAsset(toneId: string): any {
+  return NOTIFICATION_TONE_ASSETS[toneId] ?? FALLBACK_ASSET;
+}
+
 // ── Audio mode ────────────────────────────────────────────────────
 const setupAudioMode = async () => {
   if (Platform.OS === 'web') return;
@@ -88,28 +130,31 @@ async function playAsset(asset: any, volume = 0.7): Promise<void> {
 }
 
 // ── Sonido de mensaje recibido ────────────────────────────────────
-// Usa el archivo notification.wav incluido en los assets
 export const playMessageReceived = async () => {
   try {
     const s = await getSoundSettings();
     if (s.messageTone === 'none') return;
     if (s.vibrationEnabled) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Reproducir el tono de notificación del sistema assets/notification.wav
-    await playAsset(require('../../assets/notification.wav'), s.volume);
+    await playAsset(getMessageAsset(s.messageTone), s.volume);
   } catch {}
 };
 
-export const previewMessageTone = async () => {
-  await playMessageReceived();
+export const previewMessageTone = async (toneId?: string) => {
+  try {
+    const s = await getSoundSettings();
+    const id = toneId ?? s.messageTone;
+    if (id === 'none') return;
+    if (s.vibrationEnabled) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+    await playAsset(getMessageAsset(id), s.volume);
+  } catch {}
 };
 
 export const playMessageSent = async () => {
   try {
     const s = await getSoundSettings();
     if (s.messageTone === 'none') return;
-    if (s.vibrationEnabled) await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
-    // Sonido suave de "pop" para mensaje enviado
-    await playAsset(require('../../assets/notification.wav'), s.volume * 0.4);
+    // Mensaje enviado: mismo tono pero más suave
+    await playAsset(getMessageAsset(s.messageTone), s.volume * 0.45);
   } catch {}
 };
 
@@ -119,12 +164,18 @@ export const playNotification = async () => {
     const s = await getSoundSettings();
     if (s.notificationTone === 'none') return;
     if (s.vibrationEnabled) await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-    await playAsset(require('../../assets/notification.wav'), s.volume);
+    await playAsset(getNotificationAsset(s.notificationTone), s.volume);
   } catch {}
 };
 
-export const previewNotificationTone = async () => {
-  await playNotification();
+export const previewNotificationTone = async (toneId?: string) => {
+  try {
+    const s = await getSoundSettings();
+    const id = toneId ?? s.notificationTone;
+    if (id === 'none') return;
+    if (s.vibrationEnabled) await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+    await playAsset(getNotificationAsset(id), s.volume);
+  } catch {}
 };
 
 // ── Llamadas ──────────────────────────────────────────────────────
@@ -138,13 +189,25 @@ export const startRingtone = async () => {
     const s = await getSoundSettings();
     if (s.ringtone === 'none') return;
 
+    // Solo vibración — sin audio
+    if (s.ringtone === 'vibrate_only') {
+      const vibLoop = async () => {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+      };
+      await vibLoop();
+      ringtoneInterval = setInterval(vibLoop, 1500);
+      return;
+    }
+
     // Modo llamada — sonar aunque esté en silencio
     await Audio.setAudioModeAsync({
       allowsRecordingIOS: false,
-      playsInSilentModeIOS: true,   // ← sonar en modo silencio durante llamadas
+      playsInSilentModeIOS: true,
       shouldDuckAndroid: false,
       playThroughEarpieceAndroid: false,
     });
+
+    const asset = getRingtoneAsset(s.ringtone);
 
     const play = async () => {
       if (s.vibrationEnabled) {
@@ -153,7 +216,7 @@ export const startRingtone = async () => {
       try {
         if (ringtoneSound) { await ringtoneSound.unloadAsync(); ringtoneSound = null; }
         const { sound } = await Audio.Sound.createAsync(
-          require('../../assets/notification.wav'),
+          asset,
           { shouldPlay: true, volume: s.volume, isLooping: false }
         );
         ringtoneSound = sound;
@@ -166,11 +229,45 @@ export const startRingtone = async () => {
   } catch {}
 };
 
-export const previewRingtone = async () => {
-  await startRingtone();
-  setTimeout(() => {
-    stopRingtone().catch(() => {});
-  }, 1400);
+export const previewRingtone = async (toneId?: string) => {
+  try {
+    const s = await getSoundSettings();
+    const id = toneId ?? s.ringtone;
+
+    if (id === 'none') return;
+
+    if (id === 'vibrate_only') {
+      if (s.vibrationEnabled) {
+        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning);
+      }
+      return;
+    }
+
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: false,
+      playThroughEarpieceAndroid: false,
+    });
+
+    const asset = getRingtoneAsset(id);
+    const key = `preview-ringtone-${Date.now()}`;
+    const { sound } = await Audio.Sound.createAsync(
+      asset,
+      { shouldPlay: true, volume: s.volume, isLooping: false }
+    );
+    retainSound(key, sound);
+    sound.setOnPlaybackStatusUpdate((status) => {
+      if (status.isLoaded && status.didJustFinish) {
+        releaseSound(key).catch(() => {});
+      }
+    });
+    // Auto-stop después de 3 segundos
+    setTimeout(() => {
+      sound.stopAsync().catch(() => {});
+      releaseSound(key).catch(() => {});
+    }, 3000);
+  } catch {}
 };
 
 export const stopRingtone = async () => {
@@ -232,9 +329,9 @@ export const vibrate = async (pattern: 'light' | 'medium' | 'heavy' = 'light') =
     const s = await getSoundSettings();
     if (!s.vibrationEnabled) return;
     const map = {
-      light: Haptics.ImpactFeedbackStyle.Light,
+      light:  Haptics.ImpactFeedbackStyle.Light,
       medium: Haptics.ImpactFeedbackStyle.Medium,
-      heavy: Haptics.ImpactFeedbackStyle.Heavy,
+      heavy:  Haptics.ImpactFeedbackStyle.Heavy,
     };
     await Haptics.impactAsync(map[pattern]);
   } catch {}
