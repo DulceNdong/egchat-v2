@@ -4,10 +4,6 @@
   <dict>
     <key>aps-environment</key>
     <string>production</string>
-    <key>com.apple.developer.push-to-talk</key>
-    <true/>
-    <key>com.apple.developer.pushkit.unrestricted-voip</key>
-    <true/>
     <key>com.apple.developer.usernotifications.communication</key>
     <true/>
   </dict>
