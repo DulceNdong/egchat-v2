@@ -53,6 +53,10 @@ export default function SonidosScreen() {
                 backgroundColor: active ? `${color}12` : 'transparent' }}
               onPress={async () => {
                 await update(key, tone.id);
+                // Recrear canales Android para que el nuevo tono aplique en push
+                if (Platform.OS === 'android' && (key === 'messageTone' || key === 'ringtone')) {
+                  refreshAndroidChannels().catch(() => {});
+                }
                 if (tone.id === 'none' || tone.id === 'vibrate_only') {
                   // Solo vibración — feedback háptico sin audio
                   if (settings.vibrationEnabled && tone.id === 'vibrate_only') {
