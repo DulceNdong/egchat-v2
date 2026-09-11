@@ -52,10 +52,18 @@ export default function SonidosScreen() {
                 backgroundColor: active ? `${color}12` : 'transparent' }}
               onPress={async () => {
                 await update(key, tone.id);
-                if (tone.id === 'none') return;
-                if (key === 'messageTone') await previewMessageTone();
-                if (key === 'notificationTone') await previewNotificationTone();
-                if (key === 'ringtone') await previewRingtone();
+                if (tone.id === 'none' || tone.id === 'vibrate_only') {
+                  // Solo vibración — feedback háptico sin audio
+                  if (settings.vibrationEnabled && tone.id === 'vibrate_only') {
+                    const { Haptics } = await import('expo-haptics');
+                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+                  }
+                  return;
+                }
+                // Pasar el toneId directamente para reproducir el tono correcto
+                if (key === 'messageTone') await previewMessageTone(tone.id);
+                if (key === 'notificationTone') await previewNotificationTone(tone.id);
+                if (key === 'ringtone') await previewRingtone(tone.id);
               }}
             >
               <Text style={{ flex: 1, fontWeight: active ? '700' : '500', color: active ? color : C.textPrimary }}>{tone.name}</Text>
