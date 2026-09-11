@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
-import { View, Text, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
+import { Platform, View, Text, TouchableOpacity, Switch, ActivityIndicator } from 'react-native';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider,
 } from '../../src/components/settings/SettingsUI';
@@ -8,6 +8,7 @@ import {
   MESSAGE_TONES, RINGTONES, NOTIFICATION_TONES,
   previewMessageTone, previewNotificationTone, previewRingtone,
 } from '../../src/hooks/useSounds';
+import { refreshAndroidChannels } from '../../src/notifications';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
