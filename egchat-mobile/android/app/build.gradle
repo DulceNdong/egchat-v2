@@ -157,7 +157,10 @@ dependencies {
     implementation("com.facebook.react:react-android")
 
     // ML Kit — detección facial para EGChatFaceFilter
-    implementation("com.google.mlkit:face-detection:16.1.7")
+    // Excluir google-webrtc para evitar conflictos con react-native-webrtc
+    implementation("com.google.mlkit:face-detection:16.1.7") {
+        exclude group: 'org.webrtc', module: 'google-webrtc'
+    }
 
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
