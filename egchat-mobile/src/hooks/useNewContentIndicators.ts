@@ -128,8 +128,10 @@ export function useNewContentIndicators(currentUserId: string) {
     intervalRef.current = setInterval(fetchIndicators, POLL_INTERVAL_MS);
 
     // Supabase Realtime — escuchar nuevas stories/moments/lives en tiempo real
+    // Timestamp en el nombre del canal para evitar reusar uno ya suscrito si el
+    // componente se monta dos veces (StrictMode / remount)
     const channel = supabase
-      .channel(`new-content-${currentUserId}`)
+      .channel(`new-content-${currentUserId}-${Date.now()}`)
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'stories' }, () => {
         fetchIndicators();
       })
