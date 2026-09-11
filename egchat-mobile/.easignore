@@ -1,11 +1,14 @@
-# Dependencias (EAS las instala en el servidor)
+# ── Dependencias — EAS las instala en el servidor ────────────────
 node_modules/
 
-# Pods de iOS (EAS los instala en el servidor con `pod install`)
+# ── Pods de iOS — EAS corre `pod install` en el servidor ─────────
 ios/Pods/
 ios/build/
+ios/DerivedData/
+ios/*.xcbuilddata
+ios/*.xcuserstate
 
-# Builds locales de Android
+# ── Builds locales de Android ─────────────────────────────────────
 android/build/
 android/.gradle/
 android/app/build/
@@ -15,34 +18,35 @@ android/replay_pid*.log
 android/gradle_clang_matches.txt
 android/local.properties
 
-# Carpetas enormes que no deben subirse a EAS
+# ── Carpetas enormes — nunca necesarias en el build ───────────────
 egchat-v2/
-ios-backup-*/
+ios-backup-20260729-155842/
 build/
 dist/
 dist-web/
 web-build/
 
-# Cache y expo local
+# ── Cache y expo local ────────────────────────────────────────────
 .expo/
 .cache/
 *.log
 
-# Archivos de desarrollo/entorno
+# ── Archivos de entorno — se configuran en EAS secrets ───────────
 .env.development
 .env.local
 
-# Git
+# ── Git ───────────────────────────────────────────────────────────
 .git/
 
-# Editores e IDEs
+# ── Editores e IDEs ───────────────────────────────────────────────
 .vscode/
 .idea/
 .windsurf/
 .cursor/
 .kluster/
+scripts/
 
-# Archivos de diagnóstico y temporales
+# ── Archivos de diagnóstico y temporales ─────────────────────────
 tmp_eas_*.txt
 error-context.txt
 error-lines.txt

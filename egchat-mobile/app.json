@@ -44,7 +44,8 @@
           "_expo._tcp"
         ],
         "ITSAppUsesNonExemptEncryption": false
-      }
+      },
+      "buildNumber": "2"
     },
     "android": {
       "package": "com.egchat.app",
