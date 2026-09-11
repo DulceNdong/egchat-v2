@@ -34,7 +34,8 @@
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
         "EXPO_PUBLIC_ENABLE_PUSH": "1",
         "EXPO_PUBLIC_ENABLE_VOIP": "1",
-        "EXPO_PUBLIC_ENABLE_WEBRTC": "1"
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
       },
       "ios": {
         "resourceClass": "m-medium",
