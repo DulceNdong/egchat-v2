@@ -6,7 +6,8 @@ import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, SettingsToggleRow,
 } from '../../src/components/settings/SettingsUI';
 import { registerForPushNotifications } from '../../src/notifications';
-import { CFG, getCfgBool, getCfgString, setCfg, setCfgBool } from '../../src/services/settingsPrefs';
+import { CFG, getCfgBool, setCfgBool } from '../../src/services/settingsPrefs';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 const LANGUAGE_OPTIONS = [
   { code: 'es', label: 'Español' },
@@ -18,13 +19,14 @@ export default function OtrasFuncionesScreen() {
   const [autoTranslate, setAutoTranslate] = React.useState(false);
   const [readReceipts, setReadReceipts] = React.useState(true);
   const [onlineStatus, setOnlineStatus] = React.useState(true);
-  const [appLanguage, setAppLanguage] = React.useState('es');
+
+  // Idioma desde el contexto reactivo — ya persistido y sincronizado globalmente
+  const { language: appLanguage, changeLanguage } = useLanguage();
 
   React.useEffect(() => {
     getCfgBool(CFG.autoTranslate, false).then(setAutoTranslate);
     getCfgBool(CFG.readReceipts, true).then(setReadReceipts);
     getCfgBool(CFG.onlineStatus, true).then(setOnlineStatus);
-    getCfgString(CFG.appLanguage, 'es').then(setAppLanguage);
   }, []);
 
   const activatePush = async () => {
@@ -45,10 +47,8 @@ export default function OtrasFuncionesScreen() {
       [
         ...LANGUAGE_OPTIONS.map(opt => ({
           text: opt.label,
-          onPress: () => {
-            setAppLanguage(opt.code);
-            setCfg(CFG.appLanguage, opt.code);
-          },
+          // Usar changeLanguage del contexto: actualiza estado global + AsyncStorage + translations.ts
+          onPress: () => changeLanguage(opt.code),
         })),
         { text: 'Cancelar', style: 'cancel' as const },
       ],
