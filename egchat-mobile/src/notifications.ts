@@ -90,6 +90,13 @@ async function createChannels() {
   });
 }
 
+// ── Recrear canales Android cuando el usuario cambia el tono ──────────────
+// Llamar desde sonidos.tsx después de guardar un nuevo tono.
+export async function refreshAndroidChannels(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+  await createChannels();
+}
+
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
 export async function registerForPushNotifications(): Promise<string | null> {
   if (Platform.OS === 'web') return null; // push no disponible en web
