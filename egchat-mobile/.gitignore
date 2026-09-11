@@ -38,3 +38,4 @@ Podfile.save
 
 # Submodule / carpeta duplicada — no trackear
 egchat-v2/
+ios-backup-*/
