@@ -10,6 +10,7 @@ import * as Linking from 'expo-linking';
 import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
+import { LanguageProvider } from '../src/context/LanguageContext';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
 import { OfflineBanner } from '../src/components/ui';
