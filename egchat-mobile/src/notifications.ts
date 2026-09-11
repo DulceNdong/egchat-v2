@@ -41,26 +41,48 @@ TaskManager.defineTask(BACKGROUND_TASK, async ({ data, error }) => {
 });
 
 // ── Crear canales Android ───────────────────────────────────────────────────
+// Los canales usan el tono guardado por el usuario. En Android el sonido del
+// canal se fija la primera vez que se crea; hay que borrar y recrear el canal
+// si el usuario cambia el tono. Por eso recreamos siempre con el tono actual.
 async function createChannels() {
   if (Platform.OS !== 'android') return;
+
+  const { getSoundSettings } = await import('./hooks/useSounds');
+  const soundSettings = await getSoundSettings();
+
+  // Tono de mensajes: usa messageTone del usuario (fallback: egchat.wav)
+  const messageSoundFile =
+    soundSettings.messageTone === 'none'
+      ? undefined
+      : `${soundSettings.messageTone}.wav`;
+
+  // Tono de llamadas: usa ringtone del usuario (fallback: classic.wav)
+  const callSoundFile =
+    soundSettings.ringtone === 'none' || soundSettings.ringtone === 'vibrate_only'
+      ? undefined
+      : `${soundSettings.ringtone}.wav`;
+
+  // Borrar canales existentes antes de recrear (para que el nuevo sonido aplique)
+  await Notifications.deleteNotificationChannelAsync('egchat-messages').catch(() => {});
+  await Notifications.deleteNotificationChannelAsync('egchat-calls').catch(() => {});
 
   await Notifications.setNotificationChannelAsync('egchat-messages', {
     name: 'Mensajes',
     importance: Notifications.AndroidImportance.HIGH,
-    vibrationPattern: [0, 250, 250, 250],
+    vibrationPattern: soundSettings.vibrationEnabled ? [0, 250, 250, 250] : undefined,
     lightColor: '#00c8a0',
-    sound: 'notification.wav',
-    enableVibrate: true,
+    sound: messageSoundFile,
+    enableVibrate: soundSettings.vibrationEnabled,
     showBadge: true,
   });
 
   await Notifications.setNotificationChannelAsync('egchat-calls', {
     name: 'Llamadas',
     importance: Notifications.AndroidImportance.MAX,
-    vibrationPattern: [0, 500, 200, 500, 200, 500],
+    vibrationPattern: soundSettings.vibrationEnabled ? [0, 500, 200, 500, 200, 500] : undefined,
     lightColor: '#facc15',
-    sound: 'notification.wav',
-    enableVibrate: true,
+    sound: callSoundFile,
+    enableVibrate: soundSettings.vibrationEnabled,
     showBadge: false,
     // Permite mostrar sobre otras apps (pantalla bloqueada)
     bypassDnd: true,
