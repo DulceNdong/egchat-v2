@@ -1,12 +1,8 @@
 # ── Dependencias — EAS las instala en el servidor ────────────────
 node_modules/
 
-# ── Pods de iOS — EAS corre `pod install` en el servidor ─────────
-ios/Pods/
-ios/build/
-ios/DerivedData/
-ios/*.xcbuilddata
-ios/*.xcuserstate
+# ── iOS — EAS genera el proyecto completo en el servidor ─────────
+ios/
 
 # ── Builds locales de Android ─────────────────────────────────────
 android/build/
