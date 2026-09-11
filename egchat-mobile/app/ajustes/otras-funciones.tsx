@@ -31,13 +31,35 @@ export default function OtrasFuncionesScreen() {
 
   const activatePush = async () => {
     const { status } = await Notifications.getPermissionsAsync();
+
+    // Permisos denegados explícitamente → llevar directo a Ajustes del sistema
     if (status === 'denied') {
-      Linking.openSettings();
+      Alert.alert(
+        'Notificaciones desactivadas',
+        'Para recibir notificaciones ve a Ajustes → EGCHAT → Notificaciones y actívalas.',
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() },
+        ],
+      );
       return;
     }
+
+    // Permiso no solicitado aún o ya concedido → intentar registrar token
     const token = await registerForPushNotifications();
-    if (token) Alert.alert('✅', 'Notificaciones push activadas');
-    else Alert.alert('Permiso denegado', 'Actívalas en ajustes del sistema.');
+    if (token) {
+      Alert.alert('✅ Notificaciones activadas', 'Recibirás mensajes y llamadas aunque la app esté cerrada.');
+    } else {
+      // El usuario rechazó el diálogo del sistema en este intento
+      Alert.alert(
+        'Permiso no concedido',
+        'Puedes activar las notificaciones en Ajustes → EGCHAT → Notificaciones.',
+        [
+          { text: 'Ahora no', style: 'cancel' },
+          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() },
+        ],
+      );
+    }
   };
 
   const openLanguagePicker = () => {
