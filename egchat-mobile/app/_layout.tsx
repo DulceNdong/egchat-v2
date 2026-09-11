@@ -413,6 +413,7 @@ export default function RootLayout() {
     <RootErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
+          <LanguageProvider>
           <ThemeProvider>
             <StatusBarController />
             <Stack screenOptions={{ headerShown: false }}>
