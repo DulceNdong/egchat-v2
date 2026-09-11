@@ -14,9 +14,7 @@
         "com.apple.developer.associated-domains": [
           "applinks:egchat-app.vercel.app"
         ],
-        "com.apple.developer.push-to-talk": true,
         "aps-environment": "production",
-        "com.apple.developer.pushkit.unrestricted-voip": true,
         "com.apple.developer.usernotifications.communication": true
       },
       "infoPlist": {
