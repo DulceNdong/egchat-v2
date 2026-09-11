@@ -125,7 +125,17 @@ android {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
             useLegacyPackaging enableLegacyPackaging.toBoolean()
+            // Evitar duplicados de librerías WebRTC nativas
+            pickFirsts += ['**/libjingle_peerconnection_so.so', '**/libwebrtc.so']
         }
+        // Excluir archivos duplicados de META-INF
+        excludes += [
+            'META-INF/DEPENDENCIES',
+            'META-INF/LICENSE',
+            'META-INF/LICENSE.txt',
+            'META-INF/NOTICE',
+            'META-INF/NOTICE.txt',
+        ]
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
