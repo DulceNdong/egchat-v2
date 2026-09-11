@@ -463,6 +463,7 @@ export default function RootLayout() {
             <ToastContainer />
             <OfflineBanner />
           </ThemeProvider>
+          </LanguageProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
     </RootErrorBoundary>
