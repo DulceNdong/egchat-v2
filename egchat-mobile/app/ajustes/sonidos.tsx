@@ -60,8 +60,8 @@ export default function SonidosScreen() {
                 if (tone.id === 'none' || tone.id === 'vibrate_only') {
                   // Solo vibración — feedback háptico sin audio
                   if (settings.vibrationEnabled && tone.id === 'vibrate_only') {
-                    const { Haptics } = await import('expo-haptics');
-                    await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+                    const HapticsModule = await import('expo-haptics');
+                    await HapticsModule.notificationAsync(HapticsModule.NotificationFeedbackType.Warning).catch(() => {});
                   }
                   return;
                 }
