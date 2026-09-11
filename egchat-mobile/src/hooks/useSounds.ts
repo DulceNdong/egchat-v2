@@ -48,10 +48,10 @@ const MESSAGE_TONE_ASSETS: Record<string, any> = {
 };
 
 const RINGTONE_ASSETS: Record<string, any> = {
-  classic:      require('../../assets/classic.wav'),
-  modern:       require('../../assets/modern.wav'),
-  digital:      require('../../assets/digital.wav'),
-  marimba:      require('../../assets/marimba.wav'),
+  classic:  require('../../assets/classic.wav'),
+  modern:   require('../../assets/modern.wav'),
+  digital:  require('../../assets/digital.wav'),
+  marimba:  require('../../assets/marimba.wav'),
   // vibrate_only y none no tienen asset — se manejan con lógica especial
 };
 
@@ -104,29 +104,41 @@ function retainSound(key: string, sound: Audio.Sound) {
 
 async function releaseSound(key: string) {
   const sound = soundCache[key];
-  if (!sound) return;
-  try { await sound.unloadAsync(); } catch {}
+  if (!sound) return;          // ya liberado — evitar double-free
   activeSounds.delete(sound);
   delete soundCache[key];
+  try { await sound.unloadAsync(); } catch {}
 }
+
+// Tiempo máximo para liberar un sonido aunque didJustFinish nunca dispare
+const SOUND_TIMEOUT_MS = 10_000;
 
 async function playAsset(asset: any, volume = 0.7): Promise<void> {
   if (Platform.OS === 'web') return;
   try {
     await setupAudioMode();
-    const key = `${typeof asset === 'number' ? asset : JSON.stringify(asset)}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    const key = `snd-${Date.now()}-${Math.random().toString(36).slice(2)}`;
     const { sound } = await Audio.Sound.createAsync(asset, {
       shouldPlay: true,
       volume,
       isMuted: false,
     });
     retainSound(key, sound);
+
+    // Liberar cuando el sonido termina naturalmente
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
         releaseSound(key).catch(() => {});
       }
     });
-  } catch {}
+
+    // Safety timeout: liberar si didJustFinish nunca dispara (ej. app en background)
+    setTimeout(() => {
+      releaseSound(key).catch(() => {});
+    }, SOUND_TIMEOUT_MS);
+  } catch (e) {
+    if (__DEV__) console.warn('[useSounds] playAsset error:', e);
+  }
 }
 
 // ── Sonido de mensaje recibido ────────────────────────────────────
@@ -181,6 +193,8 @@ export const previewNotificationTone = async (toneId?: string) => {
 // ── Llamadas ──────────────────────────────────────────────────────
 let ringtoneSound: Audio.Sound | null = null;
 let ringtoneInterval: ReturnType<typeof setInterval> | null = null;
+// Guard para evitar solapamiento de createAsync en el intervalo
+let ringtoneIsCreating = false;
 
 export const startRingtone = async () => {
   await stopRingtone();
@@ -210,21 +224,30 @@ export const startRingtone = async () => {
     const asset = getRingtoneAsset(s.ringtone);
 
     const play = async () => {
-      if (s.vibrationEnabled) {
-        await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
-      }
+      // Evitar llamadas concurrentes a createAsync
+      if (ringtoneIsCreating) return;
+      ringtoneIsCreating = true;
       try {
-        if (ringtoneSound) { await ringtoneSound.unloadAsync(); ringtoneSound = null; }
+        if (s.vibrationEnabled) {
+          await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
+        }
+        if (ringtoneSound) {
+          await ringtoneSound.unloadAsync().catch(() => {});
+          ringtoneSound = null;
+        }
         const { sound } = await Audio.Sound.createAsync(
           asset,
           { shouldPlay: true, volume: s.volume, isLooping: false }
         );
         ringtoneSound = sound;
-      } catch {}
+      } catch (e) {
+        if (__DEV__) console.warn('[useSounds] startRingtone play error:', e);
+      } finally {
+        ringtoneIsCreating = false;
+      }
     };
 
     await play();
-    // Repetir cada 3 segundos
     ringtoneInterval = setInterval(play, 3000);
   } catch {}
 };
@@ -257,12 +280,15 @@ export const previewRingtone = async (toneId?: string) => {
       { shouldPlay: true, volume: s.volume, isLooping: false }
     );
     retainSound(key, sound);
+
+    // Liberar cuando termina naturalmente
     sound.setOnPlaybackStatusUpdate((status) => {
       if (status.isLoaded && status.didJustFinish) {
         releaseSound(key).catch(() => {});
       }
     });
-    // Auto-stop después de 3 segundos
+
+    // Auto-stop después de 3 segundos (releaseSound es idempotente — no double-free)
     setTimeout(() => {
       sound.stopAsync().catch(() => {});
       releaseSound(key).catch(() => {});
@@ -272,10 +298,11 @@ export const previewRingtone = async (toneId?: string) => {
 
 export const stopRingtone = async () => {
   if (ringtoneInterval) { clearInterval(ringtoneInterval); ringtoneInterval = null; }
+  ringtoneIsCreating = false;
   try {
     if (ringtoneSound) {
-      await ringtoneSound.stopAsync();
-      await ringtoneSound.unloadAsync();
+      await ringtoneSound.stopAsync().catch(() => {});
+      await ringtoneSound.unloadAsync().catch(() => {});
       ringtoneSound = null;
     }
     // Restaurar modo audio normal
