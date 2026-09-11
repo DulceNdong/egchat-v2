@@ -2,6 +2,7 @@
   "buildCommand": "rm -rf dist && npm run build",
   "outputDirectory": "dist",
   "routes": [
+    { "src": "/privacy", "dest": "/privacy.html" },
     { "src": "/descarga.html", "dest": "/descarga.html" },
     { "src": "/sw.js", "dest": "/sw.js" },
     { "src": "/clear.html", "dest": "/clear.html" },
