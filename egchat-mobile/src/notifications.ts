@@ -41,9 +41,9 @@ TaskManager.defineTask(BACKGROUND_TASK, async ({ data, error }) => {
 });
 
 // ── Crear canales Android ───────────────────────────────────────────────────
-// Los canales usan el tono guardado por el usuario. En Android el sonido del
-// canal se fija la primera vez que se crea; hay que borrar y recrear el canal
-// si el usuario cambia el tono. Por eso recreamos siempre con el tono actual.
+// Se llama al inicio de la app para asegurar que los canales existen.
+// No borra ni recrea — eso lo hace refreshAndroidChannels cuando el usuario
+// cambia el tono desde ajustes.
 async function createChannels() {
   if (Platform.OS !== 'android') return;
 
@@ -62,7 +62,56 @@ async function createChannels() {
       ? undefined
       : `${soundSettings.ringtone}.wav`;
 
-  // Borrar canales existentes antes de recrear (para que el nuevo sonido aplique)
+  // Solo crear si no existen (no borramos para evitar gap de notificaciones al inicio)
+  const existing = await Notifications.getNotificationChannelsAsync().catch(() => []);
+  const existingIds = new Set(existing.map((c) => c.id));
+
+  if (!existingIds.has('egchat-messages')) {
+    await Notifications.setNotificationChannelAsync('egchat-messages', {
+      name: 'Mensajes',
+      importance: Notifications.AndroidImportance.HIGH,
+      vibrationPattern: soundSettings.vibrationEnabled ? [0, 250, 250, 250] : undefined,
+      lightColor: '#00c8a0',
+      sound: messageSoundFile,
+      enableVibrate: soundSettings.vibrationEnabled,
+      showBadge: true,
+    });
+  }
+
+  if (!existingIds.has('egchat-calls')) {
+    await Notifications.setNotificationChannelAsync('egchat-calls', {
+      name: 'Llamadas',
+      importance: Notifications.AndroidImportance.MAX,
+      vibrationPattern: soundSettings.vibrationEnabled ? [0, 500, 200, 500, 200, 500] : undefined,
+      lightColor: '#facc15',
+      sound: callSoundFile,
+      enableVibrate: soundSettings.vibrationEnabled,
+      showBadge: false,
+      bypassDnd: true,
+      lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
+    });
+  }
+}
+
+// ── Recrear canales Android cuando el usuario cambia el tono ──────────────
+// Llamar desde sonidos.tsx después de guardar un nuevo tono.
+export async function refreshAndroidChannels(): Promise<void> {
+  if (Platform.OS !== 'android') return;
+
+  const { getSoundSettings } = await import('./hooks/useSounds');
+  const soundSettings = await getSoundSettings();
+
+  const messageSoundFile =
+    soundSettings.messageTone === 'none'
+      ? undefined
+      : `${soundSettings.messageTone}.wav`;
+
+  const callSoundFile =
+    soundSettings.ringtone === 'none' || soundSettings.ringtone === 'vibrate_only'
+      ? undefined
+      : `${soundSettings.ringtone}.wav`;
+
+  // Borrar y recrear para que el nuevo sonido aplique
   await Notifications.deleteNotificationChannelAsync('egchat-messages').catch(() => {});
   await Notifications.deleteNotificationChannelAsync('egchat-calls').catch(() => {});
 
@@ -84,17 +133,9 @@ async function createChannels() {
     sound: callSoundFile,
     enableVibrate: soundSettings.vibrationEnabled,
     showBadge: false,
-    // Permite mostrar sobre otras apps (pantalla bloqueada)
     bypassDnd: true,
     lockscreenVisibility: Notifications.AndroidNotificationVisibility.PUBLIC,
   });
-}
-
-// ── Recrear canales Android cuando el usuario cambia el tono ──────────────
-// Llamar desde sonidos.tsx después de guardar un nuevo tono.
-export async function refreshAndroidChannels(): Promise<void> {
-  if (Platform.OS !== 'android') return;
-  await createChannels();
 }
 
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
