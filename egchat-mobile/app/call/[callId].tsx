@@ -48,6 +48,12 @@ export default function CallScreen() {
   const [videoSize, setVideoSize] = useState({ width: 300, height: 400 });
   const [isSharingScreen, setIsSharingScreen] = useState(false);
 
+  // ── Chat en llamada ───────────────────────────────────────────────
+  const [showChat, setShowChat] = useState(false);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; text: string; mine: boolean; time: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const chatInputRef = useRef<TextInput>(null);
+
   // ── Screen Share — usando react-native-webrtc getDisplayMedia ────
   const screenStreamRef = useRef<any>(null);
 
