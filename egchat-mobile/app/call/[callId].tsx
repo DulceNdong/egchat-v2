@@ -241,12 +241,29 @@ export default function CallScreen() {
     if (!callId) return;
     try {
       let offer: any = offerParam;
-      if (typeof offerParam === 'string') {
-        try { offer = JSON.parse(offerParam); } catch { /* ignore */ }
+      // El offer llega como string desde los params de navegación
+      // Puede estar doble-serializado — intentar parsear hasta obtener un objeto
+      if (typeof offer === 'string') {
+        try { offer = JSON.parse(offer); } catch { /* ignore */ }
+      }
+      // Si sigue siendo string tras el primer parse, intentar una vez más
+      if (typeof offer === 'string') {
+        try { offer = JSON.parse(offer); } catch { /* ignore */ }
+      }
+      // Validar que tenemos un offer SDP válido antes de llamar answerCall
+      if (!offer || typeof offer !== 'object' || !offer.type || !offer.sdp) {
+        // Intentar obtener el offer desde la API directamente
+        const { callAPI } = await import('../../src/api');
+        const session = await callAPI.get(callId);
+        if (session?.offer) {
+          offer = session.offer;
+        } else {
+          throw new Error('No se encontró el offer de la llamada');
+        }
       }
       await answerCall(callId, offer, callType as 'audio' | 'video');
-    } catch {
-      Alert.alert('Error', 'No se pudo aceptar la llamada');
+    } catch (err: any) {
+      Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión e inténtalo de nuevo.');
     }
   }, [callId, offerParam, callType, answerCall]);
 
