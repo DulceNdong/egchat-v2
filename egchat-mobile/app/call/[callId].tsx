@@ -653,7 +653,7 @@ export default function CallScreen() {
       </View>
 
       {/* Overlay FaceFilter */}
-      {isVideo && activeFilter !== 'none' && (
+      {isVideo && FACE_FILTER_AVAILABLE && activeFilter !== 'none' && (
         <FaceFilterOverlay faces={faces} filterId={activeFilter} width={SW} height={SH}/>
       )}
 
