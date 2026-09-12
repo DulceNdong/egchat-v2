@@ -1,12 +1,13 @@
-// Pantalla de llamada — paridad App.tsx renderActiveCall + incoming call modal
+// Pantalla de llamada — diseño estilo WhatsApp moderno
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Animated, Alert, Platform, Modal,
+  View, Text, TouchableOpacity, StyleSheet, Animated, Alert, Platform,
+  Modal, Image, KeyboardAvoidingView, TextInput, FlatList,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import Svg, { Path, Line, Rect, Polygon, Polyline } from 'react-native-svg';
+import Svg, { Path, Line, Rect, Polygon, Polyline, Circle } from 'react-native-svg';
 import { EGAvatar } from '../../src/components/ui';
 import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
 import { LiveActivity } from '../../src/native/LiveActivity';
@@ -15,6 +16,7 @@ import { Audio } from 'expo-av';
 import { FaceFilterOverlay } from '../../src/components/FaceFilterOverlay';
 import { FaceFilter, FILTERS, type FilterId, type FaceData } from '../../src/native/FaceFilter';
 import { startRingtone, stopRingtone } from '../../src/hooks/useSounds';
+import { callAPI, getToken, getApiBase } from '../../src/api';
 
 const ACCENT = '#00c8a0';
 
