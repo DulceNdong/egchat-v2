@@ -168,8 +168,6 @@ export default function CallScreen() {
   const dotAnims = useRef([0, 1, 2].map(() => new Animated.Value(0.4))).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initiated = useRef(false);
-  const topOffset = insets.top + 14;
-  const contentOffset = insets.top + 56;
 
   const isVideo = callType === 'video';
   const name = targetName || 'Usuario';
