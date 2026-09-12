@@ -289,6 +289,17 @@ export function useWebRTC() {
       );
     }
 
+    // Si el offer no tiene sdp válido, intentar obtenerlo de la API
+    let validOffer: any = offer;
+    if (!validOffer?.sdp || validOffer.sdp === 'egchat-expo-go-signaling-only') {
+      try {
+        const session = await callAPI.get(callId);
+        if (session?.offer?.sdp && session.offer.sdp !== 'egchat-expo-go-signaling-only') {
+          validOffer = session.offer;
+        }
+      } catch { /* si falla, continúa con el offer original */ }
+    }
+
     const stream = await getUserMedia(type);
     localStreamRef.current = stream;
     setLocalStream(stream);
@@ -304,7 +315,7 @@ export function useWebRTC() {
     }
     pc.onicecandidate = (e: any) => { if (e.candidate) sendIce(e.candidate, 'callee'); };
 
-    await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
+    await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(validOffer));
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
     await callAPI.answer({ callId, answer: pc.localDescription });
