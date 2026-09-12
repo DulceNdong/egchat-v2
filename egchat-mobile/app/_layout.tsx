@@ -465,7 +465,9 @@ export default function RootLayout() {
             )}
             <ToastContainer />
             <OfflineBanner />
+            <FloatingCallBar />
           </ThemeProvider>
+          </ActiveCallProvider>
           </LanguageProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>
