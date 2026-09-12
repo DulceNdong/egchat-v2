@@ -112,7 +112,7 @@ export default function TabsLayout() {
           fontSize: 10,
           fontWeight: '600',
           letterSpacing: 0.3,
-          marginBottom: Platform.OS === 'ios' ? 2 : 5,
+          marginBottom: Platform.OS === 'ios' ? 2 : 8,
         },
         tabBarIconStyle: {
           marginTop: 4,
