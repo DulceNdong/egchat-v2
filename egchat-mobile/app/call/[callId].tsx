@@ -451,44 +451,6 @@ export default function CallScreen() {
     );
   };
 
-  // ── Modo PiP — barra flotante (se muestra encima de cualquier pantalla) ──
-  if (isPip) {
-    return (
-      <View style={[s.pipBar, { top: insets.top + 8 }]}>
-        {renderBg()}
-        <LinearGradient
-          colors={['rgba(10,10,40,0.92)', 'rgba(10,10,40,0.92)']}
-          style={StyleSheet.absoluteFill}
-        />
-        {/* Avatar pequeño */}
-        <View style={s.pipAvatar}>
-          <EGAvatar src={targetAvatar} name={name} size={36}/>
-        </View>
-        {/* Info */}
-        <View style={s.pipInfo}>
-          <Text style={s.pipName} numberOfLines={1}>{name}</Text>
-          <Text style={s.pipStatus}>{isConnected ? `En llamada · ${formatDur(duration)}` : statusLabel()}</Text>
-        </View>
-        {/* Mic */}
-        <TouchableOpacity
-          style={[s.pipBtn, isMuted && { backgroundColor: 'rgba(239,68,68,0.4)' }]}
-          onPress={toggleMute}
-          activeOpacity={0.8}
-        >
-          {IC.mic(isMuted)}
-        </TouchableOpacity>
-        {/* Colgar */}
-        <TouchableOpacity style={s.pipHangup} onPress={hangUp} activeOpacity={0.85}>
-          {IC.hangup(true)}
-        </TouchableOpacity>
-        {/* Expandir */}
-        <TouchableOpacity style={s.pipExpand} onPress={expandFromPip} activeOpacity={0.8}>
-          {IC.expand()}
-        </TouchableOpacity>
-      </View>
-    );
-  }
-
   // ── PANTALLA LLAMADA ENTRANTE ────────────────────────────────────
   if (isIncoming) {
     return (
