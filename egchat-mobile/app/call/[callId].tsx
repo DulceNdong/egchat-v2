@@ -189,9 +189,8 @@ export default function CallScreen() {
   });
   const [showBgPicker, setShowBgPicker] = useState(false);
 
-  // Mini ventana PiP — cuando el usuario pulsa "Mensaje" la llamada
-  // se minimiza a una barra flotante y se navega a la lista de chats
-  const [isPip, setIsPip] = useState(false);
+  // Mini ventana PiP — cuando el usuario pulsa "Mensaje" activa PiP global
+  const { setActiveCall, setIsPip: setGlobalPip } = useActiveCall();
 
   // Animaciones
   const pulseAnim = useRef(new Animated.Value(1)).current;
