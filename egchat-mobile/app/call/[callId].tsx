@@ -26,6 +26,7 @@ import {
   type CallBackground,
   PRESET_BACKGROUNDS,
 } from '../../src/components/call/CallBackgroundPicker';
+import { useActiveCall } from '../../src/context/ActiveCallContext';
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const ACCENT    = '#00c8a0';
