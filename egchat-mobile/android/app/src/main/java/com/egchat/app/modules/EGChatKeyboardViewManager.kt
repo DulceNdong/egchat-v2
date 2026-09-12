@@ -18,10 +18,10 @@ class EGChatKeyboardViewManager : SimpleViewManager<EGChatKeyboardView>() {
     }
 
     override fun getExportedCustomDirectEventTypeConstants(): MutableMap<String, Any> {
-        return MapBuilder.builder<String, Any>()
-            .put("topChangeText", MapBuilder.of("registrationName", "onChangeText"))
-            .put("topSubmit", MapBuilder.of("registrationName", "onSubmit"))
-            .build()
+        return mutableMapOf(
+            "topChangeText" to mapOf("registrationName" to "onChangeText"),
+            "topSubmit" to mapOf("registrationName" to "onSubmit")
+        )
     }
 }
 
