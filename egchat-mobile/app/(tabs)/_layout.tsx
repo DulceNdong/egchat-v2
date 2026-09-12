@@ -86,7 +86,7 @@ export default function TabsLayout() {
           left: 0,
           right: 0,
           bottom: 0,
-          height: Platform.OS === 'ios' ? 92 : 72,
+          height: Platform.OS === 'ios' ? 92 : 68,
           borderTopWidth: 0,
           elevation: 12,
           shadowColor: '#000',
@@ -95,7 +95,8 @@ export default function TabsLayout() {
           shadowRadius: 8,
           backgroundColor: 'transparent',
           overflow: 'hidden',
-          paddingBottom: Platform.OS === 'ios' ? 10 : 6,
+          paddingBottom: Platform.OS === 'ios' ? 10 : 10,
+          paddingTop: Platform.OS === 'android' ? 4 : 0,
         },
         tabBarBackground: () => (
           <LinearGradient
