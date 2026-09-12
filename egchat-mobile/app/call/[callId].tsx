@@ -317,7 +317,19 @@ export default function CallScreen() {
     if (callState === 'connected') {
       stopDialingTone();
       stopRingtone().catch(() => {});
-      timerRef.current = setInterval(() => setDuration(d => d + 1), 1000);
+      // Registrar llamada activa en contexto global
+      setActiveCall({
+        callId, targetName: name, targetAvatar,
+        callType: callType as 'audio' | 'video', duration: 0,
+      });
+      timerRef.current = setInterval(() => {
+        setDuration(d => {
+          const next = d + 1;
+          // Actualizar duración en contexto global
+          setActiveCall(prev => prev ? { ...prev, duration: next } : null);
+          return next;
+        });
+      }, 1000);
       LiveActivity.startCall(callId, name, isVideo);
       NativeCallKit.dismissIncomingCall();
     }
