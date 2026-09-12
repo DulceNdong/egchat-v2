@@ -415,19 +415,17 @@ export default function CallScreen() {
     }
   }, [callId, offerParam, callType, answerCall]);
 
-  // ── Botón Mensaje: minimiza a PiP y navega a chats ───────────────
+  // ── Botón Mensaje: activa PiP global y navega a lista de chats ──
   const openMessageMode = useCallback(() => {
-    setIsPip(true);
-    // Navegar a la lista de chats — la llamada sigue activa en background
-    // con la mini barra flotante que se renderiza desde el _layout
+    setGlobalPip(true);
     router.push('/(tabs)/mensajeria' as any);
-  }, []);
+  }, [setGlobalPip]);
 
   // Restaurar pantalla completa desde PiP
   const expandFromPip = useCallback(() => {
-    setIsPip(false);
+    setGlobalPip(false);
     router.push(`/call/${callId}` as any);
-  }, [callId]);
+  }, [callId, setGlobalPip]);
 
   // ── Fondo ─────────────────────────────────────────────────────────
   const renderBg = () => {
