@@ -329,7 +329,7 @@ export default function CallScreen() {
       NativeCallKit.endCall(callId);
       stopRingtone().catch(() => {});
       setActiveCall(null);
-      setIsPip(false);
+      setGlobalPip(false);
       setTimeout(() => router.back(), 800);
     }
   }, [callState]);
