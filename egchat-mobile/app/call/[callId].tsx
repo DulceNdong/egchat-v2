@@ -343,6 +343,8 @@ export default function CallScreen() {
       LiveActivity.endCall();
       NativeCallKit.endCall(callId);
       stopRingtone().catch(() => {});
+      setActiveCall(null);
+      setIsPip(false);
       setTimeout(() => router.back(), 800);
     }
   }, [callState]);
