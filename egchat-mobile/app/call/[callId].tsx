@@ -174,20 +174,7 @@ export default function CallScreen() {
   } = useWebRTC();
 
   const insets = useSafeAreaInsets();
-  const { setActiveCall, setIsPip } = useActiveCall();
-
-  // Estado principal
-  const [duration,  setDuration]  = useState(0);
-  const [speakerOn, setSpeakerOn] = useState(true);
-  const [activeFilter, setActiveFilter] = useState<FilterId>('none');
-  const [showFilters,  setShowFilters]  = useState(false);
-  const [isSharingScreen, setIsSharingScreen] = useState(false);
-
-  // Fondo personalizable
-  const [bg, setBg] = useState<CallBackground>({
-    type: 'preset', id: 'night', gradient: PRESET_BACKGROUNDS[1].gradient,
-  });
-  const [showBgPicker, setShowBgPicker] = useState(false);
+  const { setActiveCall, setIsPip: setGlobalPip } = useActiveCall();
 
   // Mini ventana PiP — cuando el usuario pulsa "Mensaje" activa PiP global
   const { setActiveCall, setIsPip: setGlobalPip } = useActiveCall();
