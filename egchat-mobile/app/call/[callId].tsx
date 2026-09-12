@@ -9,7 +9,6 @@ import {
   Dimensions, StatusBar,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { BlurView } from 'expo-blur';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Path, Line, Rect, Polygon, Circle, G } from 'react-native-svg';
