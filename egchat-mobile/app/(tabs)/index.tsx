@@ -178,7 +178,6 @@ const FAB_SERVICES = [
 ];
 
 // ── Componente AppIcon (grid home) ────────────────────────────────
-import { Platform } from 'react-native';
 const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; color: string; onPress: () => void }) => (
   <TouchableOpacity style={st.appItem} onPress={onPress} activeOpacity={0.75}>
     <View style={[st.appIconBox, { backgroundColor: Platform.OS === 'android' ? color + '18' : 'rgba(255,255,255,0.22)', borderColor: Platform.OS === 'android' ? color + '55' : 'rgba(255,255,255,0.35)' }]}>
