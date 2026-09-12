@@ -174,6 +174,7 @@ export default function CallScreen() {
   } = useWebRTC();
 
   const insets = useSafeAreaInsets();
+  const { setActiveCall, setIsPip } = useActiveCall();
 
   // Estado principal
   const [duration,  setDuration]  = useState(0);
