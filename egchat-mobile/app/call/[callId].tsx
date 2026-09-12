@@ -203,17 +203,22 @@ export default function CallScreen() {
   // Cargar fondo guardado al montar
   useEffect(() => { loadCallBackground().then(setBg); }, []);
 
-  // FaceFilter init
+  // FaceFilter init — solo si el módulo nativo está disponible
   useEffect(() => {
-    if (!FaceFilter.isAvailable || !isVideo) return;
-    FaceFilter.initialize().then(ok => { faceDetectorRef.current = ok; });
-    return () => { FaceFilter.release(); faceDetectorRef.current = false; };
+    if (!FACE_FILTER_AVAILABLE || !isVideo) return;
+    try {
+      FaceFilter.initialize().then((ok: boolean) => { faceDetectorRef.current = ok; });
+    } catch {}
+    return () => {
+      try { FaceFilter.release(); } catch {}
+      faceDetectorRef.current = false;
+    };
   }, []);
 
   // Loop detección faces
   useEffect(() => {
     if (faceFrameRef.current) { clearInterval(faceFrameRef.current); faceFrameRef.current = null; }
-    if (activeFilter === 'none' || !FaceFilter.isAvailable || !faceDetectorRef.current || !localStream) {
+    if (!FACE_FILTER_AVAILABLE || activeFilter === 'none' || !faceDetectorRef.current || !localStream) {
       setFaces([]); return;
     }
     faceFrameRef.current = setInterval(async () => {
