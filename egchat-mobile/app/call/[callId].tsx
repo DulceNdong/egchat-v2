@@ -11,7 +11,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import Svg, { Path, Line, Rect, Polygon, Circle, G } from 'react-native-svg';
+import Svg, { Path, Line, Rect, Polygon, Circle } from 'react-native-svg';
 import { EGAvatar } from '../../src/components/ui';
 import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
 import { LiveActivity } from '../../src/native/LiveActivity';
