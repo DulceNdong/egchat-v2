@@ -11,6 +11,8 @@ import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken }
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { LanguageProvider } from '../src/context/LanguageContext';
+import { ActiveCallProvider } from '../src/context/ActiveCallContext';
+import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
 import { OfflineBanner } from '../src/components/ui';
