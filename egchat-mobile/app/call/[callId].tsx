@@ -380,40 +380,103 @@ export default function CallScreen() {
     );
   }
 
-  // ── Pantalla activa (paridad renderActiveCall web) ───────────────
+  // ── Pantalla activa — diseño estilo WhatsApp ────────────────────
   return (
     <View style={s.root}>
+      {/* Fondo: video remoto o gradiente oscuro */}
       {isVideo ? (
-        <View style={s.videoBg}>
+        <View style={StyleSheet.absoluteFill}>
           {remoteUrl ? (
-            <RTCView streamURL={remoteUrl} style={s.remoteVideo} objectFit="cover" mirror={false} />
+            <RTCView streamURL={remoteUrl} style={StyleSheet.absoluteFill} objectFit="cover" mirror={false} />
           ) : (
-            <View style={s.remotePlaceholder}>
-              <View style={[s.avatarCircle, { borderColor: `${ACCENT}99` }]}>
-                <Text style={s.initials}>{initials}</Text>
-              </View>
-            </View>
+            <LinearGradient colors={['#0a0a1a', '#0f1f3d', '#0a0a1a']} style={StyleSheet.absoluteFill} />
           )}
+          {/* Overlay oscuro sobre el video para legibilidad */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.55)', 'transparent', 'transparent', 'rgba(0,0,0,0.75)']}
+            locations={[0, 0.25, 0.6, 1]}
+            style={StyleSheet.absoluteFill}
+          />
         </View>
       ) : (
-        <LinearGradient
-          colors={['#1a1a2e', '#16213e', '#0f3460']}
-          locations={[0, 0.5, 1]}
-          style={StyleSheet.absoluteFill}
-        />
+        /* Fondo audio: foto de perfil desenfocada + gradiente oscuro */
+        <View style={StyleSheet.absoluteFill}>
+          {targetAvatar ? (
+            <Image
+              source={{ uri: targetAvatar }}
+              style={[StyleSheet.absoluteFill, { opacity: 0.18 }]}
+              blurRadius={20}
+              resizeMode="cover"
+            />
+          ) : null}
+          <LinearGradient
+            colors={['#0d1117', '#0f2027', '#203a43', '#2c5364']}
+            locations={[0, 0.3, 0.7, 1]}
+            style={StyleSheet.absoluteFill}
+          />
+        </View>
       )}
 
+      {/* ── Fila superior: Minimizar + Añadir persona + Chat ── */}
+      <View style={[s.topBar, { paddingTop: insets.top + 8 }]}>
+        <TouchableOpacity style={s.topBtn} onPress={() => router.back()} activeOpacity={0.8}>
+          <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.5} strokeLinecap="round">
+            <Polyline points="18 15 12 9 6 15"/>
+          </Svg>
+          <Text style={s.topBtnText}>Minimizar</Text>
+        </TouchableOpacity>
+
+        <View style={s.topRight}>
+          {/* Botón chat en llamada */}
+          <TouchableOpacity style={s.topIconBtn} onPress={() => setShowChat(v => !v)} activeOpacity={0.8}>
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2} strokeLinecap="round">
+              <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+            </Svg>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      {/* Video local PiP — esquina superior derecha */}
+      {isVideo && localStream && !isCamOff && (
+        <View style={[s.localPip, { top: insets.top + 56 }]}>
+          <RTCView streamURL={localUrl} style={s.localVideo} objectFit="cover" mirror />
+        </View>
+      )}
+
+      {/* ── Centro: Avatar grande + nombre + estado ── */}
+      {(!isVideo || !remoteUrl) && (
+        <View style={s.centerBlock}>
+          {/* Avatar grande al estilo WhatsApp */}
+          <View style={s.bigAvatarWrap}>
+            <View style={s.bigAvatarRing}>
+              <EGAvatar src={targetAvatar} name={name} size={100} />
+            </View>
+            {isCalling && (
+              <Animated.View style={[s.pulseRing, { transform: [{ scale: pulseAnim }] }]} />
+            )}
+          </View>
+          <Text style={s.bigName}>{name}</Text>
+          <View style={s.statusRow}>
+            {isCalling && <Animated.View style={[s.statusDot, { transform: [{ scale: pulseAnim }] }]} />}
+            {isConnected && <View style={[s.statusDot, { backgroundColor: '#4ade80' }]} />}
+            <Text style={s.statusText}>{statusLabel()}</Text>
+          </View>
+          <Text style={s.callTypeLabel}>{isVideo ? 'Videollamada' : 'Llamada de voz'}</Text>
+        </View>
+      )}
+
+      {/* Banner señalización */}
       {isSignalingOnly && (
-        <View style={[s.signalingBanner, { paddingTop: insets.top }]}>
+        <View style={[s.signalingBanner, { top: insets.top + 52 }]}>
           <Text style={s.signalingText}>
             Expo Go no incluye WebRTC nativo. Usa EAS Dev Client para audio/video reales.
           </Text>
         </View>
       )}
 
-      {/* Banner de pantalla compartida */}
+      {/* Banner pantalla compartida */}
       {isSharingScreen && (
-        <View style={[s.sharingBanner, { top: insets.top + 48 }]}>
+        <View style={[s.sharingBanner, { top: insets.top + 52 }]}>
           <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={ACCENT} strokeWidth={2.5} strokeLinecap="round">
             <Rect x="2" y="3" width="20" height="14" rx="2"/>
             <Path d="M8 21h8M12 17v4"/>
@@ -425,103 +488,59 @@ export default function CallScreen() {
         </View>
       )}
 
-      {/* Minimizar */}
-      <TouchableOpacity
-        style={[s.minimizeBtn, { top: topOffset }]}
-        onPress={() => router.back()}
-        activeOpacity={0.8}
-      >
-        <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={2.5} strokeLinecap="round">
-          <Polyline points="18 15 12 9 6 15"/>
-        </Svg>
-        <Text style={s.minimizeText}>Minimizar</Text>
-      </TouchableOpacity>
+      {/* ── Controles inferiores estilo WhatsApp ── */}
+      <View style={[s.bottomArea, { paddingBottom: insets.bottom + 16 }]}>
 
-      {/* Video local PiP */}
-      {isVideo && localStream && !isCamOff && (
-        <View style={[s.localPip, { top: topOffset + 62 }]}>
-          <RTCView streamURL={localUrl} style={s.localVideo} objectFit="cover" mirror />
-        </View>
-      )}
-
-      {/* Info contacto */}
-      <View style={[s.infoBlock, { marginTop: contentOffset }]}> 
-        {(!isVideo || !remoteUrl) && (
-          <View style={[s.avatarCircle, { borderColor: `${ACCENT}99`, marginBottom: 14 }]}>
-            {targetAvatar ? (
-              <EGAvatar src={targetAvatar} name={name} size={74} />
-            ) : (
-              <Text style={s.initials}>{initials}</Text>
-            )}
-          </View>
-        )}
-        <Text style={s.contactName}>{name}</Text>
-        <View style={s.statusRow}>
-          {isCalling && (
-            <Animated.View style={[s.statusDot, { transform: [{ scale: pulseAnim }] }]} />
-          )}
-          <Text style={s.statusText}>{statusLabel()}</Text>
-        </View>
-        <Text style={s.callTypeLabel}>{isVideo ? 'Videollamada' : 'Llamada de voz'}</Text>
-      </View>
-
-      {/* Controles inferiores */}
-      <SafeAreaView edges={['bottom']} style={s.controlsWrap}>
+        {/* Fila de controles secundarios */}
         <View style={s.controlsRow}>
           {/* Silenciar */}
-          <TouchableOpacity
-            style={[s.ctrlBtn, isMuted && s.ctrlBtnDanger]}
-            onPress={toggleMute}
-            activeOpacity={0.8}
-          >
-            {isMuted ? (
+          <View style={s.ctrlItem}>
+            <TouchableOpacity style={[s.ctrlBtn, isMuted && s.ctrlBtnActive]} onPress={toggleMute} activeOpacity={0.8}>
+              {isMuted ? (
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                  <Line x1="1" y1="1" x2="23" y2="23"/>
+                  <Path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
+                  <Path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
+                  <Line x1="12" y1="19" x2="12" y2="23"/><Line x1="8" y1="23" x2="16" y2="23"/>
+                </Svg>
+              ) : (
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                  <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                  <Path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                  <Line x1="12" y1="19" x2="12" y2="23"/><Line x1="8" y1="23" x2="16" y2="23"/>
+                </Svg>
+              )}
+            </TouchableOpacity>
+            <Text style={s.ctrlLabel}>{isMuted ? 'Activar' : 'Silenciar'}</Text>
+          </View>
+
+          {/* Pantalla compartida */}
+          <View style={s.ctrlItem}>
+            <TouchableOpacity style={[s.ctrlBtn, isSharingScreen && s.ctrlBtnActive]} onPress={toggleScreenShare} activeOpacity={0.8}>
               <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-                <Line x1="1" y1="1" x2="23" y2="23"/>
-                <Path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/>
-                <Path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23"/>
-                <Line x1="12" y1="19" x2="12" y2="23"/><Line x1="8" y1="23" x2="16" y2="23"/>
+                <Rect x="2" y="3" width="20" height="14" rx="2"/>
+                <Path d="M8 21h8M12 17v4"/>
               </Svg>
-            ) : (
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-                <Path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                <Path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                <Line x1="12" y1="19" x2="12" y2="23"/><Line x1="8" y1="23" x2="16" y2="23"/>
-              </Svg>
-            )}
-          </TouchableOpacity>
+            </TouchableOpacity>
+            <Text style={s.ctrlLabel}>Compartir</Text>
+          </View>
 
-          {/* Compartir pantalla */}
-          <TouchableOpacity
-            style={[s.ctrlBtn, isSharingScreen && s.ctrlBtnActive]}
-            onPress={toggleScreenShare}
-            activeOpacity={0.8}
-            accessibilityLabel={isSharingScreen ? 'Dejar de compartir pantalla' : 'Compartir pantalla'}
-          >
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-              <Rect x="2" y="3" width="20" height="14" rx="2"/>
-              <Path d="M8 21h8M12 17v4"/>
-              {isSharingScreen && <Path d="M9 9l3-3 3 3M12 6v7" stroke={ACCENT} strokeWidth={2.5}/>}
-              {!isSharingScreen && <Path d="M9 9l3-3 3 3M12 6v7"/>}
-            </Svg>
-          </TouchableOpacity>
+          {/* Colgar — centro prominente */}
+          <View style={s.ctrlItem}>
+            <TouchableOpacity onPress={hangUp} activeOpacity={0.85}>
+              <View style={s.hangupBtn}>
+                <Svg width={28} height={28} viewBox="0 0 24 24" fill="#fff">
+                  <Path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" transform="rotate(135 12 12)"/>
+                </Svg>
+              </View>
+            </TouchableOpacity>
+            <Text style={s.ctrlLabel}>Colgar</Text>
+          </View>
 
-          {/* Colgar — botón central rojo */}
-          <TouchableOpacity onPress={hangUp} activeOpacity={0.85}>
-            <LinearGradient colors={['#ff3b30', '#c0392b']} style={s.hangupBtn}>
-              <Svg width={30} height={30} viewBox="0 0 24 24" fill="#fff">
-                <Path d="M6.6 10.8c1.4 2.8 3.8 5.1 6.6 6.6l2.2-2.2c.3-.3.7-.4 1-.2 1.1.4 2.3.6 3.6.6.6 0 1 .4 1 1V20c0 .6-.4 1-1 1-9.4 0-17-7.6-17-17 0-.6.4-1 1-1h3.5c.6 0 1 .4 1 1 0 1.3.2 2.5.6 3.6.1.3 0 .7-.2 1L6.6 10.8z" transform="rotate(135 12 12)"/>
-              </Svg>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Cámara o altavoz + botón filtros */}
+          {/* Cámara (video) o Altavoz (audio) */}
           {isVideo ? (
-            <View style={{ flexDirection: 'row', gap: 8 }}>
-              <TouchableOpacity
-                style={[s.ctrlBtn, isCamOff && s.ctrlBtnDanger]}
-                onPress={toggleCamera}
-                activeOpacity={0.8}
-              >
+            <View style={s.ctrlItem}>
+              <TouchableOpacity style={[s.ctrlBtn, isCamOff && s.ctrlBtnActive]} onPress={toggleCamera} activeOpacity={0.8}>
                 {isCamOff ? (
                   <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
                     <Line x1="1" y1="1" x2="23" y2="23"/>
@@ -533,31 +552,43 @@ export default function CallScreen() {
                   </Svg>
                 )}
               </TouchableOpacity>
-              {/* Botón filtros AR */}
-              <TouchableOpacity
-                style={[s.ctrlBtn, showFilters && s.ctrlBtnActive]}
-                onPress={() => setShowFilters(v => !v)}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 18 }}>✨</Text>
-              </TouchableOpacity>
+              <Text style={s.ctrlLabel}>{isCamOff ? 'Activar' : 'Cámara'}</Text>
             </View>
           ) : (
-            <TouchableOpacity
-              style={[s.ctrlBtn, speakerOn && s.ctrlBtnActive]}
-              onPress={toggleSpeaker}
-              activeOpacity={0.8}
-            >
-              <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-                <Polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                <Path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>
-                <Path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>
-              </Svg>
-            </TouchableOpacity>
+            <View style={s.ctrlItem}>
+              <TouchableOpacity style={[s.ctrlBtn, speakerOn && s.ctrlBtnActive]} onPress={toggleSpeaker} activeOpacity={0.8}>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                  <Polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                  {speakerOn && <Path d="M19.07 4.93a10 10 0 0 1 0 14.14"/>}
+                  {speakerOn && <Path d="M15.54 8.46a5 5 0 0 1 0 7.07"/>}
+                  {!speakerOn && <Path d="M15.54 8.46a5 5 0 0 1 0 7.07" stroke="rgba(255,255,255,0.3)"/>}
+                </Svg>
+              </TouchableOpacity>
+              <Text style={s.ctrlLabel}>{speakerOn ? 'Altavoz' : 'Auricular'}</Text>
+            </View>
+          )}
+
+          {/* Filtros AR (solo video) o botón chat */}
+          {isVideo ? (
+            <View style={s.ctrlItem}>
+              <TouchableOpacity style={[s.ctrlBtn, showFilters && s.ctrlBtnActive]} onPress={() => setShowFilters(v => !v)} activeOpacity={0.8}>
+                <Text style={{ fontSize: 20 }}>✨</Text>
+              </TouchableOpacity>
+              <Text style={s.ctrlLabel}>Filtros</Text>
+            </View>
+          ) : (
+            <View style={s.ctrlItem}>
+              <TouchableOpacity style={[s.ctrlBtn, showChat && s.ctrlBtnActive]} onPress={() => setShowChat(v => !v)} activeOpacity={0.8}>
+                <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                  <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                </Svg>
+              </TouchableOpacity>
+              <Text style={s.ctrlLabel}>Chat</Text>
+            </View>
           )}
         </View>
 
-        {/* Selector de filtros AR — solo en videollamada */}
+        {/* Selector filtros AR */}
         {isVideo && showFilters && (
           <View style={s.filtersRow}>
             {FILTERS.map(f => (
@@ -572,9 +603,67 @@ export default function CallScreen() {
             ))}
           </View>
         )}
-      </SafeAreaView>
+      </View>
 
-      {/* Overlay de face filter sobre el video */}
+      {/* ── Panel de chat en llamada ── */}
+      {showChat && (
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          style={[s.chatPanel, { paddingBottom: insets.bottom }]}
+        >
+          <View style={s.chatHeader}>
+            <Text style={s.chatHeaderTitle}>Mensajes</Text>
+            <TouchableOpacity onPress={() => setShowChat(false)} hitSlop={10}>
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.7)" strokeWidth={2.5} strokeLinecap="round">
+                <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
+              </Svg>
+            </TouchableOpacity>
+          </View>
+          <FlatList
+            data={chatMessages}
+            keyExtractor={m => m.id}
+            style={s.chatList}
+            contentContainerStyle={{ padding: 12, gap: 8 }}
+            renderItem={({ item }) => (
+              <View style={[s.chatBubble, item.mine ? s.chatBubbleMine : s.chatBubbleTheirs]}>
+                <Text style={[s.chatBubbleText, item.mine && { color: '#fff' }]}>{item.text}</Text>
+                <Text style={s.chatBubbleTime}>{item.time}</Text>
+              </View>
+            )}
+            ListEmptyComponent={<Text style={s.chatEmpty}>Sin mensajes aún</Text>}
+          />
+          <View style={s.chatInputRow}>
+            <TextInput
+              ref={chatInputRef}
+              style={s.chatInput}
+              value={chatInput}
+              onChangeText={setChatInput}
+              placeholder="Escribe un mensaje..."
+              placeholderTextColor="rgba(255,255,255,0.4)"
+              multiline
+            />
+            <TouchableOpacity
+              style={[s.chatSendBtn, !chatInput.trim() && { opacity: 0.4 }]}
+              disabled={!chatInput.trim()}
+              onPress={() => {
+                if (!chatInput.trim()) return;
+                const now = new Date();
+                const time = `${now.getHours().toString().padStart(2,'0')}:${now.getMinutes().toString().padStart(2,'0')}`;
+                setChatMessages(prev => [...prev, { id: Date.now().toString(), text: chatInput.trim(), mine: true, time }]);
+                setChatInput('');
+              }}
+              activeOpacity={0.8}
+            >
+              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+                <Line x1="22" y1="2" x2="11" y2="13"/>
+                <Path d="M22 2 15 22 11 13 2 9 22 2" fill="#fff" stroke="#fff"/>
+              </Svg>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      )}
+
+      {/* Overlay face filter */}
       {isVideo && activeFilter !== 'none' && (
         <FaceFilterOverlay
           faces={faces}
