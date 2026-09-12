@@ -176,8 +176,7 @@ export default function CallScreen() {
   const insets = useSafeAreaInsets();
   const { setActiveCall, setIsPip: setGlobalPip } = useActiveCall();
 
-  // Mini ventana PiP — cuando el usuario pulsa "Mensaje" activa PiP global
-  const { setActiveCall, setIsPip: setGlobalPip } = useActiveCall();
+  // Estado principal
 
   // Animaciones
   const pulseAnim = useRef(new Animated.Value(1)).current;
