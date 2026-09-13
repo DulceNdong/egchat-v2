@@ -107,6 +107,21 @@ export default function RootLayout() {
 
   const unauthorizedCooldown = useRef(false);
 
+  // ── Modo inmersivo Android — oculta barra de navegación ──────────
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+    const setImmersive = () => {
+      NavigationBar.setVisibilityAsync('hidden');
+      NavigationBar.setBehaviorAsync('inset-swipe');
+    };
+    setImmersive();
+    // Reactivar cuando la app vuelve al primer plano
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') setImmersive();
+    });
+    return () => sub.remove();
+  }, []);
+
   useEffect(() => {
     setUnauthorizedHandler(async () => {
       // Evitar múltiples disparos en cascada (por ejemplo, varias peticiones
