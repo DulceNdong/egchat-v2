@@ -3,7 +3,8 @@ import { Stack, router, useNavigationContainerRef, usePathname } from 'expo-rout
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, ActivityIndicator, StyleSheet, Alert, Platform, Text, TouchableOpacity } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Alert, Platform, Text, TouchableOpacity, AppState } from 'react-native';
+import * as NavigationBar from 'expo-navigation-bar';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
