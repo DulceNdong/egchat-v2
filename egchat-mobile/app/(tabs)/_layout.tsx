@@ -95,7 +95,7 @@ export default function TabsLayout() {
           shadowRadius: 8,
           backgroundColor: 'transparent',
           overflow: 'hidden',
-          paddingBottom: Platform.OS === 'ios' ? 10 : 10,
+          paddingBottom: Platform.OS === 'ios' ? 10 : 4,
           paddingTop: Platform.OS === 'android' ? 4 : 0,
         },
         tabBarBackground: () => (
