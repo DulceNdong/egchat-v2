@@ -1899,3 +1899,176 @@ const qrs = StyleSheet.create({
   closeFullBtn:   { marginHorizontal: 20, marginBottom: 20, paddingVertical: 13, backgroundColor: '#F3F4F6', borderRadius: 12, alignItems: 'center' },
   closeFullTxt:   { fontSize: 14, fontWeight: '600', color: '#6B7280' },
 });
+
+// ── Estilos del bloqueo KYC ───────────────────────────────────────
+const kycS = StyleSheet.create({
+  scrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 48,
+    gap: 16,
+  },
+
+  // Hero card bloqueado
+  heroCard: {
+    borderRadius: 20,
+    padding: 24,
+    alignItems: 'center',
+    gap: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  heroIconWrap: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1.5,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: 4,
+  },
+  heroIconEmoji: { fontSize: 40 },
+
+  statusBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    borderWidth: 1,
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+  },
+  statusDot: {
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+  },
+  statusBadgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    letterSpacing: 0.3,
+  },
+
+  heroTitle: {
+    color: '#ffffff',
+    fontSize: 22,
+    fontWeight: '900',
+    textAlign: 'center',
+    letterSpacing: -0.3,
+  },
+  heroSub: {
+    color: 'rgba(255,255,255,0.55)',
+    fontSize: 13,
+    lineHeight: 19,
+    textAlign: 'center',
+  },
+
+  ctaWrapper: {
+    width: '100%',
+    marginTop: 4,
+    borderRadius: 14,
+    overflow: 'hidden',
+    shadowColor: '#00C8A0',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.4,
+    shadowRadius: 10,
+    elevation: 8,
+  },
+  ctaBtn: { width: '100%' },
+  ctaBtnGrad: {
+    paddingVertical: 15,
+    alignItems: 'center',
+  },
+  ctaBtnText: {
+    color: '#fff',
+    fontSize: 15,
+    fontWeight: '800',
+    letterSpacing: 0.1,
+  },
+
+  // Funciones bloqueadas
+  lockedSection: {
+    backgroundColor: '#fff',
+    borderRadius: 16,
+    padding: 16,
+    gap: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  lockedTitle: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#374151',
+    marginBottom: 10,
+  },
+  lockedRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F3F4F6',
+    gap: 10,
+  },
+  lockedEmoji: { fontSize: 18, width: 28, textAlign: 'center' },
+  lockedRowText: { flex: 1, fontSize: 13, color: '#6B7280', fontWeight: '500' },
+  lockedChip: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+  },
+  lockedChipText: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#EF4444',
+  },
+
+  // Por qué
+  whyBox: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 14,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  whyTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1B3A6B',
+    marginBottom: 8,
+  },
+  whyText: {
+    fontSize: 12,
+    color: '#4B5563',
+    lineHeight: 18,
+  },
+  whyBold: {
+    fontWeight: '700',
+    color: '#1B3A6B',
+  },
+
+  // Suspendido
+  suspendedBox: {
+    backgroundColor: '#FEF2F2',
+    borderRadius: 12,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    alignItems: 'center',
+  },
+  suspendedText: {
+    color: '#EF4444',
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});
