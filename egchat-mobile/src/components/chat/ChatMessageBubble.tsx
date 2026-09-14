@@ -1,9 +1,10 @@
 // Burbuja de mensaje — paridad EGCHAT v2.5.2
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  View, Text, TouchableOpacity, StyleSheet, Image, Linking, Animated,
+  View, Text, TouchableOpacity, StyleSheet, Linking, Animated,
   PanResponder, LayoutChangeEvent, ActivityIndicator,
 } from 'react-native';
+import { Image } from 'expo-image';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Audio } from 'expo-av';
 import Svg, { Path, Rect, Polygon, Line } from 'react-native-svg';
