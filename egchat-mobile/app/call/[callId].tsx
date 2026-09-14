@@ -471,9 +471,10 @@ export default function CallScreen() {
         o.sdp !== 'egchat-expo-go-signaling-only';
 
       if (!isValidOffer(offer)) {
+        // 20 intentos × 3s = 60s — cubre el cold start de Render (30-50s en plan gratuito)
         let found = false;
-        for (let attempt = 0; attempt < 8; attempt++) {
-          if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
+        for (let attempt = 0; attempt < 20; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
           try {
             const session = await callAPI.get(callId);
             if (isValidOffer(session?.offer)) {
