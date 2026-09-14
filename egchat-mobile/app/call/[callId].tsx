@@ -324,6 +324,7 @@ export default function CallScreen() {
   // Timer + conectado
   useEffect(() => {
     if (callState === 'connected') {
+      wasConnectedRef.current = true;
       stopDialingTone();
       stopRingtone().catch(() => {});
       // Registrar llamada activa en contexto global
