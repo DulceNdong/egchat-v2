@@ -413,12 +413,34 @@ export default function CallScreen() {
     return 'Conectando...';
   };
 
+  // Registrar llamada en el chat como mensaje tipo 'call'
+  const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
+    if (!chatId) return;
+    try {
+      const isVideo = callType === 'video';
+      const emoji = isVideo ? '📹' : '📞';
+      let text: string;
+      if (connected && secs > 0) {
+        const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+        const ss = (secs % 60).toString().padStart(2, '0');
+        const dir = role === 'caller' ? 'saliente' : 'entrante';
+        text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} ${dir} (${mm}:${ss})`;
+      } else {
+        text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} perdida`;
+      }
+      await chatAPI.sendMessage(chatId, { text, type: 'call' });
+    } catch { /* silencioso — no bloquear la UI */ }
+  }, [chatId, callType, role]);
+
   const hangUp = useCallback(async () => {
     stopDialingTone();
     await stopRingtone().catch(() => {});
+    const secs = durationRef.current;
+    const connected = wasConnectedRef.current;
     await endCall();
+    logCallToChat(connected, secs);
     router.back();
-  }, [endCall]);
+  }, [endCall, logCallToChat]);
 
   const accept = useCallback(async () => {
     if (!callId) return;
