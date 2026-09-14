@@ -449,6 +449,11 @@ export default function CallScreen() {
   }, [chatId, callType, role]);
 
   const hangUp = useCallback(async () => {
+    // Si somos callee y aún no se conectó, mostrar pantalla entrante
+    // hasta que router.back() complete — evita el flash de pantalla activa
+    if (role === 'callee' && !wasConnectedRef.current) {
+      setIsRejecting(true);
+    }
     stopDialingTone();
     await stopRingOnce();
     const secs = durationRef.current;
@@ -456,7 +461,7 @@ export default function CallScreen() {
     await endCall();
     logCallToChat(connected, secs);
     router.back();
-  }, [endCall, logCallToChat, stopRingOnce]);
+  }, [endCall, logCallToChat, stopRingOnce, role]);
 
   const accept = useCallback(async () => {
     if (!callId) return;
