@@ -12,7 +12,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import Svg, { Path, Circle, Rect, Line, Polyline, Shield } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Line, Polyline } from 'react-native-svg';
 import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS } from '../src/services/kyc';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 
