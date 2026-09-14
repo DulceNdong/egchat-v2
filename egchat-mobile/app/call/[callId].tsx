@@ -509,10 +509,12 @@ export default function CallScreen() {
     }
   }, [callId, offerParam, callType, answerCall]);
 
-  // ── Botón Mensaje: activa PiP global y navega a lista de chats ──
+  // ── Botón Mensaje: activa PiP y navega a mensajería SIN desmontar CallScreen ──
   const openMessageMode = useCallback(() => {
     setGlobalPip(true);
-    router.push('/(tabs)/mensajeria' as any);
+    // router.navigate preserva el stack actual — no desmonta CallScreen
+    // Esto mantiene viva la conexión WebRTC mientras el usuario navega
+    router.navigate('/(tabs)/mensajeria' as any);
   }, [setGlobalPip]);
 
   // Restaurar pantalla completa desde PiP
