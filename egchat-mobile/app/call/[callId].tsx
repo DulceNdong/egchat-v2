@@ -356,11 +356,14 @@ export default function CallScreen() {
       // Notificar al sistema operativo
       LiveActivity.endCall();
       NativeCallKit.endCall(callId);
+      // Registrar en el chat (si la llamada terminó por el lado remoto, hangUp no se llamó)
+      logCallToChat(wasConnectedRef.current, durationRef.current);
       // Limpiar estado global
       setActiveCall(null);
       setGlobalPip(false);
       setTimeout(() => router.back(), 500);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callState]);
 
   // CallKit handlers
