@@ -2220,11 +2220,12 @@ export default function ChatScreen() {
             keyboardShouldPersistTaps="handled"
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             // ── Optimizaciones de rendimiento ──────────────────────
-            initialNumToRender={20}
-            maxToRenderPerBatch={15}
-            updateCellsBatchingPeriod={50}
-            windowSize={10}
+            initialNumToRender={15}
+            maxToRenderPerBatch={10}
+            updateCellsBatchingPeriod={80}
+            windowSize={7}
             removeClippedSubviews={Platform.OS === 'android'}
+            getItemLayout={undefined}
             // ────────────────────────────────────────────────────────
             ListHeaderComponent={loadingMore ? <ActivityIndicator size="small" color={Colors.accent} style={{ marginVertical: 8 }} /> : null}
             ListFooterComponent={(
