@@ -185,6 +185,8 @@ export default function CallScreen() {
   // Estado principal
   const [duration,  setDuration]  = useState(0);
   const [speakerOn, setSpeakerOn] = useState(true);
+  const durationRef = useRef(0); // ref siempre actualizada para leer en hangUp
+  const wasConnectedRef = useRef(false); // saber si llegó a conectarse
   const [activeFilter, setActiveFilter] = useState<FilterId>('none');
   const [showFilters,  setShowFilters]  = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
