@@ -2117,6 +2117,7 @@ export default function ChatScreen() {
         callType,
         role: 'caller',
         targetUserId: otherParticipant?.user_id || '',
+        chatId,
       },
     } as any);
   };
