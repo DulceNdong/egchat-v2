@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 import { Colors, FontWeight } from '../../theme';
 
 // Paleta de colores para avatares por inicial (igual que la web)
