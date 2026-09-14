@@ -416,6 +416,17 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
+    if (Platform.OS === 'android') {
+      const showSub = Keyboard.addListener('keyboardDidShow', (event: any) => {
+        const h = event.endCoordinates?.height ?? 0;
+        setKeyboardBottomOffset(h);
+      });
+      const hideSub = Keyboard.addListener('keyboardDidHide', () => {
+        setKeyboardBottomOffset(0);
+      });
+      return () => { showSub.remove(); hideSub.remove(); };
+    }
+
     if (Platform.OS !== 'ios') return undefined;
 
     const syncKeyboard = (event: any) => {
