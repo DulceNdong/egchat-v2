@@ -93,7 +93,7 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
             ref={videoRef}
             source={{ uri: url }}
             style={vd.video}
-            resizeMode="cover"
+            contentFit="cover" cachePolicy="memory-disk"
             shouldPlay={false}
             isMuted={false}
             onReadyForDisplay={() => setReady(true)}
@@ -1078,7 +1078,7 @@ const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: 
     return (
       <>
         <TouchableOpacity onPress={() => openAt(0)} activeOpacity={0.9}>
-          <Image source={{ uri: visible[0] }} style={{ width: 240, height: 200, borderRadius: 10 }} resizeMode="cover" />
+          <Image source={{ uri: visible[0] }} style={{ width: 240, height: 200, borderRadius: 10 }} contentFit="cover" cachePolicy="memory-disk" />
         </TouchableOpacity>
         <ImageViewer visible={viewerOpen} images={urls} initialIndex={viewerIndex} onClose={() => setViewerOpen(false)} />
       </>
@@ -1094,7 +1094,7 @@ const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: 
         {visible.map((uri, i) => (
           <TouchableOpacity key={i} onPress={() => openAt(i)} activeOpacity={0.85}>
             <View style={{ width: cellSize, height: cellSize }}>
-              <Image source={{ uri }} style={{ width: cellSize, height: cellSize }} resizeMode="cover" />
+              <Image source={{ uri }} style={{ width: cellSize, height: cellSize }} contentFit="cover" cachePolicy="memory-disk" />
               {i === 5 && extra > 0 && (
                 <View style={{ ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center' }}>
                   <Text style={{ color: '#fff', fontWeight: '700', fontSize: 20 }}>+{extra}</Text>
@@ -1433,7 +1433,7 @@ export const ChatMessageBubble = React.memo(({
       )}
       {message.type === 'image' && imageUri ? (
         <TouchableOpacity onPress={() => setImageViewerOpen(true)} activeOpacity={0.9}>
-          <Image source={{ uri: imageUri }} style={s.bubbleImage} resizeMode="cover" />
+          <Image source={{ uri: imageUri }} style={s.bubbleImage} contentFit="cover" cachePolicy="memory-disk" />
         </TouchableOpacity>
       ) : message.type === 'image' ? (
         <Text style={s.bubbleText}>Foto</Text>

@@ -203,6 +203,7 @@ export default function CallScreen() {
   const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
   const initiated = useRef(false);
   const screenStreamRef = useRef<any>(null);
+  const ringStopped = useRef(false); // guard: solo parar el ringtone una vez en iOS
 
   // FaceFilter
   const [faces, setFaces] = useState<FaceData[]>([]);
