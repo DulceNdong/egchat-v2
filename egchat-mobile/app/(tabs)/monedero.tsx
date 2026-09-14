@@ -5,7 +5,6 @@ import {
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
   TextInput, Animated, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { useEffect as _kycUseEffect, useState as _kycUseState, useRef as _kycUseRef } from 'react';
 import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS } from '../../src/services/kyc';
 import type { KycStatus } from '../../src/api';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
