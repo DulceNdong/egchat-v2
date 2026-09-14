@@ -77,17 +77,16 @@ export default function KycStep2() {
 
   useEffect(() => {
     loadKycDraftLocal().then(draft => {
-      setForm(f => ({
-        doc_type: 'dni',
-        doc_number: '',
-        doc_expiry: '',
+      const defaults: Partial<KycFormData> = {
+        doc_type:      'dni',
+        doc_number:    '',
+        doc_expiry:    '',
         doc_front_uri: '',
-        doc_back_uri: '',
+        doc_back_uri:  '',
         doc_front_url: '',
-        doc_back_url: '',
-        ...f,
-        ...draft,
-      }));
+        doc_back_url:  '',
+      };
+      setForm(f => ({ ...defaults, ...f, ...draft } as KycFormData));
     });
   }, []);
 
