@@ -2284,7 +2284,7 @@ export default function ChatScreen() {
         {/* ── BOTTOM DOCK — acompaña al teclado con su misma animación ── */}
         <View
           onLayout={e => setBottomDockHeight(e.nativeEvent.layout.height)}
-          style={[styles.bottomDock, { bottom: Platform.OS === 'ios' ? effectiveDockOffset : 0 }]}
+          style={[styles.bottomDock, { bottom: effectiveDockOffset }]}
         >
 
             {replyTo && (
