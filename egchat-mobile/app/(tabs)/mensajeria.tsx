@@ -964,6 +964,7 @@ function MensajeriaScreenInner() {
           <ChatFlatList
             data={filteredArchived as any[]}
             keyExtractor={(item: any) => item.id}
+            estimatedItemSize={72}
             ListHeaderComponent={
               <View style={{ paddingHorizontal: 8 }}>
                 <View style={st.archiveSubTabs}>
