@@ -1,0 +1,78 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --scrollbar-width: 6px;
+    --scrollbar-track: #f1f5f9;
+    --scrollbar-thumb: #cbd5e1;
+  }
+  .dark {
+    --scrollbar-track: #1e293b;
+    --scrollbar-thumb: #475569;
+  }
+  /* Scrollbar personalizado */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
+  }
+  ::-webkit-scrollbar { width: var(--scrollbar-width); height: var(--scrollbar-width); }
+  ::-webkit-scrollbar-track { background: var(--scrollbar-track); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+
+  /* Focus visible para accesibilidad WCAG 2.1 AA */
+  *:focus-visible {
+    @apply outline-none ring-2 ring-brand-500 ring-offset-2 ring-offset-white dark:ring-offset-gray-950;
+  }
+
+  /* Prevenir selección/copia de imágenes de documentos KYC */
+  .doc-image {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+    pointer-events: none;
+  }
+}
+
+@layer components {
+  .card {
+    @apply bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-gray-800 shadow-sm;
+  }
+  .btn-primary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-brand-500 hover:bg-brand-600
+           text-white font-medium text-sm transition-colors focus-visible:ring-brand-500
+           disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gray-100 dark:bg-gray-800
+           hover:bg-gray-200 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-200
+           font-medium text-sm transition-colors;
+  }
+  .btn-danger {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-red-600 hover:bg-red-700
+           text-white font-medium text-sm transition-colors;
+  }
+  .btn-warning {
+    @apply inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-amber-500 hover:bg-amber-600
+           text-white font-medium text-sm transition-colors;
+  }
+  .input {
+    @apply w-full px-3 py-2 rounded-lg border border-gray-300 dark:border-gray-700
+           bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100
+           placeholder-gray-400 dark:placeholder-gray-600
+           focus:outline-none focus:ring-2 focus:ring-brand-500 focus:border-transparent
+           text-sm transition-colors;
+  }
+  .label {
+    @apply block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1;
+  }
+  .table-th {
+    @apply px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-gray-400
+           uppercase tracking-wider bg-gray-50 dark:bg-gray-800/50;
+  }
+  .table-td {
+    @apply px-4 py-3 text-sm text-gray-900 dark:text-gray-100 border-t
+           border-gray-100 dark:border-gray-800;
+  }
+}
