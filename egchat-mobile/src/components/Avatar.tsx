@@ -64,7 +64,8 @@ export const Avatar: React.FC<AvatarProps> = ({
         <Image
           source={{ uri: photo }}
           style={{ width: size, height: size, borderRadius: size / 2 }}
-          resizeMode="cover"
+          contentFit="cover"
+          cachePolicy="memory-disk"
           onError={() => setImgError(true)}
         />
       ) : (
