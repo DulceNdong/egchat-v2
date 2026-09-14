@@ -1254,7 +1254,142 @@ function MonederoScreenInner() {
     );
   }
 
-  return (
+  // ── KYC: Pantalla de bloqueo si el monedero no está verificado ─
+  // Muestra overlay distinto según el estado KYC del usuario.
+  // approved → acceso normal; pending/none/rejected/suspended → bloqueo
+  if (!kycLoading && kycStatus !== 'approved') {
+    const isNone     = kycStatus === 'none';
+    const isPending  = kycStatus === 'pending';
+    const isRejected = kycStatus === 'rejected';
+    const isSuspended = kycStatus === 'suspended';
+
+    const statusColor = KYC_STATUS_COLORS[kycStatus] || '#9CA3AF';
+    const statusLabel = KYC_STATUS_LABELS[kycStatus] || 'Sin verificar';
+
+    return (
+      <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left','right']}>
+        {/* Header igual al monedero normal */}
+        <EGChatHeader
+          notificationsOpen={false}
+          menuOpen={false}
+          onWeatherPress={() => {}}
+          onNotificationsPress={() => {}}
+          onMenuPress={() => {}}
+        />
+
+        <ScrollView contentContainerStyle={kycS.scrollContent} showsVerticalScrollIndicator={false}>
+
+          {/* Hero bloqueado */}
+          <LinearGradient
+            colors={['#06283d', '#0a3d5e', '#0d2d4a']}
+            start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+            style={kycS.heroCard}
+          >
+            {/* Icono estado */}
+            <View style={kycS.heroIconWrap}>
+              <Text style={kycS.heroIconEmoji}>
+                {isPending ? '⏳' : isRejected ? '⚠️' : isSuspended ? '🚫' : '🏦'}
+              </Text>
+            </View>
+
+            {/* Badge estado */}
+            <View style={[kycS.statusBadge, { backgroundColor: statusColor + '22', borderColor: statusColor + '55' }]}>
+              <View style={[kycS.statusDot, { backgroundColor: statusColor }]}/>
+              <Text style={[kycS.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
+            </View>
+
+            <Text style={kycS.heroTitle}>
+              {isPending   ? 'Verificación en curso' :
+               isRejected  ? 'Verificación rechazada' :
+               isSuspended ? 'Cuenta suspendida' :
+                             'Monedero no activado'}
+            </Text>
+            <Text style={kycS.heroSub}>
+              {isPending
+                ? 'Tu solicitud está siendo revisada por nuestro equipo. Recibirás una notificación en 24-48 horas hábiles.'
+                : isRejected
+                ? 'Tu solicitud anterior no fue aprobada. Puedes volver a intentarlo con documentos correctos.'
+                : isSuspended
+                ? 'Tu cuenta ha sido suspendida. Contacta con soporte para más información.'
+                : 'Verifica tu identidad para desbloquear todas las funciones del monedero digital.'}
+            </Text>
+
+            {/* CTA principal — solo si puede actuar */}
+            {!isSuspended && (
+              <Animated.View style={[kycS.ctaWrapper, { transform: [{ scale: kycPulse }] }]}>
+                <TouchableOpacity
+                  activeOpacity={0.88}
+                  onPress={() => router.push('/kyc-wallet-prompt' as any)}
+                  style={kycS.ctaBtn}
+                >
+                  <LinearGradient
+                    colors={['#00C8A0', '#00B4E6']}
+                    start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                    style={kycS.ctaBtnGrad}
+                  >
+                    <Text style={kycS.ctaBtnText}>
+                      {isPending   ? '📋 Ver estado de verificación' :
+                       isRejected  ? '🔄 Reintentar verificación' :
+                                     '🚀 Activar mi monedero ahora'}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+          </LinearGradient>
+
+          {/* Funciones bloqueadas — preview */}
+          <View style={kycS.lockedSection}>
+            <Text style={kycS.lockedTitle}>
+              🔒 Funciones disponibles tras verificación
+            </Text>
+            {[
+              { emoji: '💰', text: 'Ver y gestionar tu saldo XAF' },
+              { emoji: '📤', text: 'Transferir dinero a contactos' },
+              { emoji: '🔋', text: 'Recargar saldo (tarjeta, Orange Money, MTN…)' },
+              { emoji: '💡', text: 'Pagar electricidad, agua, DGI y más' },
+              { emoji: '📥', text: 'Recibir pagos por QR' },
+              { emoji: '🏦', text: 'Vincular cuenta bancaria BANGE' },
+            ].map((item, i) => (
+              <View key={i} style={kycS.lockedRow}>
+                <Text style={kycS.lockedEmoji}>{item.emoji}</Text>
+                <Text style={kycS.lockedRowText}>{item.text}</Text>
+                <View style={kycS.lockedChip}>
+                  <Text style={kycS.lockedChipText}>Bloqueado</Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          {/* Por qué es necesario */}
+          <View style={kycS.whyBox}>
+            <Text style={kycS.whyTitle}>¿Por qué necesito verificarme?</Text>
+            <Text style={kycS.whyText}>
+              EGChat opera el monedero digital en alianza con{' '}
+              <Text style={kycS.whyBold}>BANGE (Banco Nacional de Guinea Ecuatorial)</Text>,
+              bajo licencia de Emisor de Dinero Electrónico ante la{' '}
+              <Text style={kycS.whyBold}>BEAC/COBAC</Text>.{'\n\n'}
+              La verificación de identidad es obligatoria según el{' '}
+              <Text style={kycS.whyBold}>Reglamento COBAC R-2023/01</Text>{' '}
+              y la <Text style={kycS.whyBold}>Ley N°2/2008</Text> de Guinea Ecuatorial.
+              Tus datos están protegidos y solo se usan para cumplimiento normativo.
+            </Text>
+          </View>
+
+          {/* Solo para suspended */}
+          {isSuspended && (
+            <View style={kycS.suspendedBox}>
+              <Text style={kycS.suspendedText}>
+                📧 Contacta con soporte: soporte@egchat.gq
+              </Text>
+            </View>
+          )}
+
+        </ScrollView>
+        <DraggableHomeButton />
+      </SafeAreaView>
+    );
+  }
     <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right']}>
 
       {/* ── Header ── */}
