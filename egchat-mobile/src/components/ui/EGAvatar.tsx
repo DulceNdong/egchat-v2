@@ -31,7 +31,7 @@ const isValidAvatarUrl = (url?: string | null): url is string =>
   !url.includes('egchat-api-xlxj.onrender.com/static/avatars/') &&
   !url.includes('ui-avatars.com/api/?name=D&');
 
-export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
+export const EGAvatar: React.FC<EGAvatarProps> = React.memo(({ src, name, size = 48 }) => {
   const [imgError, setImgError] = useState(false);
 
   // Resetear error cuando cambia la URL (nueva foto de perfil)
