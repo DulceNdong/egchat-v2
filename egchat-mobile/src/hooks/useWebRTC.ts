@@ -295,8 +295,10 @@ export function useWebRTC() {
       o?.sdp && o.sdp !== 'egchat-expo-go-signaling-only';
 
     if (!isValidSdp(validOffer)) {
-      for (let attempt = 0; attempt < 3; attempt++) {
-        if (attempt > 0) await new Promise(r => setTimeout(r, 1500));
+      // El caller puede tardar unos segundos en registrar el offer en el servidor
+      // Reintentar hasta 8 veces con 2s de espera entre cada intento (16s total)
+      for (let attempt = 0; attempt < 8; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
         try {
           const session = await callAPI.get(callId);
           if (isValidSdp(session?.offer)) {
