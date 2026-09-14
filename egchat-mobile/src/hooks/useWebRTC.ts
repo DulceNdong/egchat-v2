@@ -171,6 +171,13 @@ export function useWebRTC() {
     if (endedRef.current) return;
     endedRef.current = true;
     const id = callIdRef.current;
+    // Parar audio inmediatamente — no esperar a que el componente reaccione
+    stopDialingTone();
+    stopRingtone().catch(() => {});
+    // Notificar al sistema operativo que la llamada terminó
+    if (id) {
+      try { NativeCallKit.endCall(id); } catch { /* módulo no disponible */ }
+    }
     if (id) {
       try { await callAPI.end(id); } catch { /* ignore */ }
     }
