@@ -334,6 +334,7 @@ export default function CallScreen() {
       timerRef.current = setInterval(() => {
         setDuration(d => {
           const next = d + 1;
+          durationRef.current = next;
           // Actualizar duración en contexto global
           setActiveCall(prev => prev ? { ...prev, duration: next } : null);
           return next;
