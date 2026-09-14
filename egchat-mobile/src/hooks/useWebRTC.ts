@@ -4,6 +4,8 @@ import { Platform, View } from 'react-native';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
 import { callAPI } from '../api';
+import { stopRingtone, stopDialingTone } from './useSounds';
+import { NativeCallKit } from '../native/CallKit';
 
 export type CallState = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
 
