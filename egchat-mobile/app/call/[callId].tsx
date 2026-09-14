@@ -342,16 +342,19 @@ export default function CallScreen() {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [callState]);
 
-  // Fin de llamada
+  // Fin de llamada — parar todo el audio de forma síncrona y navegar atrás
   useEffect(() => {
     if (callState === 'ended') {
+      // Parar audio inmediatamente, sin esperar
       stopDialingTone();
+      stopRingtone().catch(() => {});
+      // Notificar al sistema operativo
       LiveActivity.endCall();
       NativeCallKit.endCall(callId);
-      stopRingtone().catch(() => {});
+      // Limpiar estado global
       setActiveCall(null);
       setGlobalPip(false);
-      setTimeout(() => router.back(), 800);
+      setTimeout(() => router.back(), 500);
     }
   }, [callState]);
 
