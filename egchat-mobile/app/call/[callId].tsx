@@ -375,7 +375,8 @@ export default function CallScreen() {
   }, []);
 
   // Estados UI
-  const uiState    = role === 'callee' && callState === 'idle' ? 'ringing' : callState;
+  const [isRejecting, setIsRejecting] = useState(false); // evita flash de pantalla activa al rechazar
+  const uiState    = role === 'callee' && (callState === 'idle' || isRejecting) ? 'ringing' : callState;
   const isIncoming  = uiState === 'ringing' && role === 'callee';
   const isCalling   = uiState === 'calling' || (uiState === 'ringing' && role === 'caller');
   const isConnected = uiState === 'connected';
