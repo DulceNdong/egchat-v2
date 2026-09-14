@@ -18,11 +18,6 @@ import { NativeCallKit } from '../../src/native/CallKit';
 import { Audio } from 'expo-av';
 import { FaceFilterOverlay } from '../../src/components/FaceFilterOverlay';
 import { FaceFilter, FILTERS, type FilterId, type FaceData } from '../../src/native/FaceFilter';
-
-// Guard: si el módulo nativo no está disponible, no crashear
-const FACE_FILTER_AVAILABLE = (() => {
-  try { return !!FaceFilter?.isAvailable; } catch { return false; }
-})();
 import { startRingtone, stopRingtone, startDialingTone, stopDialingTone } from '../../src/hooks/useSounds';
 import { callAPI } from '../../src/api';
 import { chatAPI } from '../../src/api';
@@ -33,6 +28,11 @@ import {
   PRESET_BACKGROUNDS,
 } from '../../src/components/call/CallBackgroundPicker';
 import { useActiveCall } from '../../src/context/ActiveCallContext';
+
+// Guard: si el módulo nativo no está disponible, no crashear
+const FACE_FILTER_AVAILABLE = (() => {
+  try { return !!FaceFilter?.isAvailable; } catch { return false; }
+})();
 
 const { width: SW, height: SH } = Dimensions.get('window');
 const ACCENT    = '#00c8a0';
