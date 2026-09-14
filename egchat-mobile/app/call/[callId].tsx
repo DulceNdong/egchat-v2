@@ -362,6 +362,17 @@ export default function CallScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callState]);
 
+  // Registrar controles en el contexto global para que FloatingCallBar pueda colgar/mutear
+  useEffect(() => {
+    registerCallControls({ endCall, toggleMute, isMuted });
+  }, [endCall, toggleMute, isMuted, registerCallControls]);
+
+  // Limpiar controles al desmontar
+  useEffect(() => {
+    return () => { unregisterCallControls(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // CallKit handlers
   useEffect(() => {
     if (role === 'callee' && callState === 'idle') {
