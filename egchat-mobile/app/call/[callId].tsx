@@ -411,11 +411,29 @@ export default function CallScreen() {
       let offer: any = offerParam;
       if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch {} }
       if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch {} }
-      if (!offer || typeof offer !== 'object' || !offer.type || !offer.sdp) {
-        const session = await callAPI.get(callId);
-        if (session?.offer) offer = session.offer;
-        else throw new Error('No se encontró el offer de la llamada');
+
+      // Si el offer no llegó en el push o está vacío, lo buscamos en el servidor
+      // con hasta 5 reintentos (para cuando Render está despertando del hibernado)
+      const isValidOffer = (o: any) =>
+        o && typeof o === 'object' && o.type && o.sdp &&
+        o.sdp !== 'egchat-expo-go-signaling-only';
+
+      if (!isValidOffer(offer)) {
+        let found = false;
+        for (let attempt = 0; attempt < 5; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 1500));
+          try {
+            const session = await callAPI.get(callId);
+            if (isValidOffer(session?.offer)) {
+              offer = session.offer;
+              found = true;
+              break;
+            }
+          } catch { /* reintenta */ }
+        }
+        if (!found) throw new Error('No se pudo obtener los datos de la llamada. Inténtalo de nuevo.');
       }
+
       await answerCall(callId, offer, callType as 'audio' | 'video');
     } catch (err: any) {
       Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión e inténtalo de nuevo.');
