@@ -165,11 +165,11 @@ const IC = {
 export default function CallScreen() {
   const {
     callId, targetName, targetAvatar, callType, role,
-    targetUserId, offer: offerParam,
+    targetUserId, offer: offerParam, chatId,
   } = useLocalSearchParams<{
     callId: string; targetName: string; targetAvatar: string;
     callType: 'audio' | 'video'; role: 'caller' | 'callee';
-    targetUserId?: string; offer?: string;
+    targetUserId?: string; offer?: string; chatId?: string;
   }>();
 
   const {
