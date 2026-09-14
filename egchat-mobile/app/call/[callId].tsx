@@ -327,7 +327,7 @@ export default function CallScreen() {
     if (callState === 'connected') {
       wasConnectedRef.current = true;
       stopDialingTone();
-      stopRingtone().catch(() => {});
+      stopRingOnce(); // para el ringtone del callee al conectar
       // Registrar llamada activa en contexto global
       setActiveCall({
         callId, targetName: name, targetAvatar,
