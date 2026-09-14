@@ -144,6 +144,10 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
+  iconBtnActive: {
+    backgroundColor: 'rgba(239,68,68,0.35)',
+    borderColor: '#ef4444',
+  },
   hangupBtn: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: '#ef4444',
