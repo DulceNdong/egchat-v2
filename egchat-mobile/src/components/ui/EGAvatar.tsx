@@ -71,7 +71,7 @@ export const EGAvatar: React.FC<EGAvatarProps> = React.memo(({ src, name, size =
       <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   avatar: {
