@@ -25,6 +25,7 @@ const FACE_FILTER_AVAILABLE = (() => {
 })();
 import { startRingtone, stopRingtone, startDialingTone, stopDialingTone } from '../../src/hooks/useSounds';
 import { callAPI } from '../../src/api';
+import { chatAPI } from '../../src/api';
 import {
   CallBackgroundPicker,
   loadCallBackground,
