@@ -645,80 +645,83 @@ export default function CallScreen() {
         </View>
       )}
 
-      {/* ── Controles — dos filas ── */}
+      {/* ── Controles — bloque glassmorphism ── */}
       <View style={[s.ctrlArea, { paddingBottom: insets.bottom + 24 }]}>
+        <View style={s.ctrlPanel}>
 
-        {/* Fila 1: Video · Silenciar · Altavoz · Añadir */}
-        <View style={s.ctrlRow}>
-          <GlassBtn
-            onPress={isVideo ? toggleCamera : () => Alert.alert('Video', 'Activa el video durante la llamada.')}
-            icon={IC.video(isCamOff)}
-            label={isCamOff ? 'Video off' : 'Video'}
-            active={isVideo && !isCamOff}
-          />
-          <GlassBtn
-            onPress={toggleMute}
-            icon={IC.mic(isMuted)}
-            label={isMuted ? 'Activar mic' : 'Silenciar'}
-            danger={isMuted}
-          />
-          <GlassBtn
-            onPress={toggleSpeaker}
-            icon={IC.speaker(speakerOn)}
-            label={speakerOn ? 'Altavoz' : 'Auricular'}
-            active={speakerOn}
-          />
-          <GlassBtn
-            onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas a esta llamada.')}
-            icon={IC.addUser()}
-            label="Añadir"
-          />
-        </View>
-
-        {/* Fila 2: Mensaje · Colgar · Más */}
-        <View style={s.ctrlRowCenter}>
-          <GlassBtn
-            onPress={openMessageMode}
-            icon={IC.chat()}
-            label="Mensaje"
-          />
-
-          {/* Colgar — botón central prominente */}
-          <View style={s.hangupWrap}>
-            <TouchableOpacity style={s.hangupBtn} onPress={hangUp} activeOpacity={0.85}>
-              {IC.hangup()}
-            </TouchableOpacity>
-            <Text style={gb.label}>Colgar</Text>
+          {/* Fila 1: Video · Silenciar · Altavoz · Añadir */}
+          <View style={s.ctrlRow}>
+            <GlassBtn
+              onPress={isVideo ? toggleCamera : () => Alert.alert('Video', 'Activa el video durante la llamada.')}
+              icon={IC.video(isCamOff)}
+              label={isCamOff ? 'Video off' : 'Video'}
+              active={isVideo && !isCamOff}
+            />
+            <GlassBtn
+              onPress={toggleMute}
+              icon={IC.mic(isMuted)}
+              label={isMuted ? 'Activar mic' : 'Silenciar'}
+              danger={isMuted}
+            />
+            <GlassBtn
+              onPress={toggleSpeaker}
+              icon={IC.speaker(speakerOn)}
+              label={speakerOn ? 'Altavoz' : 'Auricular'}
+              active={speakerOn}
+            />
+            <GlassBtn
+              onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas a esta llamada.')}
+              icon={IC.addUser()}
+              label="Añadir"
+            />
           </View>
 
-          <GlassBtn
-            onPress={() => {
-              Alert.alert('Más opciones', '', [
-                { text: 'Cambiar fondo', onPress: () => setShowBgPicker(true) },
-                { text: isVideo ? 'Filtros AR' : 'Compartir pantalla', onPress: isVideo ? () => setShowFilters(v => !v) : toggleScreenShare },
-                { text: 'Cancelar', style: 'cancel' },
-              ]);
-            }}
-            icon={IC.more()}
-            label="Más"
-          />
-        </View>
+          {/* Fila 2: Mensaje · Colgar · Más */}
+          <View style={s.ctrlRowCenter}>
+            <GlassBtn
+              onPress={openMessageMode}
+              icon={IC.chat()}
+              label="Mensaje"
+            />
 
-        {/* Filtros AR */}
-        {isVideo && showFilters && (
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtersRow}>
-            {FILTERS.map(f => (
-              <TouchableOpacity
-                key={f.id}
-                style={[s.filterChip, activeFilter === f.id && s.filterChipActive]}
-                onPress={() => { setActiveFilter(f.id); setShowFilters(false); }}
-                activeOpacity={0.8}
-              >
-                <Text style={{ fontSize: 22 }}>{f.emoji}</Text>
+            {/* Colgar — botón central prominente */}
+            <View style={s.hangupWrap}>
+              <TouchableOpacity style={s.hangupBtn} onPress={hangUp} activeOpacity={0.85}>
+                {IC.hangup()}
               </TouchableOpacity>
-            ))}
-          </ScrollView>
-        )}
+              <Text style={gb.label}>Colgar</Text>
+            </View>
+
+            <GlassBtn
+              onPress={() => {
+                Alert.alert('Más opciones', '', [
+                  { text: 'Cambiar fondo', onPress: () => setShowBgPicker(true) },
+                  { text: isVideo ? 'Filtros AR' : 'Compartir pantalla', onPress: isVideo ? () => setShowFilters(v => !v) : toggleScreenShare },
+                  { text: 'Cancelar', style: 'cancel' },
+                ]);
+              }}
+              icon={IC.more()}
+              label="Más"
+            />
+          </View>
+
+          {/* Filtros AR */}
+          {isVideo && showFilters && (
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.filtersRow}>
+              {FILTERS.map(f => (
+                <TouchableOpacity
+                  key={f.id}
+                  style={[s.filterChip, activeFilter === f.id && s.filterChipActive]}
+                  onPress={() => { setActiveFilter(f.id); setShowFilters(false); }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={{ fontSize: 22 }}>{f.emoji}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+
+        </View>
       </View>
 
       {/* Overlay FaceFilter */}
