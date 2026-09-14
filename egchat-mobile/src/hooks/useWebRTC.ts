@@ -347,7 +347,7 @@ export function useWebRTC() {
         }
         callerIce = cands.length;
       } catch { /* retry */ }
-    }, 1000);
+    }, 500); // 500ms — detecta cuelgue remoto 2x más rápido
   }, [cleanupResources, createPC, endCallInternal, getUserMedia, sendIce, stopPolling]);
 
   // ── Modo Expo Go (solo señalización) ─────────────────────────────
