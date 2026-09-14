@@ -171,10 +171,10 @@ export function useWebRTC() {
     if (endedRef.current) return;
     endedRef.current = true;
     const id = callIdRef.current;
-    // Parar audio inmediatamente — no esperar a que el componente reaccione
+    // Parar audio — el componente también lo hace con su guard, pero por si
+    // endCallInternal se llama desde el hook (conexión caída) sin pasar por el componente
     stopDialingTone();
     stopRingtone().catch(() => {});
-    // Notificar al sistema operativo que la llamada terminó
     if (id) {
       try { NativeCallKit.endCall(id); } catch { /* módulo no disponible */ }
     }
