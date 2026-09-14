@@ -16,7 +16,6 @@ function formatDur(s: number) {
   return `${Math.floor(s / 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
 }
 
-// Iconos inline
 const MicIcon = ({ off }: { off?: boolean }) => (
   <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
     {off && <Line x1="1" y1="1" x2="23" y2="23"/>}
@@ -40,7 +39,7 @@ const ExpandIcon = () => (
 );
 
 export function FloatingCallBar() {
-  const { activeCall, isPip, setIsPip } = useActiveCall();
+  const { activeCall, isPip, setIsPip, callControls } = useActiveCall();
   const insets = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-80)).current;
 
@@ -57,17 +56,23 @@ export function FloatingCallBar() {
 
   const expandCall = () => {
     setIsPip(false);
-    router.push({
-      pathname: '/call/[callId]',
-      params: {
-        callId: activeCall.callId,
-        targetName: activeCall.targetName,
-        targetAvatar: activeCall.targetAvatar || '',
-        callType: activeCall.callType,
-        role: 'callee',
-      },
-    } as any);
+    // Volver a la pantalla de llamada que sigue montada en el stack
+    router.back();
   };
+
+  const handleHangup = () => {
+    if (callControls?.endCall) {
+      callControls.endCall();
+    }
+  };
+
+  const handleMute = () => {
+    if (callControls?.toggleMute) {
+      callControls.toggleMute();
+    }
+  };
+
+  const isMuted = callControls?.isMuted ?? false;
 
   return (
     <Animated.View
@@ -76,13 +81,10 @@ export function FloatingCallBar() {
         { top: insets.top + 10, transform: [{ translateY: slideAnim }] },
       ]}
     >
-      {/* Fondo glassmorphism */}
       <View style={s.bgBlur}/>
 
-      {/* Avatar */}
       <EGAvatar src={activeCall.targetAvatar} name={activeCall.targetName} size={36}/>
 
-      {/* Info */}
       <View style={s.info}>
         <Text style={s.name} numberOfLines={1}>{activeCall.targetName}</Text>
         <View style={s.statusRow}>
@@ -93,15 +95,21 @@ export function FloatingCallBar() {
         </View>
       </View>
 
-      {/* Botones */}
-      <TouchableOpacity style={s.iconBtn} onPress={() => {}} activeOpacity={0.8}>
-        <MicIcon/>
+      {/* Mutear */}
+      <TouchableOpacity
+        style={[s.iconBtn, isMuted && s.iconBtnActive]}
+        onPress={handleMute}
+        activeOpacity={0.8}
+      >
+        <MicIcon off={isMuted}/>
       </TouchableOpacity>
 
-      <TouchableOpacity style={s.hangupBtn} onPress={() => {}} activeOpacity={0.85}>
+      {/* Colgar */}
+      <TouchableOpacity style={s.hangupBtn} onPress={handleHangup} activeOpacity={0.85}>
         <HangupIcon/>
       </TouchableOpacity>
 
+      {/* Expandir — vuelve a la pantalla de llamada */}
       <TouchableOpacity style={s.expandBtn} onPress={expandCall} activeOpacity={0.8}>
         <ExpandIcon/>
       </TouchableOpacity>
