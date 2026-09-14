@@ -384,19 +384,34 @@ export default function CallScreen() {
   const isCalling   = uiState === 'calling' || (uiState === 'ringing' && role === 'caller');
   const isConnected = uiState === 'connected';
 
-  // Ringtone para el callee — solo gestiona el ringtone del callee
+  // Para el ringtone una sola vez, evitando llamadas paralelas en iOS
+  const stopRingOnce = useCallback(async () => {
+    if (ringStopped.current) return;
+    ringStopped.current = true;
+    try { await stopRingtone(); } catch {}
+    // iOS necesita un pequeño delay antes de liberar la sesión de audio
+    await new Promise(r => setTimeout(r, 80));
+  }, []);
+
+  // Reiniciar el guard cuando llegue una nueva llamada entrante
+  useEffect(() => {
+    if (role === 'callee' && (callState === 'idle' || callState === 'ringing')) {
+      ringStopped.current = false;
+    }
+  }, [callState, role]);
+
+  // Ringtone para el callee — controlado por el guard
   useEffect(() => {
     if (isIncoming) {
+      ringStopped.current = false;
       startRingtone().catch(() => {});
     } else {
-      // Solo parar si éramos callee y ya no estamos en estado entrante
-      if (role === 'callee') stopRingtone().catch(() => {});
+      if (role === 'callee') stopRingOnce();
     }
-    return () => { stopRingtone().catch(() => {}); };
+    return () => { if (role === 'callee') stopRingOnce(); };
   }, [isIncoming]);
 
-  // Ringtone de llamada saliente (caller escucha un tono de espera)
-  // Solo actúa cuando el rol es caller para evitar interferir con el callee
+  // Ringtone de llamada saliente — solo caller, no interfiere con callee
   useEffect(() => {
     if (role !== 'caller') return;
     if (isCalling) {
@@ -404,7 +419,7 @@ export default function CallScreen() {
     } else {
       stopRingtone().catch(() => {});
     }
-    return () => { stopRingtone().catch(() => {}); };
+    return () => { if (role === 'caller') stopRingtone().catch(() => {}); };
   }, [isCalling]);
 
   const formatDur = (s: number) =>
