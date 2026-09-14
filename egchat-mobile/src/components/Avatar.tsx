@@ -1,6 +1,7 @@
 // Avatar.tsx — Componente de avatar para React Native
 import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { Image } from 'expo-image';
 
 const PALETTES = [
   ['#00c8a0', '#00B4E6'],
