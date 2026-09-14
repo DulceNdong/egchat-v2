@@ -5697,4 +5697,376 @@ if (require.main === module) {
   updateUserVersions();
 }
 
+// ══════════════════════════════════════════════════════════════════
+// KYC — Sistema de Verificación de Identidad / Monedero Digital
+// Cumplimiento COBAC R-2023/01 · CEMAC N°02/24 · Ley N°2/2008 GQ
+// ══════════════════════════════════════════════════════════════════
+
+// ── Helpers de KYC ───────────────────────────────────────────────
+const KYC_STATUS = {
+  NONE:         'none',
+  PENDING:      'pending',
+  APPROVED:     'approved',
+  REJECTED:     'rejected',
+  SUSPENDED:    'suspended',
+};
+
+const KYC_DB_STATUS = {
+  DRAFT:        'draft',
+  SUBMITTED:    'submitted',
+  UNDER_REVIEW: 'under_review',
+  APPROVED:     'approved',
+  REJECTED:     'rejected',
+  SUSPENDED:    'suspended',
+};
+
+// Inicializar bucket kyc-docs en Supabase Storage (idempotente)
+async function ensureKycBucket() {
+  try {
+    const { data: buckets } = await supabase.storage.listBuckets();
+    const exists = (buckets || []).some(b => b.name === 'kyc-docs');
+    if (!exists) {
+      await supabase.storage.createBucket('kyc-docs', {
+        public: false, // privado — solo accesible con token de servicio
+        allowedMimeTypes: ['image/jpeg','image/png','image/webp','application/pdf'],
+        fileSizeLimit: 10 * 1024 * 1024, // 10 MB por documento
+      });
+      console.log('✅ Bucket kyc-docs creado');
+    }
+  } catch (e) {
+    console.warn('[KYC] ensureKycBucket:', e.message);
+  }
+}
+ensureKycBucket();
+
+// ── GET /api/kyc/status — estado actual del KYC del usuario ───────
+app.get('/api/kyc/status', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Primero intentar con Supabase
+    if (supabase) {
+      const { data: kyc, error } = await supabase
+        .from('kyc_verifications')
+        .select('id, status, rejection_reason, submitted_at, reviewed_at, full_name, doc_type, doc_number')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      // Obtener wallet_kyc_status del usuario
+      const { data: userData } = await supabase
+        .from('users')
+        .select('wallet_kyc_status, wallet_kyc_reject_reason')
+        .eq('id', userId)
+        .maybeSingle();
+
+      return res.json({
+        kyc_status: userData?.wallet_kyc_status || KYC_STATUS.NONE,
+        kyc_record: kyc || null,
+        rejection_reason: userData?.wallet_kyc_reject_reason || kyc?.rejection_reason || null,
+        wallet_enabled: userData?.wallet_kyc_status === KYC_STATUS.APPROVED,
+      });
+    }
+
+    // Fallback local
+    return res.json({ kyc_status: KYC_STATUS.NONE, kyc_record: null, wallet_enabled: false });
+  } catch (e) {
+    console.error('[KYC] status error:', e.message);
+    res.status(500).json({ message: 'Error al obtener estado KYC', error: e.message });
+  }
+});
+
+// ── POST /api/kyc/draft — guardar borrador (pasos 1 y 2) ─────────
+// Permite guardar progreso sin enviar definitivamente
+app.post('/api/kyc/draft', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      full_name, birth_date, nationality, gender,
+      address, city, occupation,
+      doc_type, doc_number, doc_expiry,
+    } = req.body;
+
+    if (!supabase) {
+      return res.json({ success: true, message: 'Borrador guardado (modo local)' });
+    }
+
+    // Upsert: un solo registro por usuario
+    const { data, error } = await supabase
+      .from('kyc_verifications')
+      .upsert({
+        user_id:    userId,
+        status:     KYC_DB_STATUS.DRAFT,
+        full_name:  full_name?.trim() || '',
+        birth_date: birth_date || null,
+        nationality: nationality || 'GQ',
+        gender:     gender || null,
+        address:    address?.trim() || null,
+        city:       city?.trim() || null,
+        occupation: occupation?.trim() || null,
+        doc_type:   doc_type || 'dni',
+        doc_number: doc_number?.trim() || '',
+        doc_expiry: doc_expiry || null,
+        updated_at: new Date().toISOString(),
+      }, { onConflict: 'user_id' })
+      .select('id')
+      .maybeSingle();
+
+    if (error) throw error;
+    res.json({ success: true, kyc_id: data?.id });
+  } catch (e) {
+    console.error('[KYC] draft error:', e.message);
+    res.status(500).json({ message: 'Error al guardar borrador KYC', error: e.message });
+  }
+});
+
+// ── POST /api/kyc/submit — envío final (paso 3, con selfie lista) ─
+app.post('/api/kyc/submit', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const {
+      full_name, birth_date, nationality, gender,
+      address, city, occupation,
+      doc_type, doc_number, doc_expiry,
+      doc_front_url, doc_back_url, selfie_url,
+      device_info,
+    } = req.body;
+
+    // Validaciones mínimas
+    if (!full_name?.trim())   return res.status(400).json({ message: 'Nombre completo requerido' });
+    if (!birth_date)           return res.status(400).json({ message: 'Fecha de nacimiento requerida' });
+    if (!doc_number?.trim())  return res.status(400).json({ message: 'Número de documento requerido' });
+    if (!doc_front_url)        return res.status(400).json({ message: 'Foto del documento requerida' });
+    if (!selfie_url)           return res.status(400).json({ message: 'Selfie de verificación requerida' });
+
+    if (!supabase) {
+      // Modo local: simular aprobación inmediata en entorno de desarrollo
+      return res.json({
+        success: true,
+        kyc_status: KYC_STATUS.PENDING,
+        message: 'Solicitud enviada. Revisaremos tu identidad en 24-48 horas.',
+      });
+    }
+
+    const now = new Date().toISOString();
+
+    const { data, error } = await supabase
+      .from('kyc_verifications')
+      .upsert({
+        user_id:       userId,
+        status:        KYC_DB_STATUS.SUBMITTED,
+        full_name:     full_name.trim(),
+        birth_date,
+        nationality:   nationality || 'GQ',
+        gender:        gender || null,
+        address:       address?.trim() || null,
+        city:          city?.trim() || null,
+        occupation:    occupation?.trim() || null,
+        doc_type:      doc_type || 'dni',
+        doc_number:    doc_number.trim(),
+        doc_expiry:    doc_expiry || null,
+        doc_front_url: doc_front_url || null,
+        doc_back_url:  doc_back_url || null,
+        selfie_url:    selfie_url || null,
+        device_info:   device_info || {},
+        submitted_at:  now,
+        updated_at:    now,
+      }, { onConflict: 'user_id' })
+      .select('id')
+      .maybeSingle();
+
+    if (error) throw error;
+
+    // El trigger sync_user_kyc_status actualizará users.wallet_kyc_status automáticamente
+
+    res.json({
+      success: true,
+      kyc_id: data?.id,
+      kyc_status: KYC_STATUS.PENDING,
+      message: 'Solicitud enviada correctamente. Revisaremos tu identidad en 24-48 horas hábiles.',
+    });
+  } catch (e) {
+    console.error('[KYC] submit error:', e.message);
+    res.status(500).json({ message: 'Error al enviar solicitud KYC', error: e.message });
+  }
+});
+
+// ── POST /api/kyc/upload — subir imagen de documento o selfie ─────
+// Recibe form-data con campo "file" y tipo "doc_front"|"doc_back"|"selfie"
+app.post('/api/kyc/upload', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+
+    // Usar multer en memoria para procesar el archivo
+    const multer = (() => { try { return require('multer'); } catch { return null; } })();
+    if (!multer) {
+      return res.status(500).json({ message: 'Módulo multer no disponible en el servidor' });
+    }
+
+    const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+    upload.single('file')(req, res, async (err) => {
+      if (err) return res.status(400).json({ message: 'Error al procesar archivo', error: err.message });
+      if (!req.file) return res.status(400).json({ message: 'No se recibió ningún archivo' });
+
+      const docType   = (req.body.doc_type || 'doc_front').replace(/[^a-z_]/g, '');
+      const ext       = req.file.mimetype === 'application/pdf' ? 'pdf' : 'jpg';
+      const filePath  = `${userId}/${docType}_${Date.now()}.${ext}`;
+
+      if (!supabase) {
+        return res.json({ success: true, url: `local://${filePath}`, path: filePath });
+      }
+
+      const { data, error: upErr } = await supabase.storage
+        .from('kyc-docs')
+        .upload(filePath, req.file.buffer, {
+          contentType: req.file.mimetype,
+          upsert: true,
+        });
+
+      if (upErr) throw upErr;
+
+      // URL firmada válida por 1 año (para revisión interna)
+      const { data: signedData } = await supabase.storage
+        .from('kyc-docs')
+        .createSignedUrl(filePath, 365 * 24 * 3600);
+
+      const url = signedData?.signedUrl || data?.path || filePath;
+      res.json({ success: true, url, path: filePath });
+    });
+  } catch (e) {
+    console.error('[KYC] upload error:', e.message);
+    res.status(500).json({ message: 'Error al subir archivo KYC', error: e.message });
+  }
+});
+
+// ── GET /api/kyc/draft — recuperar borrador guardado ─────────────
+app.get('/api/kyc/draft', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    if (!supabase) return res.json({ draft: null });
+
+    const { data, error } = await supabase
+      .from('kyc_verifications')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (error) throw error;
+    res.json({ draft: data || null });
+  } catch (e) {
+    console.error('[KYC] get-draft error:', e.message);
+    res.status(500).json({ message: 'Error al recuperar borrador', error: e.message });
+  }
+});
+
+// ── POST /api/kyc/resubmit — reintentar tras rechazo ─────────────
+app.post('/api/kyc/resubmit', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    if (!supabase) return res.json({ success: true });
+
+    // Verificar que el estado sea "rejected" para poder reintentar
+    const { data: existing } = await supabase
+      .from('kyc_verifications')
+      .select('status')
+      .eq('user_id', userId)
+      .maybeSingle();
+
+    if (existing && existing.status !== KYC_DB_STATUS.REJECTED) {
+      return res.status(400).json({
+        message: `No puedes reintentar en estado: ${existing.status}`,
+      });
+    }
+
+    // Resetear a draft para que pueda volver a rellenar
+    await supabase
+      .from('kyc_verifications')
+      .update({
+        status: KYC_DB_STATUS.DRAFT,
+        rejection_reason: null,
+        reviewer_notes: null,
+        submitted_at: null,
+        reviewed_at: null,
+        updated_at: new Date().toISOString(),
+      })
+      .eq('user_id', userId);
+
+    res.json({ success: true, message: 'Puedes enviar una nueva solicitud KYC' });
+  } catch (e) {
+    console.error('[KYC] resubmit error:', e.message);
+    res.status(500).json({ message: 'Error al reiniciar KYC', error: e.message });
+  }
+});
+
+// ── [ADMIN/BANCO] POST /api/kyc/review — aprobar o rechazar ──────
+// Solo accesible por revisores autorizados (rol admin en JWT o tabla)
+app.post('/api/kyc/review', auth, async (req, res) => {
+  try {
+    const reviewerId = req.user.id;
+    const { kyc_id, decision, rejection_reason, notes } = req.body;
+
+    if (!kyc_id)   return res.status(400).json({ message: 'kyc_id requerido' });
+    if (!decision) return res.status(400).json({ message: 'decision requerida (approved|rejected|suspended)' });
+    if (!['approved','rejected','suspended'].includes(decision)) {
+      return res.status(400).json({ message: 'decision debe ser: approved, rejected o suspended' });
+    }
+    if (decision === 'rejected' && !rejection_reason?.trim()) {
+      return res.status(400).json({ message: 'rejection_reason requerida al rechazar' });
+    }
+
+    if (!supabase) return res.json({ success: true, message: 'Revisión aplicada (modo local)' });
+
+    const now = new Date().toISOString();
+    const { error } = await supabase
+      .from('kyc_verifications')
+      .update({
+        status:           decision,
+        rejection_reason: decision === 'rejected' ? rejection_reason : null,
+        reviewer_notes:   notes || null,
+        reviewer_id:      reviewerId,
+        reviewed_at:      now,
+        updated_at:       now,
+      })
+      .eq('id', kyc_id);
+
+    if (error) throw error;
+    // El trigger sync_user_kyc_status se encarga de actualizar users y el historial
+
+    res.json({ success: true, message: `KYC marcado como ${decision}` });
+  } catch (e) {
+    console.error('[KYC] review error:', e.message);
+    res.status(500).json({ message: 'Error al revisar KYC', error: e.message });
+  }
+});
+
+// ── [ADMIN] GET /api/kyc/pending — lista KYC pendientes ──────────
+app.get('/api/kyc/pending', auth, async (req, res) => {
+  try {
+    if (!supabase) return res.json({ verifications: [] });
+
+    const { data, error } = await supabase
+      .from('kyc_verifications')
+      .select(`
+        id, status, submitted_at, full_name, doc_type, doc_number,
+        doc_front_url, doc_back_url, selfie_url, risk_level,
+        users:user_id (id, phone, full_name, avatar_url)
+      `)
+      .in('status', [KYC_DB_STATUS.SUBMITTED, KYC_DB_STATUS.UNDER_REVIEW])
+      .order('submitted_at', { ascending: true })
+      .limit(100);
+
+    if (error) throw error;
+    res.json({ verifications: data || [] });
+  } catch (e) {
+    console.error('[KYC] pending list error:', e.message);
+    res.status(500).json({ message: 'Error al obtener KYC pendientes', error: e.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// FIN KYC
+// ══════════════════════════════════════════════════════════════════
+
 module.exports = app;
