@@ -3,6 +3,7 @@ import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   StyleSheet, Platform, ActivityIndicator, Dimensions,
   Animated, Modal, Pressable, Alert, Image, Share, Keyboard, PanResponder,
+  KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
