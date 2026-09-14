@@ -449,13 +449,13 @@ export default function CallScreen() {
 
   const hangUp = useCallback(async () => {
     stopDialingTone();
-    await stopRingtone().catch(() => {});
+    await stopRingOnce();
     const secs = durationRef.current;
     const connected = wasConnectedRef.current;
     await endCall();
     logCallToChat(connected, secs);
     router.back();
-  }, [endCall, logCallToChat]);
+  }, [endCall, logCallToChat, stopRingOnce]);
 
   const accept = useCallback(async () => {
     if (!callId) return;
