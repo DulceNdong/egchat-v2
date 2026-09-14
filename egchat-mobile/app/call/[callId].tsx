@@ -812,7 +812,21 @@ const s = StyleSheet.create({
   // ── Controles ────────────────────────────────────────────────────
   ctrlArea: {
     position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 5,
-    paddingHorizontal: 8,
+    paddingHorizontal: 12,
+  },
+  ctrlPanel: {
+    backgroundColor: 'rgba(20,20,45,0.72)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.13)',
+    borderRadius: 28,
+    paddingTop: 20,
+    paddingBottom: 12,
+    paddingHorizontal: 6,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.28,
+    shadowRadius: 18,
+    elevation: 16,
   },
   ctrlRow: {
     flexDirection: 'row', justifyContent: 'space-around',
