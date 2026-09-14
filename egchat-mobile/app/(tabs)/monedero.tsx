@@ -1153,11 +1153,11 @@ function MonederoScreenInner() {
   const zipAnim = useRef(new Animated.Value(0)).current;
 
   // ── KYC: estado de verificación del monedero ──────────────────
-  const [kycStatus, setKycStatus] = _kycUseState<KycStatus>('none');
-  const [kycLoading, setKycLoading] = _kycUseState(true);
-  const kycPulse = _kycUseRef(new Animated.Value(1)).current;
+  const [kycStatus, setKycStatus] = useState<KycStatus>('none');
+  const [kycLoading, setKycLoading] = useState(true);
+  const kycPulse = useRef(new Animated.Value(1)).current;
 
-  _kycUseEffect(() => {
+  useEffect(() => {
     getKycStatus().then(res => {
       setKycStatus(res.kyc_status);
       setKycLoading(false);
@@ -1165,7 +1165,7 @@ function MonederoScreenInner() {
   }, []);
 
   // Pulso en botón CTA de activación
-  _kycUseEffect(() => {
+  useEffect(() => {
     if (kycStatus !== 'none' && kycStatus !== 'rejected') return;
     const loop = Animated.loop(
       Animated.sequence([
