@@ -48,7 +48,7 @@ const isValidAvatarUrl = (url?: string): url is string =>
   (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
   !url.includes('egchat-api-xlxj.onrender.com/static/avatars/');
 
-export const Avatar: React.FC<AvatarProps> = ({
+export const Avatar: React.FC<AvatarProps> = React.memo(({
   name, size = 40, photo, status, showStatus = false, style
 }) => {
   const [imgError, setImgError] = useState(false);
