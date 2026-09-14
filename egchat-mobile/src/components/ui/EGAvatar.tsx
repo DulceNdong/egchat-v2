@@ -54,8 +54,9 @@ export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
       <Image
         source={{ uri: src }}
         style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
+        contentFit="cover"
+        cachePolicy="memory-disk"
         onError={() => setImgError(true)}
-        onLoad={() => {}} // forzar re-render si cambia la URL
       />
     );
   }
