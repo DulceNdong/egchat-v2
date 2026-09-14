@@ -407,7 +407,7 @@ export default function ChatScreen() {
   // Cuando un panel (attach/emojis/stickers) está abierto, la barra sube igual que con el teclado
   const effectiveDockOffset = Platform.OS === 'ios'
     ? (anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset)
-    : 0;
+    : keyboardBottomOffset;
   const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
 
   useEffect(() => {
