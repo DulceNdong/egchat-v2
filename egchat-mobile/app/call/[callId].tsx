@@ -420,8 +420,8 @@ export default function CallScreen() {
 
       if (!isValidOffer(offer)) {
         let found = false;
-        for (let attempt = 0; attempt < 5; attempt++) {
-          if (attempt > 0) await new Promise(r => setTimeout(r, 1500));
+        for (let attempt = 0; attempt < 8; attempt++) {
+          if (attempt > 0) await new Promise(r => setTimeout(r, 2000));
           try {
             const session = await callAPI.get(callId);
             if (isValidOffer(session?.offer)) {
