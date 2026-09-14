@@ -1059,6 +1059,7 @@ function MensajeriaScreenInner() {
             data={filtered as any[]}
             keyExtractor={(item: any) => item.id}
             showsVerticalScrollIndicator={false}
+            estimatedItemSize={72}
             ListFooterComponent={<View style={{ height: 100 }} />}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
