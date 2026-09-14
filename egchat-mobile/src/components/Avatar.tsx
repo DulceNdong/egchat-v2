@@ -89,7 +89,7 @@ export const Avatar: React.FC<AvatarProps> = React.memo(({
       )}
     </View>
   );
-};
+});
 
 const styles = StyleSheet.create({
   circle: {
