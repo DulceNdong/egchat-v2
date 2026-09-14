@@ -78,7 +78,7 @@
           "apiKey": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw"
         }
       },
-      "softwareKeyboardLayoutMode": "pan",
+      "softwareKeyboardLayoutMode": "resize",
       "navigationBar": {
         "visible": "immersive",
         "barStyle": "dark-content"
