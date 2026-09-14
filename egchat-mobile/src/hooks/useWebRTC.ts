@@ -289,15 +289,26 @@ export function useWebRTC() {
       );
     }
 
-    // Si el offer no tiene sdp válido, intentar obtenerlo de la API
+    // Si el offer no tiene sdp válido, intentar obtenerlo de la API con reintentos
     let validOffer: any = offer;
-    if (!validOffer?.sdp || validOffer.sdp === 'egchat-expo-go-signaling-only') {
-      try {
-        const session = await callAPI.get(callId);
-        if (session?.offer?.sdp && session.offer.sdp !== 'egchat-expo-go-signaling-only') {
-          validOffer = session.offer;
-        }
-      } catch { /* si falla, continúa con el offer original */ }
+    const isValidSdp = (o: any) =>
+      o?.sdp && o.sdp !== 'egchat-expo-go-signaling-only';
+
+    if (!isValidSdp(validOffer)) {
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 1500));
+        try {
+          const session = await callAPI.get(callId);
+          if (isValidSdp(session?.offer)) {
+            validOffer = session.offer;
+            break;
+          }
+        } catch { /* reintenta */ }
+      }
+    }
+
+    if (!isValidSdp(validOffer)) {
+      throw new Error('No se pudo obtener los datos de la llamada. El SDP es inválido.');
     }
 
     const stream = await getUserMedia(type);
