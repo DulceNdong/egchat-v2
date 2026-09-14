@@ -346,7 +346,6 @@ export default function CallScreen() {
       NativeCallKit.dismissIncomingCall();
     }
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  }, [callState]);
 
   // Fin de llamada — parar todo el audio de forma síncrona y navegar atrás
   useEffect(() => {
