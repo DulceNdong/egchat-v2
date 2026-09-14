@@ -858,3 +858,103 @@ export const taxiAPI = {
       { available },
     ),
 };
+
+// ══════════════════════════════════════════════════════════════════
+// KYC — Verificación de Identidad / Monedero Digital
+// ══════════════════════════════════════════════════════════════════
+export type KycStatus = 'none' | 'pending' | 'approved' | 'rejected' | 'suspended';
+
+export interface KycStatusResponse {
+  kyc_status: KycStatus;
+  kyc_record: {
+    id: string;
+    status: string;
+    rejection_reason?: string;
+    submitted_at?: string;
+    reviewed_at?: string;
+    full_name?: string;
+    doc_type?: string;
+    doc_number?: string;
+  } | null;
+  rejection_reason: string | null;
+  wallet_enabled: boolean;
+}
+
+export interface KycDraftPayload {
+  full_name: string;
+  birth_date: string;         // 'YYYY-MM-DD'
+  nationality: string;        // 'GQ', 'CM', etc.
+  gender?: 'M' | 'F' | 'O';
+  address?: string;
+  city?: string;
+  occupation?: string;
+  doc_type: 'dni' | 'passport' | 'resident_card';
+  doc_number: string;
+  doc_expiry?: string;        // 'YYYY-MM-DD'
+}
+
+export interface KycSubmitPayload extends KycDraftPayload {
+  doc_front_url: string;
+  doc_back_url?: string;
+  selfie_url: string;
+  device_info?: Record<string, unknown>;
+}
+
+export const kycAPI = {
+  /** Obtener estado actual del KYC del usuario autenticado */
+  getStatus: () =>
+    get<KycStatusResponse>('/api/kyc/status'),
+
+  /** Guardar borrador (pasos 1 y 2) sin enviar definitivamente */
+  saveDraft: (payload: KycDraftPayload) =>
+    post<{ success: boolean; kyc_id?: string }>('/api/kyc/draft', payload),
+
+  /** Recuperar borrador guardado previamente */
+  getDraft: () =>
+    get<{ draft: Partial<KycSubmitPayload> | null }>('/api/kyc/draft'),
+
+  /** Envío final con documentos y selfie (paso 3) */
+  submit: (payload: KycSubmitPayload) =>
+    post<{ success: boolean; kyc_id?: string; kyc_status: KycStatus; message: string }>(
+      '/api/kyc/submit',
+      payload,
+    ),
+
+  /** Reintentar tras un rechazo */
+  resubmit: () =>
+    post<{ success: boolean; message: string }>('/api/kyc/resubmit', {}),
+
+  /** Subir imagen de documento o selfie — devuelve URL en Supabase Storage */
+  uploadDocument: async (
+    uri: string,
+    docType: 'doc_front' | 'doc_back' | 'selfie',
+    mimeType = 'image/jpeg',
+  ): Promise<{ success: boolean; url: string; path: string }> => {
+    const token = await getToken();
+    const fileName = `${docType}_${Date.now()}.jpg`;
+
+    const formData = new FormData();
+    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+    formData.append('doc_type', docType);
+
+    const controller = new AbortController();
+    const timeoutId  = setTimeout(() => controller.abort(), 60000);
+    try {
+      const res = await fetch(`${BASE}/api/kyc/upload`, {
+        method:  'POST',
+        body:    formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal:  controller.signal,
+      });
+      clearTimeout(timeoutId);
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ message: res.statusText }));
+        throw new Error(err.message || `Error ${res.status}`);
+      }
+      return res.json();
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
+    }
+  },
+};
