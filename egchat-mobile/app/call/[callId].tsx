@@ -372,20 +372,27 @@ export default function CallScreen() {
   const isCalling   = uiState === 'calling' || (uiState === 'ringing' && role === 'caller');
   const isConnected = uiState === 'connected';
 
-  // Ringtone para el callee
+  // Ringtone para el callee — solo gestiona el ringtone del callee
   useEffect(() => {
-    if (isIncoming) startRingtone().catch(() => {});
-    else stopRingtone().catch(() => {});
+    if (isIncoming) {
+      startRingtone().catch(() => {});
+    } else {
+      // Solo parar si éramos callee y ya no estamos en estado entrante
+      if (role === 'callee') stopRingtone().catch(() => {});
+    }
     return () => { stopRingtone().catch(() => {}); };
   }, [isIncoming]);
 
   // Ringtone de llamada saliente (caller escucha un tono de espera)
+  // Solo actúa cuando el rol es caller para evitar interferir con el callee
   useEffect(() => {
-    if (isCalling && role === 'caller') {
+    if (role !== 'caller') return;
+    if (isCalling) {
       startRingtone().catch(() => {});
     } else {
       stopRingtone().catch(() => {});
     }
+    return () => { stopRingtone().catch(() => {}); };
   }, [isCalling]);
 
   const formatDur = (s: number) =>
