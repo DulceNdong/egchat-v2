@@ -351,15 +351,11 @@ export default function CallScreen() {
   // Fin de llamada — parar todo el audio de forma síncrona y navegar atrás
   useEffect(() => {
     if (callState === 'ended') {
-      // Parar audio inmediatamente, sin esperar
       stopDialingTone();
-      stopRingtone().catch(() => {});
-      // Notificar al sistema operativo
+      stopRingOnce();
       LiveActivity.endCall();
       NativeCallKit.endCall(callId);
-      // Registrar en el chat (si la llamada terminó por el lado remoto, hangUp no se llamó)
       logCallToChat(wasConnectedRef.current, durationRef.current);
-      // Limpiar estado global
       setActiveCall(null);
       setGlobalPip(false);
       setTimeout(() => router.back(), 500);
