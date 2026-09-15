@@ -84,7 +84,7 @@ function DropdownField({
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={st.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
-          <View style={st.sheet}>
+          <View style={st.sheet} accessibilityViewIsModal={true} accessibilityLabel={`Seleccionar ${label}`}>
             <Text style={st.sheetTitle}>{label}</Text>
             <FlatList
               data={options}
