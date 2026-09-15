@@ -11,18 +11,18 @@ import type {
 } from '@/types';
 
 // ══════════════════════════════════════════════════════════════════
-// AUTH
+// AUTH — usa /auth/admin/* del Render API de EGChat
 // ══════════════════════════════════════════════════════════════════
 export const authApi = {
   login: (email: string, password: string) =>
-    apiClient.post<LoginResponse>('/auth/login', { email, password })
+    apiClient.post<LoginResponse>('/auth/admin/login', { email, password })
       .then(r => r.data),
 
   me: () =>
-    apiClient.get<AdminUser>('/auth/me').then(r => r.data),
+    apiClient.get<AdminUser>('/auth/admin/me').then(r => r.data),
 
   logout: () =>
-    apiClient.post('/auth/logout').then(() => undefined),
+    apiClient.post('/auth/admin/logout').then(() => undefined),
 };
 
 // ══════════════════════════════════════════════════════════════════
