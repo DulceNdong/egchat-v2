@@ -1335,7 +1335,7 @@ function MonederoScreenInner() {
               <Animated.View style={[kycS.ctaWrapper, { transform: [{ scale: kycPulse }] }]}>
                 <TouchableOpacity
                   activeOpacity={0.88}
-                  onPress={() => router.push('/kyc-wallet-prompt' as any)}
+                  onPress={() => router.push('/kyc' as any)}
                   style={kycS.ctaBtn}
                 >
                   <LinearGradient
