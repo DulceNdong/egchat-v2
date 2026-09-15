@@ -92,4 +92,6 @@ const st = StyleSheet.create({
   btnNext:      { flex: 0.6, paddingVertical: 14, borderRadius: 12, backgroundColor: BRAND, alignItems: 'center', justifyContent: 'center' },
   btnNextText:  { fontSize: 14, fontWeight: '800', color: '#fff' },
   btnDisabled:  { backgroundColor: '#d1d5db' },
+  offlineBanner:     { backgroundColor: '#1c1c1e', paddingVertical: 8, paddingHorizontal: 16 },
+  offlineBannerText: { color: '#fff', fontSize: 12, fontWeight: '600', textAlign: 'center' },
 });
