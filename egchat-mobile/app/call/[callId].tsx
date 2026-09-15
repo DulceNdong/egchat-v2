@@ -164,14 +164,15 @@ const IC = {
 
 // ════════════════════════════════════════════════════════════════════
 export default function CallScreen() {
-  const {
-    callId, targetName, targetAvatar, callType, role,
-    targetUserId, offer: offerParam, chatId,
-  } = useLocalSearchParams<{
+  type CallParams = {
     callId: string; targetName: string; targetAvatar: string;
     callType: 'audio' | 'video'; role: 'caller' | 'callee';
     targetUserId?: string; offer?: string; chatId?: string;
-  }>();
+  };
+  const {
+    callId, targetName, targetAvatar, callType, role,
+    targetUserId, offer: offerParam, chatId,
+  } = useLocalSearchParams() as CallParams;
 
   const {
     callState, isMuted, isCamOff, isSignalingOnly,
