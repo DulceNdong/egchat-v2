@@ -31,7 +31,7 @@ import { useActiveCall } from '../../src/context/ActiveCallContext';
 
 // Guard: si el módulo nativo no está disponible, no crashear
 const FACE_FILTER_AVAILABLE = (() => {
-  try { return !!FaceFilter?.isAvailable; } catch { return false; }
+  try { return !!FaceFilter?.isAvailable; } catch (_e) { return false; }
 })();
 
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -223,9 +223,9 @@ export default function CallScreen() {
     if (!FACE_FILTER_AVAILABLE || !isVideo) return;
     try {
       FaceFilter.initialize().then((ok: boolean) => { faceDetectorRef.current = ok; });
-    } catch {}
+    } catch (_e) {}
     return () => {
-      try { FaceFilter.release(); } catch {}
+      try { FaceFilter.release(); } catch (_e) {}
       faceDetectorRef.current = false;
     };
   }, []);
@@ -243,7 +243,7 @@ export default function CallScreen() {
         const b64 = await s.captureFrame();
         if (!b64) return;
         setFaces(await FaceFilter.detectFaces(b64));
-      } catch {}
+      } catch (_e) {}
     }, 200);
     return () => { if (faceFrameRef.current) { clearInterval(faceFrameRef.current); faceFrameRef.current = null; } };
   }, [activeFilter, localStream]);
@@ -283,7 +283,7 @@ export default function CallScreen() {
           shouldDuckAndroid: false,
           playThroughEarpieceAndroid: !next,
         });
-      } catch {}
+      } catch (_e) {}
     }
   }, [speakerOn]);
 
@@ -395,7 +395,7 @@ export default function CallScreen() {
   const stopRingOnce = useCallback(async () => {
     if (ringStopped.current) return;
     ringStopped.current = true;
-    try { await stopRingtone(); } catch {}
+    try { await stopRingtone(); } catch (_e) {}
     // iOS necesita un pequeño delay antes de liberar la sesión de audio
     await new Promise(r => setTimeout(r, 80));
   }, []);
@@ -455,7 +455,7 @@ export default function CallScreen() {
         text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} perdida`;
       }
       await chatAPI.sendMessage(chatId, { text, type: 'call' });
-    } catch { /* silencioso — no bloquear la UI */ }
+    } catch (_e) { /* silencioso — no bloquear la UI */ }
   }, [chatId, callType, role]);
 
   const hangUp = useCallback(async () => {
@@ -477,8 +477,8 @@ export default function CallScreen() {
     if (!callId) return;
     try {
       let offer: any = offerParam;
-      if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch {} }
-      if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch {} }
+      if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch (_e) {} }
+      if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch (_e) {} }
 
       // Si el offer no llegó en el push o está vacío, lo buscamos en el servidor
       // con hasta 5 reintentos (para cuando Render está despertando del hibernado)
@@ -498,7 +498,7 @@ export default function CallScreen() {
               found = true;
               break;
             }
-          } catch { /* reintenta */ }
+          } catch (_e) { /* reintenta */ }
         }
         if (!found) throw new Error('No se pudo obtener los datos de la llamada. Inténtalo de nuevo.');
       }
