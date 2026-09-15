@@ -74,7 +74,7 @@ export function useKycOfflineSync() {
       const { isOnline } = getNetworkStatus();
       if (isOnline) setTimeout(processQueue, 1000);
     });
-    return unsub;
+    return () => { unsub(); };
   }, [processQueue]);
 
   // Procesar al montar si hay conexión
