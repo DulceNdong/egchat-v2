@@ -26,6 +26,7 @@ export function KycStepLayout({
   nextDisabled = false, loading = false, onExit,
 }: Props) {
   const insets = useSafeAreaInsets();
+  const { isOnline } = useNetworkStatus();
 
   return (
     <KeyboardAvoidingView
@@ -33,6 +34,15 @@ export function KycStepLayout({
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
       <KycProgressBar current={step} completed={completed} onExit={onExit} />
+
+      {/* Banner offline */}
+      {!isOnline && (
+        <View style={st.offlineBanner} accessibilityLiveRegion="polite">
+          <Text style={st.offlineBannerText}>
+            📴 Sin conexión — los datos se guardan localmente y se sincronizarán al reconectar
+          </Text>
+        </View>
+      )}
 
       <ScrollView
         style={{ flex: 1 }}
