@@ -626,7 +626,10 @@ export default function CallScreen() {
 
       {/* ── Top bar ── */}
       <View style={[s.topBar, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity style={s.glassChip} onPress={() => router.back()} activeOpacity={0.8}>
+        <TouchableOpacity style={s.glassChip} onPress={() => {
+          setGlobalPip(true);
+          router.back();
+        }} activeOpacity={0.8}>
           <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.5} strokeLinecap="round">
             <Path d="M18 15 12 9 6 15"/>
           </Svg>
