@@ -56,18 +56,9 @@ export function FloatingCallBar() {
 
   const expandCall = () => {
     setIsPip(false);
-    // Reabrir la pantalla de llamada con todos los params guardados en el contexto
-    router.push({
-      pathname: '/call/[callId]',
-      params: {
-        callId: activeCall.callId,
-        targetName: activeCall.targetName,
-        targetAvatar: activeCall.targetAvatar || '',
-        callType: activeCall.callType,
-        role: activeCall.role || 'caller',
-        chatId: activeCall.chatId || '',
-      },
-    } as any);
+    // La pantalla de llamada sigue en el stack (no se desmontó con navigate).
+    // router.back() la trae al frente sin recrearla.
+    router.back();
   };
 
   const handleHangup = () => {
