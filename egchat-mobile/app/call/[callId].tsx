@@ -514,19 +514,20 @@ export default function CallScreen() {
     }
   }, [callId, offerParam, callType, answerCall]);
 
-  // ── Botón Mensaje: activa PiP y navega a mensajería SIN desmontar CallScreen ──
+  // ── Botón Mensaje: minimiza la llamada y vuelve al tab anterior ──
   const openMessageMode = useCallback(() => {
     setGlobalPip(true);
-    // router.navigate preserva el stack actual — no desmonta CallScreen
-    // Esto mantiene viva la conexión WebRTC mientras el usuario navega
-    router.navigate('/(tabs)/mensajeria' as any);
+    // router.back() saca CallScreen del foco visual pero NO la desmonta —
+    // el stack de Expo Router la mantiene en memoria con WebRTC activo.
+    // El FloatingCallBar puede hacer push de vuelta cuando el usuario quiera expandir.
+    router.back();
   }, [setGlobalPip]);
 
-  // Restaurar pantalla completa desde PiP
+  // Restaurar pantalla completa desde PiP — no usado directamente aquí,
+  // lo usa FloatingCallBar vía router.push con los params del contexto
   const expandFromPip = useCallback(() => {
     setGlobalPip(false);
-    router.push(`/call/${callId}` as any);
-  }, [callId, setGlobalPip]);
+  }, [setGlobalPip]);
 
   // ── Fondo ─────────────────────────────────────────────────────────
   const renderBg = () => {
