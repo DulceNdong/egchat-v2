@@ -4809,6 +4809,9 @@ app.post('/api/call/offer', auth, async (req, res) => {
           callerName,
           callType: type || 'audio',
           notificationType: 'incoming_call',
+          // Incluir el offer en el push para que el callee pueda contestar
+          // inmediatamente sin esperar a que Render despierte del cold start
+          offer: offer,
         };
 
         // Enviar push inmediatamente — una sola vez
