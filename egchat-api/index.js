@@ -5698,8 +5698,191 @@ if (require.main === module) {
 }
 
 // ══════════════════════════════════════════════════════════════════
-// KYC — Sistema de Verificación de Identidad / Monedero Digital
-// Cumplimiento COBAC R-2023/01 · CEMAC N°02/24 · Ley N°2/2008 GQ
+// ADMIN AUTH — Login de administradores KYC (email + password)
+// Tabla: admin_users (creada por migración 008_kyc_aml_complete.sql)
+// ══════════════════════════════════════════════════════════════════
+
+app.post('/auth/admin/login', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    if (!email || !password)
+      return res.status(400).json({ error: 'MISSING_FIELDS', message: 'email y password son requeridos' });
+
+    if (!supabase)
+      return res.status(503).json({ error: 'DB_UNAVAILABLE', message: 'Base de datos no disponible' });
+
+    const { data: admin, error } = await supabase
+      .from('admin_users')
+      .select('*')
+      .eq('email', email.trim().toLowerCase())
+      .eq('is_active', true)
+      .maybeSingle();
+
+    if (error || !admin)
+      return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Email o contraseña incorrectos' });
+
+    // Verificar contraseña con bcrypt
+    const ok = await bcrypt.compare(password, admin.password_hash);
+    if (!ok)
+      return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'Email o contraseña incorrectos' });
+
+    // Actualizar last_login
+    await supabase.from('admin_users').update({ last_login: new Date().toISOString() }).eq('id', admin.id);
+
+    const token = jwt.sign(
+      { id: admin.id, email: admin.email, role: admin.role, entity: admin.entity, type: 'admin' },
+      JWT_SECRET,
+      { expiresIn: '8h' }
+    );
+
+    return res.json({
+      access_token: token,
+      token_type:   'bearer',
+      expires_in:   8 * 3600,
+      admin_id:     admin.id,
+      role:         admin.role,
+      entity:       admin.entity,
+    });
+  } catch (e) {
+    console.error('[Admin login error]', e.message);
+    res.status(500).json({ error: 'SERVER_ERROR', message: e.message });
+  }
+});
+
+app.get('/auth/admin/me', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization || '';
+    const token = authHeader.replace('Bearer ', '').trim();
+    if (!token) return res.status(401).json({ error: 'NO_TOKEN', message: 'Token requerido' });
+
+    let payload;
+    try { payload = verifyToken(token); } catch {
+      return res.status(401).json({ error: 'INVALID_TOKEN', message: 'Token inválido o expirado' });
+    }
+
+    if (payload.type !== 'admin')
+      return res.status(403).json({ error: 'FORBIDDEN', message: 'Token de usuario no válido aquí' });
+
+    if (!supabase)
+      return res.json({ id: payload.id, email: payload.email, role: payload.role, entity: payload.entity, is_active: true, last_login: null });
+
+    const { data: admin } = await supabase
+      .from('admin_users')
+      .select('id, email, role, entity, is_active, last_login')
+      .eq('id', payload.id)
+      .maybeSingle();
+
+    if (!admin)
+      return res.status(401).json({ error: 'ADMIN_NOT_FOUND', message: 'Admin no encontrado' });
+
+    res.json(admin);
+  } catch (e) {
+    res.status(500).json({ error: 'SERVER_ERROR', message: e.message });
+  }
+});
+
+app.post('/auth/admin/logout', async (req, res) => {
+  // JWT stateless — el cliente descarta el token
+  res.status(204).end();
+});
+
+// ── Estadísticas KYC para el dashboard ───────────────────────────
+app.get('/admin/kyc/stats', async (req, res) => {
+  try {
+    if (!supabase) return res.json({ total_applications:0, pending_review:0, approved_today:0, rejected_today:0, avg_risk_score:0, high_risk_count:0, screening_hits_unreviewed:0, sars_overdue:0 });
+
+    const today = new Date(); today.setHours(0,0,0,0);
+
+    const [total, pending, approvedToday, rejectedToday, highRisk, sarsOverdue] = await Promise.all([
+      supabase.from('kyc_verifications').select('id', { count: 'exact', head: true }),
+      supabase.from('kyc_verifications').select('id', { count: 'exact', head: true })
+        .in('status', ['submitted','PENDING_REVIEW','under_review','MANUAL_REVIEW']),
+      supabase.from('kyc_verifications').select('id', { count: 'exact', head: true })
+        .in('status', ['approved','APPROVED','AUTO_APPROVED'])
+        .gte('reviewed_at', today.toISOString()),
+      supabase.from('kyc_verifications').select('id', { count: 'exact', head: true })
+        .in('status', ['rejected','REJECTED'])
+        .gte('reviewed_at', today.toISOString()),
+      supabase.from('kyc_verifications').select('id', { count: 'exact', head: true })
+        .in('risk_level', ['high','HIGH']),
+      supabase.from('suspicious_activity_reports').select('id', { count: 'exact', head: true })
+        .not('status', 'in', '("SENT_TO_ANIF","ACKNOWLEDGED","CLOSED")')
+        .lt('detected_at', new Date(Date.now() - 72*3600*1000).toISOString()),
+    ]);
+
+    res.json({
+      total_applications:        total.count          ?? 0,
+      pending_review:            pending.count        ?? 0,
+      approved_today:            approvedToday.count  ?? 0,
+      rejected_today:            rejectedToday.count  ?? 0,
+      avg_risk_score:            0,
+      high_risk_count:           highRisk.count       ?? 0,
+      screening_hits_unreviewed: 0,
+      sars_overdue:              sarsOverdue.count    ?? 0,
+    });
+  } catch (e) {
+    console.error('[KYC stats error]', e.message);
+    res.status(500).json({ error: 'SERVER_ERROR', message: e.message });
+  }
+});
+
+// ── Lista KYC pendientes ──────────────────────────────────────────
+app.get('/admin/kyc/pending', async (req, res) => {
+  try {
+    if (!supabase) return res.json({ items:[], total:0, page:1, page_size:20, pages:0 });
+
+    const page      = parseInt(req.query.page as string) || 1;
+    const pageSize  = parseInt(req.query.page_size as string) || 20;
+    const status    = req.query.status as string;
+    const riskLevel = req.query.risk_level as string;
+
+    const defaultStatuses = ['submitted','PENDING_REVIEW','under_review','MANUAL_REVIEW'];
+    const statuses = status ? [status] : defaultStatuses;
+
+    let query = supabase
+      .from('kyc_verifications')
+      .select(`id, session_id, status, risk_level, risk_score, bank_decision, submitted_at, created_at,
+               full_name, nationality, doc_type,
+               users:user_id (id, phone, status)`,
+              { count: 'exact' })
+      .in('status', statuses)
+      .order('submitted_at', { ascending: true, nullsFirst: false })
+      .range((page-1)*pageSize, page*pageSize - 1);
+
+    if (riskLevel) query = query.eq('risk_level', riskLevel);
+
+    const { data, count, error } = await query;
+    if (error) throw error;
+
+    const items = (data || []).map((a: any) => ({
+      application_id:   a.id,
+      session_id:       a.session_id,
+      status:           a.status,
+      risk_level:       a.risk_level || 'low',
+      risk_score:       a.risk_score || 0,
+      bank_decision:    a.bank_decision,
+      submitted_at:     a.submitted_at,
+      created_at:       a.created_at,
+      user_phone:       a.users?.phone,
+      user_status:      a.users?.status,
+      full_name:        a.full_name,
+      nationality:      a.nationality,
+      document_type:    a.doc_type,
+      ocr_confidence:   null,
+      face_match_score: null,
+      liveness_passed:  null,
+      screening_hits:   0,
+    }));
+
+    res.json({ items, total: count || 0, page, page_size: pageSize, pages: Math.ceil((count || 0) / pageSize) });
+  } catch (e) {
+    console.error('[KYC pending error]', e.message);
+    res.status(500).json({ error: 'SERVER_ERROR', message: e.message });
+  }
+});
+
+// ══════════════════════════════════════════════════════════════════
+// FIN ADMIN AUTH
 // ══════════════════════════════════════════════════════════════════
 
 // ── Helpers de KYC ───────────────────────────────────────────────
