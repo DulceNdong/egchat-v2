@@ -5007,26 +5007,33 @@ const sendPushToUser = async (userId, payload) => {
       const expoMessages = expoSubs.map(sub => ({
         to: sub.token,
         title: payload.title || 'EGChat',
-        body: payload.body || 'Nueva notificacion',
-        // iOS solo reproduce sonidos personalizados si el archivo está
-        // empaquetado en el bundle nativo. Para evitar notificaciones mudas,
-        // usamos el sonido por defecto en todas las plataformas.
-        sound: 'default',
-        badge: 1,
+        body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje'),
+        sound: isCall ? 'default' : 'default',
+        badge: isCall ? 0 : 1,
         channelId: isCall ? 'egchat-calls' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
         data: {
           ...payload,
-          // iOS: mutable-content=1 activa UNNotificationServiceExtension
-          // para añadir imagen antes de mostrar la notif
           'mutable-content': 1,
+          // Asegurar que notificationType siempre está presente para que el cliente
+          // pueda distinguir mensajes de llamadas
+          notificationType: payload.notificationType || 'message',
           imageUrl: payload.imageUrl || payload.icon || '',
           senderName: payload.senderName || payload.callerName || '',
           senderAvatar: payload.senderAvatar || payload.icon || '',
           messageType: payload.messageType || 'text',
           chatId: payload.chatId || '',
+          // Llamadas: incluir el offer en el push para que el callee
+          // no tenga que esperar a Render al despertar
+          ...(isCall && payload.offer ? { offer: payload.offer } : {}),
+          ...(isCall ? {
+            callId: payload.callId || '',
+            callerId: payload.callerId || '',
+            callerName: payload.callerName || '',
+            callType: payload.callType || 'audio',
+          } : {}),
         },
-        // Llamadas: TTL de 120s para dar tiempo a desbloquear el teléfono
+        // Llamadas: TTL de 120s
         ...(isCall ? { ttl: 120, expiration: Math.floor(Date.now() / 1000) + 120 } : {}),
       }));
 
