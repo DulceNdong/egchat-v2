@@ -20,14 +20,17 @@ const PUSH_ENABLED = true; // activar push nativo
 Notifications.setNotificationHandler({
   handleNotification: async (notification) => {
     const data = notification.request.content.data as any;
+    const isCall = data?.notificationType === 'incoming_call';
     return {
       shouldShowAlert: true,
-      shouldShowBanner: true,
+      shouldShowBanner: !isCall, // llamadas: CallKit/pantalla nativa lo maneja
       shouldShowList: true,
-      shouldPlaySound: true,
-      shouldSetBadge: true,
-      // Llamadas: prioridad máxima y no se auto-descartan
-      priority: data?.notificationType === 'incoming_call'
+      // Para mensajes en primer plano: NO reproducir sonido del sistema
+      // porque RichNotifications.show() ya da el feedback visual/auditivo
+      // Para llamadas: tampoco — el ringtone lo maneja startRingtone()
+      shouldPlaySound: false,
+      shouldSetBadge: !isCall,
+      priority: isCall
         ? Notifications.AndroidNotificationPriority.MAX
         : Notifications.AndroidNotificationPriority.HIGH,
     };
