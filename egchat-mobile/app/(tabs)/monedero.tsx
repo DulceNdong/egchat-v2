@@ -1266,8 +1266,7 @@ function MonederoScreenInner() {
     const statusLabel = KYC_STATUS_LABELS[kycStatus] || 'Sin verificar';
 
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left','right']}>
-        {/* Header igual al monedero normal */}
+      <SafeAreaView style={[s.container, { backgroundColor: '#F5F7FA' }]} edges={['left','right']}>
         <EGChatHeader
           notificationsOpen={false}
           menuOpen={false}
@@ -1278,21 +1277,40 @@ function MonederoScreenInner() {
 
         <ScrollView contentContainerStyle={kycS.scrollContent} showsVerticalScrollIndicator={false}>
 
-          {/* Hero bloqueado */}
+          {/* ── Hero card ── */}
           <LinearGradient
-            colors={['#06283d', '#0a3d5e', '#0d2d4a']}
+            colors={isPending ? ['#0f2027','#203a43','#2c5364'] : isRejected ? ['#1a0a0a','#3b0c0c','#7f1d1d'] : ['#0a0e1a','#0d1b33','#0f2744']}
             start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
             style={kycS.heroCard}
           >
-            {/* Icono estado */}
+            {/* Icono estado — SVG sin fondo de color */}
             <View style={kycS.heroIconWrap}>
-              <Text style={kycS.heroIconEmoji}>
-                {isPending ? '⏳' : isRejected ? '⚠️' : isSuspended ? '🚫' : '🏦'}
-              </Text>
+              {isPending ? (
+                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Circle cx="12" cy="12" r="10"/>
+                  <Path d="M12 6v6l4 2"/>
+                </Svg>
+              ) : isRejected ? (
+                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+                  <Line x1="12" y1="9" x2="12" y2="13"/>
+                  <Line x1="12" y1="17" x2="12.01" y2="17"/>
+                </Svg>
+              ) : isSuspended ? (
+                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Circle cx="12" cy="12" r="10"/>
+                  <Line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
+                </Svg>
+              ) : (
+                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                  <Rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
+                  <Line x1="1" y1="10" x2="23" y2="10"/>
+                </Svg>
+              )}
             </View>
 
             {/* Badge estado */}
-            <View style={[kycS.statusBadge, { backgroundColor: statusColor + '22', borderColor: statusColor + '55' }]}>
+            <View style={[kycS.statusBadge, { backgroundColor: statusColor + '20', borderColor: statusColor + '50' }]}>
               <View style={[kycS.statusDot, { backgroundColor: statusColor }]}/>
               <Text style={[kycS.statusBadgeText, { color: statusColor }]}>{statusLabel}</Text>
             </View>
@@ -1305,15 +1323,14 @@ function MonederoScreenInner() {
             </Text>
             <Text style={kycS.heroSub}>
               {isPending
-                ? 'Tu solicitud está siendo revisada por nuestro equipo. Recibirás una notificación en 24-48 horas hábiles.'
+                ? 'Tu solicitud está siendo revisada. Recibirás una notificación en 24-48 horas hábiles.'
                 : isRejected
-                ? 'Tu solicitud anterior no fue aprobada. Puedes volver a intentarlo con documentos correctos.'
+                ? 'Tu solicitud no fue aprobada. Puedes volver a intentarlo con documentos correctos.'
                 : isSuspended
                 ? 'Tu cuenta ha sido suspendida. Contacta con soporte para más información.'
                 : 'Verifica tu identidad para desbloquear todas las funciones del monedero digital.'}
             </Text>
 
-            {/* CTA principal — solo si puede actuar */}
             {!isSuspended && (
               <Animated.View style={[kycS.ctaWrapper, { transform: [{ scale: kycPulse }] }]}>
                 <TouchableOpacity
@@ -1322,36 +1339,94 @@ function MonederoScreenInner() {
                   style={kycS.ctaBtn}
                 >
                   <LinearGradient
-                    colors={['#00C8A0', '#00B4E6']}
+                    colors={['#00C8A0', '#00A8D4']}
                     start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                     style={kycS.ctaBtnGrad}
                   >
                     <Text style={kycS.ctaBtnText}>
-                      {isPending   ? '📋 Ver estado de verificación' :
-                       isRejected  ? '🔄 Reintentar verificación' :
-                                     '🚀 Activar mi monedero ahora'}
+                      {isPending   ? 'Ver estado de verificación' :
+                       isRejected  ? 'Reintentar verificación' :
+                                     'Activar mi monedero'}
                     </Text>
+                    <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+                      <Path d="M5 12h14M12 5l7 7-7 7"/>
+                    </Svg>
                   </LinearGradient>
                 </TouchableOpacity>
               </Animated.View>
             )}
           </LinearGradient>
 
-          {/* Funciones bloqueadas — preview */}
+          {/* ── Funciones bloqueadas ── */}
           <View style={kycS.lockedSection}>
-            <Text style={kycS.lockedTitle}>
-              🔒 Funciones disponibles tras verificación
-            </Text>
+            <View style={kycS.lockedHeader}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#6B7280" strokeWidth={2} strokeLinecap="round">
+                <Rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                <Path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+              </Svg>
+              <Text style={kycS.lockedTitle}>Funciones disponibles tras verificación</Text>
+            </View>
             {[
-              { emoji: '💰', text: 'Ver y gestionar tu saldo XAF' },
-              { emoji: '📤', text: 'Transferir dinero a contactos' },
-              { emoji: '🔋', text: 'Recargar saldo (tarjeta, Orange Money, MTN…)' },
-              { emoji: '💡', text: 'Pagar electricidad, agua, DGI y más' },
-              { emoji: '📥', text: 'Recibir pagos por QR' },
-              { emoji: '🏦', text: 'Vincular cuenta bancaria BANGE' },
-            ].map((item, i) => (
-              <View key={i} style={kycS.lockedRow}>
-                <Text style={kycS.lockedEmoji}>{item.emoji}</Text>
+              {
+                text: 'Ver y gestionar tu saldo XAF',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
+                    <Path d="M3 10h17"/><Circle cx="17" cy="14" r="1.5" fill="#9CA3AF" stroke="none"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Transferir dinero a contactos',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Path d="M17 1l4 4-4 4"/><Path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+                    <Path d="M7 23l-4-4 4-4"/><Path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Recargar saldo (tarjeta, Orange Money, MTN…)',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Polyline points="16 17 12 21 8 17"/>
+                    <Line x1="12" y1="12" x2="12" y2="21"/>
+                    <Path d="M20.88 18.09A5 5 0 0 0 18 9h-1.26A8 8 0 1 0 3 16.29"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Pagar electricidad, agua, DGI y más',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Recibir pagos por QR',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
+                    <Rect x="14" y="14" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/>
+                  </Svg>
+                ),
+              },
+              {
+                text: 'Vincular cuenta bancaria BANGE',
+                icon: (
+                  <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
+                    <Rect x="3" y="10" width="18" height="11" rx="2"/>
+                    <Path d="M3 10l9-7 9 7"/>
+                    <Line x1="12" y1="10" x2="12" y2="21"/>
+                    <Line x1="7" y1="14" x2="7" y2="17"/>
+                    <Line x1="17" y1="14" x2="17" y2="17"/>
+                  </Svg>
+                ),
+              },
+            ].map((item, i, arr) => (
+              <View key={i} style={[kycS.lockedRow, i === arr.length - 1 && { borderBottomWidth: 0 }]}>
+                <View style={kycS.lockedIconWrap}>{item.icon}</View>
                 <Text style={kycS.lockedRowText}>{item.text}</Text>
                 <View style={kycS.lockedChip}>
                   <Text style={kycS.lockedChipText}>Bloqueado</Text>
@@ -1360,9 +1435,16 @@ function MonederoScreenInner() {
             ))}
           </View>
 
-          {/* Por qué es necesario */}
+          {/* ── Por qué verificarse ── */}
           <View style={kycS.whyBox}>
-            <Text style={kycS.whyTitle}>¿Por qué necesito verificarme?</Text>
+            <View style={kycS.whyHeaderRow}>
+              <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#1B3A6B" strokeWidth={2} strokeLinecap="round">
+                <Circle cx="12" cy="12" r="10"/>
+                <Line x1="12" y1="8" x2="12" y2="12"/>
+                <Line x1="12" y1="16" x2="12.01" y2="16"/>
+              </Svg>
+              <Text style={kycS.whyTitle}>¿Por qué necesito verificarme?</Text>
+            </View>
             <Text style={kycS.whyText}>
               EGChat opera el monedero digital en alianza con{' '}
               <Text style={kycS.whyBold}>BANGE (Banco Nacional de Guinea Ecuatorial)</Text>,
@@ -1371,16 +1453,15 @@ function MonederoScreenInner() {
               La verificación de identidad es obligatoria según el{' '}
               <Text style={kycS.whyBold}>Reglamento COBAC R-2023/01</Text>{' '}
               y la <Text style={kycS.whyBold}>Ley N°2/2008</Text> de Guinea Ecuatorial.
-              Tus datos están protegidos y solo se usan para cumplimiento normativo.
             </Text>
           </View>
 
-          {/* Solo para suspended */}
           {isSuspended && (
             <View style={kycS.suspendedBox}>
-              <Text style={kycS.suspendedText}>
-                📧 Contacta con soporte: soporte@egchat.gq
-              </Text>
+              <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} strokeLinecap="round">
+                <Path d="M4 4l16 16M4 20L20 4"/>
+              </Svg>
+              <Text style={kycS.suspendedText}>Contacta con soporte: soporte@egchat.gq</Text>
             </View>
           )}
 
