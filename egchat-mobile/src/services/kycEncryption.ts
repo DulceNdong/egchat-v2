@@ -46,7 +46,7 @@ export async function encryptImage(uri: string): Promise<{
 
   // 2. Leer como base64
   const base64 = await FileSystem.readAsStringAsync(compressedUri, {
-    encoding: FileSystem.EncodingType.Base64,
+    encoding: 'base64' as any,
   });
 
   // 3. Calcular checksum SHA-256 del contenido
