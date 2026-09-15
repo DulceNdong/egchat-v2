@@ -239,6 +239,9 @@ export function setupNotificationListeners(
     const data = notification.request.content.data as any;
     if (data?.notificationType === 'incoming_call') {
       if (Platform.OS === 'ios') {
+        // En iOS con app abierta el sistema NO reproduce el sonido de la notif push
+        // si el handler devuelve shouldPlaySound:true, PERO el canal VoIP lo maneja
+        // aparte. Aquí solo iniciamos el ringtone de la app.
         startRingtone().catch(() => {});
       }
       onCall({
@@ -248,20 +251,22 @@ export function setupNotificationListeners(
         offer: data.offer,
       });
     } else if (data?.chatId) {
-      if (Platform.OS === 'ios') {
-        playNotification().catch(() => {});
-      }
+      // NO llamar playNotification() aquí — el canal de notificaciones
+      // (egchat-messages en Android, APNs en iOS) ya reproduce el tono.
+      // Llamarlo manualmente causaría doble sonido.
       if (Platform.OS === 'android') {
-      // Mostrar notificación rica nativa cuando la app está en primer plano
-      RichNotifications.show({
-        chatId: data.chatId,
-        senderName: data.senderName || notification.request.content.title || 'EGChat',
-        senderAvatar: data.senderAvatar || '',
-        messageText: notification.request.content.body || '',
-        messageType: data.messageType || 'text',
-        imageUrl: data.imageUrl || '',
-      });
+        // Mostrar notificación rica nativa cuando la app está en primer plano
+        RichNotifications.show({
+          chatId: data.chatId,
+          senderName: data.senderName || notification.request.content.title || 'EGChat',
+          senderAvatar: data.senderAvatar || '',
+          messageText: notification.request.content.body || '',
+          messageType: data.messageType || 'text',
+          imageUrl: data.imageUrl || '',
+        });
       }
+      // iOS en primer plano: el handler ya tiene shouldPlaySound:true,
+      // no necesitamos nada adicional aquí.
     }
   });
 
