@@ -12,17 +12,17 @@ export type CallState = 'idle' | 'calling' | 'ringing' | 'connected' | 'ended';
 const STUN_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun1.l.google.com:19302' },
+  { urls: 'stun:stun.cloudflare.com:3478' },
 ];
 
 const TURN_SERVERS = process.env.EXPO_PUBLIC_TURN_SERVERS
   ? JSON.parse(process.env.EXPO_PUBLIC_TURN_SERVERS)
   : [
-      // Servidores TURN públicos gratuitos (Metered.ca — 1GB/mes gratis)
-      // Para producción seria recomendable un servidor TURN propio
-      { urls: 'turn:a.relay.metered.ca:80',      username: 'egchat', credential: 'egchat2025' },
-      { urls: 'turn:a.relay.metered.ca:80?transport=tcp', username: 'egchat', credential: 'egchat2025' },
-      { urls: 'turn:a.relay.metered.ca:443',     username: 'egchat', credential: 'egchat2025' },
-      { urls: 'turns:a.relay.metered.ca:443?transport=tcp', username: 'egchat', credential: 'egchat2025' },
+      // OpenRelay — TURN público gratuito sin cuenta, funciona en producción
+      { urls: 'turn:openrelay.metered.ca:80',     username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443',    username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+      { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
     ];
 
 const ICE_SERVERS = [...STUN_SERVERS, ...TURN_SERVERS];
