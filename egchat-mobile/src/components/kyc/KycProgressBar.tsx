@@ -22,16 +22,17 @@ export function KycProgressBar({ current, completed, onExit }: Props) {
   const pct = Math.round(((current - 1) / 4) * 100);
 
   return (
-    <View style={[st.wrap, { paddingTop: insets.top + 8 }]}>
+    <View style={[st.wrap, { paddingTop: insets.top + 8 }]} accessibilityRole="progressbar" accessibilityValue={{ min: 1, max: 5, now: current }}>
       <View style={st.row}>
         <TouchableOpacity
           onPress={onExit ?? (() => router.back())}
           accessibilityLabel="Salir del formulario KYC"
+          accessibilityRole="button"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
           <Text style={st.exit}>✕ Salir</Text>
         </TouchableOpacity>
-        <Text style={st.stepLabel}>Paso {current} de 5</Text>
+        <Text style={st.stepLabel} accessibilityLiveRegion="polite">Paso {current} de 5</Text>
       </View>
 
       {/* Puntos de pasos */}
