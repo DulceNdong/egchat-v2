@@ -333,6 +333,8 @@ export default function CallScreen() {
       setActiveCall({
         callId, targetName: name, targetAvatar,
         callType: callType as 'audio' | 'video', duration: 0,
+        role: role as 'caller' | 'callee',
+        chatId,
       });
       timerRef.current = setInterval(() => {
         setDuration(d => {
