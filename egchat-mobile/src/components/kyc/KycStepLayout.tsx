@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { KycProgressBar } from './KycProgressBar';
+import { useNetworkStatus } from '../../store/offlineStore';
 
 interface Props {
   step: number;
