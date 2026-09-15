@@ -151,7 +151,7 @@ export default function Step4() {
       {/* Modal income */}
       <Modal visible={showIncome} transparent animationType="slide" onRequestClose={() => setIncome(false)}>
         <TouchableOpacity style={st.overlay} activeOpacity={1} onPress={() => setIncome(false)}>
-          <View style={st.sheet}>
+          <View style={st.sheet} accessibilityViewIsModal={true} accessibilityLabel="Seleccionar ingreso mensual">
             <Text style={st.sheetTitle}>Ingreso mensual estimado</Text>
             <FlatList
               data={INCOME_OPTIONS}
