@@ -1,75 +1,187 @@
-import React, { useState } from 'react';
-import { View, Text, Image, StyleSheet } from 'react-native';
+// EGAvatar.tsx — Avatar con soporte de anillo de estado (stories)
+import React, { useEffect, useRef } from 'react';
+import { View, Text, Image, StyleSheet, Animated } from 'react-native';
+import { LinearGradient } from 'expo-linear-gradient';
 import { Colors, FontWeight } from '../../theme';
-
-// Paleta de colores para avatares por inicial (igual que la web)
-const PALETTE = [
-  '#00c8a0', '#00b4e6', '#6B5BD6', '#EC4899',
-  '#F59E0B', '#EF4444', '#10B981', '#F97316',
-  '#0EA5E9', '#84CC16', '#06B6D4', '#8B5CF6',
-];
-
-const nameToColor = (name: string) => {
-  let hash = 0;
-  for (let i = 0; i < name.length; i++) hash = name.charCodeAt(i) + ((hash << 5) - hash);
-  return PALETTE[Math.abs(hash) % PALETTE.length];
-};
 
 interface EGAvatarProps {
   src?: string | null;
   name: string;
   size?: number;
+  /** El contacto tiene un estado activo (no expirado) */
+  hasStory?: boolean;
+  /** El estado ya fue visto por el usuario actual */
+  storySeen?: boolean;
 }
 
-// URL válida: no vacía, no de servidor antiguo roto
-const isValidAvatarUrl = (url?: string | null): url is string =>
-  !!url &&
-  url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
+// Colores del anillo no visto (brand EGCHAT)
+const RING_UNSEEN: [string, string, string] = ['#00c8a0', '#00b4e6', '#0070cc'];
+// Colores del anillo ya visto
+const RING_SEEN: [string, string] = ['#9CA3AF', '#D1D5DB'];
 
-export const EGAvatar: React.FC<EGAvatarProps> = ({ src, name, size = 48 }) => {
-  const [imgError, setImgError] = useState(false);
+export const EGAvatar: React.FC<EGAvatarProps> = ({
+  src,
+  name,
+  size = 48,
+  hasStory = false,
+  storySeen = false,
+}) => {
+  const [imageFailed, setImageFailed] = React.useState(false);
+  const glowAnim = useRef(new Animated.Value(0.6)).current;
 
-  const initials = name
-    ?.split(' ')
-    .filter(Boolean)
-    .map(w => w[0].toUpperCase())
-    .slice(0, 2)
-    .join('') || '?';
+  // Resetear el error si cambia la fuente de imagen
+  useEffect(() => {
+    setImageFailed(false);
+  }, [src]);
+
+  // Pulso continuo solo cuando hay estado no visto
+  useEffect(() => {
+    if (!hasStory || storySeen) {
+      glowAnim.setValue(0.6);
+      return;
+    }
+    const pulse = Animated.loop(
+      Animated.sequence([
+        Animated.timing(glowAnim, {
+          toValue: 1,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+        Animated.timing(glowAnim, {
+          toValue: 0.6,
+          duration: 900,
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    pulse.start();
+    return () => pulse.stop();
+  }, [hasStory, storySeen, glowAnim]);
+
+  const safeName =
+    name && name.trim() && name.trim() !== '?' ? name.trim() : 'EG';
+  const initials =
+    safeName
+      .split(' ')
+      .filter(Boolean)
+      .map(w => w[0].toUpperCase())
+      .slice(0, 2)
+      .join('') || 'EG';
 
   const fontSize = size * 0.35;
-  const bgColor = nameToColor(name || '?');
 
-  // Mostrar imagen solo si la URL es válida y no tuvo error de carga
-  if (isValidAvatarUrl(src) && !imgError) {
+  // Tamaños del anillo: 3px de borde + 2px de gap entre anillo e imagen
+  const RING_WIDTH = 2.5;
+  const GAP = 2;
+  const outerSize = size + (RING_WIDTH + GAP) * 2;
+  const innerSize = size;
+
+  const photoOrInitials = (
+    <View
+      style={{
+        width: innerSize,
+        height: innerSize,
+        borderRadius: innerSize / 2,
+        overflow: 'hidden',
+        backgroundColor: Colors.bgTertiary,
+      }}
+    >
+      {src && !imageFailed ? (
+        <Image
+          source={{ uri: src }}
+          onError={() => setImageFailed(true)}
+          style={{ width: innerSize, height: innerSize }}
+          resizeMode="cover"
+        />
+      ) : (
+        <View style={[styles.placeholder, { width: innerSize, height: innerSize }]}>
+          <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
+        </View>
+      )}
+    </View>
+  );
+
+  if (!hasStory) {
+    // Sin anillo — solo la foto/iniciales
+    return photoOrInitials;
+  }
+
+  if (storySeen) {
+    // Anillo gris (ya visto)
     return (
-      <Image
-        source={{ uri: src }}
-        style={[styles.avatar, { width: size, height: size, borderRadius: size / 2 }]}
-        onError={() => setImgError(true)}
-        onLoad={() => {}} // forzar re-render si cambia la URL
-      />
+      <View style={{ width: outerSize, height: outerSize, alignItems: 'center', justifyContent: 'center' }}>
+        <LinearGradient
+          colors={RING_SEEN}
+          style={{
+            width: outerSize,
+            height: outerSize,
+            borderRadius: outerSize / 2,
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {/* Gap blanco entre anillo y foto */}
+          <View
+            style={{
+              width: innerSize + GAP * 2,
+              height: innerSize + GAP * 2,
+              borderRadius: (innerSize + GAP * 2) / 2,
+              backgroundColor: '#fff',
+              alignItems: 'center',
+              justifyContent: 'center',
+            }}
+          >
+            {photoOrInitials}
+          </View>
+        </LinearGradient>
+      </View>
     );
   }
 
+  // Anillo de gradiente animado (estado no visto)
   return (
-    <View
-      style={[
-        styles.placeholder,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: bgColor },
-      ]}
+    <Animated.View
+      style={{
+        width: outerSize,
+        height: outerSize,
+        alignItems: 'center',
+        justifyContent: 'center',
+        opacity: glowAnim,
+      }}
     >
-      <Text style={[styles.initials, { fontSize }]}>{initials}</Text>
-    </View>
+      <LinearGradient
+        colors={RING_UNSEEN}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={{
+          width: outerSize,
+          height: outerSize,
+          borderRadius: outerSize / 2,
+          alignItems: 'center',
+          justifyContent: 'center',
+        }}
+      >
+        {/* Gap blanco entre anillo y foto */}
+        <View
+          style={{
+            width: innerSize + GAP * 2,
+            height: innerSize + GAP * 2,
+            borderRadius: (innerSize + GAP * 2) / 2,
+            backgroundColor: '#fff',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          {photoOrInitials}
+        </View>
+      </LinearGradient>
+    </Animated.View>
   );
 };
 
 const styles = StyleSheet.create({
-  avatar: {
-    backgroundColor: Colors.bgTertiary,
-  },
   placeholder: {
+    backgroundColor: Colors.accent,
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -18,7 +18,6 @@ import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
-import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { getFavoriteGroupIds, toggleFavoriteGroup } from '../../src/utils/favorites';
 import {
   loadArchivedChats, saveArchivedChats, getArchivePassword, setArchivePassword,
@@ -29,6 +28,7 @@ import { toast } from '../../src/components/Toast';
 import type { WeatherCondition } from '../../src/components/EGChatHeader';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useOffline } from '../../src/hooks/useOffline';
+import { useStoryRings } from '../../src/hooks';
 import { EGAvatar, OfflineBanner } from '../../src/components/ui';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
@@ -91,17 +91,8 @@ const getLastMessageText = (msg?: Chat['last_message']) => {
 const getParticipantName = (participant?: Chat['participants'][number]) =>
   participant?.full_name || participant?.users?.full_name || participant?.user?.full_name || '';
 
-const isValidAvatarUrl = (url?: string | null): url is string =>
-  !!url &&
-  url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
-
-const getParticipantAvatar = (participant?: Chat['participants'][number]) => {
-  const raw =
-    participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url;
-  return isValidAvatarUrl(raw) ? raw : undefined;
-};
+const getParticipantAvatar = (participant?: Chat['participants'][number]) =>
+  participant?.avatar_url || participant?.users?.avatar_url || participant?.user?.avatar_url || '';
 
 const sortChatsByActivity = (items: Chat[] = []) =>
   [...items].sort((a, b) => {
@@ -147,8 +138,9 @@ const IconRefresh = () => (
 );
 
 // ── ChatItem ──────────────────────────────────────────────────────
-const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow }: {
+const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow, hasStory, storySeen }: {
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
+  hasStory?: boolean; storySeen?: boolean;
 }) => {
   const other = chat.participants.find(p => p.user_id !== currentUserId);
   const chatName = chat.type === 'private'
@@ -161,7 +153,13 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
 
   const body = (
     <>
-      <EGAvatar src={avatarSrc} name={chatName} size={50} />
+      <EGAvatar
+        src={avatarSrc}
+        name={chatName}
+        size={50}
+        hasStory={hasStory}
+        storySeen={storySeen}
+      />
       <View style={st.chatInfo}>
         <View style={st.chatRow}>
           <Text style={st.chatName} numberOfLines={1}>{chatName}</Text>
@@ -214,9 +212,12 @@ const FavoriteSection = ({
   );
 };
 
-const FavoriteChip = ({ name, avatar, onPress }: { name: string; avatar?: string; onPress: () => void }) => (
+const FavoriteChip = ({ name, avatar, onPress, hasStory, storySeen }: {
+  name: string; avatar?: string; onPress: () => void;
+  hasStory?: boolean; storySeen?: boolean;
+}) => (
   <TouchableOpacity style={st.favChip} onPress={onPress} activeOpacity={0.8}>
-    <EGAvatar src={avatar} name={name} size={56} />
+    <EGAvatar src={avatar} name={name} size={56} hasStory={hasStory} storySeen={storySeen} />
     <Text style={st.favChipName} numberOfLines={1}>{name}</Text>
   </TouchableOpacity>
 );
@@ -250,6 +251,7 @@ export default function MensajeriaScreen() {
   const { isDark } = useThemeContext();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { activeUserIds, seenUserIds } = useStoryRings();
 
   const getChatMeta = useCallback((chat: Chat) => {
     const other = chat.participants.find(p => p.user_id !== currentUserId);
@@ -301,25 +303,6 @@ export default function MensajeriaScreen() {
     const { subscribeToUserChats } = require('../../src/supabase');
     const unsub = subscribeToUserChats(currentUserId, loadChats);
     return unsub;
-  }, [currentUserId]);
-
-  // Cuando el usuario actual cambia su avatar/nombre, actualizar su participante en todos los chats
-  useEffect(() => {
-    return onProfileUpdated(patch => {
-      if (!patch.avatar_url && !patch.full_name) return;
-      setChats(prev => prev.map(chat => ({
-        ...chat,
-        participants: chat.participants.map(p =>
-          p.user_id === currentUserId
-            ? {
-                ...p,
-                ...(patch.avatar_url ? { avatar_url: patch.avatar_url } : {}),
-                ...(patch.full_name ? { full_name: patch.full_name } : {}),
-              }
-            : p,
-        ),
-      })));
-    });
   }, [currentUserId]);
 
   const onRefresh = () => { setRefreshing(true); loadChats(); };
@@ -556,12 +539,15 @@ export default function MensajeriaScreen() {
           {favoriteContacts.map((contact: any) => {
             const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
             const avatar = contact.avatar_url || contact.user?.avatar_url;
+            const contactUserId = contact.contact_user_id || contact.user_id || contact.id;
             return (
               <FavoriteChip
                 key={contact.id || contact.contact_user_id}
                 name={name}
                 avatar={avatar}
                 onPress={() => openFavoriteContact(contact)}
+                hasStory={contactUserId ? activeUserIds.has(contactUserId) : false}
+                storySeen={contactUserId ? seenUserIds.has(contactUserId) : false}
               />
             );
           })}
@@ -703,26 +689,34 @@ export default function MensajeriaScreen() {
           </View>
         ) : (
           <View>
-            {filtered.map((item, i) => (
-              <View key={item.id}>
-                <SwipeChatItem
-                  onOpen={() => openChat(item)}
-                  onArchive={() => archiveChat(item)}
-                  onDelete={() => deleteChatLocal(item.id)}
-                  onMarkUnread={() => toast.info('Marcado como no leído')}
-                >
-                  <ChatItem
-                    chat={item}
-                    currentUserId={currentUserId}
-                    staticRow
-                    onLongPress={() => handleChatLongPress(item)}
-                  />
-                </SwipeChatItem>
-                {i < filtered.length - 1 && (
-                  <View style={[st.separator, { backgroundColor: C.borderLight }]} />
-                )}
-              </View>
-            ))}
+            {filtered.map((item, i) => {
+              const other = item.participants.find(p => p.user_id !== currentUserId);
+              const otherUserId = other?.user_id;
+              const hasStory = otherUserId ? activeUserIds.has(otherUserId) : false;
+              const storySeen = otherUserId ? seenUserIds.has(otherUserId) : false;
+              return (
+                <View key={item.id}>
+                  <SwipeChatItem
+                    onOpen={() => openChat(item)}
+                    onArchive={() => archiveChat(item)}
+                    onDelete={() => deleteChatLocal(item.id)}
+                    onMarkUnread={() => toast.info('Marcado como no leído')}
+                  >
+                    <ChatItem
+                      chat={item}
+                      currentUserId={currentUserId}
+                      staticRow
+                      onLongPress={() => handleChatLongPress(item)}
+                      hasStory={hasStory}
+                      storySeen={storySeen}
+                    />
+                  </SwipeChatItem>
+                  {i < filtered.length - 1 && (
+                    <View style={[st.separator, { backgroundColor: C.borderLight }]} />
+                  )}
+                </View>
+              );
+            })}
             <View style={{ height: 100 }} />
           </View>
         )}

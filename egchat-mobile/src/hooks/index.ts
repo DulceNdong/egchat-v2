@@ -5,3 +5,5 @@ export { useGPS, distanceKm, formatCoords } from './useGPS';
 export { useDevice } from './useDevice';
 export * from './useSounds';
 export { useWebRTC, RTCView } from './useWebRTC';
+export { useStoryRings } from './useStoryRings';
+export type { StoryRingsState } from './useStoryRings';

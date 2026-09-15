@@ -1,5 +1,5 @@
 // Avatar.tsx — Componente de avatar para React Native
-import React, { useState } from 'react';
+import React from 'react';
 import { View, Text, Image, StyleSheet } from 'react-native';
 
 const PALETTES = [
@@ -40,17 +40,9 @@ interface AvatarProps {
   style?: object;
 }
 
-// URL válida: no vacía, no de servidor antiguo roto
-const isValidAvatarUrl = (url?: string): url is string =>
-  !!url &&
-  url.trim().length > 0 &&
-  (url.startsWith('http://') || url.startsWith('https://') || url.startsWith('file://')) &&
-  !url.includes('egchat-api.onrender.com/static/avatars/');
-
 export const Avatar: React.FC<AvatarProps> = ({
   name, size = 40, photo, status, showStatus = false, style
 }) => {
-  const [imgError, setImgError] = useState(false);
   const { from } = nameToColor(name);
   const initials = getInitials(name);
   const fontSize = Math.max(10, Math.round(size * 0.35));
@@ -59,12 +51,11 @@ export const Avatar: React.FC<AvatarProps> = ({
 
   return (
     <View style={[{ width: size, height: size, position: 'relative' }, style]}>
-      {isValidAvatarUrl(photo) && !imgError ? (
+      {photo ? (
         <Image
           source={{ uri: photo }}
           style={{ width: size, height: size, borderRadius: size / 2 }}
           resizeMode="cover"
-          onError={() => setImgError(true)}
         />
       ) : (
         <View style={[styles.circle, { width: size, height: size, borderRadius: size / 2, backgroundColor: from }]}>

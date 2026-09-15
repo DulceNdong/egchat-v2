@@ -2,14 +2,15 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, Modal, Pressable, Alert, Image, Share,
+  Animated, Modal, Pressable, Alert, Image, Share, Linking,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
 import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { chatAPI, authAPI, getToken } from '../../src/api';
+import { chatAPI, authAPI, contactsAPI, getToken } from '../../src/api';
+import { useStoryRings } from '../../src/hooks';
 import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
 import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPickerModal';
 import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
@@ -31,7 +32,7 @@ import { ContactProfileModal } from '../../src/components/ContactProfileModal';
 import { AvatarCropModal } from '../../src/components/AvatarCropModal';
 import {
   pickImageFromLibrary, pickImageFromCamera, pickVideo, pickFile,
-  getCurrentLocationLabel, uploadAndSend,
+  pickMusic, getCurrentLocationLabel, uploadAndSend,
 } from '../../src/utils/chatMedia';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
@@ -162,6 +163,7 @@ export default function ChatScreen() {
   const [showProfile, setShowProfile] = useState(false);
   const [cropUri, setCropUri] = useState<string | null>(null);
   const [previewImageUri, setPreviewImageUri] = useState<string | null>(null);
+  const [otherUserProfile, setOtherUserProfile] = useState<{ avatar_url?: string; phone?: string } | null>(null);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [showReadReceipts, setShowReadReceipts] = useState(true);
   const [wallpaperId, setWallpaperId] = useState('default');
@@ -184,6 +186,7 @@ export default function ChatScreen() {
   const insets = useSafeAreaInsets();
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline, saveCache, readCache } = useOffline();
+  const { activeUserIds, seenUserIds } = useStoryRings();
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
@@ -287,6 +290,27 @@ export default function ChatScreen() {
     });
     return unsubscribe;
   }, [chatId, currentUserId]);
+
+  // Enriquecer perfil del otro usuario desde contactos cuando no hay avatar en el participante
+  useEffect(() => {
+    if (!chat || chat.type === 'group' || !currentUserId) return;
+    const other = chat.participants?.find((p: any) => p.user_id !== currentUserId);
+    if (!other || getParticipantAvatar(other)) return; // ya tiene avatar
+    
+    contactsAPI.getAll().then(contacts => {
+      const match = contacts.find((c: any) => 
+        (c.contact_user_id === other.user_id) || 
+        (c.user?.id === other.user_id)
+      );
+      if (match) {
+        const realUser = match.user || match;
+        setOtherUserProfile({
+          avatar_url: realUser.avatar_url,
+          phone: realUser.phone,
+        });
+      }
+    }).catch(() => {});
+  }, [chat, currentUserId]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -652,6 +676,11 @@ export default function ChatScreen() {
   const handleAttachAction = useCallback(async (action: AttachAction) => {
     if (!chatId) return;
     if (action === 'photo') {
+      if (Platform.OS === 'web') {
+        const asset = await pickImageFromLibrary();
+        if (asset) await sendMedia(asset, { text: '📷 Foto', type: 'image' });
+        return;
+      }
       Alert.alert('Foto', '¿Cómo quieres enviar la foto?', [
         {
           text: 'Cámara',
@@ -709,7 +738,7 @@ export default function ChatScreen() {
       return;
     }
     if (action === 'music') {
-      const asset = await pickFile();
+      const asset = await pickMusic();
       if (asset) {
         await sendMedia(asset, { text: `🎵 ${asset.fileName}`, type: 'audio' });
       }
@@ -774,6 +803,18 @@ export default function ChatScreen() {
       failOptimistic(tempId);
     }
   }, [chatId, pushOptimistic, replaceOptimistic, failOptimistic]);
+
+  const openMessageAttachment = useCallback((msg: Message) => {
+    const url = msg.file_url || msg.imageUrl;
+    if (msg.type === 'location' || msg.text?.includes('google.com/maps')) {
+      const maps = msg.text?.split('\n').find(line => line.includes('google.com/maps'));
+      if (maps) Linking.openURL(maps).catch(() => {});
+      return;
+    }
+    if (url) {
+      Linking.openURL(url).catch(() => toast.error('No se pudo abrir', 'Archivo no disponible'));
+    }
+  }, []);
 
   const uploadChatAvatar = useCallback(async (uri: string) => {
     setUploadingAvatar(true);
@@ -842,12 +883,17 @@ export default function ChatScreen() {
   const chatName = chat
     ? isGroup ? (chat.name || 'Grupo') : (getParticipantName(otherParticipant) || 'Usuario')
     : '...';
-  const chatAvatar = isGroup ? chat?.avatar_url : getParticipantAvatar(otherParticipant);
-  const otherPhone = getParticipantPhone(otherParticipant);
+  const chatAvatar = isGroup 
+    ? chat?.avatar_url 
+    : (getParticipantAvatar(otherParticipant) || otherUserProfile?.avatar_url || null);
+  const otherPhone = getParticipantPhone(otherParticipant) || otherUserProfile?.phone || '';
   const isOtherOnline = !!otherParticipant?.user_id && onlineUserIds.includes(otherParticipant.user_id);
   const chatSubtitle = isGroup
     ? `${chat?.participants?.length || 0} miembros`
     : isOtherOnline ? 'En línea' : 'Desconectado';
+  const otherUserId = otherParticipant?.user_id;
+  const chatHasStory = !isGroup && !!otherUserId && activeUserIds.has(otherUserId);
+  const chatStorySeen = !isGroup && !!otherUserId && seenUserIds.has(otherUserId);
 
   // ── Items del drawer ──────────────────────────────────────────
   const IC = '#374151'; // color base
@@ -907,7 +953,7 @@ export default function ChatScreen() {
     {
       section: 'actions',
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={IC} strokeWidth={1.8}><Line x1="22" y1="2" x2="11" y2="13" strokeLinecap="round"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>,
-      label: 'Enviar dinero',
+      label: 'Dinero',
       color: IC,
       onPress: () => { setDrawerVisible(false); setShowQuickTransfer(true); },
     },
@@ -1002,12 +1048,26 @@ export default function ChatScreen() {
           onLongPress={handleLongPress}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}
+          onOpenAttachment={openMessageAttachment}
         />
       </>
     );
   };
 
   const goToCall = (callType: 'audio' | 'video') => {
+    if (chatId && currentUserId) {
+      const label = callType === 'video' ? '↗ Videollamada saliente\n▱ Videollamada' : '↗ Llamada saliente\nLlamada de voz';
+      const tempId = createTempMessageId();
+      pushOptimistic({
+        id: tempId,
+        text: label,
+        type: 'call',
+        sender_id: currentUserId,
+        status: 'delivered',
+        created_at: new Date().toISOString(),
+      });
+      chatAPI.sendMessage(chatId, { text: label, type: 'call' }).catch(() => {});
+    }
     router.push({
       pathname: '/call/[callId]',
       params: {
@@ -1037,6 +1097,8 @@ export default function ChatScreen() {
         subtitle={chatSubtitle}
         isTyping={isTyping}
         isOnline={isOtherOnline}
+        hasStory={chatHasStory}
+        storySeen={chatStorySeen}
         onBack={() => router.back()}
         onProfilePress={() => setShowProfile(true)}
         onAudioCall={() => goToCall('audio')}
@@ -1216,21 +1278,13 @@ export default function ChatScreen() {
           phone: otherPhone,
           isGroup,
           type: isGroup ? 'group' : 'private',
+          hasStory: chatHasStory,
+          storySeen: chatStorySeen,
         }}
         onClose={() => setShowProfile(false)}
         onStartCall={(type) => {
           setShowProfile(false);
-          router.push({
-            pathname: '/call/[callId]',
-            params: {
-              callId: `call_${Date.now()}`,
-              targetName: chatName,
-              targetAvatar: chatAvatar || '',
-              callType: type,
-              role: 'caller',
-              targetUserId: otherParticipant?.user_id || '',
-            },
-          } as any);
+          goToCall(type);
         }}
         onSendMoney={() => { setShowProfile(false); setShowQuickTransfer(true); }}
       />

@@ -5,6 +5,8 @@ import {
   Modal, SafeAreaView, Switch, Alert,
 } from 'react-native';
 import { Avatar } from './Avatar';
+import { EGAvatar } from './ui/EGAvatar';
+import { ImageViewerModal } from './ui/ImageViewerModal';
 
 interface Msg { id: string; from: 'me' | 'them'; text: string; time: string }
 
@@ -73,8 +75,20 @@ export const ContactProfileModal: React.FC<Props> = ({
 }) => {
   const [tab, setTab] = useState<'info' | 'media' | 'grupos'>('info');
   const [starred, setStarred] = useState(!!isFavorite);
+  const [photoVisible, setPhotoVisible] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerName, setViewerName] = useState<string | undefined>(undefined);
 
   if (!cp) return null;
+
+  const photoUri = cp.avatarUrl || cp.avatar_url || cp.photo || null;
+
+  const openPhoto = (uri: string | null | undefined, name?: string) => {
+    if (!uri) return;
+    setViewerUri(uri);
+    setViewerName(name);
+    setPhotoVisible(true);
+  };
 
   const isGroup = !!cp.isGroup || cp.type === 'group';
   const cpId = cp.id?.toString() || cp.title;
@@ -118,13 +132,23 @@ export const ContactProfileModal: React.FC<Props> = ({
         <ScrollView style={{ flex: 1 }}>
           {/* Avatar + nombre */}
           <View style={styles.profileSection}>
-            <Avatar
-              name={cp.title || cp.name || '?'}
-              size={90}
-              photo={cp.avatarUrl || cp.avatar_url || cp.photo}
-              status={cp.status}
-              showStatus={!isGroup}
-            />
+            <TouchableOpacity
+              onPress={() => openPhoto(photoUri, cp.title || cp.name)}
+              activeOpacity={photoUri ? 0.8 : 1}
+            >
+              <EGAvatar
+                src={photoUri}
+                name={cp.title || cp.name || '?'}
+                size={90}
+                hasStory={!!cp.hasStory}
+                storySeen={!!cp.storySeen}
+              />
+              {photoUri && (
+                <View style={styles.photoHint}>
+                  <Text style={styles.photoHintText}>🔍</Text>
+                </View>
+              )}
+            </TouchableOpacity>
             <Text style={styles.profileName}>{cp.title || cp.name}</Text>
             <Text style={[
               styles.profileStatus,
@@ -284,7 +308,12 @@ export const ContactProfileModal: React.FC<Props> = ({
                 groupMembers.length > 0 ? (
                   groupMembers.map((m: any) => (
                     <View key={m.user_id || m.id} style={styles.memberItem}>
-                      <Avatar name={m.full_name || 'Usuario'} size={40} photo={m.avatar_url} />
+                      <TouchableOpacity
+                        onPress={() => openPhoto(m.avatar_url, m.full_name || 'Usuario')}
+                        activeOpacity={m.avatar_url ? 0.8 : 1}
+                      >
+                        <Avatar name={m.full_name || 'Usuario'} size={40} photo={m.avatar_url} />
+                      </TouchableOpacity>
                       <View style={styles.memberInfo}>
                         <Text style={styles.memberName}>{m.full_name || 'Usuario'}</Text>
                         <Text style={styles.memberRole}>{m.role === 'admin' ? '👑 Admin' : 'Miembro'}</Text>
@@ -322,6 +351,12 @@ export const ContactProfileModal: React.FC<Props> = ({
           )}
         </ScrollView>
       </SafeAreaView>
+      <ImageViewerModal
+        visible={photoVisible}
+        uri={viewerUri}
+        name={viewerName}
+        onClose={() => { setPhotoVisible(false); setViewerUri(null); setViewerName(undefined); }}
+      />
     </Modal>
   );
 };
@@ -339,6 +374,18 @@ const styles = StyleSheet.create({
   profileSection: {
     backgroundColor: '#fff', padding: 24, alignItems: 'center', gap: 6, marginBottom: 8,
   },
+  photoHint: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: 10,
+    width: 22,
+    height: 22,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  photoHintText: { fontSize: 11 },
   profileName: { fontSize: 22, fontWeight: '700', color: '#111827', marginTop: 8 },
   profileStatus: { fontSize: 13, color: '#9CA3AF' },
   profilePhone: { fontSize: 13, color: '#9CA3AF' },

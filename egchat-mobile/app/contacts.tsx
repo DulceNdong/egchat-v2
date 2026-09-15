@@ -6,7 +6,8 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { contactsAPI, chatAPI } from '../src/api';
-import { EGAvatar } from '../src/components/ui';
+import { EGAvatar, ImageViewerModal } from '../src/components/ui';
+import { useStoryRings } from '../src/hooks';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
@@ -17,8 +18,11 @@ export default function ContactsScreen() {
   const [loading, setLoading] = useState(true);
   const [addPhone, setAddPhone] = useState('');
   const [adding, setAdding] = useState(false);
+  const [viewerUri, setViewerUri] = useState<string | null>(null);
+  const [viewerName, setViewerName] = useState<string | undefined>(undefined);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { activeUserIds, seenUserIds } = useStoryRings();
 
   const load = useCallback(async () => {
     try {
@@ -57,7 +61,27 @@ export default function ContactsScreen() {
     ]);
   }, []);
 
-  const openChat = useCallback(async (userId: string) => {
+  const getRealUser = (item: any) => item?.user || item;
+  const getRealUserId = (item: any) => item?.contact_user_id || item?.user?.id || item?.id;
+  const getDisplayName = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.full_name || item?.full_name || item?.name || item?.nickname || 'Usuario';
+  };
+  const getDisplayPhone = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.phone || item?.phone || '';
+  };
+  const getDisplayAvatar = (item: any) => {
+    const realUser = getRealUser(item);
+    return realUser?.avatar_url || item?.avatar_url || '';
+  };
+
+  const openChat = useCallback(async (contact: any) => {
+    const userId = getRealUserId(contact);
+    if (!userId) {
+      Alert.alert('Contacto incompleto', 'Este contacto no tiene usuario asociado.');
+      return;
+    }
     try {
       const chat = await chatAPI.createPrivate(userId);
       router.replace(`/chat/${chat.id}` as any);
@@ -66,8 +90,8 @@ export default function ContactsScreen() {
 
   const filtered = query
     ? contacts.filter(c =>
-        (c.full_name || c.name || '').toLowerCase().includes(query.toLowerCase()) ||
-        (c.phone || '').includes(query)
+        getDisplayName(c).toLowerCase().includes(query.toLowerCase()) ||
+        getDisplayPhone(c).includes(query)
       )
     : contacts;
 
@@ -102,23 +126,63 @@ export default function ContactsScreen() {
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={item => item.id}
-          renderItem={({ item }) => (
-            <TouchableOpacity style={[styles.item, { backgroundColor: C.bgSecondary }]} onPress={() => openChat(item.contact_user_id || item.id)} onLongPress={() => removeContact(item.id, item.full_name || item.name || 'Contacto')} activeOpacity={0.7}>
-              <EGAvatar src={item.avatar_url} name={item.full_name || item.name || '?'} size={46} />
-              <View style={styles.info}>
-                <Text style={[styles.name, { color: C.textPrimary }]}>{item.full_name || item.name || 'Usuario'}</Text>
-                <Text style={[styles.phone, { color: C.textTertiary }]}>{item.phone || ''}</Text>
-              </View>
-              <TouchableOpacity onPress={() => openChat(item.contact_user_id || item.id)} style={styles.chatBtn}>
-                <Text style={styles.chatBtnIcon}>💬</Text>
+          keyExtractor={item => getRealUserId(item) || item.id}
+          renderItem={({ item }) => {
+            const avatar = getDisplayAvatar(item);
+            const name = getDisplayName(item);
+            const userId = getRealUserId(item);
+            const hasStory = userId ? activeUserIds.has(userId) : false;
+            const storySeen = userId ? seenUserIds.has(userId) : false;
+            return (
+              <TouchableOpacity
+                style={[styles.item, { backgroundColor: C.bgSecondary }]}
+                onPress={() => openChat(item)}
+                onLongPress={() => removeContact(item.id, name || 'Contacto')}
+                activeOpacity={0.7}
+              >
+                {/* Tocar el avatar abre la foto en grande o el visor de estado */}
+                <TouchableOpacity
+                  onPress={() => {
+                    if (avatar) {
+                      setViewerUri(avatar);
+                      setViewerName(name);
+                    } else {
+                      openChat(item);
+                    }
+                  }}
+                  activeOpacity={0.85}
+                  hitSlop={4}
+                >
+                  <EGAvatar
+                    src={avatar}
+                    name={name}
+                    size={46}
+                    hasStory={hasStory}
+                    storySeen={storySeen}
+                  />
+                </TouchableOpacity>
+
+                <View style={styles.info}>
+                  <Text style={[styles.name, { color: C.textPrimary }]}>{name}</Text>
+                  <Text style={[styles.phone, { color: C.textTertiary }]}>{getDisplayPhone(item)}</Text>
+                </View>
+
+                <TouchableOpacity onPress={() => openChat(item)} style={styles.chatBtn}>
+                  <Text style={styles.chatBtnIcon}>💬</Text>
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          )}
+            );
+          }}
           ItemSeparatorComponent={() => <View style={[styles.separator, { backgroundColor: C.borderLight }]} />}
           showsVerticalScrollIndicator={false}
         />
       )}
+      <ImageViewerModal
+        visible={!!viewerUri}
+        uri={viewerUri}
+        name={viewerName}
+        onClose={() => { setViewerUri(null); setViewerName(undefined); }}
+      />
     </SafeAreaView>
   );
 }
