@@ -18,7 +18,7 @@ export async function compressImage(uri: string): Promise<string> {
   );
 
   // Verificar tamaño
-  const info = await FileSystem.getInfoAsync(result.uri, { size: true });
+  const info = await FileSystem.getInfoAsync(result.uri);
   const sizeBytes = (info as any).size ?? 0;
 
   if (sizeBytes > 2 * 1024 * 1024) {
