@@ -288,12 +288,14 @@ export default function CallScreen() {
     }
   }, [speakerOn]);
 
-  // Iniciar llamada (caller)
+  // Iniciar llamada (caller) — solo si no hay ya una llamada activa
   useEffect(() => {
     if (initiated.current) return;
     initiated.current = true;
+    // Si ya hay una llamada conectada en el contexto global (el usuario expandió
+    // desde el PiP), no reiniciar el WebRTC — la conexión sigue activa en el hook
+    if (callState === 'connected' || callState === 'calling' || callState === 'ringing') return;
     if (role === 'caller' && targetUserId) {
-      // Ringtone de marcado para el caller
       startDialingTone().catch(() => {});
       startCall(callType as 'audio' | 'video', targetUserId, callId).catch(err => {
         stopDialingTone();
@@ -301,6 +303,7 @@ export default function CallScreen() {
         router.back();
       });
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Animaciones
