@@ -196,7 +196,7 @@ export default function KycWalletPrompt() {
           <Animated.View style={[st.benefitsBox, { opacity: fadeAnim }]}>
             {BENEFITS.map((b, i) => (
               <View key={i} style={st.benefitRow}>
-                <View style={[st.benefitIconBox, { backgroundColor: b.bg }]}>
+                <View style={st.benefitIconBox}>
                   {b.icon}
                 </View>
                 <View style={st.benefitText}>
