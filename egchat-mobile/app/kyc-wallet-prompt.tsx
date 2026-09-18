@@ -400,13 +400,13 @@ const st = StyleSheet.create({
   benefitText: { flex: 1 },
   benefitTitle: {
     fontSize: 13,
-    fontWeight: '700',
+    fontWeight: '600',
     color: '#ffffff',
-    marginBottom: 2,
+    marginBottom: 1,
   },
   benefitSub: {
     fontSize: 11,
-    color: 'rgba(255,255,255,0.5)',
+    color: 'rgba(255,255,255,0.45)',
     lineHeight: 15,
   },
 
