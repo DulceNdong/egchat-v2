@@ -58,26 +58,22 @@ const IconClose = ({ color = 'rgba(255,255,255,0.5)', size = 20 }: { color?: str
 // ── Beneficios que se muestran en la pantalla ─────────────────────
 const BENEFITS = [
   {
-    icon: <IconWallet color="#00B4E6" size={22}/>,
-    bg:   '#e0f7ff',
+    icon: <IconWallet color="#00C8A0" size={20}/>,
     title: 'Monedero digital XAF',
     sub:   'Guarda y gestiona tu saldo de forma segura',
   },
   {
-    icon: <IconTransfer color="#8B5CF6" size={22}/>,
-    bg:   '#ede9fe',
+    icon: <IconTransfer color="#00C8A0" size={20}/>,
     title: 'Transferencias instantáneas',
     sub:   'Envía dinero a cualquier usuario EGChat al instante',
   },
   {
-    icon: <IconBill color="#F59E0B" size={22}/>,
-    bg:   '#fef9e7',
+    icon: <IconBill color="#00C8A0" size={20}/>,
     title: 'Paga servicios',
     sub:   'Electricidad, agua, teléfono y mucho más desde la app',
   },
   {
-    icon: <IconShield color="#10B981" size={22}/>,
-    bg:   '#d1fae5',
+    icon: <IconShield color="#00C8A0" size={20}/>,
     title: 'Seguridad COBAC',
     sub:   'Verificación obligatoria bajo normativa bancaria BEAC',
   },
