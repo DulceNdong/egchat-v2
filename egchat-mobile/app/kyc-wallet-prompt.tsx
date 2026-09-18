@@ -387,12 +387,15 @@ const st = StyleSheet.create({
     gap: 12,
   },
   benefitIconBox: {
-    width: 42,
-    height: 42,
-    borderRadius: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    backgroundColor: 'rgba(0,200,160,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(0,200,160,0.18)',
   },
   benefitText: { flex: 1 },
   benefitTitle: {
