@@ -19,37 +19,37 @@ import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../
 const { width: W } = Dimensions.get('window');
 
 // ── Iconos ────────────────────────────────────────────────────────
-const IconShield = ({ color = '#00C8A0', size = 28 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const IconShield = ({ color = '#00C8A0', size = 22 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
     <Path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-    <Path d="M9 12l2 2 4-4" stroke={color} strokeWidth={2.2}/>
+    <Path d="M9 12l2 2 4-4" strokeWidth={1.8}/>
   </Svg>
 );
-const IconWallet = ({ color = '#00B4E6', size = 28 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Rect x="2" y="5" width="20" height="14" rx="2"/>
-    <Line x1="2" y1="10" x2="22" y2="10"/>
-    <Circle cx="17" cy="15" r="1.5" fill={color} stroke="none"/>
+const IconWallet = ({ color = '#00C8A0', size = 22 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M20 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"/>
+    <Path d="M16 3l-4-1-4 1v4h8V3z"/>
+    <Circle cx="17" cy="13" r="1" fill={color} stroke="none"/>
   </Svg>
 );
-const IconTransfer = ({ color = '#8B5CF6', size = 28 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    <Polyline points="17 1 21 5 17 9"/>
-    <Path d="M3 11V9a4 4 0 0 1 4-4h14"/>
-    <Polyline points="7 23 3 19 7 15"/>
-    <Path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+const IconTransfer = ({ color = '#00C8A0', size = 22 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M5 12h14"/>
+    <Path d="M13 6l6 6-6 6"/>
+    <Path d="M19 12H5"/>
+    <Path d="M11 18l-6-6 6-6"/>
   </Svg>
 );
-const IconBill = ({ color = '#F59E0B', size = 28 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+const IconBill = ({ color = '#00C8A0', size = 22 }: { color?: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.6} strokeLinecap="round" strokeLinejoin="round">
     <Rect x="5" y="2" width="14" height="20" rx="2"/>
-    <Line x1="9" y1="7" x2="15" y2="7"/>
-    <Line x1="9" y1="11" x2="15" y2="11"/>
-    <Line x1="9" y1="15" x2="12" y2="15"/>
+    <Line x1="9" y1="8" x2="15" y2="8"/>
+    <Line x1="9" y1="12" x2="15" y2="12"/>
+    <Line x1="9" y1="16" x2="12" y2="16"/>
   </Svg>
 );
 const IconClose = ({ color = 'rgba(255,255,255,0.5)', size = 20 }: { color?: string; size?: number }) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round">
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
     <Line x1="18" y1="6" x2="6" y2="18"/>
     <Line x1="6" y1="6" x2="18" y2="18"/>
   </Svg>
