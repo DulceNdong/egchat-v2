@@ -29,3 +29,11 @@ Podfile.save
 # Firebase service account (NUNCA subir a Git)
 server/firebase-service-account.json
 firebase-service-account.json
+
+# No ignorar estas carpetas nuevas
+!apps/
+!scripts/
+!.kiro/
+apps/**/node_modules/
+apps/**/dist/
+apps/**/target/
