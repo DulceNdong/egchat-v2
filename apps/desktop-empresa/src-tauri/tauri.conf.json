@@ -1,0 +1,43 @@
+{
+  "productName": "EGCHAT KYC Monitor",
+  "version": "1.0.0",
+  "identifier": "com.egchat.empresa.kyc",
+  "build": {
+    "beforeBuildCommand": "npm run build",
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5174",
+    "frontendDist": "../dashboard-empresa/dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "EGCHAT — Monitor KYC",
+        "width": 1440,
+        "height": 900,
+        "minWidth": 1024,
+        "minHeight": 700,
+        "resizable": true,
+        "fullscreen": false,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": "default-src 'self'; img-src 'self' data: blob: https://egchat-api-xlxj.onrender.com; connect-src 'self' https://egchat-api-xlxj.onrender.com wss://egchat-api-xlxj.onrender.com; style-src 'self' 'unsafe-inline'; font-src 'self' data:"
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": ["msi", "nsis", "dmg", "deb", "appimage"],
+    "icon": ["icons/32x32.png", "icons/128x128.png", "icons/icon.ico", "icons/icon.icns"]
+  },
+  "plugins": {
+    "updater": {
+      "active": true,
+      "endpoints": [
+        "https://egchat-api-xlxj.onrender.com/updates/empresa/{{target}}/{{arch}}/latest.json"
+      ],
+      "dialog": true,
+      "pubkey": "TAURI_PUBLIC_KEY_PLACEHOLDER"
+    }
+  }
+}
