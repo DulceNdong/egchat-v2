@@ -1286,23 +1286,23 @@ function MonederoScreenInner() {
             {/* Icono estado — SVG sin fondo de color */}
             <View style={kycS.heroIconWrap}>
               {isPending ? (
-                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
                   <Circle cx="12" cy="12" r="10"/>
                   <Path d="M12 6v6l4 2"/>
                 </Svg>
               ) : isRejected ? (
-                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
                   <Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
                   <Line x1="12" y1="9" x2="12" y2="13"/>
                   <Line x1="12" y1="17" x2="12.01" y2="17"/>
                 </Svg>
               ) : isSuspended ? (
-                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
                   <Circle cx="12" cy="12" r="10"/>
                   <Line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/>
                 </Svg>
               ) : (
-                <Svg width={36} height={36} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.85)" strokeWidth={1.5} strokeLinecap="round">
                   <Rect x="1" y="4" width="22" height="16" rx="2" ry="2"/>
                   <Line x1="1" y1="10" x2="23" y2="10"/>
                 </Svg>
