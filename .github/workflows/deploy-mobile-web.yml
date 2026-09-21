@@ -96,7 +96,7 @@ jobs:
     needs: sync-backend
     steps:
       - name: Esperar arranque de Render
-        run: sleep 90
+        run: sleep 30
 
       - name: Comprobar health y rutas críticas
         run: |
@@ -111,20 +111,33 @@ jobs:
                 hostname: API,
                 path,
                 method,
+                timeout: 15000,
                 headers: { 'Content-Type': 'application/json', 'Content-Length': body.length }
               }, (res) => {
                 let b = '';
                 res.on('data', (c) => b += c);
                 res.on('end', () => resolve({ code: res.statusCode, body: b }));
               });
+              rq.on('timeout', () => { rq.destroy(); resolve({ code: 0, body: 'timeout' }); });
               rq.on('error', (e) => resolve({ code: 0, body: e.message }));
               rq.write(body);
               rq.end();
             });
           }
 
+          async function waitForHealth(maxWaitMs = 180000) {
+            const start = Date.now();
+            while (Date.now() - start < maxWaitMs) {
+              const r = await req('GET', '/health');
+              if (r.code === 200) return r;
+              console.log(`⏳ Render aún arrancando (${r.body.slice(0,40)}) — reintentando en 15s...`);
+              await new Promise(res => setTimeout(res, 15000));
+            }
+            return { code: 0, body: 'timeout after 3 min' };
+          }
+
           (async () => {
-            const health = await req('GET', '/health');
+            const health = await waitForHealth();
             let version = 'sin version';
             try {
               const d = JSON.parse(health.body);
