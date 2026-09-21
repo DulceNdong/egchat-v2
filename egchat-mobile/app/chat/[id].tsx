@@ -1987,7 +1987,7 @@ export default function ChatScreen() {
 
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === currentUserId;
-    const prevMsg = index > 0 ? displayMessages[index - 1] : null;
+    const prevMsg = index > 0 ? displayMessagesRef.current[index - 1] : null;
     const showDate = !prevMsg || getDateLabel(item.created_at) !== getDateLabel(prevMsg.created_at);
     const searchHit = !!chatSearchQuery.trim() && !!item.text?.toLowerCase().includes(chatSearchQuery.toLowerCase());
     // #8 — Separador de mensajes no leídos
@@ -2086,7 +2086,7 @@ export default function ChatScreen() {
     );
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
-    currentUserId, displayMessages, chatSearchQuery, firstUnreadId,
+    currentUserId, chatSearchQuery, firstUnreadId,
     selectedIds, isSelectMode, isGroup, myProfile, chatName, chatAvatar,
     showReadReceipts, messageReactions, toggleSelect, retryMessage,
     setPreviewImageUri, handleTransferPress, handleSwipeReply,
