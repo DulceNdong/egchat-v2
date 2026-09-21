@@ -517,7 +517,7 @@ function HomeScreenInner() {
           </View>
         </View>
 
-        <View style={{ height: 168 }} />
+        <View style={{ height: Platform.OS === 'android' ? 88 : 168 }} />
       </ScrollView>
 
       {/* ════════════════════════════════════════════════════════
