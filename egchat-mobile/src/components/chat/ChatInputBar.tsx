@@ -60,7 +60,11 @@ export function ChatInputBar({
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
   const [nativeKeyboardVisible, setNativeKeyboardVisible] = useState(false);
-  const bottomPadding = keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom);
+  // Android: cuando el teclado está visible el sistema ya ajustó el layout (resize mode),
+  // no añadir padding extra. Solo añadir safe area bottom cuando NO hay teclado.
+  const bottomPadding = Platform.OS === 'android'
+    ? (keyboardVisible ? 0 : Math.max(0, insets.bottom))
+    : (keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom));
 
   // Cuando el padre cierra el kb desde fuera (abre panel +), cerramos aquí también
   React.useEffect(() => {
