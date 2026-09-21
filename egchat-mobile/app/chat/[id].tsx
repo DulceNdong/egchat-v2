@@ -1914,6 +1914,11 @@ export default function ChatScreen() {
       : filterExpiredMessages(messages, ephemeralDuration),
   [messages, chatSearchQuery, ephemeralDuration]);
 
+  // Ref para acceder a displayMessages dentro de renderItem sin añadirlo
+  // como dependencia del useCallback — evita recrear el callback en cada mensaje nuevo
+  const displayMessagesRef = useRef(displayMessages);
+  useEffect(() => { displayMessagesRef.current = displayMessages; }, [displayMessages]);
+
   const starredMessages = messages.filter(m => starredIds.includes(m.id));
 
   // ── Función para manejar click en tarjeta de transferencia ──────
