@@ -2,7 +2,7 @@
 import React, { useRef, useState } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Animated,
+  ActivityIndicator, Animated, Platform,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
