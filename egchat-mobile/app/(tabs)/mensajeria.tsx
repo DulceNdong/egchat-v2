@@ -989,7 +989,7 @@ function MensajeriaScreenInner() {
                 <Text style={[st.emptySub, { color: C.textSecondary }]}>{'Desliza un chat a la izquierda para archivarlo'}</Text>
               </View>
             }
-            ListFooterComponent={<View style={{ height: 100 }} />}
+            ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
             }
@@ -1061,7 +1061,7 @@ function MensajeriaScreenInner() {
             keyExtractor={(item: any) => item.id}
             showsVerticalScrollIndicator={false}
             estimatedItemSize={72}
-            ListFooterComponent={<View style={{ height: 100 }} />}
+            ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
             }
