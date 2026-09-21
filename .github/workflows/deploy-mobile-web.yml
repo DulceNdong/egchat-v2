@@ -14,19 +14,10 @@ jobs:
     name: Sync server → egchat-api → Render
     runs-on: ubuntu-latest
     steps:
-      - name: Verificar token de sync
-        run: |
-          if [ -z "${{ secrets.EGCHAT_API_SYNC_TOKEN }}" ]; then
-            echo "::error::Falta el secret EGCHAT_API_SYNC_TOKEN en GitHub Actions."
-            echo "Crea un PAT con scope repo y añádelo en Settings → Secrets."
-            echo "Ver DEPLOY-UNIFICADO.md"
-            exit 1
-          fi
-
-      - name: Checkout egchat-v2 (con submodule server)
+      - name: Checkout egchat-v2
         uses: actions/checkout@v4
         with:
-          submodules: recursive
+          submodules: true
           token: ${{ secrets.EGCHAT_API_SYNC_TOKEN }}
 
       - name: Checkout egchat-api para push
