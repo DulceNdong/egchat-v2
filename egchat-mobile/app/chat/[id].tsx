@@ -2225,9 +2225,9 @@ export default function ChatScreen() {
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             // ── Optimizaciones de rendimiento ──────────────────────
             initialNumToRender={15}
-            maxToRenderPerBatch={10}
-            updateCellsBatchingPeriod={80}
-            windowSize={7}
+            maxToRenderPerBatch={Platform.OS === 'android' ? 5 : 10}
+            updateCellsBatchingPeriod={Platform.OS === 'android' ? 100 : 80}
+            windowSize={Platform.OS === 'android' ? 5 : 7}
             removeClippedSubviews={Platform.OS === 'android'}
             getItemLayout={undefined}
             // ────────────────────────────────────────────────────────
