@@ -3,9 +3,6 @@ name    = "bange-kyc-admin"
 version = "1.0.0"
 edition = "2021"
 
-[lib]
-name = "bange_kyc_admin_lib"
-crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
 tauri-build = { version = "2", features = [] }
