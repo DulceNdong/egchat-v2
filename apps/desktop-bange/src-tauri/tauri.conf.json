@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "identifier": "com.egchat.bange.kyc",
   "build": {
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5173",
-    "frontendDist": "../dashboard-bange/dist"
+    "frontendDist": "../../dashboard-bange/dist"
   },
   "app": {
     "windows": [
