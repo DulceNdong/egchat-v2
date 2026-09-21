@@ -3,10 +3,10 @@
   "version": "1.0.0",
   "identifier": "com.egchat.empresa.kyc",
   "build": {
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "",
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:5174",
-    "frontendDist": "../dashboard-empresa/dist"
+    "frontendDist": "../../dashboard-empresa/dist"
   },
   "app": {
     "windows": [
