@@ -1232,7 +1232,7 @@ const st = StyleSheet.create({
   contentArea: { flex: 1 },
   fixedContent: { flexShrink: 0 },
   listScroll: { flex: 1 },
-  listScrollContent: { paddingBottom: 100 },
+  listScrollContent: { paddingBottom: Platform.OS === 'android' ? 80 : 100 },
 
   // ── Header ──────────────────────────────────────────────────────
   header: {
