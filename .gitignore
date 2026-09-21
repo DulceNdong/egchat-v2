@@ -37,3 +37,8 @@ firebase-service-account.json
 apps/**/node_modules/
 apps/**/dist/
 apps/**/target/
+
+# Carpetas con repos git anidados — no trackear como submodules
+egchat-v2/
+temp-deploy-clean/
+EGCHAT NATIVA/
