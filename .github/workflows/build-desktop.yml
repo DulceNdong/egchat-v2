@@ -80,9 +80,9 @@ jobs:
         with:
           workspaces: apps/desktop-${{ matrix.app }}/src-tauri
 
-      - name: Install dashboard deps
+      - name: Install Tauri CLI + dashboard deps
         working-directory: apps/dashboard-${{ matrix.app }}
-        run: npm install
+        run: npm install && npm install -D @tauri-apps/cli
 
       - name: Build dashboard
         working-directory: apps/dashboard-${{ matrix.app }}
@@ -93,7 +93,10 @@ jobs:
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
-        run: npx tauri build --target universal-apple-darwin
+        run: |
+          npm init -y
+          npm install -D @tauri-apps/cli
+          npx tauri build --target universal-apple-darwin
 
       - name: Upload DMG
         uses: actions/upload-artifact@v4
