@@ -69,7 +69,7 @@ export function useNetworkStatus() {
     const unsub = subscribeNetworkStatus(() => {
       setState({ isOnline: _isOnline, isChecking: _isChecking });
     });
-    return unsub;
+    return () => { unsub(); };
   }, []);
 
   return state;

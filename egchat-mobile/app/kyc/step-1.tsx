@@ -10,6 +10,8 @@ import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
 import { useKycStore } from '../../src/store/kycStore';
 import { saveKycDraft } from '../../src/services/kycStorage';
 import { savePersonalData, createKycApplication } from '../../src/services/kycService';
+import { getNetworkStatus } from '../../src/store/offlineStore';
+import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 
 // ── Datos GE ──────────────────────────────────────────────────────
 const GE_PROVINCES = [
@@ -148,7 +150,11 @@ export default function Step1() {
         store.setSessionId(sessionId);
         appId = applicationId;
       }
-      await savePersonalData(appId, d);
+      if (getNetworkStatus().isOnline) {
+        await savePersonalData(appId, d);
+      } else {
+        await enqueueKycAction({ type: 'personal', applicationId: appId, data: d });
+      }
       store.markStepComplete(1);
       store.setCurrentStep(2);
       await saveKycDraft({ ...store, currentStep: 2, completedSteps: [...store.completedSteps, 1] } as any);
