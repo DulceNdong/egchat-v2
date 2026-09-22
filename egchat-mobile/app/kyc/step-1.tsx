@@ -202,8 +202,6 @@ export default function Step1() {
     }
   };
 
-  const dateValue = d.dateOfBirth ? new Date(d.dateOfBirth) : new Date(1990, 0, 1);
-
   return (
     <KycStepLayout
       step={1}
