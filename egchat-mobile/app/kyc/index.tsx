@@ -32,6 +32,7 @@ export default function KycEntryScreen() {
         store.setPersonalData({ phone: user.phone });
       }
     }).catch(() => {});
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const startNew = async () => {
