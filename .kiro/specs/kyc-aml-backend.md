@@ -156,13 +156,13 @@ Decisión automática:
 ## 6. Tareas implementadas
 
 - [x] T1: Spec doc
-- [ ] T2: Estructura de proyecto
-- [ ] T3: Modelos SQLAlchemy
-- [ ] T4: Schemas Pydantic
-- [ ] T5: Auth JWT + roles
-- [ ] T6: Router /kyc
-- [ ] T7: Router /admin/kyc
-- [ ] T8: Motor de decisión
-- [ ] T9: Servicio screening
-- [ ] T10: Router /aml
-- [ ] T11: Webhook BANGE
+- [x] T2: Estructura de proyecto
+- [x] T3: Modelos SQLAlchemy
+- [x] T4: Schemas Pydantic
+- [x] T5: Auth JWT + roles
+- [x] T6: Router /kyc
+- [x] T7: Router /admin/kyc
+- [x] T8: Motor de decisión
+- [x] T9: Servicio screening
+- [x] T10: Router /aml
+- [x] T11: Webhook BANGE

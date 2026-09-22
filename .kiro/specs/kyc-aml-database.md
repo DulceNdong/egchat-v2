@@ -107,16 +107,16 @@ Campos que se almacenan cifrados (AES-256 via pgcrypto o capa aplicación):
 ## 5. Tareas de implementación
 
 - [x] T1: `kyc_tables.sql` — estructura base (kyc_verifications, kyc_status_history, kyc_documents básico)
-- [ ] T2: `admin_users` con roles y entidades
-- [ ] T3: Ampliar `kyc_verifications` → `kyc_applications` (session_id, risk_score, bank_decision)
-- [ ] T4: `kyc_personal_data` separada
-- [ ] T5: Ampliar `kyc_documents` (ocr_confidence, face_match_score, liveness_passed)
-- [ ] T6: `kyc_screening_results`
-- [ ] T7: `kyc_audit_log` INMUTABLE con trigger anti-DML
-- [ ] T8: Ampliar `transactions` para AML
-- [ ] T9: `suspicious_activity_reports`
-- [ ] T10: Índices + constraints + triggers en todas las nuevas tablas
-- [ ] T11: Migración Alembic `008_kyc_aml_complete.py`
+- [x] T2: `admin_users` con roles y entidades
+- [x] T3: Ampliar `kyc_verifications` → `kyc_applications` (session_id, risk_score, bank_decision)
+- [x] T4: `kyc_personal_data` separada
+- [x] T5: Ampliar `kyc_documents` (ocr_confidence, face_match_score, liveness_passed)
+- [x] T6: `kyc_screening_results`
+- [x] T7: `kyc_audit_log` INMUTABLE con trigger anti-DML
+- [x] T8: Ampliar `transactions` para AML
+- [x] T9: `suspicious_activity_reports`
+- [x] T10: Índices + constraints + triggers en todas las nuevas tablas
+- [x] T11: Migración Alembic `008_kyc_aml_complete.py`
 
 ---
 

@@ -14,12 +14,6 @@ import CompanyLayout from '../components/CompanyLayout';
 
 const PAGE_SIZE = 20;
 
-const ALL_STATUSES = [
-  '',  'draft', 'IN_PROGRESS', 'submitted', 'PENDING_REVIEW',
-  'MANUAL_REVIEW', 'AUTO_APPROVED', 'APPROVED', 'approved',
-  'REJECTED', 'rejected', 'BLOCKED', 'PENDING_INFO',
-];
-
 export default function CompanyUsers() {
   const { t }     = useTranslation();
   const navigate  = useNavigate();

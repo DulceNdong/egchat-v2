@@ -6,7 +6,7 @@ import { apiClient } from './client';
 import type {
   LoginResponse, AdminUser,
   KycListResponse, KycDetail, KycStats, AuditEntry,
-  FlaggedTransactionsResponse, FlaggedTransaction,
+  FlaggedTransactionsResponse,
   SAR, SarListResponse,
 } from '@/types';
 

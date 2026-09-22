@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next';
 import { useMemo } from 'react';
 import {
   LineChart, Line, BarChart, Bar, XAxis, YAxis,
-  CartesianGrid, Tooltip, Legend, ResponsiveContainer, Cell,
+  CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from 'recharts';
 import { subDays, format } from 'date-fns';
 import { AlertTriangle, TrendingUp } from 'lucide-react';

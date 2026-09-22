@@ -6,7 +6,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { Plus, Clock, AlertTriangle } from 'lucide-react';
 import { useSARs } from '@/shared/hooks/useKycAdmin';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
 import { es } from 'date-fns/locale';
 import CompanyLayout from '../components/CompanyLayout';
 

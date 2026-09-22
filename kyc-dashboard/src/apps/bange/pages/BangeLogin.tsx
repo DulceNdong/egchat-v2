@@ -7,7 +7,6 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/core/auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Shield, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
 import { getErrorMessage } from '@/api/client';
 
 type Step = 'credentials' | 'totp';

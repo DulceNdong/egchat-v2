@@ -9,7 +9,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { kycAdminApi } from '@/api/endpoints';
-import { ZoomIn, ZoomOut, X } from 'lucide-react';
+import { ZoomIn, X } from 'lucide-react';
 
 interface DocumentViewerProps {
   applicationId: string;

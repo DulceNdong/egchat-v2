@@ -11,7 +11,6 @@ import { RiskBadge, StatusBadge } from '@/shared/components/ui/Badges';
 import { formatDistanceToNow } from 'date-fns';
 import { es, fr } from 'date-fns/locale';
 import BangeLayout from '../components/BangeLayout';
-import { useTranslation as useT } from 'react-i18next';
 
 const PAGE_SIZE = 20;
 

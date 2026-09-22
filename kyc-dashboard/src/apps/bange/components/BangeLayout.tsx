@@ -4,7 +4,7 @@
  */
 import { type ReactNode } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
-import { LayoutList, BarChart3, LogOut, Sun, Moon, Bell, RefreshCw } from 'lucide-react';
+import { LayoutList, BarChart3, LogOut, Sun, Moon, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/core/auth/AuthContext';
 import { useTheme } from '@/core/theme/ThemeContext';
 import { useKycStats } from '@/shared/hooks/useKycAdmin';
@@ -63,7 +63,6 @@ export default function BangeLayout({ children, title }: BangeLayoutProps) {
                   ? 'bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-300'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
               )}
-              aria-current={({ isActive }) => isActive ? 'page' : undefined}
             >
               <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
               <span className="flex-1 truncate">{label}</span>

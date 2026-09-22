@@ -7,7 +7,6 @@ import {
   type ReactNode,
 } from 'react';
 import { authApi } from '@/api/endpoints';
-import { apiClient } from '@/api/client';
 import type { AdminUser, AuthState, LoginResponse } from '@/types';
 
 interface AuthContextValue extends AuthState {

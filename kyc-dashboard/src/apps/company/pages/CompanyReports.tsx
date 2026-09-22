@@ -5,7 +5,7 @@
  */
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { FileText, Download, Loader2 } from 'lucide-react';
+import { FileText, Loader2 } from 'lucide-react';
 import { useKycStats } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
 import { format, subMonths, startOfMonth, endOfMonth } from 'date-fns';

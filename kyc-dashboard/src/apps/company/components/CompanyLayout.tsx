@@ -57,7 +57,6 @@ export default function CompanyLayout({ children, title }: CompanyLayoutProps) {
                   ? 'bg-brand-50 dark:bg-brand-950/30 text-brand-700 dark:text-brand-400'
                   : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800',
               )}
-              aria-current={({ isActive }) => isActive ? 'page' : undefined}
             >
               <Icon className="w-4 h-4 flex-shrink-0" aria-hidden="true" />
               <span className="flex-1 truncate">{label}</span>

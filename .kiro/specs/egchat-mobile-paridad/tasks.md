@@ -177,13 +177,13 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `src/components/ImageViewer.tsx`, `src/components/chat/ChatMessageBubble.tsx`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 4. Video Calls — WebRTC nativo completo
-  - [ ] 4.1 Implementar solicitud de permisos de cámara/micrófono en `app/call/[callId].tsx`
+- [x] 4. Video Calls — WebRTC nativo completo
+  - [x] 4.1 Implementar solicitud de permisos de cámara/micrófono en `app/call/[callId].tsx`
     - Usar `PermissionsAndroid` (Android) y `expo-camera`/`expo-av` (iOS) — sin nuevas dependencias
     - Si permiso denegado: `Alert.alert` con opción de abrir ajustes del sistema
     - Solicitar permisos antes de acceder a `getUserMedia`
     - _Requirements: 4.1, 4.2, 4.3_
-  - [ ] 4.2 Verificar y completar layout PiP y streams en `app/call/[callId].tsx`
+  - [x] 4.2 Verificar y completar layout PiP y streams en `app/call/[callId].tsx`
     - Stream remoto a pantalla completa con `RTCView`
     - Stream local PiP: `position: 'absolute', right: 16, top: insets.top + 80, width: 90, height: 120`
     - Placeholder (avatar + iniciales) mientras stream remoto no disponible
@@ -201,17 +201,17 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 15: VideoCall — colgar libera todos los tracks**
     - Tras `endCall()`, todos los `MediaStreamTrack` de `localStream` tienen `enabled = false` y `callState === 'ended'`
     - **Validates: Requirements 4.12**
-  - [ ] 4.6 Completar controles de UI (silenciar, cámara, colgar) y contador de duración
+  - [x] 4.6 Completar controles de UI (silenciar, cámara, colgar) y contador de duración
     - Botón silenciar: toggle `audioTrack.enabled` + icono con tachado
     - Botón cámara: toggle `videoTrack.enabled` + icono con cámara desactivada
     - Botón colgar: llamar `callAPI.end` → liberar streams → `router.back()`
     - Iniciar contador de duración cuando `connectionState === 'connected'`
     - _Requirements: 4.6, 4.7, 4.10, 4.12_
-  - [ ] 4.7 Completar envío de candidatos ICE y manejo de estado `failed`/`closed`
+  - [x] 4.7 Completar envío de candidatos ICE y manejo de estado `failed`/`closed`
     - En `onicecandidate`: llamar `callAPI.ice(candidate)` de forma no bloqueante
     - En `connectionState === 'failed' | 'closed'`: `endCallInternal()` → `router.back()`
     - _Requirements: 4.11, 4.13_
-  - [ ] 4.8 Verificar `IncomingCallModal` en `app/_layout.tsx`
+  - [x] 4.8 Verificar `IncomingCallModal` en `app/_layout.tsx`
     - Confirmar que polling detecta llamada entrante y muestra botones aceptar/rechazar
     - Aceptar: `router.push('/call/[callId]')` + ejecutar `answerCall(offer, type)`
     - _Requirements: 4.8, 4.9_
@@ -224,8 +224,8 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `app/call/[callId].tsx`, `src/hooks/useWebRTC.ts`, `app/_layout.tsx`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 5. Ocio — Datos reales y acceso a llamadas
-  - [ ] 5.1 Verificar y completar `app/ocio.tsx`
+- [x] 5. Ocio — Datos reales y acceso a llamadas
+  - [x] 5.1 Verificar y completar `app/ocio.tsx`
     - Confirmar 4 categorías con icono y conteo `cat.items.length`
     - Verificar navegación interna por estado `selected` sin recargar pantalla
     - Verificar que botón de llamada se muestra solo si `item.phone !== ''`
@@ -244,12 +244,12 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `app/ocio.tsx`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 6. CEMAC — Transferencias y tipos de cambio
-  - [ ] 6.1 Verificar y completar pestañas de país en `app/cemac.tsx`
+- [x] 6. CEMAC — Transferencias y tipos de cambio
+  - [x] 6.1 Verificar y completar pestañas de país en `app/cemac.tsx`
     - Confirmar 6 países CEMAC con pestañas: Servicios, Ocio, Cajeros, Cuenta, Noticias, Cambio
     - Implementar pestaña Cuenta: llamar `walletAPI.getBalance()` → mostrar saldo en XAF
     - _Requirements: 6.1, 6.2, 6.3_
-  - [ ] 6.2 Implementar formulario de transferencia CEMAC
+  - [x] 6.2 Implementar formulario de transferencia CEMAC
     - Validar: `name.trim() && account.trim() && amount > 0 && amount <= balance`
     - Si inválido: `toast.error` + no enviar petición
     - Si válido: `cemacAPI.createTransfer(data)` → éxito: `toast.success` + cerrar modal + recargar balance
@@ -263,10 +263,10 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 18: CEMAC — transferencia con saldo insuficiente o formulario incompleto no llama al backend**
     - Si `amount > balance` o campos vacíos, `cemacAPI.createTransfer` no se invoca
     - **Validates: Requirements 6.6**
-  - [ ] 6.5 Verificar pestaña Cambio: cálculo local con `RATES` sin llamada backend
+  - [x] 6.5 Verificar pestaña Cambio: cálculo local con `RATES` sin llamada backend
     - Confirmar cálculo: `convertResult = useMemo(() => n * RATES[toCur] / RATES[fromCur], [amt, fromCur, toCur])`
     - _Requirements: 6.7_
-  - [ ] 6.6 Verificar multi-idioma con objeto `T[lang]` de `cemacData.ts`
+  - [x] 6.6 Verificar multi-idioma con objeto `T[lang]` de `cemacData.ts`
     - Confirmar que todos los textos de UI usan `t.fieldName`, no literales
     - _Requirements: 6.8_
   - [ ]* 6.7 Escribir tests de ejemplo para CEMACScreen
@@ -278,12 +278,12 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `app/cemac.tsx`, `src/data/cemacData.ts`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 7. Apuestas — Cupón de apuestas y walletAPI integrado
-  - [ ] 7.1 Verificar y completar cabecera con saldo en `app/apuestas.tsx`
+- [x] 7. Apuestas — Cupón de apuestas y walletAPI integrado
+  - [x] 7.1 Verificar y completar cabecera con saldo en `app/apuestas.tsx`
     - Al abrir: llamar `walletAPI.getBalance()` → mostrar saldo en XAF en header
     - Mostrar aviso legal de juego responsable en todas las vistas
     - _Requirements: 7.1, 7.2_
-  - [ ] 7.2 Implementar cupón de apuestas con cálculo en tiempo real
+  - [x] 7.2 Implementar cupón de apuestas con cálculo en tiempo real
     - Al seleccionar cuota: añadir selección al cupón + mostrar FAB con conteo y total
     - `totalPayout = betSlip.reduce((s, b) => s + Math.floor((parseInt(b.stake) || 0) * b.odds), 0)`
     - Mostrar ganancia potencial actualizada en cada keystroke de stake
@@ -292,7 +292,7 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 19: Apuestas — ganancia potencial total es ∑ floor(stake_i × odds_i)**
     - Para cualquier cupón con N selecciones, `totalPayout === ∑ Math.floor(stake_i * odds_i)`
     - **Validates: Requirements 7.4**
-  - [ ] 7.4 Implementar validación de saldo y procesamiento de apuesta
+  - [x] 7.4 Implementar validación de saldo y procesamiento de apuesta
     - Si `totalStake <= 0 || totalStake > balance`: `Alert.alert` + no ejecutar simulación
     - Si válido: simular resultado → `setBalance` → `toast.success/error`
     - _Requirements: 7.5, 7.6_
@@ -300,7 +300,7 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 20: Apuestas — apuesta con totalStake > saldo no modifica el saldo**
     - Si `totalStake > balance || totalStake <= 0`, `balance` no cambia y simulación no se ejecuta
     - **Validates: Requirements 7.6**
-  - [ ] 7.6 Implementar flujos Casino y Lotería
+  - [x] 7.6 Implementar flujos Casino y Lotería
     - Casino: validar `amount >= minBet && amount <= balance` → random multiplier → `setBalance` + resultado
     - Lotería: verificar `price <= balance` → random prize → `setBalance` + `toast`
     - Navegación hacia atrás al hub de operadores sin pérdida de saldo
@@ -314,13 +314,13 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `app/apuestas.tsx`, `src/data/apuestasData.ts`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 8. MiTaxi — Solicitud de viaje con GPS y mapa en tiempo real
-  - [ ] 8.1 Implementar solicitud de permisos GPS y posición inicial en `app/mitaxi.tsx`
+- [x] 8. MiTaxi — Solicitud de viaje con GPS y mapa en tiempo real
+  - [x] 8.1 Implementar solicitud de permisos GPS y posición inicial en `app/mitaxi.tsx`
     - `Location.requestForegroundPermissionsAsync()` al montar la pantalla
     - Si concedido: `Location.getCurrentPositionAsync()` → centrar mapa en posición usuario
     - Si denegado: usar `MALABO_CENTER` como coordenadas por defecto
     - _Requirements: 8.1, 8.2, 8.3_
-  - [ ] 8.2 Implementar autocomplete de lugares con debounce de 350 ms
+  - [x] 8.2 Implementar autocomplete de lugares con debounce de 350 ms
     - `useEffect` con `setTimeout(350)` filtrando `MITAXI_PLACE_NAMES` (case-insensitive, máx 6)
     - Al seleccionar: `findPlaceCoords(name)` o geocodificación con Expo Location → actualizar marcador
     - _Requirements: 8.4, 8.5_
@@ -328,7 +328,7 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 21: MiTaxi — sugerencias son subconjunto filtrado de MITAXI_PLACE_NAMES**
     - Para cualquier query `q`, `suggestions ⊆ MITAXI_PLACE_NAMES` donde cada elemento contiene `q` (case-insensitive), `suggestions.length <= 6`
     - **Validates: Requirements 8.4**
-  - [ ] 8.4 Implementar solicitud de viaje y validación de saldo
+  - [x] 8.4 Implementar solicitud de viaje y validación de saldo
     - Si `balance < selected.price`: `Alert.alert('Saldo insuficiente')` + no llamar `taxiAPI.requestRide`
     - Si saldo suficiente: `taxiAPI.requestRide(vehicleType)` → mostrar datos del conductor + animar marcador
     - _Requirements: 8.6, 8.7, 8.8_
@@ -336,12 +336,12 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 22: MiTaxi — precio de vehículo > saldo impide solicitar viaje**
     - Para cualquier vehículo con `v.price > balance`, no se invoca `taxiAPI.requestRide`
     - **Validates: Requirements 8.8**
-  - [ ] 8.5 Implementar estados de viaje, valoración y cancelación
+  - [x] 8.5 Implementar estados de viaje, valoración y cancelación
     - "Iniciar viaje" → estado `riding` + actualizar UI
     - Al finalizar: pantalla de valoración (5 estrellas) → `taxiAPI.rateDriver(score)`
     - Cancelar: si `rideId` activo → `taxiAPI.cancelRide()` → volver al formulario
     - _Requirements: 8.9, 8.10, 8.11_
-  - [ ] 8.6 Implementar watch GPS en tiempo real con distanceInterval=25m
+  - [x] 8.6 Implementar watch GPS en tiempo real con distanceInterval=25m
     - `Location.watchPositionAsync({ distanceInterval: 25 }, update => applyUserCoords(...))`
     - Guardar referencia en `gpsWatchRef` para limpiar al desmontar
     - _Requirements: 8.12_
@@ -354,13 +354,13 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `app/mitaxi.tsx`, `src/components/mitaxi/MiTaxiMap.tsx`, `src/data/mitaxiPlaces.ts`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 9. ServiciosDiarios — Servicios de utilidad con contacto directo
-  - [ ] 9.1 Verificar y completar `app/servicios-diarios.tsx`
+- [x] 9. ServiciosDiarios — Servicios de utilidad con contacto directo
+  - [x] 9.1 Verificar y completar `app/servicios-diarios.tsx`
     - Confirmar 3 pestañas: Restaurantes, Vuelos, Gasolineras — cambio sin recargar pantalla
     - Confirmar que cada establecimiento muestra: nombre, descripción, precio orientativo, botón llamada
     - Verificar `Linking.openURL('tel:' + item.phone)` al pulsar botón de llamada
     - _Requirements: 9.1, 9.2, 9.3, 9.4_
-  - [ ] 9.2 Verificar resaltado de tab activa con Colors.accent
+  - [x] 9.2 Verificar resaltado de tab activa con Colors.accent
     - Confirmar `tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.accent }`
     - Confirmar `tabTextActive: { color: Colors.accent }`
     - Aplicar `useThemeContext` / `DarkColors`

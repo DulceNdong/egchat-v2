@@ -230,16 +230,16 @@ CREATE INDEX idx_kyc_attempts_user_day ON kyc_attempts(user_id, attempted_at);
 ## 7. Tareas de implementación
 
 - [x] T0: Spec doc (este archivo)
-- [ ] T1: Tabla `kyc_attempts` en SQL + migración
-- [ ] T2: `POST /kyc/init` con rate-limit por user_id
-- [ ] T3: Endpoints de pasos multi-paso + idempotency_key
-- [ ] T4: `KYCProvider(ABC)` + `StubKYCProvider` + `SmileIDProvider`
-- [ ] T5: `POST /kyc/{session_id}/submit` con pipeline completo
-- [ ] T6: Motor de decisión v2 con matriz 6-factores COBAC
-- [ ] T7: Endpoints admin: request-info + block dedicado
-- [ ] T8: Conectar AML flags → RiskFactors
-- [ ] T9: Tests pytest
-- [ ] T10: Verificación sintaxis
+- [x] T1: Tabla `kyc_attempts` en SQL + migración
+- [x] T2: `POST /kyc/init` con rate-limit por user_id
+- [x] T3: Endpoints de pasos multi-paso + idempotency_key
+- [x] T4: `KYCProvider(ABC)` + `StubKYCProvider` + `SmileIDProvider`
+- [x] T5: `POST /kyc/{session_id}/submit` con pipeline completo
+- [x] T6: Motor de decisión v2 con matriz 6-factores COBAC
+- [x] T7: Endpoints admin: request-info + block dedicado
+- [x] T8: Conectar AML flags → RiskFactors
+- [x] T9: Tests pytest
+- [x] T10: Verificación sintaxis
 
 ---
 

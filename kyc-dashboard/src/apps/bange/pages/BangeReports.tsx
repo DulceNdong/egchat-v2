@@ -4,7 +4,7 @@
  */
 import { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Download, FileSpreadsheet, FileText } from 'lucide-react';
+import { FileSpreadsheet, FileText } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { apiClient } from '@/api/client';
 import {

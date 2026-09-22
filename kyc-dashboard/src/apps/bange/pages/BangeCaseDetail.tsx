@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, ZoomIn } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 import { useKycDetail, useKycAudit } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
 import { RiskBadge, StatusBadge } from '@/shared/components/ui/Badges';
