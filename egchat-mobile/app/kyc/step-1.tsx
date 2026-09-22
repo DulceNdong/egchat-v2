@@ -153,8 +153,9 @@ export default function Step1() {
       store.setCurrentStep(2);
       await saveKycDraft({ ...store, currentStep: 2, completedSteps: [...store.completedSteps, 1] } as any);
       router.push('/kyc/step-2');
-    } catch {
-      setErrors({ api: 'Error al guardar. Verifica tu conexión e inténtalo de nuevo.' });
+    } catch (e: any) {
+      console.error('[KYC step-1]', e?.message, e);
+      setErrors({ api: `Error al guardar: ${e?.message ?? 'desconocido'}` });
     } finally {
       setLoading(false);
     }

@@ -1,24 +1,24 @@
 # Tareas: Seguridad y Cumplimiento
 
 ## Fase 1 — Cifrado y autenticación
-- [ ] **T-01** Crear `server/middleware/encryption.js` — AES-256-GCM + URLs firmadas (5 min)
-- [ ] **T-02** Crear `server/middleware/twoFactor.js` — TOTP con `speakeasy`
-- [ ] **T-03** Actualizar `server/middleware/auth.js` — refresh token + revocación
-- [ ] **T-04** Crear `server/middleware/rateLimit.js` — 100 req/min por IP, 20 req/min por usuario
+- [x] **T-01** Crear `server/middleware/encryption.js` — AES-256-GCM + URLs firmadas (5 min)
+- [x] **T-02** Crear `server/middleware/twoFactor.js` — TOTP con `speakeasy`
+- [x] **T-03** Actualizar `server/middleware/auth.js` — refresh token + revocación
+- [x] **T-04** Crear `server/middleware/rateLimit.js` — 100 req/min por IP, 20 req/min por usuario
 - [ ] **T-05** Añadir cifrado pgcrypto a columnas phone y email en `kyc_personal_data`
 
 ## Fase 2 — Roles y guards
 - [ ] **T-06** Actualizar `server/middleware/roles.js` con los 5 roles completos
 - [ ] **T-07** Aplicar guards a todos los endpoints KYC según tabla de permisos
-- [ ] **T-08** Endpoint `POST /api/admin/2fa/setup` — generar QR TOTP
-- [ ] **T-09** Endpoint `POST /api/admin/2fa/verify` — verificar código TOTP
+- [x] **T-08** Endpoint `POST /api/admin/2fa/setup` — generar QR TOTP
+- [x] **T-09** Endpoint `POST /api/admin/2fa/verify` — verificar código TOTP
 
 ## Fase 3 — Motor AML
-- [ ] **T-10** Crear `server/aml/rules.js` — 5 reglas de alerta configurables
-- [ ] **T-11** Crear `server/aml/monitor.js` — cron job cada hora con `node-cron`
-- [ ] **T-12** Crear `server/aml/sarBuilder.js` — payload SIF 1.0 para ANIF
-- [ ] **T-13** Endpoint `POST /api/aml/sar` — crear SAR manualmente
-- [ ] **T-14** Endpoint `GET /api/aml/alerts` — listar alertas pendientes
+- [x] **T-10** Crear `server/aml/rules.js` — 5 reglas de alerta configurables
+- [x] **T-11** Crear `server/aml/monitor.js` — cron job cada hora con `node-cron`
+- [x] **T-12** Crear `server/aml/sarBuilder.js` — payload SIF 1.0 para ANIF
+- [x] **T-13** Endpoint `POST /api/aml/sar` — crear SAR manualmente
+- [x] **T-14** Endpoint `GET /api/aml/alerts` — listar alertas pendientes
 
 ## Fase 4 — Re-screening automático
 - [ ] **T-15** Cron job diario: re-screening de clientes de alto riesgo (cada 6 meses)
@@ -26,7 +26,7 @@
 - [ ] **T-17** Actualización diaria de listas de sanciones OFAC/UE/ONU
 
 ## Fase 5 — Auditoría y exportación
-- [ ] **T-18** Endpoint `GET /api/audit/export` — exportar `kyc_audit_log` a CSV/PDF con filtros de fecha
-- [ ] **T-19** Middleware `auditLogger.js` — loguear automáticamente cada request sensible
+- [x] **T-18** Endpoint `GET /api/audit/export` — exportar `kyc_audit_log` a CSV/PDF con filtros de fecha
+- [x] **T-19** Middleware `auditLogger.js` — loguear automáticamente cada request sensible
 - [ ] **T-20** Verificar que el trigger de `kyc_audit_log` INMUTABLE funciona (test de intento de UPDATE)
 - [ ] **T-21** Ejecutar `kluster_code_review_auto` sobre todos los archivos de seguridad
