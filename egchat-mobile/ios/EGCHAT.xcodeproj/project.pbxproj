@@ -22,9 +22,9 @@
 		13B07F961A680F5B00A75B9A /* EGCHAT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EGCHAT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = EGCHAT/Images.xcassets; sourceTree = "<group>"; };
 		13B07FB61A68108700A75B9A /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = Info.plist; path = EGCHAT/Info.plist; sourceTree = "<group>"; };
-		14C0962F0D354390860281BA /* notification.wav */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = undefined; includeInIndex = 0; lastKnownFileType = unknown; name = notification.wav; path = EGCHAT/notification.wav; sourceTree = "<group>"; };
+		14C0962F0D354390860281BA /* notification.wav */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 9; includeInIndex = 0; lastKnownFileType = unknown; name = notification.wav; path = EGCHAT/notification.wav; sourceTree = "<group>"; };
 		4E17271BBC164A29A354D401 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "EGCHAT/GoogleService-Info.plist"; sourceTree = "<group>"; };
-		52416B3DF299272581B45C51 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; name = PrivacyInfo.xcprivacy; path = EGCHAT/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		52416B3DF299272581B45C51 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xml; name = PrivacyInfo.xcprivacy; path = EGCHAT/PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		57F50C72D1BD3C481AA6E227 /* Pods-EGCHAT.release.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EGCHAT.release.xcconfig"; path = "Target Support Files/Pods-EGCHAT/Pods-EGCHAT.release.xcconfig"; sourceTree = "<group>"; };
 		6BD067FF12775FCCDE403CD4 /* Pods-EGCHAT.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EGCHAT.debug.xcconfig"; path = "Target Support Files/Pods-EGCHAT/Pods-EGCHAT.debug.xcconfig"; sourceTree = "<group>"; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = EGCHAT/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -95,7 +95,6 @@
 				6BD067FF12775FCCDE403CD4 /* Pods-EGCHAT.debug.xcconfig */,
 				57F50C72D1BD3C481AA6E227 /* Pods-EGCHAT.release.xcconfig */,
 			);
-			name = Pods;
 			path = Pods;
 			sourceTree = "<group>";
 		};
@@ -416,6 +415,7 @@
 				CLANG_ENABLE_MODULES = YES;
 				CODE_SIGN_ENTITLEMENTS = EGCHAT/EGCHAT.entitlements;
 				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
 				INFOPLIST_FILE = EGCHAT/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 15.1;
 				LD_RUNPATH_SEARCH_PATHS = (
