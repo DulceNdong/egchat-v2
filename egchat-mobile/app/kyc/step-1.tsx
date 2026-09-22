@@ -2,9 +2,8 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity,
-  StyleSheet, Platform, Modal, FlatList,
+  StyleSheet, Modal, FlatList,
 } from 'react-native';
-import DateTimePicker from '@react-native-community/datetimepicker';
 import { router } from 'expo-router';
 import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
 import { useKycStore } from '../../src/store/kycStore';
