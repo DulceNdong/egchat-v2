@@ -40,9 +40,11 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
     try {
       const { encryptedBase64 } = await encryptImage(uri);
       setPreviewUri(uri);
+      setQualityTip(null);
       onCapture(encryptedBase64, uri);
     } catch (e: any) {
-      const msg = 'No se pudo procesar la imagen. Inténtalo de nuevo.';
+      console.error('[DocumentCapture] processUri error:', e?.message ?? e);
+      const msg = 'Error al procesar la imagen. Intenta de nuevo o elige otra foto.';
       setQualityTip(msg);
       onError?.(msg);
     } finally {
