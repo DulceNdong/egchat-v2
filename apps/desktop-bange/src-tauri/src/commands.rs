@@ -92,8 +92,8 @@ pub fn check_network_status() -> Result<bool, String> {
 
 #[tauri::command]
 pub fn export_audit_log(
-    data: String,       // JSON con los logs del backend
-    format: String,     // "csv" | "json"
+    data: String,
+    _format: String,
     filename: String,
 ) -> Result<String, String> {
     let docs_dir = dirs::document_dir()
