@@ -115,7 +115,6 @@ export default function Step1() {
   const d     = store.personalData;
 
   const [errors, setErrors]       = useState<Record<string, string>>({});
-  const [showDate, setShowDate]   = useState(false);
   const [loading, setLoading]     = useState(false);
 
   // Auto-save al cambiar cualquier campo
