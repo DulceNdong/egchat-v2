@@ -176,15 +176,7 @@ const st = StyleSheet.create({
     elevation: 2,
   },
   infoRow:    { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  iconCircle: {
-    width: 38,
-    height: 38,
-    borderRadius: 12,
-    backgroundColor: '#e6faf7',
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexShrink: 0,
-  },
+  infoIcon:   { width: 26 },
   infoText:   { flex: 1, fontSize: 13, color: '#374151', lineHeight: 19 },
 
   btnPrimary:       { borderRadius: 16, overflow: 'hidden', shadowColor: '#00C8A0', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.35, shadowRadius: 10, elevation: 6 },
