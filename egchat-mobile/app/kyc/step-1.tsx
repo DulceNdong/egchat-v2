@@ -385,4 +385,8 @@ const st = StyleSheet.create({
   sheetItemTextActive:{ color: BRAND, fontWeight: '700' },
   apiError:           { backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginTop: 8 },
   apiErrorText:       { color: '#ef4444', fontSize: 13 },
+  dobRow:             { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dobInput:           { flex: 1, borderWidth: 1.5, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 12, fontSize: 16, color: '#111827', backgroundColor: '#fafafa', textAlign: 'center' },
+  dobInputYear:       { flex: 2, borderWidth: 1.5, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 10, paddingVertical: 12, fontSize: 16, color: '#111827', backgroundColor: '#fafafa', textAlign: 'center' },
+  dobSep:             { fontSize: 20, color: '#9ca3af', fontWeight: '300' },
 });
