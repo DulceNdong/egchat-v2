@@ -128,12 +128,43 @@ export default function Step1() {
     const e: Record<string, string> = {};
     if (!d.fullName.trim())      e.fullName    = 'El nombre completo es obligatorio';
     if (!d.dateOfBirth)          e.dateOfBirth = 'La fecha de nacimiento es obligatoria';
+    else {
+      const [y, m, day] = d.dateOfBirth.split('-').map(Number);
+      const date = new Date(y, m - 1, day);
+      const now = new Date();
+      if (isNaN(date.getTime()) || day < 1 || day > 31 || m < 1 || m > 12)
+        e.dateOfBirth = 'Fecha no válida';
+      else if (date > now)
+        e.dateOfBirth = 'La fecha no puede ser futura';
+      else if (y < 1920)
+        e.dateOfBirth = 'Año demasiado antiguo';
+    }
     if (!d.placeOfBirth.trim())  e.placeOfBirth = 'El lugar de nacimiento es obligatorio';
     if (!d.sex)                  e.sex         = 'El sexo es obligatorio';
     if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))
                                  e.email       = 'El email no es válido';
     setErrors(e);
     return Object.keys(e).length === 0;
+  };
+
+  // Parsear DD/MM/AAAA → YYYY-MM-DD
+  const [dobDay, setDobDay]   = useState(() => d.dateOfBirth ? d.dateOfBirth.split('-')[2] : '');
+  const [dobMonth, setDobMonth] = useState(() => d.dateOfBirth ? d.dateOfBirth.split('-')[1] : '');
+  const [dobYear, setDobYear]   = useState(() => d.dateOfBirth ? d.dateOfBirth.split('-')[0] : '');
+
+  const handleDobChange = (day: string, month: string, year: string) => {
+    const d2 = day.replace(/\D/g, '').slice(0, 2);
+    const m2 = month.replace(/\D/g, '').slice(0, 2);
+    const y2 = year.replace(/\D/g, '').slice(0, 4);
+    if (d2 !== undefined) setDobDay(d2);
+    if (m2 !== undefined) setDobMonth(m2);
+    if (y2 !== undefined) setDobYear(y2);
+    if (d2.length === 2 && m2.length === 2 && y2.length === 4) {
+      const iso = `${y2}-${m2.padStart(2,'0')}-${d2.padStart(2,'0')}`;
+      update({ dateOfBirth: iso });
+    } else {
+      update({ dateOfBirth: '' });
+    }
   };
 
   const handleNext = async () => {
