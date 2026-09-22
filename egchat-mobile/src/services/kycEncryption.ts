@@ -10,24 +10,28 @@ const AES_KEY_HEX = 'a3f5e8b2c1d4e7f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d
 
 // ── Comprimir imagen a máx 2MB ────────────────────────────────────
 export async function compressImage(uri: string): Promise<string> {
-  // Primer intento: calidad 0.8
-  let result = await ImageManipulator.manipulateAsync(
+  const result = await ImageManipulator.manipulateAsync(
     uri,
     [{ resize: { width: 1200 } }],
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
   );
 
-  // Verificar tamaño
-  const info = await FileSystem.getInfoAsync(result.uri);
-  const sizeBytes = (info as any).size ?? 0;
+  if (!result?.uri) throw new Error('manipulateAsync no devolvió URI');
 
-  if (sizeBytes > 2 * 1024 * 1024) {
-    // Segunda compresión si sigue >2MB
-    result = await ImageManipulator.manipulateAsync(
-      result.uri,
-      [{ resize: { width: 900 } }],
-      { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
-    );
+  // Verificar tamaño; getInfoAsync puede fallar con URIs content:// de Android
+  try {
+    const info = await FileSystem.getInfoAsync(result.uri);
+    const sizeBytes = (info as any).size ?? 0;
+    if (sizeBytes > 2 * 1024 * 1024) {
+      const result2 = await ImageManipulator.manipulateAsync(
+        result.uri,
+        [{ resize: { width: 900 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG },
+      );
+      return result2?.uri ?? result.uri;
+    }
+  } catch {
+    // Si no podemos leer el tamaño, seguimos con la compresión inicial
   }
 
   return result.uri;
