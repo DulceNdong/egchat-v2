@@ -28,10 +28,10 @@ export default function Step3() {
       if (appId) {
         const res = await verifyBiometric(appId, enc);
         store.setBiometricData({
-          livenessResult: res.livenessPassesd ? 'passed' : 'failed',
+          livenessResult: res.livenessPassed ? 'passed' : 'failed',
           faceMatchScore: res.faceMatchScore,
         });
-        if (!res.livenessPassesd) {
+        if (!res.livenessPassed) {
           handleFail();
           return;
         }

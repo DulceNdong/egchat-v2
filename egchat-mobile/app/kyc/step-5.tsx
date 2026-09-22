@@ -4,7 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { router } from 'expo-router';
 import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
 import { useKycStore } from '../../src/store/kycStore';
-import { submitKycApplication } from '../../src/services/kycService';
+import { screenKycApplication, submitKycApplication } from '../../src/services/kycService';
 import { clearKycDraft } from '../../src/services/kycStorage';
 
 // ── Sección colapsable de resumen ─────────────────────────────────
@@ -58,9 +58,28 @@ export default function Step5() {
     setError('');
     try {
       const appId = store.applicationId;
-      if (appId) await submitKycApplication(appId);
-      store.setStatus('submitted');
+      if (!appId) throw new Error('Solicitud KYC no iniciada');
+
+      await screenKycApplication(appId, {
+        fullName: p.fullName,
+        nationality: p.nationality,
+      });
+
+      const result = await submitKycApplication(appId);
+      store.setStatus(result.status as any);
       await clearKycDraft();
+
+      if (result.decision === 'AUTO_APPROVED') {
+        router.replace('/kyc/result?type=approved');
+        return;
+      }
+
+      if (result.decision === 'REJECTED') {
+        store.setRejectReason((result.reasons || []).join(', ') || 'Riesgo KYC elevado', true);
+        router.replace('/kyc/result?type=rejected_final');
+        return;
+      }
+
       router.replace('/kyc/processing');
     } catch {
       setError('Error al enviar la verificación. Verifica tu conexión e inténtalo de nuevo.');

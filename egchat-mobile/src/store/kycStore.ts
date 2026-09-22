@@ -8,7 +8,8 @@ export type LivenessResult = 'pending' | 'passed' | 'failed';
 export type KycStatus =
   | 'draft' | 'IN_PROGRESS' | 'submitted' | 'PENDING_REVIEW'
   | 'under_review' | 'AUTO_APPROVED' | 'MANUAL_REVIEW'
-  | 'approved' | 'APPROVED' | 'rejected' | 'REJECTED' | 'BLOCKED';
+  | 'approved' | 'APPROVED' | 'PENDING_INFO'
+  | 'rejected' | 'REJECTED' | 'BLOCKED';
 
 export interface PersonalData {
   fullName: string;

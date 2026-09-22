@@ -7,7 +7,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { subscribeNetworkStatus, getNetworkStatus } from '../store/offlineStore';
-import { savePersonalData, saveFinancialData, uploadDocumentImage, submitKycApplication } from '../services/kycService';
+import { savePersonalData, saveFinancialData, uploadDocumentImage, screenKycApplication, submitKycApplication } from '../services/kycService';
 import type { PersonalData, FinancialData, DocumentType } from '../store/kycStore';
 
 const QUEUE_KEY = 'egchat_kyc_offline_queue';
@@ -16,6 +16,7 @@ type KycQueueItem =
   | { type: 'personal';   applicationId: string; data: PersonalData }
   | { type: 'financial';  applicationId: string; data: FinancialData }
   | { type: 'document';   applicationId: string; side: 'front' | 'back' | 'selfie'; enc: string; docType: DocumentType }
+  | { type: 'screening';  applicationId: string; fullName?: string; nationality?: string }
   | { type: 'submit';     applicationId: string };
 
 async function loadQueue(): Promise<KycQueueItem[]> {
@@ -58,6 +59,7 @@ export function useKycOfflineSync() {
         if (item.type === 'personal')  await savePersonalData(item.applicationId, item.data);
         if (item.type === 'financial') await saveFinancialData(item.applicationId, item.data);
         if (item.type === 'document')  await uploadDocumentImage(item.applicationId, item.side, item.enc, item.docType);
+        if (item.type === 'screening') await screenKycApplication(item.applicationId, { fullName: item.fullName, nationality: item.nationality });
         if (item.type === 'submit')    await submitKycApplication(item.applicationId);
       } catch {
         failed.push(item);

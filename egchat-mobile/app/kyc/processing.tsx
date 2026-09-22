@@ -37,13 +37,17 @@ export default function ProcessingScreen() {
         if (status === 'approved' || status === 'APPROVED' || status === 'AUTO_APPROVED') {
           clearInterval(interval);
           router.replace('/kyc/result?type=approved');
-        } else if (status === 'MANUAL_REVIEW' || status === 'under_review') {
+        } else if (status === 'MANUAL_REVIEW' || status === 'under_review' || status === 'PENDING_REVIEW') {
           clearInterval(interval);
           router.replace('/kyc/result?type=manual_review');
-        } else if (status === 'rejected' || status === 'REJECTED') {
+        } else if (status === 'PENDING_INFO') {
+          clearInterval(interval);
+          store.setRejectReason(rejectReason ?? 'BANGE necesita información adicional.', false);
+          router.replace('/kyc/result?type=rejected_fixable');
+        } else if (status === 'rejected' || status === 'REJECTED' || status === 'BLOCKED') {
           clearInterval(interval);
           store.setRejectReason(rejectReason ?? '', isFinal);
-          router.replace(`/kyc/result?type=${isFinal ? 'rejected_final' : 'rejected_fixable'}`);
+          router.replace(`/kyc/result?type=${status === 'BLOCKED' || isFinal ? 'rejected_final' : 'rejected_fixable'}`);
         }
       } catch { /* red no disponible — seguir esperando */ }
     }, 4000);

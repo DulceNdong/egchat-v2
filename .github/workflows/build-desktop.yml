@@ -3,11 +3,10 @@ name: Build Desktop Apps (Tauri)
 on:
   push:
     tags:
-      - 'desktop-v*'    # Disparar con: git tag desktop-v1.0.0 && git push --tags
-  workflow_dispatch:    # O manualmente desde GitHub Actions UI
+      - 'desktop-v*'
+  workflow_dispatch:
 
 jobs:
-  # ── Build Windows (x64) ──────────────────────────────────────
   build-windows:
     name: Windows — ${{ matrix.app }}
     runs-on: windows-latest
@@ -17,40 +16,33 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
 
-      - name: Setup Rust
-        uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@stable
 
-      - name: Cache Rust
-        uses: swatinem/rust-cache@v2
+      - uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop-${{ matrix.app }}/src-tauri
 
-      - name: Install Tauri CLI + dashboard deps
-        working-directory: apps/dashboard-${{ matrix.app }}
-        run: npm install && npm install -D @tauri-apps/cli
-
       - name: Build dashboard
         working-directory: apps/dashboard-${{ matrix.app }}
-        run: npm run build
+        run: |
+          npm install
+          npm run build
 
-      - name: Build Tauri app (Windows)
-        working-directory: apps/desktop-${{ matrix.app }}/src-tauri
+      - name: Build Tauri (Windows)
+        working-directory: apps/desktop-${{ matrix.app }}
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: |
-          cd ..
           npm init -y
-          npm install -D @tauri-apps/cli
+          npm install --save-dev @tauri-apps/cli@latest
           npx tauri build
 
-      - name: Upload installers
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-windows
           path: |
@@ -58,7 +50,6 @@ jobs:
             apps/desktop-${{ matrix.app }}/src-tauri/target/release/bundle/nsis/*.exe
           retention-days: 30
 
-  # ── Build macOS (Apple Silicon) ──────────────────────────────
   build-macos:
     name: macOS — ${{ matrix.app }}
     runs-on: macos-latest
@@ -80,49 +71,24 @@ jobs:
         with:
           workspaces: apps/desktop-${{ matrix.app }}/src-tauri
 
-      - name: Install Tauri CLI + dashboard deps
-        working-directory: apps/dashboard-${{ matrix.app }}
-        run: npm install && npm install -D @tauri-apps/cli
-
       - name: Build dashboard
         working-directory: apps/dashboard-${{ matrix.app }}
-        run: npm run build
+        run: |
+          npm install
+          npm run build
 
-      - name: Build Tauri app (macOS)
+      - name: Build Tauri (macOS)
         working-directory: apps/desktop-${{ matrix.app }}
         env:
           TAURI_PRIVATE_KEY: ${{ secrets.TAURI_PRIVATE_KEY }}
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: |
           npm init -y
-          npm install -D @tauri-apps/cli
+          npm install --save-dev @tauri-apps/cli@latest
           npx tauri build --target universal-apple-darwin
 
-      - name: Upload DMG
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-macos
           path: apps/desktop-${{ matrix.app }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
           retention-days: 30
-
-  # ── Publicar en el servidor de updates ───────────────────────
-  publish:
-    name: Publicar en servidor de actualizaciones
-    runs-on: ubuntu-latest
-    needs: [build-windows, build-macos]
-    if: startsWith(github.ref, 'refs/tags/')
-    steps:
-      - name: Download all artifacts
-        uses: actions/download-artifact@v4
-
-      - name: Notify update server
-        env:
-          ADMIN_API_KEY: ${{ secrets.ADMIN_API_KEY }}
-          VERSION: ${{ github.ref_name }}
-        run: |
-          echo "📦 Publicando versión ${VERSION}..."
-          echo "Instaladores disponibles:"
-          find . -name "*.msi" -o -name "*.exe" -o -name "*.dmg" | while read f; do
-            echo "  - $f ($(du -sh "$f" | cut -f1))"
-          done
-          echo "✅ Listos para subir al servidor manualmente"

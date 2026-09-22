@@ -90,7 +90,7 @@ export async function uploadDocumentImage(
 export async function verifyBiometric(
   applicationId: string,
   selfieEncrypted: string,
-): Promise<{ livenessPassesd: boolean; faceMatchScore: number }> {
+): Promise<{ livenessPassed: boolean; faceMatchScore: number; provider?: string }> {
   const res = await fetch(`${BASE}/api/kyc/application/${applicationId}/biometric`, {
     method: 'POST',
     headers: await authHeaders(),
@@ -100,13 +100,47 @@ export async function verifyBiometric(
   return res.json();
 }
 
+// ── Screening AML/PEP/Sanciones antes del envío final ─────────────
+export async function screenKycApplication(
+  applicationId: string,
+  data: {
+    fullName?: string;
+    nationality?: string;
+  },
+): Promise<{
+  ok: boolean;
+  riskScore: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  sanctionsHit: boolean;
+  pepHit: boolean;
+}> {
+  const res = await fetch(`${BASE}/api/kyc/application/${applicationId}/screening`, {
+    method: 'POST',
+    headers: await authHeaders(),
+    body: JSON.stringify({
+      full_name: data.fullName,
+      nationality: data.nationality,
+    }),
+  });
+  if (!res.ok) throw new Error(`screenKycApplication: ${res.status}`);
+  return res.json();
+}
+
 // ── Enviar aplicación completa ────────────────────────────────────
-export async function submitKycApplication(applicationId: string): Promise<void> {
+export async function submitKycApplication(applicationId: string): Promise<{
+  ok: boolean;
+  status: string;
+  score: number;
+  riskLevel: 'low' | 'medium' | 'high';
+  decision: 'AUTO_APPROVED' | 'MANUAL_REVIEW' | 'REJECTED';
+  reasons?: string[];
+}> {
   const res = await fetch(`${BASE}/api/kyc/application/${applicationId}/submit`, {
     method: 'POST',
     headers: await authHeaders(),
   });
   if (!res.ok) throw new Error(`submitKycApplication: ${res.status}`);
+  return res.json();
 }
 
 // ── Obtener estado actual ─────────────────────────────────────────
