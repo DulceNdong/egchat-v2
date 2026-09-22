@@ -226,31 +226,41 @@ export default function Step1() {
 
       {/* Fecha de nacimiento */}
       <FieldLabel text="Fecha de nacimiento" required />
-      <TouchableOpacity
-        style={[st.input, !!errors.dateOfBirth && st.inputError]}
-        onPress={() => setShowDate(true)}
-        accessibilityLabel="Fecha de nacimiento"
-      >
-        <Text style={d.dateOfBirth ? st.dropdownValue : st.dropdownPlaceholder}>
-          {d.dateOfBirth
-            ? new Date(d.dateOfBirth).toLocaleDateString('es-ES')
-            : 'DD / MM / AAAA'}
-        </Text>
-      </TouchableOpacity>
-      {!!errors.dateOfBirth && <Text style={st.errorText}>{errors.dateOfBirth}</Text>}
-      {showDate && (
-        <DateTimePicker
-          value={dateValue}
-          mode="date"
-          display={Platform.OS === 'ios' ? 'spinner' : 'default'}
-          maximumDate={new Date()}
-          minimumDate={new Date(1920, 0, 1)}
-          onChange={(_, date) => {
-            setShowDate(Platform.OS === 'ios');
-            if (date) update({ dateOfBirth: date.toISOString().split('T')[0] });
-          }}
+      <View style={st.dobRow}>
+        <TextInput
+          style={[st.dobInput, !!errors.dateOfBirth && st.inputError]}
+          value={dobDay}
+          onChangeText={v => handleDobChange(v, dobMonth, dobYear)}
+          placeholder="DD"
+          placeholderTextColor="#9ca3af"
+          keyboardType="number-pad"
+          maxLength={2}
+          accessibilityLabel="Día de nacimiento"
         />
-      )}
+        <Text style={st.dobSep}>/</Text>
+        <TextInput
+          style={[st.dobInput, !!errors.dateOfBirth && st.inputError]}
+          value={dobMonth}
+          onChangeText={v => handleDobChange(dobDay, v, dobYear)}
+          placeholder="MM"
+          placeholderTextColor="#9ca3af"
+          keyboardType="number-pad"
+          maxLength={2}
+          accessibilityLabel="Mes de nacimiento"
+        />
+        <Text style={st.dobSep}>/</Text>
+        <TextInput
+          style={[st.dobInputYear, !!errors.dateOfBirth && st.inputError]}
+          value={dobYear}
+          onChangeText={v => handleDobChange(dobDay, dobMonth, v)}
+          placeholder="AAAA"
+          placeholderTextColor="#9ca3af"
+          keyboardType="number-pad"
+          maxLength={4}
+          accessibilityLabel="Año de nacimiento"
+        />
+      </View>
+      {!!errors.dateOfBirth && <Text style={st.errorText}>{errors.dateOfBirth}</Text>}
 
       {/* Lugar de nacimiento */}
       <FieldLabel text="Lugar de nacimiento" required />
