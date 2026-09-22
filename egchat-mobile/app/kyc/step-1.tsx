@@ -145,10 +145,16 @@ export default function Step1() {
       // Crear aplicación si no existe
       let appId = store.applicationId;
       if (!appId) {
-        const { applicationId, sessionId } = await createKycApplication();
-        store.setApplicationId(applicationId);
-        store.setSessionId(sessionId);
-        appId = applicationId;
+        if (getNetworkStatus().isOnline) {
+          const { applicationId, sessionId } = await createKycApplication();
+          store.setApplicationId(applicationId);
+          store.setSessionId(sessionId);
+          appId = applicationId;
+        } else {
+          appId = `local_${Date.now()}`;
+          store.setApplicationId(appId);
+          store.setSessionId(`offline_${Date.now()}`);
+        }
       }
       if (getNetworkStatus().isOnline) {
         await savePersonalData(appId, d);

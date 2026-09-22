@@ -7,7 +7,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { subscribeNetworkStatus, getNetworkStatus } from '../store/offlineStore';
-import { savePersonalData, saveFinancialData, uploadDocumentImage, screenKycApplication, submitKycApplication } from '../services/kycService';
+import { createKycApplication, savePersonalData, saveFinancialData, uploadDocumentImage, screenKycApplication, submitKycApplication } from '../services/kycService';
 import type { PersonalData, FinancialData, DocumentType } from '../store/kycStore';
 
 const QUEUE_KEY = 'egchat_kyc_offline_queue';
@@ -53,14 +53,25 @@ export function useKycOfflineSync() {
 
     processingRef.current = true;
     const failed: KycQueueItem[] = [];
+    const localIdMap = new Map<string, string>();
+
+    const resolveApplicationId = async (applicationId: string) => {
+      if (!applicationId.startsWith('local_')) return applicationId;
+      const cached = localIdMap.get(applicationId);
+      if (cached) return cached;
+      const created = await createKycApplication();
+      localIdMap.set(applicationId, created.applicationId);
+      return created.applicationId;
+    };
 
     for (const item of queue) {
       try {
-        if (item.type === 'personal')  await savePersonalData(item.applicationId, item.data);
-        if (item.type === 'financial') await saveFinancialData(item.applicationId, item.data);
-        if (item.type === 'document')  await uploadDocumentImage(item.applicationId, item.side, item.enc, item.docType);
-        if (item.type === 'screening') await screenKycApplication(item.applicationId, { fullName: item.fullName, nationality: item.nationality });
-        if (item.type === 'submit')    await submitKycApplication(item.applicationId);
+        const applicationId = await resolveApplicationId(item.applicationId);
+        if (item.type === 'personal')  await savePersonalData(applicationId, item.data);
+        if (item.type === 'financial') await saveFinancialData(applicationId, item.data);
+        if (item.type === 'document')  await uploadDocumentImage(applicationId, item.side, item.enc, item.docType);
+        if (item.type === 'screening') await screenKycApplication(applicationId, { fullName: item.fullName, nationality: item.nationality });
+        if (item.type === 'submit')    await submitKycApplication(applicationId);
       } catch {
         failed.push(item);
       }
