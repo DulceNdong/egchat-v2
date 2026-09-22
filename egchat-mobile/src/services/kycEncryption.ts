@@ -41,13 +41,31 @@ export async function encryptImage(uri: string): Promise<{
   checksum: string;
   originalSize: number;
 }> {
-  // 1. Comprimir primero
-  const compressedUri = await compressImage(uri);
+  // 1. Intentar comprimir; si falla, usar URI original
+  let workingUri = uri;
+  try {
+    workingUri = await compressImage(uri);
+  } catch (compressErr) {
+    console.warn('[kycEncryption] compressImage falló, usando URI original:', compressErr);
+    workingUri = uri;
+  }
 
-  // 2. Leer como base64
-  const base64 = await FileSystem.readAsStringAsync(compressedUri, {
-    encoding: 'base64' as any,
-  });
+  // 2. Leer como base64 — con fallback a URI original si la comprimida falla
+  let base64: string;
+  try {
+    base64 = await FileSystem.readAsStringAsync(workingUri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  } catch (readErr) {
+    console.warn('[kycEncryption] No se pudo leer URI comprimida, reintentando con original:', readErr);
+    base64 = await FileSystem.readAsStringAsync(uri, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+  }
+
+  if (!base64 || base64.length === 0) {
+    throw new Error('La imagen está vacía o no se pudo leer.');
+  }
 
   // 3. Calcular checksum SHA-256 del contenido
   const checksum = await Crypto.digestStringAsync(
