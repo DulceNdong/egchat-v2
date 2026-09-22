@@ -93,9 +93,7 @@ export default function KycEntryScreen() {
         <View style={st.infoBox}>
           {FEATURES.map(({ icon, text }) => (
             <View key={text} style={st.infoRow}>
-              <View style={st.iconCircle}>
-                <MaterialCommunityIcons name={icon} size={20} color="#00B4A0" />
-              </View>
+              <MaterialCommunityIcons name={icon} size={22} color="#00B4A0" style={st.infoIcon} />
               <Text style={st.infoText}>{text}</Text>
             </View>
           ))}
