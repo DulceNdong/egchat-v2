@@ -7,10 +7,10 @@
 - [x] **T-04** Registrar ruta en `index.js`
 
 ## Fase 2 — Integración Tauri
-- [ ] **T-05** Añadir `tauri-plugin-updater` a cada app desktop
-- [ ] **T-06** Configurar `endpoints` en `tauri.conf.json` de cada app
-- [ ] **T-07** Generar par de claves `tauri signer generate` y guardar privkey en Vault
-- [ ] **T-08** Implementar diálogo de actualización en React
+- [x] **T-05** Añadir `tauri-plugin-updater` a cada app desktop
+- [x] **T-06** Configurar `endpoints` en `tauri.conf.json` de cada app
+- [x] **T-07** Generar par de claves `tauri signer generate` y guardar privkey en Vault
+- [x] **T-08** Implementar diálogo de actualización en React
 
 ## Fase 3 — Rollback
 - [ ] **T-09** Guardar binario anterior en disco antes de instalar actualización

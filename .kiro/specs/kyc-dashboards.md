@@ -224,12 +224,12 @@ Indicador visual: punto verde parpadeante en el header mientras el polling está
 ## 10. Tareas de implementación
 
 - [x] T1: Spec doc
-- [ ] T2: Estructura Vite + configuración base
-- [ ] T3: Core (auth, API client, guards, tipos, hooks)
-- [ ] T4: Dashboard BANGE — login, cola, detalle, acciones
-- [ ] T5: Dashboard BANGE — reportes
-- [ ] T6: Dashboard Empresa — home, usuarios
-- [ ] T7: Dashboard Empresa — AML, SAR, informes
-- [ ] T8: Componentes compartidos
-- [ ] T9: Theme, i18n, polling, sesión
-- [ ] T10: Verificación TypeScript
+- [x] T2: Estructura Vite + configuración base
+- [x] T3: Core (auth, API client, guards, tipos, hooks)
+- [x] T4: Dashboard BANGE — login, cola, detalle, acciones
+- [x] T5: Dashboard BANGE — reportes
+- [x] T6: Dashboard Empresa — home, usuarios
+- [x] T7: Dashboard Empresa — AML, SAR, informes
+- [x] T8: Componentes compartidos
+- [x] T9: Theme, i18n, polling, sesión
+- [x] T10: Verificación TypeScript

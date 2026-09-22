@@ -75,6 +75,9 @@ export function Timeline({ entries }: TimelineProps) {
         const label    = ACTION_LABELS[entry.action] ?? entry.action.replace(/_/g, ' ');
         const isLast   = idx === entries.length - 1;
         const details = (entry.details ?? {}) as Record<string, unknown>;
+        const rejectedReason = entry.action.includes('REJECTED') && details.reason
+          ? String(details.reason)
+          : '';
 
         return (
           <li key={entry.id} className="relative flex gap-3" role="listitem">
@@ -105,10 +108,9 @@ export function Timeline({ entries }: TimelineProps) {
                 )}
               </p>
               {/* Detalles relevantes */}
-              {Object.keys(details).length > 0 &&
-               entry.action.includes('REJECTED') && details.reason && (
+              {rejectedReason && (
                 <p className="text-xs text-red-500 mt-0.5">
-                  Motivo: {String(details.reason)}
+                  Motivo: {rejectedReason}
                 </p>
               )}
             </div>

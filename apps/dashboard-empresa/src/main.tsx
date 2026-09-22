@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import { adminApi, setToken, getStoredToken } from './api/adminApi';
 import { StatsPage } from './pages/StatsPage';
 import { CasesPage } from './pages/CasesPage';
+import { UpdateDialog } from './components/UpdateDialog';
 import './index.css';
 
 // ── Login ──────────────────────────────────────────────────────────
@@ -116,6 +117,8 @@ function App() {
   if (!admin) return <LoginPage onLogin={setAdmin} />;
 
   return (
+    <>
+    <UpdateDialog />
     <div className="flex h-screen bg-gray-50">
       {/* Sidebar */}
       <aside className="w-52 bg-indigo-900 text-white flex flex-col">
@@ -147,6 +150,7 @@ function App() {
         {page === 'cases' && <CasesPage />}
       </main>
     </div>
+    </>
   );
 }
 

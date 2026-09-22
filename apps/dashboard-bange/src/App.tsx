@@ -4,6 +4,7 @@ import { authApi, setToken } from './api/kycApi';
 import { LoginPage } from './pages/LoginPage';
 import { CasesPage } from './pages/CasesPage';
 import { AmlPage }   from './pages/AmlPage';
+import { UpdateDialog } from './components/UpdateDialog';
 
 type Page = 'cases' | 'aml' | 'audit';
 
@@ -157,6 +158,7 @@ export default function App() {
 
   return (
     <>
+      <UpdateDialog />
       {isLocked && <LockScreen onUnlock={() => setIsLocked(false)} />}
 
       {!isOnline && (

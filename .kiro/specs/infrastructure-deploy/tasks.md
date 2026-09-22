@@ -4,7 +4,7 @@
 - [x] **T-01** Crear `Dockerfile` para el servidor Node.js
 - [x] **T-02** Crear `docker-compose.yml` para desarrollo local (API + PostgreSQL + Redis)
 - [x] **T-03** Crear `.github/workflows/deploy.yml` — pipeline CI/CD completo
-- [ ] **T-04** Configurar GitHub Secrets: RENDER_API_KEY, SUPABASE_URL, etc.
+- [x] **T-04** Configurar GitHub Secrets: RENDER_API_KEY, SUPABASE_URL, etc.
 
 ## Fase 2 — Servidor de actualizaciones (Tauri)
 - [x] **T-05** Crear `server/update-server/` con Express para servir `latest.json`
@@ -14,7 +14,7 @@
 ## Fase 3 — Monitorización
 - [x] **T-08** Añadir `/health` endpoint al servidor con estado de DB, Redis y proveedores KYC
 - [ ] **T-09** Configurar Sentry para error tracking
-- [ ] **T-10** Configurar UptimeRobot para monitoring (gratis hasta 50 monitores)
+- [x] **T-10** Configurar UptimeRobot para monitoring (gratis hasta 50 monitores)
 
 ## Fase 4 — Backups
 - [x] **T-11** Script `scripts/backup-db.sh` — backup Supabase diario vía `pg_dump`
