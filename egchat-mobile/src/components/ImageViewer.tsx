@@ -3,7 +3,7 @@
 // Características:
 //   • Fondo negro inmersivo, header transparente con degradado
 //   • Header: nombre del remitente + fecha/hora
-//   • Zoom pinch-to-zoom (1×–5×) + pan cuando está ampliado
+//   • Zoom pinch-to-zoom (1×–4×) + pan cuando está ampliado
 //   • Swipe vertical para cerrar (con animación de desvanecimiento)
 //   • Tira de miniaturas horizontal sincronizada
 //   • Barra de acciones: reaccionar · responder · compartir · reenviar · favorito · eliminar
@@ -495,12 +495,12 @@ const ZoomableImage = ({
 
   // Pinch
   const onPinchEvent = (e: PinchGestureHandlerGestureEvent) => {
-    const ns = Math.max(1, Math.min(5, lastScale.current * e.nativeEvent.scale));
+    const ns = Math.max(1, Math.min(4, lastScale.current * e.nativeEvent.scale));
     scale.setValue(ns);
   };
   const onPinchState = (e: PinchGestureHandlerGestureEvent) => {
     if (e.nativeEvent.state === State.END || e.nativeEvent.state === State.CANCELLED) {
-      const ns = Math.max(1, Math.min(5, lastScale.current * e.nativeEvent.scale));
+      const ns = Math.max(1, Math.min(4, lastScale.current * e.nativeEvent.scale));
       lastScale.current = ns;
       if (ns <= 1.05) {
         lastScale.current = 1;

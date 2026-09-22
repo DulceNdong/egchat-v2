@@ -90,8 +90,8 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `src/hooks/useLIA.ts`, `src/components/LIAScreen.tsx`, `app/(tabs)/index.tsx`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 2. Stories — Subida de historias y visor funcional
-  - [ ] 2.1 Completar lógica de subida en `app/stories.tsx`
+- [x] 2. Stories — Subida de historias y visor funcional
+  - [x] 2.1 Completar lógica de subida en `app/stories.tsx`
     - Implementar `uploadStory(uri)`: llamar `storiesAPI.create()` → `loadStories()` al completar
     - Mostrar `ActivityIndicator` en avatar propio mientras `uploading === true`
     - Si la subida falla, mostrar `Alert.alert` con mensaje del backend y no añadir al listado
@@ -104,7 +104,7 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 5: Stories — error de subida no modifica el listado**
     - Para cualquier error de `storiesAPI.create`, `stories.length === prevLength`
     - **Validates: Requirements 2.3**
-  - [ ] 2.4 Implementar `StoryViewer` dentro de `app/stories.tsx`
+  - [x] 2.4 Implementar `StoryViewer` dentro de `app/stories.tsx`
     - Modal fullscreen con `Animated.Value` para barra de progreso de 5000 ms
     - `startProgress()` → `Animated.timing(5000ms)` → `goNext()`
     - Zonas táctiles: izquierdo 1/3 = `goPrev()`, derecho 2/3 = `goNext()`
@@ -124,7 +124,7 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 8: StoryViewer — registerView se invoca exactamente una vez al abrir cada grupo**
     - Para cualquier historia con `storyId` no nulo, `storiesAPI.registerView(storyId)` se llama exactamente 1 vez
     - **Validates: Requirements 2.8**
-  - [ ] 2.8 Implementar clasificación de tabs Recientes/Vistos y acción Eliminar
+  - [x] 2.8 Implementar clasificación de tabs Recientes/Vistos y acción Eliminar
     - Filtrar `recentGroups = groups.filter(g => !g.seen)` y `seenGroups = groups.filter(g => g.seen)`
     - Actualizar clasificación al cerrar `StoryViewer` mediante `markViewed`
     - Implementar `deleteStory(id)`: llamar `storiesAPI.delete()` → `loadStories()`
@@ -142,8 +142,8 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - Archivos: `app/stories.tsx`
     - Asegurarse de que todos los tests pasan. Preguntar al usuario si surgen dudas.
 
-- [ ] 3. ImageViewer — Visualización de imágenes del chat
-  - [ ] 3.1 Crear `src/components/ImageViewer.tsx`
+- [x] 3. ImageViewer — Visualización de imágenes del chat
+  - [x] 3.1 Crear `src/components/ImageViewer.tsx`
     - Props: `{ visible, images: string[], initialIndex?, onClose }`
     - Modal nativo con `statusBarTranslucent`
     - `FlatList` horizontal con `pagingEnabled` — una imagen por página
@@ -164,7 +164,7 @@ Plan de implementación incremental para cerrar las 9 brechas de paridad funcion
     - **Property 12: ImageViewer — índice activo siempre en [0, N-1]**
     - Para array de N imágenes, tras swipe horizontal el índice permanece en `[0, N-1]`
     - **Validates: Requirements 3.6**
-  - [ ] 3.5 Conectar `ImageViewer` en `src/components/chat/ChatMessageBubble.tsx`
+  - [x] 3.5 Conectar `ImageViewer` en `src/components/chat/ChatMessageBubble.tsx`
     - Añadir handler `onOpenImage(images, index)` al pulsar una imagen del mensaje
     - Renderizar `<ImageViewer>` con estado local `imageViewerState`
     - _Requirements: 3.1_

@@ -1,7 +1,6 @@
 // commands.rs — Comandos nativos Rust para BANGE KYC Admin
 // Estos comandos son invocables desde el frontend React via invoke()
 
-use std::collections::HashMap;
 use std::net::TcpStream;
 use std::time::Duration;
 

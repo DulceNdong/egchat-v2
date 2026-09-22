@@ -1,10 +1,10 @@
 # Tareas: Sistema de Auto-Actualización
 
 ## Fase 1 — Servidor de actualizaciones
-- [ ] **T-01** Crear `server/routes/updates.js` — endpoints para servir `latest.json`
-- [ ] **T-02** Estructura: `GET /updates/:app/:platform/:arch/latest.json`
-- [ ] **T-03** Crear `scripts/publish-update.sh` — firma y publica nueva versión
-- [ ] **T-04** Registrar ruta en `index.js`
+- [x] **T-01** Crear `server/routes/updates.js` — endpoints para servir `latest.json`
+- [x] **T-02** Estructura: `GET /updates/:app/:platform/:arch/latest.json`
+- [x] **T-03** Crear `scripts/publish-update.sh` — firma y publica nueva versión
+- [x] **T-04** Registrar ruta en `index.js`
 
 ## Fase 2 — Integración Tauri
 - [ ] **T-05** Añadir `tauri-plugin-updater` a cada app desktop

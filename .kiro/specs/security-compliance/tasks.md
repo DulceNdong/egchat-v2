@@ -8,8 +8,8 @@
 - [ ] **T-05** Añadir cifrado pgcrypto a columnas phone y email en `kyc_personal_data`
 
 ## Fase 2 — Roles y guards
-- [ ] **T-06** Actualizar `server/middleware/roles.js` con los 5 roles completos
-- [ ] **T-07** Aplicar guards a todos los endpoints KYC según tabla de permisos
+- [x] **T-06** Actualizar `server/middleware/roles.js` con los 5 roles completos
+- [x] **T-07** Aplicar guards a todos los endpoints KYC según tabla de permisos
 - [x] **T-08** Endpoint `POST /api/admin/2fa/setup` — generar QR TOTP
 - [x] **T-09** Endpoint `POST /api/admin/2fa/verify` — verificar código TOTP
 
@@ -21,9 +21,9 @@
 - [x] **T-14** Endpoint `GET /api/aml/alerts` — listar alertas pendientes
 
 ## Fase 4 — Re-screening automático
-- [ ] **T-15** Cron job diario: re-screening de clientes de alto riesgo (cada 6 meses)
-- [ ] **T-16** Cron job diario: re-screening de clientes de riesgo medio (cada 12 meses)
-- [ ] **T-17** Actualización diaria de listas de sanciones OFAC/UE/ONU
+- [x] **T-15** Cron job diario: re-screening de clientes de alto riesgo (cada 6 meses)
+- [x] **T-16** Cron job diario: re-screening de clientes de riesgo medio (cada 12 meses)
+- [x] **T-17** Actualización diaria de listas de sanciones OFAC/UE/ONU
 
 ## Fase 5 — Auditoría y exportación
 - [x] **T-18** Endpoint `GET /api/audit/export` — exportar `kyc_audit_log` a CSV/PDF con filtros de fecha

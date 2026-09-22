@@ -6,14 +6,14 @@
 - [x] **T-02** Crear `server/src/kyc/providers/MockProvider.ts` — simulado con delay 800ms
 - [x] **T-03** Crear `server/src/kyc/KYCProviderFactory.ts` — selección, fallback y backoff
 - [x] **T-04** Crear `server/src/kyc/KYCScoringEngine.ts` — motor de scoring 0–100
-- [ ] **T-05** Añadir variables de entorno al `.env.example` del servidor
+- [x] **T-05** Añadir variables de entorno al `.env.example` del servidor
 
 ## Fase 2 — Proveedores reales
 
-- [ ] **T-06** Crear `SmileIdProvider.ts` — OCR + Face Match (Smile ID Africa API v1)
-- [ ] **T-07** Crear `SumsubProvider.ts` — OCR + Face + AML (Sumsub API)
-- [ ] **T-08** Crear `ComplyAdvantageProvider.ts` — Sanctions + PEP screening
-- [ ] **T-09** Crear `WorldCheckProvider.ts` — Sanctions + PEP alternativo
+- [x] **T-06** Crear `SmileIdProvider.ts` — OCR + Face Match (Smile ID Africa API v1)
+- [x] **T-07** Crear `SumsubProvider.ts` — OCR + Face + AML (Sumsub API)
+- [x] **T-08** Crear `ComplyAdvantageProvider.ts` — Sanctions + PEP screening
+- [x] **T-09** Crear `WorldCheckProvider.ts` — Sanctions + PEP alternativo
 
 ## Fase 3 — Endpoints del servidor
 
@@ -38,8 +38,8 @@
 
 ## Fase 5 — Observabilidad y tests
 
-- [ ] **T-25** Añadir logs estructurados por cada llamada a proveedor (proveedor, duración_ms, éxito)
-- [ ] **T-26** Test unitario del `MockProvider` — verificar que los 4 métodos retornan datos válidos
-- [ ] **T-27** Test unitario del `KYCScoringEngine` — 5 casos: aprobado, revisión, rechazado, deepfake, sanctions
-- [ ] **T-28** Test de integración del `KYCProviderFactory` — verificar fallback cuando el primario falla
+- [x] **T-25** Añadir logs estructurados por cada llamada a proveedor (proveedor, duración_ms, éxito)
+- [x] **T-26** Test unitario del `MockProvider` — verificar que los 4 métodos retornan datos válidos
+- [x] **T-27** Test unitario del `KYCScoringEngine` — 5 casos: aprobado, revisión, rechazado, deepfake, sanctions
+- [x] **T-28** Test de integración del `KYCProviderFactory` — verificar fallback cuando el primario falla
 - [ ] **T-29** Ejecutar `kluster_code_review_auto` sobre todos los archivos del módulo kyc/

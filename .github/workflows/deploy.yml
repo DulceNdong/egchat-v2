@@ -1,81 +1,35 @@
-name: EGCHAT CI/CD
+name: Deploy EGCHAT API
 
 on:
   push:
-    branches: [main, develop]
-  pull_request:
-    branches: [main]
+    branches: [main, mobile]
+    paths:
+      - 'server/egchat-api/**'
+      - 'server/migrations/**'
+      - '.github/workflows/deploy.yml'
+  workflow_dispatch:
 
 jobs:
-  # ── Lint y tests ──────────────────────────────────────────────
-  test:
-    name: Lint + Tests
+  validate-api:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: server
+        working-directory: server/egchat-api
     steps:
       - uses: actions/checkout@v4
-
-      - name: Setup Node.js 20
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: '20'
-          cache: 'npm'
-          cache-dependency-path: server/package-lock.json
+          cache: npm
+          cache-dependency-path: server/egchat-api/package-lock.json
+      - run: npm ci
+      - run: node --check index.js
+      - run: node kyc/tests/run-kyc-tests.js
 
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Syntax check
-        run: |
-          node --check index.js
-          node --check kyc/kycRoutes.js
-          node --check kyc/KYCScoringEngine.js
-          node --check aml/monitor.js
-          node --check aml/rules.js
-          node --check security/encryption.js
-
-      - name: Run KYC tests
-        run: |
-          node kyc/tests/mock.test.js
-          node kyc/tests/scoring.test.js
-          node kyc/tests/factory.test.js
-
-  # ── Build Docker ──────────────────────────────────────────────
-  build:
-    name: Build Docker image
+  deploy-render:
+    needs: validate-api
     runs-on: ubuntu-latest
-    needs: test
-    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    if: ${{ secrets.RENDER_DEPLOY_HOOK_URL != '' }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Build image
-        run: docker build -t egchat-api:${{ github.sha }} ./server
-
-  # ── Deploy a producción (solo main, requiere aprobación) ──────
-  deploy-production:
-    name: Deploy → Producción
-    runs-on: ubuntu-latest
-    needs: build
-    if: github.ref == 'refs/heads/main'
-    environment:
-      name: production
-      url: https://egchat-api-xlxj.onrender.com
-    steps:
-      - name: Deploy a Render
-        run: |
-          curl -X POST \
-            -H "Authorization: Bearer ${{ secrets.RENDER_API_KEY }}" \
-            "https://api.render.com/v1/services/${{ secrets.RENDER_SERVICE_ID }}/deploys" \
-            -H "Content-Type: application/json" \
-            -d '{"clearCache": false}'
-
-      - name: Verificar health check
-        run: |
-          sleep 30
-          curl -f https://egchat-api-xlxj.onrender.com/health || exit 1
-
-      - name: Notificar deploy exitoso
-        run: echo "✅ Deploy a producción completado — $(date)"
+      - name: Trigger Render deploy hook
+        run: curl -fsS -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}"
