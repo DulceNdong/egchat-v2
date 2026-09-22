@@ -14,11 +14,11 @@ import { useKycStore } from '../../src/store/kycStore';
 import { clearKycDraft } from '../../src/services/kycStorage';
 import { authAPI } from '../../src/api';
 
-const FEATURES: { icon: keyof typeof MaterialCommunityIcons.glyphMap; lib: 'mci' | 'ion'; text: string }[] = [
-  { lib: 'mci', icon: 'shield-lock',      text: 'Cifrado AES-256 — tus datos están protegidos' },
-  { lib: 'mci', icon: 'clipboard-list',   text: '5 pasos sencillos · aproximadamente 10 minutos' },
-  { lib: 'mci', icon: 'content-save',     text: 'Guardado automático — retoma donde lo dejaste' },
-  { lib: 'mci', icon: 'bank',             text: 'Verificación cumple normativa COBAC y CEMAC' },
+const FEATURES: { icon: keyof typeof MaterialCommunityIcons.glyphMap; text: string }[] = [
+  { icon: 'shield-lock',    text: 'Cifrado AES-256 — tus datos están protegidos' },
+  { icon: 'clipboard-list', text: '5 pasos sencillos · aproximadamente 10 minutos' },
+  { icon: 'content-save',   text: 'Guardado automático — retoma donde lo dejaste' },
+  { icon: 'bank',           text: 'Verificación cumple normativa COBAC y CEMAC' },
 ];
 
 export default function KycEntryScreen() {
