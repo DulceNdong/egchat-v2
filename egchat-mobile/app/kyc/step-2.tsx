@@ -8,6 +8,8 @@ import { OcrConfirmation } from '../../src/components/kyc/OcrConfirmation';
 import { useKycStore } from '../../src/store/kycStore';
 import { saveKycDraft } from '../../src/services/kycStorage';
 import { uploadDocumentImage } from '../../src/services/kycService';
+import { getNetworkStatus } from '../../src/store/offlineStore';
+import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 import type { DocumentType } from '../../src/store/kycStore';
 
 const DOC_TYPES: { value: DocumentType; label: string; hasBack: boolean }[] = [
@@ -37,10 +39,14 @@ export default function Step2() {
       store.setDocumentData({ frontImageUri: uri, frontImageEncrypted: enc });
       const appId = store.applicationId;
       if (appId) {
-        const res = await uploadDocumentImage(appId, 'front', enc, d.documentType);
-        if (res.ocrData && Object.keys(res.ocrData).length > 0) {
-          store.setDocumentData({ ocrData: res.ocrData });
-          setShowOcr(true);
+        if (getNetworkStatus().isOnline) {
+          const res = await uploadDocumentImage(appId, 'front', enc, d.documentType);
+          if (res.ocrData && Object.keys(res.ocrData).length > 0) {
+            store.setDocumentData({ ocrData: res.ocrData });
+            setShowOcr(true);
+          }
+        } else {
+          await enqueueKycAction({ type: 'document', applicationId: appId, side: 'front', enc, docType: d.documentType });
         }
       }
       setFrontDone(true);
@@ -56,7 +62,13 @@ export default function Step2() {
     try {
       store.setDocumentData({ backImageUri: uri, backImageEncrypted: enc });
       const appId = store.applicationId;
-      if (appId) await uploadDocumentImage(appId, 'back', enc, d.documentType);
+      if (appId) {
+        if (getNetworkStatus().isOnline) {
+          await uploadDocumentImage(appId, 'back', enc, d.documentType);
+        } else {
+          await enqueueKycAction({ type: 'document', applicationId: appId, side: 'back', enc, docType: d.documentType });
+        }
+      }
       setBackDone(true);
     } catch {
       setError('Error al subir la foto trasera. Inténtalo de nuevo.');

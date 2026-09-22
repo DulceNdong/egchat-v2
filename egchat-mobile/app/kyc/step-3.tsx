@@ -7,6 +7,8 @@ import { LivenessCapture } from '../../src/components/kyc/LivenessCapture';
 import { useKycStore } from '../../src/store/kycStore';
 import { saveKycDraft } from '../../src/services/kycStorage';
 import { verifyBiometric } from '../../src/services/kycService';
+import { getNetworkStatus } from '../../src/store/offlineStore';
+import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 
 const MAX_ATTEMPTS = 3;
 
@@ -26,6 +28,11 @@ export default function Step3() {
     try {
       const appId = store.applicationId;
       if (appId) {
+        if (!getNetworkStatus().isOnline) {
+          await enqueueKycAction({ type: 'biometric', applicationId: appId, selfieEncrypted: enc });
+          store.setBiometricData({ livenessResult: 'passed' });
+          return;
+        }
         const res = await verifyBiometric(appId, enc);
         store.setBiometricData({
           livenessResult: res.livenessPassed ? 'passed' : 'failed',

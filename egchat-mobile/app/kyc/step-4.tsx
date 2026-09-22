@@ -6,6 +6,8 @@ import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
 import { useKycStore } from '../../src/store/kycStore';
 import { saveKycDraft } from '../../src/services/kycStorage';
 import { saveFinancialData } from '../../src/services/kycService';
+import { getNetworkStatus } from '../../src/store/offlineStore';
+import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 
 const INCOME_OPTIONS = [
   { label: 'Menos de 200.000 XAF',         value: 'UNDER_100K'   },
@@ -59,7 +61,13 @@ export default function Step4() {
     setLoading(true);
     try {
       const appId = store.applicationId;
-      if (appId) await saveFinancialData(appId, fin);
+      if (appId) {
+        if (getNetworkStatus().isOnline) {
+          await saveFinancialData(appId, fin);
+        } else {
+          await enqueueKycAction({ type: 'financial', applicationId: appId, data: fin });
+        }
+      }
       store.markStepComplete(4);
       store.setCurrentStep(5);
       await saveKycDraft({ ...store, currentStep: 5 } as any);

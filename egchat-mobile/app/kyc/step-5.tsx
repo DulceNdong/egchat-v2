@@ -6,6 +6,8 @@ import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
 import { useKycStore } from '../../src/store/kycStore';
 import { screenKycApplication, submitKycApplication } from '../../src/services/kycService';
 import { clearKycDraft } from '../../src/services/kycStorage';
+import { getNetworkStatus } from '../../src/store/offlineStore';
+import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 
 // ── Sección colapsable de resumen ─────────────────────────────────
 function SummarySection({ title, items }: { title: string; items: [string, string][] }) {
@@ -59,6 +61,15 @@ export default function Step5() {
     try {
       const appId = store.applicationId;
       if (!appId) throw new Error('Solicitud KYC no iniciada');
+
+      if (!getNetworkStatus().isOnline) {
+        await enqueueKycAction({ type: 'screening', applicationId: appId, fullName: p.fullName, nationality: p.nationality });
+        await enqueueKycAction({ type: 'submit', applicationId: appId });
+        store.setStatus('submitted');
+        await clearKycDraft();
+        router.replace('/kyc/result?type=manual_review');
+        return;
+      }
 
       await screenKycApplication(appId, {
         fullName: p.fullName,

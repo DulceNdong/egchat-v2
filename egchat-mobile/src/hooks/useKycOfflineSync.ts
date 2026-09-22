@@ -7,7 +7,7 @@
 import { useEffect, useRef, useCallback } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { subscribeNetworkStatus, getNetworkStatus } from '../store/offlineStore';
-import { createKycApplication, savePersonalData, saveFinancialData, uploadDocumentImage, screenKycApplication, submitKycApplication } from '../services/kycService';
+import { createKycApplication, savePersonalData, saveFinancialData, uploadDocumentImage, verifyBiometric, screenKycApplication, submitKycApplication } from '../services/kycService';
 import type { PersonalData, FinancialData, DocumentType } from '../store/kycStore';
 
 const QUEUE_KEY = 'egchat_kyc_offline_queue';
@@ -16,6 +16,7 @@ type KycQueueItem =
   | { type: 'personal';   applicationId: string; data: PersonalData }
   | { type: 'financial';  applicationId: string; data: FinancialData }
   | { type: 'document';   applicationId: string; side: 'front' | 'back' | 'selfie'; enc: string; docType: DocumentType }
+  | { type: 'biometric';  applicationId: string; selfieEncrypted: string }
   | { type: 'screening';  applicationId: string; fullName?: string; nationality?: string }
   | { type: 'submit';     applicationId: string };
 
@@ -70,6 +71,7 @@ export function useKycOfflineSync() {
         if (item.type === 'personal')  await savePersonalData(applicationId, item.data);
         if (item.type === 'financial') await saveFinancialData(applicationId, item.data);
         if (item.type === 'document')  await uploadDocumentImage(applicationId, item.side, item.enc, item.docType);
+        if (item.type === 'biometric') await verifyBiometric(applicationId, item.selfieEncrypted);
         if (item.type === 'screening') await screenKycApplication(applicationId, { fullName: item.fullName, nationality: item.nationality });
         if (item.type === 'submit')    await submitKycApplication(applicationId);
       } catch {
