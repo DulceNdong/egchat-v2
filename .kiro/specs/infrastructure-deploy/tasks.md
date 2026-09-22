@@ -13,7 +13,7 @@
 
 ## Fase 3 — Monitorización
 - [x] **T-08** Añadir `/health` endpoint al servidor con estado de DB, Redis y proveedores KYC
-- [ ] **T-09** Configurar Sentry para error tracking
+- [x] **T-09** Configurar Sentry para error tracking
 - [x] **T-10** Configurar UptimeRobot para monitoring (gratis hasta 50 monitores)
 
 ## Fase 4 — Backups

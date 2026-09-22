@@ -1,4 +1,4 @@
-// commands.rs — Comandos nativos Rust para BANGE KYC Admin
+// commands.rs — Comandos nativos Rust para EGCHAT KYC Monitor
 // Estos comandos son invocables desde el frontend React via invoke()
 
 use std::net::TcpStream;
@@ -12,7 +12,7 @@ pub fn secure_storage_set(key: String, value: String) -> Result<(), String> {
     // Por ahora, guardamos en archivo cifrado en AppData
     let app_dir = dirs::data_local_dir()
         .ok_or("No se pudo obtener el directorio de datos")?
-        .join("egchat-bange");
+        .join("egchat-empresa");
 
     std::fs::create_dir_all(&app_dir)
         .map_err(|e| format!("Error creando directorio: {}", e))?;
@@ -29,7 +29,7 @@ pub fn secure_storage_set(key: String, value: String) -> Result<(), String> {
 pub fn secure_storage_get(key: String) -> Result<Option<String>, String> {
     let app_dir = dirs::data_local_dir()
         .ok_or("No se pudo obtener el directorio de datos")?
-        .join("egchat-bange");
+        .join("egchat-empresa");
 
     let file_path = app_dir.join(format!("{}.dat", sanitize_key(&key)));
     if !file_path.exists() { return Ok(None); }
@@ -44,7 +44,7 @@ pub fn secure_storage_get(key: String) -> Result<Option<String>, String> {
 pub fn clear_secure_storage() -> Result<(), String> {
     let app_dir = dirs::data_local_dir()
         .ok_or("No se pudo obtener directorio")?
-        .join("egchat-bange");
+        .join("egchat-empresa");
 
     if app_dir.exists() {
         std::fs::remove_dir_all(&app_dir)
@@ -118,7 +118,7 @@ pub fn print_kyc_report(
     _application_id: String,
 ) -> Result<(), String> {
     // Guardar HTML temporalmente y abrir el diálogo de impresión del sistema
-    let tmp_dir  = std::env::temp_dir().join("egchat-bange");
+    let tmp_dir  = std::env::temp_dir().join("egchat-empresa");
     std::fs::create_dir_all(&tmp_dir).ok();
     let tmp_file = tmp_dir.join("kyc-report.html");
     std::fs::write(&tmp_file, html_content)

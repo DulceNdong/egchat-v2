@@ -17,5 +17,5 @@
 - [ ] **T-10** Si la app falla 3 veces al iniciar, restaurar versión anterior automáticamente
 
 ## Fase 4 — Notificaciones
-- [ ] **T-11** Notificación email al admin cuando hay nueva versión disponible
-- [ ] **T-12** Log de auditoría: quién actualizó, cuándo, desde qué versión
+- [x] **T-11** Notificación email al admin cuando hay nueva versión disponible
+- [x] **T-12** Log de auditoría: quién actualizó, cuándo, desde qué versión
