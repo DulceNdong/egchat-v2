@@ -1,13 +1,133 @@
 /**
- * Visor de documentos KYC — muestra imágenes con URL firmada temporal.
- * Cuando no hay imagen, el compliance officer puede subir una manualmente.
+ * Visor de documentos KYC — solo visualización, sin opción de subida.
+ * Las imágenes las sube el usuario desde su dispositivo móvil al activar el monedero.
  * SEGURIDAD: sin descarga, sin drag, sin contextmenu.
  */
-import { useState, useRef, useCallback } from 'react';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useState, useCallback } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { kycAdminApi } from '@/api/endpoints';
-import { ZoomIn, X, Upload, Loader2 } from 'lucide-react';
-import toast from 'react-hot-toast';
+import { ZoomIn, X } from 'lucide-react';
+
+interface DocumentViewerProps {
+  applicationId: string;
+  docType:       'front' | 'back' | 'selfie';
+  label:         string;
+}
+
+export function DocumentViewer({ applicationId, docType, label }: DocumentViewerProps) {
+  const [zoomed, setZoomed] = useState(false);
+
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['doc-url', applicationId, docType],
+    queryFn:  () => kycAdminApi.getSignedDocUrl(applicationId, docType),
+    staleTime: 4 * 60 * 1000,
+    refetchInterval: 4 * 60 * 1000,
+    enabled: !!applicationId,
+    retry: 1,
+  });
+
+  const preventSave = useCallback((e: React.MouseEvent | React.DragEvent) => {
+    e.preventDefault();
+    return false;
+  }, []);
+
+  const handleKeyDown = useCallback((e: KeyboardEvent) => {
+    if (e.key === 'Escape') {
+      setZoomed(false);
+      document.removeEventListener('keydown', handleKeyDown);
+    }
+  }, []);
+
+  const openZoom = useCallback(() => {
+    if (!data?.url) return;
+    setZoomed(true);
+    document.addEventListener('keydown', handleKeyDown);
+  }, [data?.url, handleKeyDown]);
+
+  const closeZoom = useCallback(() => {
+    setZoomed(false);
+    document.removeEventListener('keydown', handleKeyDown);
+  }, [handleKeyDown]);
+
+  const url = data?.url;
+
+  return (
+    <>
+      <div className="flex flex-col gap-2">
+        <p className="text-xs font-medium text-gray-500 uppercase tracking-wide">{label}</p>
+
+        <div
+          className={`relative h-28 rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 ${url ? 'group cursor-pointer' : ''}`}
+          onClick={openZoom}
+          role={url ? 'button' : undefined}
+          tabIndex={url ? 0 : undefined}
+          onKeyDown={e => e.key === 'Enter' && openZoom()}
+          aria-label={url ? `Ver ${label} en pantalla completa` : undefined}
+        >
+          {isLoading && (
+            <div className="flex items-center justify-center h-full">
+              <div className="w-5 h-5 border-2 border-brand-500 border-t-transparent rounded-full animate-spin" />
+            </div>
+          )}
+
+          {!isLoading && (error || !url) && (
+            <div className="flex items-center justify-center h-full">
+              <p className="text-xs text-gray-400">No disponible</p>
+            </div>
+          )}
+
+          {url && (
+            <>
+              <img
+                src={url}
+                alt={label}
+                className="doc-image w-full h-full object-cover"
+                onContextMenu={preventSave}
+                onDragStart={preventSave}
+                draggable={false}
+              />
+              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-center justify-center">
+                <ZoomIn className="w-6 h-6 text-white opacity-0 group-hover:opacity-100 transition-opacity" aria-hidden="true" />
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Modal zoom */}
+      {zoomed && url && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 backdrop-blur-sm p-4"
+          onClick={closeZoom}
+          role="dialog"
+          aria-modal="true"
+          aria-label={`Vista ampliada: ${label}`}
+        >
+          <div
+            className="relative max-w-3xl w-full"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={closeZoom}
+              className="absolute -top-10 right-0 p-2 text-white/80 hover:text-white"
+              aria-label="Cerrar"
+            >
+              <X className="w-6 h-6" />
+            </button>
+            <img
+              src={url}
+              alt={label}
+              className="doc-image w-full max-h-[80vh] object-contain rounded-lg select-none"
+              onContextMenu={preventSave}
+              onDragStart={preventSave}
+              draggable={false}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
+}
 
 interface DocumentViewerProps {
   applicationId: string;
