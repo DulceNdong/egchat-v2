@@ -5,6 +5,7 @@ import { getApiBase, getToken, walletAPI } from '../../api';
 import { toast } from '../Toast';
 import { FinancialModuleShell, SummaryCard, FilterChips, StatusPill } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { PayMethodPicker } from './PublicModuleUI';
 
 type FScreen = 'home' | 'add' | 'detail' | 'pay' | 'success';
 
