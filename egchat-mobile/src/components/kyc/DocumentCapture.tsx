@@ -138,9 +138,15 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
       <View style={st.wrap}>
         <View style={st.previewContainer}>
           <Image source={{ uri: previewUri }} style={st.previewImage} resizeMode="cover" />
-          <View style={st.previewBadge}>
-            <Ionicons name="checkmark-circle" size={18} color="#10b981" />
-            <Text style={st.previewBadgeText}>{sideLabel} capturada</Text>
+          <View style={[st.previewBadge, qualityTip ? st.previewBadgeError : undefined]}>
+            <Ionicons
+              name={qualityTip ? 'warning-outline' : 'checkmark-circle'}
+              size={18}
+              color={qualityTip ? '#f59e0b' : '#10b981'}
+            />
+            <Text style={[st.previewBadgeText, qualityTip ? st.previewBadgeTextError : undefined]}>
+              {qualityTip ?? `${sideLabel} capturada`}
+            </Text>
           </View>
         </View>
         <TouchableOpacity style={st.retakeBtn} onPress={handleRetake}>
