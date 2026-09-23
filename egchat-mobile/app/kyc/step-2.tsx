@@ -162,17 +162,26 @@ export default function Step2() {
             <OcrConfirmation
               ocrData={d.ocrData}
               onConfirm={() => { store.setDocumentData({ ocrConfirmed: true }); setShowOcr(false); }}
-              onRetry={() => { setFrontDone(false); setShowOcr(false); store.setDocumentData({ ocrData: {}, ocrConfirmed: false }); }}
+              onRetry={() => { setFrontDone(false); setShowOcr(false); setFrontEncFailed(false); store.setDocumentData({ ocrData: {}, ocrConfirmed: false }); }}
             />
           )}
           {frontDone && !showOcr && !d.ocrConfirmed && (
-            // Sin OCR del servidor — confirmar manualmente
-            <TouchableOpacity
-              style={st.confirmManualBtn}
-              onPress={() => store.setDocumentData({ ocrConfirmed: true })}
-            >
-              <Text style={st.confirmManualText}>✓ Confirmar foto frontal</Text>
-            </TouchableOpacity>
+            // Sin OCR del servidor — confirmar manualmente para poder continuar
+            <View>
+              {frontEncFailed && (
+                <View style={st.warnBox}>
+                  <Text style={st.warnText}>
+                    ⚠️ Hubo un problema al procesar la imagen. Puedes confirmarla de todos modos o volver a capturarla.
+                  </Text>
+                </View>
+              )}
+              <TouchableOpacity
+                style={st.confirmManualBtn}
+                onPress={() => { store.setDocumentData({ ocrConfirmed: true }); setError(''); }}
+              >
+                <Text style={st.confirmManualText}>✓ Confirmar foto frontal</Text>
+              </TouchableOpacity>
+            </View>
           )}
 
           {/* Foto trasera */}
