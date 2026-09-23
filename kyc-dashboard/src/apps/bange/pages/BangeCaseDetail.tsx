@@ -17,7 +17,6 @@ import { ActionModal } from '../components/ActionModal';
 import BangeLayout from '../components/BangeLayout';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import toast from 'react-hot-toast';
 
 type ActionType = 'reject' | 'request-info' | 'block' | null;
 
