@@ -140,7 +140,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
   const [selected, setSelected] = useState<Bill | null>(null);
   const [filter, setFilter] = useState<'todas' | 'pendiente' | 'vencida' | 'pagada'>('todas');
   const [form, setForm] = useState({ service: '', provider: '', amount: '', dueDate: '', reference: '', categoryId: '' });
-  const [payMethod, setPayMethod] = useState('EGCHAT');
+  const [payMethod, setPayMethod] = useState('egpay');
   const [balance, setBalance] = useState(userBalance);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(false);
