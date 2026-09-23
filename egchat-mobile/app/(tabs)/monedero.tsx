@@ -5,7 +5,7 @@ import {
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
   TextInput, Animated, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS } from '../../src/services/kyc';
+import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS, invalidateKycStatusCache } from '../../src/services/kyc';
 import type { KycStatus } from '../../src/api';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -16,6 +16,7 @@ import { walletAPI, authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { markAllRead } from '../../src/store/appStore';
+import { supabase } from '../../src/supabase';
 import { CardsScreen } from '../../src/components/services/CardsScreen';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { buildReceiveQr, buildPayQr } from '../../src/utils/walletQr';
