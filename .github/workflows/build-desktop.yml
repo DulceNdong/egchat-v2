@@ -39,8 +39,8 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: |
           npm init -y
-          npm install --save-dev @tauri-apps/cli@latest
-          npx tauri build
+          npm install --save-dev @tauri-apps/cli@^2
+          npx tauri build --bundles msi,nsis
 
       - uses: actions/upload-artifact@v4
         with:
@@ -84,11 +84,11 @@ jobs:
           TAURI_KEY_PASSWORD: ${{ secrets.TAURI_KEY_PASSWORD }}
         run: |
           npm init -y
-          npm install --save-dev @tauri-apps/cli@latest
-          npx tauri build --target universal-apple-darwin
+          npm install --save-dev @tauri-apps/cli@^2
+          npx tauri build --bundles dmg
 
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.app }}-macos
-          path: apps/desktop-${{ matrix.app }}/src-tauri/target/universal-apple-darwin/release/bundle/dmg/*.dmg
+          path: apps/desktop-${{ matrix.app }}/src-tauri/target/release/bundle/dmg/*.dmg
           retention-days: 30
