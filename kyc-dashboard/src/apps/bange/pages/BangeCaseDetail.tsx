@@ -8,7 +8,7 @@ import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, XCircle, CheckCheck } from 'lucide-react';
-import { useKycDetail, useKycAudit, useKycApprove } from '@/shared/hooks/useKycAdmin';
+import { useKycDetail, useKycApprove } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
 import { RiskBadge, StatusBadge } from '@/shared/components/ui/Badges';
 import { DocumentViewer } from '@/shared/components/ui/DocumentViewer';
