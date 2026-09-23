@@ -427,15 +427,11 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       {screen === 'pay' && selected && (
         <View>
           <View style={s.detailCard}>
-            <Text style={s.payTitle}>Método de pago</Text>
+            <Text style={s.payTitle}>Confirmar pago</Text>
             <Text style={s.payAmt}>{selected.amount.toLocaleString()} XAF</Text>
             <Text style={s.balHint}>Saldo monedero: {balance.toLocaleString()} XAF</Text>
           </View>
-          {([['EGCHAT', 'Monedero EGCHAT'], ['banco', 'Cuenta bancaria'], ['tarjeta', 'Tarjeta de débito']] as const).map(([id, label]) => (
-            <TouchableOpacity key={id} style={[s.payOpt, payMethod === id && s.payOptActive]} onPress={() => setPayMethod(id)}>
-              <Text style={s.payOptText}>{label}</Text>
-            </TouchableOpacity>
-          ))}
+          <PayMethodPicker value={payMethod} onChange={setPayMethod} accent="#C47D2A" />
           <PrimaryButton
             label={loading ? 'Procesando...' : 'Confirmar pago'}
             color="#C47D2A"
