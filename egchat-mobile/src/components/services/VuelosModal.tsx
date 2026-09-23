@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { AIRLINES, Airline } from '../../data/serviciosDiarios';
 import { FinancialModuleShell, SegmentTabs } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { PayMethodPicker } from './PublicModuleUI';
 
 type FlightScreen = 'airlines' | 'routes' | 'book' | 'ok';
 interface Props { visible: boolean; onClose: () => void; }
