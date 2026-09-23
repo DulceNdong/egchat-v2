@@ -7,7 +7,6 @@ mod commands;
 
 fn main() {
     tauri::Builder::default()
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_notification::init())
         .invoke_handler(tauri::generate_handler![
             commands::secure_storage_set,

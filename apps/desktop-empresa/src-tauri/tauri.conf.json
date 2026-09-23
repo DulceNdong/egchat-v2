@@ -39,16 +39,5 @@
       "icons/icon.ico",
       "icons/icon.icns"
     ]
-  },
-  "plugins": {
-    "updater": {
-      "pubkey": "TAURI_UPDATER_PUBLIC_KEY_PLACEHOLDER_REPLACE_IN_PRODUCTION",
-      "endpoints": [
-        "https://egchat-api-xlxj.onrender.com/updates/empresa/{{target}}/latest.json"
-      ],
-      "windows": {
-        "installMode": "passive"
-      }
-    }
   }
 }
