@@ -22,19 +22,39 @@ export default function Step2() {
   const store = useKycStore();
   const d = store.documentData;
 
-  const [uploading, setUploading]   = useState(false);
-  const [frontDone, setFrontDone]   = useState(!!d.frontImageUri);
-  const [backDone, setBackDone]     = useState(!!d.backImageUri);
-  const [showOcr, setShowOcr]       = useState(false);
-  const [error, setError]           = useState('');
+  const [uploading, setUploading]     = useState(false);
+  const [frontDone, setFrontDone]     = useState(!!d.frontImageUri);
+  const [backDone, setBackDone]       = useState(!!d.backImageUri);
+  // frontEncFailed: la imagen se capturó pero el cifrado falló — se puede confirmar igual
+  const [frontEncFailed, setFrontEncFailed] = useState(false);
+  const [showOcr, setShowOcr]         = useState(false);
+  const [error, setError]             = useState('');
 
   const selectedDoc = DOC_TYPES.find(t => t.value === d.documentType);
   const needsBack   = selectedDoc?.hasBack ?? false;
+  // canContinue: foto frontal lista + (trasera si aplica) + ocrConfirmed
+  // Si no hay applicationId no hay OCR del servidor, ocrConfirmed se gestiona manualmente
   const canContinue = frontDone && (!needsBack || backDone) && d.ocrConfirmed;
 
   const handleFrontCapture = async (enc: string, uri: string) => {
-    setUploading(true);
+    // Limpiar errores previos cada vez que llega una nueva captura
     setError('');
+    setFrontEncFailed(false);
+
+    // Detectar si DocumentCapture nos pasó la URI en crudo (cifrado falló)
+    const isRawFallback = enc.startsWith('raw:');
+
+    if (isRawFallback) {
+      // El cifrado falló pero la imagen fue seleccionada — guardar la URI para
+      // mostrar el preview y permitir confirmación manual sin bloquear al usuario.
+      store.setDocumentData({ frontImageUri: uri, frontImageEncrypted: null });
+      setFrontDone(true);
+      setFrontEncFailed(true);
+      // No subir al servidor si el cifrado no funcionó
+      return;
+    }
+
+    setUploading(true);
     try {
       store.setDocumentData({ frontImageUri: uri, frontImageEncrypted: enc });
       const appId = store.applicationId;
@@ -52,12 +72,23 @@ export default function Step2() {
       setFrontDone(true);
     } catch {
       setError('Error al subir la foto frontal. Inténtalo de nuevo.');
+      // Aun si falla el upload, marcamos frontDone para no bloquear al usuario
+      setFrontDone(true);
     } finally {
       setUploading(false);
     }
   };
 
   const handleBackCapture = async (enc: string, uri: string) => {
+    setError('');
+    const isRawFallback = enc.startsWith('raw:');
+
+    if (isRawFallback) {
+      store.setDocumentData({ backImageUri: uri, backImageEncrypted: null });
+      setBackDone(true);
+      return;
+    }
+
     setUploading(true);
     try {
       store.setDocumentData({ backImageUri: uri, backImageEncrypted: enc });
@@ -72,6 +103,7 @@ export default function Step2() {
       setBackDone(true);
     } catch {
       setError('Error al subir la foto trasera. Inténtalo de nuevo.');
+      setBackDone(true);
     } finally {
       setUploading(false);
     }
