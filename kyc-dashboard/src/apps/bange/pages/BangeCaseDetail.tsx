@@ -1,24 +1,25 @@
 /**
  * Detalle completo de un caso KYC — vista BANGE.
- * 6 secciones: datos personales, documentos, screening, historial, acciones, notas.
- * + Banner de estado del monedero + alerta de expiración de documento.
+ * Secciones: datos personales (+ foto de perfil), documentos reales (DNI 2 lados / pasaporte 1),
+ * screening, acciones + botón Revisado.
+ * SIN historial (eliminado).
  */
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, XCircle } from 'lucide-react';
-import { useKycDetail, useKycAudit } from '@/shared/hooks/useKycAdmin';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, XCircle, CheckCheck } from 'lucide-react';
+import { useKycDetail, useKycAudit, useKycApprove } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
 import { RiskBadge, StatusBadge } from '@/shared/components/ui/Badges';
-import { Timeline } from '@/shared/components/ui/Timeline';
 import { DocumentViewer } from '@/shared/components/ui/DocumentViewer';
 import { ScoreBar } from '@/shared/components/ui/ScoreBar';
 import { ActionModal } from '../components/ActionModal';
 import BangeLayout from '../components/BangeLayout';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import toast from 'react-hot-toast';
 
-type ActionType = 'approve' | 'reject' | 'request-info' | 'block' | null;
+type ActionType = 'reject' | 'request-info' | 'block' | null;
 
 // ── Qué datos mínimos se necesitan para activar el monedero ──────
 function getMissingFields(kyc: any): string[] {
@@ -33,21 +34,24 @@ function getMissingFields(kyc: any): string[] {
   return missing;
 }
 
+// ── Avatar initials helper ────────────────────────────────────────
+function getInitials(name: string | null | undefined): string {
+  if (!name) return '?';
+  return name.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+}
+
 // ── Banner de estado del monedero ────────────────────────────────
 function WalletStatusBanner({ kyc }: { kyc: any }) {
   const walletStatus  = kyc.wallet_kyc_status;
   const kycApproved   = ['approved', 'APPROVED', 'AUTO_APPROVED'].includes(kyc.status);
   const missingFields = getMissingFields(kyc);
 
-  // Monedero ya activo
   if (walletStatus === 'approved' || kycApproved) {
     return (
       <div className="flex items-center gap-3 rounded-xl bg-green-50 dark:bg-green-950/40 border border-green-200 dark:border-green-800 px-4 py-3" role="status">
         <CheckCircle2 className="w-5 h-5 text-green-600 shrink-0" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-green-800 dark:text-green-200">
-            ✅ Monedero activo
-          </p>
+          <p className="text-sm font-semibold text-green-800 dark:text-green-200">✅ Monedero activo</p>
           <p className="text-xs text-green-600 dark:text-green-400 mt-0.5">
             El monedero de este usuario ha sido dado de alta correctamente.
           </p>
@@ -56,15 +60,12 @@ function WalletStatusBanner({ kyc }: { kyc: any }) {
     );
   }
 
-  // Rechazado / bloqueado
   if (['rejected', 'REJECTED', 'BLOCKED'].includes(kyc.status)) {
     return (
       <div className="flex items-center gap-3 rounded-xl bg-red-50 dark:bg-red-950/40 border border-red-200 dark:border-red-800 px-4 py-3" role="status">
         <XCircle className="w-5 h-5 text-red-600 shrink-0" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-red-800 dark:text-red-200">
-            ❌ Monedero no activado
-          </p>
+          <p className="text-sm font-semibold text-red-800 dark:text-red-200">❌ Monedero no activado</p>
           <p className="text-xs text-red-600 dark:text-red-400 mt-0.5">
             Solicitud {kyc.status === 'BLOCKED' ? 'bloqueada' : 'rechazada'}.
             {kyc.rejection_reason ? ` Motivo: ${kyc.rejection_reason}` : ''}
@@ -74,18 +75,12 @@ function WalletStatusBanner({ kyc }: { kyc: any }) {
     );
   }
 
-  // Datos incompletos
   if (missingFields.length > 0) {
     return (
       <div className="flex items-start gap-3 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-4 py-3" role="status">
         <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" aria-hidden="true" />
         <div>
-          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">
-            ⚠️ Faltan datos para activar el monedero
-          </p>
-          <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
-            El usuario debe completar los siguientes campos antes de poder dar de alta el monedero:
-          </p>
+          <p className="text-sm font-semibold text-amber-800 dark:text-amber-200">⚠️ Faltan datos para activar el monedero</p>
           <ul className="mt-1 space-y-0.5">
             {missingFields.map(f => (
               <li key={f} className="text-xs text-amber-700 dark:text-amber-400 flex items-center gap-1">
@@ -98,16 +93,13 @@ function WalletStatusBanner({ kyc }: { kyc: any }) {
     );
   }
 
-  // Pendiente de revisión
   return (
     <div className="flex items-center gap-3 rounded-xl bg-blue-50 dark:bg-blue-950/40 border border-blue-200 dark:border-blue-800 px-4 py-3" role="status">
       <Clock className="w-5 h-5 text-blue-600 shrink-0" aria-hidden="true" />
       <div>
-        <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">
-          🔵 Pendiente de activación
-        </p>
+        <p className="text-sm font-semibold text-blue-800 dark:text-blue-200">🔵 Pendiente de activación</p>
         <p className="text-xs text-blue-600 dark:text-blue-400 mt-0.5">
-          Todos los datos están completos. Revisa y aprueba para dar de alta el monedero.
+          Todos los datos están completos. Pulsa <strong>Revisado</strong> para activar el monedero.
         </p>
       </div>
     </div>
@@ -117,23 +109,18 @@ function WalletStatusBanner({ kyc }: { kyc: any }) {
 // ── Alerta de expiración de documento ───────────────────────────
 function DocExpiryAlert({ expiryDate, daysLeft }: { expiryDate: string | null; daysLeft: number | null }) {
   if (!expiryDate || daysLeft === null) return null;
-
   const isExpired  = daysLeft <= 0;
   const isCritical = daysLeft > 0 && daysLeft <= 30;
   const isWarning  = daysLeft > 30 && daysLeft <= 90;
-
   if (!isExpired && !isCritical && !isWarning) return null;
 
   const formatted = format(new Date(expiryDate), 'dd/MM/yyyy', { locale: es });
-
   return (
     <div
       className={`flex items-start gap-3 rounded-xl px-4 py-3 border ${
-        isExpired
-          ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
-          : isCritical
-          ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800'
-          : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
+        isExpired ? 'bg-red-50 dark:bg-red-950/40 border-red-200 dark:border-red-800'
+        : isCritical ? 'bg-orange-50 dark:bg-orange-950/40 border-orange-200 dark:border-orange-800'
+        : 'bg-amber-50 dark:bg-amber-950/40 border-amber-200 dark:border-amber-800'
       }`}
       role="alert"
     >
@@ -141,20 +128,11 @@ function DocExpiryAlert({ expiryDate, daysLeft }: { expiryDate: string | null; d
         className={`w-5 h-5 shrink-0 mt-0.5 ${isExpired ? 'text-red-600' : isCritical ? 'text-orange-600' : 'text-amber-600'}`}
         aria-hidden="true"
       />
-      <div>
-        <p className={`text-sm font-semibold ${isExpired ? 'text-red-800 dark:text-red-200' : isCritical ? 'text-orange-800 dark:text-orange-200' : 'text-amber-800 dark:text-amber-200'}`}>
-          {isExpired
-            ? `⛔ Documento expirado el ${formatted}`
-            : `📅 Documento expira el ${formatted} (${daysLeft} días)`}
-        </p>
-        <p className={`text-xs mt-0.5 ${isExpired ? 'text-red-600 dark:text-red-400' : isCritical ? 'text-orange-600 dark:text-orange-400' : 'text-amber-600 dark:text-amber-400'}`}>
-          {isExpired
-            ? 'El usuario debe renovar su documento para seguir usando el monedero.'
-            : isCritical
-            ? 'Se notificará al usuario que debe renovar su documento pronto.'
-            : 'El documento expira en menos de 90 días. Se recomienda avisar al usuario.'}
-        </p>
-      </div>
+      <p className={`text-sm font-semibold ${isExpired ? 'text-red-800 dark:text-red-200' : isCritical ? 'text-orange-800 dark:text-orange-200' : 'text-amber-800 dark:text-amber-200'}`}>
+        {isExpired
+          ? `⛔ Documento expirado el ${formatted}`
+          : `📅 Documento expira el ${formatted} (${daysLeft} días)`}
+      </p>
     </div>
   );
 }
@@ -165,9 +143,10 @@ export default function BangeCaseDetail() {
   const { t }     = useTranslation();
   const canAct    = useCanDo(['COMPLIANCE_OFFICER', 'SUPER_ADMIN']);
 
-  const { data: kyc,   isLoading }  = useKycDetail(id!);
-  const { data: audit }             = useKycAudit(id!);
+  const { data: kyc, isLoading, refetch } = useKycDetail(id!);
   const [activeAction, setAction]   = useState<ActionType>(null);
+  const [reviewing, setReviewing]   = useState(false);
+  const approve = useKycApprove();
 
   if (isLoading) {
     return (
@@ -193,13 +172,31 @@ export default function BangeCaseDetail() {
     );
   }
 
-  const isFinalState = ['approved', 'APPROVED', 'AUTO_APPROVED', 'BLOCKED', 'rejected', 'REJECTED'].includes(kyc.status);
+  const isFinalState   = ['approved', 'APPROVED', 'AUTO_APPROVED', 'BLOCKED', 'rejected', 'REJECTED'].includes(kyc.status);
+  const missingFields  = getMissingFields(kyc);
+  const canRevisar     = canAct && !isFinalState && missingFields.length === 0;
+  const isPassport     = (kyc.doc_type || '').toLowerCase().includes('passport') ||
+                         (kyc.doc_type || '').toLowerCase().includes('pasaporte');
 
-  // Días hasta expiración calculado en el cliente como fallback
   const expiryDate = kyc.doc_expiry_date ?? null;
   const daysLeft   = expiryDate
     ? differenceInDays(new Date(expiryDate), new Date())
     : (kyc.days_to_expiry ?? null);
+
+  // ── Botón Revisado — aprueba directamente sin modal ──────────
+  async function handleRevisar() {
+    if (!canRevisar || reviewing) return;
+    setReviewing(true);
+    try {
+      await approve.mutateAsync({ id: id! });
+      toast.success('✅ Monedero activado correctamente');
+      await refetch();
+    } catch {
+      toast.error('Error al activar el monedero');
+    } finally {
+      setReviewing(false);
+    }
+  }
 
   return (
     <BangeLayout title={`${t('case.title')} — ${kyc.full_name ?? kyc.user_phone ?? id}`}>
@@ -220,7 +217,7 @@ export default function BangeCaseDetail() {
         </div>
       </div>
 
-      {/* ── Banners de estado (monedero + expiración) ── */}
+      {/* ── Banners ── */}
       <div className="space-y-3 mb-6">
         <WalletStatusBanner kyc={kyc} />
         <DocExpiryAlert expiryDate={expiryDate} daysLeft={daysLeft} />
@@ -236,6 +233,43 @@ export default function BangeCaseDetail() {
             <h2 id="personal-section" className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-4">
               {t('case.personal')}
             </h2>
+
+            {/* Foto de perfil del usuario */}
+            <div className="flex items-center gap-4 mb-6 pb-5 border-b border-gray-100 dark:border-gray-800">
+              <div className="relative shrink-0">
+                {kyc.avatar_url ? (
+                  <img
+                    src={kyc.avatar_url}
+                    alt={`Foto de perfil de ${kyc.full_name ?? 'usuario'}`}
+                    className="w-16 h-16 rounded-full object-cover border-2 border-gray-200 dark:border-gray-700"
+                    onError={(e) => {
+                      (e.target as HTMLImageElement).style.display = 'none';
+                      (e.target as HTMLImageElement).nextElementSibling?.removeAttribute('style');
+                    }}
+                  />
+                ) : null}
+                <div
+                  className="w-16 h-16 rounded-full bg-gradient-to-br from-brand-500 to-blue-500 flex items-center justify-center text-white font-bold text-lg"
+                  style={kyc.avatar_url ? { display: 'none' } : undefined}
+                  aria-hidden={!!kyc.avatar_url}
+                >
+                  {getInitials(kyc.full_name)}
+                </div>
+              </div>
+              <div>
+                <p className="font-semibold text-base">{kyc.full_name ?? '—'}</p>
+                <p className="text-sm text-gray-500 mt-0.5">{kyc.user_phone ?? '—'}</p>
+                {kyc.avatar_url && (
+                  <span className="inline-flex items-center gap-1 text-xs text-green-600 mt-1">
+                    <CheckCircle2 className="w-3 h-3" /> Foto de perfil disponible
+                  </span>
+                )}
+                {!kyc.avatar_url && (
+                  <span className="text-xs text-gray-400 mt-1 block">Sin foto de perfil</span>
+                )}
+              </div>
+            </div>
+
             <dl className="grid grid-cols-2 gap-x-6 gap-y-3">
               {[
                 { label: t('case.fullName'),       value: kyc.full_name },
@@ -300,25 +334,34 @@ export default function BangeCaseDetail() {
               </div>
             </div>
 
-            {/* Disponibilidad de imágenes */}
+            {/* Disponibilidad */}
             <div className="flex gap-3 mb-4 text-xs text-gray-500">
               <span className={kyc.has_front_doc ? 'text-green-600' : 'text-red-400'}>
-                {kyc.has_front_doc ? '✅' : '❌'} Foto frontal
+                {kyc.has_front_doc ? '✅' : '❌'} {isPassport ? 'Pasaporte' : 'Foto frontal'}
               </span>
-              <span className={kyc.has_back_doc ? 'text-green-600' : 'text-gray-400'}>
-                {kyc.has_back_doc ? '✅' : '—'} Foto trasera
-              </span>
+              {!isPassport && (
+                <span className={kyc.has_back_doc ? 'text-green-600' : 'text-gray-400'}>
+                  {kyc.has_back_doc ? '✅' : '—'} Foto trasera
+                </span>
+              )}
               <span className={kyc.has_selfie ? 'text-green-600' : 'text-red-400'}>
                 {kyc.has_selfie ? '✅' : '❌'} Selfie
               </span>
             </div>
 
-            {/* Visor de documentos (sin descarga) */}
-            <div className="grid grid-cols-3 gap-4">
-              <DocumentViewer applicationId={kyc.id} docType="front"  label={t('case.docFront')} />
-              <DocumentViewer applicationId={kyc.id} docType="back"   label={t('case.docBack')}  />
-              <DocumentViewer applicationId={kyc.id} docType="selfie" label={t('case.selfie')}   />
-            </div>
+            {/* Visor de documentos — DNI: frontal + reverso + selfie / Pasaporte: sólo frontal + selfie */}
+            {isPassport ? (
+              <div className="grid grid-cols-2 gap-4">
+                <DocumentViewer applicationId={kyc.id} docType="front"  label="Pasaporte" />
+                <DocumentViewer applicationId={kyc.id} docType="selfie" label={t('case.selfie')} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-3 gap-4">
+                <DocumentViewer applicationId={kyc.id} docType="front"  label={t('case.docFront')} />
+                <DocumentViewer applicationId={kyc.id} docType="back"   label={t('case.docBack')}  />
+                <DocumentViewer applicationId={kyc.id} docType="selfie" label={t('case.selfie')}   />
+              </div>
+            )}
           </section>
 
           {/* 3. Screening */}
@@ -377,20 +420,41 @@ export default function BangeCaseDetail() {
         {/* ── Columna derecha (1/3) ── */}
         <div className="space-y-6">
 
-          {/* 4. Acciones — dar de alta el monedero */}
+          {/* Botón REVISADO — activa el monedero directamente */}
           {canAct && !isFinalState && (
             <section className="card p-6" aria-labelledby="actions-section">
               <h2 id="actions-section" className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-4">
                 {t('case.actions')}
               </h2>
-              <div className="space-y-2">
-                <button
-                  onClick={() => setAction('approve')}
-                  className="btn-primary w-full justify-center"
-                  title="Dar de alta el monedero del usuario"
-                >
-                  ✅ {t('case.approve')} — Activar monedero
-                </button>
+
+              {/* Botón principal: Revisado */}
+              <button
+                onClick={handleRevisar}
+                disabled={!canRevisar || reviewing}
+                className={`w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl font-semibold text-sm transition-all mb-3
+                  ${canRevisar
+                    ? 'bg-green-500 hover:bg-green-600 text-white shadow-md shadow-green-200 dark:shadow-green-900/30 cursor-pointer'
+                    : 'bg-gray-100 dark:bg-gray-800 text-gray-400 cursor-not-allowed'
+                  }`}
+                title={!canRevisar && missingFields.length > 0
+                  ? `Faltan: ${missingFields.join(', ')}`
+                  : canRevisar ? 'Activar monedero del usuario' : undefined}
+                aria-disabled={!canRevisar}
+              >
+                {reviewing
+                  ? <><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Activando…</>
+                  : <><CheckCheck className="w-4 h-4" /> Revisado — Activar monedero</>
+                }
+              </button>
+
+              {/* Mensaje si faltan campos */}
+              {missingFields.length > 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400 mb-3 text-center">
+                  Faltan {missingFields.length} campo{missingFields.length > 1 ? 's' : ''} para activar
+                </p>
+              )}
+
+              <div className="border-t border-gray-100 dark:border-gray-800 pt-3 space-y-2">
                 <button onClick={() => setAction('reject')}       className="btn-danger  w-full justify-center">❌ {t('case.reject')}</button>
                 <button onClick={() => setAction('request-info')} className="btn-warning w-full justify-center">⚠️ {t('case.requestInfo')}</button>
                 <button
@@ -410,7 +474,6 @@ export default function BangeCaseDetail() {
               {kyc.rejection_reason && (
                 <p className="text-xs text-red-500">{kyc.rejection_reason}</p>
               )}
-              {/* Estado del monedero tras decisión final */}
               <div className="pt-2 border-t border-gray-100 dark:border-gray-800">
                 <p className="text-xs font-semibold text-gray-500 mb-1">Estado del monedero</p>
                 <p className={`text-sm font-bold ${
@@ -428,15 +491,7 @@ export default function BangeCaseDetail() {
             </div>
           )}
 
-          {/* 5. Timeline */}
-          <section className="card p-6" aria-labelledby="timeline-section">
-            <h2 id="timeline-section" className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-4">
-              {t('case.history')}
-            </h2>
-            <Timeline entries={audit?.audit_trail ?? []} />
-          </section>
-
-          {/* 6. Notas internas */}
+          {/* Notas internas */}
           <section className="card p-6" aria-labelledby="notes-section">
             <h2 id="notes-section" className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-2">
               {t('case.internalNotes')}
@@ -455,7 +510,7 @@ export default function BangeCaseDetail() {
         </div>
       </div>
 
-      {/* Modal de acción */}
+      {/* Modal para rechazar / request-info / bloquear */}
       {activeAction && (
         <ActionModal
           applicationId={kyc.id}
