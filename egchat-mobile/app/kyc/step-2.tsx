@@ -1,5 +1,5 @@
 // KYC — Paso 2: Documento de Identidad
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
@@ -7,7 +7,7 @@ import { DocumentCapture } from '../../src/components/kyc/DocumentCapture';
 import { OcrConfirmation } from '../../src/components/kyc/OcrConfirmation';
 import { useKycStore } from '../../src/store/kycStore';
 import { saveKycDraft } from '../../src/services/kycStorage';
-import { uploadDocumentImage } from '../../src/services/kycService';
+import { uploadDocumentImage, getActiveKycApplication, createKycApplication } from '../../src/services/kycService';
 import { getNetworkStatus } from '../../src/store/offlineStore';
 import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 import type { DocumentType } from '../../src/store/kycStore';
