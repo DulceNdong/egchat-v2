@@ -117,6 +117,12 @@ export interface KycDetail {
   ocr_confidence:   number | null;
   face_match_score: number | null;
   liveness_passed:  boolean | null;
+  // Foto de perfil del usuario
+  avatar_url:       string | null;
+  // URLs reales de documentos (cuando existen en Storage)
+  doc_front_url:    string | null;
+  doc_back_url:     string | null;
+  selfie_url:       string | null;
   screening_results: ScreeningResult[];
 }
 
