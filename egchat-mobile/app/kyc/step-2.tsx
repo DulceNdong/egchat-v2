@@ -25,10 +25,27 @@ export default function Step2() {
   const [uploading, setUploading]     = useState(false);
   const [frontDone, setFrontDone]     = useState(!!d.frontImageUri);
   const [backDone, setBackDone]       = useState(!!d.backImageUri);
-  // frontEncFailed: la imagen se capturó pero el cifrado falló — se puede confirmar igual
   const [frontEncFailed, setFrontEncFailed] = useState(false);
   const [showOcr, setShowOcr]         = useState(false);
   const [error, setError]             = useState('');
+
+  // Si no hay applicationId en el store (acceso directo desde Ajustes),
+  // obtener o crear la aplicación KYC activa del usuario automáticamente.
+  useEffect(() => {
+    if (store.applicationId) return;
+    (async () => {
+      try {
+        const active = await getActiveKycApplication();
+        if (active?.applicationId) {
+          store.setApplicationId(active.applicationId);
+        } else {
+          // Crear nueva aplicación
+          const created = await createKycApplication();
+          if (created?.applicationId) store.setApplicationId(created.applicationId);
+        }
+      } catch { /* sin red — continuar sin appId */ }
+    })();
+  }, []);
 
   const selectedDoc = DOC_TYPES.find(t => t.value === d.documentType);
   const needsBack   = selectedDoc?.hasBack ?? false;
