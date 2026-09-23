@@ -82,6 +82,7 @@ export interface ScreeningResult {
 
 export interface KycDetail {
   id:               string;
+  application_id:   string;
   session_id:       string | null;
   status:           KycStatus;
   risk_level:       RiskLevel;
@@ -96,17 +97,23 @@ export interface KycDetail {
   created_at:       string;
   user_id:          string;
   user_phone:       string | null;
+  wallet_kyc_status: string | null;
   full_name:        string | null;
   nationality:      string | null;
   birth_date:       string | null;
   profession:       string | null;
+  employer:         string | null;
+  monthly_income_range: string | null;
   source_of_funds:  string | null;
   politically_exposed: boolean | null;
   doc_type:         string | null;
   doc_number:       string | null;
-  doc_front_url:    string | null;
-  doc_back_url:     string | null;
-  selfie_url:       string | null;
+  doc_expiry_date:  string | null;
+  days_to_expiry:   number | null;
+  doc_expiry_warning: boolean;
+  has_front_doc:    boolean;
+  has_back_doc:     boolean;
+  has_selfie:       boolean;
   ocr_confidence:   number | null;
   face_match_score: number | null;
   liveness_passed:  boolean | null;
