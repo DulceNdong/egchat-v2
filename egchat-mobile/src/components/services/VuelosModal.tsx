@@ -22,7 +22,7 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
     if (!visible) {
       setView('airlines'); setTab('nacional'); setAirline(null); setRoute(null);
       setTrip('Ida'); setClase('Turista');
-      setForm({ name: '', dni: '', phone: '', date: '', pax: '1', payMethod: '' });
+      setForm({ name: '', dni: '', phone: '', date: '', pax: '1', payMethod: 'egpay' });
     }
   }, [visible]);
 
