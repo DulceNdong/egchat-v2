@@ -505,8 +505,19 @@ export const walletAPI = {
     post<any>('/api/wallet/deposit', { amount, method, reference }),
   withdraw: (amount: number, method: string, destination: string) =>
     post<any>('/api/wallet/withdraw', { amount, method, destination }),
+  /** Transferencia directa (legacy, sin confirmación del receptor) */
   transfer: (to: string, amount: number, concept?: string, pin?: string) =>
     post<any>('/api/wallet/transfer', { to, amount, concept, pin }),
+  /** Transferencia pendiente — el receptor debe aceptar antes de recibir */
+  transferPending: (to: string, amount: number, concept?: string) =>
+    post<{ success: boolean; transferId: string; balance: number; recipient: string; message: string }>(
+      '/api/wallet/transfer/pending', { to, amount, concept }),
+  acceptTransfer: (transferId: string) =>
+    post<{ success: boolean; balance: number; message: string }>(
+      `/api/wallet/transfer/accept/${transferId}`, {}),
+  cancelTransfer: (transferId: string) =>
+    post<{ success: boolean; message: string }>(
+      `/api/wallet/transfer/cancel/${transferId}`, {}),
   redeemCode: (code: string) =>
     post<any>('/api/wallet/recharge-code', { code }),
 };
