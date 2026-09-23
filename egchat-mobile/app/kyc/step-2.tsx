@@ -218,6 +218,8 @@ const st = StyleSheet.create({
   radioText:        { fontSize: 14, color: '#374151', fontWeight: '600' },
   confirmManualBtn: { marginTop: 10, backgroundColor: BRAND, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
   confirmManualText:{ color: '#fff', fontWeight: '700', fontSize: 14 },
+  warnBox:          { backgroundColor: '#fffbeb', borderRadius: 10, padding: 10, marginTop: 8, borderWidth: 1, borderColor: '#fde68a' },
+  warnText:         { color: '#92400e', fontSize: 13, lineHeight: 18 },
   errorBox:         { backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginTop: 8 },
   errorText:        { color: '#ef4444', fontSize: 13 },
 });
