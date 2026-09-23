@@ -175,7 +175,7 @@ export default function RootLayout() {
       });
     }
 
-    // Transferencia recibida → notificación en campanita
+    // Transferencia recibida (legacy) → notificación en campanita
     if (event.type === 'transfer_received') {
       const amount = event.amount ?? 0;
       const sender = event.senderName || 'Usuario';
@@ -183,6 +183,45 @@ export default function RootLayout() {
         type: 'message',
         title: '💸 Transferencia recibida',
         body: `${sender} te ha enviado ${amount.toLocaleString()} XAF`,
+        chatId: undefined,
+      });
+    }
+
+    // Transferencia pendiente → mostrar modal Recibir/Cancelar
+    if (event.type === 'transfer_pending') {
+      setIncomingTransfer({
+        transferId: event.transferId!,
+        amount:     event.amount ?? 0,
+        senderName: event.senderName || 'Usuario',
+        concept:    event.concept ?? null,
+        expiresAt:  event.expiresAt,
+      });
+    }
+
+    // Saldo actualizado (remitente o receptor tras aceptar) → actualizar balance global
+    if (event.type === 'wallet_updated' && event.balance != null) {
+      setGlobalWalletBalance(event.balance);
+    }
+
+    // Transferencia aceptada → notificación al remitente
+    if (event.type === 'transfer_accepted') {
+      const amount = event.amount ?? 0;
+      addNotification({
+        type: 'message',
+        title: '✅ Transferencia aceptada',
+        body: `Tu transferencia de ${amount.toLocaleString()} XAF fue aceptada`,
+        chatId: undefined,
+      });
+    }
+
+    // Transferencia cancelada → notificación al remitente + devolver saldo
+    if (event.type === 'transfer_cancelled') {
+      const amount = event.amount ?? 0;
+      if (event.balance != null) setGlobalWalletBalance(event.balance);
+      addNotification({
+        type: 'message',
+        title: '❌ Transferencia cancelada',
+        body: `Tu transferencia de ${amount.toLocaleString()} XAF fue cancelada y devuelta`,
         chatId: undefined,
       });
     }
