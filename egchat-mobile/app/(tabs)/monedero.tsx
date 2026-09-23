@@ -1784,7 +1784,7 @@ function MonederoScreenInner() {
             <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A2B4A', flex: 1 }}>Mis Tarjetas</Text>
           </View>
           <ScrollView contentContainerStyle={{ padding: 16 }}>
-            <CardsScreen bank={{ id: 'egchat', name: 'EGCHAT Pay', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGCHAT Wallet', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [], accounts: [] }} />
+            <CardsScreen bank={{ id: 'egchat', name: 'EGPAY', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGPAY', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [], accounts: [] }} />
           </ScrollView>
         </SafeAreaView>
       </Modal>
