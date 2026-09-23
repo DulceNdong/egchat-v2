@@ -136,6 +136,7 @@ export default function Step2() {
             onPress={() => {
               store.setDocumentData({ documentType: t.value, ocrConfirmed: false, ocrData: {} });
               setFrontDone(false); setBackDone(false); setShowOcr(false);
+              setFrontEncFailed(false); setError('');
             }}
             accessibilityRole="radio"
             accessibilityLabel={t.label}
