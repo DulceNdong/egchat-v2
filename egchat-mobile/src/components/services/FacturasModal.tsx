@@ -223,7 +223,9 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
     setLoading(true);
     try {
-      const result = await billsAPI.payBill(selected.id, payMethod);
+      // El backend espera 'EGCHAT' para el pago con monedero EGPAY
+      const backendMethod = payMethod === 'egpay' ? 'EGCHAT' : payMethod;
+      const result = await billsAPI.payBill(selected.id, backendMethod);
       setBalance(result.balance || balance - selected.amount);
       
       // Actualizar la factura en el estado local
