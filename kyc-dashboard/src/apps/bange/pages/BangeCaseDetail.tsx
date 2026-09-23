@@ -189,10 +189,9 @@ export default function BangeCaseDetail() {
     setReviewing(true);
     try {
       await approve.mutateAsync({ id: id! });
-      toast.success('✅ Monedero activado correctamente');
       await refetch();
     } catch {
-      toast.error('Error al activar el monedero');
+      // El hook ya muestra el toast de error
     } finally {
       setReviewing(false);
     }
