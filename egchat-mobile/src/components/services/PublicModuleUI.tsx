@@ -115,15 +115,12 @@ export const PayMethodPicker = ({
 }: {
   value: string; onChange: (id: string) => void; accent: string;
 }) => {
-  const highlighted = PAY_METHODS.filter(m => m.highlight);
-  const secondary   = PAY_METHODS.filter(m => !m.highlight);
-
   return (
     <View>
       <Text style={pb.sectionLbl}>Método de pago</Text>
 
-      {/* ── EGPAY — card grande destacada ── */}
-      {highlighted.map(m => {
+      {/* ── EGPAY — única opción ── */}
+      {PAY_METHODS.map(m => {
         const active = value === m.id;
         return (
           <TouchableOpacity
@@ -154,21 +151,6 @@ export const PayMethodPicker = ({
           </TouchableOpacity>
         );
       })}
-
-      {/* ── Otros métodos — chips secundarios ── */}
-      <Text style={pb.otherLbl}>Otros métodos</Text>
-      <View style={pb.payRow}>
-        {secondary.map(m => (
-          <TouchableOpacity
-            key={m.id}
-            style={[pb.payChip, value === m.id && { borderColor: accent, backgroundColor: accent + '12' }]}
-            onPress={() => onChange(m.id)}
-          >
-            <Text style={{ fontSize: 18 }}>{m.icon}</Text>
-            <Text style={[pb.payLbl, value === m.id && { color: accent }]}>{m.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
     </View>
   );
 };
