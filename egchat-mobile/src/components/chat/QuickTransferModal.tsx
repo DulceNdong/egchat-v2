@@ -142,12 +142,11 @@ export function QuickTransferModal({
         await authAPI.verifyPin(pin); // lanza si falla
       }
 
-      // Ejecutar transferencia
-      const result = await walletAPI.transfer(
+      // Ejecutar transferencia pendiente (el receptor debe aceptar)
+      const result = await walletAPI.transferPending(
         pendingTransfer.to,
         pendingTransfer.amount,
         pendingTransfer.description,
-        pin,
       );
       await updateLimitForTransaction('transfer', pendingTransfer.amount);
 
