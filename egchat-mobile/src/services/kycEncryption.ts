@@ -1,7 +1,7 @@
 // kycEncryption.ts — Cifrado AES-256 de imágenes KYC antes de subir
 // Usa expo-crypto para generar IV y expo-file-system para leer archivos
 import * as Crypto from 'expo-crypto';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
 
 // Clave AES-256 derivada del token del servidor (en producción usar clave del servidor)
