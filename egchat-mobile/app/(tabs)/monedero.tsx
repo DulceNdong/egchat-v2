@@ -11,7 +11,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
-import { router } from 'expo-router';
+import { router, useFocusEffect } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
