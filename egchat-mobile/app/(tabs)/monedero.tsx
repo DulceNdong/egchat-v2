@@ -1266,7 +1266,7 @@ function MonederoScreenInner() {
     const statusLabel = KYC_STATUS_LABELS[kycStatus] || 'Sin verificar';
 
     return (
-      <SafeAreaView style={[s.container, { backgroundColor: '#F5F7FA' }]} edges={['left','right']}>
+      <SafeAreaView style={[s.container, { backgroundColor: '#F5F7FA' }]} edges={['left','right','bottom']}>
         <EGChatHeader
           notificationsOpen={false}
           menuOpen={false}
