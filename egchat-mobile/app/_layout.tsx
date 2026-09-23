@@ -27,6 +27,7 @@ import {
 } from '../src/services/deviceSessions';
 
 import { addNotification, fetchWeatherIfStale, initializeLocation } from '../src/store/appStore';
+import { IncomingTransferModal, type IncomingTransfer } from '../src/components/wallet/IncomingTransferModal';
 interface EBState { hasError: boolean; error?: string; }
 class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, EBState> {
   constructor(props: any) { super(props); this.state = { hasError: false }; }
