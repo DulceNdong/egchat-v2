@@ -1472,7 +1472,7 @@ function MonederoScreenInner() {
   }
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right', 'bottom']}>
 
       {/* ── Header ── */}
       <EGChatHeader
