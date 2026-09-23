@@ -16,7 +16,7 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
   const [route, setRoute] = useState<Airline['rutas'][0] | null>(null);
   const [trip, setTrip] = useState('Ida');
   const [clase, setClase] = useState('Turista');
-  const [form, setForm] = useState({ name: '', dni: '', phone: '', date: '', pax: '1', payMethod: '' });
+  const [form, setForm] = useState({ name: '', dni: '', phone: '', date: '', pax: '1', payMethod: 'egpay' });
 
   useEffect(() => {
     if (!visible) {
