@@ -39,14 +39,22 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
     setQualityTip(null);
     try {
       const { encryptedBase64 } = await encryptImage(uri);
+      // Mostrar preview ANTES de llamar al padre, para que el usuario vea la imagen
       setPreviewUri(uri);
       setQualityTip(null);
       onCapture(encryptedBase64, uri);
     } catch (e: any) {
       console.error('[DocumentCapture] processUri error:', e?.message ?? e);
+      // Aun con error de cifrado mostramos el preview para que el usuario
+      // sepa qué imagen eligió, y le ofrecemos reintentar desde la vista previa.
+      // Pasamos la URI sin cifrar con prefijo "raw:" como señal al padre.
+      setPreviewUri(uri);
       const msg = 'Error al procesar la imagen. Intenta de nuevo o elige otra foto.';
       setQualityTip(msg);
       onError?.(msg);
+      // Llamar igualmente al padre con la imagen en crudo para que pueda
+      // guardar el estado y mostrar el botón de confirmación manual.
+      onCapture(`raw:${uri}`, uri);
     } finally {
       setProcessing(false);
     }
