@@ -48,10 +48,10 @@ export function DocumentViewer({
   }, []);
 
   const openZoom = useCallback(() => {
-    if (!url) return;
+    if (!data?.url) return;
     setZoomed(true);
     document.addEventListener('keydown', handleKeyDown);
-  }, [url, handleKeyDown]);
+  }, [data?.url, handleKeyDown]);
 
   const closeZoom = useCallback(() => {
     setZoomed(false);
