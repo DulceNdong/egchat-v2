@@ -128,13 +128,7 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
             <Text style={st.totalLbl}>Total estimado</Text>
             <Text style={st.totalVal}>{total.toLocaleString()} XAF</Text>
           </View>
-          <View style={st.chipRow}>
-            {[{ id: 'wallet', label: 'EGCHAT' }, { id: 'bank', label: 'Banco' }, { id: 'card', label: 'Tarjeta' }].map(m => (
-              <TouchableOpacity key={m.id} style={[st.payChip, form.payMethod === m.id && st.payChipActive]} onPress={() => setF('payMethod', m.id)}>
-                <Text style={[st.chipText, form.payMethod === m.id && { color: '#1B3A6B' }]}>{m.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </View>
+          <PayMethodPicker value={form.payMethod} onChange={v => setF('payMethod', v)} accent="#1B3A6B" />
           <PrimaryButton label="Reservar vuelo" onPress={() => setView('ok')} color="#1B3A6B" disabled={!canBook} />
         </View>
       )}
