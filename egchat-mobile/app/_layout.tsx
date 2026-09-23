@@ -96,8 +96,10 @@ const isAuthPath = (path: string) =>
 const isRootPath = (path: string) => path === '/' || path === '/index';
 
 export default function RootLayout() {
-  const [checking, setChecking]         = useState(true);
-  const [globalUserId, setGlobalUserId] = useState<string | undefined>(undefined);
+  const [checking, setChecking]                             = useState(true);
+  const [globalUserId, setGlobalUserId]                     = useState<string | undefined>(undefined);
+  const [incomingTransfer, setIncomingTransfer]             = useState<IncomingTransfer | null>(null);
+  const [globalWalletBalance, setGlobalWalletBalance]       = useState<number | null>(null);
   const notifCleanup    = useRef<(() => void) | null>(null);
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
