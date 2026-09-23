@@ -2,6 +2,7 @@
 import React, { useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { router } from 'expo-router';
+import { Ionicons } from '@expo/vector-icons';
 import { KycStepLayout } from '../../src/components/kyc/KycStepLayout';
 import { useKycStore } from '../../src/store/kycStore';
 import { screenKycApplication, submitKycApplication } from '../../src/services/kycService';
@@ -15,7 +16,10 @@ function SummarySection({ title, items }: { title: string; items: [string, strin
   return (
     <View style={st.summarySection}>
       <TouchableOpacity style={st.summaryHeader} onPress={() => setOpen(o => !o)}>
-        <Text style={st.summaryTitle}>{open ? '▾' : '▸'} {title}</Text>
+        <View style={st.summaryHeaderRow}>
+          <Text style={st.summaryTitle}>{title}</Text>
+          <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={16} color="#6b7280" />
+        </View>
       </TouchableOpacity>
       {open && items.map(([k, v]) => v ? (
         <View key={k} style={st.summaryRow}>
@@ -33,9 +37,13 @@ function ConsentCheck({ label, checked, onToggle, link, linkLabel }: {
 }) {
   return (
     <TouchableOpacity style={st.consentRow} onPress={onToggle} accessibilityRole="checkbox">
-      <View style={[st.checkbox, checked && st.checkboxActive]}>
-        {checked && <Text style={st.checkmark}>✓</Text>}
-      </View>
+      {/* Icono moderno sin fondo de color cuando está inactivo */}
+      <Ionicons
+        name={checked ? 'checkmark-circle' : 'ellipse-outline'}
+        size={24}
+        color={checked ? '#00C8A0' : '#d1d5db'}
+        style={st.consentIcon}
+      />
       <View style={{ flex: 1 }}>
         <Text style={st.consentText}>{label}</Text>
         {link && (
@@ -60,7 +68,12 @@ export default function Step5() {
     setError('');
     try {
       const appId = store.applicationId;
-      if (!appId) throw new Error('Solicitud KYC no iniciada');
+
+      // Sin applicationId no hay sesión KYC en el servidor — no se puede enviar
+      if (!appId) {
+        setError('No se encontró la solicitud KYC. Vuelve al paso 1 e inicia de nuevo.');
+        return;
+      }
 
       if (!getNetworkStatus().isOnline) {
         await enqueueKycAction({ type: 'screening', applicationId: appId, fullName: p.fullName, nationality: p.nationality });
@@ -71,10 +84,15 @@ export default function Step5() {
         return;
       }
 
-      await screenKycApplication(appId, {
-        fullName: p.fullName,
-        nationality: p.nationality,
-      });
+      // Screening AML/PEP — si falla no bloqueamos el envío, solo lo logueamos
+      try {
+        await screenKycApplication(appId, {
+          fullName: p.fullName,
+          nationality: p.nationality,
+        });
+      } catch (screenErr) {
+        console.warn('[Step5] screenKycApplication falló, continuando con submit:', screenErr);
+      }
 
       const result = await submitKycApplication(appId);
       store.setStatus(result.status as any);
@@ -92,8 +110,14 @@ export default function Step5() {
       }
 
       router.replace('/kyc/processing');
-    } catch {
-      setError('Error al enviar la verificación. Verifica tu conexión e inténtalo de nuevo.');
+    } catch (e: any) {
+      console.error('[Step5] handleSubmit error:', e?.message ?? e);
+      const isNetwork = e?.message?.includes('Network') || e?.message?.includes('fetch') || e?.message?.includes('network');
+      setError(
+        isNetwork
+          ? 'Sin conexión. Verifica tu internet e inténtalo de nuevo.'
+          : `Error al enviar: ${e?.message ?? 'inténtalo de nuevo.'}`,
+      );
     } finally {
       setLoading(false);
     }
@@ -159,6 +183,7 @@ export default function Step5() {
 
       {!!error && (
         <View style={st.errorBox}>
+          <Ionicons name="alert-circle-outline" size={16} color="#ef4444" style={{ marginTop: 1 }} />
           <Text style={st.errorText}>{error}</Text>
         </View>
       )}
@@ -171,17 +196,16 @@ const st = StyleSheet.create({
   sectionTitle:     { fontSize: 14, fontWeight: '700', color: '#374151', marginTop: 8, marginBottom: 8 },
   summarySection:   { borderWidth: 1, borderColor: '#e5e7eb', borderRadius: 10, marginBottom: 8, overflow: 'hidden' },
   summaryHeader:    { padding: 12, backgroundColor: '#f9fafb' },
+  summaryHeaderRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   summaryTitle:     { fontSize: 13, fontWeight: '700', color: '#374151' },
   summaryRow:       { flexDirection: 'row', justifyContent: 'space-between', paddingHorizontal: 12, paddingVertical: 8, borderTopWidth: 1, borderTopColor: '#f3f4f6' },
   summaryKey:       { fontSize: 12, color: '#6b7280' },
   summaryVal:       { fontSize: 12, color: '#111827', fontWeight: '600', maxWidth: '60%', textAlign: 'right' },
   divider:          { height: 1, backgroundColor: '#f0f0f0', marginVertical: 16 },
-  consentRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 12, marginBottom: 14 },
-  checkbox:         { width: 22, height: 22, borderRadius: 6, borderWidth: 2, borderColor: '#d1d5db', alignItems: 'center', justifyContent: 'center', marginTop: 2, flexShrink: 0 },
-  checkboxActive:   { backgroundColor: BRAND, borderColor: BRAND },
-  checkmark:        { color: '#fff', fontSize: 13, fontWeight: '900' },
+  consentRow:       { flexDirection: 'row', alignItems: 'flex-start', gap: 10, marginBottom: 14 },
+  consentIcon:      { marginTop: 1, flexShrink: 0 },
   consentText:      { fontSize: 13, color: '#374151', lineHeight: 19 },
   consentLink:      { fontSize: 12, color: BRAND, marginTop: 2, fontWeight: '600' },
-  errorBox:         { backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginTop: 8 },
-  errorText:        { color: '#ef4444', fontSize: 13 },
+  errorBox:         { flexDirection: 'row', alignItems: 'flex-start', gap: 8, backgroundColor: '#fef2f2', borderRadius: 10, padding: 12, marginTop: 8 },
+  errorText:        { color: '#ef4444', fontSize: 13, flex: 1, lineHeight: 18 },
 });
