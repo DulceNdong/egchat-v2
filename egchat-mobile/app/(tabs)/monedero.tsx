@@ -1197,6 +1197,19 @@ function MonederoScreenInner() {
     };
   }, [userId]); // userId se establece en el useEffect de authAPI.me()
 
+  // ── Polling de respaldo: si hay KYC pendiente, refrescar cada 10s ─
+  // Garantiza que el monedero se abra aunque Realtime no esté habilitado.
+  useEffect(() => {
+    if (kycStatus === 'approved' || kycLoading) return;
+    const interval = setInterval(async () => {
+      try {
+        const res = await getKycStatus(/* forceRefresh */ true);
+        setKycStatus(res.kyc_status);
+      } catch {}
+    }, 10_000);
+    return () => clearInterval(interval);
+  }, [kycStatus, kycLoading]);
+
   // Pulso en botón CTA de activación
   useEffect(() => {
     if (kycStatus !== 'none' && kycStatus !== 'rejected') return;
