@@ -26,6 +26,10 @@ type StreamEvent = {
   amount?: number;
   senderName?: string;
   newBalance?: number;
+  // transfer_pending (incoming, needs accept/cancel)
+  transferId?: string;
+  concept?: string;
+  expiresAt?: string;
   // sync_message
   senderDeviceId?: string;
   // session_revoked
