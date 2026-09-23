@@ -31,10 +31,12 @@ export const UTILITY_CONFIG: Record<UtilityVariant, {
 export const CLIENT_TYPES = ['Residencial', 'Comercial', 'Industrial'] as const;
 
 export const PAY_METHODS = [
-  { id: 'wallet', label: 'EGCHAT Wallet', icon: '💳' },
-  { id: 'bank', label: 'Banco', icon: '🏦' },
-  { id: 'cash', label: 'Efectivo', icon: '💵' },
+  { id: 'egpay', label: 'EGPAY', icon: '⚡', description: 'Monedero EGPAY', highlight: true },
+  { id: 'bank', label: 'Banco', icon: '🏦', description: 'Cuenta bancaria', highlight: false },
+  { id: 'cash', label: 'Efectivo', icon: '💵', description: 'Agente / efectivo', highlight: false },
 ] as const;
+
+export type PayMethodId = typeof PAY_METHODS[number]['id'];
 
 export const EDU_OPTIONS = [
   { id: 'matricula', label: 'Matrícula Escolar', sub: 'Colegios públicos y privados', price: 25000, color: '#6B5BD6', icon: '🏫' },
