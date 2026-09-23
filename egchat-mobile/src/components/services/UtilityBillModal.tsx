@@ -62,8 +62,9 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
     if (!factura || !payMethod) return;
     setLoading(true);
     try {
-      if (variant === 'elec') await serviciosAPI.pagarElectricidad(contrato, factura.importe, payMethod);
-      else await serviciosAPI.pagarAgua(contrato, factura.importe, payMethod);
+      const backendMethod = payMethod === 'egpay' ? 'wallet' : payMethod;
+      if (variant === 'elec') await serviciosAPI.pagarElectricidad(contrato, factura.importe, backendMethod);
+      else await serviciosAPI.pagarAgua(contrato, factura.importe, backendMethod);
     } catch { /* demo */ }
     setBalance(b => b - factura.importe);
     setLoading(false);
