@@ -50,6 +50,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
     items: [
       { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
       { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
+      { label: 'Actualizar documentos KYC', route: '/kyc/step-2' },
       { label: 'Dispositivos conectados', route: '/ajustes/dispositivos' },
     ],
   },
