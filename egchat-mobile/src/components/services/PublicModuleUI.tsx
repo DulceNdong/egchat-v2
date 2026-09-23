@@ -114,23 +114,64 @@ export const PayMethodPicker = ({
   value, onChange, accent,
 }: {
   value: string; onChange: (id: string) => void; accent: string;
-}) => (
-  <View>
-    <Text style={pb.sectionLbl}>Método de pago</Text>
-    <View style={pb.payRow}>
-      {PAY_METHODS.map(m => (
-        <TouchableOpacity
-          key={m.id}
-          style={[pb.payChip, value === m.id && { borderColor: accent, backgroundColor: accent + '12' }]}
-          onPress={() => onChange(m.id)}
-        >
-          <Text style={{ fontSize: 18 }}>{m.icon}</Text>
-          <Text style={[pb.payLbl, value === m.id && { color: accent }]}>{m.label}</Text>
-        </TouchableOpacity>
-      ))}
+}) => {
+  const highlighted = PAY_METHODS.filter(m => m.highlight);
+  const secondary   = PAY_METHODS.filter(m => !m.highlight);
+
+  return (
+    <View>
+      <Text style={pb.sectionLbl}>Método de pago</Text>
+
+      {/* ── EGPAY — card grande destacada ── */}
+      {highlighted.map(m => {
+        const active = value === m.id;
+        return (
+          <TouchableOpacity
+            key={m.id}
+            style={[pb.egpayCard, active && pb.egpayCardActive]}
+            onPress={() => onChange(m.id)}
+            activeOpacity={0.8}
+          >
+            <LinearGradient
+              colors={active ? ['#00c8a0', '#00A884'] : ['#F0FBF9', '#E6F7F4']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={pb.egpayGradient}
+            >
+              <View style={pb.egpayLeft}>
+                <View style={[pb.egpayBadge, active && { backgroundColor: 'rgba(255,255,255,0.25)' }]}>
+                  <Text style={[pb.egpayBadgeTxt, active && { color: '#fff' }]}>EGPAY</Text>
+                </View>
+                <Text style={[pb.egpayTitle, active && { color: '#fff' }]}>Pagar con EGPAY</Text>
+                <Text style={[pb.egpaySub, active && { color: 'rgba(255,255,255,0.85)' }]}>
+                  Monedero · Instantáneo · Sin comisión
+                </Text>
+              </View>
+              <View style={[pb.egpayCheck, active && pb.egpayCheckActive]}>
+                {active && <Text style={{ color: '#00c8a0', fontSize: 14, fontWeight: '800' }}>✓</Text>}
+              </View>
+            </LinearGradient>
+          </TouchableOpacity>
+        );
+      })}
+
+      {/* ── Otros métodos — chips secundarios ── */}
+      <Text style={pb.otherLbl}>Otros métodos</Text>
+      <View style={pb.payRow}>
+        {secondary.map(m => (
+          <TouchableOpacity
+            key={m.id}
+            style={[pb.payChip, value === m.id && { borderColor: accent, backgroundColor: accent + '12' }]}
+            onPress={() => onChange(m.id)}
+          >
+            <Text style={{ fontSize: 18 }}>{m.icon}</Text>
+            <Text style={[pb.payLbl, value === m.id && { color: accent }]}>{m.label}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
     </View>
-  </View>
-);
+  );
+};
 
 export const ServiceOptionRow = ({
   icon, label, sub, price, color, onPress, rightMeta,
