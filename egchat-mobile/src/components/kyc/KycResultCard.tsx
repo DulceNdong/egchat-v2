@@ -28,7 +28,7 @@ export function KycResultCard({ result, rejectReason, onRetry }: Props) {
 
       {result === 'approved' && (
         <>
-          <Text style={st.body}>Ya puedes usar tu monedero EGCHAT Pay.</Text>
+          <Text style={st.body}>Ya puedes usar tu monedero EGPAY.</Text>
           <TouchableOpacity style={st.btnPrimary} onPress={() => router.replace('/(tabs)/monedero' as any)}>
             <Text style={st.btnPrimaryText}>Ir a mi monedero →</Text>
           </TouchableOpacity>
