@@ -1986,7 +1986,7 @@ const qrs = StyleSheet.create({
 const kycS = StyleSheet.create({
   scrollContent: {
     paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingTop: 16,
     paddingBottom: Platform.OS === 'ios' ? 110 : 90,
     gap: 14,
   },
