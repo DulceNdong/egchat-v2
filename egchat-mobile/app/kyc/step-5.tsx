@@ -75,6 +75,12 @@ export default function Step5() {
         return;
       }
 
+      // applicationId local (creado offline) — no existe en el servidor todavía
+      if (appId.startsWith('local_')) {
+        setError('Tu solicitud fue creada sin conexión y aún no se ha sincronizado. Conéctate a internet y vuelve al Paso 1 para sincronizarla antes de enviar.');
+        return;
+      }
+
       if (!getNetworkStatus().isOnline) {
         await enqueueKycAction({ type: 'screening', applicationId: appId, fullName: p.fullName, nationality: p.nationality });
         await enqueueKycAction({ type: 'submit', applicationId: appId });
