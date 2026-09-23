@@ -165,7 +165,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
             <Text style={s.confirmTitle}>{cfg.title}</Text>
             <Text style={s.confirmSub}>Contrato: {contrato}</Text>
             <Text style={[s.confirmAmt, { color: cfg.accent }]}>{factura.importe.toLocaleString()} XAF</Text>
-            <Text style={s.confirmBal}>Saldo EGCHAT: {balance.toLocaleString()} XAF</Text>
+            <Text style={s.confirmBal}>Saldo EGPAY: {balance.toLocaleString()} XAF</Text>
           </View>
           <PrimaryButton
             label={loading ? 'Procesando...' : 'Confirmar pago'}
