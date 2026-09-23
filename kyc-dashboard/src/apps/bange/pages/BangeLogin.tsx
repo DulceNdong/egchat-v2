@@ -2,12 +2,14 @@
  * Login BANGE — Email + Contraseña + 2FA TOTP
  * Flujo: credenciales → token provisional → código TOTP → token definitivo
  */
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/core/auth/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { Eye, EyeOff, Shield, Loader2 } from 'lucide-react';
 import { getErrorMessage } from '@/api/client';
+
+const BASE_URL = import.meta.env.VITE_API_URL ?? '';
 
 type Step = 'credentials' | 'totp';
 
@@ -25,7 +27,19 @@ export default function BangeLogin() {
   const [totp,      setTotp]      = useState('');
   const [loading,   setLoading]   = useState(false);
   const [error,     setError]     = useState('');
+  const [warming,   setWarming]   = useState(true); // servidor despertando
   const totpRef = useRef<HTMLInputElement>(null);
+
+  // Despertar Render al cargar la pantalla de login (cold start ~25s free tier)
+  useEffect(() => {
+    if (!BASE_URL) { setWarming(false); return; }
+    const ctrl = new AbortController();
+    fetch(`${BASE_URL}/health`, { signal: ctrl.signal, method: 'GET' })
+      .catch(() => fetch(`${BASE_URL}/`, { signal: ctrl.signal, method: 'GET' }))
+      .catch(() => {/* silencioso */})
+      .finally(() => setWarming(false));
+    return () => ctrl.abort();
+  }, []);
 
   // --- Paso 1: credenciales ---
   async function handleCredentials(e: React.FormEvent) {
