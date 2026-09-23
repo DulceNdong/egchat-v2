@@ -1164,6 +1164,39 @@ function MonederoScreenInner() {
     }).catch(() => setKycLoading(false));
   }, []);
 
+  // ── Supabase Realtime: detectar aprobación del monedero en tiempo real ──
+  // Cuando el admin pulsa "Revisado", wallet_kyc_status cambia a 'approved'
+  // en la tabla users. Esta suscripción lo detecta al instante sin esperar
+  // los 5 minutos de caché de AsyncStorage.
+  useEffect(() => {
+    if (!userId) return; // Esperar a tener el userId
+    const channelName = `wallet-status-${userId}-${Date.now()}`;
+    const channel = supabase
+      .channel(channelName)
+      .on(
+        'postgres_changes',
+        {
+          event:  'UPDATE',
+          schema: 'public',
+          table:  'users',
+          filter: `id=eq.${userId}`,
+        },
+        (payload) => {
+          const newStatus = payload.new?.wallet_kyc_status as KycStatus | undefined;
+          if (newStatus && newStatus !== kycStatus) {
+            // Invalidar caché para que el próximo fetch sea fresco
+            invalidateKycStatusCache();
+            setKycStatus(newStatus);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel).catch(() => {});
+    };
+  }, [userId]); // userId se establece en el useEffect de authAPI.me()
+
   // Pulso en botón CTA de activación
   useEffect(() => {
     if (kycStatus !== 'none' && kycStatus !== 'rejected') return;
