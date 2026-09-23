@@ -1183,7 +1183,7 @@ function MonederoScreenInner() {
         },
         (payload) => {
           const newStatus = payload.new?.wallet_kyc_status as KycStatus | undefined;
-          if (newStatus && newStatus !== kycStatus) {
+          if (newStatus) {
             // Invalidar caché para que el próximo fetch sea fresco
             invalidateKycStatusCache();
             setKycStatus(newStatus);
