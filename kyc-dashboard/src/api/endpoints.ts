@@ -73,6 +73,9 @@ export const kycAdminApi = {
     ).then(r => r.data);
   },
 
+  bankDecision: (id: string, decision: 'APPROVED' | 'REJECTED', notes?: string) =>
+    apiClient.post(`/admin/kyc/${id}/bank-decision`, { decision, notes }).then(r => r.data),
+
   /** URL firmada para visualizar documento (expira en 5 min) */
   getSignedDocUrl: (applicationId: string, docType: 'front' | 'back' | 'selfie') =>
     apiClient.get<{ url: string; expires_in: number }>(
