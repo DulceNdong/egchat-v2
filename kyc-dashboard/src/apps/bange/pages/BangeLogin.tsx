@@ -150,12 +150,14 @@ export default function BangeLogin() {
 
               <button
                 type="submit"
-                disabled={loading}
+                disabled={loading || warming}
                 className="btn-primary w-full justify-center mt-6"
-                aria-busy={loading}
+                aria-busy={loading || warming}
               >
-                {loading && <Loader2 className="w-4 h-4 animate-spin" />}
-                {loading ? t('login.loading') : t('login.submit')}
+                {(loading || warming) && <Loader2 className="w-4 h-4 animate-spin" />}
+                {warming  ? 'Conectando con el servidor…'
+                 : loading ? t('login.loading')
+                 : t('login.submit')}
               </button>
             </form>
           ) : (
