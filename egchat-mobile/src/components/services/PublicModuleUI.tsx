@@ -249,6 +249,33 @@ const pb = StyleSheet.create({
   searchInput: { flex: 1, fontSize: 13, color: '#111827' },
   searchClear: { fontSize: 14, color: '#9CA3AF' },
   sectionLbl: { fontSize: 12, fontWeight: '600', color: '#9CA3AF', marginBottom: 8, marginTop: 4 },
+  otherLbl: { fontSize: 10, fontWeight: '600', color: '#9CA3AF', marginBottom: 6, marginTop: 2 },
+  // EGPAY card destacada
+  egpayCard: {
+    borderRadius: 14, marginBottom: 8, overflow: 'hidden',
+    borderWidth: 2, borderColor: 'transparent',
+  },
+  egpayCardActive: {
+    borderColor: '#00c8a0',
+  },
+  egpayGradient: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 16, paddingVertical: 14,
+  },
+  egpayLeft: { flex: 1 },
+  egpayBadge: {
+    alignSelf: 'flex-start', backgroundColor: '#00c8a0',
+    borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2, marginBottom: 6,
+  },
+  egpayBadgeTxt: { fontSize: 10, fontWeight: '900', color: '#fff', letterSpacing: 1 },
+  egpayTitle: { fontSize: 15, fontWeight: '800', color: '#00835A' },
+  egpaySub: { fontSize: 11, color: '#00A884', marginTop: 2 },
+  egpayCheck: {
+    width: 24, height: 24, borderRadius: 12,
+    borderWidth: 2, borderColor: '#D1D5DB',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  egpayCheckActive: { borderColor: '#fff', backgroundColor: '#fff' },
   payRow: { flexDirection: 'row', gap: 8, marginBottom: 14 },
   payChip: { flex: 1, backgroundColor: '#F9FAFB', borderRadius: 8, padding: 8, alignItems: 'center', borderWidth: 1.5, borderColor: '#E5E7EB', gap: 3 },
   payLbl: { fontSize: 10, fontWeight: '700', color: '#6B7280', textAlign: 'center' },
