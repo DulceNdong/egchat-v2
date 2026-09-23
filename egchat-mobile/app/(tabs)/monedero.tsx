@@ -1171,6 +1171,18 @@ function MonederoScreenInner() {
     });
   }, []);
 
+  // ── Refrescar estado KYC cada vez que el usuario vuelve a esta pestaña ──
+  // Cubre el caso de: usuario tiene la app abierta en otra pestaña y el admin
+  // aprueba → cuando vuelve a Cartera, el monedero ya está desbloqueado.
+  useFocusEffect(
+    useCallback(() => {
+      // Solo refrescar si no está ya aprobado (evitar llamadas innecesarias)
+      getKycStatus(true).then(res => {
+        setKycStatus(res.kyc_status);
+      }).catch(() => {});
+    }, [])
+  );
+
   // ── Supabase Realtime: detectar aprobación del monedero en tiempo real ──
   // Cuando el admin pulsa "Revisado", wallet_kyc_status cambia a 'approved'
   // en la tabla users. Esta suscripción lo detecta al instante sin esperar
