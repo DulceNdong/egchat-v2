@@ -265,7 +265,12 @@ const st = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     borderWidth: 1, borderColor: 'rgba(16,185,129,0.4)',
   },
-  previewBadgeText:   { color: '#065f46', fontSize: 13, fontWeight: '700' },
+  previewBadgeError:  {
+    backgroundColor: 'rgba(245,158,11,0.15)',
+    borderColor: 'rgba(245,158,11,0.4)',
+  },
+  previewBadgeText:      { color: '#065f46', fontSize: 13, fontWeight: '700', flex: 1 },
+  previewBadgeTextError: { color: '#92400e' },
   retakeBtn:          {
     paddingVertical: 12, borderRadius: 12, borderWidth: 1.5, borderColor: '#d1d5db',
     alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: 6,
