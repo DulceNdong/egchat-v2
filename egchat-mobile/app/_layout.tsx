@@ -524,6 +524,21 @@ export default function RootLayout() {
             <ToastContainer />
             <OfflineBanner />
             <FloatingCallBar />
+            <IncomingTransferModal
+              transfer={incomingTransfer}
+              onAccepted={(newBalance) => {
+                setGlobalWalletBalance(newBalance);
+                setIncomingTransfer(null);
+                addNotification({
+                  type: 'message',
+                  title: '💸 Dinero recibido',
+                  body: `${(incomingTransfer?.amount ?? 0).toLocaleString()} XAF añadidos a tu monedero`,
+                  chatId: undefined,
+                });
+              }}
+              onCancelled={() => setIncomingTransfer(null)}
+              onDismiss={() => setIncomingTransfer(null)}
+            />
           </ThemeProvider>
           </ActiveCallProvider>
           </LanguageProvider>
