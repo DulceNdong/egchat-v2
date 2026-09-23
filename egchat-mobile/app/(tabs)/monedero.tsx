@@ -1158,10 +1158,17 @@ function MonederoScreenInner() {
   const kycPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    getKycStatus().then(res => {
+    // Siempre forzar refresco al montar — el caché puede estar desactualizado
+    // si el admin aprobó el monedero mientras la app estaba en segundo plano.
+    getKycStatus(true).then(res => {
       setKycStatus(res.kyc_status);
       setKycLoading(false);
-    }).catch(() => setKycLoading(false));
+    }).catch(() => {
+      // Si falla la red, intentar con caché
+      getKycStatus(false).then(res => {
+        setKycStatus(res.kyc_status);
+      }).catch(() => {}).finally(() => setKycLoading(false));
+    });
   }, []);
 
   // ── Supabase Realtime: detectar aprobación del monedero en tiempo real ──
