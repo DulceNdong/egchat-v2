@@ -8,10 +8,33 @@ import * as ImageManipulator from 'expo-image-manipulator';
 // Por ahora se usa una clave fija — en producción obtener del backend vía /api/kyc/key
 const AES_KEY_HEX = 'a3f5e8b2c1d4e7f0a9b8c7d6e5f4a3b2c1d0e9f8a7b6c5d4e3f2a1b0c9d8e7f6';
 
+// ── Normalizar URI: copiar content:// al cache local antes de procesar ────────
+// FileSystem.readAsStringAsync no puede leer URIs content:// de Android directamente.
+// ImageManipulator sí puede, así que lo usamos como puente cuando la URI no es file://.
+async function normalizeUri(uri: string): Promise<string> {
+  // Las URIs file:// y las que vienen del cache de expo ya son legibles directamente
+  if (uri.startsWith('file://') || uri.startsWith(FileSystem.cacheDirectory ?? '')) {
+    return uri;
+  }
+  // Para content:// (galería Android) y otros esquemas: copiar al cache de la app
+  try {
+    const destUri = `${FileSystem.cacheDirectory}kyc_tmp_${Date.now()}.jpg`;
+    await FileSystem.copyAsync({ from: uri, to: destUri });
+    return destUri;
+  } catch (copyErr) {
+    console.warn('[kycEncryption] copyAsync falló, usando URI original:', copyErr);
+    // Si la copia también falla, dejar que ImageManipulator intente leerla directamente
+    return uri;
+  }
+}
+
 // ── Comprimir imagen a máx 2MB ────────────────────────────────────
 export async function compressImage(uri: string): Promise<string> {
+  // Normalizar primero para garantizar que ImageManipulator reciba una URI accesible
+  const safeUri = await normalizeUri(uri);
+
   const result = await ImageManipulator.manipulateAsync(
-    uri,
+    safeUri,
     [{ resize: { width: 1200 } }],
     { compress: 0.8, format: ImageManipulator.SaveFormat.JPEG },
   );
@@ -45,24 +68,27 @@ export async function encryptImage(uri: string): Promise<{
   checksum: string;
   originalSize: number;
 }> {
-  // 1. Intentar comprimir; si falla, usar URI original
+  // 1. Intentar comprimir (también normaliza la URI internamente); si falla, normalizar y usar original
   let workingUri = uri;
   try {
     workingUri = await compressImage(uri);
   } catch (compressErr) {
-    console.warn('[kycEncryption] compressImage falló, usando URI original:', compressErr);
-    workingUri = uri;
+    console.warn('[kycEncryption] compressImage falló, normalizando URI original:', compressErr);
+    // Intentar al menos normalizar para el paso de lectura
+    workingUri = await normalizeUri(uri);
   }
 
-  // 2. Leer como base64 — con fallback a URI original si la comprimida falla
+  // 2. Leer como base64 — workingUri ya es una URI file:// segura tras normalizeUri/compressImage
   let base64: string;
   try {
     base64 = await FileSystem.readAsStringAsync(workingUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
   } catch (readErr) {
-    console.warn('[kycEncryption] No se pudo leer URI comprimida, reintentando con original:', readErr);
-    base64 = await FileSystem.readAsStringAsync(uri, {
+    console.warn('[kycEncryption] No se pudo leer URI comprimida, reintentando con original normalizada:', readErr);
+    // Último intento: normalizar la URI original y leerla
+    const fallbackUri = await normalizeUri(uri);
+    base64 = await FileSystem.readAsStringAsync(fallbackUri, {
       encoding: FileSystem.EncodingType.Base64,
     });
   }
