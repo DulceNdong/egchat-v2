@@ -32,8 +32,6 @@ export const CLIENT_TYPES = ['Residencial', 'Comercial', 'Industrial'] as const;
 
 export const PAY_METHODS = [
   { id: 'egpay', label: 'EGPAY', icon: '⚡', description: 'Monedero EGPAY', highlight: true },
-  { id: 'bank', label: 'Banco', icon: '🏦', description: 'Cuenta bancaria', highlight: false },
-  { id: 'cash', label: 'Efectivo', icon: '💵', description: 'Agente / efectivo', highlight: false },
 ] as const;
 
 export type PayMethodId = typeof PAY_METHODS[number]['id'];
