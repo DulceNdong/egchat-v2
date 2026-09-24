@@ -181,11 +181,23 @@ const FAB_SERVICES = [
 
 // ── Componente AppIcon (grid home) ────────────────────────────────
 const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; color: string; onPress: () => void }) => (
-  <TouchableOpacity style={st.appItem} onPress={onPress} activeOpacity={0.75}>
-    <View style={[st.appIconBox, { backgroundColor: Platform.OS === 'android' ? color + '18' : 'rgba(255,255,255,0.22)', borderColor: Platform.OS === 'android' ? color + '55' : 'rgba(255,255,255,0.35)' }]}>
+  <TouchableOpacity
+    style={st.appItem}
+    onPress={() => {
+      if (Platform.OS === 'android') {
+        Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+      }
+      onPress();
+    }}
+    activeOpacity={0.7}
+  >
+    <View style={[st.appIconBox, {
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      borderColor: 'rgba(0,0,0,0.07)',
+    }]}>
       <SvgIcon id={id} color={color} size={28} />
     </View>
-    <Text style={[st.appLabel, { fontSize: 10.5, color: Platform.OS === 'android' ? '#111111' : '#000000' }]}>{label}</Text>
+    <Text style={[st.appLabel, { fontSize: 10.5, color: '#111111' }]}>{label}</Text>
   </TouchableOpacity>
 );
 
