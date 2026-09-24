@@ -2565,7 +2565,7 @@ export default function ChatScreen() {
           </View>
         )}
 
-      </KeyboardAvoidingView>
+      </View>
 
       <ChatContextMenu
         visible={contextVisible}
