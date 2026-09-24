@@ -1,7 +1,19 @@
-pluginManagement {
-  // Ruta absoluta de node para Android Studio (no hereda PATH del sistema)
-  def nodeExec = "/usr/local/bin/node"
+def findNodeExec() {
+  def candidates = [
+    "/usr/local/bin/node",
+    "/opt/homebrew/bin/node",
+    System.getenv("NODE_BINARY"),
+    System.getProperty("user.home") + "/.nvm/versions/node/v20.20.2/bin/node",
+    System.getProperty("user.home") + "/.nvm/versions/node/v20.19.4/bin/node"
+  ]
+  def found = candidates.find { it && new File(it).exists() }
+  return found ?: "node"
+}
 
+def nodeExec = findNodeExec()
+System.setProperty("nodeExecutable", nodeExec)
+
+pluginManagement {
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)

@@ -2940,6 +2940,16 @@ export default function ChatScreen() {
         isReceived={false}
       />
 
+      {/* ── Incoming Transfer Modal (receptor acepta/rechaza desde el chat) ── */}
+      <IncomingTransferModal
+        transfer={chatIncomingTransfer}
+        onAccepted={(newBalance) => {
+          setChatIncomingTransfer(null);
+        }}
+        onCancelled={() => setChatIncomingTransfer(null)}
+        onDismiss={() => setChatIncomingTransfer(null)}
+      />
+
       {/* ── Bottom-sheet selector Foto / Video ── */}
       <Modal
         visible={!!mediaPickerMode}
