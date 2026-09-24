@@ -1071,6 +1071,15 @@ export default function ChatScreen() {
     lastTapRef.current = now;
   }, [dismissAll, dismissPanels]);
 
+  // Gesto de doble tap nativo para cerrar teclado (funciona sobre FlatList con keyboardShouldPersistTaps="always")
+  const doubleTapGesture = Gesture.Tap()
+    .numberOfTaps(2)
+    .maxDuration(300)
+    .runOnJS(true)
+    .onEnd(() => {
+      dismissAll();
+    });
+
   const handleCopy = useCallback(async () => {
     if (contextMsg?.text) await Clipboard.setStringAsync(contextMsg.text);
     setContextVisible(false);
