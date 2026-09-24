@@ -3074,23 +3074,24 @@ export default function ChatScreen() {
         visible={showTransferPin}
         onClose={() => {
           setShowTransferPin(false);
-          transferExecutorRef.current = null;
+          setTransferPinLoading(false);
           setTransferPinError('');
+          transferExecutorRef.current = null;
         }}
-        onSuccess={async (pin) => {
+        onSuccess={useCallback(async (pin: string) => {
           if (!transferExecutorRef.current) return;
           setTransferPinLoading(true);
           setTransferPinError('');
           try {
             await transferExecutorRef.current(pin);
             setShowTransferPin(false);
+            setTransferPinLoading(false);
             transferExecutorRef.current = null;
           } catch (e: any) {
-            setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
-          } finally {
             setTransferPinLoading(false);
+            setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
           }
-        }}
+        }, [])}
         title="🔒 Confirmar transferencia"
         subtitle={transferPinSubtitle}
         loading={transferPinLoading}
