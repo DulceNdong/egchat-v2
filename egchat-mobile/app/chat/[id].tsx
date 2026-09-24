@@ -2203,12 +2203,7 @@ export default function ChatScreen() {
         </View>
       )}
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'android' ? 'height' : undefined}
-        keyboardVerticalOffset={0}
-        enabled={Platform.OS === 'android'}
-      >
+      <View style={{ flex: 1 }}>
         <Pressable style={[styles.chatBg, { flex: 1 }]} onPress={dismissAll}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
           <FlatList
