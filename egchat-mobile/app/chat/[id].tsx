@@ -2281,6 +2281,7 @@ export default function ChatScreen() {
               </View>
             }
           />
+          </GestureDetector>
 
           {showScrollBottom && (
             <TouchableOpacity
