@@ -232,6 +232,14 @@ export default function ChatScreen() {
   const [bottomDockHeight, setBottomDockHeight] = useState(0);
   const [keyboardBottomOffset, setKeyboardBottomOffset] = useState(0);
   const [showQuickTransfer, setShowQuickTransfer] = useState(false);
+  // PIN modals para QuickTransferModal (no pueden estar anidados dentro de otro Modal en iOS)
+  const [showTransferPin, setShowTransferPin] = useState(false);
+  const [showTransferSetupPin, setShowTransferSetupPin] = useState(false);
+  const [transferPinLoading, setTransferPinLoading] = useState(false);
+  const [transferPinError, setTransferPinError] = useState('');
+  const [transferPinSubtitle, setTransferPinSubtitle] = useState('');
+  const transferExecutorRef = React.useRef<((pin: string) => Promise<void>) | null>(null);
+  const pinSetupDoneRef = React.useRef<(() => void) | null>(null);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
