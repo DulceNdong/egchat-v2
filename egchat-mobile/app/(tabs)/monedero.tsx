@@ -1975,9 +1975,28 @@ const s = StyleSheet.create({
   },
   pendingIcon: {
     width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(180,83,9,0.08)', alignItems: 'center', justifyContent: 'center',
+    alignItems: 'center', justifyContent: 'center',
   },
-  pendingAmount: { fontSize: 13, fontWeight: '600' },
+  pendingAmount: { fontSize: 13, fontWeight: '700' },
+  pendingActions: {
+    flexDirection: 'row', gap: 8,
+    paddingHorizontal: 12, paddingBottom: 12, paddingTop: 4,
+  },
+  pendingBtn: {
+    flex: 1, paddingVertical: 9, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pendingBtnAccept: {
+    backgroundColor: '#16a34a',
+  },
+  pendingBtnAcceptText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  pendingBtnCancel: {
+    backgroundColor: 'transparent',
+    borderWidth: 1.5, borderColor: '#dc2626',
+  },
+  pendingBtnCancelText: { fontSize: 13, fontWeight: '700', color: '#dc2626' },
+  pendingBtnDisabled: { opacity: 0.5 },
+  // estilos legacy (mantenidos por compatibilidad)
   cancelPendingBtn: {
     backgroundColor: 'rgba(248,113,113,0.1)', borderWidth: 1, borderColor: 'rgba(248,113,113,0.25)',
     borderRadius: 4, paddingHorizontal: 8, paddingVertical: 4,
