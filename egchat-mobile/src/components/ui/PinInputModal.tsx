@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   View, Text, Modal, TouchableOpacity, TextInput, StyleSheet,
   Pressable, ActivityIndicator, Vibration,
@@ -27,6 +27,12 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
 }) => {
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [currentIndex, setCurrentIndex] = useState(0);
+  // Usamos ref para onSuccess y submitted para evitar doble disparo
+  const onSuccessRef = useRef(onSuccess);
+  const submittedRef = useRef(false);
+
+  useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
+
   const inputRefs = [
     useRef<TextInput>(null),
     useRef<TextInput>(null),
@@ -36,25 +42,24 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
     useRef<TextInput>(null),
   ];
 
+  // Reset cuando el modal abre
   useEffect(() => {
     if (visible) {
       setPin(['', '', '', '', '', '']);
       setCurrentIndex(0);
-      // Focus en el primer campo después de un pequeño delay
+      submittedRef.current = false;
       setTimeout(() => inputRefs[0].current?.focus(), 300);
     }
   }, [visible]);
 
+  // Reset submitted cuando loading pasa de true a false (permitir reintentar tras error)
   useEffect(() => {
-    // Auto-submit cuando se complete el PIN
-    const pinString = pin.join('');
-    if (pinString.length === 6 && !loading) {
-      onSuccess(pinString);
+    if (!loading && error) {
+      submittedRef.current = false;
     }
-  }, [pin, loading, onSuccess]);
+  }, [loading, error]);
 
-  const handlePinChange = (value: string, index: number) => {
-    // Solo permitir dígitos
+  const handlePinChange = useCallback((value: string, index: number) => {
     const digit = value.replace(/[^0-9]/g, '');
     if (digit.length > 1) return;
 
@@ -62,32 +67,43 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
     newPin[index] = digit;
     setPin(newPin);
 
-    // Mover al siguiente campo si se ingresó un dígito
     if (digit && index < 5) {
       setCurrentIndex(index + 1);
       inputRefs[index + 1].current?.focus();
     }
-  };
 
-  const handleKeyPress = (e: any, index: number) => {
-    // Manejar backspace
+    // Auto-submit al completar el 6º dígito
+    if (digit && index === 5) {
+      const complete = newPin.join('');
+      if (complete.length === 6 && !submittedRef.current) {
+        submittedRef.current = true;
+        // Pequeño delay para que el usuario vea el último dígito antes del spinner
+        setTimeout(() => onSuccessRef.current(complete), 80);
+      }
+    }
+  }, [pin]);
+
+  const handleKeyPress = useCallback((e: any, index: number) => {
     if (e.nativeEvent.key === 'Backspace') {
+      // Si ya se envió, permitir edición de nuevo
+      if (submittedRef.current) {
+        submittedRef.current = false;
+      }
       if (pin[index] === '' && index > 0) {
-        // Si el campo actual está vacío, ir al anterior
         setCurrentIndex(index - 1);
         inputRefs[index - 1].current?.focus();
       } else {
-        // Limpiar campo actual
         const newPin = [...pin];
         newPin[index] = '';
         setPin(newPin);
       }
     }
-  };
+  }, [pin]);
 
   const handleClear = () => {
     setPin(['', '', '', '', '', '']);
     setCurrentIndex(0);
+    submittedRef.current = false;
     inputRefs[0].current?.focus();
     Vibration.vibrate(50);
   };
@@ -115,7 +131,7 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
                     style={[
                       s.pinField,
                       currentIndex === index && s.pinFieldActive,
-                      error && s.pinFieldError,
+                      !!error && s.pinFieldError,
                     ]}
                     value={digit}
                     onChangeText={(value) => handlePinChange(value, index)}
@@ -125,6 +141,7 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
                     maxLength={1}
                     secureTextEntry
                     selectTextOnFocus
+                    editable={!loading}
                   />
                   {digit && !loading && (
                     <View style={s.pinDot}>
@@ -136,7 +153,7 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
             </View>
 
             {/* Error Message */}
-            {error && (
+            {!!error && (
               <View style={s.errorContainer}>
                 <MIcon name="warning" size={16} color="#EF4444" />
                 <Text style={s.errorText}>{error}</Text>
@@ -154,9 +171,9 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
 
           {/* Actions */}
           <View style={s.actions}>
-            <TouchableOpacity onPress={handleClear} style={s.clearBtn}>
-              <MIcon name="backspace" size={20} color="#64748B" />
-              <Text style={s.clearText}>Limpiar</Text>
+            <TouchableOpacity onPress={handleClear} style={s.clearBtn} disabled={loading}>
+              <MIcon name="backspace" size={20} color={loading ? '#CBD5E1' : '#64748B'} />
+              <Text style={[s.clearText, loading && s.clearTextDisabled]}>Limpiar</Text>
             </TouchableOpacity>
           </View>
         </Pressable>
@@ -253,6 +270,7 @@ const s = StyleSheet.create({
     bottom: 0,
     alignItems: 'center',
     justifyContent: 'center',
+    pointerEvents: 'none',
   },
   pinDotText: {
     fontSize: 28,
@@ -303,6 +321,9 @@ const s = StyleSheet.create({
     fontSize: 14,
     color: '#64748B',
     fontWeight: '500',
+  },
+  clearTextDisabled: {
+    color: '#CBD5E1',
   },
 });
 
