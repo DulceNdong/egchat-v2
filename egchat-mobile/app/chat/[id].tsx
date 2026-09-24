@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   StyleSheet, Platform, ActivityIndicator, Dimensions,
