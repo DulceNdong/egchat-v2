@@ -123,7 +123,10 @@ export default function CompanyUsers() {
                     onKeyDown={e => e.key === 'Enter' && navigate(`/company/users/${row.application_id}`)}
                   >
                     <td className="table-td font-medium">
-                      {row.full_name ?? <span className="text-gray-400 italic">{t('users.noName')}</span>}
+                      {row.full_name
+                        ? <span>{row.full_name}</span>
+                        : <span className="text-gray-400 font-mono text-xs">{row.user_phone ?? t('users.noName')}</span>
+                      }
                     </td>
                     <td className="table-td text-gray-500 font-mono text-xs">{row.user_phone ?? '—'}</td>
                     <td className="table-td text-sm">{row.nationality ?? '—'}</td>
