@@ -1068,20 +1068,6 @@ export default function ChatScreen() {
     setNativeKbOpen(false);
   }, []);
 
-  // Doble tap: cierra teclado. Tap simple: solo cierra paneles.
-  const lastTapRef = useRef<number>(0);
-  const handleBgPress = useCallback(() => {
-    const now = Date.now();
-    if (now - lastTapRef.current < 350) {
-      // Doble tap — cerrar teclado
-      dismissAll();
-    } else {
-      // Tap simple — solo cerrar paneles abiertos
-      dismissPanels();
-    }
-    lastTapRef.current = now;
-  }, [dismissAll, dismissPanels]);
-
   // Gesto de doble tap nativo para cerrar teclado (funciona sobre FlatList con keyboardShouldPersistTaps="always")
   const doubleTapGesture = Gesture.Tap()
     .numberOfTaps(2)
