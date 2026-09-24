@@ -1039,6 +1039,15 @@ export default function ChatScreen() {
   }, [hasMore, loadingMore, loadMore]);
 
   // ── Cerrar teclado/emojis/panels al tocar fuera del input ──────
+  // dismissPanels: cierra paneles (adjuntos, emojis) pero NO el teclado (tap simple)
+  // dismissAll: cierra todo incluyendo el teclado (doble tap)
+  const dismissPanels = useCallback(() => {
+    setShowEmojis(false);
+    setShowAttach(false);
+    setShowStickers(false);
+    setNativeKbOpen(false);
+  }, []);
+
   const dismissAll = useCallback(() => {
     Keyboard.dismiss();
     inputRef.current?.blur();
@@ -1047,6 +1056,20 @@ export default function ChatScreen() {
     setShowStickers(false);
     setNativeKbOpen(false);
   }, []);
+
+  // Doble tap: cierra teclado. Tap simple: solo cierra paneles.
+  const lastTapRef = useRef<number>(0);
+  const handleBgPress = useCallback(() => {
+    const now = Date.now();
+    if (now - lastTapRef.current < 350) {
+      // Doble tap — cerrar teclado
+      dismissAll();
+    } else {
+      // Tap simple — solo cerrar paneles abiertos
+      dismissPanels();
+    }
+    lastTapRef.current = now;
+  }, [dismissAll, dismissPanels]);
 
   const handleCopy = useCallback(async () => {
     if (contextMsg?.text) await Clipboard.setStringAsync(contextMsg.text);
