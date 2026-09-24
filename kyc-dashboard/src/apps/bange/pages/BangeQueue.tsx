@@ -172,7 +172,10 @@ export default function BangeQueue() {
                       {row.user_phone ?? '—'}
                     </td>
                     <td className="table-td font-medium">
-                      {row.full_name ?? <span className="text-gray-400 italic">{t('queue.noName')}</span>}
+                      {row.full_name
+                        ? <span>{row.full_name}</span>
+                        : <span className="text-gray-400 font-mono text-xs">{row.user_phone ?? t('queue.noName')}</span>
+                      }
                     </td>
                     <td className="table-td text-gray-500 text-sm whitespace-nowrap">
                       {row.submitted_at
