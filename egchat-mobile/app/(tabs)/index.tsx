@@ -552,7 +552,8 @@ function HomeScreenInner() {
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
         const FAB_CX = SW / 2;
-        const FAB_BOTTOM = 246; // bottom del centro del FAB
+        const TAB_H = Platform.OS === 'ios' ? 92 : 68;
+        const FAB_BOTTOM = TAB_H + 30 + 30; // tab bar + margen + radio FAB (dinámico)
         const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
