@@ -9,7 +9,6 @@ import { walletAPI, authAPI } from '../../api';
 import { walletPIN } from '../../services/walletPin';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../services/limits';
 import { EGAvatar } from '../ui';
-import { toast } from '../Toast';
 
 interface Props {
   visible: boolean;
@@ -22,15 +21,22 @@ interface Props {
   myName?: string;
   onTransferred: (messageText: string) => void;
   /**
-   * Llamado cuando el usuario presiona Enviar y necesita introducir su PIN.
-   * El padre debe mostrar PinInputModal y llamar a executeTransferWithPin(pin).
+   * Llamado cuando el usuario presiona Enviar y tiene PIN.
+   * El padre muestra PinInputModal y llama a executeTransferWithPin(pin).
    */
   onNeedPin: (executeTransferWithPin: (pin: string) => Promise<void>) => void;
   /**
-   * Llamado cuando el usuario no tiene PIN configurado.
-   * El padre debe mostrar SetupPinModal y, al finalizar, llamar a onPinSetupDone().
+   * Llamado cuando el usuario no tiene PIN configurado (o está desincronizado).
+   * El padre muestra SetupPinModal y al finalizar llama a onPinSetupDone().
    */
   onNeedSetupPin: (onPinSetupDone: () => void) => void;
+}
+
+// Errores del servidor que indican PIN no configurado
+const PIN_NOT_CONFIGURED_MSGS = ['pin no configurado', 'no pin', 'pin not set', 'pin not configured'];
+
+function isPinNotConfiguredError(msg: string): boolean {
+  return PIN_NOT_CONFIGURED_MSGS.some(s => msg.toLowerCase().includes(s));
 }
 
 export function QuickTransferModal({
@@ -92,77 +98,116 @@ export function QuickTransferModal({
         return;
       }
 
-      // Verificar si tiene PIN configurado
+      // Verificar si tiene PIN configurado — fuente de verdad = servidor
       let hasPin = false;
       try {
+        // Primero chequear local (rápido)
         const localPin = await walletPIN.isSet();
-        hasPin = localPin;
-        if (!hasPin) {
+        if (localPin) {
+          // Validar contra servidor para detectar desincronización
+          const pinStatus = await authAPI.hasPinConfigured();
+          hasPin = pinStatus.hasPin;
+          if (!hasPin) {
+            // PIN local huérfano — limpiar para que el setup arranque limpio
+            await walletPIN.clear();
+          }
+        } else {
           const pinStatus = await authAPI.hasPinConfigured();
           hasPin = pinStatus.hasPin;
         }
       } catch {
-        hasPin = false;
+        // Si el servidor no responde, confiar en el estado local
+        hasPin = await walletPIN.isSet().catch(() => false);
       }
 
       setLoading(false);
 
-      // Función que el padre ejecutará cuando reciba el PIN
-      const executeTransferWithPin = async (pin: string) => {
-        if (transferExecuted.current) return;
-        transferExecuted.current = true;
+      // Construir el ejecutor de transferencia
+      const buildExecutor = (onPinNotConfigured: () => void) =>
+        async (pin: string): Promise<void> => {
+          if (transferExecuted.current) return;
+          transferExecuted.current = true;
 
-        try {
-          // Verificar PIN
-          let pinOk = false;
           try {
-            pinOk = await walletPIN.verify(pin);
-          } catch { pinOk = false; }
-          if (!pinOk) {
-            await authAPI.verifyPin(pin); // lanza si falla
+            // 1. Verificar PIN localmente
+            let pinOk = false;
+            try { pinOk = await walletPIN.verify(pin); } catch { pinOk = false; }
+
+            // 2. Si falla local, verificar contra servidor
+            if (!pinOk) {
+              try {
+                const res = await authAPI.verifyPin(pin);
+                pinOk = res?.valid === true;
+              } catch (serverErr: any) {
+                const msg: string = serverErr?.message || '';
+                if (isPinNotConfiguredError(msg)) {
+                  // PIN no existe en BD → redirigir a configurar
+                  transferExecuted.current = false;
+                  await walletPIN.clear().catch(() => {});
+                  onPinNotConfigured();
+                  return;
+                }
+                throw serverErr;
+              }
+            }
+
+            if (!pinOk) {
+              transferExecuted.current = false;
+              throw new Error('PIN incorrecto');
+            }
+
+            // 3. Ejecutar transferencia
+            const result = await walletAPI.transferPending(
+              transfer.to,
+              transfer.amount,
+              transfer.description,
+            );
+            await updateLimitForTransaction('transfer', transfer.amount);
+
+            if (result?.balance != null) {
+              setBalance(result.balance);
+            } else {
+              refreshBalance();
+            }
+
+            const code = Math.floor(100000 + Math.random() * 900000).toString();
+            const msgText = [
+              '💸 Transferencia enviada',
+              `💰 ${transfer.amount.toLocaleString()} XAF`,
+              `👤 Para: ${contactName}`,
+              '🏦 Desde: Monedero EGCHAT',
+              `🔑 Ref: ${code}`,
+              '⏳ Pendiente de aceptación',
+            ].join('\n');
+
+            onTransferred(msgText);
+            onClose();
+          } catch (e: any) {
+            transferExecuted.current = false;
+            throw e;
           }
-
-          // Ejecutar transferencia
-          const result = await walletAPI.transferPending(
-            transfer.to,
-            transfer.amount,
-            transfer.description,
-          );
-          await updateLimitForTransaction('transfer', transfer.amount);
-
-          if (result?.balance != null) {
-            setBalance(result.balance);
-          } else {
-            refreshBalance();
-          }
-
-          const code = Math.floor(100000 + Math.random() * 900000).toString();
-          const msgText = [
-            '💸 Transferencia enviada',
-            `💰 ${transfer.amount.toLocaleString()} XAF`,
-            `👤 Para: ${contactName}`,
-            '🏦 Desde: Monedero EGCHAT',
-            `🔑 Ref: ${code}`,
-            '⏳ Pendiente de aceptación',
-          ].join('\n');
-
-          onTransferred(msgText);
-          onClose();
-        } catch (e: any) {
-          transferExecuted.current = false; // permitir reintentar
-          throw e; // el padre (PinInputModal) maneja el error
-        }
-      };
+        };
 
       if (!hasPin) {
-        // Pedir al padre que muestre SetupPinModal
+        // No tiene PIN → mostrar setup
         onNeedSetupPin(() => {
-          // Cuando el PIN quede configurado, pedir al padre el PinInputModal
-          onNeedPin(executeTransferWithPin);
+          // Tras configurar el PIN, abrir el modal de ingreso
+          const executor = buildExecutor(() => {
+            // Caso imposible post-setup, pero por si acaso
+            onNeedSetupPin(() => onNeedPin(buildExecutor(() => {})));
+          });
+          onNeedPin(executor);
         });
       } else {
-        // Pedir al padre que muestre PinInputModal directamente
-        onNeedPin(executeTransferWithPin);
+        // Tiene PIN → mostrar ingreso, pero si el servidor dice "no configurado"
+        // el executor llamará onPinNotConfigured que redirige al setup
+        const executor = buildExecutor(() => {
+          onNeedSetupPin(() => {
+            const retryExecutor = buildExecutor(() => {});
+            onNeedPin(retryExecutor);
+          });
+        });
+        onNeedPin(executor);
       }
     } catch (e: any) {
       setError(e?.message || 'Error al preparar la transferencia. Inténtalo de nuevo.');
