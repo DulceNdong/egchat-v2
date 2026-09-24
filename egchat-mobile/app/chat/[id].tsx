@@ -402,6 +402,7 @@ export default function ChatScreen() {
   const { isOnline: _isOnlineFromOffline, saveCache, readCache } = useOffline();
   const { isOnline } = useNetworkStatus();
   void _isOnlineFromOffline; // el isOnline global reemplaza el local
+  const dockBottomOffset = keyboardBottomOffset;
   // Android: el dock sube manualmente con keyboardBottomOffset (keyboardDidShow/Hide).
   // iOS: offset manual con keyboardWillChangeFrame + effectiveDockOffset.
   // NO usamos KeyboardAvoidingView para no romper el layout de ninguna plataforma.
