@@ -17,6 +17,8 @@ import { ChatContactPickerModal } from '../../src/components/chat/ChatContactPic
 import { ChatEmojiPanel } from '../../src/components/chat/ChatEmojiPanel';
 import { StickerPanel } from '../../src/components/chat/StickerPanel';
 import { QuickTransferModal } from '../../src/components/chat/QuickTransferModal';
+import { PinInputModal } from '../../src/components/ui/PinInputModal';
+import { SetupPinModal } from '../../src/components/ui/SetupPinModal';
 import { TransferDetailsModal } from '../../src/components/chat/TransferDetailsModal';
 import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuPanel';
 import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
