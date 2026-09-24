@@ -1248,10 +1248,61 @@ function MonederoScreenInner() {
   const [showRetiro, setShowRetiro] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
   const [showCards, setShowCards] = useState(false);
-  const [pendingTransfers, setPendingTransfers] = useState<Array<{
-    id: string; from: string; to: string; amount: number;
-    status: 'pending' | 'cancelled'; expiresAt: number;
-  }>>([]);
+
+  // ── Transferencias pendientes (del servidor) ──────────────────
+  type PendingTransfer = {
+    id: string; direction: 'incoming' | 'outgoing'; amount: number; concept?: string | null;
+    status: string; expiresAt: string; createdAt: string; isExpired: boolean;
+    senderName: string; senderAvatar?: string | null;
+    recipientName: string; recipientAvatar?: string | null;
+  };
+  const [pendingTransfers, setPendingTransfers] = useState<PendingTransfer[]>([]);
+  const [pendingLoading, setPendingLoading] = useState<string | null>(null); // transferId en proceso
+
+  const loadPendingTransfers = useCallback(async () => {
+    try {
+      const res = await walletAPI.getPendingTransfers();
+      setPendingTransfers(res.transfers || []);
+    } catch {}
+  }, []);
+
+  const handleAcceptTransfer = useCallback(async (transferId: string) => {
+    setPendingLoading(transferId);
+    try {
+      const res = await walletAPI.acceptTransfer(transferId);
+      setBalance(res.balance);
+      setPendingTransfers(prev => prev.filter(t => t.id !== transferId));
+    } catch (e: any) {
+      Alert.alert('Error', e?.message || 'No se pudo aceptar la transferencia');
+    } finally {
+      setPendingLoading(null);
+    }
+  }, []);
+
+  const handleCancelTransfer = useCallback(async (transferId: string) => {
+    Alert.alert(
+      'Cancelar transferencia',
+      'El dinero se devolverá al remitente. ¿Continuar?',
+      [
+        { text: 'No', style: 'cancel' },
+        {
+          text: 'Sí, cancelar', style: 'destructive',
+          onPress: async () => {
+            setPendingLoading(transferId);
+            try {
+              await walletAPI.cancelTransfer(transferId);
+              setPendingTransfers(prev => prev.filter(t => t.id !== transferId));
+            } catch (e: any) {
+              Alert.alert('Error', e?.message || 'No se pudo cancelar');
+            } finally {
+              setPendingLoading(null);
+            }
+          },
+        },
+      ]
+    );
+  }, []);
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
