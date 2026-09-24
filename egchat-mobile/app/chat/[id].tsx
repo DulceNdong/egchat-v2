@@ -3079,7 +3079,11 @@ export default function ChatScreen() {
         }}
         onNeedSetupPin={(onPinSetupDone) => {
           pinSetupDoneRef.current = onPinSetupDone;
+          // Cerrar tanto QuickTransferModal como PinInputModal antes de abrir SetupPin
           setShowQuickTransfer(false);
+          setShowTransferPin(false);
+          setTransferPinLoading(false);
+          setTransferPinError('');
           setTimeout(() => setShowTransferSetupPin(true), 350);
         }}
       />
