@@ -1,19 +1,13 @@
-def findNodeExec() {
-  def candidates = [
+pluginManagement {
+  println "GRADLE SYSTEM PATH: " + System.getenv("PATH")
+  def nodeExec = [
     "/usr/local/bin/node",
     "/opt/homebrew/bin/node",
     System.getenv("NODE_BINARY"),
     System.getProperty("user.home") + "/.nvm/versions/node/v20.20.2/bin/node",
     System.getProperty("user.home") + "/.nvm/versions/node/v20.19.4/bin/node"
-  ]
-  def found = candidates.find { it && new File(it).exists() }
-  return found ?: "node"
-}
+  ].find { it && new File(it).exists() } ?: "node"
 
-def nodeExec = findNodeExec()
-System.setProperty("nodeExecutable", nodeExec)
-
-pluginManagement {
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
