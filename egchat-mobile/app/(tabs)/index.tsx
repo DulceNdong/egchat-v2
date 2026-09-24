@@ -231,7 +231,11 @@ function HomeScreenInner() {
   // LIA — arrastrable con makeDraggable (sin conflicto de gestos en iOS)
   const { width: SW, height: SH } = Dimensions.get('window');
   const BTN_SIZE = 44;
-  const liaPan = useRef(new Animated.ValueXY({ x: SW - BTN_SIZE - 12, y: SH - 220 })).current;
+  // Posición inicial del LIA: esquina inferior derecha, por encima del FAB y tab bar
+  const TAB_BAR_H = Platform.OS === 'ios' ? 92 : 68;
+  const LIA_INIT_X = SW - BTN_SIZE - 16;
+  const LIA_INIT_Y = SH - TAB_BAR_H - BTN_SIZE - 90; // encima del FAB
+  const liaPan = useRef(new Animated.ValueXY({ x: LIA_INIT_X, y: LIA_INIT_Y })).current;
   const liaDragging = useRef(false);
 
   function makeDraggable(
