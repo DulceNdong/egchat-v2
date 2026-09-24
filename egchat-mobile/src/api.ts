@@ -518,6 +518,13 @@ export const walletAPI = {
   cancelTransfer: (transferId: string) =>
     post<{ success: boolean; message: string }>(
       `/api/wallet/transfer/cancel/${transferId}`, {}),
+  getPendingTransfers: () =>
+    get<{ transfers: Array<{
+      id: string; direction: 'incoming' | 'outgoing'; amount: number; concept?: string | null;
+      status: string; expiresAt: string; createdAt: string; isExpired: boolean;
+      senderName: string; senderAvatar?: string | null;
+      recipientName: string; recipientAvatar?: string | null;
+    }> }>('/api/wallet/pending-transfers'),
   redeemCode: (code: string) =>
     post<any>('/api/wallet/recharge-code', { code }),
 };
