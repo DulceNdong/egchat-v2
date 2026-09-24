@@ -1180,7 +1180,10 @@ function MonederoScreenInner() {
       getKycStatus(true).then(res => {
         setKycStatus(res.kyc_status);
       }).catch(() => {});
-    }, [])
+      // Recargar balance y transferencias pendientes al volver a la pestaña
+      loadData();
+      loadPendingTransfers();
+    }, [loadData, loadPendingTransfers])
   );
 
   // ── Supabase Realtime: detectar aprobación del monedero en tiempo real ──
