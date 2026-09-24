@@ -402,16 +402,13 @@ export default function ChatScreen() {
   const { isOnline: _isOnlineFromOffline, saveCache, readCache } = useOffline();
   const { isOnline } = useNetworkStatus();
   void _isOnlineFromOffline; // el isOnline global reemplaza el local
-  const keyboardGap = keyboardBottomOffset > 0 ? KEYBOARD_INPUT_GAP : 0;
-  const dockBottomOffset = keyboardBottomOffset + keyboardGap;
-  // Android con softwareKeyboardLayoutMode="resize": el SO ya empuja el layout hacia arriba.
-  // El dock debe quedar en bottom:0 siempre — si usamos el offset además del resize,
-  // el dock sube el doble y deja un hueco blanco enorme.
-  // iOS: offset manual porque el SO no redimensiona el layout.
+  // Android: el dock sube manualmente con keyboardBottomOffset (keyboardDidShow/Hide).
+  // iOS: offset manual con keyboardWillChangeFrame + effectiveDockOffset.
+  // NO usamos KeyboardAvoidingView para no romper el layout de ninguna plataforma.
   const effectiveDockOffset = Platform.OS === 'ios'
     ? (anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset)
-    : 0;
-  const messagesBottomInset = bottomDockHeight + (Platform.OS === 'android' ? keyboardBottomOffset : effectiveDockOffset) + 12;
+    : keyboardBottomOffset;
+  const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
