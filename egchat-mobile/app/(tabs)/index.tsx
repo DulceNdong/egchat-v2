@@ -651,7 +651,10 @@ function HomeScreenInner() {
       <TouchableOpacity
         style={st.fab}
         activeOpacity={0.9}
-        onPress={toggleFab}
+        onPress={() => {
+          if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
+          toggleFab();
+        }}
       >
         <LinearGradient
           colors={['#1a3a5c', '#0d2d4a']}
