@@ -446,7 +446,10 @@ function HomeScreenInner() {
             <TouchableOpacity
               style={st.balanceBtn}
               activeOpacity={0.85}
-              onPress={() => router.push('/(tabs)/monedero' as any)}
+              onPress={() => {
+                if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                router.push('/(tabs)/monedero' as any);
+              }}
             >
               <IconRefresh color={Colors.brand} size={15} />
               <Text style={st.balanceBtnText}>RECARGAR</Text>
@@ -455,7 +458,10 @@ function HomeScreenInner() {
             <TouchableOpacity
               style={st.balanceBtn}
               activeOpacity={0.85}
-              onPress={openSendMoney}
+              onPress={() => {
+                if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                openSendMoney();
+              }}
             >
               <IconSend color={Colors.brand} size={15} />
               <Text style={st.balanceBtnText}>ENVIAR</Text>
