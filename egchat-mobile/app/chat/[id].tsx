@@ -2027,9 +2027,37 @@ export default function ChatScreen() {
     setShowForwardModal(true);
   }, [messages, selectedIds, exitSelectMode]);
 
-  const handleTransferPress = useCallback((transferData: any) => {
-    setTransferDetailsData(transferData);
-    setShowTransferDetails(true);
+  const handleTransferPress = useCallback((transferData: any, messageText?: string) => {
+    // Si el mensaje contiene "⏳ Pendiente" y no es propio → es una transferencia que el receptor debe aceptar
+    const isPending = messageText?.includes('⏳ Pendiente');
+    if (isPending) {
+      // Extraer el transferId de la referencia del mensaje (🔑 Ref: XXXXXX)
+      // El ref en el chat es un código visual, no el UUID. Buscamos las pendientes del servidor.
+      walletAPI.getPendingTransfers().then(res => {
+        const incoming = (res.transfers || []).find(
+          t => t.direction === 'incoming' && !t.isExpired,
+        );
+        if (incoming) {
+          setChatIncomingTransfer({
+            transferId: incoming.id,
+            amount:     incoming.amount,
+            senderName: incoming.senderName,
+            concept:    incoming.concept ?? null,
+            expiresAt:  incoming.expiresAt,
+          });
+        } else {
+          // No hay pendientes activas — mostrar detalles normales
+          setTransferDetailsData(transferData);
+          setShowTransferDetails(true);
+        }
+      }).catch(() => {
+        setTransferDetailsData(transferData);
+        setShowTransferDetails(true);
+      });
+    } else {
+      setTransferDetailsData(transferData);
+      setShowTransferDetails(true);
+    }
   }, []);
 
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
