@@ -10,8 +10,6 @@ import { walletPIN } from '../../services/walletPin';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../services/limits';
 import { EGAvatar } from '../ui';
 import { toast } from '../Toast';
-import { PinInputModal } from '../ui/PinInputModal';
-import { SetupPinModal } from '../ui/SetupPinModal';
 
 interface Props {
   visible: boolean;
@@ -23,6 +21,16 @@ interface Props {
   myAvatar?: string;
   myName?: string;
   onTransferred: (messageText: string) => void;
+  /**
+   * Llamado cuando el usuario presiona Enviar y necesita introducir su PIN.
+   * El padre debe mostrar PinInputModal y llamar a executeTransferWithPin(pin).
+   */
+  onNeedPin: (executeTransferWithPin: (pin: string) => Promise<void>) => void;
+  /**
+   * Llamado cuando el usuario no tiene PIN configurado.
+   * El padre debe mostrar SetupPinModal y, al finalizar, llamar a onPinSetupDone().
+   */
+  onNeedSetupPin: (onPinSetupDone: () => void) => void;
 }
 
 export function QuickTransferModal({
@@ -35,6 +43,8 @@ export function QuickTransferModal({
   myAvatar,
   myName = 'Yo',
   onTransferred,
+  onNeedPin,
+  onNeedSetupPin,
 }: Props) {
   const [amount, setAmount] = useState('');
   const [balance, setBalance] = useState(0);
@@ -42,16 +52,6 @@ export function QuickTransferModal({
   const [loadingBalance, setLoadingBalance] = useState(true);
   const [error, setError] = useState('');
   const transferExecuted = React.useRef(false);
-
-  const [showPinModal, setShowPinModal] = useState(false);
-  const [pinLoading, setPinLoading] = useState(false);
-  const [pinError, setPinError] = useState('');
-  const [pendingTransfer, setPendingTransfer] = useState<{
-    amount: number;
-    to: string;
-    description: string;
-  } | null>(null);
-  const [showSetupPin, setShowSetupPin] = useState(false);
 
   const refreshBalance = () => {
     walletAPI.getBalance()
@@ -63,10 +63,6 @@ export function QuickTransferModal({
     if (!visible) return;
     setAmount('');
     setError('');
-    setPinError('');
-    setShowPinModal(false);
-    setShowSetupPin(false);
-    setPendingTransfer(null);
     transferExecuted.current = false;
     setLoadingBalance(true);
     walletAPI.getBalance()
@@ -85,7 +81,6 @@ export function QuickTransferModal({
     setError('');
 
     try {
-      // Preparar el destinatario
       const to = recipientPhone || recipientId || contactName;
       const transfer = { amount: num, to, description: `Chat: ${contactName}` };
 
@@ -97,7 +92,7 @@ export function QuickTransferModal({
         return;
       }
 
-      // Verificar si tiene PIN configurado — fallos silenciosos se tratan como sin PIN
+      // Verificar si tiene PIN configurado
       let hasPin = false;
       try {
         const localPin = await walletPIN.isSet();
@@ -110,13 +105,64 @@ export function QuickTransferModal({
         hasPin = false;
       }
 
-      setPendingTransfer(transfer);
       setLoading(false);
 
+      // Función que el padre ejecutará cuando reciba el PIN
+      const executeTransferWithPin = async (pin: string) => {
+        if (transferExecuted.current) return;
+        transferExecuted.current = true;
+
+        try {
+          // Verificar PIN
+          let pinOk = false;
+          try {
+            pinOk = await walletPIN.verify(pin);
+          } catch { pinOk = false; }
+          if (!pinOk) {
+            await authAPI.verifyPin(pin); // lanza si falla
+          }
+
+          // Ejecutar transferencia
+          const result = await walletAPI.transferPending(
+            transfer.to,
+            transfer.amount,
+            transfer.description,
+          );
+          await updateLimitForTransaction('transfer', transfer.amount);
+
+          if (result?.balance != null) {
+            setBalance(result.balance);
+          } else {
+            refreshBalance();
+          }
+
+          const code = Math.floor(100000 + Math.random() * 900000).toString();
+          const msgText = [
+            '💸 Transferencia enviada',
+            `💰 ${transfer.amount.toLocaleString()} XAF`,
+            `👤 Para: ${contactName}`,
+            '🏦 Desde: Monedero EGCHAT',
+            `🔑 Ref: ${code}`,
+            '⏳ Pendiente de aceptación',
+          ].join('\n');
+
+          onTransferred(msgText);
+          onClose();
+        } catch (e: any) {
+          transferExecuted.current = false; // permitir reintentar
+          throw e; // el padre (PinInputModal) maneja el error
+        }
+      };
+
       if (!hasPin) {
-        setShowSetupPin(true);
+        // Pedir al padre que muestre SetupPinModal
+        onNeedSetupPin(() => {
+          // Cuando el PIN quede configurado, pedir al padre el PinInputModal
+          onNeedPin(executeTransferWithPin);
+        });
       } else {
-        setShowPinModal(true);
+        // Pedir al padre que muestre PinInputModal directamente
+        onNeedPin(executeTransferWithPin);
       }
     } catch (e: any) {
       setError(e?.message || 'Error al preparar la transferencia. Inténtalo de nuevo.');
@@ -124,179 +170,82 @@ export function QuickTransferModal({
     }
   };
 
-  const executeTransfer = async (pin: string) => {
-    if (!pendingTransfer) return;
-    if (transferExecuted.current) return;
-    transferExecuted.current = true;
-
-    setPinLoading(true);
-    setPinError('');
-
-    try {
-      // Verificar PIN localmente primero, luego servidor como respaldo
-      let pinOk = false;
-      try {
-        pinOk = await walletPIN.verify(pin);
-      } catch { pinOk = false; }
-      if (!pinOk) {
-        await authAPI.verifyPin(pin); // lanza si falla
-      }
-
-      // Ejecutar transferencia pendiente (el receptor debe aceptar)
-      const result = await walletAPI.transferPending(
-        pendingTransfer.to,
-        pendingTransfer.amount,
-        pendingTransfer.description,
-      );
-      await updateLimitForTransaction('transfer', pendingTransfer.amount);
-
-      // Actualizar saldo local inmediatamente con la respuesta del servidor
-      if (result?.balance != null) {
-        setBalance(result.balance);
-      } else {
-        refreshBalance();
-      }
-
-      const code = Math.floor(100000 + Math.random() * 900000).toString();
-      const msgText = [
-        '💸 Transferencia enviada',
-        `💰 ${pendingTransfer.amount.toLocaleString()} XAF`,
-        `👤 Para: ${contactName}`,
-        '🏦 Desde: Monedero EGCHAT',
-        `🔑 Ref: ${code}`,
-        '⏳ Pendiente de aceptación',
-      ].join('\n');
-
-      setShowPinModal(false);
-      setPendingTransfer(null);
-      onTransferred(msgText);
-      onClose();
-    } catch (e: any) {
-      transferExecuted.current = false; // permitir reintentar
-      const msg = e?.message || 'PIN incorrecto o error en la transferencia';
-      setPinError(msg);
-    } finally {
-      setPinLoading(false);
-    }
-  };
-
-  const handlePinClose = () => {
-    setShowPinModal(false);
-    setPendingTransfer(null);
-    setPinError('');
-    transferExecuted.current = false;
-  };
-
-  const handlePinSetupSuccess = () => {
-    setShowSetupPin(false);
-    if (pendingTransfer) setShowPinModal(true);
-  };
-
-  const handlePinSetupClose = () => {
-    setShowSetupPin(false);
-    setPendingTransfer(null);
-    transferExecuted.current = false;
-  };
-
   return (
-    <>
-      <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
-        <Pressable style={s.overlay} onPress={onClose}>
-          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.kav}>
-            <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
-              <LinearGradient colors={['#1a73e8', '#0d47a1']} style={s.header}>
-                <TouchableOpacity style={s.closeBtn} onPress={onClose}>
-                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
-                    <Line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round" />
-                    <Line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round" />
+    <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
+      <Pressable style={s.overlay} onPress={onClose}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={s.kav}>
+          <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
+            <LinearGradient colors={['#1a73e8', '#0d47a1']} style={s.header}>
+              <TouchableOpacity style={s.closeBtn} onPress={onClose}>
+                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5}>
+                  <Line x1="18" y1="6" x2="6" y2="18" strokeLinecap="round" />
+                  <Line x1="6" y1="6" x2="18" y2="18" strokeLinecap="round" />
+                </Svg>
+              </TouchableOpacity>
+              <View style={s.avatarsRow}>
+                <View style={s.avatarCol}>
+                  <EGAvatar src={myAvatar} name={myName} size={52} />
+                  <Text style={s.avatarLabel}>Yo</Text>
+                </View>
+                <View style={s.arrowCol}>
+                  <Svg width={28} height={16} viewBox="0 0 28 16" fill="none">
+                    <Path d="M0 8h24M18 2l6 6-6 6" stroke="rgba(255,255,255,0.6)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
                   </Svg>
-                </TouchableOpacity>
-                <View style={s.avatarsRow}>
-                  <View style={s.avatarCol}>
-                    <EGAvatar src={myAvatar} name={myName} size={52} />
-                    <Text style={s.avatarLabel}>Yo</Text>
-                  </View>
-                  <View style={s.arrowCol}>
-                    <Svg width={28} height={16} viewBox="0 0 28 16" fill="none">
-                      <Path d="M0 8h24M18 2l6 6-6 6" stroke="rgba(255,255,255,0.6)" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
-                    </Svg>
-                    <Text style={s.arrowLabel}>Enviar</Text>
-                  </View>
-                  <View style={s.avatarCol}>
-                    <EGAvatar src={contactAvatar} name={contactName} size={52} />
-                    <Text style={s.avatarLabel} numberOfLines={1}>{contactName}</Text>
-                  </View>
+                  <Text style={s.arrowLabel}>Enviar</Text>
                 </View>
-              </LinearGradient>
-
-              <View style={s.body}>
-                <View style={s.balanceRow}>
-                  <Text style={s.balanceLabel}>💳 Saldo disponible</Text>
-                  {loadingBalance
-                    ? <ActivityIndicator size="small" color="#16a34a" />
-                    : <Text style={s.balanceValue}>{balance.toLocaleString()} XAF</Text>}
+                <View style={s.avatarCol}>
+                  <EGAvatar src={contactAvatar} name={contactName} size={52} />
+                  <Text style={s.avatarLabel} numberOfLines={1}>{contactName}</Text>
                 </View>
-
-                <Text style={s.amountLabel}>MONTO (XAF)</Text>
-                <View style={s.amountRow}>
-                  <Text style={s.amountPrefix}>XAF</Text>
-                  <TextInput
-                    style={s.amountInput}
-                    value={amount}
-                    onChangeText={t => { setAmount(t.replace(/[^0-9]/g, '')); setError(''); }}
-                    placeholder="0"
-                    placeholderTextColor="#d1d5db"
-                    keyboardType="number-pad"
-                    maxLength={12}
-                  />
-                </View>
-
-                {!!error && <Text style={s.errorText}>{error}</Text>}
-
-                <TouchableOpacity
-                  style={[s.sendBtn, loading && s.sendBtnDisabled]}
-                  onPress={handleSend}
-                  disabled={loading}
-                >
-                  <LinearGradient
-                    colors={loading ? ['#9ca3af', '#6b7280'] : ['#1a73e8', '#0d47a1']}
-                    style={s.sendGrad}
-                  >
-                    {loading
-                      ? <ActivityIndicator color="#fff" />
-                      : <Text style={s.sendText}>Enviar a {contactName}</Text>}
-                  </LinearGradient>
-                </TouchableOpacity>
-                <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
-                  <Text style={s.cancelText}>Cancelar</Text>
-                </TouchableOpacity>
               </View>
-            </Pressable>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
+            </LinearGradient>
 
-      <PinInputModal
-        visible={showPinModal}
-        onClose={handlePinClose}
-        onSuccess={executeTransfer}
-        title="🔒 Confirmar transferencia"
-        subtitle={
-          pendingTransfer
-            ? `Ingresa tu PIN para enviar ${pendingTransfer.amount.toLocaleString()} XAF a ${contactName}`
-            : ''
-        }
-        loading={pinLoading}
-        error={pinError}
-      />
+            <View style={s.body}>
+              <View style={s.balanceRow}>
+                <Text style={s.balanceLabel}>💳 Saldo disponible</Text>
+                {loadingBalance
+                  ? <ActivityIndicator size="small" color="#16a34a" />
+                  : <Text style={s.balanceValue}>{balance.toLocaleString()} XAF</Text>}
+              </View>
 
-      <SetupPinModal
-        visible={showSetupPin}
-        onClose={handlePinSetupClose}
-        onSuccess={handlePinSetupSuccess}
-        title="🔒 Configurar PIN de Pagos"
-      />
-    </>
+              <Text style={s.amountLabel}>MONTO (XAF)</Text>
+              <View style={s.amountRow}>
+                <Text style={s.amountPrefix}>XAF</Text>
+                <TextInput
+                  style={s.amountInput}
+                  value={amount}
+                  onChangeText={t => { setAmount(t.replace(/[^0-9]/g, '')); setError(''); }}
+                  placeholder="0"
+                  placeholderTextColor="#d1d5db"
+                  keyboardType="number-pad"
+                  maxLength={12}
+                />
+              </View>
+
+              {!!error && <Text style={s.errorText}>{error}</Text>}
+
+              <TouchableOpacity
+                style={[s.sendBtn, loading && s.sendBtnDisabled]}
+                onPress={handleSend}
+                disabled={loading}
+              >
+                <LinearGradient
+                  colors={loading ? ['#9ca3af', '#6b7280'] : ['#1a73e8', '#0d47a1']}
+                  style={s.sendGrad}
+                >
+                  {loading
+                    ? <ActivityIndicator color="#fff" />
+                    : <Text style={s.sendText}>Enviar a {contactName}</Text>}
+                </LinearGradient>
+              </TouchableOpacity>
+              <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
+                <Text style={s.cancelText}>Cancelar</Text>
+              </TouchableOpacity>
+            </View>
+          </Pressable>
+        </KeyboardAvoidingView>
+      </Pressable>
+    </Modal>
   );
 }
 
@@ -348,15 +297,3 @@ const s = StyleSheet.create({
   cancelBtn:        { alignItems: 'center', paddingVertical: 6 },
   cancelText:       { fontSize: 14, color: '#9ca3af' },
 });
-
-interface Props {
-  visible: boolean;
-  onClose: () => void;
-  contactName: string;
-  contactAvatar?: string;
-  recipientId?: string;
-  recipientPhone?: string;
-  myAvatar?: string;
-  myName?: string;
-  onTransferred: (messageText: string) => void;
-}
