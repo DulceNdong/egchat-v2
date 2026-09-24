@@ -1065,7 +1065,8 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    bottom: 236,
+    // Tab bar: 68px Android / 92px iOS + margen visual de 16px
+    bottom: Platform.OS === 'ios' ? 108 : 84,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,
