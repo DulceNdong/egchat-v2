@@ -1176,6 +1176,8 @@ const ms = StyleSheet.create({
   footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   status: { fontSize: 12, color: '#a5f3fc', fontWeight: '600' },
   ref: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
+  tapHint: { marginTop: 8, alignItems: 'center' },
+  tapHintText: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' },
 });
 
 const formatTime = (dateStr: string) => {
