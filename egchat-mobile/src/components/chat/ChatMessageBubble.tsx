@@ -1110,28 +1110,48 @@ const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: 
 };
 
 // ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
-const MoneyCard = ({ text, onPress }: { text: string; onPress?: () => void }) => {
+const MoneyCard = ({ text, isOwn, onPress }: { text: string; isOwn?: boolean; onPress?: () => void }) => {
   const lines = (text || '').split('\n');
   const amountLine = lines.find(l => l.includes('💰')) || '';
-  const toLine = lines.find(l => l.includes('👤')) || '';
-  const refLine = lines.find(l => l.includes('🔑')) || '';
+  const toLine     = lines.find(l => l.includes('👤')) || '';
+  const refLine    = lines.find(l => l.includes('🔑')) || '';
+  const statusLine = lines.find(l => l.includes('⏳')) || '';
+
   const amount = amountLine.replace(/^💰\s*/, '').trim();
-  const to = toLine.replace(/^👤 Para:\s*/i, '').trim();
-  const ref = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
-  
+  const to     = toLine.replace(/^👤 Para:\s*/i, '').trim();
+  const ref    = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
+
+  // Si contiene "⏳ Pendiente" es una transferencia que espera aceptación
+  const isPending = !!statusLine || text.includes('⏳ Pendiente');
+
   const CardContent = (
-    <LinearGradient colors={['#1a73e8', '#0d47a1']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={ms.card}>
+    <LinearGradient
+      colors={isPending ? ['#b45309', '#92400e'] : ['#1a73e8', '#0d47a1']}
+      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+      style={ms.card}
+    >
       <View style={ms.header}>
-        <Text style={ms.headerIcon}>💸</Text>
-        <Text style={ms.headerTitle}>Transferencia enviada</Text>
+        <Text style={ms.headerIcon}>{isPending ? '⏳' : '💸'}</Text>
+        <Text style={ms.headerTitle}>
+          {isPending
+            ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
+            : 'Transferencia enviada'}
+        </Text>
       </View>
       <Text style={ms.amount}>{amount}</Text>
-      {!!to && <Text style={ms.to}>Para: {to}</Text>}
+      {!!to && <Text style={ms.to}>{isOwn ? `Para: ${to}` : `De: ${to}`}</Text>}
       <View style={ms.divider} />
       <View style={ms.footer}>
-        <Text style={ms.status}>✅ Completado</Text>
+        <Text style={ms.status}>
+          {isPending ? '⏳ Pendiente de aceptación' : '✅ Completado'}
+        </Text>
         {!!ref && <Text style={ms.ref}>Ref: {ref}</Text>}
       </View>
+      {isPending && !isOwn && (
+        <View style={ms.tapHint}>
+          <Text style={ms.tapHintText}>Toca para aceptar o rechazar</Text>
+        </View>
+      )}
     </LinearGradient>
   );
 
