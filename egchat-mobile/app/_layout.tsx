@@ -8,7 +8,7 @@ import * as NavigationBar from 'expo-navigation-bar';
 import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
-import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken } from '../src/api';
+import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken, walletAPI } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { LanguageProvider } from '../src/context/LanguageContext';
