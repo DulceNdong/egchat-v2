@@ -1430,7 +1430,8 @@ export const ChatMessageBubble = React.memo(({
       )}
       {isMoneyMsg && !!message.text && (
         <MoneyCard 
-          text={message.text} 
+          text={message.text}
+          isOwn={isOwn}
           onPress={onTransferPress ? () => {
             const transferData = parseTransferData(message.text || '', message.created_at);
             onTransferPress(transferData);
