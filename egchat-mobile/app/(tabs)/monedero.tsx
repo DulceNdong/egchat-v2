@@ -1728,44 +1728,105 @@ function MonederoScreenInner() {
           </View>
 
           {/* ── Transferencias pendientes ── */}
-          {pendingTransfers.filter(t => t.status === 'pending').length > 0 && (
+          {pendingTransfers.length > 0 && (
             <>
               <View style={s.sectionHeader}>
-                <Text style={[s.sectionTitle, { color: '#b45309' }]}>TRANSFERENCIAS PENDIENTES</Text>
+                <Text style={[s.sectionTitle, { color: '#b45309' }]}>
+                  TRANSFERENCIAS PENDIENTES ({pendingTransfers.length})
+                </Text>
               </View>
-              <View style={[s.card, { backgroundColor: C.bgSecondary }]}> 
-                {pendingTransfers.filter(t => t.status === 'pending').map((transfer, i, arr) => (
-                  <View key={transfer.id}>
-                    <View style={s.pendingRow}>
-                      <View style={s.pendingIcon}>
-                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2} strokeLinecap="round">
-                          <Circle cx="12" cy="12" r="10"/>
-                          <Polyline points="12 6 12 12 16 14"/>
-                        </Svg>
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={[s.bankName, { color: C.textPrimary }]}> 
-                          {transfer.from} → {transfer.to}
+              <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
+                {pendingTransfers.map((transfer, i, arr) => {
+                  const isIncoming  = transfer.direction === 'incoming';
+                  const isProcessing = pendingLoading === transfer.id;
+                  const expiresMs   = new Date(transfer.expiresAt).getTime();
+                  const minsLeft    = Math.max(0, Math.ceil((expiresMs - Date.now()) / 60000));
+                  const hoursLeft   = Math.floor(minsLeft / 60);
+                  const timeLabel   = hoursLeft > 0 ? `${hoursLeft}h ${minsLeft % 60}m` : `${minsLeft}m`;
+
+                  return (
+                    <View key={transfer.id}>
+                      <View style={s.pendingRow}>
+                        {/* Icono dirección */}
+                        <View style={[s.pendingIcon, { backgroundColor: isIncoming ? '#dcfce7' : '#fef3c7' }]}>
+                          {isIncoming
+                            ? <Text style={{ fontSize: 18 }}>💸</Text>
+                            : <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#b45309" strokeWidth={2} strokeLinecap="round">
+                                <Circle cx="12" cy="12" r="10"/>
+                                <Polyline points="12 6 12 12 16 14"/>
+                              </Svg>
+                          }
+                        </View>
+
+                        {/* Info */}
+                        <View style={{ flex: 1 }}>
+                          <Text style={[s.bankName, { color: C.textPrimary }]} numberOfLines={1}>
+                            {isIncoming
+                              ? `De: ${transfer.senderName}`
+                              : `Para: ${transfer.recipientName}`}
+                          </Text>
+                          {!!transfer.concept && (
+                            <Text style={[s.bankType, { color: C.textSecondary, fontStyle: 'italic' }]} numberOfLines={1}>
+                              "{transfer.concept}"
+                            </Text>
+                          )}
+                          <Text style={[s.bankType, { color: transfer.isExpired ? '#ef4444' : '#b45309' }]}>
+                            {transfer.isExpired ? '⛔ Expirada' : `⏳ Expira en ${timeLabel}`}
+                          </Text>
+                        </View>
+
+                        {/* Monto */}
+                        <Text style={[s.pendingAmount, { color: isIncoming ? '#16a34a' : '#b45309' }]}>
+                          {isIncoming ? '+' : '-'}{fmt(transfer.amount)} XAF
                         </Text>
-                        <Text style={[s.bankType, { color: C.textSecondary }]}> 
-                          Expira en {Math.max(0, Math.ceil((transfer.expiresAt - Date.now()) / 60000))} min
-                        </Text>
                       </View>
-                      <Text style={[s.pendingAmount, { color: '#b45309' }]}> 
-                        {fmt(transfer.amount)} XAF
-                      </Text>
-                      <TouchableOpacity
-                        style={s.cancelPendingBtn}
-                        onPress={() => setPendingTransfers(prev =>
-                          prev.map(t => t.id === transfer.id ? { ...t, status: 'cancelled' as const } : t),
-                        )}
-                      >
-                        <Text style={s.cancelPendingText}>Cancelar</Text>
-                      </TouchableOpacity>
+
+                      {/* Botones aceptar/cancelar solo para incoming no expiradas */}
+                      {isIncoming && !transfer.isExpired && (
+                        <View style={s.pendingActions}>
+                          <TouchableOpacity
+                            style={[s.pendingBtn, s.pendingBtnCancel, isProcessing && s.pendingBtnDisabled]}
+                            onPress={() => handleCancelTransfer(transfer.id)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing && pendingLoading === transfer.id
+                              ? <ActivityIndicator size="small" color="#dc2626" />
+                              : <Text style={s.pendingBtnCancelText}>❌ Rechazar</Text>
+                            }
+                          </TouchableOpacity>
+                          <TouchableOpacity
+                            style={[s.pendingBtn, s.pendingBtnAccept, isProcessing && s.pendingBtnDisabled]}
+                            onPress={() => handleAcceptTransfer(transfer.id)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing && pendingLoading === transfer.id
+                              ? <ActivityIndicator size="small" color="#fff" />
+                              : <Text style={s.pendingBtnAcceptText}>✅ Recibir</Text>
+                            }
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {/* Para outgoing: solo cancelar */}
+                      {!isIncoming && !transfer.isExpired && (
+                        <View style={[s.pendingActions, { justifyContent: 'flex-end' }]}>
+                          <TouchableOpacity
+                            style={[s.pendingBtn, s.pendingBtnCancel, isProcessing && s.pendingBtnDisabled]}
+                            onPress={() => handleCancelTransfer(transfer.id)}
+                            disabled={isProcessing}
+                          >
+                            {isProcessing
+                              ? <ActivityIndicator size="small" color="#dc2626" />
+                              : <Text style={s.pendingBtnCancelText}>Cancelar envío</Text>
+                            }
+                          </TouchableOpacity>
+                        </View>
+                      )}
+
+                      {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
                     </View>
-                    {i < arr.length - 1 && <View style={[s.divider, { backgroundColor: C.borderLight }]} />}
-                  </View>
-                ))}
+                  );
+                })}
               </View>
             </>
           )}
