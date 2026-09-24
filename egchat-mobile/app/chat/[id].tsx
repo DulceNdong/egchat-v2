@@ -2237,8 +2237,9 @@ export default function ChatScreen() {
       )}
 
       <View style={{ flex: 1 }}>
-        <Pressable style={[styles.chatBg, { flex: 1 }]} onPress={handleBgPress}>
+        <Pressable style={[styles.chatBg, { flex: 1 }]} onPress={dismissPanels}>
           <ChatWallpaperBackground wallpaperId={wallpaperId} />
+          <GestureDetector gesture={doubleTapGesture}>
           <FlatList
             ref={flatListRef}
             data={displayMessages}
