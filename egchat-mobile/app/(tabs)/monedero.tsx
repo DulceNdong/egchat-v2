@@ -1325,6 +1325,7 @@ function MonederoScreenInner() {
 
   useEffect(() => {
     loadData();
+    loadPendingTransfers();
     loadBankAccounts().then(setBankAccounts);
     authAPI.me().then(async me => {
       const profile = await mergePersistentAvatar(me);
