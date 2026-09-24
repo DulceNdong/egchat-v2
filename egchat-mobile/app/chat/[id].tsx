@@ -240,6 +240,20 @@ export default function ChatScreen() {
   const [transferPinSubtitle, setTransferPinSubtitle] = useState('');
   const transferExecutorRef = React.useRef<((pin: string) => Promise<void>) | null>(null);
   const pinSetupDoneRef = React.useRef<(() => void) | null>(null);
+  const handleTransferPinSuccess = useCallback(async (pin: string) => {
+    if (!transferExecutorRef.current) return;
+    setTransferPinLoading(true);
+    setTransferPinError('');
+    try {
+      await transferExecutorRef.current(pin);
+      setShowTransferPin(false);
+      setTransferPinLoading(false);
+      transferExecutorRef.current = null;
+    } catch (e: any) {
+      setTransferPinLoading(false);
+      setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
+    }
+  }, []);
   const [myProfile, setMyProfile] = useState<{ full_name?: string; avatar_url?: string; phone?: string }>({});
   const [showContactPicker, setShowContactPicker] = useState(false);
   const [showProfile, setShowProfile] = useState(false);
