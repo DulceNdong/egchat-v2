@@ -295,6 +295,10 @@ export default function ChatScreen() {
   // ── Transfer Details Modal ─────────────────────────────────────
   const [showTransferDetails, setShowTransferDetails] = useState(false);
   const [transferDetailsData, setTransferDetailsData] = useState<any>(null);
+  // ── Incoming Transfer Modal (para receptor de transferencias pendientes) ─
+  const [chatIncomingTransfer, setChatIncomingTransfer] = useState<{
+    transferId: string; amount: number; senderName: string; concept?: string | null; expiresAt?: string;
+  } | null>(null);
   // ── Sprint 3.1 Tono personalizado ─────────────────────────────
   const [chatTone, setChatToneState] = useState('default');
   const [showToneModal, setShowToneModal] = useState(false);
