@@ -198,6 +198,25 @@ export default function RootLayout() {
       });
     }
 
+    // SSE reconectado → recuperar si hay transferencias pendientes sin atender
+    // (el usuario estaba offline cuando llegó el evento transfer_pending)
+    if (event.type === 'connected') {
+      walletAPI.getPendingTransfers().then(res => {
+        const incoming = (res.transfers || []).find(
+          t => t.direction === 'incoming' && !t.isExpired,
+        );
+        if (incoming) {
+          setIncomingTransfer({
+            transferId: incoming.id,
+            amount:     incoming.amount,
+            senderName: incoming.senderName,
+            concept:    incoming.concept ?? null,
+            expiresAt:  incoming.expiresAt,
+          });
+        }
+      }).catch(() => {});
+    }
+
     // Saldo actualizado (remitente o receptor tras aceptar) → actualizar balance global
     if (event.type === 'wallet_updated' && event.balance != null) {
       setGlobalWalletBalance(event.balance);
