@@ -2119,7 +2119,7 @@ export default function ChatScreen() {
           }}
           onRetry={retryMessage}
           onOpenImage={setPreviewImageUri}
-          onTransferPress={handleTransferPress}
+          onTransferPress={(transferData) => handleTransferPress(transferData, item.text || '')}
           onSwipeReply={isSelectMode ? undefined : handleSwipeReply}
           onReplyTap={handleJumpToMessage}
           onReactionPress={(msgId, rxns) => {
