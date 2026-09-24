@@ -2246,8 +2246,8 @@ export default function ChatScreen() {
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
             scrollEventThrottle={16}
-            onScrollBeginDrag={dismissAll}
-            keyboardShouldPersistTaps="handled"
+            onScrollBeginDrag={() => dismissPanels()}
+            keyboardShouldPersistTaps="always"
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             // ── Optimizaciones de rendimiento ──────────────────────
             initialNumToRender={15}
