@@ -3078,20 +3078,7 @@ export default function ChatScreen() {
           setTransferPinError('');
           transferExecutorRef.current = null;
         }}
-        onSuccess={useCallback(async (pin: string) => {
-          if (!transferExecutorRef.current) return;
-          setTransferPinLoading(true);
-          setTransferPinError('');
-          try {
-            await transferExecutorRef.current(pin);
-            setShowTransferPin(false);
-            setTransferPinLoading(false);
-            transferExecutorRef.current = null;
-          } catch (e: any) {
-            setTransferPinLoading(false);
-            setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
-          }
-        }, [])}
+        onSuccess={handleTransferPinSuccess}
         title="🔒 Confirmar transferencia"
         subtitle={transferPinSubtitle}
         loading={transferPinLoading}
