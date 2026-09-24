@@ -1,5 +1,6 @@
 pluginManagement {
-  println "GRADLE SYSTEM PATH: " + System.getenv("PATH")
+  System.setProperty("ANDROID_PREFS_ROOT", "")
+
   def nodeExec = [
     "/usr/local/bin/node",
     "/opt/homebrew/bin/node",
