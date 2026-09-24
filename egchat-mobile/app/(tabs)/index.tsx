@@ -45,6 +45,7 @@ import {
   fetchWeatherIfStale,
   markAllRead, clearAllNotifications, removeNotification,
 } from '../../src/store/appStore';
+import * as Haptics from 'expo-haptics';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface UserProfile {
