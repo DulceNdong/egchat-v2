@@ -3068,6 +3068,63 @@ export default function ChatScreen() {
         myAvatar={myProfile.avatar_url}
         myName={myProfile.full_name || 'Yo'}
         onTransferred={sendTransferMessage}
+        onNeedPin={(executeTransferWithPin) => {
+          transferExecutorRef.current = executeTransferWithPin;
+          setTransferPinSubtitle(`Ingresa tu PIN para confirmar la transferencia a ${chatName}`);
+          setTransferPinError('');
+          setTransferPinLoading(false);
+          // Cerrar QuickTransferModal primero para evitar modales anidados en iOS
+          setShowQuickTransfer(false);
+          setTimeout(() => setShowTransferPin(true), 350);
+        }}
+        onNeedSetupPin={(onPinSetupDone) => {
+          pinSetupDoneRef.current = onPinSetupDone;
+          setShowQuickTransfer(false);
+          setTimeout(() => setShowTransferSetupPin(true), 350);
+        }}
+      />
+      {/* PIN input modal para transferencia — fuera del QuickTransferModal para evitar anidación en iOS */}
+      <PinInputModal
+        visible={showTransferPin}
+        onClose={() => {
+          setShowTransferPin(false);
+          transferExecutorRef.current = null;
+          setTransferPinError('');
+        }}
+        onSuccess={async (pin) => {
+          if (!transferExecutorRef.current) return;
+          setTransferPinLoading(true);
+          setTransferPinError('');
+          try {
+            await transferExecutorRef.current(pin);
+            setShowTransferPin(false);
+            transferExecutorRef.current = null;
+          } catch (e: any) {
+            setTransferPinError(e?.message || 'PIN incorrecto o error en la transferencia');
+          } finally {
+            setTransferPinLoading(false);
+          }
+        }}
+        title="🔒 Confirmar transferencia"
+        subtitle={transferPinSubtitle}
+        loading={transferPinLoading}
+        error={transferPinError}
+      />
+      {/* Setup PIN modal para transferencia — fuera del QuickTransferModal */}
+      <SetupPinModal
+        visible={showTransferSetupPin}
+        onClose={() => {
+          setShowTransferSetupPin(false);
+          pinSetupDoneRef.current = null;
+        }}
+        onSuccess={() => {
+          setShowTransferSetupPin(false);
+          if (pinSetupDoneRef.current) {
+            pinSetupDoneRef.current();
+            pinSetupDoneRef.current = null;
+          }
+        }}
+        title="🔒 Configurar PIN de Pagos"
       />
       {cropUri ? (
         <AvatarCropModal
