@@ -1298,6 +1298,10 @@ export interface ChatMessageBubbleProps {
   onOpenImage?: (uri: string) => void;
   onCallback?: () => void;
   onTransferPress?: (transferData: any) => void;
+  /** Transferencia pendiente — receptor acepta (devuelve transferId del mensaje) */
+  onTransferAccept?: (transferId: string) => Promise<void>;
+  /** Transferencia pendiente — receptor rechaza (devuelve transferId del mensaje) */
+  onTransferCancel?: (transferId: string) => Promise<void>;
   reactions?: Record<string, number>;
   /** Swipe-to-reply: se dispara cuando el usuario desliza la burbuja */
   onSwipeReply?: (msg: ChatMessage) => void;
