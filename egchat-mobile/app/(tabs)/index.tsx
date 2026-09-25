@@ -1088,8 +1088,9 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    // Tab bar: 68px Android / 92px iOS + margen visual de 16px
-    bottom: Platform.OS === 'ios' ? 108 : 84,
+    // iOS: posición original (encima del menú radial)
+    // Android: se calcula dinámicamente con duttiBottomY (ver JSX)
+    bottom: Platform.OS === 'ios' ? 236 : 84,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,
