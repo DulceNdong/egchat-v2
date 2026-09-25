@@ -2081,6 +2081,35 @@ export default function ChatScreen() {
     }
   }, []);
 
+  // Acepta una transferencia pendiente — se resuelve el transferId del texto del mensaje
+  // o buscando en el servidor como fallback para mensajes antiguos.
+  const handleTransferAccept = useCallback(async (transferId: string) => {
+    let resolvedId = transferId;
+    if (!resolvedId) {
+      // fallback: buscar en servidor
+      const res = await walletAPI.getPendingTransfers();
+      const incoming = (res.transfers || []).find(
+        t => t.direction === 'incoming' && !t.isExpired,
+      );
+      if (!incoming) throw new Error('No hay transferencias pendientes');
+      resolvedId = incoming.id;
+    }
+    await walletAPI.acceptTransfer(resolvedId);
+  }, []);
+
+  const handleTransferCancel = useCallback(async (transferId: string) => {
+    let resolvedId = transferId;
+    if (!resolvedId) {
+      const res = await walletAPI.getPendingTransfers();
+      const incoming = (res.transfers || []).find(
+        t => t.direction === 'incoming' && !t.isExpired,
+      );
+      if (!incoming) throw new Error('No hay transferencias pendientes');
+      resolvedId = incoming.id;
+    }
+    await walletAPI.cancelTransfer(resolvedId);
+  }, []);
+
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === currentUserId;
     const prevMsg = index > 0 ? displayMessagesRef.current[index - 1] : null;
