@@ -665,7 +665,19 @@ function HomeScreenInner() {
           FAB + — Botón central flotante
       ════════════════════════════════════════════════════════ */}
       <TouchableOpacity
-        style={st.fab}
+        style={[
+          st.fab,
+          Platform.OS === 'android' && duttiBottomY != null
+            ? {
+                // Centro exacto entre el fondo del bloque Dutti y la tab bar
+                // duttiBottomY = distancia desde top de pantalla hasta el fondo del bloque
+                // SH - duttiBottomY = espacio disponible debajo del bloque (tab bar incluida)
+                // Espacio útil = (SH - duttiBottomY) - 68 (tab bar)
+                // FAB bottom = 68 + ((SH - duttiBottomY - 68) / 2) - 30 (radio FAB)
+                bottom: Math.round(68 + (SH - duttiBottomY - 68) / 2 - 30),
+              }
+            : undefined,
+        ]}
         activeOpacity={0.9}
         onPress={() => {
           if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
