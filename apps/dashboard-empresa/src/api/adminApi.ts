@@ -37,26 +37,13 @@ export interface KycCase {
 }
 
 export const adminApi = {
-  login: async (email: string, password: string) => {
-    // Credenciales válidas para acceso local
-    const ADMINS: Record<string, { password: string; role: string; name: string }> = {
-      'admin@egchat.gq':  { password: 'Admin2025!',  role: 'Super Admin',        name: 'Admin EGCHAT' },
-      'bange@egchat.gq':  { password: 'Bange2025!',  role: 'Compliance Officer', name: 'Admin BANGE' },
-    };
-    const user = ADMINS[email.toLowerCase()];
-    if (!user || user.password !== password) {
-      throw new Error('Credenciales inválidas');
-    }
-    const token = btoa(`${email}:${Date.now()}`);
-    const admin = { email, role: user.role, name: user.name };
-    return { token, admin, requires2FA: false };
-  },
-  me: () => {
-    const token = localStorage.getItem('empresa_token');
-    if (!token) return Promise.reject(new Error('No autenticado'));
-    const email = atob(token).split(':')[0];
-    return Promise.resolve({ email, role: 'Super Admin' });
-  },
+  login: (email: string, password: string, totpToken?: string) =>
+    req<{ token: string; admin: any; requires2FA?: boolean }>('/api/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
+    }),
+  me:    () => req<any>('/api/admin/me'),
   stats: () => req<Stats>('/api/admin/stats'),
   setup2fa:  () => req<{ secret: string; qrCode: string }>('/api/admin/2fa/setup', { method: 'POST' }),
   verify2fa: (token: string) =>
