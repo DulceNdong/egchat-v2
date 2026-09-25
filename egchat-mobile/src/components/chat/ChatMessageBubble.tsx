@@ -1110,6 +1110,65 @@ const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: 
 };
 
 // ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
+
+// Iconos SVG para MoneyCard
+function McIconSend()   {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path d="M22 2L11 13" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+      <Path d="M22 2L15 22l-4-9-9-4 20-7z" stroke="#6366f1" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconReceive() {
+  return (
+    <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 4v16M5 13l7 7 7-7" stroke="#059669" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconClock()  {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke="#d97706" strokeWidth={2}/>
+      <Path d="M12 7v5l3 3" stroke="#d97706" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconCheck()  {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <Polyline points="20,6 9,17 4,12" stroke="#059669" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
+    </Svg>
+  );
+}
+function McIconX()      {
+  return (
+    <Svg width={12} height={12} viewBox="0 0 24 24" fill="none">
+      <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+      <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+    </Svg>
+  );
+}
+function McIconUser()   {
+  return (
+    <Svg width={11} height={11} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="8" r="4" stroke="#64748b" strokeWidth={2}/>
+      <Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="#64748b" strokeWidth={2} strokeLinecap="round"/>
+    </Svg>
+  );
+}
+function McIconHash()   {
+  return (
+    <Svg width={10} height={10} viewBox="0 0 24 24" fill="none">
+      <Line x1="4" y1="9" x2="20" y2="9" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+      <Line x1="4" y1="15" x2="20" y2="15" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+      <Line x1="10" y1="3" x2="8" y2="21" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+      <Line x1="16" y1="3" x2="14" y2="21" stroke="#94a3b8" strokeWidth={2} strokeLinecap="round"/>
+    </Svg>
+  );
+}
+
 const MoneyCard = ({
   text, isOwn, onAccept, onCancel,
 }: {
@@ -1119,9 +1178,9 @@ const MoneyCard = ({
   onCancel?: () => void;
 }) => {
   const [loading, setLoading] = React.useState<'accept' | 'cancel' | null>(null);
-  const [done, setDone] = React.useState<'accepted' | 'cancelled' | null>(null);
+  const [done, setDone]       = React.useState<'accepted' | 'cancelled' | null>(null);
 
-  const lines = (text || '').split('\n');
+  const lines      = (text || '').split('\n');
   const amountLine = lines.find(l => l.includes('💰')) || '';
   const toLine     = lines.find(l => l.includes('👤')) || '';
   const refLine    = lines.find(l => l.includes('🔑')) || '';
@@ -1130,130 +1189,207 @@ const MoneyCard = ({
   const to     = toLine.replace(/^👤 Para:\s*/i, '').trim();
   const ref    = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
 
-  const isPending = text.includes('⏳ Pendiente');
-  // Mostrar botones solo si es pendiente, el receptor (no isOwn), y aún no se tomó acción
+  const isPending   = text.includes('⏳ Pendiente');
   const showButtons = isPending && !isOwn && !done && !!onAccept && !!onCancel;
 
   const handleAccept = async () => {
     if (!onAccept || loading) return;
     setLoading('accept');
-    try {
-      await onAccept();
-      setDone('accepted');
-    } catch {
-      // el padre maneja el error
-    } finally {
-      setLoading(null);
-    }
+    try   { await onAccept(); setDone('accepted'); }
+    catch { /* el padre maneja el error */ }
+    finally { setLoading(null); }
   };
 
   const handleCancel = async () => {
     if (!onCancel || loading) return;
     setLoading('cancel');
-    try {
-      await onCancel();
-      setDone('cancelled');
-    } catch {
-      // el padre maneja el error
-    } finally {
-      setLoading(null);
-    }
+    try   { await onCancel(); setDone('cancelled'); }
+    catch { /* el padre maneja el error */ }
+    finally { setLoading(null); }
   };
 
-  const gradColors: [string, string] = isPending
-    ? ['#b45309', '#92400e']
-    : ['#1a73e8', '#0d47a1'];
+  // Paleta según estado
+  const isDone      = !!done;
+  const isAccepted  = done === 'accepted';
+  const isCancelled = done === 'cancelled';
 
-  // Estado final tras acción
-  const finalStatus = done === 'accepted'
-    ? '✅ Transferencia aceptada'
-    : done === 'cancelled'
-    ? '❌ Transferencia rechazada'
+  // Colores suaves: azul/índigo para enviado, verde suave para recibido/aceptado, gris para rechazado
+  const cardBg     = isDone
+    ? (isAccepted ? '#f0fdf4' : '#f8fafc')
     : isPending
-    ? '⏳ Pendiente de aceptación'
-    : '✅ Completado';
+      ? (isOwn ? '#f5f3ff' : '#ecfdf5')
+      : '#f5f3ff';
+
+  const accentColor = isDone
+    ? (isAccepted ? '#059669' : '#64748b')
+    : isPending
+      ? (isOwn ? '#6366f1' : '#059669')
+      : '#6366f1';
+
+  const borderColor = isDone
+    ? (isAccepted ? '#bbf7d0' : '#e2e8f0')
+    : isPending
+      ? (isOwn ? '#ddd6fe' : '#a7f3d0')
+      : '#ddd6fe';
 
   return (
-    <LinearGradient
-      colors={done ? ['#374151', '#1f2937'] : gradColors}
-      start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-      style={ms.card}
-    >
+    <View style={[ms.card, { backgroundColor: cardBg, borderColor }]}>
+
+      {/* ── Cabecera ── */}
       <View style={ms.header}>
-        <Text style={ms.headerIcon}>
-          {done === 'accepted' ? '✅' : done === 'cancelled' ? '❌' : isPending ? '⏳' : '💸'}
-        </Text>
-        <Text style={ms.headerTitle}>
-          {isPending
-            ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
-            : 'Transferencia enviada'}
+        <View style={[ms.iconBadge, { backgroundColor: accentColor + '18' }]}>
+          {isCancelled
+            ? <McIconX />
+            : isAccepted
+              ? <McIconCheck />
+              : isPending && !isOwn
+                ? <McIconReceive />
+                : <McIconSend />}
+        </View>
+        <Text style={[ms.headerTitle, { color: accentColor }]}>
+          {isCancelled
+            ? 'Transferencia rechazada'
+            : isAccepted
+              ? 'Transferencia aceptada'
+              : isPending
+                ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
+                : 'Transferencia enviada'}
         </Text>
       </View>
 
-      <Text style={ms.amount}>{amount}</Text>
-      {!!to && (
-        <Text style={ms.to}>
-          {isOwn ? `Para: ${to}` : `De: ${to}`}
+      {/* ── Monto ── */}
+      <View style={ms.amountRow}>
+        <Text style={[ms.amountValue, { color: isDone ? '#374151' : '#111827' }]}>
+          {amount}
         </Text>
+      </View>
+
+      {/* ── Remitente / Destinatario ── */}
+      {!!to && (
+        <View style={ms.toRow}>
+          <McIconUser />
+          <Text style={ms.toText}>
+            {isOwn ? `Para: ${to}` : `De: ${to}`}
+          </Text>
+        </View>
       )}
 
-      <View style={ms.divider} />
+      {/* ── Divider ── */}
+      <View style={[ms.divider, { backgroundColor: borderColor }]} />
 
+      {/* ── Footer: estado + ref ── */}
       <View style={ms.footer}>
-        <Text style={ms.status}>{finalStatus}</Text>
-        {!!ref && <Text style={ms.ref}>Ref: {ref}</Text>}
+        <View style={ms.statusRow}>
+          {isCancelled  && <McIconX />}
+          {isAccepted   && <McIconCheck />}
+          {!isDone && isPending && <McIconClock />}
+          {!isDone && !isPending && <McIconCheck />}
+          <Text style={[ms.statusText, { color: accentColor }]}>
+            {isCancelled
+              ? 'Rechazada'
+              : isAccepted
+                ? 'Aceptada'
+                : isPending
+                  ? 'Pendiente de aceptación'
+                  : 'Completada'}
+          </Text>
+        </View>
+        {!!ref && (
+          <View style={ms.refRow}>
+            <McIconHash />
+            <Text style={ms.refText}>{ref}</Text>
+          </View>
+        )}
       </View>
 
-      {/* Botones directamente en la burbuja — solo para el receptor de transferencias pendientes */}
+      {/* ── Botones: solo receptor de pendiente ── */}
       {showButtons && (
         <View style={ms.btnRow}>
+          {/* Rechazar */}
           <TouchableOpacity
             style={[ms.btn, ms.btnCancel, loading !== null && ms.btnDisabled]}
             onPress={handleCancel}
             disabled={loading !== null}
-            activeOpacity={0.8}
+            activeOpacity={0.75}
           >
             {loading === 'cancel'
-              ? <ActivityIndicator size="small" color="#fca5a5" />
-              : <Text style={ms.btnCancelText}>❌ Rechazar</Text>
-            }
+              ? <ActivityIndicator size="small" color="#dc2626" />
+              : (
+                <View style={ms.btnInner}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                    <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+                    <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
+                  </Svg>
+                  <Text style={ms.btnCancelText}>Rechazar</Text>
+                </View>
+              )}
           </TouchableOpacity>
 
+          {/* Recibir */}
           <TouchableOpacity
             style={[ms.btn, ms.btnAccept, loading !== null && ms.btnDisabled]}
             onPress={handleAccept}
             disabled={loading !== null}
-            activeOpacity={0.8}
+            activeOpacity={0.75}
           >
             {loading === 'accept'
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={ms.btnAcceptText}>✅ Recibir</Text>
-            }
+              : (
+                <View style={ms.btnInner}>
+                  <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
+                    <Polyline points="20,6 9,17 4,12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
+                  </Svg>
+                  <Text style={ms.btnAcceptText}>Recibir</Text>
+                </View>
+              )}
           </TouchableOpacity>
         </View>
       )}
-    </LinearGradient>
+    </View>
   );
 };
 
 const ms = StyleSheet.create({
-  card:          { borderRadius: 12, padding: 14, minWidth: 220, maxWidth: 280 },
-  header:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  headerIcon:    { fontSize: 18 },
-  headerTitle:   { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', flex: 1 },
-  amount:        { fontSize: 26, fontWeight: '900', color: '#fff', marginBottom: 4 },
-  to:            { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 8 },
-  divider:       { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 8 },
-  footer:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  status:        { fontSize: 12, color: '#a5f3fc', fontWeight: '600', flex: 1 },
-  ref:           { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
-  btnRow:        { flexDirection: 'row', gap: 8, marginTop: 12 },
-  btn:           { flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
-  btnAccept:     { backgroundColor: '#16a34a' },
-  btnAcceptText: { fontSize: 13, fontWeight: '700', color: '#fff' },
-  btnCancel:     { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: 'rgba(252,165,165,0.7)' },
-  btnCancelText: { fontSize: 13, fontWeight: '700', color: '#fca5a5' },
-  btnDisabled:   { opacity: 0.5 },
+  card: {
+    borderRadius: 14,
+    padding: 13,
+    minWidth: 220,
+    maxWidth: 280,
+    borderWidth: 1,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 6,
+    elevation: 2,
+  },
+  header:     { flexDirection: 'row', alignItems: 'center', gap: 7, marginBottom: 10 },
+  iconBadge:  { width: 26, height: 26, borderRadius: 13, alignItems: 'center', justifyContent: 'center' },
+  headerTitle:{ fontSize: 11, fontWeight: '700', flex: 1, letterSpacing: 0.1 },
+
+  amountRow:  { marginBottom: 5 },
+  amountValue:{ fontSize: 24, fontWeight: '800', letterSpacing: -0.5 },
+
+  toRow:      { flexDirection: 'row', alignItems: 'center', gap: 4, marginBottom: 9 },
+  toText:     { fontSize: 11, color: '#64748b', fontWeight: '500' },
+
+  divider:    { height: 1, marginBottom: 9 },
+
+  footer:     { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', gap: 4 },
+  statusRow:  { flexDirection: 'row', alignItems: 'center', gap: 4, flex: 1 },
+  statusText: { fontSize: 11, fontWeight: '600' },
+  refRow:     { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  refText:    { fontSize: 10, color: '#94a3b8' },
+
+  btnRow:     { flexDirection: 'row', gap: 7, marginTop: 11 },
+  btn:        { flex: 1, paddingVertical: 9, borderRadius: 9, alignItems: 'center', justifyContent: 'center' },
+  btnInner:   { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  btnDisabled:{ opacity: 0.45 },
+
+  btnCancel:     { backgroundColor: '#fff', borderWidth: 1.5, borderColor: '#fecaca' },
+  btnCancelText: { fontSize: 12, fontWeight: '700', color: '#dc2626' },
+
+  btnAccept:     { backgroundColor: '#059669' },
+  btnAcceptText: { fontSize: 12, fontWeight: '700', color: '#fff' },
 });
 
 const formatTime = (dateStr: string) => {
