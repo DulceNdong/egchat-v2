@@ -1511,13 +1511,19 @@ export const ChatMessageBubble = React.memo(({
         />
       )}
       {isMoneyMsg && !!message.text && (
-        <MoneyCard 
+        <MoneyCard
           text={message.text}
           isOwn={isOwn}
-          onPress={onTransferPress ? () => {
-            const transferData = parseTransferData(message.text || '', message.created_at);
-            onTransferPress(transferData);
-          } : undefined}
+          onAccept={(!isOwn && onTransferAccept) ? (() => {
+            const idLine = message.text!.split('\n').find(l => l.startsWith('🆔 '));
+            const transferId = idLine?.replace(/^🆔\s*/, '').trim() || '';
+            return onTransferAccept(transferId);
+          }) : undefined}
+          onCancel={(!isOwn && onTransferCancel) ? (() => {
+            const idLine = message.text!.split('\n').find(l => l.startsWith('🆔 '));
+            const transferId = idLine?.replace(/^🆔\s*/, '').trim() || '';
+            return onTransferCancel(transferId);
+          }) : undefined}
         />
       )}
 
