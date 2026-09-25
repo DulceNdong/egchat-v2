@@ -215,6 +215,8 @@ function HomeScreenInner() {
   const [showIdDigital, setShowIdDigital] = useState(false);
   const [liveNews, setLiveNews] = useState(HOME_NEWS);
   const [fabOpen, setFabOpen] = useState(false);
+  // Posición Y donde termina el bloque Servicios Dutti (medido con onLayout)
+  const [duttiBottomY, setDuttiBottomY] = useState<number | null>(null);
 
   // ── Store global — clima y notificaciones (no se reinician al cambiar de pestaña)
   const { weather, notifications } = useAppStore();
