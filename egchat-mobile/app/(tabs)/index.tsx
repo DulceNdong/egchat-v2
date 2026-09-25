@@ -572,8 +572,11 @@ function HomeScreenInner() {
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
         const FAB_CX = SW / 2;
+        // Sincronizar FAB_BOTTOM con la posición real del FAB en Android
         const TAB_H = Platform.OS === 'ios' ? 92 : 68;
-        const FAB_BOTTOM = TAB_H + 30 + 30; // tab bar + margen + radio FAB (dinámico)
+        const FAB_BOTTOM = Platform.OS === 'android' && duttiBottomY != null
+          ? Math.round(68 + (SH - duttiBottomY - 68) / 2 - 30) + 30  // bottom del FAB + radio
+          : TAB_H + 30 + 30; // iOS: original
         const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
