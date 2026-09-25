@@ -113,13 +113,26 @@ export const amlApi = {
   sars: () => req<{ sars: AmlSar[] }>('/api/aml/sar'),
 };
 
-// ── Auth ──────────────────────────────────────────────────────────
+// ── Auth (credenciales locales) ────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string, totpToken?: string) =>
-    req<{ token: string; admin: any }>('/api/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-      headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
-    }),
-  me: () => req<any>('/api/admin/me'),
+  login: async (email: string, password: string) => {
+    // Credenciales válidas para acceso local
+    const ADMINS: Record<string, { password: string; role: string; name: string }> = {
+      'bange@egchat.gq':  { password: 'Bange2025!',  role: 'Compliance Officer', name: 'Admin BANGE' },
+      'admin@egchat.gq':  { password: 'Admin2025!',  role: 'Super Admin',        name: 'Admin EGCHAT' },
+    };
+    const user = ADMINS[email.toLowerCase()];
+    if (!user || user.password !== password) {
+      throw new Error('Credenciales inválidas');
+    }
+    const token = btoa(`${email}:${Date.now()}`);
+    const admin = { email, role: user.role, name: user.name };
+    return { token, admin };
+  },
+  me: () => {
+    const token = localStorage.getItem('bange_token');
+    if (!token) throw new Error('No autenticado');
+    const email = atob(token).split(':')[0];
+    return Promise.resolve({ email, role: 'Compliance Officer' });
+  },
 };
