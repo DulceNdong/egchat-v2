@@ -1,14 +1,7 @@
-import { createClient } from '@supabase/supabase-js';
-
 const BASE = import.meta.env.VITE_API_URL ?? 'https://egchat-api-xlxj.onrender.com';
 let _token = '';
 export const setToken = (t: string) => { _token = t; };
 export const getStoredToken = () => localStorage.getItem('empresa_token') ?? '';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL ?? 'https://fqfxtjnfhvpggssbymdn.supabase.co',
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-);
 
 async function req<T>(path: string, opts: RequestInit = {}): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
