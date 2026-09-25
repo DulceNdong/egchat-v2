@@ -2028,32 +2028,53 @@ export default function ChatScreen() {
   }, [messages, selectedIds, exitSelectMode]);
 
   const handleTransferPress = useCallback((transferData: any, messageText?: string) => {
-    // Si el mensaje contiene "⏳ Pendiente" y no es propio → es una transferencia que el receptor debe aceptar
+    // Si el mensaje contiene "⏳ Pendiente" → es una transferencia que el receptor debe aceptar/rechazar
     const isPending = messageText?.includes('⏳ Pendiente');
-    if (isPending) {
-      // Extraer el transferId de la referencia del mensaje (🔑 Ref: XXXXXX)
-      // El ref en el chat es un código visual, no el UUID. Buscamos las pendientes del servidor.
-      walletAPI.getPendingTransfers().then(res => {
-        const incoming = (res.transfers || []).find(
-          t => t.direction === 'incoming' && !t.isExpired,
-        );
-        if (incoming) {
-          setChatIncomingTransfer({
-            transferId: incoming.id,
-            amount:     incoming.amount,
-            senderName: incoming.senderName,
-            concept:    incoming.concept ?? null,
-            expiresAt:  incoming.expiresAt,
-          });
-        } else {
-          // No hay pendientes activas — mostrar detalles normales
+    if (isPending && messageText) {
+      // Extraer el transferId UUID del marcador 🆔 que se guarda en el texto del mensaje
+      const idLine = messageText.split('\n').find(l => l.startsWith('🆔 '));
+      const transferId = idLine?.replace(/^🆔\s*/, '').trim();
+
+      if (transferId) {
+        // Extraer datos del mensaje para el modal
+        const lines = messageText.split('\n');
+        const amountLine = lines.find(l => l.includes('💰')) || '';
+        const fromLine   = lines.find(l => l.includes('👤')) || '';
+        const amountNum  = parseFloat(
+          amountLine.replace(/^💰\s*/, '').replace(/[^0-9.]/g, '')
+        ) || 0;
+        const senderName = fromLine.replace(/^👤 Para:\s*/i, '').trim() || 'Usuario';
+
+        setChatIncomingTransfer({
+          transferId,
+          amount:     amountNum,
+          senderName,
+          concept:    null,
+          expiresAt:  undefined,
+        });
+      } else {
+        // Sin UUID en el mensaje (transferencia antigua) → buscar en servidor
+        walletAPI.getPendingTransfers().then(res => {
+          const incoming = (res.transfers || []).find(
+            t => t.direction === 'incoming' && !t.isExpired,
+          );
+          if (incoming) {
+            setChatIncomingTransfer({
+              transferId: incoming.id,
+              amount:     incoming.amount,
+              senderName: incoming.senderName,
+              concept:    incoming.concept ?? null,
+              expiresAt:  incoming.expiresAt,
+            });
+          } else {
+            setTransferDetailsData(transferData);
+            setShowTransferDetails(true);
+          }
+        }).catch(() => {
           setTransferDetailsData(transferData);
           setShowTransferDetails(true);
-        }
-      }).catch(() => {
-        setTransferDetailsData(transferData);
-        setShowTransferDetails(true);
-      });
+        });
+      }
     } else {
       setTransferDetailsData(transferData);
       setShowTransferDetails(true);
