@@ -1,12 +1,5 @@
 // kycApi.ts — Cliente API para el dashboard BANGE
-import { createClient } from '@supabase/supabase-js';
-
 const BASE = import.meta.env.VITE_API_URL ?? 'https://egchat-api-xlxj.onrender.com';
-
-const supabase = createClient(
-  import.meta.env.VITE_SUPABASE_URL ?? 'https://fqfxtjnfhvpggssbymdn.supabase.co',
-  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
-);
 
 let _token = '';
 export const setToken = (t: string) => { _token = t; };
@@ -120,14 +113,13 @@ export const amlApi = {
   sars: () => req<{ sars: AmlSar[] }>('/api/aml/sar'),
 };
 
-// ── Auth (Supabase directo) ────────────────────────────────────────
+// ── Auth ──────────────────────────────────────────────────────────
 export const authApi = {
-  login: async (email: string, password: string) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw new Error(error.message);
-    const token = data.session?.access_token ?? '';
-    const admin = data.user;
-    return { token, admin };
-  },
+  login: (email: string, password: string, totpToken?: string) =>
+    req<{ token: string; admin: any }>('/api/admin/login', {
+      method: 'POST',
+      body: JSON.stringify({ email, password }),
+      headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
+    }),
   me: () => req<any>('/api/admin/me'),
 };
