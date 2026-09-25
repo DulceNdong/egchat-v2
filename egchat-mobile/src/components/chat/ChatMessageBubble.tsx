@@ -1392,6 +1392,39 @@ const ms = StyleSheet.create({
 
   btnAccept:     { backgroundColor: '#059669' },
   btnAcceptText: { fontSize: 12, fontWeight: '700', color: '#fff' },
+
+  // ── Tarjeta de resultado post-acción ──
+  cardAccepted:  {
+    backgroundColor: '#f0fdf4',
+    borderColor: '#86efac',
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  cardCancelled: {
+    backgroundColor: '#fafafa',
+    borderColor: '#e2e8f0',
+    alignItems: 'center',
+    paddingVertical: 18,
+  },
+  doneIconWrap:    { marginBottom: 10 },
+  doneCircleGreen: {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#dcfce7',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#86efac',
+  },
+  doneCircleRed:   {
+    width: 52, height: 52, borderRadius: 26,
+    backgroundColor: '#fef2f2',
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 2, borderColor: '#fca5a5',
+  },
+  doneTitle:       { fontSize: 13, fontWeight: '800', marginBottom: 4, letterSpacing: 0.1 },
+  doneTitleGreen:  { color: '#059669' },
+  doneTitleRed:    { color: '#dc2626' },
+  doneAmount:      { fontSize: 22, fontWeight: '900', color: '#111827', marginBottom: 5 },
+  doneSub:         { fontSize: 10, color: '#64748b', textAlign: 'center', marginBottom: 8, paddingHorizontal: 8 },
+  doneRefRow:      { flexDirection: 'row', alignItems: 'center', gap: 3, marginTop: 2 },
 });
 
 const formatTime = (dateStr: string) => {
