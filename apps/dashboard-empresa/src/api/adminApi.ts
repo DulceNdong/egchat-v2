@@ -38,7 +38,7 @@ export interface KycCase {
 
 export const adminApi = {
   login: (email: string, password: string, totpToken?: string) =>
-    req<{ token: string; admin: any; requires2FA?: boolean }>('/api/admin/login', {
+    req<{ token: string; admin: any; requires2FA?: boolean }>('/api/admin/auth/login', {
       method: 'POST',
       body: JSON.stringify({ email, password }),
       headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
