@@ -1,5 +1,12 @@
 // kycApi.ts — Cliente API para el dashboard BANGE
+import { createClient } from '@supabase/supabase-js';
+
 const BASE = import.meta.env.VITE_API_URL ?? 'https://egchat-api-xlxj.onrender.com';
+
+const supabase = createClient(
+  import.meta.env.VITE_SUPABASE_URL ?? 'https://fqfxtjnfhvpggssbymdn.supabase.co',
+  import.meta.env.VITE_SUPABASE_ANON_KEY ?? ''
+);
 
 let _token = '';
 export const setToken = (t: string) => { _token = t; };
