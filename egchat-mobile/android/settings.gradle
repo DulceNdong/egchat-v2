@@ -1,4 +1,46 @@
 pluginManagement {
+  try {
+    def extraPaths = [
+      "/usr/local/bin",
+      "/opt/homebrew/bin",
+      System.getProperty("user.home") + "/.nvm/versions/node/v20.20.2/bin",
+      System.getProperty("user.home") + "/.nvm/versions/node/v20.19.4/bin"
+    ].findAll { new File(it).exists() }.join(File.pathSeparator)
+
+    def pe = Class.forName("java.lang.ProcessEnvironment")
+    def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
+    def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
+
+    def varValueOf = varClass.getDeclaredMethod("valueOf", String.class)
+    varValueOf.setAccessible(true)
+    def valValueOf = valClass.getDeclaredMethod("valueOf", String.class)
+    valValueOf.setAccessible(true)
+
+    def pathVar = varValueOf.invoke(null, "PATH")
+
+    def field = pe.getDeclaredField("theEnvironment")
+    field.setAccessible(true)
+    def env = field.get(null) as Map
+    if (env != null) {
+      def currentVal = env.get(pathVar)?.toString() ?: ""
+      def newVal = valValueOf.invoke(null, extraPaths + File.pathSeparator + currentVal)
+      env.put(pathVar, newVal)
+    }
+
+    try {
+      def ciField = pe.getDeclaredField("theCaseInsensitiveEnvironment")
+      ciField.setAccessible(true)
+      def ciEnv = ciField.get(null) as Map
+      if (ciEnv != null) {
+        def currentVal = ciEnv.get(pathVar)?.toString() ?: ""
+        def newVal = valValueOf.invoke(null, extraPaths + File.pathSeparator + currentVal)
+        ciEnv.put(pathVar, newVal)
+      }
+    } catch (Throwable ignored) {}
+  } catch (Throwable t) {
+    // ignore
+  }
+
   System.setProperty("ANDROID_PREFS_ROOT", "")
 
   def nodeExec = [
