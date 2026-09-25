@@ -120,13 +120,14 @@ export const amlApi = {
   sars: () => req<{ sars: AmlSar[] }>('/api/aml/sar'),
 };
 
-// ── Auth ──────────────────────────────────────────────────────────
+// ── Auth (Supabase directo) ────────────────────────────────────────
 export const authApi = {
-  login: (email: string, password: string, totpToken?: string) =>
-    req<{ token: string; admin: any }>('/api/admin/login', {
-      method: 'POST',
-      body: JSON.stringify({ email, password }),
-      headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
-    }),
+  login: async (email: string, password: string) => {
+    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+    if (error) throw new Error(error.message);
+    const token = data.session?.access_token ?? '';
+    const admin = data.user;
+    return { token, admin };
+  },
   me: () => req<any>('/api/admin/me'),
 };
