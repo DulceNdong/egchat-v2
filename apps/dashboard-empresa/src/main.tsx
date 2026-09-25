@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import { adminApi, setToken, getStoredToken } from './api/adminApi';
 import { StatsPage } from './pages/StatsPage';
@@ -10,23 +10,15 @@ import './index.css';
 function LoginPage({ onLogin }: { onLogin: (admin: any) => void }) {
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
-  const [totp,     setTotp]     = useState('');
-  const [step,     setStep]     = useState<'creds' | 'totp'>('creds');
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState('');
 
-  const handleCreds = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email || !password) { setError('Rellena todos los campos'); return; }
-    setStep('totp'); setError('');
-  };
-
-  const handleTotp = async (e: React.FormEvent) => {
-    e.preventDefault();
     setLoading(true); setError('');
     try {
-      const res = await adminApi.login(email, password, totp || undefined);
-      if (res.requires2FA && !totp) { setStep('totp'); return; }
+      const res = await adminApi.login(email, password);
       setToken(res.token);
       localStorage.setItem('empresa_token', res.token);
       onLogin(res.admin);
@@ -42,43 +34,21 @@ function LoginPage({ onLogin }: { onLogin: (admin: any) => void }) {
           <h1 className="text-2xl font-bold text-gray-900">EGCHAT KYC Monitor</h1>
           <p className="text-sm text-gray-500 mt-1">Panel interno de Tu Empresa</p>
         </div>
-
-        {step === 'creds' ? (
-          <form onSubmit={handleCreds} className="space-y-4">
-            <input type="email" value={email} onChange={e => setEmail(e.target.value)}
-              placeholder="admin@egchat.gq" required
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none"
-              aria-label="Email" />
-            <input type="password" value={password} onChange={e => setPassword(e.target.value)}
-              required
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none"
-              aria-label="Contraseña" />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button type="submit"
-              className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-bold py-3 rounded-xl text-sm">
-              Continuar →
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleTotp} className="space-y-4">
-            <div className="bg-indigo-50 rounded-xl p-4 text-center">
-              <p className="text-sm font-semibold text-indigo-800">Verificación 2FA</p>
-              <p className="text-xs text-indigo-600 mt-1">Código de tu app autenticadora</p>
-            </div>
-            <input type="text" inputMode="numeric" pattern="[0-9]{6}" maxLength={6}
-              value={totp} onChange={e => setTotp(e.target.value.replace(/\D/g,''))}
-              placeholder="000000" autoFocus required
-              className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-center text-2xl tracking-widest font-mono focus:border-indigo-500 outline-none"
-              aria-label="Código 2FA" />
-            {error && <p className="text-red-500 text-sm">{error}</p>}
-            <button type="submit" disabled={loading || totp.length < 6}
-              className="w-full bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm">
-              {loading ? 'Verificando...' : 'Acceder'}
-            </button>
-            <button type="button" onClick={() => { setStep('creds'); setTotp(''); }}
-              className="w-full text-sm text-gray-400 hover:text-gray-600 py-2">← Volver</button>
-          </form>
-        )}
+        <form onSubmit={handleLogin} className="space-y-4">
+          <input type="email" value={email} onChange={e => setEmail(e.target.value)}
+            placeholder="admin@egchat.gq" required
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none"
+            aria-label="Email" />
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)}
+            required
+            className="w-full border-2 border-gray-200 rounded-xl px-4 py-3 text-sm focus:border-indigo-500 outline-none"
+            aria-label="Contraseña" />
+          {error && <p className="text-red-500 text-sm">{error}</p>}
+          <button type="submit" disabled={loading}
+            className="w-full bg-indigo-700 hover:bg-indigo-800 disabled:opacity-50 text-white font-bold py-3 rounded-xl text-sm">
+            {loading ? 'Verificando...' : 'Acceder'}
+          </button>
+        </form>
       </div>
     </div>
   );
@@ -120,7 +90,6 @@ function App() {
     <>
     <UpdateDialog />
     <div className="flex h-screen bg-gray-50">
-      {/* Sidebar */}
       <aside className="w-52 bg-indigo-900 text-white flex flex-col">
         <div className="px-4 py-5 border-b border-indigo-800">
           <div className="font-bold text-lg">🏢 KYC Monitor</div>
@@ -143,8 +112,6 @@ function App() {
           <button onClick={logout} className="text-xs text-indigo-300 hover:text-white">← Salir</button>
         </div>
       </aside>
-
-      {/* Contenido */}
       <main className="flex-1 overflow-hidden">
         {page === 'stats' && <StatsPage />}
         {page === 'cases' && <CasesPage />}
