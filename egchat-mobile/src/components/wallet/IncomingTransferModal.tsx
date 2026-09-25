@@ -1,7 +1,6 @@
 /**
  * IncomingTransferModal — aparece cuando el receptor recibe un SSE `transfer_pending`.
- * Muestra quién envía, cuánto, y dos botones: Recibir ✅ o Cancelar ❌.
- * Expira automáticamente a las 24h (el servidor también lo controla).
+ * Diseño profesional fintech con escudo BEAC como símbolo de la moneda XAF.
  */
 import React, { useEffect, useState } from 'react';
 import {
@@ -9,7 +8,9 @@ import {
   ActivityIndicator, Pressable,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, G, Rect, Line, Polyline } from 'react-native-svg';
 import { walletAPI } from '../../api';
+import { BeacShield } from '../ui/BeacShield';
 
 export interface IncomingTransfer {
   transferId: string;
@@ -26,9 +27,66 @@ interface Props {
   onDismiss: () => void;
 }
 
+// ── Iconos SVG profesionales ────────────────────────────────────────────────
+
+function IconArrowDown() {
+  return (
+    <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+      <Path d="M12 4v16M5 13l7 7 7-7" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function IconUser() {
+  return (
+    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="8" r="4" stroke="rgba(255,255,255,0.75)" strokeWidth={2} />
+      <Path d="M4 20c0-4 3.6-7 8-7s8 3 8 7" stroke="rgba(255,255,255,0.75)" strokeWidth={2} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function IconClock() {
+  return (
+    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke="#92400e" strokeWidth={2} />
+      <Path d="M12 7v5l3 3" stroke="#92400e" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function IconCheck() {
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+      <Polyline points="20,6 9,17 4,12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round" />
+    </Svg>
+  );
+}
+
+function IconX() {
+  return (
+    <Svg width={17} height={17} viewBox="0 0 24 24" fill="none">
+      <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round" />
+      <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round" />
+    </Svg>
+  );
+}
+
+function IconInfo() {
+  return (
+    <Svg width={13} height={13} viewBox="0 0 24 24" fill="none">
+      <Circle cx="12" cy="12" r="9" stroke="#6b7280" strokeWidth={2} />
+      <Line x1="12" y1="11" x2="12" y2="17" stroke="#6b7280" strokeWidth={2} strokeLinecap="round" />
+      <Circle cx="12" cy="7.5" r="1.2" fill="#6b7280" />
+    </Svg>
+  );
+}
+
+// ── Componente principal ─────────────────────────────────────────────────────
+
 export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDismiss }: Props) {
-  const [loading, setLoading] = useState<'accept' | 'cancel' | null>(null);
-  const [error, setError] = useState('');
+  const [loading, setLoading]       = useState<'accept' | 'cancel' | null>(null);
+  const [error, setError]           = useState('');
   const [secondsLeft, setSecondsLeft] = useState<number | null>(null);
 
   // Countdown hasta expiración
@@ -80,198 +138,397 @@ export function IncomingTransferModal({ transfer, onAccepted, onCancelled, onDis
 
   const isExpired = secondsLeft !== null && secondsLeft <= 0;
 
+  // Formatear monto con separadores de miles
+  const formattedAmount = transfer.amount.toLocaleString('fr-FR');
+
   return (
     <Modal visible transparent animationType="fade" onRequestClose={onDismiss}>
-      <Pressable style={st.overlay} onPress={() => { /* no cerrar al tocar fuera */ }}>
+      <View style={st.overlay}>
         <View style={st.card}>
-          {/* Encabezado */}
-          <LinearGradient colors={['#16a34a', '#15803d']} style={st.header}>
-            <Text style={st.headerEmoji}>💸</Text>
-            <Text style={st.headerTitle}>Transferencia entrante</Text>
-            <Text style={st.headerSub}>De: {transfer.senderName}</Text>
-          </LinearGradient>
 
-          {/* Monto */}
-          <View style={st.amountBox}>
-            <Text style={st.amountLabel}>MONTO</Text>
-            <Text style={st.amountValue}>{transfer.amount.toLocaleString()} XAF</Text>
-            {!!transfer.concept && (
-              <Text style={st.conceptText}>"{transfer.concept}"</Text>
-            )}
-          </View>
+          {/* ── Cabecera ─────────────────────────────── */}
+          <LinearGradient
+            colors={['#1B5E20', '#2E7D32', '#388E3C']}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={st.header}
+          >
+            {/* Badge de tipo */}
+            <View style={st.badge}>
+              <IconArrowDown />
+              <Text style={st.badgeText}>Transferencia entrante</Text>
+            </View>
 
-          {/* Expiración */}
-          {secondsLeft !== null && (
-            <View style={[st.expiryRow, isExpired && st.expiryExpired]}>
-              <Text style={[st.expiryText, isExpired && st.expiryTextExpired]}>
-                {isExpired
-                  ? '⛔ Esta transferencia ha expirado'
-                  : `⏳ Expira en ${formatCountdown(secondsLeft)}`}
+            {/* Remitente */}
+            <View style={st.senderRow}>
+              <IconUser />
+              <Text style={st.senderText} numberOfLines={1}>
+                {transfer.senderName}
               </Text>
             </View>
-          )}
 
-          {!!error && (
-            <View style={st.errorBox}>
-              <Text style={st.errorText}>{error}</Text>
+            {/* Divider decorativo */}
+            <View style={st.headerDivider} />
+          </LinearGradient>
+
+          {/* ── Cuerpo ───────────────────────────────── */}
+          <View style={st.body}>
+
+            {/* Monto con escudo BEAC */}
+            <View style={st.amountSection}>
+              <View style={st.shieldWrapper}>
+                <BeacShield size={40} />
+              </View>
+              <View style={st.amountTexts}>
+                <Text style={st.amountLabel}>MONTO A RECIBIR</Text>
+                <View style={st.amountRow}>
+                  <Text style={st.amountValue}>{formattedAmount}</Text>
+                  <Text style={st.amountCurrency}> XAF</Text>
+                </View>
+              </View>
             </View>
-          )}
 
-          {/* Botones */}
-          {isExpired ? (
-            <TouchableOpacity style={st.dismissBtn} onPress={onDismiss}>
-              <Text style={st.dismissText}>Cerrar</Text>
-            </TouchableOpacity>
-          ) : (
-            <View style={st.actions}>
-              {/* Cancelar */}
-              <TouchableOpacity
-                style={[st.actionBtn, st.cancelBtn, loading !== null && st.actionDisabled]}
-                onPress={handleCancel}
-                disabled={loading !== null}
-                accessibilityLabel="Cancelar transferencia"
-                accessibilityRole="button"
-              >
-                {loading === 'cancel'
-                  ? <ActivityIndicator color="#dc2626" size="small" />
-                  : (
-                    <>
-                      <Text style={st.cancelBtnIcon}>❌</Text>
+            {/* Concepto */}
+            {!!transfer.concept && (
+              <View style={st.conceptRow}>
+                <Text style={st.conceptText} numberOfLines={2}>
+                  {transfer.concept}
+                </Text>
+              </View>
+            )}
+
+            {/* Expiración */}
+            {secondsLeft !== null && (
+              <View style={[st.expiryRow, isExpired && st.expiryExpiredRow]}>
+                <IconClock />
+                <Text style={[st.expiryText, isExpired && st.expiryTextExpired]}>
+                  {isExpired
+                    ? 'Esta transferencia ha expirado'
+                    : `Expira en ${formatCountdown(secondsLeft)}`}
+                </Text>
+              </View>
+            )}
+
+            {/* Error */}
+            {!!error && (
+              <View style={st.errorBox}>
+                <Text style={st.errorText}>{error}</Text>
+              </View>
+            )}
+
+            {/* ── Botones ── */}
+            {isExpired ? (
+              <TouchableOpacity style={st.dismissBtn} onPress={onDismiss}>
+                <Text style={st.dismissText}>Cerrar</Text>
+              </TouchableOpacity>
+            ) : (
+              <View style={st.actions}>
+                {/* Cancelar */}
+                <TouchableOpacity
+                  style={[st.cancelBtn, loading !== null && st.btnDisabled]}
+                  onPress={handleCancel}
+                  disabled={loading !== null}
+                  accessibilityLabel="Cancelar transferencia"
+                  accessibilityRole="button"
+                >
+                  {loading === 'cancel' ? (
+                    <ActivityIndicator color="#dc2626" size="small" />
+                  ) : (
+                    <View style={st.btnInner}>
+                      <IconX />
                       <Text style={st.cancelBtnText}>Cancelar</Text>
-                    </>
+                    </View>
                   )}
-              </TouchableOpacity>
+                </TouchableOpacity>
 
-              {/* Recibir */}
-              <TouchableOpacity
-                style={[st.actionBtn, st.acceptBtn, loading !== null && st.actionDisabled]}
-                onPress={handleAccept}
-                disabled={loading !== null}
-                accessibilityLabel="Aceptar y recibir dinero"
-                accessibilityRole="button"
-              >
-                {loading === 'accept'
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : (
-                    <>
-                      <Text style={st.acceptBtnIcon}>✅</Text>
-                      <Text style={st.acceptBtnText}>Recibir</Text>
-                    </>
-                  )}
-              </TouchableOpacity>
+                {/* Recibir */}
+                <TouchableOpacity
+                  style={[st.btnDisabledWrapper, loading !== null && st.btnDisabled]}
+                  onPress={handleAccept}
+                  disabled={loading !== null}
+                  accessibilityLabel="Aceptar y recibir dinero"
+                  accessibilityRole="button"
+                >
+                  <LinearGradient
+                    colors={['#2E7D32', '#388E3C']}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                    style={st.acceptBtn}
+                  >
+                    {loading === 'accept' ? (
+                      <ActivityIndicator color="#fff" size="small" />
+                    ) : (
+                      <View style={st.btnInner}>
+                        <IconCheck />
+                        <Text style={st.acceptBtnText}>Recibir</Text>
+                      </View>
+                    )}
+                  </LinearGradient>
+                </TouchableOpacity>
+              </View>
+            )}
+
+            {/* Nota de pie */}
+            <View style={st.footerRow}>
+              <IconInfo />
+              <Text style={st.footerNote}>
+                Si cancelas, el dinero se devuelve al remitente.
+              </Text>
             </View>
-          )}
-
-          <Text style={st.footerNote}>
-            Si cancelas, el dinero se devuelve al remitente.
-          </Text>
+          </View>
         </View>
-      </Pressable>
+      </View>
     </Modal>
   );
 }
 
+// ── Estilos ──────────────────────────────────────────────────────────────────
+
 const st = StyleSheet.create({
   overlay: {
     flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.65)',
+    backgroundColor: 'rgba(0,0,0,0.72)',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 24,
+    padding: 28,
   },
   card: {
     width: '100%',
-    maxWidth: 380,
+    maxWidth: 360,
     backgroundColor: '#fff',
-    borderRadius: 24,
+    borderRadius: 20,
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 20,
-    elevation: 12,
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.3,
+    shadowRadius: 24,
+    elevation: 16,
   },
+
+  // Header
   header: {
-    alignItems: 'center',
-    paddingTop: 28,
-    paddingBottom: 24,
+    paddingTop: 22,
+    paddingBottom: 18,
     paddingHorizontal: 20,
+    gap: 8,
   },
-  headerEmoji:  { fontSize: 40, marginBottom: 6 },
-  headerTitle:  { fontSize: 18, fontWeight: '800', color: '#fff' },
-  headerSub:    { fontSize: 13, color: 'rgba(255,255,255,0.8)', marginTop: 4, fontWeight: '500' },
-  amountBox: {
+  badge: {
+    flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 24,
-    paddingHorizontal: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#f3f4f6',
-  },
-  amountLabel:  { fontSize: 11, color: '#9ca3af', fontWeight: '700', letterSpacing: 1.5, marginBottom: 6 },
-  amountValue:  { fontSize: 42, fontWeight: '900', color: '#111827' },
-  conceptText:  { fontSize: 13, color: '#6b7280', marginTop: 6, fontStyle: 'italic' },
-  expiryRow: {
-    marginHorizontal: 20,
-    marginTop: 12,
-    backgroundColor: '#fef9c3',
-    borderRadius: 8,
-    paddingVertical: 6,
+    gap: 7,
+    alignSelf: 'flex-start',
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    borderRadius: 20,
     paddingHorizontal: 12,
-    alignItems: 'center',
+    paddingVertical: 5,
   },
-  expiryExpired: { backgroundColor: '#fee2e2' },
-  expiryText:    { fontSize: 12, color: '#92400e', fontWeight: '600' },
-  expiryTextExpired: { color: '#dc2626' },
+  badgeText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: 0.3,
+  },
+  senderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 2,
+  },
+  senderText: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.85)',
+    fontWeight: '600',
+    flexShrink: 1,
+  },
+  headerDivider: {
+    height: 1,
+    backgroundColor: 'rgba(255,255,255,0.15)',
+    marginTop: 6,
+  },
+
+  // Body
+  body: {
+    paddingHorizontal: 20,
+    paddingTop: 18,
+    paddingBottom: 16,
+    gap: 12,
+  },
+
+  // Monto
+  amountSection: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 14,
+    backgroundColor: '#f8fdf8',
+    borderRadius: 14,
+    padding: 14,
+    borderWidth: 1,
+    borderColor: '#d1fae5',
+  },
+  shieldWrapper: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: '#fff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#C9952A',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    elevation: 4,
+  },
+  amountTexts: {
+    flex: 1,
+    gap: 2,
+  },
+  amountLabel: {
+    fontSize: 10,
+    color: '#6b7280',
+    fontWeight: '700',
+    letterSpacing: 1.2,
+  },
+  amountRow: {
+    flexDirection: 'row',
+    alignItems: 'baseline',
+  },
+  amountValue: {
+    fontSize: 30,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.5,
+  },
+  amountCurrency: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#4b5563',
+  },
+
+  // Concepto
+  conceptRow: {
+    backgroundColor: '#f9fafb',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#d1d5db',
+  },
+  conceptText: {
+    fontSize: 13,
+    color: '#4b5563',
+    fontStyle: 'italic',
+    lineHeight: 18,
+  },
+
+  // Expiración
+  expiryRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: '#fffbeb',
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+  },
+  expiryExpiredRow: {
+    backgroundColor: '#fef2f2',
+  },
+  expiryText: {
+    fontSize: 12,
+    color: '#92400e',
+    fontWeight: '600',
+  },
+  expiryTextExpired: {
+    color: '#dc2626',
+  },
+
+  // Error
   errorBox: {
-    marginHorizontal: 20,
-    marginTop: 10,
     backgroundColor: '#fef2f2',
     borderRadius: 8,
-    padding: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#fca5a5',
   },
-  errorText: { fontSize: 13, color: '#ef4444', textAlign: 'center' },
+  errorText: {
+    fontSize: 12,
+    color: '#ef4444',
+    fontWeight: '500',
+  },
+
+  // Botones
   actions: {
     flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 4,
+    gap: 10,
+    marginTop: 4,
   },
-  actionBtn: {
-    flex: 1,
+  btnInner: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    paddingVertical: 14,
-    borderRadius: 14,
+    gap: 7,
   },
-  actionDisabled: { opacity: 0.55 },
+  btnDisabled: {
+    opacity: 0.5,
+  },
+  btnDisabledWrapper: {
+    flex: 1,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
   cancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
     backgroundColor: '#fff',
-    borderWidth: 2,
+    borderWidth: 1.5,
     borderColor: '#fca5a5',
   },
-  cancelBtnIcon: { fontSize: 16 },
-  cancelBtnText: { fontSize: 15, fontWeight: '700', color: '#dc2626' },
-  acceptBtn:     { backgroundColor: '#16a34a' },
-  acceptBtnIcon: { fontSize: 16 },
-  acceptBtnText: { fontSize: 15, fontWeight: '700', color: '#fff' },
+  cancelBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#dc2626',
+  },
+  acceptBtn: {
+    paddingVertical: 13,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  acceptBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#fff',
+  },
+
+  // Expirado
   dismissBtn: {
-    margin: 20,
-    marginTop: 16,
     backgroundColor: '#f3f4f6',
     borderRadius: 12,
-    paddingVertical: 12,
+    paddingVertical: 13,
     alignItems: 'center',
+    marginTop: 4,
   },
-  dismissText: { fontSize: 14, color: '#6b7280', fontWeight: '600' },
+  dismissText: {
+    fontSize: 14,
+    color: '#6b7280',
+    fontWeight: '600',
+  },
+
+  // Footer
+  footerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    marginTop: 4,
+  },
   footerNote: {
     fontSize: 11,
     color: '#9ca3af',
     textAlign: 'center',
-    paddingHorizontal: 20,
-    paddingBottom: 20,
-    paddingTop: 8,
+    flexShrink: 1,
   },
 });
