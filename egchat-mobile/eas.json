@@ -16,7 +16,14 @@
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
         "EXPO_PUBLIC_ENABLE_PUSH": "1",
         "EXPO_PUBLIC_ENABLE_VOIP": "1",
-        "EXPO_PUBLIC_ENABLE_WEBRTC": "1"
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f"
       },
       "ios": {
         "simulator": false,
