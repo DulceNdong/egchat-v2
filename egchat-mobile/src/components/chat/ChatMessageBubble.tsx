@@ -1110,74 +1110,150 @@ const AlbumCard = ({ urls, onOpenImage }: { urls: string[]; onOpenImage?: (uri: 
 };
 
 // ── Tarjeta TRANSFERENCIA ─────────────────────────────────────────
-const MoneyCard = ({ text, isOwn, onPress }: { text: string; isOwn?: boolean; onPress?: () => void }) => {
+const MoneyCard = ({
+  text, isOwn, onAccept, onCancel,
+}: {
+  text: string;
+  isOwn?: boolean;
+  onAccept?: () => void;
+  onCancel?: () => void;
+}) => {
+  const [loading, setLoading] = React.useState<'accept' | 'cancel' | null>(null);
+  const [done, setDone] = React.useState<'accepted' | 'cancelled' | null>(null);
+
   const lines = (text || '').split('\n');
   const amountLine = lines.find(l => l.includes('💰')) || '';
   const toLine     = lines.find(l => l.includes('👤')) || '';
   const refLine    = lines.find(l => l.includes('🔑')) || '';
-  const statusLine = lines.find(l => l.includes('⏳')) || '';
 
   const amount = amountLine.replace(/^💰\s*/, '').trim();
   const to     = toLine.replace(/^👤 Para:\s*/i, '').trim();
   const ref    = refLine.replace(/^🔑 Ref:\s*/i, '').trim();
 
-  // Si contiene "⏳ Pendiente" es una transferencia que espera aceptación
-  const isPending = !!statusLine || text.includes('⏳ Pendiente');
+  const isPending = text.includes('⏳ Pendiente');
+  // Mostrar botones solo si es pendiente, el receptor (no isOwn), y aún no se tomó acción
+  const showButtons = isPending && !isOwn && !done && !!onAccept && !!onCancel;
 
-  const CardContent = (
+  const handleAccept = async () => {
+    if (!onAccept || loading) return;
+    setLoading('accept');
+    try {
+      await onAccept();
+      setDone('accepted');
+    } catch {
+      // el padre maneja el error
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const handleCancel = async () => {
+    if (!onCancel || loading) return;
+    setLoading('cancel');
+    try {
+      await onCancel();
+      setDone('cancelled');
+    } catch {
+      // el padre maneja el error
+    } finally {
+      setLoading(null);
+    }
+  };
+
+  const gradColors: [string, string] = isPending
+    ? ['#b45309', '#92400e']
+    : ['#1a73e8', '#0d47a1'];
+
+  // Estado final tras acción
+  const finalStatus = done === 'accepted'
+    ? '✅ Transferencia aceptada'
+    : done === 'cancelled'
+    ? '❌ Transferencia rechazada'
+    : isPending
+    ? '⏳ Pendiente de aceptación'
+    : '✅ Completado';
+
+  return (
     <LinearGradient
-      colors={isPending ? ['#b45309', '#92400e'] : ['#1a73e8', '#0d47a1']}
+      colors={done ? ['#374151', '#1f2937'] : gradColors}
       start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
       style={ms.card}
     >
       <View style={ms.header}>
-        <Text style={ms.headerIcon}>{isPending ? '⏳' : '💸'}</Text>
+        <Text style={ms.headerIcon}>
+          {done === 'accepted' ? '✅' : done === 'cancelled' ? '❌' : isPending ? '⏳' : '💸'}
+        </Text>
         <Text style={ms.headerTitle}>
           {isPending
             ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
             : 'Transferencia enviada'}
         </Text>
       </View>
+
       <Text style={ms.amount}>{amount}</Text>
-      {!!to && <Text style={ms.to}>{isOwn ? `Para: ${to}` : `De: ${to}`}</Text>}
-      <View style={ms.divider} />
-      <View style={ms.footer}>
-        <Text style={ms.status}>
-          {isPending ? '⏳ Pendiente de aceptación' : '✅ Completado'}
+      {!!to && (
+        <Text style={ms.to}>
+          {isOwn ? `Para: ${to}` : `De: ${to}`}
         </Text>
+      )}
+
+      <View style={ms.divider} />
+
+      <View style={ms.footer}>
+        <Text style={ms.status}>{finalStatus}</Text>
         {!!ref && <Text style={ms.ref}>Ref: {ref}</Text>}
       </View>
-      {isPending && !isOwn && (
-        <View style={ms.tapHint}>
-          <Text style={ms.tapHintText}>Toca para aceptar o rechazar</Text>
+
+      {/* Botones directamente en la burbuja — solo para el receptor de transferencias pendientes */}
+      {showButtons && (
+        <View style={ms.btnRow}>
+          <TouchableOpacity
+            style={[ms.btn, ms.btnCancel, loading !== null && ms.btnDisabled]}
+            onPress={handleCancel}
+            disabled={loading !== null}
+            activeOpacity={0.8}
+          >
+            {loading === 'cancel'
+              ? <ActivityIndicator size="small" color="#fca5a5" />
+              : <Text style={ms.btnCancelText}>❌ Rechazar</Text>
+            }
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[ms.btn, ms.btnAccept, loading !== null && ms.btnDisabled]}
+            onPress={handleAccept}
+            disabled={loading !== null}
+            activeOpacity={0.8}
+          >
+            {loading === 'accept'
+              ? <ActivityIndicator size="small" color="#fff" />
+              : <Text style={ms.btnAcceptText}>✅ Recibir</Text>
+            }
+          </TouchableOpacity>
         </View>
       )}
     </LinearGradient>
   );
-
-  if (onPress) {
-    return (
-      <TouchableOpacity onPress={onPress} activeOpacity={0.8}>
-        {CardContent}
-      </TouchableOpacity>
-    );
-  }
-
-  return CardContent;
 };
+
 const ms = StyleSheet.create({
-  card: { borderRadius: 12, padding: 14, minWidth: 200, maxWidth: 260 },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
-  headerIcon: { fontSize: 18 },
-  headerTitle: { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', flex: 1 },
-  amount: { fontSize: 22, fontWeight: '900', color: '#fff', marginBottom: 4 },
-  to: { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 8 },
-  divider: { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 8 },
-  footer: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  status: { fontSize: 12, color: '#a5f3fc', fontWeight: '600' },
-  ref: { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
-  tapHint: { marginTop: 8, alignItems: 'center' },
-  tapHintText: { fontSize: 11, color: 'rgba(255,255,255,0.6)', fontStyle: 'italic' },
+  card:          { borderRadius: 12, padding: 14, minWidth: 220, maxWidth: 280 },
+  header:        { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 8 },
+  headerIcon:    { fontSize: 18 },
+  headerTitle:   { fontSize: 12, fontWeight: '700', color: 'rgba(255,255,255,0.85)', flex: 1 },
+  amount:        { fontSize: 26, fontWeight: '900', color: '#fff', marginBottom: 4 },
+  to:            { fontSize: 12, color: 'rgba(255,255,255,0.7)', marginBottom: 8 },
+  divider:       { height: 1, backgroundColor: 'rgba(255,255,255,0.2)', marginBottom: 8 },
+  footer:        { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  status:        { fontSize: 12, color: '#a5f3fc', fontWeight: '600', flex: 1 },
+  ref:           { fontSize: 10, color: 'rgba(255,255,255,0.5)' },
+  btnRow:        { flexDirection: 'row', gap: 8, marginTop: 12 },
+  btn:           { flex: 1, paddingVertical: 9, borderRadius: 8, alignItems: 'center', justifyContent: 'center' },
+  btnAccept:     { backgroundColor: '#16a34a' },
+  btnAcceptText: { fontSize: 13, fontWeight: '700', color: '#fff' },
+  btnCancel:     { backgroundColor: 'transparent', borderWidth: 1.5, borderColor: 'rgba(252,165,165,0.7)' },
+  btnCancelText: { fontSize: 13, fontWeight: '700', color: '#fca5a5' },
+  btnDisabled:   { opacity: 0.5 },
 });
 
 const formatTime = (dateStr: string) => {
