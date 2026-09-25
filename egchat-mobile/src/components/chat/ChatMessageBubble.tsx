@@ -1335,6 +1335,8 @@ export const ChatMessageBubble = React.memo(({
   onOpenImage,
   onCallback,
   onTransferPress,
+  onTransferAccept,
+  onTransferCancel,
   reactions,
   onSwipeReply,
   onReactionPress,
