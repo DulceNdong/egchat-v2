@@ -178,6 +178,7 @@ export function QuickTransferModal({
               '🏦 Desde: Monedero EGCHAT',
               `🔑 Ref: ${code}`,
               '⏳ Pendiente de aceptación',
+              `🆔 ${result.transferId}`,
             ].join('\n');
 
             onTransferred(msgText);
