@@ -4,7 +4,7 @@
  */
 import React from 'react';
 import Svg, {
-  Circle, Ellipse, Path, G, Line, Rect,
+  Circle, Path, G, Line,
 } from 'react-native-svg';
 
 interface Props {
