@@ -225,10 +225,11 @@ export default function RootLayout() {
     // Transferencia aceptada → notificación al remitente
     if (event.type === 'transfer_accepted') {
       const amount = event.amount ?? 0;
+      const who = event.recipientName ? `${event.recipientName} aceptó` : 'Aceptaron';
       addNotification({
         type: 'message',
         title: '✅ Transferencia aceptada',
-        body: `Tu transferencia de ${amount.toLocaleString()} XAF fue aceptada`,
+        body: `${who} tu transferencia de ${amount.toLocaleString()} XAF`,
         chatId: undefined,
       });
     }
@@ -237,10 +238,11 @@ export default function RootLayout() {
     if (event.type === 'transfer_cancelled') {
       const amount = event.amount ?? 0;
       if (event.balance != null) setGlobalWalletBalance(event.balance);
+      const who = event.cancellerName ? `${event.cancellerName} rechazó` : 'Rechazaron';
       addNotification({
         type: 'message',
-        title: '❌ Transferencia cancelada',
-        body: `Tu transferencia de ${amount.toLocaleString()} XAF fue cancelada y devuelta`,
+        title: '❌ Transferencia rechazada',
+        body: `${who} tu transferencia de ${amount.toLocaleString()} XAF. El dinero fue devuelto.`,
         chatId: undefined,
       });
     }
