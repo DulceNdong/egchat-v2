@@ -5,7 +5,7 @@
 import React, { useEffect, useState } from 'react';
 import {
   Modal, View, Text, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Pressable,
+  ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, G, Rect, Line, Polyline } from 'react-native-svg';
