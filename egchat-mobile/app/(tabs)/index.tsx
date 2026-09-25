@@ -526,7 +526,15 @@ function HomeScreenInner() {
         contentContainerStyle={st.scrollContent}
       >
         <View style={st.fixedContent}>
-          <View style={[st.appsSection, { backgroundColor: C.bgSecondary }]}> 
+          <View
+            style={[st.appsSection, { backgroundColor: C.bgSecondary }]}
+            onLayout={(e) => {
+              if (Platform.OS === 'android') {
+                const { y, height } = e.nativeEvent.layout;
+                setDuttiBottomY(y + height);
+              }
+            }}
+          >
             <Text style={[st.sectionLabel, { color: C.textSecondary }]}>SERVICIOS DUTTI</Text>
             <View style={st.appsGrid}>
               {HOME_APPS.map(app => (
