@@ -1208,90 +1208,94 @@ const MoneyCard = ({
     finally { setLoading(null); }
   };
 
-  // Paleta según estado
-  const isDone      = !!done;
   const isAccepted  = done === 'accepted';
   const isCancelled = done === 'cancelled';
 
-  // Colores suaves: azul/índigo para enviado, verde suave para recibido/aceptado, gris para rechazado
-  const cardBg     = isDone
-    ? (isAccepted ? '#f0fdf4' : '#f8fafc')
-    : isPending
-      ? (isOwn ? '#f5f3ff' : '#ecfdf5')
-      : '#f5f3ff';
+  // Paleta pendiente/enviado
+  const cardBg     = isPending ? (isOwn ? '#f5f3ff' : '#ecfdf5') : '#f5f3ff';
+  const accentColor = isPending ? (isOwn ? '#6366f1' : '#059669') : '#6366f1';
+  const borderColor = isPending ? (isOwn ? '#ddd6fe' : '#a7f3d0') : '#ddd6fe';
 
-  const accentColor = isDone
-    ? (isAccepted ? '#059669' : '#64748b')
-    : isPending
-      ? (isOwn ? '#6366f1' : '#059669')
-      : '#6366f1';
+  // ── Vista de resultado tras acción ──────────────────────────────
+  if (done) {
+    return (
+      <View style={[ms.card, isAccepted ? ms.cardAccepted : ms.cardCancelled]}>
+        {/* Círculo con icono grande */}
+        <View style={ms.doneIconWrap}>
+          <View style={isAccepted ? ms.doneCircleGreen : ms.doneCircleRed}>
+            {isAccepted ? (
+              <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                <Polyline points="20,6 9,17 4,12" stroke="#059669" strokeWidth={2.8} strokeLinecap="round" strokeLinejoin="round"/>
+              </Svg>
+            ) : (
+              <Svg width={30} height={30} viewBox="0 0 24 24" fill="none">
+                <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.8} strokeLinecap="round"/>
+                <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.8} strokeLinecap="round"/>
+              </Svg>
+            )}
+          </View>
+        </View>
+        {/* Título */}
+        <Text style={[ms.doneTitle, isAccepted ? ms.doneTitleGreen : ms.doneTitleRed]}>
+          {isAccepted ? 'Transferencia recibida' : 'Transferencia rechazada'}
+        </Text>
+        {/* Monto */}
+        <Text style={ms.doneAmount}>{amount}</Text>
+        {/* Subtítulo */}
+        <Text style={ms.doneSub}>
+          {isAccepted
+            ? `${to} · Fondos disponibles en tu monedero`
+            : `El dinero fue devuelto a ${to}`}
+        </Text>
+        {/* Ref */}
+        {!!ref && (
+          <View style={ms.doneRefRow}>
+            <McIconHash />
+            <Text style={ms.refText}>{ref}</Text>
+          </View>
+        )}
+      </View>
+    );
+  }
 
-  const borderColor = isDone
-    ? (isAccepted ? '#bbf7d0' : '#e2e8f0')
-    : isPending
-      ? (isOwn ? '#ddd6fe' : '#a7f3d0')
-      : '#ddd6fe';
-
+  // ── Vista normal (pendiente / enviado) ──────────────────────────
   return (
     <View style={[ms.card, { backgroundColor: cardBg, borderColor }]}>
 
-      {/* ── Cabecera ── */}
+      {/* Cabecera */}
       <View style={ms.header}>
         <View style={[ms.iconBadge, { backgroundColor: accentColor + '18' }]}>
-          {isCancelled
-            ? <McIconX />
-            : isAccepted
-              ? <McIconCheck />
-              : isPending && !isOwn
-                ? <McIconReceive />
-                : <McIconSend />}
+          {isPending && !isOwn ? <McIconReceive /> : <McIconSend />}
         </View>
         <Text style={[ms.headerTitle, { color: accentColor }]}>
-          {isCancelled
-            ? 'Transferencia rechazada'
-            : isAccepted
-              ? 'Transferencia aceptada'
-              : isPending
-                ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
-                : 'Transferencia enviada'}
+          {isPending
+            ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
+            : 'Transferencia enviada'}
         </Text>
       </View>
 
-      {/* ── Monto ── */}
+      {/* Monto */}
       <View style={ms.amountRow}>
-        <Text style={[ms.amountValue, { color: isDone ? '#374151' : '#111827' }]}>
-          {amount}
-        </Text>
+        <Text style={[ms.amountValue, { color: '#111827' }]}>{amount}</Text>
       </View>
 
-      {/* ── Remitente / Destinatario ── */}
+      {/* Remitente / Destinatario */}
       {!!to && (
         <View style={ms.toRow}>
           <McIconUser />
-          <Text style={ms.toText}>
-            {isOwn ? `Para: ${to}` : `De: ${to}`}
-          </Text>
+          <Text style={ms.toText}>{isOwn ? `Para: ${to}` : `De: ${to}`}</Text>
         </View>
       )}
 
-      {/* ── Divider ── */}
+      {/* Divider */}
       <View style={[ms.divider, { backgroundColor: borderColor }]} />
 
-      {/* ── Footer: estado + ref ── */}
+      {/* Footer */}
       <View style={ms.footer}>
         <View style={ms.statusRow}>
-          {isCancelled  && <McIconX />}
-          {isAccepted   && <McIconCheck />}
-          {!isDone && isPending && <McIconClock />}
-          {!isDone && !isPending && <McIconCheck />}
+          <McIconClock />
           <Text style={[ms.statusText, { color: accentColor }]}>
-            {isCancelled
-              ? 'Rechazada'
-              : isAccepted
-                ? 'Aceptada'
-                : isPending
-                  ? 'Pendiente de aceptación'
-                  : 'Completada'}
+            {isPending ? 'Pendiente de aceptación' : 'Completada'}
           </Text>
         </View>
         {!!ref && (
@@ -1302,10 +1306,9 @@ const MoneyCard = ({
         )}
       </View>
 
-      {/* ── Botones: solo receptor de pendiente ── */}
+      {/* Botones */}
       {showButtons && (
         <View style={ms.btnRow}>
-          {/* Rechazar */}
           <TouchableOpacity
             style={[ms.btn, ms.btnCancel, loading !== null && ms.btnDisabled]}
             onPress={handleCancel}
@@ -1325,7 +1328,6 @@ const MoneyCard = ({
               )}
           </TouchableOpacity>
 
-          {/* Recibir */}
           <TouchableOpacity
             style={[ms.btn, ms.btnAccept, loading !== null && ms.btnDisabled]}
             onPress={handleAccept}
