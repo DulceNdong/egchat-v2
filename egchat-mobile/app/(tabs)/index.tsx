@@ -568,29 +568,35 @@ function HomeScreenInner() {
       {/* ════════════════════════════════════════════════════════
           FAB RADIAL — un solo anillo, distribuido en 360°
           Efecto bloom: escala + opacidad con spring
+          El + es el centro exacto del anillo
       ════════════════════════════════════════════════════════ */}
       {fabOpen && (() => {
         const { width: SW } = Dimensions.get('window');
-        const FAB_CX = SW / 2;
-        // Sincronizar FAB_BOTTOM con la posición real del FAB en Android
+        const FAB_CX = SW / 2; // centro horizontal del FAB
+
+        // Calcular la posición Y del centro del FAB desde el top de pantalla
+        // (para poder usar top en lugar de bottom y tener referencia absoluta)
         const TAB_H = Platform.OS === 'ios' ? 92 : 68;
-        const FAB_BOTTOM = Platform.OS === 'android' && duttiBottomY != null
-          ? Math.round(68 + (SH - duttiBottomY - 68) / 2 - 30) + 30  // bottom del FAB + radio
-          : TAB_H + 30 + 30; // iOS: original
+        const fabBottomFromScreen = Platform.OS === 'android' && duttiBottomY != null
+          ? Math.round(68 + (SH - duttiBottomY - 68) / 2 - 30)
+          : (Platform.OS === 'ios' ? 236 : 84);
+        // Y del centro del FAB desde arriba = SH - fabBottomFromScreen - 30 (radio FAB)
+        const FAB_CENTER_Y = SH - fabBottomFromScreen - 30;
+
         const ITEM_SIZE = 52;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
-        const R = 130; // radio único del anillo
+        const R = 120; // radio del anillo
 
         return FAB_SERVICES.map((svc, i) => {
           // 360° uniformes, empezando desde arriba (-90°)
           const angleDeg = -90 + (360 / COUNT) * i;
           const angleRad = (angleDeg * Math.PI) / 180;
 
-          const finalX = FAB_CX + Math.cos(angleRad) * R - ITEM_HALF;
-          const finalY = FAB_BOTTOM + Math.sin(angleRad) * R * -1 - ITEM_HALF;
+          // Posición del item en coordenadas absolutas desde top/left
+          const itemLeft = FAB_CX + Math.cos(angleRad) * R - ITEM_HALF;
+          const itemTop  = FAB_CENTER_Y + Math.sin(angleRad) * R - ITEM_HALF;
 
-          // Posición final fija (no animamos left/bottom para usar solo useNativeDriver)
           const scale = fabItemAnims[i].interpolate({
             inputRange: [0, 1],
             outputRange: [0.2, 1],
@@ -601,8 +607,8 @@ function HomeScreenInner() {
               key={svc.id}
               style={{
                 position: 'absolute',
-                left: finalX,
-                bottom: finalY,
+                left: itemLeft,
+                top: itemTop,
                 width: ITEM_SIZE,
                 alignItems: 'center',
                 zIndex: 25,
