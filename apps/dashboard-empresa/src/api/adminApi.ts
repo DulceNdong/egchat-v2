@@ -43,7 +43,7 @@ export const adminApi = {
       body: JSON.stringify({ email, password }),
       headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
     }),
-  me:    () => req<any>('/api/admin/me'),
+  me:    () => req<any>('/api/admin/auth/me'),
   stats: () => req<Stats>('/api/admin/stats'),
   setup2fa:  () => req<{ secret: string; qrCode: string }>('/api/admin/2fa/setup', { method: 'POST' }),
   verify2fa: (token: string) =>
