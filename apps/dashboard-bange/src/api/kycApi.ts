@@ -121,5 +121,5 @@ export const authApi = {
       body: JSON.stringify({ email, password }),
       headers: totpToken ? { 'X-TOTP-Token': totpToken } : {},
     }),
-  me: () => req<any>('/api/admin/me'),
+  me: () => req<any>('/api/admin/auth/me'),
 };
