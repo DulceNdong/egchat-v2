@@ -1335,6 +1335,17 @@ function MonederoScreenInner() {
     });
   }, []);
 
+  // ── Refrescar KYC, balance y transferencias pendientes al volver a la pestaña ──
+  useFocusEffect(
+    useCallback(() => {
+      getKycStatus(true).then(res => {
+        setKycStatus(res.kyc_status);
+      }).catch(() => {});
+      loadData();
+      loadPendingTransfers();
+    }, [loadData, loadPendingTransfers])
+  );
+
   const revealBalance = useCallback(() => {
     if (balanceRevealed || balanceRevealing) return;
     setBalanceRevealing(true);
