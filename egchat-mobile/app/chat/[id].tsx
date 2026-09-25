@@ -2216,8 +2216,8 @@ export default function ChatScreen() {
     currentUserId, chatSearchQuery, firstUnreadId,
     selectedIds, isSelectMode, isGroup, myProfile, chatName, chatAvatar,
     showReadReceipts, messageReactions, toggleSelect, retryMessage,
-    setPreviewImageUri, handleTransferPress, handleSwipeReply,
-    handleJumpToMessage, handleLongPress,
+    setPreviewImageUri, handleTransferPress, handleTransferAccept, handleTransferCancel,
+    handleSwipeReply, handleJumpToMessage, handleLongPress,
   ]);
 
   const goToCall = (callType: 'audio' | 'video') => {
