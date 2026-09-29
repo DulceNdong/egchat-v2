@@ -96,6 +96,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     passwordChanged: '¡Contraseña cambiada!',
     passwordChangedHint: 'Ya puedes iniciar sesión con tu nueva contraseña.',
     goToLogin: 'Ir a iniciar sesión',
+    createStrongPassword: 'Crea una contraseña segura para tu cuenta',
   },
   FR: {
     home: 'Accueil',
@@ -183,6 +184,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     passwordChanged: 'Mot de passe modifié !',
     passwordChangedHint: 'Vous pouvez maintenant vous connecter.',
     goToLogin: 'Aller à la connexion',
+    createStrongPassword: 'Créez un mot de passe sécurisé pour votre compte',
   },
   EN: {
     home: 'Home',
@@ -270,6 +272,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     passwordChanged: 'Password changed!',
     passwordChangedHint: 'You can now sign in with your new password.',
     goToLogin: 'Go to sign in',
+    createStrongPassword: 'Create a secure password for your account',
   },
   PT: {
     home: 'Início',
@@ -357,6 +360,7 @@ export const translations: Record<Lang, Record<string, string>> = {
     passwordChanged: 'Palavra-passe alterada!',
     passwordChangedHint: 'Já pode iniciar sessão com a nova palavra-passe.',
     goToLogin: 'Ir para início de sessão',
+    createStrongPassword: 'Crie uma palavra-passe segura para a sua conta',
   },
 };
 

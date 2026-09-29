@@ -105,7 +105,7 @@ export default function ForgotPasswordScreen() {
             {recoverStep === 1 && (
               <>
                 <Text style={[styles.title, { color: C.textPrimary }]}>{t('recoverAccount')}</Text>
-                <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('enterPhone')}</Text>
+                <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('createStrongPassword')}</Text>
                 <View style={styles.fieldGroup}>
                   <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('country')}</Text>
                   <View style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
