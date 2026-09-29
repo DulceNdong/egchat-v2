@@ -577,7 +577,7 @@ function HomeScreenInner() {
       {fabOpen && (() => {
         const { width: SW, height: SH } = Dimensions.get('window');
         const isSmall = SH < 680;
-        const fabBottomOffset = isSmall ? 165 : (Platform.OS === 'ios' ? 220 : 205);
+        const fabBottomOffset = isSmall ? 165 : (Platform.OS === 'ios' ? 248 : 205);
         const FAB_CENTER_BOTTOM = fabBottomOffset + 30;
 
         const ITEM_SIZE = isSmall ? 42 : 48;

@@ -245,7 +245,7 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
         <AvatarWithRing
           src={avatarSrc}
           name={chatName}
-          size={50}
+          size={44}
           contentTypes={contentTypes}
         />
         {chat.type === 'group' && (
@@ -1386,28 +1386,28 @@ const st = StyleSheet.create({
   chatItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: Spacing.listItemPaddingV,
-    paddingHorizontal: Spacing.listItemPaddingH,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
     backgroundColor: Colors.bgSecondary,
-    gap: Spacing.listItemGap,
+    gap: 10,
   },
-  chatInfo: { flex: 1, gap: 3 },
+  chatInfo: { flex: 1, gap: 2 },
   chatRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  chatName: { ...Typography.chatName, flex: 1, marginRight: Spacing.sm },
-  chatTime: { ...Typography.timestamp, color: Colors.textTertiary },
+  chatName: { ...Typography.chatName, fontSize: 15, flex: 1, marginRight: Spacing.sm },
+  chatTime: { ...Typography.timestamp, fontSize: 11, color: Colors.textTertiary },
   chatTimeUnread: { color: Colors.accent, fontWeight: FontWeight.semibold },
-  chatMsg: { ...Typography.subtitle, color: Colors.textSecondary, flex: 1 },
+  chatMsg: { ...Typography.subtitle, fontSize: 13, color: Colors.textSecondary, flex: 1 },
   chatMsgRow: { flexDirection: 'row', alignItems: 'center', flex: 1, marginRight: Spacing.sm },
   chatMsgIcon: { marginRight: 4, opacity: 0.7 },
   badge: {
     backgroundColor: Colors.accent, borderRadius: BorderRadius.badge,
-    minWidth: 20, height: 20, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 5,
+    minWidth: 18, height: 18, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4,
   },
-  badgeText: { ...Typography.badge, color: Colors.white },
+  badgeText: { ...Typography.badge, fontSize: 10, color: Colors.white },
   separator: {
     height: 1,
     backgroundColor: Colors.borderLight,
-    marginLeft: Spacing.listItemPaddingH + 50 + Spacing.listItemGap,
+    marginLeft: 66,
   },
 
   // ── Empty state ──────────────────────────────────────────────────
