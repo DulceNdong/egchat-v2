@@ -677,7 +677,7 @@ function HomeScreenInner() {
           FAB + — Botón central flotante
       ════════════════════════════════════════════════════════ */}
       <TouchableOpacity
-        style={[st.fab, { bottom: SH < 680 ? 165 : (Platform.OS === 'ios' ? 220 : 205) }]}
+        style={[st.fab, { bottom: SH < 680 ? 165 : (Platform.OS === 'ios' ? 248 : 205) }]}
         activeOpacity={0.9}
         onPress={() => {
           if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
