@@ -80,6 +80,7 @@
       },
       "jsEngine": "hermes",
       "softwareKeyboardLayoutMode": "resize",
+      "edgeToEdgeEnabled": false,
       "navigationBar": {
         "visible": "immersive",
         "barStyle": "dark-content"

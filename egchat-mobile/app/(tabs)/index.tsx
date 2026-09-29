@@ -36,6 +36,7 @@ import { HomeNoticiasModal, HomeIdDigitalModal } from '../../src/components/home
 import { HOME_NEWS } from '../../src/data/homeNews';
 import { fetchLiveHomeNews } from '../../src/services/newsRss';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
+import SessionManager from '../../src/sessionManager';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import {
   Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow,
@@ -306,7 +307,16 @@ function HomeScreenInner() {
     }
   }, []);
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    let active = true;
+    void SessionManager.getInstance().getUser().then(async cachedUser => {
+      if (!cachedUser || !active) return;
+      setUser(await mergePersistentAvatar(cachedUser));
+      if (active) setLoading(false);
+    }).catch(() => {});
+    void loadData();
+    return () => { active = false; };
+  }, [loadData]);
 
   useEffect(() => {
     return onProfileUpdated(patch => {
@@ -387,14 +397,6 @@ function HomeScreenInner() {
   };
 
   // news preview removed
-
-  if (loading) {
-    return (
-      <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
-        <ActivityIndicator size="large" color={Colors.brand} />
-      </View>
-    );
-  }
 
   return (
     <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>

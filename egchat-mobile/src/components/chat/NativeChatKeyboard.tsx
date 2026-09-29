@@ -24,8 +24,9 @@ type NativeProps = {
 };
 
 const componentName = 'EGChatKeyboardView';
-const isAvailable = Platform.OS !== 'web' && !!UIManager.getViewManagerConfig?.(componentName);
-const NativeKeyboard = isAvailable
+export const isNativeChatKeyboardAvailable = Platform.OS !== 'web' && !!UIManager.getViewManagerConfig?.(componentName);
+export const NATIVE_CHAT_KEYBOARD_HEIGHT = Platform.OS === 'ios' ? 291 : 252;
+const NativeKeyboard = isNativeChatKeyboardAvailable
   ? requireNativeComponent<NativeProps>(componentName)
   : null;
 
@@ -39,11 +40,10 @@ export function NativeChatKeyboard({
 
   return (
     <NativeKeyboard
-      style={[{ height: Platform.OS === 'ios' ? 291 : 252 }, style]}
+      style={[{ height: NATIVE_CHAT_KEYBOARD_HEIGHT }, style]}
       text={text}
       onChangeText={event => onChangeText(event.nativeEvent.text)}
       onSubmit={() => onSubmit?.()}
     />
   );
 }
-

@@ -14,90 +14,73 @@ pluginManagement {
       System.getenv("NODE_BINARY") ? new File(System.getenv("NODE_BINARY")).parent : null
     ] + (nvmBinPaths ?: [])).findAll { it && new File(it).exists() }
 
-    def pathPrefix = extraPaths.join(File.pathSeparator)
-    def nodeExec = ([
-      System.getenv("NODE_BINARY"),
-      "/usr/local/bin/node",
-      "/opt/homebrew/bin/node",
-      "/usr/local/opt/node/bin/node",
-      "${userHome}/.fnm/current/bin/node",
-      "${userHome}/.volta/bin/node",
-      "${userHome}/.asdf/shims/node"
-    ] + (nvmBinPaths?.collect { "$it/node" } ?: [])).find { it && new File(it).exists() } ?: "node"
+    if (!extraPaths.isEmpty()) {
+      def pathPrefix = extraPaths.join(File.pathSeparator)
 
-    def unsafeClass = Class.forName("sun.misc.Unsafe")
-    def fUnsafe = unsafeClass.getDeclaredField("theUnsafe")
-    fUnsafe.setAccessible(true)
-    def unsafe = fUnsafe.get(null)
-
-    def peClass = Class.forName("java.lang.ProcessEnvironment")
-
-    def getStaticField = { String fieldName ->
       try {
-        def f = peClass.getDeclaredField(fieldName)
-        def base = unsafe.staticFieldBase(f)
-        def offset = unsafe.staticFieldOffset(f)
-        return unsafe.getObject(base, offset)
-      } catch (Throwable ignored) {
-        return null
-      }
-    }
-
-    def envMap = getStaticField("theEnvironment") as Map
-
-    if (envMap != null) {
-      def pathEntry = envMap.entrySet().find { it.key.toString().equalsIgnoreCase("PATH") }
-      if (pathEntry != null) {
-        def curPath = pathEntry.value.toString()
+        def cLib = com.sun.jna.NativeLibrary.getInstance("c")
+        def setenvFunc = cLib.getFunction("setenv")
+        def curPath = System.getenv("PATH") ?: ""
         if (!curPath.startsWith(pathPrefix)) {
-          def newPathStr = pathPrefix + File.pathSeparator + curPath
-          def valObj = pathEntry.value
-          def extClass = valObj.getClass().getSuperclass()
-          def fStr = extClass.getDeclaredField("str")
-          def fBytes = extClass.getDeclaredField("bytes")
-          unsafe.putObject(valObj, unsafe.objectFieldOffset(fStr), newPathStr)
-          unsafe.putObject(valObj, unsafe.objectFieldOffset(fBytes), newPathStr.getBytes())
+          setenvFunc.invoke(Integer.TYPE, ["PATH", pathPrefix + File.pathSeparator + curPath, 1] as Object[])
         }
-      }
+      } catch (Throwable ignored) {}
 
-      def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
-      def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
+      try {
+        def pe = Class.forName("java.lang.ProcessEnvironment")
+        def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
+        def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
 
-      def nodeVar = unsafe.allocateInstance(varClass)
-      def nodeVal = unsafe.allocateInstance(valClass)
+        def varValueOf = varClass.getDeclaredMethod("valueOf", String.class)
+        varValueOf.setAccessible(true)
+        def valValueOf = valClass.getDeclaredMethod("valueOf", String.class)
+        valValueOf.setAccessible(true)
 
-      def extClass = varClass.getSuperclass()
-      def fStr = extClass.getDeclaredField("str")
-      def fBytes = extClass.getDeclaredField("bytes")
+        def pathVar = varValueOf.invoke(null, "PATH")
 
-      unsafe.putObject(nodeVar, unsafe.objectFieldOffset(fStr), "NODE_BINARY")
-      unsafe.putObject(nodeVar, unsafe.objectFieldOffset(fBytes), "NODE_BINARY".getBytes())
+        def fEnv = pe.getDeclaredField("theEnvironment")
+        fEnv.setAccessible(true)
+        def envMap = fEnv.get(null) as Map
+        if (envMap != null) {
+          def cur = envMap.get(pathVar)?.toString() ?: ""
+          if (!cur.startsWith(pathPrefix)) {
+            def newVal = pathPrefix + File.pathSeparator + cur
+            def valObj = valValueOf.invoke(null, newVal)
+            envMap.put(pathVar, valObj)
+          }
+        }
 
-      unsafe.putObject(nodeVal, unsafe.objectFieldOffset(fStr), nodeExec)
-      unsafe.putObject(nodeVal, unsafe.objectFieldOffset(fBytes), nodeExec.getBytes())
-
-      envMap.put(nodeVar, nodeVal)
+        def fUnmod = pe.getDeclaredField("theUnmodifiableEnvironment")
+        fUnmod.setAccessible(true)
+        def unmodMap = fUnmod.get(null) as Map
+        if (unmodMap != null) {
+          def newUnmodMap = new HashMap(unmodMap)
+          def cur = newUnmodMap.get("PATH")?.toString() ?: ""
+          if (!cur.startsWith(pathPrefix)) {
+            newUnmodMap.put("PATH", pathPrefix + File.pathSeparator + cur)
+            def modifiersField = java.lang.reflect.Field.class.getDeclaredField("modifiers")
+            modifiersField.setAccessible(true)
+            modifiersField.setInt(fUnmod, fUnmod.getModifiers() & ~java.lang.reflect.Modifier.FINAL)
+            fUnmod.set(null, Collections.unmodifiableMap(newUnmodMap))
+          }
+        }
+      } catch (Throwable ignored) {}
     }
   } catch (Throwable ignored) {}
 
-  def userHome = System.getProperty("user.home") ?: ""
-  def nvmDir = new File(userHome, ".nvm/versions/node")
+  def nvmDir = new File(System.getProperty("user.home"), ".nvm/versions/node")
   def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin/node").absolutePath } : []
 
-  def nodeBin = ([
+  def nodeExec = ([
     System.getenv("NODE_BINARY"),
     "/usr/local/bin/node",
-    "/opt/homebrew/bin/node",
-    "/usr/local/opt/node/bin/node",
-    "${userHome}/.fnm/current/bin/node",
-    "${userHome}/.volta/bin/node",
-    "${userHome}/.asdf/shims/node"
+    "/opt/homebrew/bin/node"
   ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"
 
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine(nodeBin, "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+      commandLine(nodeExec, "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
     }.standardOutput.asText.get().trim()
   ).getParentFile().absolutePath
   includeBuild(reactNativeGradlePlugin)
@@ -105,7 +88,7 @@ pluginManagement {
   def expoPluginsPath = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine(nodeBin, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+      commandLine(nodeExec, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
     }.standardOutput.asText.get().trim(),
     "../android/expo-gradle-plugin"
   ).absolutePath

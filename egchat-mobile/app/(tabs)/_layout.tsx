@@ -70,7 +70,7 @@ const NavIcon = ({ name, color, focused, size = 24 }: { name: string; color: str
 // ── Tab icon con indicador activo ──────────────────────────────────
 const TabIcon = ({ name, color, focused }: { name: string; color: string; focused: boolean }) => (
   <View style={{ alignItems: 'center', justifyContent: 'center' }}>
-    <NavIcon name={name} color={color} focused={focused} size={24} />
+    <NavIcon name={name} color={color} focused={focused} size={27} />
   </View>
 );
 
@@ -83,6 +83,7 @@ export default function TabsLayout() {
       screenOptions={{
         headerShown: false,
         lazy: true,
+        freezeOnBlur: true,
         tabBarStyle: {
           position: 'absolute',
           left: 0,

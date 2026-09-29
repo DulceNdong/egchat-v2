@@ -1,5 +1,5 @@
 // Barra de input del chat
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
   ActivityIndicator, Animated, Platform,
@@ -8,7 +8,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { TextFormatBar } from './TextFormatBar';
-import { NativeChatKeyboard } from './NativeChatKeyboard';
 import { useTranslation } from '../../context/LanguageContext';
 
 export interface ChatInputBarProps {
@@ -18,7 +17,6 @@ export interface ChatInputBarProps {
   showEmojis: boolean;
   isRecording: boolean;
   keyboardVisible?: boolean;
-  nativeKbOpen?: boolean;           // true cuando el teclado custom está visible
   durationFormatted: string;
   amplitude?: number;
   sendScale: Animated.Value;
@@ -26,7 +24,6 @@ export interface ChatInputBarProps {
   onToggleAttach: () => void;
   onToggleEmojis: () => void;
   onToggleStickers?: () => void;
-  onNativeKbChange?: (open: boolean) => void;  // notifica al padre
   onSend: () => void;
   onLongPressSend?: () => void;
   onStartRecording: () => void;
@@ -42,7 +39,6 @@ export function ChatInputBar({
   showEmojis,
   isRecording,
   keyboardVisible = false,
-  nativeKbOpen,
   durationFormatted,
   amplitude = 0,
   sendScale,
@@ -55,22 +51,12 @@ export function ChatInputBar({
   onStartRecording,
   onCancelRecording,
   onStopRecording,
-  onNativeKbChange,
   inputRef,
 }: ChatInputBarProps) {
   const { t } = useTranslation();
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
-  const [nativeKeyboardVisible, setNativeKeyboardVisible] = useState(false);
-  // Padding inferior adecuado para separar la barra de entrada del teclado tanto en Android como en iOS
-  const bottomPadding = keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom);
-
-  // Cuando el padre cierra el kb desde fuera (abre panel +), cerramos aquí también
-  React.useEffect(() => {
-    if (nativeKbOpen === false && nativeKeyboardVisible) {
-      setNativeKeyboardVisible(false);
-    }
-  }, [nativeKbOpen]);
+  const bottomPadding = keyboardVisible ? 6 : Math.max(6, insets.bottom);
   // C6 — referencia de selección para insertar formato
   const selectionRef = useRef<{ start: number; end: number }>({ start: text.length, end: text.length });
 
@@ -118,8 +104,6 @@ export function ChatInputBar({
       <TouchableOpacity
         style={s.plusBtn}
         onPress={() => {
-          setNativeKeyboardVisible(false);
-          onNativeKbChange?.(false);
           onToggleAttach();
         }}
         activeOpacity={0.8}

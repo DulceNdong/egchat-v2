@@ -303,7 +303,6 @@ export default function RootLayout() {
 
         const cachedUser = await loadCachedSessionUser();
         if (cachedUser?.id && mounted) {
-          setGlobalUserId(String(cachedUser.id));
           setChecking(false);
           if (isAuthRoute || isRootPath(pathname)) router.replace('/(tabs)');
         }
@@ -342,7 +341,10 @@ export default function RootLayout() {
         try {
           if (!me?.id || !mounted) return;
 
-          setGlobalUserId(String(me.id));
+          const androidBackgroundDelay = Platform.OS === 'android' ? 5000 : 0;
+          const realtimeStartTimer = setTimeout(() => {
+            if (mounted) setGlobalUserId(String(me.id));
+          }, androidBackgroundDelay);
 
           // La geolocalización puede ser costosa en Android: se difiere para
           // que la primera pantalla sea interactiva antes de solicitarla.
@@ -361,8 +363,10 @@ export default function RootLayout() {
           // Iniciar keep-alive ahora que el usuario está autenticado
           startKeepAlive();
 
-          presenceCleanup.current?.();
-          presenceCleanup.current = trackUserPresence(me.id);
+          const presenceStartTimer = setTimeout(() => {
+            presenceCleanup.current?.();
+            presenceCleanup.current = trackUserPresence(me.id);
+          }, androidBackgroundDelay);
 
           const { getToken, getApiBase } = await import('../src/api');
           const getB = () => getApiBase();
@@ -372,7 +376,7 @@ export default function RootLayout() {
           const hb = () => getT().then(t =>
             fetch(`${getB()}/api/auth/heartbeat`, { method: 'POST', headers: { Authorization: `Bearer ${t}` } })
           ).catch(() => {});
-          hb();
+          setTimeout(hb, androidBackgroundDelay);
           const hbTimer = setInterval(hb, 60000);
 
           // Sesiones — diferido 8s
@@ -455,7 +459,7 @@ export default function RootLayout() {
               } catch (e) {
                 console.warn('[Notifications init error]', e);
               }
-            }, 300);
+            }, Platform.OS === 'android' ? 5000 : 300);
           }
 
           const stopPresenceTracking = presenceCleanup.current;
@@ -465,6 +469,8 @@ export default function RootLayout() {
             clearInterval(sessTimer);
             clearInterval(weatherRefreshInterval);
             clearTimeout(locationTimer);
+            clearTimeout(realtimeStartTimer);
+            clearTimeout(presenceStartTimer);
           };
 
         } catch (e) {

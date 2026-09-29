@@ -26,7 +26,6 @@ import { ChatMenuPanel, ChatMenuItem } from '../../src/components/chat/ChatMenuP
 import { ChatMessageBubble } from '../../src/components/chat/ChatMessageBubble';
 import { ChatHeader } from '../../src/components/chat/ChatHeader';
 import { ChatInputBar } from '../../src/components/chat/ChatInputBar';
-import { NativeChatKeyboard } from '../../src/components/chat/NativeChatKeyboard';
 import { ScheduledMessageModal } from '../../src/components/chat/ScheduledMessageModal';
 import { processScheduledMessages } from '../../src/services/scheduledMessages';
 import { EditHistoryModal } from '../../src/components/chat/EditHistoryModal';
@@ -227,7 +226,6 @@ export default function ChatScreen() {
   const [replyTo, setReplyTo] = useState<Message | null>(null);
   const [drawerVisible, setDrawerVisible] = useState(false);
   const [showAttach, setShowAttach] = useState(false);
-  const [nativeKbOpen, setNativeKbOpen] = useState(false); // teclado custom visible
   const [showEmojis, setShowEmojis] = useState(false);
   const [showStickers, setShowStickers] = useState(false);
   const [inputBarHeight, setInputBarHeight] = useState(0);
@@ -405,8 +403,7 @@ export default function ChatScreen() {
   const panelSlide = useRef(new Animated.Value(PANEL_HEIGHT)).current;
   const prevPanelVisible = useRef(false);
 
-  // Cualquier panel abierto (attach/emojis/stickers/teclado custom)
-  const anyPanelOpen = !editingMessage && (showAttach || showEmojis || showStickers || nativeKbOpen);
+  const anyPanelOpen = !editingMessage && (showAttach || showEmojis || showStickers);
 
   useEffect(() => {
     const visible = !editingMessage && (showAttach || showEmojis || showStickers);
@@ -839,17 +836,10 @@ export default function ChatScreen() {
     flatListRef.current?.scrollToEnd({ animated });
   }, []);
 
-  // Mantener visible el último mensaje, el indicador de escritura y el input al cambiar el teclado.
   useEffect(() => {
     if (messages.length === 0) return;
     const frame = requestAnimationFrame(() => scrollToBottom(false));
-    const timer = setTimeout(() => scrollToBottom(false), 120);
-    const settledTimer = setTimeout(() => scrollToBottom(false), 280);
-    return () => {
-      cancelAnimationFrame(frame);
-      clearTimeout(timer);
-      clearTimeout(settledTimer);
-    };
+    return () => cancelAnimationFrame(frame);
   }, [messages.length, messagesBottomInset, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
@@ -1056,7 +1046,6 @@ export default function ChatScreen() {
     setShowEmojis(false);
     setShowAttach(false);
     setShowStickers(false);
-    setNativeKbOpen(false);
   }, []);
 
   const dismissAll = useCallback(() => {
@@ -1065,7 +1054,6 @@ export default function ChatScreen() {
     setShowEmojis(false);
     setShowAttach(false);
     setShowStickers(false);
-    setNativeKbOpen(false);
   }, []);
 
   // Gesto de doble tap nativo para cerrar teclado (funciona sobre FlatList con keyboardShouldPersistTaps="always")
@@ -2518,18 +2506,15 @@ export default function ChatScreen() {
                   showEmojis={showEmojis}
                   isRecording={isRecording}
                   keyboardVisible={keyboardBottomOffset > 0}
-                  nativeKbOpen={nativeKbOpen}
                   durationFormatted={durationFormatted}
                   sendScale={sendScale}
                   onChangeText={handleTextChange}
-                  onNativeKbChange={setNativeKbOpen}
                   onToggleAttach={() => {
                     setShowAttach(v => {
                       const n = !v;
                       if (n) {
                         setShowEmojis(false);
                         setShowStickers(false);
-                        setNativeKbOpen(false);
                         inputRef.current?.blur();
                         Keyboard.dismiss();
                       }
@@ -2542,7 +2527,6 @@ export default function ChatScreen() {
                       if (n) {
                         setShowAttach(false);
                         setShowStickers(false);
-                        setNativeKbOpen(false);
                         inputRef.current?.blur();
                         Keyboard.dismiss();
                       }
@@ -2555,7 +2539,6 @@ export default function ChatScreen() {
                       if (n) {
                         setShowAttach(false);
                         setShowEmojis(false);
-                        setNativeKbOpen(false);
                         inputRef.current?.blur();
                         Keyboard.dismiss();
                       }
@@ -2620,7 +2603,6 @@ export default function ChatScreen() {
                   onPress={() => {
                     setShowAttach(false);
                     inputRef.current?.focus();
-                    setNativeKbOpen(true);
                   }}
                   activeOpacity={0.7}
                   hitSlop={8}
@@ -2664,17 +2646,6 @@ export default function ChatScreen() {
               </View>
             )}
           </Animated.View>
-        )}
-
-        {/* ── TECLADO CUSTOM — mismo espacio que los paneles ── */}
-        {!editingMessage && nativeKbOpen && !showAttach && !showEmojis && !showStickers && (
-          <View style={[styles.panelContainer, { bottom: 0 }]}>
-            <NativeChatKeyboard
-              text={text}
-              onChangeText={handleTextChange}
-              onSubmit={sendMessage}
-            />
-          </View>
         )}
 
       </View>

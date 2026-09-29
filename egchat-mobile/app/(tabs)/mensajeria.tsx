@@ -22,7 +22,7 @@ const ChatFlatList: React.ComponentType<any> = Platform.OS === 'web' ? FlatList 
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { router } from 'expo-router';
+import { router, useNavigation } from 'expo-router';
 import { chatAPI, authAPI, contactsAPI } from '../../src/api';
 import { onProfileUpdated } from '../../src/utils/profileEvents';
 import { useChatStream } from '../../src/hooks/useChatStream';
@@ -206,6 +206,13 @@ const IconMoney = ({ color = '#374151' }: { color?: string }) => (
     <Rect x="2" y="5" width="20" height="14" rx="2" /><Line x1="2" y1="10" x2="22" y2="10" /><Circle cx="12" cy="15" r="2" />
   </Svg>
 );
+const IconCemac = ({ color = '#64748b' }: { color?: string }) => (
+  <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Rect x="2" y="5" width="20" height="14" rx="2.5" />
+    <Path d="M6 10h12M6 14h5" />
+    <Circle cx="17" cy="14" r="1" />
+  </Svg>
+);
 const IconArchive = ({ color = '#374151' }: { color?: string }) => (
   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round">
     <Polyline points="21 8 21 21 3 21 3 8" /><Rect x="1" y="3" width="22" height="5" /><Line x1="10" y1="12" x2="14" y2="12" />
@@ -230,9 +237,11 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
   contentTypes?: ContentType[];
 }) => {
   const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
-  const chatName = chat.type === 'private'
+  const rawChatName = chat.type === 'private'
     ? (getParticipantName(other) || 'Usuario')
     : (chat.name || 'Grupo');
+  const isDjangue = chat.type === 'group' && chat.name?.startsWith('💰');
+  const chatName = isDjangue ? rawChatName.replace(/^💰\s*/, '') : rawChatName;
   const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
   const msgInfo = getLastMessageInfo(chat.last_message);
   const time = formatTime(chat.updated_at);
@@ -246,12 +255,12 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
         <AvatarWithRing
           src={avatarSrc}
           name={chatName}
-          size={44}
+          size={Platform.OS === 'ios' ? 50 : 44}
           contentTypes={contentTypes}
         />
         {chat.type === 'group' && (
-          <View style={[st.groupBadge, chat.name?.startsWith('💰') && st.groupBadgeDjangue]}>
-            <Text style={st.groupBadgeText}>{chat.name?.startsWith('💰') ? '💰' : '👥'}</Text>
+          <View style={[st.groupBadge, isDjangue && st.groupBadgeDjangue]}>
+            <Text style={[st.groupBadgeText, isDjangue && st.groupBadgeTextDjangue]}>{isDjangue ? 'XAF' : 'G'}</Text>
           </View>
         )}
       </View>
@@ -356,6 +365,7 @@ function MensajeriaScreenInner() {
   const [archivePwdError, setArchivePwdError] = useState('');
   // Sprint 1.1 — Crear grupo
   const [showCreateGroup, setShowCreateGroup] = useState(false);
+  const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
@@ -495,6 +505,17 @@ function MensajeriaScreenInner() {
 
     return () => clearInterval(keepAlive);
   }, []);
+
+  useEffect(() => {
+    const preloadWallet = setTimeout(() => navigation.preload?.('monedero'), 2000);
+    const preloadServices = setTimeout(() => navigation.preload?.('servicios'), 4500);
+    const preloadSettings = setTimeout(() => navigation.preload?.('ajustes'), 7000);
+    return () => {
+      clearTimeout(preloadWallet);
+      clearTimeout(preloadServices);
+      clearTimeout(preloadSettings);
+    };
+  }, [navigation]);
 
   useEffect(() => {
     if (!currentUserId) return;
@@ -837,10 +858,10 @@ function MensajeriaScreenInner() {
           </FavoriteSection>
 
           {/* ══════════════════════════════════════════════════════
-              FILTROS — Individual | Grupos | Dinero
+              FILTROS — Individual | Grupos | Dinero | Archivar
           ══════════════════════════════════════════════════════ */}
           <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={st.filtersRow}>
+            <View style={st.filtersRow}>
               {([
                 { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
                 { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
@@ -861,11 +882,11 @@ function MensajeriaScreenInner() {
                     activeOpacity={0.75}
                   >
                     <f.Icon color={iconColor} />
-                    <Text style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
+                    <Text numberOfLines={1} style={[st.filterText, active && st.filterTextActive]}>{f.label}</Text>
                   </TouchableOpacity>
                 );
               })}
-            </ScrollView>
+            </View>
           </View>
 
           {/* Subtabs Djangue / Normal — solo visible en filtro Grupos */}
@@ -899,11 +920,7 @@ function MensajeriaScreenInner() {
                   id: 'djangue' as GroupSubFilter,
                   label: 'Djangues',
                   Icon: ({ active }: { active: boolean }) => (
-                    <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
-                      stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-                      <Line x1="12" y1="1" x2="12" y2="23"/>
-                      <Path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
-                    </Svg>
+                    <IconCemac color={active ? '#fff' : '#64748b'} />
                   ),
                 },
               ]).map(sub => {
@@ -1007,7 +1024,11 @@ function MensajeriaScreenInner() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
             }
           >
-            <Text style={st.emptyIcon}>{filter === 'dinero' ? '💸' : '💬'}</Text>
+            {filter === 'dinero' ? (
+              <View style={st.cemacEmptyMark}><Text style={st.cemacEmptyText}>XAF</Text></View>
+            ) : (
+              <Text style={st.emptyIcon}>💬</Text>
+            )}
             <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
               {filter === 'dinero'
                 ? 'Sin transferencias recientes'
@@ -1341,23 +1362,28 @@ const st = StyleSheet.create({
     backgroundColor: Colors.bgSecondary,
     borderBottomWidth: 1,
     borderBottomColor: Colors.borderLight,
-    paddingVertical: Spacing.sm,
+    paddingVertical: 6,
   },
   filtersRow: {
-    paddingHorizontal: Spacing.md,
-    gap: Spacing.sm,
+    paddingHorizontal: Platform.OS === 'ios' ? 4 : 8,
+    gap: Platform.OS === 'ios' ? 2 : 4,
     flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'space-between',
   },
   filterChip: {
+    flex: 1,
+    minWidth: 0,
+    flexShrink: 1,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 5,
-    paddingHorizontal: 14,
+    justifyContent: 'center',
+    gap: Platform.OS === 'ios' ? 2 : 3,
+    paddingHorizontal: Platform.OS === 'ios' ? 1 : 2,
     paddingVertical: 6,
-    borderRadius: 20,
+    borderRadius: 16,
     backgroundColor: '#ffffff',
-    borderWidth: 1.5,
+    borderWidth: 1.2,
     borderColor: '#d1d5db',
   },
   filterChipActive: {
@@ -1377,8 +1403,8 @@ const st = StyleSheet.create({
     elevation: 3,
   },
   filterText: {
-    fontSize: 14,
-    fontWeight: '600',
+    fontSize: Platform.OS === 'ios' ? 10 : 11,
+    fontWeight: '700',
     color: '#374151',
   },
   filterTextActive: {
@@ -1425,10 +1451,16 @@ const st = StyleSheet.create({
     backgroundColor: '#fff', alignItems: 'center', justifyContent: 'center',
     shadowColor: '#000', shadowOffset: { width: 0, height: 1 }, shadowOpacity: 0.15, shadowRadius: 2, elevation: 2,
   },
-  groupBadgeDjangue: {
-    backgroundColor: '#fef9c3',
+  groupBadgeDjangue: { backgroundColor: '#0f766e', width: 27, borderRadius: 9 },
+  groupBadgeText: { fontSize: 9, fontWeight: '800', color: '#475569' },
+  groupBadgeTextDjangue: { fontSize: 7, color: '#fff', letterSpacing: 0.2 },
+
+  cemacEmptyMark: {
+    width: 64, height: 44, borderRadius: 12, marginBottom: Spacing.md,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: '#e6fffa', borderWidth: 1, borderColor: '#99f6e4',
   },
-  groupBadgeText: { fontSize: 10 },
+  cemacEmptyText: { fontSize: 16, fontWeight: '800', color: '#0f766e', letterSpacing: 1 },
 
   // ── Group subtabs ────────────────────────────────────────────────
   groupSubTabsWrap: {
