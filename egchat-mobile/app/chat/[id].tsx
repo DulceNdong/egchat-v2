@@ -432,7 +432,7 @@ export default function ChatScreen() {
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline: _isOnlineFromOffline, saveCache, readCache } = useOffline();
   const { isOnline } = useNetworkStatus();
-  const dockBottomOffset = keyboardBottomOffset;
+  const dockBottomOffset = Platform.OS === 'ios' ? keyboardBottomOffset : 0;
   const effectiveDockOffset = anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset;
   const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
 

@@ -1,5 +1,6 @@
 /**
- * EGChat — Tienda de Mini-Apps (diseño premium v3 — iconos SVG, sin fondos)
+ * EGChat — Tienda de Mini-Apps
+ * Diseño mosaico limpio, mismo lenguaje visual que Servicios.
  */
 import React, { useState, useMemo } from 'react';
 import {
@@ -7,20 +8,24 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
-import { router } from 'expo-router';import Svg, { Line, Path, Circle } from 'react-native-svg';
-import { MINI_APPS, CATEGORIES, addRecentApp, type MiniAppCategory, searchMiniApps, type MiniApp } from '../src/miniapps/miniAppsStore';
+import { router } from 'expo-router';
+import Svg, { Line, Path, Circle } from 'react-native-svg';
+import {
+  MINI_APPS, CATEGORIES, addRecentApp,
+  type MiniAppCategory, searchMiniApps, type MiniApp,
+} from '../src/miniapps/miniAppsStore';
 import { MiniAppIcon } from '../src/miniapps/MiniAppIcon';
 
 const NATIVE_MINI_APP_ROUTES: Record<string, any> = {
-  djangue: '/mi-djangue',
-  mitaxi: '/mitaxi',
-  cemac: '/cemac',
+  djangue:      '/mi-djangue',
+  mitaxi:       '/mitaxi',
+  cemac:        '/cemac',
   supermercado: { pathname: '/(tabs)/servicios', params: { service: 'supermercado' } },
-  servicios_gov: '/(tabs)/servicios',
-  seguros: '/seguros-salud',
-  apuestas: '/apuestas',
-  ocio: '/ocio',
-  barcos: '/barcos',
+  servicios_gov:'/(tabs)/servicios',
+  seguros:      '/seguros-salud',
+  apuestas:     '/apuestas',
+  ocio:         '/ocio',
+  barcos:       '/barcos',
 };
 
 export default function MiniAppsScreen() {
@@ -34,8 +39,6 @@ export default function MiniAppsScreen() {
     return apps;
   }, [search, category]);
 
-  const featured = MINI_APPS.filter(a => a.verified).slice(0, 3);
-
   const openApp = (app: MiniApp) => {
     void addRecentApp(app.id);
     const nativeRoute = NATIVE_MINI_APP_ROUTES[app.id];
@@ -46,13 +49,35 @@ export default function MiniAppsScreen() {
     router.push({ pathname: '/mini-app-player', params: { url: app.url, title: app.name, appId: app.id } } as any);
   };
 
+  // Agrupar apps filtradas por categoría para el mosaico
+  const grouped = useMemo(() => {
+    if (search.trim() || category !== 'all') {
+      return [{ title: '', apps: filtered }];
+    }
+    const cats: { title: string; apps: MiniApp[] }[] = [];
+    Object.entries(CATEGORIES).forEach(([catId, catInfo]) => {
+      const catApps = MINI_APPS.filter(a => a.category === catId);
+      if (catApps.length > 0) {
+        cats.push({ title: catInfo.label, apps: catApps });
+      }
+    });
+    return cats;
+  }, [filtered, search, category]);
+
   return (
     <SafeAreaView style={s.root} edges={['left', 'right']}>
+
       {/* ── Header ── */}
-      <LinearGradient colors={['#0f172a', '#1e3a5f']} style={[s.header, { paddingTop: insets.top + 16 }]}>
+      <LinearGradient
+        colors={['#00C8A0', '#00B4E6']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={[s.header, { paddingTop: insets.top + 16 }]}
+      >
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} hitSlop={12} style={s.iconBtn}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
+            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none"
+              stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Line x1="19" y1="12" x2="5" y2="12"/>
               <Path d="M12 19l-7-7 7-7"/>
             </Svg>
@@ -67,54 +92,43 @@ export default function MiniAppsScreen() {
         {/* Búsqueda */}
         <View style={s.searchRow}>
           <View style={s.searchBar}>
-            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.45)" strokeWidth={2} strokeLinecap="round">
-              <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
+            <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
+              stroke="rgba(255,255,255,0.6)" strokeWidth={2} strokeLinecap="round">
+              <Circle cx="11" cy="11" r="8"/>
+              <Path d="M21 21l-4.35-4.35"/>
             </Svg>
             <TextInput
               style={s.searchInput}
               placeholder="Buscar aplicación..."
-              placeholderTextColor="rgba(255,255,255,0.35)"
+              placeholderTextColor="rgba(255,255,255,0.5)"
               value={search}
               onChangeText={setSearch}
             />
             {search.length > 0 && (
-              <TouchableOpacity onPress={() => setSearch('')}>
-                <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 16 }}>✕</Text>
+              <TouchableOpacity onPress={() => setSearch('')} hitSlop={8}>
+                <Svg width={14} height={14} viewBox="0 0 24 24" fill="none"
+                  stroke="rgba(255,255,255,0.6)" strokeWidth={2.5} strokeLinecap="round">
+                  <Line x1="18" y1="6" x2="6" y2="18"/>
+                  <Line x1="6" y1="6" x2="18" y2="18"/>
+                </Svg>
               </TouchableOpacity>
             )}
           </View>
         </View>
       </LinearGradient>
 
-      <ScrollView showsVerticalScrollIndicator={false} style={s.scroll}>
-        {/* ── Destacadas ── */}
-        {!search && category === 'all' && (
-          <View style={s.sect}>
-            <Text style={s.sectTitle}>Destacadas</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.featRow}>
-              {featured.map(app => (
-                <TouchableOpacity key={app.id} style={s.featCard} onPress={() => openApp(app)} activeOpacity={0.85}>
-                  {/* Icono grande sin fondo */}
-                  <View style={[s.featIconWrap, { borderColor: 'rgba(0,0,0,0.07)' }]}>
-                    <MiniAppIcon name={app.icon} color={app.accentColor} size={28} />
-                  </View>
-                  <Text style={s.featName}>{app.name}</Text>
-                  <Text style={s.featDesc} numberOfLines={2}>{app.description}</Text>
-                  {app.verified && (
-                    <View style={s.featVerified}>
-                      <Text style={[s.featVerifiedText, { color: app.accentColor }]}>✓ Verificada</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
-
-        {/* ── Categorías ── */}
-        <View style={s.sect}>
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.catRow}>
-            {[{ id: 'all', label: 'Todo', emoji: '⬡' }, ...Object.entries(CATEGORIES).map(([id, c]) => ({ id, label: c.label, emoji: c.emoji }))].map(cat => (
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        style={s.scroll}
+        contentContainerStyle={{ paddingBottom: 80 }}
+      >
+        {/* ── Chips de categoría ── */}
+        <View style={s.catSection}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {[
+              { id: 'all', label: 'Todo' },
+              ...Object.entries(CATEGORIES).map(([id, c]) => ({ id, label: c.label })),
+            ].map(cat => (
               <TouchableOpacity
                 key={cat.id}
                 style={[s.catChip, category === cat.id && s.catChipActive]}
@@ -128,141 +142,124 @@ export default function MiniAppsScreen() {
           </ScrollView>
         </View>
 
-        {/* ── Lista de apps ── */}
-        <View style={s.sect}>
-          {filtered.length === 0 ? (
-            <View style={s.empty}>
-              <Svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" strokeWidth={1.2} strokeLinecap="round">
-                <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
-              </Svg>
-              <Text style={s.emptyText}>Sin resultados para "{search}"</Text>
-            </View>
-          ) : (
-            filtered.map(app => (
-              <TouchableOpacity key={app.id} style={s.row} onPress={() => openApp(app)} activeOpacity={0.82}>
-                {/* Icono SVG limpio sin fondo */}
-                <View style={[s.rowIcon, { borderColor: app.accentColor + '25' }]}>
-                  <MiniAppIcon name={app.icon} color={app.accentColor} size={26} />
+        {/* ── Mosaico de apps agrupado por categoría ── */}
+        {filtered.length === 0 ? (
+          <View style={s.empty}>
+            <Svg width={48} height={48} viewBox="0 0 24 24" fill="none"
+              stroke="#cbd5e1" strokeWidth={1.2} strokeLinecap="round">
+              <Circle cx="11" cy="11" r="8"/>
+              <Path d="M21 21l-4.35-4.35"/>
+            </Svg>
+            <Text style={s.emptyText}>Sin resultados para "{search}"</Text>
+          </View>
+        ) : (
+          grouped.map((group, gi) => (
+            <View key={gi} style={s.groupWrapper}>
+              {/* Encabezado de sección */}
+              {!!group.title && (
+                <View style={s.groupHeader}>
+                  <Text style={s.groupTitle}>{group.title.toUpperCase()}</Text>
                 </View>
+              )}
 
-                {/* Info */}
-                <View style={s.rowInfo}>
-                  <View style={s.rowTitleRow}>
-                    <Text style={s.rowName}>{app.name}</Text>
-                    {app.verified && (
-                      <View style={s.badge}>
-                        <Text style={[s.badgeText, { color: app.accentColor }]}>✓ Verificada</Text>
+              {/* Grid de iconos */}
+              <View style={s.sectionCard}>
+                <View style={s.grid}>
+                  {group.apps.map(app => (
+                    <TouchableOpacity
+                      key={app.id}
+                      style={s.gridItem}
+                      onPress={() => openApp(app)}
+                      activeOpacity={0.55}
+                    >
+                      {/* Icono */}
+                      <View style={[s.iconBox, { backgroundColor: app.accentColor + '18' }]}>
+                        <MiniAppIcon name={app.icon} color={app.accentColor} size={24} />
+                        {app.verified && <View style={[s.verifiedDot, { backgroundColor: app.accentColor }]} />}
                       </View>
-                    )}
-                  </View>
-                  <Text style={s.rowDesc} numberOfLines={1}>{app.description}</Text>
-                  <Text style={s.rowDev}>{app.developer}</Text>
+                      {/* Etiqueta */}
+                      <Text style={s.gridLabel} numberOfLines={2}>{app.name}</Text>
+                    </TouchableOpacity>
+                  ))}
                 </View>
+              </View>
 
-                {/* Botón */}
-                <TouchableOpacity style={[s.openBtn, { borderColor: app.accentColor + '50' }]} onPress={() => openApp(app)}>
-                  <Text style={[s.openBtnText, { color: app.accentColor }]}>Abrir</Text>
-                </TouchableOpacity>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-
-        <View style={{ height: 40 }} />
+              <View style={s.groupSpacer} />
+            </View>
+          ))
+        )}
       </ScrollView>
     </SafeAreaView>
   );
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#0f172a' },
+  root:   { flex: 1, backgroundColor: '#F0F2F5' },
   scroll: { flex: 1 },
 
-  // Header
-  header: { paddingBottom: 20 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4 },
+  // ── Header ──────────────────────────────────────────────────────
+  header:     { paddingBottom: 18 },
+  headerRow:  {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 16, paddingTop: 12, paddingBottom: 4,
+  },
   headerTitle: { fontSize: 17, fontWeight: '800', color: '#fff' },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
-  iconBtn: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
-  searchRow: { paddingHorizontal: 16, marginTop: 10 },
+  headerSub:   { fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+  iconBtn:    { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+
+  searchRow: { paddingHorizontal: 16, marginTop: 8 },
   searchBar: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: 'rgba(255,255,255,0.08)',
+    backgroundColor: 'rgba(255,255,255,0.2)',
     borderRadius: 12, paddingHorizontal: 14, paddingVertical: 10,
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.25)',
   },
   searchInput: { flex: 1, color: '#fff', fontSize: 14 },
 
-  // Sección
-  sect: { paddingHorizontal: 16, marginTop: 16 },
-  sectTitle: { fontSize: 11, fontWeight: '700', color: '#94a3b8', letterSpacing: 0.8, textTransform: 'uppercase', marginBottom: 10 },
-
-  // Destacadas
-  featRow: { marginHorizontal: -16 },
-  featCard: {
-    width: 120, marginLeft: 12, padding: 12,
-    backgroundColor: '#fff', borderRadius: 16,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05, shadowRadius: 8, elevation: 2,
-    gap: 4,
-  },
-  featIconWrap: {
-    width: 44, height: 44, borderRadius: 12,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.06)',
-    marginBottom: 2,
-    backgroundColor: 'transparent',
-  },
-  featName: { fontSize: 12, fontWeight: '700', color: '#1e293b', lineHeight: 16 },
-  featDesc: { fontSize: 10, color: '#94a3b8', lineHeight: 13 },
-  featVerified: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 6, paddingVertical: 2,
-    borderRadius: 5, marginTop: 2,
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)',
-  },
-  featVerifiedText: { fontSize: 9, fontWeight: '700' },
-
-  // Categorías
-  catRow: { marginHorizontal: -16 },
+  // ── Categorías ──────────────────────────────────────────────────
+  catSection: { paddingVertical: 10, paddingLeft: 8 },
   catChip: {
-    paddingHorizontal: 16, paddingVertical: 8, marginLeft: 8,
+    paddingHorizontal: 16, paddingVertical: 7, marginRight: 8,
     borderRadius: 20, backgroundColor: '#fff',
-    borderWidth: 1.5, borderColor: '#e2e8f0',
+    borderWidth: 1.5, borderColor: '#E5E7EB',
   },
-  catChipActive: { backgroundColor: '#0f172a', borderColor: '#0f172a' },
-  catText: { fontSize: 12, fontWeight: '600', color: '#64748b' },
+  catChipActive: { backgroundColor: '#00C8A0', borderColor: '#00C8A0' },
+  catText:       { fontSize: 12, fontWeight: '600', color: '#6B7280' },
   catTextActive: { color: '#fff' },
 
-  // Filas de apps
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 14,
-    backgroundColor: '#fff', borderRadius: 16, padding: 14,
-    marginBottom: 10,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.04, shadowRadius: 8, elevation: 2,
+  // ── Grupos / secciones ──────────────────────────────────────────
+  groupWrapper: {},
+  groupHeader: { paddingHorizontal: 16, paddingTop: 8, paddingBottom: 2 },
+  groupTitle:  { fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8 },
+  sectionCard: { backgroundColor: '#fff', paddingHorizontal: 4, paddingVertical: 4 },
+  groupSpacer: { height: 6, backgroundColor: '#F0F2F5' },
+
+  // ── Mosaico 4 columnas ──────────────────────────────────────────
+  grid: { flexDirection: 'row', flexWrap: 'wrap' },
+  gridItem: {
+    width: '25%',
+    alignItems: 'center',
+    paddingVertical: 10,
+    paddingHorizontal: 4,
+    gap: 5,
   },
-  rowIcon: {
+  iconBox: {
     width: 52, height: 52, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)',
-    flexShrink: 0,
-    backgroundColor: 'transparent',
+    position: 'relative',
   },
-  rowInfo: { flex: 1, gap: 3 },
-  rowTitleRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  rowName: { fontSize: 15, fontWeight: '700', color: '#1e293b' },
-  badge: { paddingHorizontal: 7, paddingVertical: 2, borderRadius: 6, borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' },
-  badgeText: { fontSize: 10, fontWeight: '700' },
-  rowDesc: { fontSize: 12, color: '#94a3b8' },
-  rowDev: { fontSize: 11, color: '#cbd5e1', fontWeight: '500' },
-  openBtn: {
-    paddingHorizontal: 14, paddingVertical: 8,
-    borderRadius: 10, borderWidth: 1.5, flexShrink: 0,
+  verifiedDot: {
+    position: 'absolute', bottom: 2, right: 2,
+    width: 8, height: 8, borderRadius: 4,
+    borderWidth: 1.5, borderColor: '#fff',
   },
-  openBtnText: { fontSize: 13, fontWeight: '700' },
+  gridLabel: {
+    fontSize: 10, fontWeight: '600',
+    color: '#111827', textAlign: 'center',
+    lineHeight: 13, maxWidth: 64,
+  },
 
-  // Empty
-  empty: { alignItems: 'center', paddingVertical: 48, gap: 12 },
-  emptyText: { fontSize: 14, color: '#94a3b8', fontWeight: '500' },
+  // ── Empty ───────────────────────────────────────────────────────
+  empty:     { alignItems: 'center', paddingVertical: 56, gap: 12 },
+  emptyText: { fontSize: 14, color: '#9CA3AF', fontWeight: '500' },
 });

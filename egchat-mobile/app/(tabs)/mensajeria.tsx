@@ -56,6 +56,7 @@ import { DarkColors } from '../../src/theme/darkMode';
 import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
 import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
 import { syncPhoneContacts } from '../../src/services/contactSync';
+import SessionManager from '../../src/sessionManager';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -411,44 +412,41 @@ function MensajeriaScreenInner() {
   // ── Carga ───────────────────────────────────────────────────────
   const loadChats = useCallback(async (userId?: string) => {
     const uid = userId || currentUserId;
+    const remoteChats = chatAPI.getChats();
 
-    // Mostrar caché inmediatamente mientras llega la respuesta del servidor
     const cached = await readCache<Chat[]>('chat_list');
-    if (cached?.length && chats.length === 0) {
+    if (cached?.length) {
       setChats(sortChatsByActivity(cached));
+      setLoading(false);
     }
-    // Nota: NO mostrar toast de "Conectando" — es molesto y se repite
 
     try {
       setLoadError('');
-      const [data, favContacts, favGroups] = await Promise.all([
-        chatAPI.getChats(),
-        contactsAPI.getFavorites().catch(() => []),
-        getFavoriteGroupIds(),
-      ]);
+      const data = await remoteChats;
       const sortedChats = sortChatsByActivity(Array.isArray(data) ? data : []);
       setChats(sortedChats);
-      saveCache('chat_list', sortedChats);
+      void saveCache('chat_list', sortedChats);
 
-      // Actualizar widget de pantalla de inicio con últimos chats
-      HomeWidget.update(sortedChats.map(c => {
-        const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
-        const name = c.type === 'private'
-          ? (other?.full_name || other?.users?.full_name || 'Usuario')
-          : (c.name || 'Grupo');
-        const avatar = c.type === 'private'
-          ? (other?.avatar_url || other?.users?.avatar_url || '')
-          : (c.avatar_url || '');
-        return {
-          id: c.id,
-          name,
-          lastMsg: c.last_message?.text || '',
-          unread: c.unread_count || 0,
-          avatar,
-        };
-      }));
-      setFavoriteContacts(favContacts || []);
-      setFavoriteGroupIds(favGroups);
+      void Promise.all([
+        contactsAPI.getFavorites().catch(() => []),
+        getFavoriteGroupIds(),
+      ]).then(([favContacts, favGroups]) => {
+        setFavoriteContacts(favContacts || []);
+        setFavoriteGroupIds(favGroups);
+      });
+
+      setTimeout(() => {
+        HomeWidget.update(sortedChats.map(c => {
+          const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
+          const name = c.type === 'private'
+            ? (other?.full_name || other?.users?.full_name || 'Usuario')
+            : (c.name || 'Grupo');
+          const avatar = c.type === 'private'
+            ? (other?.avatar_url || other?.users?.avatar_url || '')
+            : (c.avatar_url || '');
+          return { id: c.id, name, lastMsg: c.last_message?.text || '', unread: c.unread_count || 0, avatar };
+        }));
+      }, 300);
     } catch (e: any) {
       const msg = e?.message || '';
       // Si es sesión expirada, el handler de _layout ya redirige al login
@@ -470,19 +468,20 @@ function MensajeriaScreenInner() {
 
   useEffect(() => {
     const init = async () => {
-      try {
-        const me = await authAPI.me().catch(() => null);
-        const uid = me?.id || '';
-        if (uid) setCurrentUserId(uid);
-        if (me) setCurrentUser({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
-        await loadChats(uid);
-
-        // Sincronizar contactos del teléfono en segundo plano (máx 1 vez/24h)
-        // No bloqueamos la UI — corre en background sin await
-        syncPhoneContacts().catch(() => {});
-      } finally {
-        // noop
+      const cachedUser = await SessionManager.getInstance().getUser();
+      const cachedUserId = cachedUser?.id || '';
+      if (cachedUserId) setCurrentUserId(cachedUserId);
+      if (cachedUser) {
+        setCurrentUser({ full_name: cachedUser.full_name, avatar_url: cachedUser.avatar_url, phone: cachedUser.phone });
       }
+      void loadChats(cachedUserId);
+
+      void authAPI.me().then(me => {
+        if (!me) return;
+        if (me.id) setCurrentUserId(me.id);
+        setCurrentUser({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
+      }).catch(() => {});
+      setTimeout(() => { void syncPhoneContacts().catch(() => {}); }, 2000);
     };
     init();
 
@@ -502,11 +501,14 @@ function MensajeriaScreenInner() {
     let realtimeWorking = false;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    const { subscribeToUserChats } = require('../../src/supabase');
-    const unsub = subscribeToUserChats(currentUserId, () => {
-      realtimeWorking = true;
-      loadChats(currentUserId);
-    });
+    let unsub: (() => void) | undefined;
+    const subscribeTimer = setTimeout(() => {
+      const { subscribeToUserChats } = require('../../src/supabase');
+      unsub = subscribeToUserChats(currentUserId, () => {
+        realtimeWorking = true;
+        void loadChats(currentUserId);
+      });
+    }, 1500);
 
     // Si Realtime no funciona en 5s, polling cada 30s (no 3s — evita bucle en web)
     const realtimeCheck = setTimeout(() => {
@@ -516,7 +518,8 @@ function MensajeriaScreenInner() {
     }, 5000);
 
     return () => {
-      unsub();
+      clearTimeout(subscribeTimer);
+      unsub?.();
       clearTimeout(realtimeCheck);
       if (pollInterval) clearInterval(pollInterval);
     };

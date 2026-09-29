@@ -1151,6 +1151,7 @@ function MonederoScreenInner() {
   const [userPhone, setUserPhone] = useState('');
   const [user, setUser] = useState<any>(null);
   const zipAnim = useRef(new Animated.Value(0)).current;
+  const skipInitialFocusRefresh = useRef(true);
 
   // ── KYC: estado de verificación del monedero ──────────────────
   const [kycStatus, setKycStatus] = useState<KycStatus>('none');
@@ -1158,17 +1159,10 @@ function MonederoScreenInner() {
   const kycPulse = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
-    // Siempre forzar refresco al montar — el caché puede estar desactualizado
-    // si el admin aprobó el monedero mientras la app estaba en segundo plano.
-    getKycStatus(true).then(res => {
+    getKycStatus(false).then(res => {
       setKycStatus(res.kyc_status);
       setKycLoading(false);
-    }).catch(() => {
-      // Si falla la red, intentar con caché
-      getKycStatus(false).then(res => {
-        setKycStatus(res.kyc_status);
-      }).catch(() => {}).finally(() => setKycLoading(false));
-    });
+    }).catch(() => setKycLoading(false));
   }, []);
 
   // ── Refrescar estado KYC cada vez que el usuario vuelve a esta pestaña ──
@@ -1304,20 +1298,20 @@ function MonederoScreenInner() {
 
   const loadData = useCallback(async () => {
     try {
-      const [bal, txs] = await Promise.all([
-        walletAPI.getBalance(),
-        walletAPI.getTransactions(1),
-      ]);
+      const bal = await walletAPI.getBalance();
       setBalance(bal.balance || 0);
-      setTransactions(txs.transactions || []);
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
+
+    void walletAPI.getTransactions(1).then(txs => {
+      setTransactions(txs.transactions || []);
+    }).catch(() => {});
   }, []);
 
   useEffect(() => {
-    loadData();
-    loadPendingTransfers();
-    loadBankAccounts().then(setBankAccounts);
+    void loadData();
+    void loadPendingTransfers();
+    void loadBankAccounts().then(setBankAccounts);
     authAPI.me().then(async me => {
       const profile = await mergePersistentAvatar(me);
       setUser(profile);
@@ -1338,11 +1332,18 @@ function MonederoScreenInner() {
   // ── Refrescar KYC, balance y transferencias pendientes al volver a la pestaña ──
   useFocusEffect(
     useCallback(() => {
-      getKycStatus(true).then(res => {
-        setKycStatus(res.kyc_status);
-      }).catch(() => {});
-      loadData();
-      loadPendingTransfers();
+      if (skipInitialFocusRefresh.current) {
+        skipInitialFocusRefresh.current = false;
+        return;
+      }
+      const refreshTimer = setTimeout(() => {
+        void getKycStatus(true).then(res => {
+          setKycStatus(res.kyc_status);
+        }).catch(() => {});
+        void loadData();
+        void loadPendingTransfers();
+      }, 250);
+      return () => clearTimeout(refreshTimer);
     }, [loadData, loadPendingTransfers])
   );
 

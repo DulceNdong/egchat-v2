@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
-import { Stack, router, useNavigationContainerRef, usePathname } from 'expo-router';
+import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -110,7 +110,6 @@ export default function RootLayout() {
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
   const presenceCleanup = useRef<(() => void) | null>(null);
-  const navigationRef   = useNavigationContainerRef();
   const pathname = usePathname();
   const sessionManager = SessionManager.getInstance();
 
@@ -281,12 +280,6 @@ export default function RootLayout() {
     };
 
     const init = async () => {
-      let attempts = 0;
-      while (!navigationRef.isReady() && attempts < 30) {
-        await new Promise(r => setTimeout(r, 100));
-        attempts++;
-      }
-
       try {
         if (Platform.OS === 'ios') {
           Audio.setAudioModeAsync({
