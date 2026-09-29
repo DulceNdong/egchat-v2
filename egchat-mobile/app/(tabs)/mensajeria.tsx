@@ -976,7 +976,7 @@ function MensajeriaScreenInner() {
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
             }
-            renderItem={({ item: chat }) => {
+            renderItem={({ item: chat }: { item: Chat }) => {
               const name = (chat as any).name || (chat as any).title || 'Chat';
               return (
                 <TouchableOpacity
@@ -1051,7 +1051,7 @@ function MensajeriaScreenInner() {
             ItemSeparatorComponent={() => (
               <View style={[st.separator, { backgroundColor: C.borderLight }]} />
             )}
-            renderItem={({ item }) => (
+            renderItem={({ item }: { item: ArchivedChat }) => (
               <SwipeChatItem
                 onOpen={() => openChat(item)}
                 onArchive={() => archiveChat(item)}
