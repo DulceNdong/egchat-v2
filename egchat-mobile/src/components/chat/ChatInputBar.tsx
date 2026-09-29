@@ -9,6 +9,7 @@ import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { TextFormatBar } from './TextFormatBar';
 import { NativeChatKeyboard } from './NativeChatKeyboard';
+import { useTranslation } from '../../context/LanguageContext';
 
 export interface ChatInputBarProps {
   text: string;
@@ -57,14 +58,12 @@ export function ChatInputBar({
   onNativeKbChange,
   inputRef,
 }: ChatInputBarProps) {
+  const { t } = useTranslation();
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
   const [nativeKeyboardVisible, setNativeKeyboardVisible] = useState(false);
-  // Android: cuando el teclado está visible el sistema ya ajustó el layout (resize mode),
-  // no añadir padding extra. Solo añadir safe area bottom cuando NO hay teclado.
-  const bottomPadding = Platform.OS === 'android'
-    ? (keyboardVisible ? 0 : Math.max(0, insets.bottom))
-    : (keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom));
+  // Padding inferior adecuado para separar la barra de entrada del teclado tanto en Android como en iOS
+  const bottomPadding = keyboardVisible || nativeKeyboardVisible ? 6 : Math.max(6, insets.bottom);
 
   // Cuando el padre cierra el kb desde fuera (abre panel +), cerramos aquí también
   React.useEffect(() => {
@@ -156,7 +155,7 @@ export function ChatInputBar({
           value={text}
           onChangeText={onChangeText}
           onSelectionChange={e => { selectionRef.current = e.nativeEvent.selection; }}
-          placeholder={showAttach ? 'Añadir comentario...' : 'Escribe un mensaje...'}
+          placeholder={showAttach ? t('addComment') : t('typeMessage')}
           placeholderTextColor="#b0b7c3"
           multiline
           maxLength={4000}

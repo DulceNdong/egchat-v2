@@ -1,4 +1,4 @@
-// EGCHAT — Hub de Configuración (paridad con ConfiguracionView web v2.5.5)
+// EGCHAT — Hub de Configuración
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
@@ -8,12 +8,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import Svg, { Path, Circle, Line, Polyline } from 'react-native-svg';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { authAPI, clearToken } from '../../src/api';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import SessionManager from '../../src/sessionManager';
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
@@ -57,6 +57,7 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
   {
     title: 'General',
     items: [
+      { label: 'Idioma de la app / Language', route: '/ajustes/idioma' },
       { label: 'Notificaciones', route: '/ajustes/notificaciones' },
       { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
       { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
@@ -98,18 +99,18 @@ function AjustesScreenInner() {
   const [storageUsed, setStorageUsed] = useState(0);
 
   useEffect(() => {
-    // Calcular almacenamiento aproximado desde AsyncStorage
     const calcStorage = async () => {
       try {
         const keys = await AsyncStorage.getAllKeys();
         let total = 0;
         const pairs = await AsyncStorage.multiGet(keys);
-        pairs.forEach(([, v]) => { if (v) total += v.length * 2; }); // UTF-16 ~ 2 bytes/char
-        setStorageUsed(Math.round(total / 1024)); // KB → mostrar en KB
+        pairs.forEach(([, v]) => { if (v) total += v.length * 2; });
+        setStorageUsed(Math.round(total / 1024));
       } catch { setStorageUsed(0); }
     };
     calcStorage();
   }, []);
+
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showWeather, setShowWeather] = useState(false);
@@ -121,19 +122,16 @@ function AjustesScreenInner() {
   useEffect(() => {
     const loadUser = async () => {
       try {
-        // 1️⃣ Mostrar inmediatamente los datos de la sesión local (sin esperar red)
         const sessionManager = SessionManager.getInstance();
         const cached = await sessionManager.getUser();
         if (cached) {
           const cachedMerged = await mergePersistentAvatar(cached);
           setUser(cachedMerged);
-          setLoading(false); // quitar spinner enseguida con datos locales
+          setLoading(false);
         }
 
-        // 2️⃣ Refrescar desde la API en background para obtener datos actualizados
         const data = await authAPI.me();
         const merged = await mergePersistentAvatar(data);
-        // Solo actualizar si el servidor devuelve nombre real (no genérico)
         const isGenericNameStr = (n?: string | null) =>
           !n ||
           n === 'Usuario' ||
@@ -143,11 +141,9 @@ function AjustesScreenInner() {
         const serverNameIsGeneric = isGenericNameStr(merged?.full_name);
         setUser(prev => ({
           ...merged,
-          // Prioridad: 1) nombre real del servidor, 2) nombre real en caché, 3) nombre genérico del servidor
           full_name: !serverNameIsGeneric
             ? merged.full_name
             : (prev?.full_name && !isGenericNameStr(prev.full_name) ? prev.full_name : merged.full_name),
-          // conservar avatar local si el servidor no devuelve uno mejor
           avatar_url: merged.avatar_url || prev?.avatar_url,
         }));
       } catch (err) {
@@ -159,7 +155,6 @@ function AjustesScreenInner() {
     loadUser();
   }, []);
 
-  // Actualizar avatar/nombre cuando el usuario los cambia en perfil
   useEffect(() => {
     return onProfileUpdated(patch => {
       setUser(prev => {
@@ -191,12 +186,10 @@ function AjustesScreenInner() {
     };
 
     if (typeof window !== 'undefined') {
-      // Web: usar confirm nativo del navegador (siempre funciona)
       if (window.confirm('¿Cerrar sesión en EGChat?')) {
         doLogout();
       }
     } else {
-      // Nativo: usar Alert
       Alert.alert('Cerrar sesión', '¿Estás seguro?', [
         { text: 'Cancelar', style: 'cancel' },
         { text: 'Cerrar sesión', style: 'destructive', onPress: doLogout },
@@ -252,7 +245,7 @@ function AjustesScreenInner() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <SettingsSearch value={search} onChangeText={setSearch} />
+        <SettingsSearch value={search} onChangeText={setSearch} placeholder="Buscar" />
 
         {filtered ? (
           filtered.length === 0 ? (
@@ -263,7 +256,7 @@ function AjustesScreenInner() {
         ) : (
           <>
             <TouchableOpacity
-              style={[styles.hero, { backgroundColor: isDark ? '#161b22' : '#fff' }]}
+              style={[styles.hero, { backgroundColor: isDark ? '#161b22' : '#ffffff' }]}
               onPress={() => navigate('/ajustes/perfil')}
               activeOpacity={0.8}
             >
@@ -285,10 +278,10 @@ function AjustesScreenInner() {
               <Text style={{ color: '#c7c7cc', fontSize: 18 }}>›</Text>
             </TouchableOpacity>
 
-            {/* Banner: actualiza tu nombre si es genérico o está vacío */}
+            {/* Banner: actualiza tu nombre si es genérico */}
             {user && (!user.full_name || user.full_name === 'Usuario' || user.full_name === 'Usuario EGCHAT' || user.full_name.startsWith('Usuario +') || user.full_name.startsWith('Usuario ')) && (
               <TouchableOpacity
-                style={{ backgroundColor: '#fff3cd', borderRadius: 10, padding: 12, marginTop: 8, flexDirection: 'row', alignItems: 'center', gap: 8 }}
+                style={{ backgroundColor: '#fff3cd', borderRadius: 10, padding: 12, marginTop: 8, marginHorizontal: 16, flexDirection: 'row', alignItems: 'center', gap: 8 }}
                 onPress={() => router.push('/ajustes/perfil')}
                 activeOpacity={0.8}
               >
@@ -401,15 +394,15 @@ const styles = StyleSheet.create({
   },
   heroImg: { width: '100%', height: '100%' },
   heroInitials: { fontSize: 20, fontWeight: '700', color: '#fff' },
-  switchAccountBtn: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
-    paddingVertical: 10, marginTop: 4,
-    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)',
-  },
-  switchAccountText: { fontSize: 13, fontWeight: '500' },
   heroInfo: { flex: 1 },
   heroName: { fontSize: 17, fontWeight: '600' },
   heroSub: { fontSize: 13, marginTop: 2 },
+  switchAccountBtn: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    paddingVertical: 12, marginTop: 4,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(0,0,0,0.06)',
+  },
+  switchAccountText: { fontSize: 14, fontWeight: '500' },
   actionBtn: { paddingVertical: 15, alignItems: 'center' },
   actionGreen: { fontSize: 16, fontWeight: '500', color: '#07c160' },
   actionRed: { fontSize: 16, fontWeight: '500', color: '#ef4444' },

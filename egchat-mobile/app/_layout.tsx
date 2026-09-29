@@ -11,7 +11,8 @@ import * as Linking from 'expo-linking';
 import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken, walletAPI } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
-import { LanguageProvider } from '../src/context/LanguageContext';
+import { LanguageProvider, useLanguage } from '../src/context/LanguageContext';
+import { FontProvider } from '../src/context/FontContext';
 import { ActiveCallProvider } from '../src/context/ActiveCallContext';
 import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
 import { useChatStream } from '../src/hooks/useChatStream';
@@ -85,6 +86,11 @@ function handleDeepLink(url: string | null) {
 function StatusBarController() {
   const { isDark } = useThemeContext();
   return <StatusBar style="light" translucent backgroundColor="transparent" />;
+}
+
+function LocalizedAppContent({ children }: { children: React.ReactNode }) {
+  const { language } = useLanguage();
+  return <React.Fragment key={language}>{children}</React.Fragment>;
 }
 
 const isAuthPath = (path: string) =>
@@ -302,6 +308,13 @@ export default function RootLayout() {
           return;
         }
 
+        const cachedUser = await loadCachedSessionUser();
+        if (cachedUser?.id && mounted) {
+          setGlobalUserId(String(cachedUser.id));
+          setChecking(false);
+          if (isAuthRoute || isRootPath(pathname)) router.replace('/(tabs)');
+        }
+
         const authTimeout = new Promise<never>((_, reject) => {
           setTimeout(() => reject(new Error('AUTH_STARTUP_TIMEOUT')), 5000);
         });
@@ -310,7 +323,6 @@ export default function RootLayout() {
         try {
           me = await Promise.race([authAPI.me(), authTimeout]);
         } catch (e) {
-          const cachedUser = await loadCachedSessionUser();
           if (cachedUser?.id) {
             me = cachedUser;
             console.warn('[Startup auth fallback] using cached session user');
@@ -339,11 +351,13 @@ export default function RootLayout() {
 
           setGlobalUserId(String(me.id));
 
-          // Clima con geolocalización — inicializar ubicación automática al arrancar
-          console.log('[APP] Iniciando detección de ubicación y clima...');
-          initializeLocation().catch((error) => {
-            console.error('[APP] Error inicializando ubicación:', error);
-          });
+          // La geolocalización puede ser costosa en Android: se difiere para
+          // que la primera pantalla sea interactiva antes de solicitarla.
+          const locationTimer = setTimeout(() => {
+            initializeLocation().catch((error) => {
+              console.error('[APP] Error inicializando ubicación:', error);
+            });
+          }, 2500);
 
           // Refrescar clima cada 10 minutos
           const weatherRefreshInterval = setInterval(() => {
@@ -451,10 +465,13 @@ export default function RootLayout() {
             }, 300);
           }
 
+          const stopPresenceTracking = presenceCleanup.current;
           presenceCleanup.current = () => {
+            stopPresenceTracking?.();
             clearInterval(hbTimer);
             clearInterval(sessTimer);
             clearInterval(weatherRefreshInterval);
+            clearTimeout(locationTimer);
           };
 
         } catch (e) {
@@ -495,8 +512,10 @@ export default function RootLayout() {
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <LanguageProvider>
+          <FontProvider>
           <ActiveCallProvider>
           <ThemeProvider>
+            <LocalizedAppContent>
             <StatusBarController />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
@@ -560,8 +579,10 @@ export default function RootLayout() {
               onCancelled={() => setIncomingTransfer(null)}
               onDismiss={() => setIncomingTransfer(null)}
             />
+            </LocalizedAppContent>
           </ThemeProvider>
           </ActiveCallProvider>
+          </FontProvider>
           </LanguageProvider>
         </SafeAreaProvider>
       </GestureHandlerRootView>

@@ -27,6 +27,8 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
 import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { t } from '../../src/translations';
 import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
 import type { AppNotification } from '../../src/store/appStore';
 import { EGChatHeader, WeatherCondition } from '../../src/components/EGChatHeader';
@@ -191,13 +193,10 @@ const AppIcon = ({ id, label, color, onPress }: { id: string; label: string; col
     }}
     activeOpacity={0.7}
   >
-    <View style={[st.appIconBox, {
-      backgroundColor: 'rgba(255,255,255,0.08)',
-      borderColor: 'rgba(0,0,0,0.07)',
-    }]}>
-      <SvgIcon id={id} color={color} size={28} />
+    <View style={[st.appIconBox, { backgroundColor: `${color}18` }]}>
+      <SvgIcon id={id} color={color} size={24} />
     </View>
-    <Text style={[st.appLabel, { fontSize: 10.5, color: '#111111' }]}>{label}</Text>
+    <Text style={st.appLabel}>{label}</Text>
   </TouchableOpacity>
 );
 
@@ -220,6 +219,7 @@ function HomeScreenInner() {
 
   // ── Store global — clima y notificaciones (no se reinician al cambiar de pestaña)
   const { weather, notifications } = useAppStore();
+  const { language } = useLanguage();
 
   // ── Estados de los paneles del header ───────────────────────────
   const [showNotifications, setShowNotifications] = useState(false);
@@ -315,11 +315,15 @@ function HomeScreenInner() {
   }, []);
 
   useEffect(() => {
-    fetchLiveHomeNews().then(setLiveNews).catch(() => {});
+    const timer = setTimeout(() => {
+      fetchLiveHomeNews().then(setLiveNews).catch(() => {});
+    }, 1200);
+    return () => clearTimeout(timer);
   }, []);
 
   useEffect(() => {
-    fetchWeatherIfStale();
+    const timer = setTimeout(() => { fetchWeatherIfStale(); }, 1800);
+    return () => clearTimeout(timer);
   }, []);
 
   const onRefresh = () => { setRefreshing(true); loadData(); };
@@ -426,7 +430,7 @@ function HomeScreenInner() {
             </View>
           </View>
 
-          <Text style={st.balanceTitle}>SALDO DISPONIBLE</Text>
+          <Text style={st.balanceTitle}>{t('availableBalance')}</Text>
 
           {/* Saldo con puntos y ojo */}
           <View style={st.balanceRow}>
@@ -454,7 +458,7 @@ function HomeScreenInner() {
               }}
             >
               <IconRefresh color={Colors.brand} size={15} />
-              <Text style={st.balanceBtnText}>RECARGAR</Text>
+              <Text style={st.balanceBtnText}>{t('recharge')}</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -466,7 +470,7 @@ function HomeScreenInner() {
               }}
             >
               <IconSend color={Colors.brand} size={15} />
-              <Text style={st.balanceBtnText}>ENVIAR</Text>
+              <Text style={st.balanceBtnText}>{t('send')}</Text>
             </TouchableOpacity>
           </View>
         </LinearGradient>
@@ -489,9 +493,9 @@ function HomeScreenInner() {
               </Svg>
             </View>
             <View style={st.infoCardText}>
-              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>ID Digital</Text>
+              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>{t('digitalId')}</Text>
               <Text style={[st.infoCardSub, { color: Colors.accent }]}>
-                {user?.verified ? '✓ Verificado' : user ? 'Cuenta activa' : 'Sin verificar'}
+                {user?.verified ? '✓ Verificado' : user ? t('activeAccount') : 'Sin verificar'}
               </Text>
             </View>
           </TouchableOpacity>
@@ -509,9 +513,9 @@ function HomeScreenInner() {
               </Svg>
             </View>
             <View style={st.infoCardText}>
-              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>Noticias</Text>
+              <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>{t('news')}</Text>
               <Text style={[st.infoCardSub, { color: C.textSecondary }]}>
-                {liveNews.length} titulares
+                {liveNews.length} {t('headlines')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -535,7 +539,7 @@ function HomeScreenInner() {
               }
             }}
           >
-            <Text style={[st.sectionLabel, { color: C.textSecondary }]}>SERVICIOS DUTTI</Text>
+            <Text style={[st.sectionLabel, { color: C.textSecondary }]}>{t('duttiServices')}</Text>
             <View style={st.appsGrid}>
               {HOME_APPS.map(app => (
                 <AppIcon
@@ -571,31 +575,24 @@ function HomeScreenInner() {
           El + es el centro exacto del anillo
       ════════════════════════════════════════════════════════ */}
       {fabOpen && (() => {
-        const { width: SW } = Dimensions.get('window');
-        const FAB_CX = SW / 2; // centro horizontal del FAB
+        const { width: SW, height: SH } = Dimensions.get('window');
+        const isSmall = SH < 680;
+        const fabBottomOffset = isSmall ? 165 : (Platform.OS === 'ios' ? 220 : 205);
+        const FAB_CENTER_BOTTOM = fabBottomOffset + 30;
 
-        // Calcular la posición Y del centro del FAB desde el top de pantalla
-        // (para poder usar top en lugar de bottom y tener referencia absoluta)
-        const TAB_H = Platform.OS === 'ios' ? 92 : 68;
-        const fabBottomFromScreen = Platform.OS === 'android' && duttiBottomY != null
-          ? Math.round(68 + (SH - duttiBottomY - 68) / 2 - 30)
-          : (Platform.OS === 'ios' ? 236 : 84);
-        // Y del centro del FAB desde arriba = SH - fabBottomFromScreen - 30 (radio FAB)
-        const FAB_CENTER_Y = SH - fabBottomFromScreen - 30;
-
-        const ITEM_SIZE = 52;
+        const ITEM_SIZE = isSmall ? 42 : 48;
         const ITEM_HALF = ITEM_SIZE / 2;
         const COUNT = FAB_SERVICES.length;
-        const R = 120; // radio del anillo
+        const R = isSmall ? 105 : 125;
 
         return FAB_SERVICES.map((svc, i) => {
           // 360° uniformes, empezando desde arriba (-90°)
           const angleDeg = -90 + (360 / COUNT) * i;
           const angleRad = (angleDeg * Math.PI) / 180;
 
-          // Posición del item en coordenadas absolutas desde top/left
-          const itemLeft = FAB_CX + Math.cos(angleRad) * R - ITEM_HALF;
-          const itemTop  = FAB_CENTER_Y + Math.sin(angleRad) * R - ITEM_HALF;
+          // Posición en coordenadas X, Y absolutas relativas al centro del botón +
+          const itemLeft = (SW / 2) + Math.cos(angleRad) * R - ITEM_HALF;
+          const itemBottom = FAB_CENTER_BOTTOM - Math.sin(angleRad) * R - ITEM_HALF;
 
           const scale = fabItemAnims[i].interpolate({
             inputRange: [0, 1],
@@ -608,9 +605,11 @@ function HomeScreenInner() {
               style={{
                 position: 'absolute',
                 left: itemLeft,
-                top: itemTop,
+                bottom: itemBottom,
                 width: ITEM_SIZE,
+                height: ITEM_SIZE,
                 alignItems: 'center',
+                justifyContent: 'center',
                 zIndex: 25,
                 opacity: fabItemAnims[i],
                 transform: [{ scale }],
@@ -626,29 +625,33 @@ function HomeScreenInner() {
                 onPress={() => navigateFab(svc.route)}
                 activeOpacity={0.75}
               >
-                <SvgIcon id={svc.id} color={svc.color} size={24} />
+                <SvgIcon id={svc.id} color={svc.color} size={22} />
               </TouchableOpacity>
               <Animated.View
                 style={{
-                  marginTop: 6,
-                  paddingHorizontal: 10,
-                  paddingVertical: 4,
-                  borderRadius: 999,
-                  backgroundColor: 'rgba(255,255,255,0.84)',
+                  position: 'absolute',
+                  top: ITEM_SIZE + 2,
+                  paddingHorizontal: 8,
+                  paddingVertical: 2,
+                  borderRadius: 12,
+                  backgroundColor: 'rgba(255,255,255,0.92)',
                   borderWidth: 1,
-                  borderColor: 'rgba(255,255,255,0.9)',
+                  borderColor: 'rgba(255,255,255,0.95)',
                   opacity: fabItemAnims[i],
-                  minWidth: 84,
-                  maxWidth: 100,
                   alignSelf: 'center',
                 }}
               >
-                <Animated.Text
-                  style={st.fabRadialLabel}
+                <Text
+                  style={{
+                    fontSize: 10,
+                    fontWeight: '700',
+                    color: '#1f2937',
+                    textAlign: 'center',
+                  }}
                   numberOfLines={1}
                 >
                   {svc.label}
-                </Animated.Text>
+                </Text>
               </Animated.View>
             </Animated.View>
           );
@@ -674,19 +677,7 @@ function HomeScreenInner() {
           FAB + — Botón central flotante
       ════════════════════════════════════════════════════════ */}
       <TouchableOpacity
-        style={[
-          st.fab,
-          Platform.OS === 'android' && duttiBottomY != null
-            ? {
-                // Centro exacto entre el fondo del bloque Dutti y la tab bar
-                // duttiBottomY = distancia desde top de pantalla hasta el fondo del bloque
-                // SH - duttiBottomY = espacio disponible debajo del bloque (tab bar incluida)
-                // Espacio útil = (SH - duttiBottomY) - 68 (tab bar)
-                // FAB bottom = 68 + ((SH - duttiBottomY - 68) / 2) - 30 (radio FAB)
-                bottom: Math.round(68 + (SH - duttiBottomY - 68) / 2 - 30),
-              }
-            : undefined,
-        ]}
+        style={[st.fab, { bottom: SH < 680 ? 165 : (Platform.OS === 'ios' ? 220 : 205) }]}
         activeOpacity={0.9}
         onPress={() => {
           if (Platform.OS === 'android') Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium);
@@ -853,10 +844,10 @@ const st = StyleSheet.create({
 
   // ── Banner Saldo ─────────────────────────────────────────────────
   balanceBanner: {
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.lg,
+    marginHorizontal: 16,
+    marginTop: 12,
     borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
+    padding: 16,
     ...Shadow.lg,
   },
   balanceTitle: {
@@ -864,13 +855,13 @@ const st = StyleSheet.create({
     fontWeight: FontWeight.bold,
     color: 'rgba(255,255,255,0.6)',
     letterSpacing: 1.2,
-    marginBottom: Spacing.sm,
+    marginBottom: 6,
   },
   balanceRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.md,
-    marginBottom: Spacing.xl,
+    marginBottom: 16,
   },
   balanceAmount: {
     fontSize: 22,
@@ -906,9 +897,9 @@ const st = StyleSheet.create({
   // ── Cards ID Digital + Noticias ──────────────────────────────────
   cardsRow: {
     flexDirection: 'row',
-    gap: Spacing.md,
-    marginHorizontal: Spacing.lg,
-    marginTop: Spacing.md,
+    gap: 10,
+    marginHorizontal: 16,
+    marginTop: 10,
   },
   infoCard: {
     flex: 1,
@@ -917,7 +908,7 @@ const st = StyleSheet.create({
     gap: Spacing.sm,
     backgroundColor: Colors.bgSecondary,
     borderRadius: BorderRadius.lg,
-    padding: Spacing.md,
+    padding: 12,
     ...Shadow.sm,
   },
   infoCardIcon: {
@@ -1004,44 +995,25 @@ const st = StyleSheet.create({
   appItem: {
     flex: 1,
     alignItems: 'center',
-    gap: 4,
+    gap: 6,
     paddingVertical: 6,
-    paddingHorizontal: 3,
-    borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.16)',
-    shadowColor: '#ffffff',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 0,
+    paddingHorizontal: 2,
   },
   appIconBox: {
-    width: 54,
-    height: 54,
-    borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.22)',
+    width: 48,
+    height: 48,
+    borderRadius: 14,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1.2,
-    borderColor: 'rgba(255,255,255,0.35)',
-    padding: 2,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.16,
-    shadowRadius: 4,
-    elevation: 3,
+    elevation: 0,
+    shadowOpacity: 0,
   },
   appLabel: {
-    fontSize: 10.2,
+    fontSize: 11,
     fontWeight: FontWeight.bold as '700',
-    color: '#000000',
+    color: '#1f2937',
     textAlign: 'center',
-    letterSpacing: 0.2,
-    textShadowColor: 'rgba(255,255,255,0.55)',
-    textShadowOffset: { width: 0, height: 1 },
-    textShadowRadius: 2,
+    letterSpacing: 0.1,
   },
 
   // ── FAB overlay ──────────────────────────────────────────────────
@@ -1109,9 +1081,7 @@ const st = StyleSheet.create({
   // ── FAB + central ────────────────────────────────────────────────
   fab: {
     position: 'absolute',
-    // iOS: posición original (encima del menú radial)
-    // Android: se calcula dinámicamente con duttiBottomY (ver JSX)
-    bottom: Platform.OS === 'ios' ? 236 : 84,
+    bottom: Platform.OS === 'ios' ? 220 : 210,
     alignSelf: 'center',
     zIndex: 30,
     borderRadius: 30,

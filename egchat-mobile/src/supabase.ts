@@ -141,7 +141,7 @@ export const subscribeToOnlineUsers = (
   };
 
   readPresence();
-  const interval = setInterval(readPresence, 3000);
+  const interval = setInterval(readPresence, 15000);
 
   return () => {
     clearInterval(interval);

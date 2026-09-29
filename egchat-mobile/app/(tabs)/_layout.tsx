@@ -1,8 +1,9 @@
 import { Tabs } from 'expo-router';
-import { Platform, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
-import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
+import { Platform, View } from 'react-native';
+import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
+import { useLanguage } from '../../src/context/LanguageContext';
+import { t } from '../../src/translations';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 
 // ── Iconos SVG idénticos a la versión web ─────────────────────────
@@ -75,12 +76,13 @@ const TabIcon = ({ name, color, focused }: { name: string; color: string; focuse
 
 export default function TabsLayout() {
   const { isDark } = useThemeContext();
+  const { language } = useLanguage();
 
   return (
     <Tabs
       screenOptions={{
         headerShown: false,
-        lazy: false,
+        lazy: true,
         tabBarStyle: {
           position: 'absolute',
           left: 0,
@@ -122,28 +124,28 @@ export default function TabsLayout() {
       <Tabs.Screen
         name="mensajeria"
         options={{
-          title: 'Mensajes',
+          title: t('messages'),
           tabBarIcon: ({ color, focused }) => <TabIcon name="mensajes" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="monedero"
         options={{
-          title: 'Cartera',
+          title: t('wallet'),
           tabBarIcon: ({ color, focused }) => <TabIcon name="wallet" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="servicios"
         options={{
-          title: 'Servicios',
+          title: t('services'),
           tabBarIcon: ({ color, focused }) => <TabIcon name="services" color={color} focused={focused} />,
         }}
       />
       <Tabs.Screen
         name="ajustes"
         options={{
-          title: 'Ajustes',
+          title: t('settings'),
           tabBarIcon: ({ color, focused }) => <TabIcon name="ajustes" color={color} focused={focused} />,
         }}
       />

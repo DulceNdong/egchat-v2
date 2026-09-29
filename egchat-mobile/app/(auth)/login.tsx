@@ -24,6 +24,7 @@ import {
 } from '../../src/biometrics';
 import { authAPI } from '../../src/api';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 // Países igual que la web
 const COUNTRIES = [
@@ -52,6 +53,7 @@ export default function LoginScreen() {
 
   const { login, isLoading, error, clearError } = useAuth();
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
@@ -104,12 +106,12 @@ export default function LoginScreen() {
 
           {/* ── Formulario ── */}
           <View style={styles.formArea}>
-            <Text style={[styles.title, { color: C.textPrimary }]}>Iniciar sesión</Text>
-            <Text style={[styles.subtitle, { color: C.textSecondary }]}>Introduce tu teléfono y contraseña</Text>
+            <Text style={[styles.title, { color: C.textPrimary }]}>{t('login')}</Text>
+            <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('enterPhone')}</Text>
 
             {/* Selector de país */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>País</Text>
+              <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('country')}</Text>
               <TouchableOpacity
                 style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
                 onPress={() => setShowCountryPicker(p => !p)}
@@ -142,7 +144,7 @@ export default function LoginScreen() {
 
             {/* Teléfono */}
             <View style={styles.fieldGroup}>
-              <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>Teléfono</Text>
+              <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('phone')}</Text>
               <View style={styles.phoneRow}>
                 <View style={[styles.phonePrefix, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
                   <Text style={[styles.phonePrefixText, { color: C.textPrimary }]}>{countryCode}</Text>
@@ -162,7 +164,7 @@ export default function LoginScreen() {
 
             {/* Contraseña */}
             <EGInput
-              label="Contraseña"
+              label={t('password')}
               value={password}
               onChangeText={setPassword}
               showPasswordToggle
@@ -178,7 +180,7 @@ export default function LoginScreen() {
 
             {/* Botón entrar */}
             <EGButton
-              title={isLoading ? 'Entrando...' : 'Entrar'}
+              title={isLoading ? t('signingIn') : t('signIn')}
               onPress={doLogin}
               loading={isLoading}
               style={styles.loginBtn}
@@ -189,12 +191,12 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/forgot-password' as any)}
               style={styles.forgotBtn}
             >
-              <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
+              <Text style={styles.forgotText}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
 
             {/* Crear cuenta */}
             <EGButton
-              title="Crear cuenta nueva"
+              title={t('createNewAccount')}
               onPress={() => router.push('/(auth)/register' as any)}
               variant="outline"
             />
@@ -204,7 +206,7 @@ export default function LoginScreen() {
               onPress={() => router.back()}
               style={styles.backBtn}
             >
-              <Text style={styles.backText}>← Volver al inicio</Text>
+              <Text style={styles.backText}>← {t('backHome')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

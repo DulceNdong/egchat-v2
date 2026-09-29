@@ -1,18 +1,15 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
-import Svg, { Path, Circle, Line, Rect } from 'react-native-svg';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgString, setCfg } from '../../src/services/settingsPrefs';
 import { useThemeContext } from '../../src/theme/ThemeContext';
+import { useFont } from '../../src/context/FontContext';
 import { Colors } from '../../src/theme';
 import { DarkColors } from '../../src/theme/darkMode';
-
-const FONT_SIZE_KEY = 'egchat_fontsize';
-const FONT_FAMILY_KEY = 'egchat_fontfamily';
 
 const CHAT_BG_COLORS = [
   { color: '#e5ddd5', label: 'Clásico' },
@@ -99,39 +96,26 @@ const THEME_OPTIONS = [
 ];
 
 export default function InterfazScreen() {
-  const { isDark, setTheme } = useThemeContext() as any;
+  const { isDark, setMode, mode } = useThemeContext();
+  const { fontScale, fontFamily, changeFontScale, changeFontFamily } = useFont();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
-  const [appFontSize, setAppFontSize] = useState(1);
-  const [appFontFamily, setAppFontFamily] = useState('default');
   const [chatBg, setChatBg] = useState('#e5ddd5');
   const [accentColor, setAccentColor] = useState('#07c160');
-  const [currentTheme, setCurrentTheme] = useState<'light' | 'dark' | 'auto'>('light');
 
   useEffect(() => {
-    AsyncStorage.getItem(FONT_SIZE_KEY).then(v => { if (v) setAppFontSize(parseFloat(v) || 1); });
-    AsyncStorage.getItem(FONT_FAMILY_KEY).then(v => { if (v) setAppFontFamily(v); });
     getCfgString(CFG.chatBg, '#e5ddd5').then(setChatBg);
-    AsyncStorage.getItem('egchat_theme').then(v => {
-      if (v === 'dark' || v === 'light' || v === 'auto') setCurrentTheme(v);
-      else setCurrentTheme(isDark ? 'dark' : 'light');
-    });
     AsyncStorage.getItem('egchat_accent').then(v => { if (v) setAccentColor(v); });
   }, []);
 
   const applyTheme = async (themeId: 'light' | 'dark' | 'auto') => {
-    setCurrentTheme(themeId);
-    await AsyncStorage.setItem('egchat_theme', themeId);
-    if (typeof setTheme === 'function') {
-      if (themeId === 'dark') setTheme('dark');
-      else if (themeId === 'light') setTheme('light');
-      else setTheme('auto');
-    }
+    const targetMode = themeId === 'auto' ? 'system' : themeId;
+    await setMode(targetMode as any);
   };
 
   const applyAccent = async (color: string) => {
     setAccentColor(color);
     await AsyncStorage.setItem('egchat_accent', color);
-    Alert.alert('Color aplicado', 'El color de acento se verá en tu próxima sesión.');
+    Alert.alert('Color aplicado', 'El color de acento se aplicará en toda la interfaz.');
   };
 
   return (
@@ -142,7 +126,7 @@ export default function InterfazScreen() {
       <View style={[styles.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={styles.themeRow}>
           {THEME_OPTIONS.map(th => {
-            const active = currentTheme === th.id;
+            const active = (th.id === 'auto' && mode === 'system') || (th.id === mode);
             return (
               <TouchableOpacity
                 key={th.id}
@@ -185,7 +169,7 @@ export default function InterfazScreen() {
       <SettingsSection label="Tamaño de letra" />
       <View style={[styles.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={[styles.preview, { borderColor: C.borderLight, backgroundColor: isDark ? '#0d1117' : '#f9fafb' }]}>
-          <Text style={{ fontSize: 14 * appFontSize, color: C.textSecondary }}>
+          <Text style={{ fontSize: 14 * fontScale, color: C.textSecondary }}>
             Vista previa: EGCHAT Guinea Ecuatorial 🇬🇶
           </Text>
         </View>
@@ -194,10 +178,10 @@ export default function InterfazScreen() {
             <TouchableOpacity
               key={opt.v}
               style={[styles.presetChip, { borderColor: isDark ? '#30363d' : '#e5e7eb', backgroundColor: isDark ? '#0d1117' : '#f9fafb' },
-                Math.abs(appFontSize - opt.v) < 0.03 && styles.presetActive]}
-              onPress={() => { setAppFontSize(opt.v); AsyncStorage.setItem(FONT_SIZE_KEY, String(opt.v)); }}
+                Math.abs(fontScale - opt.v) < 0.03 && styles.presetActive]}
+              onPress={() => changeFontScale(opt.v)}
             >
-              <Text style={{ fontSize: 11, fontWeight: '600', color: Math.abs(appFontSize - opt.v) < 0.03 ? '#00c8a0' : C.textSecondary }}>
+              <Text style={{ fontSize: 11, fontWeight: '600', color: Math.abs(fontScale - opt.v) < 0.03 ? '#00c8a0' : C.textSecondary }}>
                 {opt.label}
               </Text>
             </TouchableOpacity>
@@ -212,13 +196,13 @@ export default function InterfazScreen() {
           <React.Fragment key={f.id}>
             <TouchableOpacity
               style={styles.fontRow}
-              onPress={() => { setAppFontFamily(f.id); AsyncStorage.setItem(FONT_FAMILY_KEY, f.id); }}
+              onPress={() => changeFontFamily(f.id as any)}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: appFontFamily === f.id ? '#00c8a0' : C.textTertiary, marginBottom: 2 }}>{f.name}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: fontFamily === f.id ? '#00c8a0' : C.textTertiary, marginBottom: 2 }}>{f.name}</Text>
                 <Text style={{ fontSize: 15, color: C.textPrimary }}>{f.preview}</Text>
               </View>
-              {appFontFamily === f.id && <Text style={{ color: '#00c8a0', fontSize: 16 }}>✓</Text>}
+              {fontFamily === f.id && <Text style={{ color: '#00c8a0', fontSize: 16 }}>✓</Text>}
             </TouchableOpacity>
             {i < FONT_FAMILIES.length - 1 && <SettingsDivider />}
           </React.Fragment>
@@ -252,7 +236,6 @@ export default function InterfazScreen() {
 
 const styles = StyleSheet.create({
   panel: { padding: 16 },
-  // Tema
   themeRow: { flexDirection: 'row', gap: 12 },
   themeCard: {
     flex: 1, alignItems: 'center', gap: 8,
@@ -272,7 +255,6 @@ const styles = StyleSheet.create({
     backgroundColor: '#00c8a0',
     alignItems: 'center', justifyContent: 'center',
   },
-  // Acento
   accentRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 12 },
   accentItem: { alignItems: 'center', gap: 4, width: 60 },
   accentCircle: {
@@ -281,13 +263,11 @@ const styles = StyleSheet.create({
   },
   accentActive: { borderWidth: 3, borderColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.2, shadowRadius: 4, elevation: 4 },
   accentLabel: { fontSize: 10, fontWeight: '500', textAlign: 'center' },
-  // Fuente
   preview: { borderRadius: 10, padding: 14, marginBottom: 12, borderWidth: 1 },
   presetRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   presetChip: { paddingHorizontal: 12, paddingVertical: 8, borderRadius: 10, borderWidth: 1.5 },
   presetActive: { borderColor: '#00c8a0', backgroundColor: 'rgba(0,200,160,0.1)' },
   fontRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 13 },
-  // Chat bg
   colorRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   swatchItem: { alignItems: 'center', gap: 4 },
   colorSwatch: { width: 44, height: 44, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },

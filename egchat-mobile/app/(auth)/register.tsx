@@ -22,6 +22,7 @@ import {
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 const COUNTRIES = [
   { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240' },
@@ -62,6 +63,7 @@ export default function RegisterScreen() {
   const displayError = localError || authError;
   const [showCountryPicker, setShowCountryPicker] = useState(false);
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
@@ -117,10 +119,10 @@ export default function RegisterScreen() {
           {/* Header */}
           <View style={styles.header}>
             <TouchableOpacity onPress={goBack} style={styles.backBtn}>
-              <Text style={[styles.backText, { color: C.textPrimary }]}>← Atrás</Text>
+              <Text style={[styles.backText, { color: C.textPrimary }]}>← {t('back')}</Text>
             </TouchableOpacity>
-            <Text style={[styles.title, { color: C.textPrimary }]}>Crear Cuenta</Text>
-            <Text style={[styles.stepLabel, { color: C.textSecondary }]}>Paso {step} de 3</Text>
+            <Text style={[styles.title, { color: C.textPrimary }]}>{t('createAccount')}</Text>
+            <Text style={[styles.stepLabel, { color: C.textSecondary }]}>{t('stepOf').replace('{step}', String(step)).replace('{total}', '3')}</Text>
             <ProgressBar step={step} />
           </View>
 
@@ -129,10 +131,10 @@ export default function RegisterScreen() {
             {step === 1 && (
               <>
                 <EGInput
-                  label="Nombre Completo"
+                  label={t('fullName')}
                   value={name}
                   onChangeText={setName}
-                  placeholder="Tu nombre"
+                  placeholder={t('yourName')}
                   autoCapitalize="words"
                   returnKeyType="next"
                   onSubmitEditing={goNext}
@@ -141,7 +143,7 @@ export default function RegisterScreen() {
                 {/* Avatar picker — igual que la web */}
                 <View style={styles.fieldGroup}>
                   <Text style={styles.fieldLabel}>
-                    Foto de Perfil <Text style={styles.optional}>(opcional)</Text>
+                    {t('profilePhoto')} <Text style={styles.optional}>({t('optional')})</Text>
                   </Text>
                   <TouchableOpacity
                     onPress={pickAvatar}
@@ -158,16 +160,16 @@ export default function RegisterScreen() {
                     ) : (
                       <>
                         <Text style={styles.avatarIcon}>📷</Text>
-                        <Text style={styles.avatarTitle}>Subir foto de perfil</Text>
-                        <Text style={styles.avatarSub}>Toca para seleccionar</Text>
-                        <Text style={styles.avatarHint}>Puedes añadirla después</Text>
+                        <Text style={styles.avatarTitle}>{t('uploadProfilePhoto')}</Text>
+                        <Text style={styles.avatarSub}>{t('tapToSelect')}</Text>
+                        <Text style={styles.avatarHint}>{t('addLater')}</Text>
                       </>
                     )}
                   </TouchableOpacity>
                   {avatar && (
                     <View style={styles.avatarActions}>
                       <TouchableOpacity onPress={pickAvatar} style={styles.avatarActionBtn}>
-                        <Text style={styles.avatarActionText}>📷 Cambiar foto</Text>
+                        <Text style={styles.avatarActionText}>📷 {t('changePhoto')}</Text>
                       </TouchableOpacity>
                       <TouchableOpacity onPress={() => setAvatar('')} style={styles.avatarRemoveBtn}>
                         <Text style={styles.avatarRemoveText}>✕</Text>
@@ -183,7 +185,7 @@ export default function RegisterScreen() {
               <>
                 {/* Selector de país */}
                 <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>País</Text>
+                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('country')}</Text>
                   <TouchableOpacity
                     style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}
                     onPress={() => setShowCountryPicker(p => !p)}
@@ -212,7 +214,7 @@ export default function RegisterScreen() {
 
                 {/* Teléfono */}
                 <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>Teléfono</Text>
+                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('phone')}</Text>
                   <View style={styles.phoneRow}>
                     <View style={[styles.phonePrefix, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
                       <Text style={[styles.phonePrefixText, { color: C.textPrimary }]}>{countryCode}</Text>
@@ -234,19 +236,19 @@ export default function RegisterScreen() {
             {step === 3 && (
               <>
                 <EGInput
-                  label="Contraseña"
+                  label={t('password')}
                   value={password}
                   onChangeText={setPassword}
                   showPasswordToggle
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder={t('minCharacters')}
                   returnKeyType="next"
                 />
                 <EGInput
-                  label="Confirmar Contraseña"
+                  label={t('confirmPassword')}
                   value={password2}
                   onChangeText={setPassword2}
                   secureTextEntry
-                  placeholder="Repite la contraseña"
+                  placeholder={t('repeatPassword')}
                   error={password2 && password !== password2 ? 'Las contraseñas no coinciden' : undefined}
                   returnKeyType="done"
                   onSubmitEditing={goNext}
@@ -261,8 +263,8 @@ export default function RegisterScreen() {
             <EGButton
               title={
                 step === 3
-                  ? (isLoading ? 'Registrando...' : 'Registrarme')
-                  : (!name.trim() && step === 1 ? 'Escribe tu nombre primero' : 'Continuar →')
+                  ? (isLoading ? t('registering') : t('registerMe'))
+                  : `${t('continue')} →`
               }
               onPress={goNext}
               loading={isLoading}

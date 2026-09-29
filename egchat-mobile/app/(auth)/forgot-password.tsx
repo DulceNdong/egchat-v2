@@ -13,6 +13,7 @@ import {
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 const COUNTRIES = [
   { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240' },
@@ -38,6 +39,7 @@ export default function ForgotPasswordScreen() {
   const [done, setDone] = useState(false);
 
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const fullPhone = countryCode + phone.replace(/\s/g, '');
@@ -83,9 +85,9 @@ export default function ForgotPasswordScreen() {
       <SafeAreaView style={[styles.safeArea, { backgroundColor: C.bgPrimary }]} edges={['top']}>
         <View style={styles.doneContainer}>
           <Text style={styles.doneIcon}>✅</Text>
-          <Text style={[styles.doneTitle, { color: C.textPrimary }]}>¡Contraseña cambiada!</Text>
-          <Text style={[styles.doneSub, { color: C.textSecondary }]}>Ya puedes iniciar sesión con tu nueva contraseña.</Text>
-          <EGButton title="Ir a iniciar sesión" onPress={() => router.replace('/(auth)/login')} />
+          <Text style={[styles.doneTitle, { color: C.textPrimary }]}>{t('passwordChanged')}</Text>
+          <Text style={[styles.doneSub, { color: C.textSecondary }]}>{t('passwordChangedHint')}</Text>
+          <EGButton title={t('goToLogin')} onPress={() => router.replace('/(auth)/login')} />
         </View>
       </SafeAreaView>
     );
@@ -97,22 +99,22 @@ export default function ForgotPasswordScreen() {
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
           <View style={styles.formArea}>
             <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-              <Text style={[styles.backText, { color: C.textTertiary }]}>← Volver al login</Text>
+              <Text style={[styles.backText, { color: C.textTertiary }]}>← {t('backLogin')}</Text>
             </TouchableOpacity>
 
             {recoverStep === 1 && (
               <>
-                <Text style={[styles.title, { color: C.textPrimary }]}>Recuperar cuenta</Text>
-                <Text style={[styles.subtitle, { color: C.textSecondary }]}>Introduce tu número y te enviaremos un código</Text>
+                <Text style={[styles.title, { color: C.textPrimary }]}>{t('recoverAccount')}</Text>
+                <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('enterPhone')}</Text>
                 <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>País</Text>
+                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('country')}</Text>
                   <View style={[styles.countrySelector, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
                     <Text style={styles.countryFlag}>{getFlag(selectedCountry.code)}</Text>
                     <Text style={[styles.countryName, { color: C.textPrimary }]}>{selectedCountry.name}:</Text>
                   </View>
                 </View>
                 <View style={styles.fieldGroup}>
-                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>Teléfono</Text>
+                  <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>{t('phone')}</Text>
                   <View style={styles.phoneRow}>
                     <View style={[styles.phonePrefix, { backgroundColor: C.bgTertiary, borderColor: C.border }]}>
                       <Text style={[styles.phonePrefixText, { color: C.textPrimary }]}>{countryCode}</Text>
@@ -121,33 +123,33 @@ export default function ForgotPasswordScreen() {
                   </View>
                 </View>
                 {error ? <EGErrorMessage text={error} /> : null}
-                <EGButton title={loading ? 'Enviando...' : 'Enviar código SMS'} onPress={sendCode} loading={loading} disabled={!phone.trim()} />
+                <EGButton title={loading ? t('sending') : t('sendCode')} onPress={sendCode} loading={loading} disabled={!phone.trim()} />
               </>
             )}
 
             {recoverStep === 2 && (
               <>
-                <Text style={[styles.title, { color: C.textPrimary }]}>Introduce el código</Text>
+                <Text style={[styles.title, { color: C.textPrimary }]}>{t('enterCode')}</Text>
                 <Text style={[styles.subtitle, { color: C.textSecondary }]}>
                   Enviamos un código a <Text style={[styles.phoneHighlight, { color: C.textPrimary }]}>{fullPhone}</Text>
                 </Text>
-                <EGInput label="Código de verificación" value={code} onChangeText={t => setCode(t.replace(/\D/g, '').slice(0, 6))} placeholder="000000" keyboardType="number-pad" maxLength={6} />
+                <EGInput label={t('verificationCode')} value={code} onChangeText={value => setCode(value.replace(/\D/g, '').slice(0, 6))} placeholder="000000" keyboardType="number-pad" maxLength={6} />
                 {error ? <EGErrorMessage text={error} /> : null}
-                <EGButton title={loading ? 'Verificando...' : 'Verificar código'} onPress={verifyCode} loading={loading} disabled={code.length < 4} style={styles.btnMargin} />
+                <EGButton title={loading ? t('verifying') : t('verifyCode')} onPress={verifyCode} loading={loading} disabled={code.length < 4} style={styles.btnMargin} />
                 <TouchableOpacity onPress={sendCode} style={styles.resendBtn}>
-                  <Text style={styles.resendText}>{loading ? 'Enviando...' : 'Reenviar código'}</Text>
+                  <Text style={styles.resendText}>{loading ? t('sending') : t('resendCode')}</Text>
                 </TouchableOpacity>
               </>
             )}
 
             {recoverStep === 3 && (
               <>
-                <Text style={[styles.title, { color: C.textPrimary }]}>Nueva contraseña</Text>
-                <Text style={[styles.subtitle, { color: C.textSecondary }]}>Crea una contraseña segura para tu cuenta</Text>
-                <EGInput label="Nueva contraseña" value={newPass} onChangeText={setNewPass} showPasswordToggle placeholder="Mínimo 6 caracteres" />
-                <EGInput label="Confirmar contraseña" value={newPass2} onChangeText={setNewPass2} secureTextEntry placeholder="Repite la contraseña" error={newPass2 && newPass !== newPass2 ? 'Las contraseñas no coinciden' : undefined} />
+                <Text style={[styles.title, { color: C.textPrimary }]}>{t('newPassword')}</Text>
+                <Text style={[styles.subtitle, { color: C.textSecondary }]}>{t('enterPhone')}</Text>
+                <EGInput label={t('newPassword')} value={newPass} onChangeText={setNewPass} showPasswordToggle placeholder={t('minCharacters')} />
+                <EGInput label={t('confirmPassword')} value={newPass2} onChangeText={setNewPass2} secureTextEntry placeholder={t('repeatPassword')} error={newPass2 && newPass !== newPass2 ? 'Las contraseñas no coinciden' : undefined} />
                 {error ? <EGErrorMessage text={error} /> : null}
-                <EGButton title={loading ? 'Guardando...' : 'Guardar nueva contraseña'} onPress={savePassword} loading={loading} disabled={newPass.length < 6 || newPass !== newPass2} />
+                <EGButton title={loading ? t('saving') : t('saveNewPassword')} onPress={savePassword} loading={loading} disabled={newPass.length < 6 || newPass !== newPass2} />
               </>
             )}
           </View>

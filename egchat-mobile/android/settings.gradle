@@ -1,60 +1,103 @@
 pluginManagement {
   try {
-    def extraPaths = [
+    def userHome = System.getProperty("user.home") ?: ""
+    def nvmDir = new File(userHome, ".nvm/versions/node")
+    def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin").absolutePath } : []
+
+    def extraPaths = ([
       "/usr/local/bin",
       "/opt/homebrew/bin",
-      System.getProperty("user.home") + "/.nvm/versions/node/v20.20.2/bin",
-      System.getProperty("user.home") + "/.nvm/versions/node/v20.19.4/bin"
-    ].findAll { new File(it).exists() }.join(File.pathSeparator)
+      "/usr/local/opt/node/bin",
+      "${userHome}/.fnm/current/bin",
+      "${userHome}/.volta/bin",
+      "${userHome}/.asdf/shims",
+      System.getenv("NODE_BINARY") ? new File(System.getenv("NODE_BINARY")).parent : null
+    ] + (nvmBinPaths ?: [])).findAll { it && new File(it).exists() }
 
-    def pe = Class.forName("java.lang.ProcessEnvironment")
-    def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
-    def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
+    def pathPrefix = extraPaths.join(File.pathSeparator)
+    def nodeExec = ([
+      System.getenv("NODE_BINARY"),
+      "/usr/local/bin/node",
+      "/opt/homebrew/bin/node",
+      "/usr/local/opt/node/bin/node",
+      "${userHome}/.fnm/current/bin/node",
+      "${userHome}/.volta/bin/node",
+      "${userHome}/.asdf/shims/node"
+    ] + (nvmBinPaths?.collect { "$it/node" } ?: [])).find { it && new File(it).exists() } ?: "node"
 
-    def varValueOf = varClass.getDeclaredMethod("valueOf", String.class)
-    varValueOf.setAccessible(true)
-    def valValueOf = valClass.getDeclaredMethod("valueOf", String.class)
-    valValueOf.setAccessible(true)
+    def unsafeClass = Class.forName("sun.misc.Unsafe")
+    def fUnsafe = unsafeClass.getDeclaredField("theUnsafe")
+    fUnsafe.setAccessible(true)
+    def unsafe = fUnsafe.get(null)
 
-    def pathVar = varValueOf.invoke(null, "PATH")
+    def peClass = Class.forName("java.lang.ProcessEnvironment")
 
-    def field = pe.getDeclaredField("theEnvironment")
-    field.setAccessible(true)
-    def env = field.get(null) as Map
-    if (env != null) {
-      def currentVal = env.get(pathVar)?.toString() ?: ""
-      def newVal = valValueOf.invoke(null, extraPaths + File.pathSeparator + currentVal)
-      env.put(pathVar, newVal)
+    def getStaticField = { String fieldName ->
+      try {
+        def f = peClass.getDeclaredField(fieldName)
+        def base = unsafe.staticFieldBase(f)
+        def offset = unsafe.staticFieldOffset(f)
+        return unsafe.getObject(base, offset)
+      } catch (Throwable ignored) {
+        return null
+      }
     }
 
-    try {
-      def ciField = pe.getDeclaredField("theCaseInsensitiveEnvironment")
-      ciField.setAccessible(true)
-      def ciEnv = ciField.get(null) as Map
-      if (ciEnv != null) {
-        def currentVal = ciEnv.get(pathVar)?.toString() ?: ""
-        def newVal = valValueOf.invoke(null, extraPaths + File.pathSeparator + currentVal)
-        ciEnv.put(pathVar, newVal)
+    def envMap = getStaticField("theEnvironment") as Map
+
+    if (envMap != null) {
+      def pathEntry = envMap.entrySet().find { it.key.toString().equalsIgnoreCase("PATH") }
+      if (pathEntry != null) {
+        def curPath = pathEntry.value.toString()
+        if (!curPath.startsWith(pathPrefix)) {
+          def newPathStr = pathPrefix + File.pathSeparator + curPath
+          def valObj = pathEntry.value
+          def extClass = valObj.getClass().getSuperclass()
+          def fStr = extClass.getDeclaredField("str")
+          def fBytes = extClass.getDeclaredField("bytes")
+          unsafe.putObject(valObj, unsafe.objectFieldOffset(fStr), newPathStr)
+          unsafe.putObject(valObj, unsafe.objectFieldOffset(fBytes), newPathStr.getBytes())
+        }
       }
-    } catch (Throwable ignored) {}
-  } catch (Throwable t) {
-    // ignore
-  }
 
-  System.setProperty("ANDROID_PREFS_ROOT", "")
+      def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
+      def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
 
-  def nodeExec = [
+      def nodeVar = unsafe.allocateInstance(varClass)
+      def nodeVal = unsafe.allocateInstance(valClass)
+
+      def extClass = varClass.getSuperclass()
+      def fStr = extClass.getDeclaredField("str")
+      def fBytes = extClass.getDeclaredField("bytes")
+
+      unsafe.putObject(nodeVar, unsafe.objectFieldOffset(fStr), "NODE_BINARY")
+      unsafe.putObject(nodeVar, unsafe.objectFieldOffset(fBytes), "NODE_BINARY".getBytes())
+
+      unsafe.putObject(nodeVal, unsafe.objectFieldOffset(fStr), nodeExec)
+      unsafe.putObject(nodeVal, unsafe.objectFieldOffset(fBytes), nodeExec.getBytes())
+
+      envMap.put(nodeVar, nodeVal)
+    }
+  } catch (Throwable ignored) {}
+
+  def userHome = System.getProperty("user.home") ?: ""
+  def nvmDir = new File(userHome, ".nvm/versions/node")
+  def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin/node").absolutePath } : []
+
+  def nodeBin = ([
+    System.getenv("NODE_BINARY"),
     "/usr/local/bin/node",
     "/opt/homebrew/bin/node",
-    System.getenv("NODE_BINARY"),
-    System.getProperty("user.home") + "/.nvm/versions/node/v20.20.2/bin/node",
-    System.getProperty("user.home") + "/.nvm/versions/node/v20.19.4/bin/node"
-  ].find { it && new File(it).exists() } ?: "node"
+    "/usr/local/opt/node/bin/node",
+    "${userHome}/.fnm/current/bin/node",
+    "${userHome}/.volta/bin/node",
+    "${userHome}/.asdf/shims/node"
+  ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"
 
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine(nodeExec, "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+      commandLine(nodeBin, "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
     }.standardOutput.asText.get().trim()
   ).getParentFile().absolutePath
   includeBuild(reactNativeGradlePlugin)
@@ -62,7 +105,7 @@ pluginManagement {
   def expoPluginsPath = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine(nodeExec, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+      commandLine(nodeBin, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
     }.standardOutput.asText.get().trim(),
     "../android/expo-gradle-plugin"
   ).absolutePath

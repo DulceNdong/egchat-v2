@@ -13,12 +13,14 @@ interface ThemeContextValue {
   colors: typeof Colors;
 }
 
-const ThemeContext = createContext<ThemeContextValue>({
+const defaultContextValue: ThemeContextValue = {
   isDark: false,
   mode: 'system',
   setMode: async () => {},
   colors: Colors,
-});
+};
+
+const ThemeContext = createContext<ThemeContextValue>(defaultContextValue);
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const systemScheme = useColorScheme();
@@ -27,14 +29,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     SecureStore.getItemAsync(THEME_KEY).then(val => {
       if (val) setModeState(val as ThemeMode);
-    });
+    }).catch(() => {});
   }, []);
 
   const isDark = mode === 'dark' || (mode === 'system' && systemScheme === 'dark');
 
   const setMode = async (m: ThemeMode) => {
     setModeState(m);
-    await SecureStore.setItemAsync(THEME_KEY, m);
+    await SecureStore.setItemAsync(THEME_KEY, m).catch(() => {});
   };
 
   const colors = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
@@ -47,5 +49,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
 }
 
 export function useThemeContext() {
-  return useContext(ThemeContext);
+  const context = useContext(ThemeContext);
+  return context || defaultContextValue;
 }
+
+export const useTheme = useThemeContext;
+export const useThemeMode = useThemeContext;
+
+export default useThemeContext;

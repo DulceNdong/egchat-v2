@@ -97,7 +97,7 @@ export function useGPS(options: UseGPSOptions = {}) {
 
       if (watch) {
         subscriptionRef.current = await Location.watchPositionAsync(
-          { accuracy: highAccuracy ? Location.Accuracy.High : Location.Accuracy.Balanced, timeInterval: 2000, distanceInterval: 5 },
+          { accuracy: Location.Accuracy.Balanced, timeInterval: 15000, distanceInterval: 30 },
           (loc) => { if (active) handlePosition(loc); }
         );
       } else {

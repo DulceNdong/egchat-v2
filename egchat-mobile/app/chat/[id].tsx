@@ -432,14 +432,8 @@ export default function ChatScreen() {
   const { isRecording, durationFormatted, startRecording, stopRecording, cancelRecording } = useAudioRecorder();
   const { isOnline: _isOnlineFromOffline, saveCache, readCache } = useOffline();
   const { isOnline } = useNetworkStatus();
-  void _isOnlineFromOffline; // el isOnline global reemplaza el local
   const dockBottomOffset = keyboardBottomOffset;
-  // Android: el dock sube manualmente con keyboardBottomOffset (keyboardDidShow/Hide).
-  // iOS: offset manual con keyboardWillChangeFrame + effectiveDockOffset.
-  // NO usamos KeyboardAvoidingView para no romper el layout de ninguna plataforma.
-  const effectiveDockOffset = Platform.OS === 'ios'
-    ? (anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset)
-    : keyboardBottomOffset;
+  const effectiveDockOffset = anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset;
   const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
 
   useEffect(() => {
@@ -448,39 +442,44 @@ export default function ChatScreen() {
   }, []);
 
   useEffect(() => {
-    if (Platform.OS === 'android') {
-      const showSub = Keyboard.addListener('keyboardDidShow', (event: any) => {
-        const h = event.endCoordinates?.height ?? 0;
+    const handleShow = (event: any) => {
+      const h = event.endCoordinates?.height ?? 0;
+      if (h > 0) {
+        try {
+          Keyboard.scheduleLayoutAnimation(event);
+        } catch {
+          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        }
         setKeyboardBottomOffset(h);
-      });
-      const hideSub = Keyboard.addListener('keyboardDidHide', () => {
-        setKeyboardBottomOffset(0);
-      });
-      return () => { showSub.remove(); hideSub.remove(); };
-    }
-
-    if (Platform.OS !== 'ios') return undefined;
-
-    const syncKeyboard = (event: any) => {
-      const windowHeight = Dimensions.get('window').height;
-      const keyboardTop = event.endCoordinates?.screenY ?? windowHeight;
-      const nextOffset = Math.max(0, windowHeight - keyboardTop);
-
-      Keyboard.scheduleLayoutAnimation(event);
-      setKeyboardBottomOffset(nextOffset);
+      }
     };
 
-    const hideKeyboard = (event: any) => {
-      Keyboard.scheduleLayoutAnimation(event);
+    const handleHide = (event: any) => {
+      try {
+        if (event) Keyboard.scheduleLayoutAnimation(event);
+        else LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      } catch {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      }
       setKeyboardBottomOffset(0);
     };
 
-    const changeSub = Keyboard.addListener('keyboardWillChangeFrame', syncKeyboard);
-    const hideSub = Keyboard.addListener('keyboardWillHide', hideKeyboard);
+    const willShowSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      handleShow
+    );
+    const didShowSub  = Keyboard.addListener('keyboardDidShow', handleShow);
+    const willHideSub = Keyboard.addListener(
+      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      handleHide
+    );
+    const didHideSub  = Keyboard.addListener('keyboardDidHide', handleHide);
 
     return () => {
-      changeSub.remove();
-      hideSub.remove();
+      willShowSub.remove();
+      didShowSub.remove();
+      willHideSub.remove();
+      didHideSub.remove();
     };
   }, []);
 
@@ -614,90 +613,71 @@ export default function ChatScreen() {
     });
   }, []);
 
-  // Cargar datos iniciales
+  // Cargar datos iniciales — Instantáneo via Caché local + refresco en background
   useEffect(() => {
-    const init = async () => {
-      // Timeout de seguridad: si la carga tarda más de 20s, salir del spinner
-      const safetyTimeout = setTimeout(() => setLoading(false), 20000);
-      try {
-        // Obtener usuario actual via API (no decodificar JWT en RN)
-        const me = await authAPI.me();
-        setCurrentUserId(me?.id || '');
-        setMyProfile({ full_name: me?.full_name, avatar_url: me?.avatar_url, phone: me?.phone });
+    let active = true;
 
-        // Cargar chat y mensajes en paralelo
-        const [chats, msgs] = await Promise.all([
-          chatAPI.getChats(),
-          chatAPI.getMessages(chatId, 1, 50),
-        ]);
+    const init = async () => {
+      // 1. Cargar caché inmediatamente para renderizado instantáneo (<50ms)
+      try {
+        const cachedMsgs = await readCache<Message[]>(`chat_messages_${chatId}`);
+        if (cachedMsgs && cachedMsgs.length > 0 && active) {
+          const normCached = normalizeMessages(cachedMsgs);
+          setMessages(normCached);
+          setLoading(false);
+        }
+      } catch {}
+
+      const safetyTimeout = setTimeout(() => { if (active) setLoading(false); }, 5000);
+
+      try {
+        // 2. Refresco en segundo plano
+        const mePromise = authAPI.me().catch(() => null);
+        const msgsPromise = chatAPI.getMessages(chatId, 1, 50).catch(() => []);
+        const chatsPromise = chatAPI.getChats().catch(() => []);
+
+        const [me, msgs, chats] = await Promise.all([mePromise, msgsPromise, chatsPromise]);
+        if (!active) return;
+
+        if (me) {
+          setCurrentUserId(me.id || '');
+          setMyProfile({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
+        }
 
         const current = chats.find((c: any) => c.id === chatId);
         if (current) {
           setChat(current);
-          // Enriquecer participantes con datos completos del endpoint dedicado
-          try {
-            const token = await (await import('../../src/api')).getToken();
-            const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
-            const enrichedParticipants = await fetch(
-              `${BASE}/api/chats/${chatId}/participants`,
-              { headers: { Authorization: `Bearer ${token}` } }
-            ).then(r => r.json()).catch(() => null);
-            if (Array.isArray(enrichedParticipants) && enrichedParticipants.length > 0) {
-              setChat((prev: any) => prev ? { ...prev, participants: enrichedParticipants } : prev);
-            }
-          } catch (e) {
-            // silent — enriquecimiento opcional
-          }
         }
 
-        const msgList = normalizeMessages(msgs || []);
-        setMessages(msgList);
-        saveCache(`chat_messages_${chatId}`, msgList);
-        setHasMore(msgList.length === 50);
+        if (Array.isArray(msgs) && msgs.length > 0) {
+          const msgList = normalizeMessages(msgs);
+          setMessages(msgList);
+          saveCache(`chat_messages_${chatId}`, msgList);
+          setHasMore(msgList.length === 50);
 
-        // ── #8 Detectar primer mensaje no leído ─────────────────────
-        const meId = me?.id || '';
-        const firstUnread = msgList.find(
-          m => m.sender_id !== meId && m.status !== 'read'
-        );
-        if (firstUnread) setFirstUnreadId(firstUnread.id);
+          const meId = me?.id || '';
+          const firstUnread = msgList.find(m => m.sender_id !== meId && m.status !== 'read');
+          if (firstUnread) setFirstUnreadId(firstUnread.id);
 
-        // ── #9 Contar no leídos ─────────────────────────────────────
-        const unreadCnt = msgList.filter(
-          m => m.sender_id !== meId && m.status !== 'read'
-        ).length;
-        if (unreadCnt > 0) setUnreadScrollCount(unreadCnt);
+          const unreadCnt = msgList.filter(m => m.sender_id !== meId && m.status !== 'read').length;
+          if (unreadCnt > 0) setUnreadScrollCount(unreadCnt);
 
-        // ── Lectura real (doble check azul) ──────────────────────────
-        // 1. Marcar el último mensaje leído en BD (endpoint existente)
-        const lastReadableId = getLastReadableMessageId(msgList, me?.id || '');
-        if (lastReadableId) {
-          chatAPI.markAsRead(chatId, lastReadableId).catch(() => {});
-        }
-        // 2. Marcar TODOS los mensajes del chat como leídos (nuevo endpoint)
-        //    Esto actualiza status → 'read' en BD y el backend emite SSE al emisor
-        markChatAsRead(chatId);
-        // 3. Emitir broadcast inmediato por Supabase (solo si readReceipts activados)
-        if (me?.id && showReadReceipts) {
-          const unreadIds = msgList
-            .filter(m => m.sender_id !== me.id && m.status !== 'read')
-            .map(m => m.id);
-          if (unreadIds.length > 0) {
-            broadcastReadReceipt(chatId, me.id, unreadIds);
+          const lastReadableId = getLastReadableMessageId(msgList, meId);
+          if (lastReadableId) {
+            chatAPI.markAsRead(chatId, lastReadableId).catch(() => {});
           }
+          markChatAsRead(chatId);
         }
       } catch (e) {
         console.error('Error cargando chat:', e);
-        const cached = await readCache<Message[]>(`chat_messages_${chatId}`);
-        if (cached?.length) {
-          setMessages(normalizeMessages(cached));
-        }
       } finally {
         clearTimeout(safetyTimeout);
-        setLoading(false);
+        if (active) setLoading(false);
       }
     };
+
     init();
+    return () => { active = false; };
   }, [chatId, readCache, saveCache]);
 
   useEffect(() => {
@@ -3686,7 +3666,7 @@ const styles = StyleSheet.create({
     height: '100%',
   },
 
-  // Bottom dock — posición absoluta, sube con el teclado sin mover la barra visualmente
+  // Bottom dock — posición absoluta para acompañar al teclado con effectiveDockOffset
   bottomDock: {
     position: 'absolute',
     left: 0,

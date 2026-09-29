@@ -18,7 +18,7 @@ import {
 import { FlashList } from '@shopify/flash-list';
 
 // En web usamos FlatList estándar — FlashList no soporta web
-const ChatFlatList = (Platform.OS === 'web' ? FlatList : FlashList) as typeof FlatList;
+const ChatFlatList: React.ComponentType<any> = Platform.OS === 'web' ? FlatList : FlashList;
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Circle, Line, Rect, Polyline } from 'react-native-svg';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -426,32 +426,12 @@ function MensajeriaScreenInner() {
         contactsAPI.getFavorites().catch(() => []),
         getFavoriteGroupIds(),
       ]);
-      const sortedChats = sortChatsByActivity(data || []);
-
-      // Enriquecer participantes que tengan full_name vacío
-      const enriched = await Promise.all(sortedChats.map(async (chat) => {
-        const needsEnrich = chat.participants?.some(
-          (p: any) => !p.full_name && p.user_id
-        );
-        if (!needsEnrich) return chat;
-        try {
-          const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
-          const token = await (await import('../../src/api')).getToken();
-          const parts = await fetch(`${BASE}/api/chats/${chat.id}/participants`, {
-            headers: { Authorization: `Bearer ${token}` }
-          }).then(r => r.json()).catch(() => null);
-          if (Array.isArray(parts) && parts.length > 0) {
-            return { ...chat, participants: parts };
-          }
-        } catch {}
-        return chat;
-      }));
-
-      setChats(enriched);
-      saveCache('chat_list', enriched);
+      const sortedChats = sortChatsByActivity(Array.isArray(data) ? data : []);
+      setChats(sortedChats);
+      saveCache('chat_list', sortedChats);
 
       // Actualizar widget de pantalla de inicio con últimos chats
-      HomeWidget.update(enriched.map(c => {
+      HomeWidget.update(sortedChats.map(c => {
         const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
         const name = c.type === 'private'
           ? (other?.full_name || other?.users?.full_name || 'Usuario')
@@ -703,14 +683,17 @@ function MensajeriaScreenInner() {
     ]);
   }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId]);
 
-  const favoriteGroupChats = chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id));
-  const archivedIds = new Set(archivedChats.map(c => c.id));
+  const favoriteGroupChats = useMemo(
+    () => chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id)),
+    [chats, favoriteGroupIds],
+  );
+  const archivedIds = useMemo(() => new Set(archivedChats.map(c => c.id)), [archivedChats]);
 
-  const matchesSearch = (name: string, last?: string) => {
+  const matchesSearch = useCallback((name: string, last?: string) => {
     if (!searchQuery.trim()) return true;
     const q = searchQuery.toLowerCase();
     return name.toLowerCase().includes(q) || (last || '').toLowerCase().includes(q);
-  };
+  }, [searchQuery]);
 
   // ── Filtrado ────────────────────────────────────────────────────
   const isGenericName = (name: string) => {
@@ -739,14 +722,14 @@ function MensajeriaScreenInner() {
     }
     if (filter === 'archivar') return false;
     return true;
-  }), [chats, archivedIds, currentUserId, filter, groupSubFilter, searchQuery]);
+  }), [chats, archivedIds, currentUserId, filter, groupSubFilter, matchesSearch]);
 
   const filteredArchived = useMemo(() => archivedChats.filter(c => {
     const isGrp = c.isGroup || c.type === 'group';
     if (archiveSubFilter === 'group' ? !isGrp : isGrp) return false;
     const name = c.name || c.title || 'Chat';
     return matchesSearch(name, c.last_message?.text);
-  }), [archivedChats, archiveSubFilter, searchQuery]);
+  }), [archivedChats, archiveSubFilter, matchesSearch]);
 
   return (
     <SafeAreaView style={[st.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
