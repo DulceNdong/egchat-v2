@@ -434,7 +434,7 @@ function ServiciosScreenInner() {
                     delayPressIn={0}
                   >
                     <View style={[styles.serviceIconBox, { backgroundColor: s.color + '15' }]}>
-                      <ServiceIcon name={s.svgIcon} size={26} color={s.color} />
+                      <ServiceIcon name={s.svgIcon} size={22} color={s.color} />
                     </View>
                     <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
                   </TouchableOpacity>
@@ -540,10 +540,10 @@ const styles = StyleSheet.create({
 
   // Secciones (estilo web)
   sectionWrapper: {},
-  sectionHeaderWeb: { paddingHorizontal: 16, paddingTop: 14, paddingBottom: 2 },
-  sectionTitleWeb: { fontSize: 11, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8 },
-  sectionCardWeb: { paddingHorizontal: 6, paddingVertical: 4 },
-  sectionSpacer: { height: 10 },
+  sectionHeaderWeb: { paddingHorizontal: 16, paddingTop: 10, paddingBottom: 2 },
+  sectionTitleWeb: { fontSize: 10, fontWeight: '700', color: '#9CA3AF', letterSpacing: 0.8 },
+  sectionCardWeb: { paddingHorizontal: 4, paddingVertical: 2 },
+  sectionSpacer: { height: 6 },
 
   // Grid de servicios (4 columnas como la web)
   grid: {
@@ -552,19 +552,19 @@ const styles = StyleSheet.create({
   serviceItem: {
     width: '25%',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 4,
-    gap: 6,
+    paddingVertical: 8,
+    paddingHorizontal: 2,
+    gap: 4,
   },
   serviceIconBox: {
-    width: 54, height: 54, borderRadius: 16,
+    width: 44, height: 44, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',
   },
-  serviceEmoji: { fontSize: 26 },
+  serviceEmoji: { fontSize: 22 },
   serviceLabel: {
-    fontSize: 11, fontWeight: '600',
+    fontSize: 10, fontWeight: '600',
     textAlign: 'center',
-    lineHeight: 14, maxWidth: 60,
+    lineHeight: 13, maxWidth: 58,
   },
 
   // Modal bottom sheet
