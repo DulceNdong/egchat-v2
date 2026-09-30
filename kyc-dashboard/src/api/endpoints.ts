@@ -139,3 +139,33 @@ export const amlApi = {
       `/aml/sar/${id}/send`
     ).then(r => r.data),
 };
+
+// ── Alertas de caducidad de documentos KYC ───────────────────────
+export const expiryApi = {
+  getAlerts: (days = 90) =>
+    apiClient.get<{ alerts: ExpiryAlert[]; total: number }>(
+      `/api/v1/kyc/expiry-alerts?days=${days}`
+    ).then(r => r.data),
+
+  notifyUser: (userId: string, days_left: number, document_type: string) =>
+    apiClient.post(`/api/v1/kyc/expiry-alerts/${userId}/notify`, { days_left, document_type })
+      .then(r => r.data),
+};
+
+export interface ExpiryAlert {
+  application_id: string;
+  user_id:        string | null;
+  full_name:      string | null;
+  kyc_status:     string | null;
+  document_type:  string | null;
+  expiry_date:    string;
+  days_left:      number;
+  urgency:        'critical' | 'high' | 'medium';
+}
+
+// Actualizar uploadDocAdmin si no existe
+declare module '@/api/endpoints' {
+  interface KycAdminApiExtension {
+    uploadDocAdmin: (applicationId: string, docType: 'front' | 'back' | 'selfie', file: File) => Promise<{ url: string }>;
+  }
+}
