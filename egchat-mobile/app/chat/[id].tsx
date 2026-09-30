@@ -3,7 +3,7 @@ import { GestureDetector, Gesture } from 'react-native-gesture-handler';
 import {
   View, Text, FlatList, TouchableOpacity, TextInput,
   StyleSheet, Platform, ActivityIndicator, Dimensions,
-  Animated, Modal, Pressable, Alert, Image, Share, Keyboard, PanResponder,
+  Animated, Modal, Pressable, Alert, Image, Share, Keyboard, PanResponder, LayoutAnimation,
   KeyboardAvoidingView,
 } from 'react-native';
 import * as Clipboard from 'expo-clipboard';
@@ -81,6 +81,7 @@ import { useAudioRecorder } from '../../src/hooks/useAudioRecorder';
 import { useOffline } from '../../src/hooks/useOffline';
 import { useNetworkStatus } from '../../src/store/offlineStore';
 import { useOfflineQueue, enqueueMessage } from '../../src/hooks/useOfflineQueue';
+import SessionManager from '../../src/sessionManager';
 import { toast } from '../../src/components/Toast';
 import {
   createChatTypingChannel,
@@ -615,14 +616,24 @@ export default function ChatScreen() {
     let active = true;
 
     const init = async () => {
-      // 1. Cargar caché inmediatamente para renderizado instantáneo (<50ms).
-      // No esperamos a la red para montar la pantalla: en Android un Render
-      // frío o una red lenta convertía esta espera en un bloqueo de 5–7 s.
+      let resolvedUserId = currentUserId;
+
       try {
-        const [cachedMsgs, cachedChats] = await Promise.all([
+        const [cachedMsgs, cachedChats, cachedUser] = await Promise.all([
           readCache<Message[]>(`chat_messages_${chatId}`),
           readCache<any[]>('chat_list'),
+          SessionManager.getInstance().getUser(),
         ]);
+
+        if (cachedUser?.id && active) {
+          resolvedUserId = String(cachedUser.id);
+          setCurrentUserId(resolvedUserId);
+          setMyProfile({
+            full_name: cachedUser.full_name,
+            avatar_url: cachedUser.avatar_url,
+            phone: cachedUser.phone,
+          });
+        }
 
         const cachedChat = cachedChats?.find((item: any) => item.id === chatId);
         if (cachedChat && active) setChat(cachedChat);
@@ -633,16 +644,12 @@ export default function ChatScreen() {
         }
       } catch {}
 
-      // La estructura de la conversación admite datos que llegan después
-      // (cabecera "..." y lista vacía). Mostrarla ya permite navegar y evita
-      // que un timeout de red oculte la vista durante varios segundos.
       if (active) setLoading(false);
 
-      // 2. Refresco totalmente en segundo plano. No usar Promise.all aquí:
-      // una lista de chats lenta no debe retrasar la primera burbuja de texto.
       void authAPI.me().then(me => {
         if (!active || !me) return;
-        setCurrentUserId(me.id || '');
+        resolvedUserId = String(me.id || '');
+        setCurrentUserId(resolvedUserId);
         setMyProfile({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
       }).catch(() => {});
 
@@ -660,7 +667,7 @@ export default function ChatScreen() {
         void saveCache(`chat_messages_${chatId}`, msgList);
         setHasMore(msgList.length === 50);
 
-        const meId = currentUserId;
+        const meId = resolvedUserId;
         const firstUnread = msgList.find(message => message.sender_id !== meId && message.status !== 'read');
         if (firstUnread) setFirstUnreadId(firstUnread.id);
 
