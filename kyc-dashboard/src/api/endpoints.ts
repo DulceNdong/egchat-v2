@@ -62,17 +62,6 @@ export const kycAdminApi = {
   block: (id: string, reason: string, notify_user = true) =>
     apiClient.post(`/api/v1/admin/kyc/${id}/block`, { reason, notify_user }).then(r => r.data),
 
-  /** Upload manual de documento desde el admin */
-  uploadDocAdmin: (applicationId: string, docType: 'front' | 'back' | 'selfie', file: File) => {
-    const formData = new FormData();
-    formData.append('file', file);
-    return apiClient.post<{ success: boolean; url: string; doc_type: string }>(
-      `/api/v1/admin/kyc/${applicationId}/upload-doc?doc_type=${docType}`,
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    ).then(r => r.data);
-  },
-
   bankDecision: (id: string, decision: 'APPROVED' | 'REJECTED', notes?: string) =>
     apiClient.post(`/admin/kyc/${id}/bank-decision`, { decision, notes }).then(r => r.data),
 
@@ -84,14 +73,15 @@ export const kycAdminApi = {
     ).then(r => r.data),
 
   /** Subir documento manualmente desde el panel admin */
-  uploadDocAdmin: async (applicationId: string, docType: 'front' | 'back' | 'selfie', file: File): Promise<{ url: string }> => {
+  uploadDocAdmin: (applicationId: string, docType: 'front' | 'back' | 'selfie', file: File) => {
     const formData = new FormData();
     formData.append('file', file);
     formData.append('doc_type', docType);
-    const r = await apiClient.post(`/api/v1/admin/kyc/${applicationId}/upload-doc?doc_type=${docType}`, formData, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
-    return r.data;
+    return apiClient.post<{ url: string }>(
+      `/api/v1/admin/kyc/${applicationId}/upload-doc?doc_type=${docType}`,
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    ).then(r => r.data);
   },
 };
 
