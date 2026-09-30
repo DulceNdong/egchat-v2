@@ -82,6 +82,17 @@ export const kycAdminApi = {
       `/api/v1/kyc/docs/${applicationId}/signed-url`,
       { params: { doc_type: docType } }
     ).then(r => r.data),
+
+  /** Subir documento manualmente desde el panel admin */
+  uploadDocAdmin: async (applicationId: string, docType: 'front' | 'back' | 'selfie', file: File): Promise<{ url: string }> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('doc_type', docType);
+    const r = await apiClient.post(`/api/v1/admin/kyc/${applicationId}/upload-doc?doc_type=${docType}`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return r.data;
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════
