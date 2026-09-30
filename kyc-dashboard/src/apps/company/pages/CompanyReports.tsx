@@ -5,7 +5,7 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
-  FileText, Loader2, Calendar, Users, ShieldAlert,
+  Loader2, Calendar, Users, ShieldAlert,
   FileWarning, Scale,
   CheckCircle2, Lock,
   ChevronRight, ArrowDownToLine,
