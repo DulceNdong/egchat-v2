@@ -3,7 +3,7 @@
  * Secciones: datos personales, documentos reales, screening, historial,
  * acciones, notas internas, bloque alertas caducidad.
  */
-import { useState, useMutation as _useMutation } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
