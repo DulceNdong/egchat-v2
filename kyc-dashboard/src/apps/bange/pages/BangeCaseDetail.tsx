@@ -531,6 +531,78 @@ export default function BangeCaseDetail() {
               <button className="btn-secondary text-xs mt-2">{t('case.saveNotes')}</button>
             )}
           </section>
+
+          {/* ── BLOQUE ALERTAS DE CADUCIDAD ───────────────────────── */}
+          <section className="card p-6" aria-labelledby="expiry-alerts-section">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-7 h-7 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center">
+                <Bell className="w-4 h-4 text-amber-500" aria-hidden="true" />
+              </div>
+              <h2 id="expiry-alerts-section" className="font-semibold text-sm uppercase tracking-wide text-gray-500">
+                Alertas de caducidad
+              </h2>
+            </div>
+
+            {/* Expiración del documento */}
+            {daysLeft !== null ? (
+              <div className={`p-3 rounded-lg border mb-3 ${
+                daysLeft <= 0   ? 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-800' :
+                daysLeft <= 15  ? 'bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800' :
+                daysLeft <= 30  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800' :
+                                  'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800'
+              }`}>
+                <p className={`text-xs font-semibold mb-1 ${
+                  daysLeft <= 0  ? 'text-red-700 dark:text-red-300' :
+                  daysLeft <= 15 ? 'text-orange-700 dark:text-orange-300' :
+                  daysLeft <= 30 ? 'text-amber-700 dark:text-amber-300' :
+                                   'text-green-700 dark:text-green-300'
+                }`}>
+                  {daysLeft <= 0  ? '⛔ Documento EXPIRADO' :
+                   daysLeft <= 15 ? `🚨 Expira en ${daysLeft} días — CRÍTICO` :
+                   daysLeft <= 30 ? `⚠️ Expira en ${daysLeft} días` :
+                                    `✅ Válido — expira en ${daysLeft} días`}
+                </p>
+                <p className="text-xs text-gray-500">
+                  Fecha de expiración: <span className="font-mono font-semibold">{expiryDate ?? '—'}</span>
+                </p>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-400 mb-3">Sin fecha de expiración registrada</p>
+            )}
+
+            {/* Botón enviar alerta push al usuario */}
+            <button
+              onClick={handleSendExpiryAlert}
+              disabled={sendingAlert}
+              className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-950/20 text-amber-700 dark:text-amber-300 text-xs font-semibold hover:bg-amber-100 dark:hover:bg-amber-950/40 transition-colors disabled:opacity-50"
+            >
+              <Bell className="w-3.5 h-3.5" aria-hidden="true" />
+              {sendingAlert ? 'Enviando notificación…' : '📲 Notificar al usuario para actualizar documentos'}
+            </button>
+
+            <p className="text-xs text-gray-400 mt-2 leading-relaxed">
+              El usuario recibirá una notificación push en su dispositivo indicando que debe actualizar
+              su documentación para seguir usando el monedero con normalidad.
+            </p>
+          </section>
+
+          {/* ── HISTORIAL ─────────────────────────────────────────── */}
+          <section className="card p-6" aria-labelledby="history-section">
+            <div className="flex items-center gap-2 mb-4">
+              <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+                <History className="w-4 h-4 text-blue-500" aria-hidden="true" />
+              </div>
+              <h2 id="history-section" className="font-semibold text-sm uppercase tracking-wide text-gray-500">
+                {t('case.history')}
+              </h2>
+              {audit && (
+                <span className="ml-auto text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                  {audit.total_entries} entradas
+                </span>
+              )}
+            </div>
+            <Timeline entries={audit?.audit_trail ?? []} />
+          </section>
         </div>
       </div>
 
