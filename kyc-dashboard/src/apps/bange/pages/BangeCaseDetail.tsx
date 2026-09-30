@@ -202,11 +202,6 @@ export default function BangeCaseDetail() {
   const isPassport     = (kyc.doc_type || '').toLowerCase().includes('passport') ||
                          (kyc.doc_type || '').toLowerCase().includes('pasaporte');
 
-  const expiryDate = kyc.doc_expiry_date ?? null;
-  const daysLeft   = expiryDate
-    ? differenceInDays(new Date(expiryDate), new Date())
-    : (kyc.days_to_expiry ?? null);
-
   // ── Botón Revisado — aprueba directamente sin modal ──────────
   async function handleRevisar() {
     if (!canRevisar || reviewing) return;
