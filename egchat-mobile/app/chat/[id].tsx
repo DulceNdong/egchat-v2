@@ -615,62 +615,64 @@ export default function ChatScreen() {
     let active = true;
 
     const init = async () => {
-      // 1. Cargar caché inmediatamente para renderizado instantáneo (<50ms)
+      // 1. Cargar caché inmediatamente para renderizado instantáneo (<50ms).
+      // No esperamos a la red para montar la pantalla: en Android un Render
+      // frío o una red lenta convertía esta espera en un bloqueo de 5–7 s.
       try {
-        const cachedMsgs = await readCache<Message[]>(`chat_messages_${chatId}`);
+        const [cachedMsgs, cachedChats] = await Promise.all([
+          readCache<Message[]>(`chat_messages_${chatId}`),
+          readCache<any[]>('chat_list'),
+        ]);
+
+        const cachedChat = cachedChats?.find((item: any) => item.id === chatId);
+        if (cachedChat && active) setChat(cachedChat);
+
         if (cachedMsgs && cachedMsgs.length > 0 && active) {
           const normCached = normalizeMessages(cachedMsgs);
           setMessages(normCached);
-          setLoading(false);
         }
       } catch {}
 
-      const safetyTimeout = setTimeout(() => { if (active) setLoading(false); }, 5000);
+      // La estructura de la conversación admite datos que llegan después
+      // (cabecera "..." y lista vacía). Mostrarla ya permite navegar y evita
+      // que un timeout de red oculte la vista durante varios segundos.
+      if (active) setLoading(false);
 
-      try {
-        // 2. Refresco en segundo plano
-        const mePromise = authAPI.me().catch(() => null);
-        const msgsPromise = chatAPI.getMessages(chatId, 1, 50).catch(() => []);
-        const chatsPromise = chatAPI.getChats().catch(() => []);
+      // 2. Refresco totalmente en segundo plano. No usar Promise.all aquí:
+      // una lista de chats lenta no debe retrasar la primera burbuja de texto.
+      void authAPI.me().then(me => {
+        if (!active || !me) return;
+        setCurrentUserId(me.id || '');
+        setMyProfile({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
+      }).catch(() => {});
 
-        const [me, msgs, chats] = await Promise.all([mePromise, msgsPromise, chatsPromise]);
-        if (!active) return;
+      void chatAPI.getChats().then(chats => {
+        if (!active || !Array.isArray(chats)) return;
+        const current = chats.find((item: any) => item.id === chatId);
+        if (current) setChat(current);
+      }).catch(() => {});
 
-        if (me) {
-          setCurrentUserId(me.id || '');
-          setMyProfile({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
+      void chatAPI.getMessages(chatId, 1, 50).then(msgs => {
+        if (!active || !Array.isArray(msgs) || msgs.length === 0) return;
+
+        const msgList = normalizeMessages(msgs);
+        setMessages(msgList);
+        void saveCache(`chat_messages_${chatId}`, msgList);
+        setHasMore(msgList.length === 50);
+
+        const meId = currentUserId;
+        const firstUnread = msgList.find(message => message.sender_id !== meId && message.status !== 'read');
+        if (firstUnread) setFirstUnreadId(firstUnread.id);
+
+        const unreadCnt = msgList.filter(message => message.sender_id !== meId && message.status !== 'read').length;
+        if (unreadCnt > 0) setUnreadScrollCount(unreadCnt);
+
+        const lastReadableId = getLastReadableMessageId(msgList, meId);
+        if (lastReadableId) {
+          void chatAPI.markAsRead(chatId, lastReadableId);
         }
-
-        const current = chats.find((c: any) => c.id === chatId);
-        if (current) {
-          setChat(current);
-        }
-
-        if (Array.isArray(msgs) && msgs.length > 0) {
-          const msgList = normalizeMessages(msgs);
-          setMessages(msgList);
-          saveCache(`chat_messages_${chatId}`, msgList);
-          setHasMore(msgList.length === 50);
-
-          const meId = me?.id || '';
-          const firstUnread = msgList.find(m => m.sender_id !== meId && m.status !== 'read');
-          if (firstUnread) setFirstUnreadId(firstUnread.id);
-
-          const unreadCnt = msgList.filter(m => m.sender_id !== meId && m.status !== 'read').length;
-          if (unreadCnt > 0) setUnreadScrollCount(unreadCnt);
-
-          const lastReadableId = getLastReadableMessageId(msgList, meId);
-          if (lastReadableId) {
-            chatAPI.markAsRead(chatId, lastReadableId).catch(() => {});
-          }
-          markChatAsRead(chatId);
-        }
-      } catch (e) {
-        console.error('Error cargando chat:', e);
-      } finally {
-        clearTimeout(safetyTimeout);
-        if (active) setLoading(false);
-      }
+        void markChatAsRead(chatId);
+      }).catch(() => {});
     };
 
     init();

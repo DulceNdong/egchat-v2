@@ -491,7 +491,12 @@ function MensajeriaScreenInner() {
         if (me.id) setCurrentUserId(me.id);
         setCurrentUser({ full_name: me.full_name, avatar_url: me.avatar_url, phone: me.phone });
       }).catch(() => {});
-      setTimeout(() => { void syncPhoneContacts().catch(() => {}); }, 2000);
+      // La lectura de contactos puede bloquear Android durante varios frames.
+      // Nunca debe competir con la primera navegación del usuario.
+      setTimeout(
+        () => { void syncPhoneContacts().catch(() => {}); },
+        Platform.OS === 'android' ? 20000 : 2000,
+      );
     };
     init();
 
@@ -507,6 +512,12 @@ function MensajeriaScreenInner() {
   }, []);
 
   useEffect(() => {
+    // Las pantallas de cartera/servicios montan datos y suscripciones al
+    // precargarse. En Android esto coincidía con los taps del usuario (2–7 s)
+    // y producía el retardo percibido. Las pestañas ya son lazy, por lo que se
+    // cargan solo al abrirlas.
+    if (Platform.OS === 'android') return;
+
     const preloadWallet = setTimeout(() => navigation.preload?.('monedero'), 2000);
     const preloadServices = setTimeout(() => navigation.preload?.('servicios'), 4500);
     const preloadSettings = setTimeout(() => navigation.preload?.('ajustes'), 7000);
@@ -529,14 +540,14 @@ function MensajeriaScreenInner() {
         realtimeWorking = true;
         void loadChats(currentUserId);
       });
-    }, 1500);
+    }, Platform.OS === 'android' ? 15000 : 1500);
 
     // Si Realtime no funciona en 5s, polling cada 30s (no 3s — evita bucle en web)
     const realtimeCheck = setTimeout(() => {
       if (!realtimeWorking) {
         pollInterval = setInterval(() => loadChats(currentUserId), 30000);
       }
-    }, 5000);
+    }, Platform.OS === 'android' ? 20000 : 5000);
 
     return () => {
       clearTimeout(subscribeTimer);
@@ -1067,7 +1078,11 @@ function MensajeriaScreenInner() {
             data={filtered as any[]}
             keyExtractor={(item: any) => item.id}
             showsVerticalScrollIndicator={false}
-            estimatedItemSize={72}
+            estimatedItemSize={68}
+            initialNumToRender={12}
+            maxToRenderPerBatch={10}
+            windowSize={7}
+            removeClippedSubviews={Platform.OS === 'android'}
             ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
             refreshControl={
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />

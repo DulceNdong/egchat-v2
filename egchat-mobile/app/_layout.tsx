@@ -341,7 +341,12 @@ export default function RootLayout() {
         try {
           if (!me?.id || !mounted) return;
 
-          const androidBackgroundDelay = Platform.OS === 'android' ? 5000 : 0;
+          // En equipos Android de gama media/baja, iniciar SSE, presencia y
+          // notificaciones durante los primeros segundos satura el hilo JS y
+          // hace que las transiciones parezcan bloqueadas. La interfaz ya está
+          // lista con la sesión/cache local, así que estos servicios se inician
+          // después de que el usuario pueda navegar con fluidez.
+          const androidBackgroundDelay = Platform.OS === 'android' ? 15000 : 0;
           const realtimeStartTimer = setTimeout(() => {
             if (mounted) setGlobalUserId(String(me.id));
           }, androidBackgroundDelay);
@@ -352,7 +357,7 @@ export default function RootLayout() {
             initializeLocation().catch((error) => {
               console.error('[APP] Error inicializando ubicación:', error);
             });
-          }, 2500);
+          }, Platform.OS === 'android' ? 20000 : 2500);
 
           // Refrescar clima cada 10 minutos
           const weatherRefreshInterval = setInterval(() => {
@@ -379,13 +384,16 @@ export default function RootLayout() {
           setTimeout(hb, androidBackgroundDelay);
           const hbTimer = setInterval(hb, 60000);
 
-          // Sesiones — diferido 8s
-          setTimeout(() => registerSession().catch(() => {}), 8000);
+          // Sesiones — no competir con la primera navegación en Android.
+          const registerSessionTimer = setTimeout(
+            () => registerSession().catch(() => {}),
+            Platform.OS === 'android' ? 22000 : 8000,
+          );
           const sessTimer = setInterval(() => heartbeatSession().catch(() => {}), 10 * 60 * 1000);
 
           // Notificaciones — diferidas para no competir con el arranque ni bloquear navegación.
           if (Platform.OS !== 'web') {
-            setTimeout(async () => {
+            const pushInitTimer = setTimeout(async () => {
               if (!mounted) return;
               try {
                 const enablePush = true; // push siempre activo en build nativo
@@ -459,7 +467,21 @@ export default function RootLayout() {
               } catch (e) {
                 console.warn('[Notifications init error]', e);
               }
-            }, Platform.OS === 'android' ? 5000 : 300);
+            }, Platform.OS === 'android' ? 25000 : 300);
+
+            const stopPresenceTracking = presenceCleanup.current;
+            presenceCleanup.current = () => {
+              stopPresenceTracking?.();
+              clearInterval(hbTimer);
+              clearInterval(sessTimer);
+              clearInterval(weatherRefreshInterval);
+              clearTimeout(locationTimer);
+              clearTimeout(realtimeStartTimer);
+              clearTimeout(presenceStartTimer);
+              clearTimeout(registerSessionTimer);
+              clearTimeout(pushInitTimer);
+            };
+            return;
           }
 
           const stopPresenceTracking = presenceCleanup.current;
@@ -471,6 +493,7 @@ export default function RootLayout() {
             clearTimeout(locationTimer);
             clearTimeout(realtimeStartTimer);
             clearTimeout(presenceStartTimer);
+            clearTimeout(registerSessionTimer);
           };
 
         } catch (e) {

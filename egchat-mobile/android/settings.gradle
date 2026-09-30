@@ -18,53 +18,50 @@ pluginManagement {
       def pathPrefix = extraPaths.join(File.pathSeparator)
 
       try {
-        def cLib = com.sun.jna.NativeLibrary.getInstance("c")
-        def setenvFunc = cLib.getFunction("setenv")
-        def curPath = System.getenv("PATH") ?: ""
-        if (!curPath.startsWith(pathPrefix)) {
-          setenvFunc.invoke(Integer.TYPE, ["PATH", pathPrefix + File.pathSeparator + curPath, 1] as Object[])
-        }
-      } catch (Throwable ignored) {}
+        def peClass = Class.forName("java.lang.ProcessEnvironment")
 
-      try {
-        def pe = Class.forName("java.lang.ProcessEnvironment")
-        def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
+        def fEnv = peClass.getDeclaredField("theEnvironment")
+        fEnv.setAccessible(true)
+        def envMap = fEnv.get(null) as Map
+
+        def fUnmod = peClass.getDeclaredField("theUnmodifiableEnvironment")
+        fUnmod.setAccessible(true)
+        def unmodMap = fUnmod.get(null) as Map
+
         def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
-
-        def varValueOf = varClass.getDeclaredMethod("valueOf", String.class)
-        varValueOf.setAccessible(true)
         def valValueOf = valClass.getDeclaredMethod("valueOf", String.class)
         valValueOf.setAccessible(true)
 
+        def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
+        def varValueOf = varClass.getDeclaredMethod("valueOf", String.class)
+        varValueOf.setAccessible(true)
+
         def pathVar = varValueOf.invoke(null, "PATH")
 
-        def fEnv = pe.getDeclaredField("theEnvironment")
-        fEnv.setAccessible(true)
-        def envMap = fEnv.get(null) as Map
-        if (envMap != null) {
-          def cur = envMap.get(pathVar)?.toString() ?: ""
-          if (!cur.startsWith(pathPrefix)) {
-            def newVal = pathPrefix + File.pathSeparator + cur
-            def valObj = valValueOf.invoke(null, newVal)
-            envMap.put(pathVar, valObj)
-          }
-        }
+        def pathEntry = envMap.entrySet().find { it.key.toString().equalsIgnoreCase("PATH") }
+        if (pathEntry != null) {
+          def curPath = pathEntry.value.toString()
+          if (!curPath.startsWith(pathPrefix)) {
+            def newPathStr = pathPrefix + File.pathSeparator + curPath
+            def newValObj = valValueOf.invoke(null, newPathStr)
+            envMap.put(pathVar, newValObj)
 
-        def fUnmod = pe.getDeclaredField("theUnmodifiableEnvironment")
-        fUnmod.setAccessible(true)
-        def unmodMap = fUnmod.get(null) as Map
-        if (unmodMap != null) {
-          def newUnmodMap = new HashMap(unmodMap)
-          def cur = newUnmodMap.get("PATH")?.toString() ?: ""
-          if (!cur.startsWith(pathPrefix)) {
-            newUnmodMap.put("PATH", pathPrefix + File.pathSeparator + cur)
-            def modifiersField = java.lang.reflect.Field.class.getDeclaredField("modifiers")
-            modifiersField.setAccessible(true)
-            modifiersField.setInt(fUnmod, fUnmod.getModifiers() & ~java.lang.reflect.Modifier.FINAL)
-            fUnmod.set(null, Collections.unmodifiableMap(newUnmodMap))
+            if (unmodMap != null) {
+              try {
+                def fM = unmodMap.getClass().getDeclaredField("m")
+                fM.setAccessible(true)
+                def innerMap = fM.get(unmodMap) as Map
+                if (innerMap != null) {
+                  innerMap.put(pathVar, newValObj)
+                }
+              } catch (Throwable ignored) {}
+            }
+            println "DEBUG: Value replacement SUCCEEDED! System.getenv('PATH') = " + System.getenv("PATH")
           }
         }
-      } catch (Throwable ignored) {}
+      } catch (Throwable t) {
+        println "DEBUG: Value replacement failed: " + t
+      }
     }
   } catch (Throwable ignored) {}
 
