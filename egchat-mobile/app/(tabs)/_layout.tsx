@@ -83,7 +83,9 @@ export default function TabsLayout() {
     <Tabs
       screenListeners={{
         tabPress: () => {
-          void Haptics.selectionAsync();
+          requestAnimationFrame(() => {
+            void Haptics.selectionAsync();
+          });
         },
       }}
       screenOptions={{
@@ -139,6 +141,7 @@ export default function TabsLayout() {
         name="monedero"
         options={{
           title: t('wallet'),
+          lazy: false,
           tabBarIcon: ({ color, focused }) => <TabIcon name="wallet" color={color} focused={focused} />,
         }}
       />
@@ -146,6 +149,7 @@ export default function TabsLayout() {
         name="servicios"
         options={{
           title: t('services'),
+          lazy: false,
           tabBarIcon: ({ color, focused }) => <TabIcon name="services" color={color} focused={focused} />,
         }}
       />
@@ -153,6 +157,7 @@ export default function TabsLayout() {
         name="ajustes"
         options={{
           title: t('settings'),
+          lazy: false,
           tabBarIcon: ({ color, focused }) => <TabIcon name="ajustes" color={color} focused={focused} />,
         }}
       />
