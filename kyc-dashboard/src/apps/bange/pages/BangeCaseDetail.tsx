@@ -1,22 +1,26 @@
 /**
  * Detalle completo de un caso KYC — vista BANGE.
- * Secciones: datos personales (+ foto de perfil), documentos reales (DNI 2 lados / pasaporte 1),
- * screening, acciones + botón Revisado.
- * SIN historial (eliminado).
+ * Secciones: datos personales, documentos reales, screening, historial,
+ * acciones, notas internas, bloque alertas caducidad.
  */
-import { useState } from 'react';
+import { useState, useMutation as _useMutation } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, XCircle, CheckCheck } from 'lucide-react';
-import { useKycDetail, useKycApprove } from '@/shared/hooks/useKycAdmin';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, XCircle, CheckCheck, Bell, History } from 'lucide-react';
+import { useKycDetail, useKycApprove, useKycAudit } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
 import { RiskBadge, StatusBadge } from '@/shared/components/ui/Badges';
 import { DocumentViewer } from '@/shared/components/ui/DocumentViewer';
 import { ScoreBar } from '@/shared/components/ui/ScoreBar';
+import { Timeline } from '@/shared/components/ui/Timeline';
 import { ActionModal } from '../components/ActionModal';
 import BangeLayout from '../components/BangeLayout';
+import { expiryApi } from '@/api/endpoints';
 import { format, differenceInDays } from 'date-fns';
 import { es } from 'date-fns/locale';
+import toast from 'react-hot-toast';
+import { getErrorMessage } from '@/api/client';
 
 type ActionType = 'reject' | 'request-info' | 'block' | null;
 
