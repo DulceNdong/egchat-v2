@@ -6,8 +6,9 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   FileText, Loader2, Calendar, Users, ShieldAlert,
-  FileWarning, Scale, Download, CheckCircle2, Lock,
-  ChevronRight, ArrowDownToLine, FileSpreadsheet,
+  FileWarning, Scale,
+  CheckCircle2, Lock,
+  ChevronRight, ArrowDownToLine,
 } from 'lucide-react';
 import { useKycStats } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
