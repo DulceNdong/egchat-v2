@@ -81,7 +81,15 @@ export function Timeline({ entries }: TimelineProps) {
     <ol role="list" className="space-y-3" aria-label="Historial de auditoría">
       {entries.map((entry, idx) => {
         const dotColor = ACTION_COLORS[entry.action] ?? 'bg-gray-400';
-        const label    = ACTION_LABELS[entry.action] ?? entry.action.replace(/_/g, ' ');
+        // Resolución del label: exacto → por prefijo de ruta API → formato humanizado
+        let label = ACTION_LABELS[entry.action];
+        if (!label) {
+          // Rutas tipo "POST /api/kyc/application/.../document"
+          const routeKey = Object.keys(ACTION_LABELS).find(k =>
+            entry.action.includes(k.split('/').pop() ?? '')
+          );
+          label = routeKey ? ACTION_LABELS[routeKey] : entry.action.replace(/_/g, ' ').replace(/\/api\/kyc\/application\/[^/]+\//g, '').replace(/\//g, ' › ');
+        }
         const isLast   = idx === entries.length - 1;
         const details = (entry.details ?? {}) as Record<string, unknown>;
         const rejectedReason = entry.action.includes('REJECTED') && details.reason
