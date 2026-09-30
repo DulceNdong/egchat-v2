@@ -6,7 +6,7 @@
 import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation } from '@tanstack/react-query';
 import { ArrowLeft, AlertTriangle, CheckCircle2, Clock, XCircle, CheckCheck, Bell, History } from 'lucide-react';
 import { useKycDetail, useKycApprove, useKycAudit } from '@/shared/hooks/useKycAdmin';
 import { useCanDo } from '@/core/auth/RoleGuard';
