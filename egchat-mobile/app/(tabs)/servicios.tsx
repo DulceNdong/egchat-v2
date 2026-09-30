@@ -7,6 +7,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { authAPI } from '../../src/api';
+import SessionManager from '../../src/sessionManager';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
@@ -336,7 +337,16 @@ function ServiciosScreenInner() {
     } catch {}
   };
 
-  useEffect(() => { loadData(); }, []);
+  useEffect(() => {
+    let active = true;
+    void SessionManager.getInstance().getUser().then(async cachedUser => {
+      if (!cachedUser || !active) return;
+      const profile = await mergePersistentAvatar(cachedUser);
+      if (active) setUser(profile);
+    }).catch(() => {});
+    void loadData();
+    return () => { active = false; };
+  }, []);
 
   useEffect(() => {
     return onProfileUpdated(patch => {

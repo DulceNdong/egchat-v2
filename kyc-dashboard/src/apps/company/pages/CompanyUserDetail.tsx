@@ -144,9 +144,19 @@ export default function CompanyUserDetail() {
 
         {/* Timeline */}
         <div className="card p-6">
-          <h2 className="font-semibold text-sm uppercase tracking-wide text-gray-500 mb-4">
-            {t('case.history')}
-          </h2>
+          <div className="flex items-center gap-2 mb-4">
+            <div className="w-7 h-7 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
+              <span className="text-sm" aria-hidden="true">📋</span>
+            </div>
+            <h2 className="font-semibold text-sm uppercase tracking-wide text-gray-500">
+              {t('case.history')}
+            </h2>
+            {audit && (
+              <span className="ml-auto text-xs text-gray-400 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                {audit.total_entries} entradas
+              </span>
+            )}
+          </div>
           <Timeline entries={audit?.audit_trail ?? []} />
         </div>
       </div>

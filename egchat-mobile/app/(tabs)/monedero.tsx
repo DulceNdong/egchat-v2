@@ -35,6 +35,8 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import SessionManager from '../../src/sessionManager';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 0 });
@@ -1152,6 +1154,7 @@ function MonederoScreenInner() {
   const [user, setUser] = useState<any>(null);
   const zipAnim = useRef(new Animated.Value(0)).current;
   const skipInitialFocusRefresh = useRef(true);
+  const walletCacheKey = 'wallet_overview_v1';
 
   // ── KYC: estado de verificación del monedero ──────────────────
   const [kycStatus, setKycStatus] = useState<KycStatus>('none');
@@ -1300,18 +1303,44 @@ function MonederoScreenInner() {
     try {
       const bal = await walletAPI.getBalance();
       setBalance(bal.balance || 0);
+      void AsyncStorage.mergeItem(walletCacheKey, JSON.stringify({
+        balance: bal.balance || 0,
+        updatedAt: Date.now(),
+      }));
     } catch {}
     finally { setLoading(false); setRefreshing(false); }
 
     void walletAPI.getTransactions(1).then(txs => {
-      setTransactions(txs.transactions || []);
+      const nextTransactions = txs.transactions || [];
+      setTransactions(nextTransactions);
+      void AsyncStorage.mergeItem(walletCacheKey, JSON.stringify({
+        transactions: nextTransactions,
+        updatedAt: Date.now(),
+      }));
     }).catch(() => {});
   }, []);
 
   useEffect(() => {
+    let active = true;
+    void AsyncStorage.getItem(walletCacheKey).then(value => {
+      if (!value || !active) return;
+      const cached = JSON.parse(value);
+      if (typeof cached.balance === 'number') setBalance(cached.balance);
+      if (Array.isArray(cached.transactions)) setTransactions(cached.transactions);
+      setLoading(false);
+    }).catch(() => {});
     void loadData();
     void loadPendingTransfers();
     void loadBankAccounts().then(setBankAccounts);
+    void SessionManager.getInstance().getUser().then(async cachedUser => {
+      if (!cachedUser || !active) return;
+      const profile = await mergePersistentAvatar(cachedUser);
+      if (!active) return;
+      setUser(profile);
+      setUserId(profile?.id || '');
+      setUserName(profile?.full_name || 'Usuario');
+      setUserPhone(profile?.phone || '');
+    }).catch(() => {});
     authAPI.me().then(async me => {
       const profile = await mergePersistentAvatar(me);
       setUser(profile);
@@ -1319,6 +1348,7 @@ function MonederoScreenInner() {
       setUserName(profile?.full_name || 'Usuario');
       setUserPhone(profile?.phone || '');
     }).catch(() => {});
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {

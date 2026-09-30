@@ -2,7 +2,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
-  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image,
+  View, Text, TouchableOpacity, StyleSheet, ScrollView, Alert, Image, Platform,
   ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -99,16 +99,21 @@ function AjustesScreenInner() {
   const [storageUsed, setStorageUsed] = useState(0);
 
   useEffect(() => {
+    let active = true;
     const calcStorage = async () => {
       try {
         const keys = await AsyncStorage.getAllKeys();
         let total = 0;
         const pairs = await AsyncStorage.multiGet(keys);
         pairs.forEach(([, v]) => { if (v) total += v.length * 2; });
-        setStorageUsed(Math.round(total / 1024));
-      } catch { setStorageUsed(0); }
+        if (active) setStorageUsed(Math.round(total / 1024));
+      } catch { if (active) setStorageUsed(0); }
     };
-    calcStorage();
+    const timer = setTimeout(calcStorage, Platform.OS === 'android' ? 15_000 : 1_500);
+    return () => {
+      active = false;
+      clearTimeout(timer);
+    };
   }, []);
 
   const [showNotifications, setShowNotifications] = useState(false);

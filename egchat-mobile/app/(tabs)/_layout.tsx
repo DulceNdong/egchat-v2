@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, View } from 'react-native';
+import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { t } from '../../src/translations';
@@ -80,6 +81,11 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      screenListeners={{
+        tabPress: () => {
+          void Haptics.selectionAsync();
+        },
+      }}
       screenOptions={{
         headerShown: false,
         lazy: true,
