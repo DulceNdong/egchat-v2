@@ -147,7 +147,29 @@ export default function BangeCaseDetail() {
   const canAct    = useCanDo(['COMPLIANCE_OFFICER', 'SUPER_ADMIN']);
 
   const { data: kyc, isLoading, refetch } = useKycDetail(id!);
-  const [activeAction, setAction]   = useState<ActionType>(null);
+  const { data: audit }                   = useKycAudit(id!);
+  const [activeAction, setAction]         = useState<ActionType>(null);
+  const [sendingAlert, setSendingAlert]   = useState(false);
+
+  const expiryDate = (kyc as any)?.doc_expiry_date ?? (kyc as any)?.days_to_expiry ? null : null;
+  const daysLeft   = expiryDate ? differenceInDays(new Date(expiryDate), new Date()) : null;
+
+  async function handleSendExpiryAlert() {
+    if (!kyc) return;
+    setSendingAlert(true);
+    try {
+      await expiryApi.notifyUser(
+        (kyc as any).user_id ?? id!,
+        daysLeft ?? 30,
+        kyc.doc_type ?? 'documento'
+      );
+      toast.success('Notificación enviada al usuario');
+    } catch (e) {
+      toast.error(getErrorMessage(e));
+    } finally {
+      setSendingAlert(false);
+    }
+  }
   const [reviewing, setReviewing]   = useState(false);
   const approve = useKycApprove();
 
