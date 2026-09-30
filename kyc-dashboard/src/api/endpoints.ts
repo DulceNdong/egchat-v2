@@ -164,9 +164,3 @@ export interface ExpiryAlert {
   urgency:        'critical' | 'high' | 'medium';
 }
 
-// Actualizar uploadDocAdmin si no existe
-declare module '@/api/endpoints' {
-  interface KycAdminApiExtension {
-    uploadDocAdmin: (applicationId: string, docType: 'front' | 'back' | 'selfie', file: File) => Promise<{ url: string }>;
-  }
-}
