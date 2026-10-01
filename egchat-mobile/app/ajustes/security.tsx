@@ -228,9 +228,9 @@ export default function SecurityScreen() {
         <View style={styles.section}>
           <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>Mis Límites</Text>
 
-          <LimitCard type="withdrawal" title="Retiros" icon="💸" />
-          <LimitCard type="transfer" title="Transferencias" icon="🔄" />
-          <LimitCard type="payment" title="Pagos" icon="💳" />
+          <LimitCard type="withdrawal" title="Retiros"         icon="account-balance-wallet" />
+          <LimitCard type="transfer"  title="Transferencias"   icon="swap-horiz" />
+          <LimitCard type="payment"   title="Pagos"            icon="credit-card" />
         </View>
 
         {/* Configuración */}
