@@ -431,3 +431,33 @@ export async function notifyLiveStarted(params: {
     });
   } catch { /* silencioso */ }
 }
+
+// ── Llamada pendiente guardada por el background task ───────────────────────
+// Cuando la app estaba cerrada/suspendida en Android y llegó una llamada,
+// el BGTask guarda los datos en AsyncStorage. Al abrir la app, _layout.tsx
+// llama a consumePendingCall() para recuperar y navegar a la pantalla de llamada.
+export interface PendingCall {
+  callId: string;
+  callerName: string;
+  callerAvatar: string;
+  callType: 'audio' | 'video';
+  offer: object | null;
+  timestamp: number;
+}
+
+const PENDING_CALL_KEY = 'egchat_pending_call';
+const PENDING_CALL_TTL = 60 * 1000; // 60s — si es más antigua se ignora
+
+export async function consumePendingCall(): Promise<PendingCall | null> {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_CALL_KEY);
+    if (!raw) return null;
+    await AsyncStorage.removeItem(PENDING_CALL_KEY); // consumir una sola vez
+    const data: PendingCall = JSON.parse(raw);
+    // Ignorar si la llamada tiene más de 60s (el caller ya colgó)
+    if (Date.now() - data.timestamp > PENDING_CALL_TTL) return null;
+    return data;
+  } catch {
+    return null;
+  }
+}
