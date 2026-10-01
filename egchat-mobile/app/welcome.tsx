@@ -48,7 +48,7 @@ export default function WelcomeScreen() {
     // 4 — después de 2.5 s navega al login
     const timer = setTimeout(() => {
       router.replace('/(auth)/login' as any);
-    }, 2500);
+    }, 6000);
 
     return () => clearTimeout(timer);
   }, []);
