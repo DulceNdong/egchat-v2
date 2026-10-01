@@ -38,9 +38,33 @@ Notifications.setNotificationHandler({
 });
 
 // ── Tarea en segundo plano para notificaciones recibidas con app cerrada ────
-TaskManager.defineTask(BACKGROUND_TASK, async ({ data, error }) => {
-  if (error) return; // Background notification error
-  // Notification received in background
+// Android: FCM despierta la app con alta prioridad, esta tarea procesa la
+// notificación de llamada entrante y guarda los datos en AsyncStorage para
+// que _layout.tsx los recoja cuando la app se abra.
+TaskManager.defineTask(BACKGROUND_TASK, async ({ data, error }: any) => {
+  if (error) {
+    console.warn('[BGTask] Error:', error);
+    return;
+  }
+  try {
+    const notification = data?.notification;
+    const payload = notification?.request?.content?.data as any;
+    if (!payload) return;
+
+    if (payload?.notificationType === 'incoming_call') {
+      // Guardar en AsyncStorage para que _layout.tsx lo consuma al montar
+      await AsyncStorage.setItem('egchat_pending_call', JSON.stringify({
+        callId: payload.callId,
+        callerName: payload.callerName,
+        callerAvatar: payload.callerAvatar || '',
+        callType: payload.callType || 'audio',
+        offer: payload.offer || null,
+        timestamp: Date.now(),
+      }));
+    }
+  } catch (e) {
+    console.warn('[BGTask] Error procesando notificación:', e);
+  }
 });
 
 // ── Crear canales Android ───────────────────────────────────────────────────
