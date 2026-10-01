@@ -53,6 +53,7 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useFont } from '../../src/context/FontContext';
 import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
 import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
 import { syncPhoneContacts } from '../../src/services/contactSync';
