@@ -99,7 +99,8 @@ const isAuthPath = (path: string) =>
   || path === '/register'
   || path === '/forgot-password';
 
-const isRootPath = (path: string) => path === '/' || path === '/index';
+const isRootPath = (path: string) =>
+  path === '/' || path === '/index' || path === '/welcome';
 
 export default function RootLayout() {
   const [checking, setChecking]                             = useState(true);
