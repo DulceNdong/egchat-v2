@@ -246,39 +246,35 @@ export default function LoginScreen() {
         </Pressable>
       </Modal>
 
-      {/* ── ZONA ESTÁTICA: logo + nombre + banderas ─────────── */}
-      <SafeAreaView style={s.staticZone} pointerEvents="box-none">
-        {/* Logo: círculo verde con logo llenando todo */}
-        <View style={s.logoRing}>
-          <SpinningLogo size={78} glow={false} />
-        </View>
-
-        <Text style={s.appName}>EGChat</Text>
-        <Text style={s.appTagline}>África Central conectada</Text>
-
-        {/* Banderas CEMAC — más grandes */}
-        <View style={s.cemacBadge}>
-          <Text style={s.cemacLabel}>CEMAC</Text>
-          <View style={s.flagsRow}>
-            {CEMAC_FLAGS.map(code => (
-              <Text key={code} style={s.flag}>{getFlag(code)}</Text>
-            ))}
-          </View>
-        </View>
-      </SafeAreaView>
-
-      {/* ── ZONA SCROLL: formulario ─────────────────────────── */}
-      <KeyboardAvoidingView
-        style={s.kvFlex}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
-        <ScrollView
-          contentContainerStyle={s.scroll}
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
+      {/* ── LAYOUT FLEX: SafeArea envuelve todo ─────────────── */}
+      <SafeAreaView style={s.safeArea}>
+        <KeyboardAvoidingView
+          style={s.kvFlex}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         >
-          {/* Espaciador para empujar la tarjeta hacia abajo */}
-          <View style={s.spacer} />
+          {/* ── HEADER ESTÁTICO (no scrollea) ── */}
+          <View style={s.headerStatic}>
+            {/* Círculo blanco con logo grande */}
+            <View style={s.logoRing}>
+              <SpinningLogo size={84} glow={false} />
+            </View>
+            <Text style={s.appName}>EGChat</Text>
+            <Text style={s.appTagline}>África Central conectada</Text>
+            <View style={s.cemacBadge}>
+              <Text style={s.cemacLabel}>CEMAC</Text>
+              <View style={s.flagsRow}>
+                {CEMAC_FLAGS.map(code => (
+                  <Text key={code} style={s.flag}>{getFlag(code)}</Text>
+                ))}
+              </View>
+            </View>
+          </View>
+
+          <ScrollView
+            contentContainerStyle={s.scroll}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
 
           {/* ── Tarjeta ────────────────────────────────────── */}
           <View style={[s.card, { backgroundColor: cardBg }]}>
