@@ -7,7 +7,7 @@
 // Lista de chats con avatar, nombre, último msg, hora, badge
 // FAB refresh + LIA-25 flotante
 // ══════════════════════════════════════════════════════════════════
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet,
