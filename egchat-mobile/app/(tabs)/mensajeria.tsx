@@ -341,6 +341,8 @@ function MensajeriaScreenInner() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
   const [currentUser, setCurrentUser] = useState<{ full_name?: string; avatar_url?: string; phone?: string } | null>(null);
+  // Debounce ref: evita recargas en cascada cuando llegan múltiples eventos SSE seguidos
+  const loadDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [globalResults, setGlobalResults] = useState<Array<{ chatId: string; chatName: string; messageText: string; messageTime: string }>>([]);
   const [searchingGlobal, setSearchingGlobal] = useState(false);
   const [filter, setFilter] = useState<FilterType>('individual');
