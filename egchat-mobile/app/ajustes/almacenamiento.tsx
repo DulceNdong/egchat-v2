@@ -64,13 +64,12 @@ export default function AlmacenamientoScreen() {
   }, []);
 
   const breakdown = useMemo(() => {
-    // Distribución estimada basada en el uso real
     const base = used > 0 ? used : 10;
     return [
-      { icon: '🖼️', label: 'Fotos y media', size: parseFloat((base * 0.45).toFixed(1)) },
-      { icon: '🎥', label: 'Videos', size: parseFloat((base * 0.30).toFixed(1)) },
-      { icon: '🎵', label: 'Audio', size: parseFloat((base * 0.12).toFixed(1)) },
-      { icon: '📄', label: 'Documentos', size: parseFloat((base * 0.13).toFixed(1)) },
+      { icon: 'image' as const,       label: 'Fotos y media', size: parseFloat((base * 0.45).toFixed(1)) },
+      { icon: 'videocam' as const,    label: 'Videos',        size: parseFloat((base * 0.30).toFixed(1)) },
+      { icon: 'music-note' as const,  label: 'Audio',         size: parseFloat((base * 0.12).toFixed(1)) },
+      { icon: 'description' as const, label: 'Documentos',    size: parseFloat((base * 0.13).toFixed(1)) },
     ];
   }, [used]);
 
