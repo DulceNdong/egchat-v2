@@ -512,7 +512,7 @@ export default function RootLayout() {
           await clearToken().catch(() => {});
           setChecking(false);
           if (!isAuthPath(pathname)) {
-            router.replace('/(auth)/login');
+            router.replace('/welcome');
           }
         }
       }
