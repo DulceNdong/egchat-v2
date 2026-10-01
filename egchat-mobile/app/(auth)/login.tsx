@@ -443,29 +443,30 @@ const s = StyleSheet.create({
     top: 0, left: 0, right: 0,
     height: HEADER_H,
     alignItems: 'center',
-    justifyContent: 'flex-end',
-    paddingBottom: 16,
-    gap: 6,
+    justifyContent: 'center',   // centrado vertical en lugar de flex-end
+    paddingTop: 44,              // respeta el notch/safe area
+    paddingBottom: 0,
+    gap: 5,
     zIndex: 1,
   },
 
-  // Logo: círculo verde que llena el espacio y el logo ocupa todo
+  // Logo: círculo más ajustado al logo, menos verde visible
   logoRing: {
-    width: 96,
-    height: 96,
-    borderRadius: 48,
-    backgroundColor: '#00e0b0',
+    width: 82,
+    height: 82,
+    borderRadius: 41,
+    backgroundColor: '#00d4a8',   // un tono más oscuro para menos dominancia
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.22,
-    shadowRadius: 16,
-    elevation: 12,
-    borderWidth: 2.5,
-    borderColor: 'rgba(255,255,255,0.35)',
-    marginBottom: 2,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.2,
+    shadowRadius: 14,
+    elevation: 10,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.4)',
+    marginBottom: 0,
   },
 
   appName: {
