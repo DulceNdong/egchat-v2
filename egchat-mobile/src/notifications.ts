@@ -10,7 +10,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 import { RichNotifications } from './native/RichNotifications';
-import { playNotification, startRingtone } from './hooks/useSounds';
+import { playNotification } from './hooks/useSounds';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
