@@ -112,7 +112,7 @@ export default function SecurityScreen() {
         ]}
       >
         <View style={styles.cardHeader}>
-          <Text style={styles.cardIcon}>{icon}</Text>
+          <MaterialIcons name={icon} size={24} color={C.textSecondary} style={{ marginRight: Spacing.sm }} />
           <Text style={[styles.cardTitle, { color: C.textPrimary }]}>{title}</Text>
         </View>
 
