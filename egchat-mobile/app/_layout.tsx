@@ -340,7 +340,10 @@ export default function RootLayout() {
 
         if (mounted) {
           setChecking(false);
-          if (isAuthRoute || isRootPath(pathname)) router.replace('/(tabs)');
+          // Solo redirigir a tabs si NO estamos en welcome
+          if (isAuthRoute || (isRootPath(pathname) && pathname !== '/welcome')) {
+            router.replace('/(tabs)');
+          }
         }
 
         // Servicios en background — no bloquean UI
