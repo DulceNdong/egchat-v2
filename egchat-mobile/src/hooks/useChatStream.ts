@@ -60,6 +60,10 @@ export function useChatStream(
   const mountedRef = useRef(true);
   const reconnectDelayRef = useRef(1000);
   const seenEventsRef = useRef<Set<string>>(new Set());
+  // Ref estable para onEvent — evita que cambios de referencia del callback
+  // provoquen reconexiones innecesarias o cierren el closure sobre datos viejos.
+  const onEventRef = useRef<StreamHandler>(onEvent);
+  useEffect(() => { onEventRef.current = onEvent; }, [onEvent]);
 
   const scheduleReconnect = useCallback(() => {
     if (!mountedRef.current) return;
@@ -77,11 +81,12 @@ export function useChatStream(
   const connect = useCallback(async () => {
     if (!userId || !mountedRef.current) return;
 
-    // Limpiar conexión anterior
+    // Limpiar conexión anterior y buffer — evita parsear datos de conexiones previas
     if (xhrRef.current) {
       xhrRef.current.abort();
       xhrRef.current = null;
     }
+    bufferRef.current = '';
 
     const token = await getToken();
     if (!token) return;
@@ -113,14 +118,30 @@ export function useChatStream(
           const json = JSON.parse(line.replace(/^data:\s*/, '')) as StreamEvent;
           if (json?.type === 'connected') {
             reconnectDelayRef.current = 1000;
-          }
-          const eventKey = [json.type, json.chatId || '', json.message?.id || json.messageId || '', json.userId || '', String(json.ts || '')].join(':');
-          if (seenEventsRef.current.has(eventKey)) continue;
-          seenEventsRef.current.add(eventKey);
-          if (seenEventsRef.current.size > 200) {
+            // Limpiar seen events al reconectar — sesión nueva, no hay duplicados pendientes
             seenEventsRef.current.clear();
           }
-          if (mountedRef.current) onEvent(json);
+          const eventKey = [
+            json.type,
+            json.chatId || '',
+            json.message?.id || json.messageId || '',
+            json.userId || '',
+            String(json.ts || ''),
+          ].join(':');
+          if (seenEventsRef.current.has(eventKey)) continue;
+          seenEventsRef.current.add(eventKey);
+          // Mantener el Set acotado — usar sliding window en lugar de clear total
+          // para no perder contexto de deduplicación reciente
+          if (seenEventsRef.current.size > 150) {
+            const iter = seenEventsRef.current.values();
+            // Eliminar los 50 más viejos
+            for (let i = 0; i < 50; i++) {
+              const val = iter.next().value;
+              if (val !== undefined) seenEventsRef.current.delete(val);
+            }
+          }
+          // Usar ref estable — no cierra sobre versión vieja del callback
+          if (mountedRef.current) onEventRef.current(json);
         } catch {}
       }
     };
@@ -137,7 +158,7 @@ export function useChatStream(
 
     xhr.send();
     xhrRef.current = xhr;
-  }, [userId, onEvent, scheduleReconnect]);
+  }, [userId, scheduleReconnect]); // onEvent eliminado — usamos onEventRef para evitar reconexiones por cambio de referencia
 
   useEffect(() => {
     mountedRef.current = true;
@@ -147,6 +168,8 @@ export function useChatStream(
       mountedRef.current = false;
       if (xhrRef.current) { xhrRef.current.abort(); xhrRef.current = null; }
       if (reconnectTimer.current) clearTimeout(reconnectTimer.current);
+      bufferRef.current = '';
+      seenEventsRef.current.clear();
     };
   }, [userId, connect]);
 }
