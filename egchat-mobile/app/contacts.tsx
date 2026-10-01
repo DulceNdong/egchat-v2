@@ -238,7 +238,7 @@ export default function ContactsScreen() {
         </TouchableOpacity>
       </View>
     </TouchableOpacity>
-  ), [C, openChat, removeContact, toggleFav]);
+  ), [C, fontScale, openChat, removeContact, toggleFav]);
 
   const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
     <View style={[st.sectionHeader, { backgroundColor: C.bgSecondary }]}>
