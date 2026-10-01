@@ -297,12 +297,9 @@ export default function RootLayout() {
         if (!isAuth) {
           if (mounted) {
             setChecking(false);
-            // Mostrar welcome screen siempre que no esté en una ruta de auth
-            if (!isAuthRoute && pathname !== '/welcome') {
-              router.replace('/welcome');
-            } else if (!isAuthRoute) {
-              router.replace('/welcome');
-            }
+            // Siempre volver a welcome si no está autenticado
+            // (a menos que ya esté en una ruta de auth como login/register)
+            if (!isAuthRoute) router.replace('/welcome');
           }
           return;
         }
