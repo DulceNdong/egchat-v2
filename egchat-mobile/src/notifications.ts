@@ -281,6 +281,7 @@ export function setupNotificationListeners(
       onCall({
         callId: data.callId,
         callerName: data.callerName,
+        callerAvatar: data.callerAvatar || '',
         callType: data.callType || 'audio',
         offer: data.offer,
       });
