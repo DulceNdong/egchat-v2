@@ -316,6 +316,8 @@ export const previewRingtone = async (toneId?: string) => {
 };
 
 export const stopRingtone = async () => {
+  // Invalidar cualquier createAsync en vuelo
+  ringtoneSessionToken++;
   if (ringtoneInterval) { clearInterval(ringtoneInterval); ringtoneInterval = null; }
   ringtoneIsCreating = false;
   try {
