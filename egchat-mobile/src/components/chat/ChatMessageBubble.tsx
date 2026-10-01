@@ -1622,11 +1622,15 @@ export const ChatMessageBubble = React.memo(({
     if (side === 'left' && isOwn) return null;
     if (side === 'right' && !isOwn) return null;
 
+    const ringSize = Math.round(30 * fontScale);
+    const avatarSize = Math.round(36 * fontScale);
+
     if (isOwn) {
       return (
         <View style={s.avatarCol}>
-          <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.avatarRing}>
-            <EGAvatar src={myAvatar} name={myName || 'Yo'} size={36} />
+          <LinearGradient colors={['#00c8a0', '#00B4E6']}
+            style={[s.avatarRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2 }]}>
+            <EGAvatar src={myAvatar} name={myName || 'Yo'} size={avatarSize} />
           </LinearGradient>
         </View>
       );
@@ -1644,8 +1648,9 @@ export const ChatMessageBubble = React.memo(({
     const gradColors = isGroup ? ['#a855f7', '#6366f1'] : ['#00c8a0', '#00B4E6'];
     return (
       <View style={s.avatarCol}>
-        <LinearGradient colors={gradColors as [string, string]} style={s.avatarRing}>
-          <EGAvatar src={senderAvatar} name={senderName} size={36} />
+        <LinearGradient colors={gradColors as [string, string]}
+          style={[s.avatarRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2 }]}>
+          <EGAvatar src={senderAvatar} name={senderName} size={avatarSize} />
         </LinearGradient>
       </View>
     );
