@@ -359,6 +359,10 @@ export function useWebRTC() {
 
     let callerIce = 0;
     stopPolling();
+    // Callee poll: 1.5s en Android (era 500ms), 800ms en iOS.
+    // Una vez conectado el PC, el estado se mantiene por los eventos nativos
+    // de WebRTC — solo necesitamos detectar un cuelgue remoto.
+    const CALLEE_POLL = Platform.OS === 'android' ? 1500 : 800;
     pollingRef.current = setInterval(async () => {
       if (endedRef.current) return;
       try {
@@ -370,7 +374,7 @@ export function useWebRTC() {
         }
         callerIce = cands.length;
       } catch { /* retry */ }
-    }, 500); // 500ms — detecta cuelgue remoto 2x más rápido
+    }, CALLEE_POLL);
   }, [cleanupResources, createPC, endCallInternal, getUserMedia, sendIce, stopPolling]);
 
   // ── Modo Expo Go (solo señalización) ─────────────────────────────
