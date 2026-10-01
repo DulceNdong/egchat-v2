@@ -78,6 +78,25 @@ interface TimelineProps {
   entries: AuditEntry[];
 }
 
+// Icono por categoría de acción
+function getActionIcon(action: string): React.ReactNode {
+  if (action.includes('INIT') || action.includes('personal'))             return <UserPlus className="w-3 h-3"    />;
+  if (action.includes('document') || action.includes('DOCUMENT'))        return <FileText className="w-3 h-3"    />;
+  if (action.includes('selfie') || action.includes('biometric') || action.includes('SELFIE')) return <Camera className="w-3 h-3" />;
+  if (action.includes('APPROVED') || action.includes('AUTO_APPROV'))     return <CheckCircle2 className="w-3 h-3" />;
+  if (action.includes('REJECTED') || action.includes('BLOCKED'))         return <XCircle className="w-3 h-3"     />;
+  if (action.includes('REQUEST_INFO') || action.includes('financial'))   return <AlertTriangle className="w-3 h-3"/>;
+  if (action.includes('screening') || action.includes('SCORED'))         return <Shield className="w-3 h-3"      />;
+  if (action.includes('MANUAL_REVIEW') || action.includes('STATUS'))     return <Clock className="w-3 h-3"       />;
+  if (action.includes('RESUBMIT') || action.includes('RESET'))           return <RotateCcw className="w-3 h-3"   />;
+  if (action.includes('AUTO') || action.includes('system'))              return <Bot className="w-3 h-3"         />;
+  if (action.includes('BANGE') || action.includes('BANK'))               return <Building2 className="w-3 h-3"   />;
+  if (action.includes('AML') || action.includes('FLAGGED'))              return <AlertOctagon className="w-3 h-3"/>;
+  if (action.includes('SAR'))                                            return <FileWarning className="w-3 h-3" />;
+  if (action.includes('submit') || action.includes('SUBMIT'))            return <Send className="w-3 h-3"        />;
+  return <Zap className="w-3 h-3" />;
+}
+
 export function Timeline({ entries }: TimelineProps) {
   if (entries.length === 0) {
     return (
