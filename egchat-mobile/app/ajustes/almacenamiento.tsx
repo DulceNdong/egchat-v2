@@ -138,7 +138,7 @@ export default function AlmacenamientoScreen() {
             {breakdown.map((r, i) => (
               <React.Fragment key={r.label}>
                 <View style={styles.typeRow}>
-                  <Text style={{ fontSize: 22 }}>{r.icon}</Text>
+                  <MaterialIcons name={r.icon} size={22} color={Colors.accent} />
                   <Text style={{ flex: 1, fontSize: 15 }}>{r.label}</Text>
                   <Text style={{ color: '#8e8e93' }}>{r.size} MB</Text>
                 </View>
