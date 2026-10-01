@@ -48,6 +48,7 @@ export interface FinancialData {
   employer: string;
   monthlyIncomeRange: string;
   sourceOfFunds: string[];
+  docExpiryDate: string;  // YYYY-MM-DD — fecha de caducidad del documento
 }
 
 export interface ConsentData {
