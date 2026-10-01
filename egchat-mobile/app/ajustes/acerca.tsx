@@ -209,7 +209,6 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 14,
     paddingHorizontal: 16, paddingVertical: 14,
   },
-  updateIcon:  { fontSize: 22, width: 28, textAlign: 'center' },
   updateLabel: { fontSize: 15, fontWeight: '600' },
   updateSub:   { fontSize: 12, marginTop: 2 },
 });
