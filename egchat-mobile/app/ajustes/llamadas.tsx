@@ -156,11 +156,12 @@ export default function LlamadasScreen() {
 }
 
 function StatCard({ icon, label, value, color, isDark }: {
-  icon: string; label: string; value: string; color: string; isDark: boolean;
+  icon: React.ComponentProps<typeof MaterialIcons>['name'];
+  label: string; value: string; color: string; isDark: boolean;
 }) {
   return (
     <View style={[st.statCard, { backgroundColor: isDark ? '#21262d' : '#f9fafb' }]}>
-      <Text style={st.statIcon}>{icon}</Text>
+      <MaterialIcons name={icon} size={26} color={color} />
       <Text style={[st.statValue, { color }]}>{value}</Text>
       <Text style={[st.statLabel, { color: isDark ? '#8b949e' : '#6b7280' }]}>{label}</Text>
     </View>
