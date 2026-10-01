@@ -298,8 +298,9 @@ export default function RootLayout() {
         const isAuth = await authAPI.isAuthenticated();
         const isAuthRoute = isAuthPath(pathname);
 
-        // Si estamos en welcome, NO hacer nada — welcome se encarga sola del timing
-        if (isWelcomePath(pathname)) {
+        // Si estamos en welcome O en el index (que redirige a welcome),
+        // NO hacer nada — esperar a que welcome navegue sola al login
+        if (isWelcomePath(pathname) || pathname === '/' || pathname === '/index') {
           setChecking(false);
           return;
         }
@@ -315,7 +316,7 @@ export default function RootLayout() {
         const cachedUser = await loadCachedSessionUser();
         if (cachedUser?.id && mounted) {
           setChecking(false);
-          if (isAuthRoute || (isRootPath(pathname) && !isWelcomePath(pathname))) {
+          if (isAuthRoute) {
             router.replace('/(tabs)');
           }
         }
