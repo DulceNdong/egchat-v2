@@ -332,7 +332,7 @@ export default function RootLayout() {
           await clearToken();
           if (mounted) {
             setChecking(false);
-            if (!isAuthRoute) router.replace('/(auth)/login');
+            if (!isAuthRoute) router.replace('/welcome');
           }
           return;
         }
