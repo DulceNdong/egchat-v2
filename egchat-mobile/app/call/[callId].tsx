@@ -438,6 +438,16 @@ export default function CallScreen() {
     return () => { if (role === 'caller') stopRingtone().catch(() => {}); };
   }, [isCalling]);
 
+  // Safety net: parar todo audio al desmontar el componente, sin importar el rol
+  // Cubre casos donde el componente se desmonta antes de que los efectos
+  // anteriores lleguen a ejecutar su cleanup (crash, navegación forzada, etc.)
+  useEffect(() => {
+    return () => {
+      stopRingtone().catch(() => {});
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const formatDur = (s: number) =>
     `${Math.floor(s / 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
 
