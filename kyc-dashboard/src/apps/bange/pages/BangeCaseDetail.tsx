@@ -150,8 +150,10 @@ export default function BangeCaseDetail() {
   const [activeAction, setAction]         = useState<ActionType>(null);
   const [sendingAlert, setSendingAlert]   = useState(false);
 
-  const expiryDate = (kyc as any)?.doc_expiry_date ?? null;
-  const daysLeft   = expiryDate ? differenceInDays(new Date(expiryDate), new Date()) : null;
+  const expiryDate = kyc.doc_expiry_date ?? null;
+  const daysLeft   = expiryDate
+    ? differenceInDays(new Date(expiryDate), new Date())
+    : (kyc.days_to_expiry ?? null);
 
   async function handleSendExpiryAlert() {
     if (!kyc) return;
