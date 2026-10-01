@@ -61,6 +61,7 @@ export async function saveFinancialData(
       employer:                data.employer || null,
       monthly_income_range:    data.monthlyIncomeRange,
       source_of_funds:         data.sourceOfFunds[0] ?? 'OTHER',
+      doc_expiry_date:         data.docExpiryDate || null,
     }),
   });
   if (!res.ok) throw new Error(`saveFinancialData: ${res.status}`);
