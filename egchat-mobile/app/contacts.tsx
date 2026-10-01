@@ -218,8 +218,8 @@ export default function ContactsScreen() {
         <EGAvatar src={getAvatar(item)} name={getName(item)} size={48} />
       </View>
       <View style={st.info}>
-        <Text style={[st.name, { color: C.textPrimary }]} numberOfLines={1}>{getName(item)}</Text>
-        <Text style={[st.phone, { color: C.textTertiary }]} numberOfLines={1}>{getPhone(item)}</Text>
+        <Text style={[st.name, { color: C.textPrimary, fontSize: 15 * fontScale }]} numberOfLines={1}>{getName(item)}</Text>
+        <Text style={[st.phone, { color: C.textTertiary, fontSize: 12 * fontScale }]} numberOfLines={1}>{getPhone(item)}</Text>
       </View>
       <View style={st.actions}>
         <TouchableOpacity
