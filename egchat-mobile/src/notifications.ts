@@ -277,9 +277,9 @@ export function setupNotificationListeners(
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data as any;
     if (data?.notificationType === 'incoming_call') {
-      if (Platform.OS === 'ios') {
-        startRingtone().catch(() => {});
-      }
+      // NO llamar startRingtone() aquí en iOS — es redundante con el useEffect
+      // de [callId].tsx (isIncoming) y crea el gap donde el sonido queda activo
+      // si la pantalla no monta (llamada cancelada antes de navegar).
       onCall({
         callId: data.callId,
         callerName: data.callerName,
