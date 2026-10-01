@@ -1,370 +1,215 @@
 // ══════════════════════════════════════════════════════════════════
-// EGCHAT — Welcome Screen v3 (diseño premium)
+// EGCHAT — Splash / Welcome Screen
+// Solo el logo centrado. Navega automáticamente al login.
 // ══════════════════════════════════════════════════════════════════
 import React, { useEffect, useRef } from 'react';
-import {
-  View, Text, TouchableOpacity, StyleSheet, Animated, Dimensions,
-} from 'react-native';
-import { SpinningLogo } from '../src/components/SpinningLogo';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { View, Text, StyleSheet, Animated, StatusBar } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
-import Svg, { Path, Circle, Line, Polyline, Rect, Polygon } from 'react-native-svg';
-import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
+import { SpinningLogo } from '../src/components/SpinningLogo';
 
-const { width: W } = Dimensions.get('window');
-
-// ── Features con iconos SVG ───────────────────────────────────────
-const FEATURES = [
-  {
-    color: '#07C160',
-    bg: '#e8f8ee',
-    title: 'Mensajes en tiempo real',
-    sub: 'Chats seguros con cifrado E2E',
-    icon: (
-      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#07C160" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-        <Line x1="9" y1="10" x2="15" y2="10"/><Line x1="9" y1="14" x2="13" y2="14"/>
-      </Svg>
-    ),
-  },
-  {
-    color: '#00B4E6',
-    bg: '#e0f7ff',
-    title: 'Pagos y cartera XAF',
-    sub: 'Transferencias instantáneas seguras',
-    icon: (
-      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#00B4E6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x="2" y="5" width="20" height="14" rx="2"/>
-        <Line x1="2" y1="10" x2="22" y2="10"/>
-        <Circle cx="12" cy="15" r="2"/>
-      </Svg>
-    ),
-  },
-  {
-    color: '#8B5CF6',
-    bg: '#ede9fe',
-    title: 'Lia-25 — IA Asistente',
-    sub: 'Tu asistente inteligente 24/7',
-    icon: (
-      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#8B5CF6" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x="3" y="6" width="18" height="13" rx="3"/>
-        <Path d="M3 10h18"/>
-        <Circle cx="8.5" cy="14" r="1.2" fill="#8B5CF6" stroke="none"/>
-        <Circle cx="15.5" cy="14" r="1.2" fill="#8B5CF6" stroke="none"/>
-      </Svg>
-    ),
-  },
-  {
-    color: '#F59E0B',
-    bg: '#fef9e7',
-    title: 'Servicios locales GQ',
-    sub: 'Taxi, recarga, bancos y más',
-    icon: (
-      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-        <Rect x="3" y="3" width="7" height="7" rx="1.5"/>
-        <Rect x="14" y="3" width="7" height="7" rx="1.5"/>
-        <Rect x="14" y="14" width="7" height="7" rx="1.5"/>
-        <Rect x="3" y="14" width="7" height="7" rx="1.5"/>
-      </Svg>
-    ),
-  },
-];
-
-// Lista de países CEMAC + puntos suspensivos para indicar que habrá más
-const CEMAC_FLAGS = ['🇬🇶', '🇨🇲', '🇬🇦', '🇨🇬', '🇹🇩', '🇨🇫'];
-
-// ── Componente de puntos suspensivos animados ──
-const AnimatedDots = () => {
-  const dot1 = useRef(new Animated.Value(0.3)).current;
-  const dot2 = useRef(new Animated.Value(0.3)).current;
-  const dot3 = useRef(new Animated.Value(0.3)).current;
-
-  useEffect(() => {
-    const animate = () => {
-      Animated.sequence([
-        Animated.timing(dot1, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(dot2, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(dot3, { toValue: 1, duration: 400, useNativeDriver: true }),
-        Animated.timing(dot1, { toValue: 0.3, duration: 200, useNativeDriver: true }),
-        Animated.timing(dot2, { toValue: 0.3, duration: 200, useNativeDriver: true }),
-        Animated.timing(dot3, { toValue: 0.3, duration: 200, useNativeDriver: true }),
-      ]).start(() => animate()); // Loop infinito
-    };
-    animate();
-  }, []);
-
-  return (
-    <View style={{ flexDirection: 'row', alignItems: 'center', gap: 1 }}>
-      <Animated.Text style={[st.suspensiveDot, { opacity: dot1 }]}>•</Animated.Text>
-      <Animated.Text style={[st.suspensiveDot, { opacity: dot2 }]}>•</Animated.Text>
-      <Animated.Text style={[st.suspensiveDot, { opacity: dot3 }]}>•</Animated.Text>
-    </View>
-  );
-};
-
-// ── Feature card ──────────────────────────────────────────────────
-const FeatureCard = ({
-  item, delay,
-}: { item: typeof FEATURES[0]; delay: number }) => {
-  const anim = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    Animated.spring(anim, {
-      toValue: 1, delay, useNativeDriver: true,
-      tension: 60, friction: 10,
-    }).start();
-  }, []);
-  return (
-    <Animated.View style={{
-      opacity: anim,
-      transform: [{ translateY: anim.interpolate({ inputRange: [0, 1], outputRange: [20, 0] }) }],
-    }}>
-      <View style={[st.featureCard, { borderLeftColor: item.color }]}>
-        <View style={[st.featureIconBox, { backgroundColor: item.bg }]}>
-          {item.icon}
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={st.featureTitle}>{item.title}</Text>
-          <Text style={st.featureSub}>{item.sub}</Text>
-        </View>
-      </View>
-    </Animated.View>
-  );
-};
-
-// ══════════════════════════════════════════════════════════════════
 export default function WelcomeScreen() {
-  const headerAnim = useRef(new Animated.Value(0)).current;
-  const buttonsAnim = useRef(new Animated.Value(0)).current;
+  // Animaciones de entrada
+  const logoScale   = useRef(new Animated.Value(0.4)).current;
+  const logoOpacity = useRef(new Animated.Value(0)).current;
+  const textOpacity = useRef(new Animated.Value(0)).current;
+  const dotsOpacity = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    Animated.stagger(200, [
-      Animated.spring(headerAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
-      Animated.spring(buttonsAnim, { toValue: 1, useNativeDriver: true, tension: 50, friction: 8 }),
+    // 1 — logo aparece con spring
+    Animated.sequence([
+      Animated.parallel([
+        Animated.spring(logoScale, {
+          toValue: 1,
+          tension: 55,
+          friction: 8,
+          useNativeDriver: true,
+        }),
+        Animated.timing(logoOpacity, {
+          toValue: 1,
+          duration: 400,
+          useNativeDriver: true,
+        }),
+      ]),
+      // 2 — nombre aparece
+      Animated.timing(textOpacity, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+      // 3 — puntos de carga aparecen
+      Animated.timing(dotsOpacity, {
+        toValue: 1,
+        duration: 300,
+        useNativeDriver: true,
+      }),
     ]).start();
+
+    // 4 — después de 2.5 s navega al login
+    const timer = setTimeout(() => {
+      router.replace('/(auth)/login' as any);
+    }, 2500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   return (
-    <LinearGradient
-      colors={['#0d2d4a', '#0a3d5e', '#06283d']}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 1, y: 1 }}
-      style={{ flex: 1 }}
-    >
-      <SafeAreaView style={st.container}>
+    <View style={s.root}>
+      <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-        {/* ── Top: Logo + nombre ── */}
-        <Animated.View style={[st.header, {
-          opacity: headerAnim,
-          transform: [{ translateY: headerAnim.interpolate({ inputRange: [0, 1], outputRange: [-30, 0] }) }],
+      <LinearGradient
+        colors={['#00c8a0', '#0099c8', '#0060b8']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* Círculos decorativos suaves */}
+      <View style={s.circleA} />
+      <View style={s.circleB} />
+
+      {/* ── Contenido centrado ── */}
+      <View style={s.center}>
+
+        {/* Logo */}
+        <Animated.View style={[s.logoWrap, {
+          opacity: logoOpacity,
+          transform: [{ scale: logoScale }],
         }]}>
-          {/* Anillo decorativo */}
-          <View style={st.logoRingOuter}>
-            <View style={st.logoRingInner}>
-              <SpinningLogo size={90} glow />
-            </View>
-          </View>
-
-          <Text style={st.appName}>
-            <Text style={{ color: '#00C8A0' }}>EG</Text>
-            <Text style={{ color: '#ffffff' }}>CHAT</Text>
-          </Text>
-          <Text style={st.tagline}>La app de Guinea Ecuatorial</Text>
-
-          {/* Banderas CEMAC */}
-          <View style={st.flagsRow}>
-            {CEMAC_FLAGS.map((f, i) => (
-              <Text key={i} style={st.flag}>{f}</Text>
-            ))}
-            <AnimatedDots />
+          <View style={s.logoRing}>
+            <SpinningLogo size={100} glow={false} />
           </View>
         </Animated.View>
 
-        {/* ── Features (4 cards) ── */}
-        <View style={st.features}>
-          {FEATURES.map((item, i) => (
-            <FeatureCard key={i} item={item} delay={300 + i * 100} />
-          ))}
-        </View>
-
-        {/* ── Botones ── */}
-        <Animated.View style={[st.buttons, {
-          opacity: buttonsAnim,
-          transform: [{ translateY: buttonsAnim.interpolate({ inputRange: [0, 1], outputRange: [30, 0] }) }],
-        }]}>
-          {/* Crear cuenta */}
-          <TouchableOpacity
-            activeOpacity={0.88}
-            onPress={() => router.push('/(auth)/register' as any)}
-          >
-            <LinearGradient
-              colors={['#00C8A0', '#00B4E6']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
-              style={st.btnPrimary}
-            >
-              <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-                <Path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/>
-                <Circle cx="12" cy="7" r="4"/>
-              </Svg>
-              <Text style={st.btnPrimaryText}>Crear cuenta gratis</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Ya tengo cuenta */}
-          <TouchableOpacity
-            style={st.btnSecondary}
-            activeOpacity={0.85}
-            onPress={() => router.push('/(auth)/login' as any)}
-          >
-            <Text style={st.btnSecondaryText}>Ya tengo cuenta  →</Text>
-          </TouchableOpacity>
-
-          <Text style={st.legal}>
-            Al continuar aceptas los{' '}
-            <Text style={{ color: '#00C8A0' }}>Términos de servicio</Text>
-            {' '}y la{' '}
-            <Text style={{ color: '#00C8A0' }}>Política de privacidad</Text>
-          </Text>
+        {/* Nombre */}
+        <Animated.View style={{ opacity: textOpacity, alignItems: 'center', marginTop: 24 }}>
+          <Text style={s.appName}>EGChat</Text>
+          <Text style={s.tagline}>África Central conectada</Text>
         </Animated.View>
 
-      </SafeAreaView>
-    </LinearGradient>
+        {/* Puntos de carga */}
+        <Animated.View style={[s.dotsRow, { opacity: dotsOpacity }]}>
+          <DotsLoader />
+        </Animated.View>
+
+      </View>
+    </View>
   );
 }
 
-const st = StyleSheet.create({
-  container: {
+// ── Puntos animados de carga ─────────────────────────────────────
+function DotsLoader() {
+  const d1 = useRef(new Animated.Value(0.3)).current;
+  const d2 = useRef(new Animated.Value(0.3)).current;
+  const d3 = useRef(new Animated.Value(0.3)).current;
+
+  useEffect(() => {
+    const loop = () => {
+      Animated.sequence([
+        Animated.timing(d1, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(d2, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.timing(d3, { toValue: 1, duration: 300, useNativeDriver: true }),
+        Animated.parallel([
+          Animated.timing(d1, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+          Animated.timing(d2, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+          Animated.timing(d3, { toValue: 0.3, duration: 300, useNativeDriver: true }),
+        ]),
+      ]).start(() => loop());
+    };
+    loop();
+  }, []);
+
+  return (
+    <View style={{ flexDirection: 'row', gap: 8 }}>
+      {[d1, d2, d3].map((d, i) => (
+        <Animated.View
+          key={i}
+          style={{
+            width: 7,
+            height: 7,
+            borderRadius: 3.5,
+            backgroundColor: 'rgba(255,255,255,0.85)',
+            opacity: d,
+          }}
+        />
+      ))}
+    </View>
+  );
+}
+
+const s = StyleSheet.create({
+  root: {
     flex: 1,
-    paddingHorizontal: 24,
-    paddingTop: 8,
-    paddingBottom: 24,
-    justifyContent: 'space-between',
+    backgroundColor: '#00c8a0',
   },
 
-  // Header
-  header: { alignItems: 'center', gap: 10, paddingTop: 8 },
-  logoRingOuter: {
-    width: 168,
-    height: 168,
-    borderRadius: 84,
-    borderWidth: 2,
-    borderColor: 'rgba(0,200,160,0.4)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(0,200,160,0.06)',
-    shadowColor: '#00C8A0',
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.3,
-    shadowRadius: 20,
-    elevation: 10,
-  },
-  logoRingInner: {
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    overflow: 'hidden',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  appName: {
-    fontSize: 36,
-    fontWeight: '900',
-    letterSpacing: -1,
-    marginTop: 6,
-  },
-  tagline: {
-    fontSize: 14,
-    color: 'rgba(255,255,255,0.55)',
-    fontWeight: '500',
-    letterSpacing: 0.3,
-  },
-  flagsRow: {
-    flexDirection: 'row',
-    gap: 4,
-    flexWrap: 'wrap',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 4,
-  },
-  flag: { fontSize: 20 },
-  suspensiveDot: {
-    fontSize: 16,
-    color: 'rgba(255,255,255,0.6)',
-    fontWeight: '700',
-  },
-
-  // Features
-  features: { gap: 8, paddingVertical: 4 },
-  featureCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 14,
+  // Decoración
+  circleA: {
+    position: 'absolute',
+    top: -120,
+    right: -80,
+    width: 320,
+    height: 320,
+    borderRadius: 160,
     backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: 14,
-    padding: 14,
-    borderLeftWidth: 3,
   },
-  featureIconBox: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  featureTitle: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: '#ffffff',
-    marginBottom: 2,
-  },
-  featureSub: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.55)',
-    fontWeight: '400',
-  },
-
-  // Buttons
-  buttons: { gap: 12 },
-  btnPrimary: {
-    borderRadius: 16,
-    paddingVertical: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    shadowColor: '#00C8A0',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    elevation: 8,
-  },
-  btnPrimaryText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '800',
-    letterSpacing: 0.3,
-  },
-  btnSecondary: {
-    borderRadius: 16,
-    paddingVertical: 15,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: 'rgba(255,255,255,0.2)',
+  circleB: {
+    position: 'absolute',
+    bottom: -100,
+    left: -80,
+    width: 280,
+    height: 280,
+    borderRadius: 140,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
-  btnSecondaryText: {
-    color: 'rgba(255,255,255,0.85)',
-    fontSize: 16,
-    fontWeight: '600',
+
+  // Centro
+  center: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  legal: {
-    textAlign: 'center',
-    fontSize: 11,
-    color: 'rgba(255,255,255,0.35)',
-    lineHeight: 16,
+
+  // Logo
+  logoWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  logoRing: {
+    width: 130,
+    height: 130,
+    borderRadius: 65,
+    backgroundColor: '#ffffff',
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 12 },
+    shadowOpacity: 0.25,
+    shadowRadius: 24,
+    elevation: 16,
+  },
+
+  // Texto
+  appName: {
+    fontSize: 34,
+    fontWeight: '800',
+    color: '#ffffff',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.12)',
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  tagline: {
+    fontSize: 13,
+    color: 'rgba(255,255,255,0.72)',
+    fontWeight: '500',
+    letterSpacing: 0.4,
+    marginTop: 4,
+  },
+
+  // Dots
+  dotsRow: {
+    marginTop: 48,
   },
 });
