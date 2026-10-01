@@ -432,8 +432,8 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
   circleB: {
-    position: 'absolute', bottom: height * 0.38, left: -width * 0.2,
-    width: width * 0.55, height: width * 0.55, borderRadius: width * 0.275,
+    position: 'absolute', bottom: height * 0.45, left: -width * 0.2,
+    width: width * 0.5, height: width * 0.5, borderRadius: width * 0.25,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
 
