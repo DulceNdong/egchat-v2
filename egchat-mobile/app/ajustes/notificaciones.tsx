@@ -135,7 +135,7 @@ export default function NotificacionesScreen() {
         <TouchableOpacity style={st.diagRow} onPress={runDiag} disabled={diagRunning}>
           {diagRunning
             ? <ActivityIndicator color="#8b5cf6" size="small" style={{ marginRight: 10 }} />
-            : <Text style={st.diagIcon}>🔔</Text>
+            : <MaterialIcons name="notifications" size={22} color="#8b5cf6" style={{ width: 28 }} />
           }
           <View style={{ flex: 1 }}>
             <Text style={[st.diagLabel, { color: C.textPrimary }]}>Diagnóstico push</Text>
