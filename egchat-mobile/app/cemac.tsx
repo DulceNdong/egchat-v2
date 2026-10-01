@@ -4,6 +4,9 @@ import {
   TextInput, Modal, Pressable, ActivityIndicator, Linking,
   KeyboardAvoidingView, Platform,
 } from 'react-native';
+import { useThemeContext } from '../src/theme/ThemeContext';
+import { Colors } from '../src/theme';
+import { DarkColors } from '../src/theme/darkMode';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
