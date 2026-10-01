@@ -1703,7 +1703,7 @@ export const ChatMessageBubble = React.memo(({
       {/* Texto normal */}
       {!isCardType && message.type === 'text' && !!message.text && (
         <>
-          <MarkdownText text={message.text} style={s.bubbleText} />
+          <MarkdownText text={message.text} style={[s.bubbleText, { fontSize: 13.5 * fontScale, lineHeight: 18 * fontScale }]} />
           {/* Sprint 3.4 — Link Preview */}
           {(() => {
             const url = extractUrl(message.text);
