@@ -18,6 +18,7 @@ import { LinkPreview, extractUrl } from './LinkPreview';
 import { VideoViewerModal } from './VideoViewerModal';
 import { MarkdownText } from './MarkdownText';
 import { downloadMediaIfNeeded } from '../../services/autoDownload';
+import { useFont } from '../../context/FontContext';
 import type { ChatMessage } from '../../types/chat';
 
 // ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
