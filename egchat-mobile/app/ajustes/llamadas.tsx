@@ -74,10 +74,10 @@ export default function LlamadasScreen() {
         <ActivityIndicator color={Colors.accent} style={{ marginVertical: 20 }} />
       ) : stats ? (
         <View style={[st.statsGrid, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
-          <StatCard icon="📞" label="Total" value={String(stats.total)} color="#00c8a0" isDark={isDark} />
-          <StatCard icon="❌" label="Perdidas" value={String(stats.missed)} color="#ef4444" isDark={isDark} />
-          <StatCard icon="🎙️" label="Voz" value={String(stats.audio)} color="#6366f1" isDark={isDark} />
-          <StatCard icon="📹" label="Video" value={String(stats.video)} color="#f59e0b" isDark={isDark} />
+          <StatCard icon="call" label="Total" value={String(stats.total)} color="#00c8a0" isDark={isDark} />
+          <StatCard icon="call-missed" label="Perdidas" value={String(stats.missed)} color="#ef4444" isDark={isDark} />
+          <StatCard icon="mic" label="Voz" value={String(stats.audio)} color="#6366f1" isDark={isDark} />
+          <StatCard icon="videocam" label="Video" value={String(stats.video)} color="#f59e0b" isDark={isDark} />
           {stats.totalMinutes > 0 && (
             <View style={[st.minutesRow, { borderTopColor: isDark ? '#21262d' : '#f3f4f6' }]}>
               <Text style={[st.minutesLabel, { color: C.textSecondary }]}>Tiempo total en llamadas</Text>
