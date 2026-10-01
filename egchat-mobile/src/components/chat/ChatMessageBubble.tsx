@@ -1767,8 +1767,8 @@ export const ChatMessageBubble = React.memo(({
                     <Text style={s.fileIconText}>{fileIcon}</Text>
                   </View>
                   <View style={s.fileInfo}>
-                    <Text style={s.fileName} numberOfLines={2}>{fileName}</Text>
-                    <Text style={[s.fileExt, { color: fileColor }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                    <Text style={[s.fileName, { fontSize: 13 * fontScale }]} numberOfLines={2}>{fileName}</Text>
+                    <Text style={[s.fileExt, { color: fileColor, fontSize: 11 * fontScale }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
                   </View>
                 </View>
                 <View style={s.fileActionRow}>
