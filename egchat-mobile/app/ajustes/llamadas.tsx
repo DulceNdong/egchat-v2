@@ -176,10 +176,9 @@ const st = StyleSheet.create({
     shadowOpacity: 0.06, shadowRadius: 4, elevation: 2,
   },
   statCard: {
-    flex: 1, minWidth: '40%', alignItems: 'center', gap: 4,
-    paddingVertical: 14, borderRadius: 10,
+    flex: 1, minWidth: '40%', alignItems: 'center', gap: 6,
+    paddingVertical: 16, borderRadius: 10,
   },
-  statIcon:  { fontSize: 22 },
   statValue: { fontSize: 20, fontWeight: '800' },
   statLabel: { fontSize: 11, fontWeight: '500' },
   minutesRow: {
