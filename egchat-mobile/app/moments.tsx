@@ -606,6 +606,13 @@ const ps = StyleSheet.create({
   image: { width: 120, height: 120, borderRadius: 6 },
   imageSingle: { width: '100%', height: 220, borderRadius: 10 },
   imageHalf: { width: '49%', height: 160, borderRadius: 8 },
+  moreOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.52)',
+    borderRadius: 6,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  moreText: { color: '#fff', fontSize: 22, fontWeight: '800' },
   actions: { flexDirection: 'row', gap: 20, paddingTop: 6, paddingBottom: 4 },
   actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   actionCount: { fontSize: 13, fontWeight: '600' },
