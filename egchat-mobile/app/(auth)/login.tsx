@@ -250,7 +250,7 @@ export default function LoginScreen() {
       <SafeAreaView style={s.staticZone} pointerEvents="box-none">
         {/* Logo: círculo verde con logo llenando todo */}
         <View style={s.logoRing}>
-          <SpinningLogo size={90} glow={false} />
+          <SpinningLogo size={78} glow={false} />
         </View>
 
         <Text style={s.appName}>EGChat</Text>
