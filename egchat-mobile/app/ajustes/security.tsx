@@ -357,10 +357,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: Spacing.md,
   },
-  cardIcon: {
-    fontSize: 24,
-    marginRight: Spacing.sm,
-  },
   cardTitle: {
     fontSize: FontSize.md,
     fontWeight: FontWeight.semibold,
