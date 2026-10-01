@@ -186,7 +186,7 @@ export default function CallHistoryScreen() {
     : <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"><Path d="M17 7L7 17M17 17H7V7"/></Svg>;
 
   return (
-    <SafeAreaView style={s.root} edges={['left', 'right']}>
+    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
       <LinearGradient colors={['#00b4e6', '#0088cc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 14 }]}>
         <View style={s.headerRow}>
           <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
@@ -207,14 +207,14 @@ export default function CallHistoryScreen() {
       </LinearGradient>
 
       {/* Filtros */}
-      <View style={s.filters}>
+      <View style={[s.filters, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
         {(['all','missed','outgoing','incoming'] as CallFilter[]).map(f => (
           <TouchableOpacity
             key={f}
-            style={[s.chip, filter === f && s.chipActive]}
+            style={[s.chip, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }, filter === f && s.chipActive]}
             onPress={() => setFilter(f)}
           >
-            <Text style={[s.chipText, filter === f && s.chipTextActive]}>
+            <Text style={[s.chipText, { color: C.textSecondary }, filter === f && s.chipTextActive]}>
               {f === 'all' ? 'Todas' : f === 'missed' ? 'Perdidas' : f === 'outgoing' ? 'Salientes' : 'Entrantes'}
             </Text>
           </TouchableOpacity>
@@ -230,28 +230,27 @@ export default function CallHistoryScreen() {
           contentContainerStyle={{ paddingVertical: 8 }}
           ListEmptyComponent={
             <View style={s.empty}>
-              <Text style={s.emptyIcon}>📞</Text>
-              <Text style={s.emptyText}>Sin llamadas recientes</Text>
+              <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin llamadas recientes</Text>
             </View>
           }
           renderItem={({ item }) => {
             const color = dirColor(item.direction);
             return (
-              <View style={s.row}>
+              <View style={[s.row, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
                 <EGAvatar name={item.contactName} src={item.contactAvatar} size={48} />
                 <View style={s.info}>
-                  <Text style={s.name}>{item.contactName}</Text>
+                  <Text style={[s.name, { color: C.textPrimary }]}>{item.contactName}</Text>
                   <View style={s.meta}>
                     {dirArrow(item.direction, color)}
                     {item.type === 'video'
                       ? <VideoIcon color={color} size={12}/>
                       : <PhoneIcon color={color} size={12}/>}
                     <Text style={[s.dir, { color }]}>{dirLabel(item.direction)}</Text>
-                    {item.duration ? <Text style={s.dur}> · {formatDuration(item.duration)}</Text> : null}
+                    {item.duration ? <Text style={[s.dur, { color: C.textTertiary }]}> · {formatDuration(item.duration)}</Text> : null}
                   </View>
                 </View>
                 <View style={s.right}>
-                  <Text style={s.time}>{formatTime(item.timestamp)}</Text>
+                  <Text style={[s.time, { color: C.textTertiary }]}>{formatTime(item.timestamp)}</Text>
                   <TouchableOpacity onPress={() => callBack(item)} style={s.callBtn}>
                     {item.type === 'video'
                       ? <VideoIcon color="#00c8a0" size={20}/>
