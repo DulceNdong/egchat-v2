@@ -14,6 +14,9 @@ import { router } from 'expo-router';
 import Svg, { Path, Polygon, Rect, Line, Circle } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
 import { chatAPI, userAPI } from '../src/api';
+import { useThemeContext } from '../src/theme/ThemeContext';
+import { Colors } from '../src/theme';
+import { DarkColors } from '../src/theme/darkMode';
 
 type CallFilter = 'all' | 'missed' | 'outgoing' | 'incoming';
 
