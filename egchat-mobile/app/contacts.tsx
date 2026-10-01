@@ -15,6 +15,7 @@ import { EGAvatar } from '../src/components/ui';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import { useFont } from '../src/context/FontContext';
 
 // ── Normalizar teléfono ───────────────────────────────────────────
 const normalizePhone = (raw: string) => {
