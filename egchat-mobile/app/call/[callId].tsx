@@ -394,6 +394,7 @@ export default function CallScreen() {
 
   // Estados UI
   const [isRejecting, setIsRejecting] = useState(false); // evita flash de pantalla activa al rechazar
+  const [isAccepting, setIsAccepting] = useState(false); // guard: evita doble tap en Aceptar
   const uiState    = role === 'callee' && (callState === 'idle' || isRejecting) ? 'ringing' : callState;
   const isIncoming  = uiState === 'ringing' && role === 'callee';
   const isCalling   = uiState === 'calling' || (uiState === 'ringing' && role === 'caller');
