@@ -9,7 +9,7 @@ import { Audio } from 'expo-av';
 import * as Notifications from 'expo-notifications';
 import * as Linking from 'expo-linking';
 import { authAPI, clearToken, setUnauthorizedHandler, startKeepAlive, getToken, walletAPI } from '../src/api';
-import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
+import { registerForPushNotifications, setupNotificationListeners, clearBadge, consumePendingCall } from '../src/notifications';
 import { Colors, ThemeProvider, useThemeContext } from '../src/theme';
 import { LanguageProvider, useLanguage } from '../src/context/LanguageContext';
 import { FontProvider } from '../src/context/FontContext';
