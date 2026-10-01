@@ -54,9 +54,9 @@ export const INTERNET_SERVICES: Record<string, InternetService[]> = {
 // Los operadores y paquetes móviles ahora se obtienen desde la API
 
 export const MOBILE_OPERATORS = [
-  { id: 'getesa', name: 'GETESA', color: '#003082' },
-  { id: 'gecomsa', name: 'GECOMSA', color: '#0066CC' },
-  { id: 'orange', name: 'Orange GE', color: '#FF6600' }
+  { id: 'getesa', name: 'GETESA', color: '#003F8A' },
+  { id: 'gecomsa', name: 'GECOMSA', color: '#00873E' },
+  { id: 'muni', name: 'MUNI', color: '#E8320A' },
 ];
 
 export type MobilePackage = { 
