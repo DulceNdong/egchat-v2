@@ -522,7 +522,11 @@ function MensajeriaScreenInner() {
     loadArchivedChats().then(setArchivedChats);
     getArchivePassword().then(setArchivePasswordState);
 
-    return () => clearInterval(keepAlive);
+    return () => {
+      clearInterval(keepAlive);
+      // Limpiar debounce pendiente al desmontar
+      if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current);
+    };
   }, []);
 
   useEffect(() => {
