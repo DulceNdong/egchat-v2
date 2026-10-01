@@ -354,19 +354,25 @@ export default function BangeCaseDetail() {
               </div>
             </div>
 
-            {/* Disponibilidad */}
-            <div className="flex gap-3 mb-4 text-xs text-gray-500">
-              <span className={kyc.has_front_doc ? 'text-green-600' : 'text-red-400'}>
-                {kyc.has_front_doc ? '✅' : '❌'} {isPassport ? 'Pasaporte' : 'Foto frontal'}
-              </span>
-              {!isPassport && (
-                <span className={kyc.has_back_doc ? 'text-green-600' : 'text-gray-400'}>
-                  {kyc.has_back_doc ? '✅' : '—'} Foto trasera
+            {/* Disponibilidad — verde si hay URL o flag, sin ❌ si opcional */}
+            <div className="flex gap-3 mb-4 text-xs">
+              {[
+                { ok: !!(kyc.has_front_doc || kyc.doc_front_url), label: isPassport ? 'Pasaporte' : 'Foto frontal', required: true },
+                ...(!isPassport ? [{ ok: !!(kyc.has_back_doc || kyc.doc_back_url), label: 'Foto trasera', required: false }] : []),
+                { ok: !!(kyc.has_selfie || kyc.selfie_url), label: 'Selfie', required: true },
+              ].map(({ ok, label, required }) => (
+                <span key={label} className={`flex items-center gap-1 font-semibold ${
+                  ok ? 'text-green-600 dark:text-green-400'
+                  : required ? 'text-red-400' : 'text-gray-400'
+                }`}>
+                  <span className={`inline-flex w-4 h-4 rounded-full items-center justify-center text-white font-bold ${
+                    ok ? 'bg-green-500' : required ? 'bg-red-400' : 'bg-gray-300 dark:bg-gray-600'
+                  }`} style={{ fontSize: 9 }}>
+                    {ok ? '✓' : required ? '✗' : '—'}
+                  </span>
+                  {label}
                 </span>
-              )}
-              <span className={kyc.has_selfie ? 'text-green-600' : 'text-red-400'}>
-                {kyc.has_selfie ? '✅' : '❌'} Selfie
-              </span>
+              ))}
             </div>
 
             {/* Visor de documentos — DNI: frontal + reverso + selfie / Pasaporte: sólo frontal + selfie */}
