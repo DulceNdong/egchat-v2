@@ -307,7 +307,10 @@ export default function RootLayout() {
         const cachedUser = await loadCachedSessionUser();
         if (cachedUser?.id && mounted) {
           setChecking(false);
-          if (isAuthRoute || isRootPath(pathname)) router.replace('/(tabs)');
+          // Solo redirigir a tabs si NO estamos en welcome (dejar que la splash termine)
+          if (isAuthRoute || (isRootPath(pathname) && pathname !== '/welcome')) {
+            router.replace('/(tabs)');
+          }
         }
 
         const authTimeout = new Promise<never>((_, reject) => {
