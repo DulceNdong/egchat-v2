@@ -128,29 +128,16 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
     } 
   }, [visible]);
 
+  const DEFAULT_OPERATORS = [
+    { id: 'getesa',  name: 'GETESA',  code: 'GET', color: '#003F8A' },
+    { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' },
+    { id: 'muni',    name: 'MUNI',    code: 'MUN', color: '#E8320A' },
+  ];
+
   const loadOperators = async () => {
-    setLoadingData(true);
-    try {
-      const data = await mobileAPI.getOperators();
-      // Si el backend no tiene el endpoint o devuelve vacío, usar operadores por defecto
-      if (data && data.length > 0) {
-        setOperators(data);
-      } else {
-        setOperators([
-          { id: 'getesa',  name: 'GETESA',  code: 'GET', color: '#003F8A' }, // Azul corporativo estatal
-          { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' }, // Verde corporativo
-          { id: 'muni',    name: 'MUNI',    code: 'MUN', color: '#E8320A' }, // Rojo/naranja (ex-Hits Telecom)
-        ]);
-      }
-    } catch (error) {
-      setOperators([
-        { id: 'getesa',  name: 'GETESA',  code: 'GET', color: '#003F8A' },
-        { id: 'gecomsa', name: 'GECOMSA', code: 'GEC', color: '#00873E' },
-        { id: 'muni',    name: 'MUNI',    code: 'MUN', color: '#E8320A' },
-      ]);
-    } finally {
-      setLoadingData(false);
-    }
+    // Siempre usar los operadores locales — GETESA, GECOMSA, MUNI
+    setOperators(DEFAULT_OPERATORS);
+    setLoadingData(false);
   };
 
   const loadPackages = async (operatorId: string) => {
