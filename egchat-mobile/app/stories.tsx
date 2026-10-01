@@ -1551,12 +1551,25 @@ export default function StoriesScreen() {
                 {item.images && item.images.length > 0 && (
                   <View style={mps.imagesGrid}>
                     {item.images.slice(0, 4).map((uri, i) => (
-                      <Image
+                      <TouchableOpacity
                         key={i}
-                        source={{ uri }}
-                        style={[mps.image, item.images!.length === 1 && mps.imageSingle, item.images!.length === 2 && mps.imageHalf]}
-                        resizeMode="cover"
-                      />
+                        activeOpacity={0.88}
+                        onPress={() => {
+                          setMomentViewerPost(item as MomentViewerPost);
+                          setMomentViewerImgIdx(i);
+                        }}
+                      >
+                        <Image
+                          source={{ uri }}
+                          style={[mps.image, item.images!.length === 1 && mps.imageSingle, item.images!.length === 2 && mps.imageHalf]}
+                          resizeMode="cover"
+                        />
+                        {i === 3 && item.images!.length > 4 && (
+                          <View style={mps.moreOverlay}>
+                            <Text style={mps.moreText}>+{item.images!.length - 4}</Text>
+                          </View>
+                        )}
+                      </TouchableOpacity>
                     ))}
                   </View>
                 )}
