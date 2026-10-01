@@ -516,9 +516,10 @@ export default function CallScreen() {
 
       await answerCall(callId, offer, callType as 'audio' | 'video');
     } catch (err: any) {
+      setIsAccepting(false); // solo resetear en error — en éxito la pantalla cambia a 'connected'
       Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión e inténtalo de nuevo.');
     }
-  }, [callId, offerParam, callType, answerCall]);
+  }, [callId, offerParam, callType, answerCall, isAccepting]);
 
   // ── Botón Mensaje: minimiza la llamada visualmente sin desmontarla ──
   const openMessageMode = useCallback(() => {
