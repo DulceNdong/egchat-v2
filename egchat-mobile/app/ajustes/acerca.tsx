@@ -153,7 +153,7 @@ export default function AcercaScreen() {
         >
           {runningDiag
             ? <ActivityIndicator color="#8b5cf6" size="small" />
-            : <Text style={styles.updateIcon}>🔔</Text>
+            : <MaterialIcons name="notifications" size={22} color="#8b5cf6" style={{ width: 28, textAlign: 'center' }} />
           }
           <View style={{ flex: 1 }}>
             <Text style={[styles.updateLabel, { color: C.textPrimary }]}>
