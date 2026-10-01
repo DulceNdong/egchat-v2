@@ -259,7 +259,7 @@ export default function ContactsScreen() {
           <IcoBack color={C.textPrimary} />
         </TouchableOpacity>
         <View style={st.headerCenter}>
-          <Text style={[st.headerTitle, { color: C.textPrimary }]}>Contactos</Text>
+          <Text style={[st.headerTitle, { color: C.textPrimary, fontSize: 19 * fontScale }]}>Contactos</Text>
           {contacts.length > 0 && (
             <View style={st.countBadge}>
               <Text style={st.countText}>{contacts.length}</Text>
