@@ -1746,6 +1746,26 @@ export default function StoriesScreen() {
         onClose={() => setShowMomentCamera(false)}
         onDone={handleMomentCameraDone}
       />
+
+      {/* ── Visor inmersivo de imágenes de momentos ───────────── */}
+      <MomentImageViewer
+        visible={!!momentViewerPost}
+        post={momentViewerPost}
+        initialImageIndex={momentViewerImgIdx}
+        onClose={() => setMomentViewerPost(null)}
+        onLike={(postId) => {
+          handleMomentLike(postId);
+          setMomentViewerPost(prev =>
+            prev && prev.id === postId
+              ? { ...prev, liked_by_me: !prev.liked_by_me, likes: prev.liked_by_me ? prev.likes - 1 : prev.likes + 1 }
+              : prev
+          );
+        }}
+        onCommentPress={(postId) => {
+          setMomentViewerPost(null);
+          setTimeout(() => setCommentingPost(postId), 300);
+        }}
+      />
     </SafeAreaView>
   );
 }
