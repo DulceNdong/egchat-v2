@@ -9,6 +9,7 @@ import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { AudioWaveformVisualizer } from './AudioWaveformVisualizer';
 import { TextFormatBar } from './TextFormatBar';
 import { useTranslation } from '../../context/LanguageContext';
+import { useFont } from '../../context/FontContext';
 
 export interface ChatInputBarProps {
   text: string;
