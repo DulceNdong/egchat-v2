@@ -114,6 +114,20 @@ export default function Step4() {
         accessibilityLabel="Empleador"
       />
 
+      {/* Fecha de caducidad del documento */}
+      <Text style={[st.label, { marginTop: 16 }]}>📅 Fecha de caducidad del documento</Text>
+      <Text style={st.hint}>Introduce la fecha que aparece en tu DNI/Pasaporte (formato AAAA-MM-DD)</Text>
+      <TextInput
+        style={st.input}
+        value={fin.docExpiryDate ?? ''}
+        onChangeText={v => update({ docExpiryDate: v })}
+        placeholder="2030-12-31"
+        placeholderTextColor="#9ca3af"
+        keyboardType="numeric"
+        maxLength={10}
+        accessibilityLabel="Fecha de caducidad del documento"
+      />
+
       {/* Ingreso mensual */}
       <Text style={st.label}>Ingreso mensual estimado <Text style={{ color: '#ef4444' }}>*</Text></Text>
       <TouchableOpacity
