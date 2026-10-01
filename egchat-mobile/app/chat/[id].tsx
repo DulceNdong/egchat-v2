@@ -1044,7 +1044,11 @@ export default function ChatScreen() {
   const handleScroll = useCallback((e: any) => {
     const { contentOffset, contentSize, layoutMeasurement } = e.nativeEvent;
     const distBottom = contentSize.height - contentOffset.y - layoutMeasurement.height;
-    setShowScrollBottom(distBottom > 200);
+    // Usar threshold más alto en Android para reducir setState en scroll
+    const threshold = Platform.OS === 'android' ? 250 : 200;
+    const shouldShow = distBottom > threshold;
+    // Solo actualizar estado si realmente cambia — evita re-renders continuos al hacer scroll
+    setShowScrollBottom(prev => prev === shouldShow ? prev : shouldShow);
     if (contentOffset.y < 60 && hasMore && !loadingMore) loadMore();
   }, [hasMore, loadingMore, loadMore]);
 
