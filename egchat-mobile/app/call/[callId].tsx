@@ -484,6 +484,8 @@ export default function CallScreen() {
 
   const accept = useCallback(async () => {
     if (!callId) return;
+    if (isAccepting) return;           // guard: evita doble tap / ejecuciones concurrentes
+    setIsAccepting(true);
     try {
       let offer: any = offerParam;
       if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch (_e) {} }
