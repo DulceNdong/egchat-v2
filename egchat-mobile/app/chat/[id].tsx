@@ -2256,7 +2256,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: '#00b4e6' }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
