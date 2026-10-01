@@ -440,6 +440,7 @@ export default function RootLayout() {
                     pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
                       router.push({ pathname: '/call/[callId]', params: {
                         callId: callData.callId, targetName: callData.callerName,
+                        targetAvatar: (callData as any).callerAvatar || '',
                         callType: callData.callType || 'audio', role: 'callee',
                         offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
                       }} as any);
