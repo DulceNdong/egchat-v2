@@ -545,6 +545,23 @@ export default function RootLayout() {
     };
   }, []);
 
+  // ── Cuando welcome termina y navega al login, verificar auth ────
+  // El init() ya terminó con return en pathname='/', este efecto
+  // se dispara cuando el pathname cambia a una ruta de auth.
+  useEffect(() => {
+    if (!isAuthPath(pathname)) return;
+    // Si el usuario ya tiene sesión válida, mandarlo a tabs
+    (async () => {
+      try {
+        const isAuth = await authAPI.isAuthenticated();
+        if (isAuth) {
+          const me = await authAPI.me().catch(() => null);
+          if (me?.id) router.replace('/(tabs)');
+        }
+      } catch {}
+    })();
+  }, [pathname]);  }, []);
+
   return (
     <RootErrorBoundary>
       <GestureHandlerRootView style={{ flex: 1 }}>
