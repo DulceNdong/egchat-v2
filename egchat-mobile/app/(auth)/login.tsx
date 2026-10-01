@@ -417,201 +417,136 @@ export default function LoginScreen() {
 }
 
 // ── StyleSheet principal ─────────────────────────────────────────────
-const HEADER_H = 185; // altura reducida — menos verde visible
-
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#00c8a0' },
+  root:     { flex: 1, backgroundColor: '#00c8a0' },
+  safeArea: { flex: 1 },
+  kvFlex:   { flex: 1 },
 
-  // Decoración
+  // Decoración de fondo
   circleA: {
     position: 'absolute', top: -width * 0.25, right: -width * 0.2,
     width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35,
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
   circleB: {
-    position: 'absolute', bottom: height * 0.45, left: -width * 0.2,
+    position: 'absolute', top: width * 0.5, left: -width * 0.2,
     width: width * 0.5, height: width * 0.5, borderRadius: width * 0.25,
     backgroundColor: 'rgba(255,255,255,0.05)',
   },
 
-  // ── Zona estática (header) ───────────────────────────────────────
-  staticZone: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: HEADER_H,
+  // ── Header estático (fuera del scroll) ───────────────────────────
+  headerStatic: {
     alignItems: 'center',
-    justifyContent: 'center',   // centrado vertical en lugar de flex-end
-    paddingTop: 44,              // respeta el notch/safe area
-    paddingBottom: 0,
-    gap: 5,
-    zIndex: 1,
+    paddingTop: 20,
+    paddingBottom: 18,
+    gap: 6,
   },
 
-  // Logo: círculo más ajustado al logo, menos verde visible
+  // Círculo BLANCO — logo grande dentro
   logoRing: {
-    width: 82,
-    height: 82,
-    borderRadius: 41,
-    backgroundColor: '#00d4a8',   // un tono más oscuro para menos dominancia
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#ffffff',          // ← blanco limpio
     alignItems: 'center',
     justifyContent: 'center',
     overflow: 'hidden',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.2,
-    shadowRadius: 14,
-    elevation: 10,
-    borderWidth: 2,
-    borderColor: 'rgba(255,255,255,0.4)',
-    marginBottom: 0,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.18,
+    shadowRadius: 18,
+    elevation: 12,
+    marginBottom: 2,
   },
 
   appName: {
-    fontSize: 28,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 0.8,
-    textShadowColor: 'rgba(0,0,0,0.12)',
-    textShadowOffset: { width: 0, height: 2 },
-    textShadowRadius: 4,
+    fontSize: 28, fontWeight: '800', color: '#fff', letterSpacing: 0.8,
+    textShadowColor: 'rgba(0,0,0,0.12)', textShadowOffset: { width: 0, height: 2 }, textShadowRadius: 4,
   },
   appTagline: {
-    fontSize: 12,
-    color: 'rgba(255,255,255,0.78)',
-    fontWeight: '500',
-    letterSpacing: 0.4,
-    marginTop: -2,
+    fontSize: 12, color: 'rgba(255,255,255,0.78)', fontWeight: '500', letterSpacing: 0.4, marginTop: -2,
   },
 
-  // Badge CEMAC con banderas grandes
+  // Badge CEMAC
   cemacBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: 'row', alignItems: 'center',
     backgroundColor: 'rgba(255,255,255,0.16)',
-    borderRadius: 22,
-    paddingHorizontal: 14,
-    paddingVertical: 7,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.28)',
-    marginTop: 4,
+    borderRadius: 22, paddingHorizontal: 14, paddingVertical: 7,
+    gap: 8, borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)', marginTop: 2,
   },
-  cemacLabel: {
-    color: 'rgba(255,255,255,0.88)',
-    fontSize: 9,
-    fontWeight: '800',
-    letterSpacing: 1.4,
-  },
-  flagsRow: { flexDirection: 'row', gap: 4 },
-  flag:     { fontSize: 22, lineHeight: 26 },   // ← más grandes
+  cemacLabel: { color: 'rgba(255,255,255,0.88)', fontSize: 9, fontWeight: '800', letterSpacing: 1.4 },
+  flagsRow:   { flexDirection: 'row', gap: 4 },
+  flag:       { fontSize: 22, lineHeight: 26 },
 
   // ── Scroll ───────────────────────────────────────────────────────
-  kvFlex:  { flex: 1 },
-  scroll:  { flexGrow: 1, paddingBottom: 32 },
-  spacer:  { height: HEADER_H },  // empuja la tarjeta debajo del header estático
+  scroll: { flexGrow: 1, paddingBottom: 32 },
 
-  // ── Tarjeta formulario ───────────────────────────────────────────
+  // ── Tarjeta ──────────────────────────────────────────────────────
   card: {
-    marginHorizontal: 14,
-    borderRadius: 26,
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 20,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 14 },
-    shadowOpacity: 0.16,
-    shadowRadius: 24,
-    elevation: 16,
+    marginHorizontal: 14, borderRadius: 26,
+    paddingHorizontal: 20, paddingTop: 20, paddingBottom: 20,
+    shadowColor: '#000', shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.16, shadowRadius: 24, elevation: 16,
   },
-  cardTitle: {
-    fontSize: 20,
-    fontWeight: '700',
-    textAlign: 'center',
-    marginBottom: 3,
-  },
-  cardSub: {
-    fontSize: 13,
-    textAlign: 'center',
-    marginBottom: 18,
-  },
+  cardTitle: { fontSize: 20, fontWeight: '700', textAlign: 'center', marginBottom: 3 },
+  cardSub:   { fontSize: 13, textAlign: 'center', marginBottom: 18 },
 
   // País selector
   countryBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderRadius: 12,
-    height: 44,
-    paddingHorizontal: 12,
-    gap: 8,
+    flexDirection: 'row', alignItems: 'center', borderWidth: 1.5,
+    borderRadius: 12, height: 44, paddingHorizontal: 12, gap: 8,
   },
   cFlag:    { fontSize: 18 },
   cName:    { flex: 1, fontSize: 14, fontWeight: '600' },
-  cBadge:   { fontSize: 11, fontWeight: '700', color: '#00a88a', backgroundColor: 'rgba(0,200,160,0.08)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, overflow: 'hidden' },
+  cBadge:   {
+    fontSize: 11, fontWeight: '700', color: '#00a88a',
+    backgroundColor: 'rgba(0,200,160,0.08)',
+    paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, overflow: 'hidden',
+  },
   cChevron: { fontSize: 9 },
 
   // Dropdown país
   dropdown: {
-    marginTop: 5,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 10,
-    elevation: 8,
+    marginTop: 5, borderRadius: 12, borderWidth: 1.5, overflow: 'hidden',
+    shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1, shadowRadius: 10, elevation: 8,
   },
-  ddItem:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, gap: 8 },
-  ddItemActive:{ backgroundColor: 'rgba(0,200,160,0.06)' },
-  ddItemText:  { fontSize: 14, fontWeight: '500' },
-  ddSoonText:  { fontSize: 10, color: '#94a3b8', fontWeight: '500', marginTop: 1 },
-  ddCheck:     { color: '#00c8a0', fontSize: 13, fontWeight: '700' },
+  ddItem:       { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, gap: 8 },
+  ddItemActive: { backgroundColor: 'rgba(0,200,160,0.06)' },
+  ddItemText:   { fontSize: 14, fontWeight: '500' },
+  ddSoonText:   { fontSize: 10, color: '#94a3b8', fontWeight: '500', marginTop: 1 },
+  ddCheck:      { color: '#00c8a0', fontSize: 13, fontWeight: '700' },
 
   // Prefijo teléfono
   prefixBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    paddingHorizontal: 10,
-    height: 44,
-    borderRightWidth: 1.5,
+    flexDirection: 'row', alignItems: 'center', gap: 4,
+    paddingHorizontal: 10, height: 44, borderRightWidth: 1.5,
   },
   prefixText: { fontSize: 13, fontWeight: '700' },
 
   // Error
-  errBox: { backgroundColor: '#fff1f2', borderRadius: 10, padding: 10, marginBottom: 10 },
+  errBox:  { backgroundColor: '#fff1f2', borderRadius: 10, padding: 10, marginBottom: 10 },
   errText: { color: '#e11d48', fontSize: 13, fontWeight: '500' },
 
   // Botón login
   loginBtn: {
-    marginTop: 6,
-    marginBottom: 10,
-    borderRadius: 13,
-    overflow: 'hidden',
-    shadowColor: '#00c8a0',
-    shadowOffset: { width: 0, height: 5 },
-    shadowOpacity: 0.32,
-    shadowRadius: 10,
-    elevation: 7,
+    marginTop: 6, marginBottom: 10, borderRadius: 13, overflow: 'hidden',
+    shadowColor: '#00c8a0', shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.32, shadowRadius: 10, elevation: 7,
   },
   loginGrad: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
   loginText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.4 },
 
-  // Olvidé contraseña
   forgotBtn:  { alignItems: 'center', paddingVertical: 8 },
   forgotText: { color: '#00a88a', fontSize: 13, fontWeight: '600' },
 
-  // Separador
   sep:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 12 },
   sepLine: { flex: 1, height: 1 },
   sepText: { fontSize: 12, fontWeight: '500' },
 
-  // Crear cuenta
   createBtn:  { borderWidth: 1.5, borderRadius: 13, paddingVertical: 13, alignItems: 'center', marginBottom: 12 },
   createText: { fontSize: 14, fontWeight: '600' },
 
-  // Volver
   backBtn:  { alignItems: 'center', paddingVertical: 6 },
   backText: { fontSize: 13 },
 
