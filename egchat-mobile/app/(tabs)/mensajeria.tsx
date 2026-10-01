@@ -233,10 +233,11 @@ const IconRefresh = () => (
 );
 
 // ── ChatItem ──────────────────────────────────────────────────────
-const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow, contentTypes }: {
+const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, staticRow, contentTypes, fontScale }: {
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
-  contentTypes?: ContentType[];
+  contentTypes?: ContentType[]; fontScale?: number;
 }) => {
+  const fs = fontScale ?? 1;
   const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
   const rawChatName = chat.type === 'private'
     ? (getParticipantName(other) || 'Usuario')
