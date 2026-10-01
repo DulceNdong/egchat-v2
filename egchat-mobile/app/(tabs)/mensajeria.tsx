@@ -370,6 +370,7 @@ function MensajeriaScreenInner() {
   const [showCreateGroup, setShowCreateGroup] = useState(false);
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
+  const { fontScale } = useFont();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
