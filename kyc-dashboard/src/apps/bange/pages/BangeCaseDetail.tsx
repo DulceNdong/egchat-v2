@@ -146,7 +146,6 @@ export default function BangeCaseDetail() {
   const canAct    = useCanDo(['COMPLIANCE_OFFICER', 'SUPER_ADMIN']);
 
   const { data: kyc, isLoading, refetch } = useKycDetail(id!);
-  const { data: audit }                   = useKycAudit(id!);
   const [activeAction, setAction]         = useState<ActionType>(null);
   const [sendingAlert, setSendingAlert]   = useState(false);
 
