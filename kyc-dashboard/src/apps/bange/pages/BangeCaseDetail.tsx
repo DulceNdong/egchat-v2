@@ -12,7 +12,6 @@ import { useCanDo } from '@/core/auth/RoleGuard';
 import { RiskBadge, StatusBadge } from '@/shared/components/ui/Badges';
 import { DocumentViewer } from '@/shared/components/ui/DocumentViewer';
 import { ScoreBar } from '@/shared/components/ui/ScoreBar';
-import { Timeline } from '@/shared/components/ui/Timeline';
 import { ActionModal } from '../components/ActionModal';
 import BangeLayout from '../components/BangeLayout';
 import { expiryApi } from '@/api/endpoints';
