@@ -297,11 +297,16 @@ export default function RootLayout() {
 
         const isAuth = await authAPI.isAuthenticated();
         const isAuthRoute = isAuthPath(pathname);
+
+        // Si estamos en welcome, NO hacer nada — welcome se encarga sola del timing
+        if (isWelcomePath(pathname)) {
+          setChecking(false);
+          return;
+        }
+
         if (!isAuth) {
           if (mounted) {
             setChecking(false);
-            // Siempre volver a welcome si no está autenticado
-            // (a menos que ya esté en una ruta de auth como login/register)
             if (!isAuthRoute) router.replace('/welcome');
           }
           return;
@@ -310,8 +315,7 @@ export default function RootLayout() {
         const cachedUser = await loadCachedSessionUser();
         if (cachedUser?.id && mounted) {
           setChecking(false);
-          // Solo redirigir a tabs si NO estamos en welcome (dejar que la splash termine)
-          if (isAuthRoute || (isRootPath(pathname) && pathname !== '/welcome')) {
+          if (isAuthRoute || (isRootPath(pathname) && !isWelcomePath(pathname))) {
             router.replace('/(tabs)');
           }
         }
