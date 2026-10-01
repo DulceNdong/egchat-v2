@@ -218,7 +218,9 @@ export default function SecurityScreen() {
 
         {/* Info box */}
         <View style={[styles.infoBox, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
-          <Text style={[styles.infoLabel, { color: C.textPrimary }]}>🔒 Límites Diarios</Text>
+          <Text style={[styles.infoLabel, { color: C.textPrimary }]}>
+            <MaterialIcons name="lock" size={15} color={C.textPrimary} /> Límites Diarios
+          </Text>
           <Text style={[styles.infoText, { color: C.textSecondary }]}>
             Protege tu cuenta limitando las transacciones diarias. Los contadores se resetean cada 24h.
           </Text>
