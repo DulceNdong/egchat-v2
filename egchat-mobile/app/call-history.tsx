@@ -67,6 +67,9 @@ const VideoIcon = ({ color, size = 16 }: any) => (
 );
 
 export default function CallHistoryScreen() {
+  const { isDark } = useThemeContext();
+  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+
   const [calls, setCalls] = useState<CallRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<CallFilter>('all');
