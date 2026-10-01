@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react';
+import { MaterialIcons } from '@expo/vector-icons';
 import { View, Text, TouchableOpacity, Linking, Alert, ActivityIndicator, StyleSheet } from 'react-native';
 import { router } from 'expo-router';
 import * as Notifications from 'expo-notifications';
