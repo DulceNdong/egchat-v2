@@ -253,7 +253,6 @@ const st = StyleSheet.create({
   activateBtn:  { backgroundColor: Colors.accent, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 8 },
   activateTxt:  { color: '#fff', fontWeight: '700', fontSize: 14 },
   diagRow:      { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 14, gap: 12 },
-  diagIcon:     { fontSize: 22, width: 28, textAlign: 'center' },
   diagLabel:    { fontSize: 15, fontWeight: '600' },
   diagSub:      { fontSize: 12, marginTop: 2 },
   channelRow:   { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 8 },
