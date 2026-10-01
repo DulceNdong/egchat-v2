@@ -544,24 +544,23 @@ function MensajeriaScreenInner() {
 
   useEffect(() => {
     if (!currentUserId) return;
-    let realtimeWorking = false;
     let pollInterval: ReturnType<typeof setInterval> | null = null;
 
-    let unsub: (() => void) | undefined;
-    const subscribeTimer = setTimeout(() => {
-      const { subscribeToUserChats } = require('../../src/supabase');
-      unsub = subscribeToUserChats(currentUserId, () => {
-        realtimeWorking = true;
-        void loadChats(currentUserId);
-      });
-    }, Platform.OS === 'android' ? 15000 : 1500);
-
-    // Si Realtime no funciona en 5s, polling cada 30s (no 3s — evita bucle en web)
-    const realtimeCheck = setTimeout(() => {
-      if (!realtimeWorking) {
-        pollInterval = setInterval(() => loadChats(currentUserId), 30000);
+    // SSE (useChatStream) ya cubre actualizaciones en tiempo real.
+    // Supabase Realtime se eliminó para evitar doble disparo de loadChats.
+    // Fallback: polling cada 45s solo si el SSE no ha recibido nada en 45s.
+    let lastSseActivity = Date.now();
+    const sseWatchdog = setInterval(() => {
+      if (Date.now() - lastSseActivity > 45000) {
+        debouncedLoadChats(currentUserId);
       }
-    }, Platform.OS === 'android' ? 20000 : 5000);
+    }, 45000);
+
+    return () => {
+      clearInterval(sseWatchdog);
+      if (pollInterval) clearInterval(pollInterval);
+    };
+  }, [currentUserId, debouncedLoadChats]);
 
     return () => {
       clearTimeout(subscribeTimer);
