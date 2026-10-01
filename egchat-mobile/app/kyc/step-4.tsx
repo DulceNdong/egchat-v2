@@ -201,6 +201,7 @@ const BRAND = '#00C8A0';
 const st = StyleSheet.create({
   label:       { fontSize: 13, fontWeight: '700', color: '#374151', marginTop: 14, marginBottom: 6 },
   optional:    { fontWeight: '400', color: '#9ca3af' },
+  hint:        { fontSize: 11, color: '#9ca3af', marginBottom: 6, lineHeight: 15 },
   sublabel:    { fontSize: 12, color: '#9ca3af', marginTop: -4, marginBottom: 8 },
   input:       { borderWidth: 1.5, borderColor: '#d1d5db', borderRadius: 10, paddingHorizontal: 14, paddingVertical: 12, fontSize: 15, color: '#111827', backgroundColor: '#fafafa' },
   inputError:  { borderColor: '#ef4444' },
