@@ -135,11 +135,13 @@ export function Timeline({ entries }: TimelineProps) {
               />
             )}
 
-            {/* Dot */}
+            {/* Dot con icono */}
             <div
-              className={`w-5 h-5 rounded-full flex-shrink-0 mt-0.5 ${dotColor} z-10 ring-2 ring-white dark:ring-gray-900`}
+              className={`w-6 h-6 rounded-full flex-shrink-0 mt-0.5 ${dotColor} z-10 ring-2 ring-white dark:ring-gray-900 flex items-center justify-center text-white`}
               aria-hidden="true"
-            />
+            >
+              {getActionIcon(entry.action)}
+            </div>
 
             {/* Contenido */}
             <div className="flex-1 min-w-0 pb-2">
