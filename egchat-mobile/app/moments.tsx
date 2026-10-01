@@ -159,6 +159,9 @@ export default function MomentsScreen() {
   const [commentingPost, setCommentingPost] = useState<string | null>(null);
   const [commentText, setCommentText] = useState('');
   const [currentUserId, setCurrentUserId] = useState('');
+  // ── Visor de imágenes ─────────────────────────────────────────
+  const [viewerPost, setViewerPost] = useState<MomentViewerPost | null>(null);
+  const [viewerImageIdx, setViewerImageIdx] = useState(0);
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
