@@ -34,6 +34,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions, useMicrophonePermissions, type CameraType } from 'expo-camera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
+import { MomentImageViewer, type MomentViewerPost } from '../src/components/MomentImageViewer';
 
 const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000;
