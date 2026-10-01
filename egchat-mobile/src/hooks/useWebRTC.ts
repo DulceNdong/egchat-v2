@@ -257,9 +257,24 @@ export function useWebRTC() {
     let polls = 0;
 
     stopPolling();
+    // Android necesita intervalos más largos para no saturar el JS thread.
+    // Usamos backoff progresivo: 1s → 2s después de 30 polls sin respuesta.
+    const POLL_FAST = Platform.OS === 'android' ? 1500 : 1000;
+    const POLL_SLOW = Platform.OS === 'android' ? 3000 : 2000;
     pollingRef.current = setInterval(async () => {
       if (endedRef.current) return;
       polls++;
+      // Pasar a intervalo lento una vez conectado o tras 30 polls sin answer
+      if ((answerSet || polls > 30) && pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = setInterval(async () => {
+          if (endedRef.current) return;
+          try {
+            const session = await callAPI.get(id);
+            if (session?.ended) { endCallInternal(); return; }
+          } catch { /* retry */ }
+        }, POLL_SLOW);
+      }
       try {
         const session = await callAPI.get(id);
         if (session?.ended) { endCallInternal(); return; }
@@ -276,7 +291,7 @@ export function useWebRTC() {
         }
         if (polls > 90 && !answerSet) endCallInternal();
       } catch { /* retry */ }
-    }, 1000);
+    }, POLL_FAST);
   }, [cleanupResources, createPC, endCallInternal, getUserMedia, sendIce, stopPolling]);
 
   const answerCallNative = useCallback(async (
