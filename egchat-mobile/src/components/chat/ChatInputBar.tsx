@@ -55,6 +55,7 @@ export function ChatInputBar({
   inputRef,
 }: ChatInputBarProps) {
   const { t } = useTranslation();
+  const { fontScale } = useFont();
   const hasText = !!text.trim();
   const insets = useSafeAreaInsets();
   const bottomPadding = keyboardVisible ? 6 : Math.max(6, insets.bottom);
