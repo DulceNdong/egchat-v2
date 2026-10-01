@@ -563,7 +563,7 @@ export default function RootLayout() {
               <Stack.Screen name="seguros-salud" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="mitaxi" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="new-chat" options={{ presentation: 'fullScreenModal' }} />
-              <Stack.Screen name="welcome" />
+              <Stack.Screen name="welcome" options={{ animation: 'fade' }} />
               <Stack.Screen name="ajustes" />
               <Stack.Screen name="historial-completo" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="moments" options={{ presentation: 'fullScreenModal' }} />
