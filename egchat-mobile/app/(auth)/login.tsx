@@ -141,9 +141,95 @@ export default function LoginScreen() {
         style={StyleSheet.absoluteFill}
       />
 
-      {/* Círculos decorativos de fondo */}
+      {/* Círculos decorativos */}
       <View style={styles.circleTopRight} />
       <View style={styles.circleBottomLeft} />
+
+      {/* ══════════════════════════════════════════════════════
+          MODAL "PRÓXIMAMENTE" — países sin acceso
+      ══════════════════════════════════════════════════════ */}
+      <Modal
+        visible={!!comingSoonCountry}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setComingSoonCountry(null)}
+      >
+        <Pressable
+          style={styles.modalOverlay}
+          onPress={() => setComingSoonCountry(null)}
+        >
+          <Pressable style={styles.modalCard} onPress={() => {}}>
+            {/* Gradiente superior del modal */}
+            <LinearGradient
+              colors={['#00c8a0', '#0099c8']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.modalGradientTop}
+            >
+              {/* Órbita decorativa */}
+              <View style={styles.modalOrbit} />
+              <View style={styles.modalOrbitInner} />
+
+              {/* Bandera grande + icono reloj */}
+              <View style={styles.modalFlagWrapper}>
+                <Text style={styles.modalFlagBig}>
+                  {comingSoonCountry ? getFlag(comingSoonCountry.code) : ''}
+                </Text>
+                <View style={styles.modalClockBadge}>
+                  <Text style={styles.modalClockIcon}>⏳</Text>
+                </View>
+              </View>
+            </LinearGradient>
+
+            {/* Contenido del modal */}
+            <View style={styles.modalBody}>
+              {comingSoonCountry && COMING_SOON[comingSoonCountry.code] && (
+                <>
+                  <Text style={styles.modalLangBadge}>
+                    {COMING_SOON[comingSoonCountry.code].lang}
+                  </Text>
+                  <Text style={styles.modalTitle}>
+                    {COMING_SOON[comingSoonCountry.code].title}
+                  </Text>
+                  <Text style={styles.modalText}>
+                    {COMING_SOON[comingSoonCountry.code].body}
+                  </Text>
+
+                  {/* Barra de progreso animada estética */}
+                  <View style={styles.progressBar}>
+                    <LinearGradient
+                      colors={['#00c8a0', '#0099c8']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.progressFill}
+                    />
+                  </View>
+                  <Text style={styles.progressLabel}>En desarrollo · En cours de développement</Text>
+
+                  <TouchableOpacity
+                    style={styles.modalBtn}
+                    onPress={() => setComingSoonCountry(null)}
+                    activeOpacity={0.85}
+                  >
+                    <LinearGradient
+                      colors={['#00c8a0', '#0099c8']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                      style={styles.modalBtnGradient}
+                    >
+                      <Text style={styles.modalBtnText}>
+                        {COMING_SOON[comingSoonCountry.code].cta}
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                </>
+              )}
+            </View>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
+      {/* ══════════════════════════════════════════════════════ */}
 
       <SafeAreaView style={{ flex: 1 }}>
         <KeyboardAvoidingView
@@ -158,19 +244,14 @@ export default function LoginScreen() {
 
             {/* ── Cabecera ─────────────────────────────────────── */}
             <View style={styles.header}>
-              {/* Logo */}
               <View style={styles.logoWrapper}>
                 <View style={styles.logoGlow} />
                 <View style={styles.logoBox}>
                   <SpinningLogo size={64} glow={false} />
                 </View>
               </View>
-
-              {/* Nombre de la app */}
               <Text style={styles.appName}>EGChat</Text>
               <Text style={styles.appTagline}>África Central conectada</Text>
-
-              {/* Banderas CEMAC con etiqueta */}
               <View style={styles.cemacRow}>
                 <View style={styles.cemacBadge}>
                   <Text style={styles.cemacLabel}>CEMAC</Text>
@@ -186,9 +267,7 @@ export default function LoginScreen() {
             {/* ── Tarjeta del formulario ───────────────────────── */}
             <View style={[styles.card, isDark && styles.cardDark]}>
 
-              <Text style={[styles.cardTitle, { color: C.textPrimary }]}>
-                Iniciar sesión
-              </Text>
+              <Text style={[styles.cardTitle, { color: C.textPrimary }]}>Iniciar sesión</Text>
               <Text style={[styles.cardSubtitle, { color: C.textSecondary }]}>
                 Ingresa tu teléfono y contraseña
               </Text>
@@ -197,20 +276,26 @@ export default function LoginScreen() {
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>PAÍS</Text>
                 <TouchableOpacity
-                  style={[styles.countrySelector, { backgroundColor: isDark ? '#1e2d3a' : '#f5f8fa', borderColor: isDark ? '#2a3f50' : '#e2e8f0' }]}
+                  style={[styles.countrySelector, {
+                    backgroundColor: isDark ? '#1e2d3a' : '#f5f8fa',
+                    borderColor: isDark ? '#2a3f50' : '#e2e8f0',
+                  }]}
                   onPress={() => setShowCountryPicker(p => !p)}
                   activeOpacity={0.8}
                 >
                   <Text style={styles.countryFlag}>{getFlag(selectedCountry.code)}</Text>
                   <Text style={[styles.countryName, { color: C.textPrimary }]}>{selectedCountry.name}</Text>
-                  <Text style={[styles.phoneCodeBadge]}>{selectedCountry.phone}</Text>
+                  <Text style={styles.phoneCodeBadge}>{selectedCountry.phone}</Text>
                   <Text style={[styles.chevron, { color: C.textTertiary }]}>
                     {showCountryPicker ? '▲' : '▼'}
                   </Text>
                 </TouchableOpacity>
 
                 {showCountryPicker && (
-                  <View style={[styles.dropdown, { backgroundColor: isDark ? '#1a2d3a' : '#fff', borderColor: isDark ? '#2a3f50' : '#e2e8f0' }]}>
+                  <View style={[styles.dropdown, {
+                    backgroundColor: isDark ? '#1a2d3a' : '#fff',
+                    borderColor: isDark ? '#2a3f50' : '#e2e8f0',
+                  }]}>
                     {COUNTRIES.map(c => (
                       <TouchableOpacity
                         key={c.phone}
@@ -219,11 +304,22 @@ export default function LoginScreen() {
                           c.phone === countryCode && styles.dropdownItemActive,
                           { borderBottomColor: isDark ? '#2a3f50' : '#f0f4f8' },
                         ]}
-                        onPress={() => { setCountryCode(c.phone); setShowCountryPicker(false); }}
+                        onPress={() => handleSelectCountry(c)}
+                        activeOpacity={0.75}
                       >
                         <Text style={styles.countryFlag}>{getFlag(c.code)}</Text>
-                        <Text style={[styles.dropdownItemText, { color: C.textPrimary }]}>{c.name}</Text>
-                        <Text style={styles.phoneCodeBadge}>{c.phone}</Text>
+                        <View style={{ flex: 1 }}>
+                          <Text style={[styles.dropdownItemText, { color: C.textPrimary }]}>
+                            {c.name}
+                          </Text>
+                          {!c.active && (
+                            <Text style={styles.dropdownSoonLabel}>Próximamente · Bientôt</Text>
+                          )}
+                        </View>
+                        {c.active
+                          ? <Text style={styles.phoneCodeBadge}>{c.phone}</Text>
+                          : <Text style={styles.dropdownSoonBadge}>⏳</Text>
+                        }
                         {c.phone === countryCode && <Text style={styles.checkMark}>✓</Text>}
                       </TouchableOpacity>
                     ))}
@@ -235,7 +331,10 @@ export default function LoginScreen() {
               <View style={styles.fieldGroup}>
                 <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>TELÉFONO</Text>
                 <View style={styles.phoneRow}>
-                  <View style={[styles.prefix, { backgroundColor: isDark ? '#1e2d3a' : '#f5f8fa', borderColor: isDark ? '#2a3f50' : '#e2e8f0' }]}>
+                  <View style={[styles.prefix, {
+                    backgroundColor: isDark ? '#1e2d3a' : '#f5f8fa',
+                    borderColor: isDark ? '#2a3f50' : '#e2e8f0',
+                  }]}>
                     <Text style={styles.prefixFlag}>{getFlag(selectedCountry.code)}</Text>
                     <Text style={[styles.prefixCode, { color: C.textPrimary }]}>{countryCode}</Text>
                   </View>
@@ -265,7 +364,6 @@ export default function LoginScreen() {
                 autoComplete="password"
               />
 
-              {/* Error */}
               {error ? <EGErrorMessage text={error} /> : null}
 
               {/* ── Botón principal ── */}
@@ -287,7 +385,6 @@ export default function LoginScreen() {
                 </LinearGradient>
               </TouchableOpacity>
 
-              {/* Olvidé contraseña */}
               <TouchableOpacity
                 onPress={() => router.push('/(auth)/forgot-password' as any)}
                 style={styles.forgotBtn}
@@ -295,14 +392,12 @@ export default function LoginScreen() {
                 <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
               </TouchableOpacity>
 
-              {/* Separador */}
               <View style={styles.separator}>
                 <View style={[styles.separatorLine, { backgroundColor: isDark ? '#2a3f50' : '#e2e8f0' }]} />
                 <Text style={[styles.separatorText, { color: C.textTertiary }]}>o</Text>
                 <View style={[styles.separatorLine, { backgroundColor: isDark ? '#2a3f50' : '#e2e8f0' }]} />
               </View>
 
-              {/* ── Crear cuenta ── */}
               <TouchableOpacity
                 style={[styles.createBtn, { borderColor: isDark ? '#2a3f50' : '#d1d5db' }]}
                 onPress={() => router.push('/(auth)/register' as any)}
@@ -311,7 +406,6 @@ export default function LoginScreen() {
                 <Text style={[styles.createBtnText, { color: C.textPrimary }]}>Crear nueva cuenta</Text>
               </TouchableOpacity>
 
-              {/* Volver */}
               <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
                 <Text style={[styles.backText, { color: C.textTertiary }]}>← Volver al inicio</Text>
               </TouchableOpacity>
