@@ -111,7 +111,7 @@ const initialBiometricData: BiometricData = {
 };
 
 const initialFinancialData: FinancialData = {
-  profession: '', employer: '', monthlyIncomeRange: '', sourceOfFunds: [],
+  profession: '', employer: '', monthlyIncomeRange: '', sourceOfFunds: [], docExpiryDate: '',
 };
 
 const initialConsentData: ConsentData = {
