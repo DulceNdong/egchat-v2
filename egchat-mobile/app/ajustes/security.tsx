@@ -289,7 +289,10 @@ export default function SecurityScreen() {
             style={[styles.resetBtn, { backgroundColor: C.errorBg, borderColor: C.error }]}
             onPress={handleResetLimits}
           >
-            <Text style={[styles.resetBtnText, { color: C.error }]}>🔄 Resetear Contadores</Text>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <MaterialIcons name="refresh" size={18} color={C.error} />
+              <Text style={[styles.resetBtnText, { color: C.error }]}>Resetear Contadores</Text>
+            </View>
           </TouchableOpacity>
         </View>
 
