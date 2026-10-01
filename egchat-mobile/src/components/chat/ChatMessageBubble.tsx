@@ -1521,6 +1521,7 @@ export const ChatMessageBubble = React.memo(({
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
   const [popEmoji, setPopEmoji] = useState<string | null>(null);
+  const { fontScale } = useFont();
 
   // ── Animación de entrada ──────────────────────────────────────
   const entranceAnim = useRef(new Animated.Value(0)).current;
