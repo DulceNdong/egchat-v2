@@ -235,21 +235,19 @@ export async function syncTokenWithServer(expoPushToken: string) {
 // ── Escuchar notificaciones recibidas (app en primer plano) ─────────────────
 export function setupNotificationListeners(
   onMessage: (chatId: string) => void,
-  onCall: (callData: { callId: string; callerName: string; callType: string; offer?: object }) => void
+  onCall: (callData: { callId: string; callerName: string; callerAvatar?: string; callType: string; offer?: object }) => void
 ) {
   // Notificación recibida con app abierta
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data as any;
     if (data?.notificationType === 'incoming_call') {
       if (Platform.OS === 'ios') {
-        // En iOS con app abierta el sistema NO reproduce el sonido de la notif push
-        // si el handler devuelve shouldPlaySound:true, PERO el canal VoIP lo maneja
-        // aparte. Aquí solo iniciamos el ringtone de la app.
         startRingtone().catch(() => {});
       }
       onCall({
         callId: data.callId,
         callerName: data.callerName,
+        callerAvatar: data.callerAvatar || '',
         callType: data.callType || 'audio',
         offer: data.offer,
       });
