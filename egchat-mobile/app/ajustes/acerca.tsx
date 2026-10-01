@@ -130,7 +130,7 @@ export default function AcercaScreen() {
         >
           {checking
             ? <ActivityIndicator color={Colors.accent} size="small" />
-            : <Text style={styles.updateIcon}>🔄</Text>
+            : <MaterialIcons name="sync" size={22} color={Colors.accent} style={{ width: 28, textAlign: 'center' }} />
           }
           <View style={{ flex: 1 }}>
             <Text style={[styles.updateLabel, { color: C.textPrimary }]}>
