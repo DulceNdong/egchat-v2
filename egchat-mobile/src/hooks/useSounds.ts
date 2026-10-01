@@ -195,10 +195,14 @@ let ringtoneSound: Audio.Sound | null = null;
 let ringtoneInterval: ReturnType<typeof setInterval> | null = null;
 // Guard para evitar solapamiento de createAsync en el intervalo
 let ringtoneIsCreating = false;
+// Token de sesión: si cambia mientras createAsync está en vuelo, el resultado se descarta
+let ringtoneSessionToken = 0;
 
 export const startRingtone = async () => {
   await stopRingtone();
   if (Platform.OS === 'web') return;
+  // Incrementar token para esta nueva sesión de ringtone
+  const myToken = ++ringtoneSessionToken;
   try {
     const s = await getSoundSettings();
     if (s.ringtone === 'none') return;
@@ -226,7 +230,10 @@ export const startRingtone = async () => {
     const play = async () => {
       // Evitar llamadas concurrentes a createAsync
       if (ringtoneIsCreating) return;
+      // Si ya fue cancelado (stopRingtone fue llamado), no reproducir
+      if (ringtoneSessionToken !== myToken) return;
       ringtoneIsCreating = true;
+      let newSound: Audio.Sound | null = null;
       try {
         if (s.vibrationEnabled) {
           await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Warning).catch(() => {});
@@ -239,16 +246,28 @@ export const startRingtone = async () => {
           asset,
           { shouldPlay: true, volume: s.volume, isLooping: false }
         );
-        ringtoneSound = sound;
+        newSound = sound;
       } catch (e) {
         if (__DEV__) console.warn('[useSounds] startRingtone play error:', e);
       } finally {
         ringtoneIsCreating = false;
       }
+      // Si el token cambió mientras createAsync estaba en vuelo, descartar el nuevo sonido
+      if (newSound) {
+        if (ringtoneSessionToken !== myToken) {
+          await newSound.stopAsync().catch(() => {});
+          await newSound.unloadAsync().catch(() => {});
+        } else {
+          ringtoneSound = newSound;
+        }
+      }
     };
 
     await play();
-    ringtoneInterval = setInterval(play, 3000);
+    // Solo iniciar el interval si esta sesión sigue activa
+    if (ringtoneSessionToken === myToken) {
+      ringtoneInterval = setInterval(play, 3000);
+    }
   } catch {}
 };
 
