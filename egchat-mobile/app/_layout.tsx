@@ -593,7 +593,7 @@ export default function RootLayout() {
               <Stack.Screen name="djangue-add-member" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="_qr-login" options={{ presentation: 'fullScreenModal' }} />
             </Stack>
-            {checking && (
+            {checking && !isWelcomePath(pathname) && (
               <View style={st.overlay}>
                 <ActivityIndicator size="large" color={Colors.accent} />
               </View>
