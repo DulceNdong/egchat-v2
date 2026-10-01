@@ -612,10 +612,17 @@ export default function CallScreen() {
               <Text style={s.actionLabel}>Rechazar</Text>
             </View>
             <View style={s.actionCol}>
-              <TouchableOpacity style={s.acceptBtn} onPress={accept} activeOpacity={0.85}>
-                {IC.phone()}
+              <TouchableOpacity
+                style={[s.acceptBtn, isAccepting && { opacity: 0.7 }]}
+                onPress={accept}
+                disabled={isAccepting}
+                activeOpacity={0.85}
+              >
+                {isAccepting
+                  ? <ActivityIndicator color="#fff" size="small"/>
+                  : IC.phone()}
               </TouchableOpacity>
-              <Text style={s.actionLabel}>Aceptar</Text>
+              <Text style={s.actionLabel}>{isAccepting ? 'Conectando...' : 'Aceptar'}</Text>
             </View>
           </View>
         </View>
