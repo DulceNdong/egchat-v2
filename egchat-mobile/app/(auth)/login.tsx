@@ -89,6 +89,8 @@ export default function LoginScreen() {
   const [phone, setPhone]             = useState('');
   const [password, setPassword]       = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
+  // Modal "próximamente" para países sin acceso
+  const [comingSoonCountry, setComingSoonCountry] = useState<typeof COUNTRIES[0] | null>(null);
 
   const { login, isLoading, error, clearError } = useAuth();
   const { isDark } = useThemeContext();
@@ -116,6 +118,16 @@ export default function LoginScreen() {
   useEffect(() => {
     AsyncStorage.setItem(LOGIN_DRAFT_KEY, JSON.stringify({ countryCode, phone, password })).catch(() => {});
   }, [countryCode, phone, password]);
+
+  // Manejar selección de país: si no está activo, mostrar modal próximamente
+  const handleSelectCountry = (c: typeof COUNTRIES[0]) => {
+    setShowCountryPicker(false);
+    if (!c.active) {
+      setComingSoonCountry(c);
+    } else {
+      setCountryCode(c.phone);
+    }
+  };
 
   return (
     <View style={styles.root}>
