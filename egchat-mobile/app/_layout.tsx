@@ -460,6 +460,7 @@ export default function RootLayout() {
                   },
                   (callData) => router.push({ pathname: '/call/[callId]', params: {
                     callId: callData.callId, targetName: callData.callerName,
+                    targetAvatar: callData.callerAvatar || '',
                     callType: callData.callType || 'audio', role: 'callee',
                     offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
                   }} as any),
