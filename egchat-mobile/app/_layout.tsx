@@ -357,6 +357,22 @@ export default function RootLayout() {
         try {
           if (!me?.id || !mounted) return;
 
+          // ── Llamada pendiente (app estaba cerrada cuando llegó la llamada) ──
+          // Se comprueba ANTES de cualquier delay para no perder la llamada.
+          if (Platform.OS === 'android') {
+            consumePendingCall().then(pending => {
+              if (!pending || !mounted) return;
+              router.push({ pathname: '/call/[callId]', params: {
+                callId: pending.callId,
+                targetName: pending.callerName,
+                targetAvatar: pending.callerAvatar || '',
+                callType: pending.callType || 'audio',
+                role: 'callee',
+                offer: pending.offer ? JSON.stringify(pending.offer) : undefined,
+              }} as any);
+            }).catch(() => {});
+          }
+
           // En equipos Android de gama media/baja, iniciar SSE, presencia y
           // notificaciones durante los primeros segundos satura el hilo JS y
           // hace que las transiciones parezcan bloqueadas. La interfaz ya está
