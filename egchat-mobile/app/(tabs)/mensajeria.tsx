@@ -1113,6 +1113,7 @@ function MensajeriaScreenInner() {
                   chat={item}
                   currentUserId={currentUserId}
                   staticRow
+                  fontScale={fontScale}
                   onLongPress={() => handleChatLongPress(item)}
                   contentTypes={(() => {
                     // Obtener userId del contacto (solo chats privados)
