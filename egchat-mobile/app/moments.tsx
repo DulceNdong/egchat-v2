@@ -23,6 +23,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
 import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 import { notifyNewMoment } from '../src/notifications';
+import { MomentImageViewer, type MomentViewerPost } from '../src/components/MomentImageViewer';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface MomentPost {
