@@ -93,6 +93,9 @@ function LocalizedAppContent({ children }: { children: React.ReactNode }) {
   return <React.Fragment key={language}>{children}</React.Fragment>;
 }
 
+// Welcome es ruta especial — nunca se interrumpe con redirects
+const isWelcomePath = (path: string) => path === '/welcome';
+
 const isAuthPath = (path: string) =>
   path.startsWith('/(auth)')
   || path === '/login'
