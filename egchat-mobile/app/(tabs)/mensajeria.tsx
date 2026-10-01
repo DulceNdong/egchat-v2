@@ -562,14 +562,6 @@ function MensajeriaScreenInner() {
     };
   }, [currentUserId, debouncedLoadChats]);
 
-    return () => {
-      clearTimeout(subscribeTimer);
-      unsub?.();
-      clearTimeout(realtimeCheck);
-      if (pollInterval) clearInterval(pollInterval);
-    };
-  }, [currentUserId]);
-
   // Cuando el usuario actual cambia su avatar/nombre, actualizar su participante en todos los chats
   useEffect(() => {
     return onProfileUpdated(patch => {
