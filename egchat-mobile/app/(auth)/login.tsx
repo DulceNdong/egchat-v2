@@ -9,6 +9,8 @@ import {
   StyleSheet,
   Dimensions,
   StatusBar,
+  Modal,
+  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -25,15 +27,52 @@ import { useTranslation } from '../../src/context/LanguageContext';
 
 const { width, height } = Dimensions.get('window');
 
-// ── Solo países CEMAC (África Central) ─────────────────────────────
+// ── Países CEMAC ────────────────────────────────────────────────────
+// Solo GQ tiene acceso. Los demás muestran el modal "próximamente".
 const COUNTRIES = [
-  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240' },
-  { code: 'CM', name: 'Camerún',           phone: '+237' },
-  { code: 'GA', name: 'Gabón',             phone: '+241' },
-  { code: 'CG', name: 'Congo',             phone: '+242' },
-  { code: 'CF', name: 'R. Centroafricana', phone: '+236' },
-  { code: 'TD', name: 'Chad',              phone: '+235' },
+  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240', active: true  },
+  { code: 'CM', name: 'Cameroun',          phone: '+237', active: false },
+  { code: 'GA', name: 'Gabon',             phone: '+241', active: false },
+  { code: 'CG', name: 'Congo',             phone: '+242', active: false },
+  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236',active: false },
+  { code: 'TD', name: 'Tchad',             phone: '+235', active: false },
 ];
+
+// Mensaje "próximamente" en el idioma principal de cada país
+const COMING_SOON: Record<string, {
+  lang: string; title: string; body: string; cta: string;
+}> = {
+  CM: {
+    lang: 'Français',
+    title: '🚀 Bientôt disponible au Cameroun',
+    body: 'EGChat arrive bientôt dans votre pays ! Nous travaillons dur pour vous offrir la meilleure expérience de messagerie et de services financiers en Afrique Centrale. Restez connectés — votre tour arrive très bientôt.',
+    cta: 'Compris !',
+  },
+  GA: {
+    lang: 'Français',
+    title: '🚀 Bientôt disponible au Gabon',
+    body: 'EGChat arrive bientôt dans votre pays ! Nous travaillons dur pour vous offrir la meilleure expérience de messagerie et de services financiers en Afrique Centrale. Restez connectés — votre tour arrive très bientôt.',
+    cta: 'Compris !',
+  },
+  CG: {
+    lang: 'Français',
+    title: '🚀 Bientôt disponible au Congo',
+    body: 'EGChat arrive bientôt dans votre pays ! Nous travaillons dur pour vous offrir la meilleure expérience de messagerie et de services financiers en Afrique Centrale. Restez connectés — votre tour arrive très bientôt.',
+    cta: 'Compris !',
+  },
+  CF: {
+    lang: 'Français',
+    title: '🚀 Bientôt disponible en R.C.A.',
+    body: 'EGChat arrive bientôt dans votre pays ! Nous travaillons dur pour vous offrir la meilleure expérience de messagerie et de services financiers en Afrique Centrale. Restez connectés — votre tour arrive très bientôt.',
+    cta: 'Compris !',
+  },
+  TD: {
+    lang: 'Français / عربية',
+    title: '🚀 قريباً في تشاد · Bientôt au Tchad',
+    body: 'EGChat قادم قريباً إلى بلدك! نحن نعمل بجد لنقدم لك أفضل تجربة مراسلة وخدمات مالية في وسط أفريقيا.\n\nEGChat arrive bientôt au Tchad ! Nous travaillons dur pour vous offrir la meilleure expérience.',
+    cta: 'حسناً · D\'accord !',
+  },
+};
 
 // Banderas CEMAC en orden
 const CEMAC_FLAGS = ['GQ', 'CM', 'GA', 'CG', 'CF', 'TD'];
