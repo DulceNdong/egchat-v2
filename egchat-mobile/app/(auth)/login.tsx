@@ -11,37 +11,34 @@ import {
   StatusBar,
   Modal,
   Pressable,
+  TextInput,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
+import Svg, { Path, Circle, Line } from 'react-native-svg';
 import { router } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
-import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
+import { EGErrorMessage } from '../../src/components/ui';
 import { useAuth } from '../../src/hooks/useAuth';
-import { authAPI } from '../../src/api';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
 import { useTranslation } from '../../src/context/LanguageContext';
 
-const { width, height } = Dimensions.get('window');
+const { width } = Dimensions.get('window');
 
-// ── Países CEMAC ────────────────────────────────────────────────────
-// Solo GQ tiene acceso. Los demás muestran el modal "próximamente".
+// ── Países CEMAC — solo GQ activo ───────────────────────────────────
 const COUNTRIES = [
   { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240', active: true  },
-  { code: 'CM', name: 'Cameroun',          phone: '+237', active: false },
-  { code: 'GA', name: 'Gabon',             phone: '+241', active: false },
-  { code: 'CG', name: 'Congo',             phone: '+242', active: false },
-  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236',active: false },
-  { code: 'TD', name: 'Tchad',             phone: '+235', active: false },
+  { code: 'CM', name: 'Cameroun',           phone: '+237', active: false },
+  { code: 'GA', name: 'Gabon',              phone: '+241', active: false },
+  { code: 'CG', name: 'Congo',              phone: '+242', active: false },
+  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236', active: false },
+  { code: 'TD', name: 'Tchad',              phone: '+235', active: false },
 ];
 
-// Mensaje "próximamente" en el idioma principal de cada país
-const COMING_SOON: Record<string, {
-  lang: string; title: string; body: string; cta: string;
-}> = {
+const COMING_SOON: Record<string, { lang: string; title: string; body: string; cta: string }> = {
   CM: {
     lang: 'Français',
     title: '🚀 Bientôt disponible au Cameroun',
@@ -70,38 +67,108 @@ const COMING_SOON: Record<string, {
     lang: 'Français / عربية',
     title: '🚀 قريباً في تشاد · Bientôt au Tchad',
     body: 'EGChat قادم قريباً إلى بلدك! نحن نعمل بجد لنقدم لك أفضل تجربة مراسلة وخدمات مالية في وسط أفريقيا.\n\nEGChat arrive bientôt au Tchad ! Nous travaillons dur pour vous offrir la meilleure expérience.',
-    cta: 'حسناً · D\'accord !',
+    cta: "حسناً · D'accord !",
   },
 };
 
-// Banderas CEMAC en orden
 const CEMAC_FLAGS = ['GQ', 'CM', 'GA', 'CG', 'CF', 'TD'];
 
 const getFlag = (code: string) =>
-  String.fromCodePoint(
-    ...code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0))
-  );
+  String.fromCodePoint(...code.toUpperCase().split('').map(c => 127397 + c.charCodeAt(0)));
 
 const LOGIN_DRAFT_KEY = 'egchat_login_draft_v1';
 
+// ── Icono ojo SVG profesional ────────────────────────────────────────
+const EyeIcon = ({ visible, color = '#94a3b8' }: { visible: boolean; color?: string }) =>
+  visible ? (
+    // Ojo abierto — feather "eye"
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <Circle cx="12" cy="12" r="3" />
+    </Svg>
+  ) : (
+    // Ojo tachado — feather "eye-off"
+    <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+      <Path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
+      <Path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
+      <Path d="M14.12 14.12a3 3 0 1 1-4.24-4.24" />
+      <Line x1="1" y1="1" x2="23" y2="23" />
+    </Svg>
+  );
+
+// ── Input propio compacto ────────────────────────────────────────────
+const Field = ({
+  label, value, onChangeText, placeholder, keyboardType, secure,
+  autoCapitalize, autoCorrect, autoComplete, onSubmit, isDark,
+}: {
+  label: string; value: string; onChangeText: (v: string) => void;
+  placeholder: string; keyboardType?: any; secure?: boolean;
+  autoCapitalize?: any; autoCorrect?: boolean; autoComplete?: any;
+  onSubmit?: () => void; isDark: boolean;
+}) => {
+  const [hidden, setHidden] = useState(true);
+  const bg     = isDark ? '#1e2d3a' : '#f8fafc';
+  const border = isDark ? '#2a3f50' : '#e2e8f0';
+  const text   = isDark ? '#e2e8f0' : '#0f172a';
+  const ph     = isDark ? '#4a6070' : '#b0bcc8';
+
+  return (
+    <View style={f.wrap}>
+      <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>{label}</Text>
+      <View style={[f.box, { backgroundColor: bg, borderColor: border }]}>
+        <TextInput
+          value={value}
+          onChangeText={onChangeText}
+          placeholder={placeholder}
+          placeholderTextColor={ph}
+          keyboardType={keyboardType}
+          secureTextEntry={secure && hidden}
+          autoCapitalize={autoCapitalize || 'none'}
+          autoCorrect={autoCorrect ?? false}
+          autoComplete={autoComplete}
+          onSubmitEditing={onSubmit}
+          returnKeyType={onSubmit ? 'done' : 'next'}
+          style={[f.input, { color: text }]}
+        />
+        {secure && (
+          <TouchableOpacity
+            onPress={() => setHidden(h => !h)}
+            style={f.eyeBtn}
+            hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
+          >
+            <EyeIcon visible={!hidden} color={isDark ? '#4a6a80' : '#94a3b8'} />
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+};
+
+const f = StyleSheet.create({
+  wrap:   { marginBottom: 10 },
+  label:  { fontSize: 10, fontWeight: '700', letterSpacing: 0.9, marginBottom: 5 },
+  box:    { flexDirection: 'row', alignItems: 'center', borderWidth: 1.5, borderRadius: 12, height: 44, paddingHorizontal: 12 },
+  input:  { flex: 1, fontSize: 14, fontWeight: '500', paddingVertical: 0 },
+  eyeBtn: { paddingLeft: 8 },
+});
+
+// ════════════════════════════════════════════════════════════════════
 export default function LoginScreen() {
-  const [countryCode, setCountryCode] = useState('+240');
-  const [phone, setPhone]             = useState('');
-  const [password, setPassword]       = useState('');
+  const [countryCode, setCountryCode]             = useState('+240');
+  const [phone, setPhone]                         = useState('');
+  const [password, setPassword]                   = useState('');
   const [showCountryPicker, setShowCountryPicker] = useState(false);
-  // Modal "próximamente" para países sin acceso
   const [comingSoonCountry, setComingSoonCountry] = useState<typeof COUNTRIES[0] | null>(null);
 
-  const { login, isLoading, error, clearError } = useAuth();
-  const { isDark } = useThemeContext();
-  const { t }      = useTranslation();
-  const C          = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { login, isLoading, error } = useAuth();
+  const { isDark }                  = useThemeContext();
+  const { t }                       = useTranslation();
+  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const selectedCountry = COUNTRIES.find(c => c.phone === countryCode) || COUNTRIES[0];
   const fullPhone       = countryCode + phone.replace(/\s/g, '');
   const doLogin         = () => login(fullPhone, password);
 
-  // Persist draft
   useEffect(() => {
     (async () => {
       try {
@@ -119,785 +186,456 @@ export default function LoginScreen() {
     AsyncStorage.setItem(LOGIN_DRAFT_KEY, JSON.stringify({ countryCode, phone, password })).catch(() => {});
   }, [countryCode, phone, password]);
 
-  // Manejar selección de país: si no está activo, mostrar modal próximamente
   const handleSelectCountry = (c: typeof COUNTRIES[0]) => {
     setShowCountryPicker(false);
-    if (!c.active) {
-      setComingSoonCountry(c);
-    } else {
-      setCountryCode(c.phone);
-    }
+    if (!c.active) { setComingSoonCountry(c); } else { setCountryCode(c.phone); }
   };
 
+  const cardBg     = isDark ? '#0d1b26' : '#ffffff';
+  const fieldBg    = isDark ? '#1e2d3a' : '#f8fafc';
+  const fieldBdr   = isDark ? '#2a3f50' : '#e2e8f0';
+
   return (
-    <View style={styles.root}>
+    <View style={s.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent" />
 
-      {/* ── Fondo degradado ─────────────────────────────────── */}
+      {/* Fondo gradiente */}
       <LinearGradient
-        colors={['#00c8a0', '#00a0c8', '#0070c8']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
+        colors={['#00c8a0', '#0099c8', '#0060b8']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
         style={StyleSheet.absoluteFill}
       />
+      <View style={s.circleA} />
+      <View style={s.circleB} />
 
-      {/* Círculos decorativos */}
-      <View style={styles.circleTopRight} />
-      <View style={styles.circleBottomLeft} />
-
-      {/* ══════════════════════════════════════════════════════
-          MODAL "PRÓXIMAMENTE" — países sin acceso
-      ══════════════════════════════════════════════════════ */}
-      <Modal
-        visible={!!comingSoonCountry}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setComingSoonCountry(null)}
-      >
-        <Pressable
-          style={styles.modalOverlay}
-          onPress={() => setComingSoonCountry(null)}
-        >
-          <Pressable style={styles.modalCard} onPress={() => {}}>
-            {/* Gradiente superior del modal */}
-            <LinearGradient
-              colors={['#00c8a0', '#0099c8']}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
-              style={styles.modalGradientTop}
-            >
-              {/* Órbita decorativa */}
-              <View style={styles.modalOrbit} />
-              <View style={styles.modalOrbitInner} />
-
-              {/* Bandera grande + icono reloj */}
-              <View style={styles.modalFlagWrapper}>
-                <Text style={styles.modalFlagBig}>
-                  {comingSoonCountry ? getFlag(comingSoonCountry.code) : ''}
-                </Text>
-                <View style={styles.modalClockBadge}>
-                  <Text style={styles.modalClockIcon}>⏳</Text>
-                </View>
+      {/* ── MODAL PRÓXIMAMENTE ─────────────────────────────── */}
+      <Modal visible={!!comingSoonCountry} transparent animationType="fade"
+        onRequestClose={() => setComingSoonCountry(null)}>
+        <Pressable style={s.modalOverlay} onPress={() => setComingSoonCountry(null)}>
+          <Pressable style={s.modalCard} onPress={() => {}}>
+            <LinearGradient colors={['#00c8a0', '#0099c8']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+              style={s.modalTop}>
+              <View style={s.mOrbit1} /><View style={s.mOrbit2} />
+              <View style={s.mFlagWrap}>
+                <Text style={s.mFlag}>{comingSoonCountry ? getFlag(comingSoonCountry.code) : ''}</Text>
+                <View style={s.mClockBadge}><Text style={{ fontSize: 14 }}>⏳</Text></View>
               </View>
             </LinearGradient>
-
-            {/* Contenido del modal */}
-            <View style={styles.modalBody}>
-              {comingSoonCountry && COMING_SOON[comingSoonCountry.code] && (
-                <>
-                  <Text style={styles.modalLangBadge}>
-                    {COMING_SOON[comingSoonCountry.code].lang}
-                  </Text>
-                  <Text style={styles.modalTitle}>
-                    {COMING_SOON[comingSoonCountry.code].title}
-                  </Text>
-                  <Text style={styles.modalText}>
-                    {COMING_SOON[comingSoonCountry.code].body}
-                  </Text>
-
-                  {/* Barra de progreso animada estética */}
-                  <View style={styles.progressBar}>
-                    <LinearGradient
-                      colors={['#00c8a0', '#0099c8']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.progressFill}
-                    />
-                  </View>
-                  <Text style={styles.progressLabel}>En desarrollo · En cours de développement</Text>
-
-                  <TouchableOpacity
-                    style={styles.modalBtn}
-                    onPress={() => setComingSoonCountry(null)}
-                    activeOpacity={0.85}
-                  >
-                    <LinearGradient
-                      colors={['#00c8a0', '#0099c8']}
-                      start={{ x: 0, y: 0 }}
-                      end={{ x: 1, y: 0 }}
-                      style={styles.modalBtnGradient}
-                    >
-                      <Text style={styles.modalBtnText}>
-                        {COMING_SOON[comingSoonCountry.code].cta}
-                      </Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-                </>
-              )}
+            <View style={s.modalBody}>
+              {comingSoonCountry && COMING_SOON[comingSoonCountry.code] && (() => {
+                const cs = COMING_SOON[comingSoonCountry.code];
+                return (
+                  <>
+                    <Text style={s.mLangBadge}>{cs.lang}</Text>
+                    <Text style={s.mTitle}>{cs.title}</Text>
+                    <Text style={s.mText}>{cs.body}</Text>
+                    <View style={s.mProgressTrack}>
+                      <LinearGradient colors={['#00c8a0','#0099c8']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mProgressFill} />
+                    </View>
+                    <Text style={s.mProgressLabel}>En desarrollo · En cours de développement</Text>
+                    <TouchableOpacity style={s.mBtn} onPress={() => setComingSoonCountry(null)} activeOpacity={0.85}>
+                      <LinearGradient colors={['#00c8a0','#0099c8']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mBtnGrad}>
+                        <Text style={s.mBtnText}>{cs.cta}</Text>
+                      </LinearGradient>
+                    </TouchableOpacity>
+                  </>
+                );
+              })()}
             </View>
           </Pressable>
         </Pressable>
       </Modal>
 
-      {/* ══════════════════════════════════════════════════════ */}
+      {/* ── ZONA ESTÁTICA: logo + nombre + banderas ─────────── */}
+      <SafeAreaView style={s.staticZone} pointerEvents="box-none">
+        {/* Logo: círculo verde con logo llenando todo */}
+        <View style={s.logoRing}>
+          <SpinningLogo size={90} glow={false} />
+        </View>
 
-      <SafeAreaView style={{ flex: 1 }}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        <Text style={s.appName}>EGChat</Text>
+        <Text style={s.appTagline}>África Central conectada</Text>
+
+        {/* Banderas CEMAC — más grandes */}
+        <View style={s.cemacBadge}>
+          <Text style={s.cemacLabel}>CEMAC</Text>
+          <View style={s.flagsRow}>
+            {CEMAC_FLAGS.map(code => (
+              <Text key={code} style={s.flag}>{getFlag(code)}</Text>
+            ))}
+          </View>
+        </View>
+      </SafeAreaView>
+
+      {/* ── ZONA SCROLL: formulario ─────────────────────────── */}
+      <KeyboardAvoidingView
+        style={s.kvFlex}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      >
+        <ScrollView
+          contentContainerStyle={s.scroll}
+          keyboardShouldPersistTaps="handled"
+          showsVerticalScrollIndicator={false}
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            keyboardShouldPersistTaps="handled"
-            showsVerticalScrollIndicator={false}
-          >
+          {/* Espaciador para empujar la tarjeta hacia abajo */}
+          <View style={s.spacer} />
 
-            {/* ── Cabecera ─────────────────────────────────────── */}
-            <View style={styles.header}>
-              <View style={styles.logoWrapper}>
-                <View style={styles.logoGlow} />
-                <View style={styles.logoBox}>
-                  <SpinningLogo size={64} glow={false} />
-                </View>
-              </View>
-              <Text style={styles.appName}>EGChat</Text>
-              <Text style={styles.appTagline}>África Central conectada</Text>
-              <View style={styles.cemacRow}>
-                <View style={styles.cemacBadge}>
-                  <Text style={styles.cemacLabel}>CEMAC</Text>
-                  <View style={styles.flagsRow}>
-                    {CEMAC_FLAGS.map(code => (
-                      <Text key={code} style={styles.flag}>{getFlag(code)}</Text>
-                    ))}
-                  </View>
-                </View>
-              </View>
-            </View>
+          {/* ── Tarjeta ────────────────────────────────────── */}
+          <View style={[s.card, { backgroundColor: cardBg }]}>
 
-            {/* ── Tarjeta del formulario ───────────────────────── */}
-            <View style={[styles.card, isDark && styles.cardDark]}>
+            <Text style={[s.cardTitle, { color: C.textPrimary }]}>Iniciar sesión</Text>
+            <Text style={[s.cardSub, { color: C.textSecondary }]}>Ingresa tu teléfono y contraseña</Text>
 
-              <Text style={[styles.cardTitle, { color: C.textPrimary }]}>Iniciar sesión</Text>
-              <Text style={[styles.cardSubtitle, { color: C.textSecondary }]}>
-                Ingresa tu teléfono y contraseña
-              </Text>
-
-              {/* ── Selector de país ── */}
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>PAÍS</Text>
-                <TouchableOpacity
-                  style={[styles.countrySelector, {
-                    backgroundColor: isDark ? '#1e2d3a' : '#f5f8fa',
-                    borderColor: isDark ? '#2a3f50' : '#e2e8f0',
-                  }]}
-                  onPress={() => setShowCountryPicker(p => !p)}
-                  activeOpacity={0.8}
-                >
-                  <Text style={styles.countryFlag}>{getFlag(selectedCountry.code)}</Text>
-                  <Text style={[styles.countryName, { color: C.textPrimary }]}>{selectedCountry.name}</Text>
-                  <Text style={styles.phoneCodeBadge}>{selectedCountry.phone}</Text>
-                  <Text style={[styles.chevron, { color: C.textTertiary }]}>
-                    {showCountryPicker ? '▲' : '▼'}
-                  </Text>
-                </TouchableOpacity>
-
-                {showCountryPicker && (
-                  <View style={[styles.dropdown, {
-                    backgroundColor: isDark ? '#1a2d3a' : '#fff',
-                    borderColor: isDark ? '#2a3f50' : '#e2e8f0',
-                  }]}>
-                    {COUNTRIES.map(c => (
-                      <TouchableOpacity
-                        key={c.phone}
-                        style={[
-                          styles.dropdownItem,
-                          c.phone === countryCode && styles.dropdownItemActive,
-                          { borderBottomColor: isDark ? '#2a3f50' : '#f0f4f8' },
-                        ]}
-                        onPress={() => handleSelectCountry(c)}
-                        activeOpacity={0.75}
-                      >
-                        <Text style={styles.countryFlag}>{getFlag(c.code)}</Text>
-                        <View style={{ flex: 1 }}>
-                          <Text style={[styles.dropdownItemText, { color: C.textPrimary }]}>
-                            {c.name}
-                          </Text>
-                          {!c.active && (
-                            <Text style={styles.dropdownSoonLabel}>Próximamente · Bientôt</Text>
-                          )}
-                        </View>
-                        {c.active
-                          ? <Text style={styles.phoneCodeBadge}>{c.phone}</Text>
-                          : <Text style={styles.dropdownSoonBadge}>⏳</Text>
-                        }
-                        {c.phone === countryCode && <Text style={styles.checkMark}>✓</Text>}
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
-              </View>
-
-              {/* ── Teléfono ── */}
-              <View style={styles.fieldGroup}>
-                <Text style={[styles.fieldLabel, { color: C.textTertiary }]}>TELÉFONO</Text>
-                <View style={styles.phoneRow}>
-                  <View style={[styles.prefix, {
-                    backgroundColor: isDark ? '#1e2d3a' : '#f5f8fa',
-                    borderColor: isDark ? '#2a3f50' : '#e2e8f0',
-                  }]}>
-                    <Text style={styles.prefixFlag}>{getFlag(selectedCountry.code)}</Text>
-                    <Text style={[styles.prefixCode, { color: C.textPrimary }]}>{countryCode}</Text>
-                  </View>
-                  <EGInput
-                    value={phone}
-                    onChangeText={setPhone}
-                    placeholder="222 XXX XXX"
-                    keyboardType="phone-pad"
-                    autoCapitalize="none"
-                    autoCorrect={false}
-                    autoComplete="tel"
-                    containerStyle={styles.phoneInput}
-                  />
-                </View>
-              </View>
-
-              {/* ── Contraseña ── */}
-              <EGInput
-                label="CONTRASEÑA"
-                value={password}
-                onChangeText={setPassword}
-                showPasswordToggle
-                onSubmitEditing={doLogin}
-                returnKeyType="done"
-                autoCapitalize="none"
-                autoCorrect={false}
-                autoComplete="password"
-              />
-
-              {error ? <EGErrorMessage text={error} /> : null}
-
-              {/* ── Botón principal ── */}
+            {/* País */}
+            <View style={f.wrap}>
+              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>PAÍS</Text>
               <TouchableOpacity
-                style={[styles.loginBtn, isLoading && styles.loginBtnDisabled]}
-                onPress={doLogin}
-                activeOpacity={0.85}
-                disabled={isLoading}
-              >
-                <LinearGradient
-                  colors={['#00c8a0', '#0099c8']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={styles.loginBtnGradient}
-                >
-                  <Text style={styles.loginBtnText}>
-                    {isLoading ? 'Iniciando...' : 'Iniciar sesión'}
-                  </Text>
-                </LinearGradient>
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                onPress={() => router.push('/(auth)/forgot-password' as any)}
-                style={styles.forgotBtn}
-              >
-                <Text style={styles.forgotText}>¿Olvidaste tu contraseña?</Text>
-              </TouchableOpacity>
-
-              <View style={styles.separator}>
-                <View style={[styles.separatorLine, { backgroundColor: isDark ? '#2a3f50' : '#e2e8f0' }]} />
-                <Text style={[styles.separatorText, { color: C.textTertiary }]}>o</Text>
-                <View style={[styles.separatorLine, { backgroundColor: isDark ? '#2a3f50' : '#e2e8f0' }]} />
-              </View>
-
-              <TouchableOpacity
-                style={[styles.createBtn, { borderColor: isDark ? '#2a3f50' : '#d1d5db' }]}
-                onPress={() => router.push('/(auth)/register' as any)}
+                style={[s.countryBox, { backgroundColor: fieldBg, borderColor: fieldBdr }]}
+                onPress={() => setShowCountryPicker(p => !p)}
                 activeOpacity={0.8}
               >
-                <Text style={[styles.createBtnText, { color: C.textPrimary }]}>Crear nueva cuenta</Text>
+                <Text style={s.cFlag}>{getFlag(selectedCountry.code)}</Text>
+                <Text style={[s.cName, { color: C.textPrimary }]}>{selectedCountry.name}</Text>
+                <Text style={s.cBadge}>{selectedCountry.phone}</Text>
+                <Text style={[s.cChevron, { color: isDark ? '#4a6a80' : '#b0bcc8' }]}>
+                  {showCountryPicker ? '▲' : '▼'}
+                </Text>
               </TouchableOpacity>
 
-              <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
-                <Text style={[styles.backText, { color: C.textTertiary }]}>← Volver al inicio</Text>
-              </TouchableOpacity>
+              {showCountryPicker && (
+                <View style={[s.dropdown, { backgroundColor: isDark ? '#0d1b26' : '#fff', borderColor: fieldBdr }]}>
+                  {COUNTRIES.map(c => (
+                    <TouchableOpacity
+                      key={c.phone}
+                      style={[s.ddItem, c.phone === countryCode && s.ddItemActive,
+                        { borderBottomColor: isDark ? '#1e2d3a' : '#f0f4f8' }]}
+                      onPress={() => handleSelectCountry(c)}
+                      activeOpacity={0.75}
+                    >
+                      <Text style={s.cFlag}>{getFlag(c.code)}</Text>
+                      <View style={{ flex: 1 }}>
+                        <Text style={[s.ddItemText, { color: C.textPrimary }]}>{c.name}</Text>
+                        {!c.active && <Text style={s.ddSoonText}>Próximamente · Bientôt</Text>}
+                      </View>
+                      {c.active
+                        ? <Text style={s.cBadge}>{c.phone}</Text>
+                        : <Text style={{ fontSize: 14 }}>⏳</Text>}
+                      {c.phone === countryCode && <Text style={s.ddCheck}>✓</Text>}
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              )}
             </View>
 
-          </ScrollView>
-        </KeyboardAvoidingView>
-      </SafeAreaView>
+            {/* Teléfono */}
+            <View style={[f.wrap, { marginBottom: 10 }]}>
+              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>TELÉFONO</Text>
+              <View style={[f.box, { backgroundColor: fieldBg, borderColor: fieldBdr, paddingHorizontal: 0 }]}>
+                {/* Prefijo */}
+                <View style={[s.prefixBox, { backgroundColor: isDark ? '#162330' : '#eef2f7', borderColor: fieldBdr }]}>
+                  <Text style={{ fontSize: 14 }}>{getFlag(selectedCountry.code)}</Text>
+                  <Text style={[s.prefixText, { color: C.textPrimary }]}>{countryCode}</Text>
+                </View>
+                <TextInput
+                  value={phone}
+                  onChangeText={setPhone}
+                  placeholder="222 XXX XXX"
+                  placeholderTextColor={isDark ? '#4a6070' : '#b0bcc8'}
+                  keyboardType="phone-pad"
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  autoComplete="tel"
+                  style={[f.input, { color: isDark ? '#e2e8f0' : '#0f172a', paddingHorizontal: 12 }]}
+                />
+              </View>
+            </View>
+
+            {/* Contraseña — input propio con ojo SVG */}
+            <Field
+              label="CONTRASEÑA"
+              value={password}
+              onChangeText={setPassword}
+              placeholder="••••••••"
+              secure
+              onSubmit={doLogin}
+              isDark={isDark}
+            />
+
+            {error ? (
+              <View style={s.errBox}>
+                <Text style={s.errText}>{error}</Text>
+              </View>
+            ) : null}
+
+            {/* Botón iniciar sesión */}
+            <TouchableOpacity
+              style={[s.loginBtn, isLoading && { opacity: 0.7 }]}
+              onPress={doLogin}
+              activeOpacity={0.85}
+              disabled={isLoading}
+            >
+              <LinearGradient
+                colors={['#00c8a0', '#0099c8']}
+                start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+                style={s.loginGrad}
+              >
+                <Text style={s.loginText}>{isLoading ? 'Iniciando...' : 'Iniciar sesión'}</Text>
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Olvidé contraseña */}
+            <TouchableOpacity
+              onPress={() => router.push('/(auth)/forgot-password' as any)}
+              style={s.forgotBtn}
+            >
+              <Text style={s.forgotText}>¿Olvidaste tu contraseña?</Text>
+            </TouchableOpacity>
+
+            {/* Separador */}
+            <View style={s.sep}>
+              <View style={[s.sepLine, { backgroundColor: isDark ? '#1e2d3a' : '#e2e8f0' }]} />
+              <Text style={[s.sepText, { color: isDark ? '#3a5060' : '#cbd5e1' }]}>o</Text>
+              <View style={[s.sepLine, { backgroundColor: isDark ? '#1e2d3a' : '#e2e8f0' }]} />
+            </View>
+
+            {/* Crear cuenta */}
+            <TouchableOpacity
+              style={[s.createBtn, { borderColor: isDark ? '#2a3f50' : '#e2e8f0' }]}
+              onPress={() => router.push('/(auth)/register' as any)}
+              activeOpacity={0.8}
+            >
+              <Text style={[s.createText, { color: C.textPrimary }]}>Crear nueva cuenta</Text>
+            </TouchableOpacity>
+
+            {/* Volver */}
+            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+              <Text style={[s.backText, { color: isDark ? '#3a5060' : '#94a3b8' }]}>← Volver al inicio</Text>
+            </TouchableOpacity>
+
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: {
-    flex: 1,
-    backgroundColor: '#00c8a0',
+// ── StyleSheet principal ─────────────────────────────────────────────
+const HEADER_H = 220; // altura reservada para la zona estática del header
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#00c8a0' },
+
+  // Decoración
+  circleA: {
+    position: 'absolute', top: -width * 0.25, right: -width * 0.2,
+    width: width * 0.7, height: width * 0.7, borderRadius: width * 0.35,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  circleB: {
+    position: 'absolute', bottom: height * 0.38, left: -width * 0.2,
+    width: width * 0.55, height: width * 0.55, borderRadius: width * 0.275,
+    backgroundColor: 'rgba(255,255,255,0.05)',
   },
 
-  // ── Decoración de fondo ──────────────────────────────────────────
-  circleTopRight: {
+  // ── Zona estática (header) ───────────────────────────────────────
+  staticZone: {
     position: 'absolute',
-    top: -width * 0.3,
-    right: -width * 0.25,
-    width: width * 0.75,
-    height: width * 0.75,
-    borderRadius: width * 0.375,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-  },
-  circleBottomLeft: {
-    position: 'absolute',
-    bottom: -width * 0.2,
-    left: -width * 0.2,
-    width: width * 0.65,
-    height: width * 0.65,
-    borderRadius: width * 0.325,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-
-  scroll: {
-    flexGrow: 1,
-    paddingBottom: 40,
-  },
-
-  // ── Header ───────────────────────────────────────────────────────
-  header: {
+    top: 0, left: 0, right: 0,
+    height: HEADER_H,
     alignItems: 'center',
-    paddingTop: 32,
-    paddingBottom: 28,
-    paddingHorizontal: 24,
-    gap: 8,
+    justifyContent: 'flex-end',
+    paddingBottom: 16,
+    gap: 6,
+    zIndex: 1,
   },
-  logoWrapper: {
-    position: 'relative',
+
+  // Logo: círculo verde que llena el espacio y el logo ocupa todo
+  logoRing: {
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    backgroundColor: '#00e0b0',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: 4,
-  },
-  logoGlow: {
-    position: 'absolute',
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    backgroundColor: 'rgba(255,255,255,0.2)',
-  },
-  logoBox: {
-    width: 84,
-    height: 84,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.95)',
-    alignItems: 'center',
-    justifyContent: 'center',
+    overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.22,
     shadowRadius: 16,
     elevation: 12,
+    borderWidth: 2.5,
+    borderColor: 'rgba(255,255,255,0.35)',
+    marginBottom: 2,
   },
+
   appName: {
-    fontSize: 32,
+    fontSize: 28,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 1,
-    textShadowColor: 'rgba(0,0,0,0.15)',
+    letterSpacing: 0.8,
+    textShadowColor: 'rgba(0,0,0,0.12)',
     textShadowOffset: { width: 0, height: 2 },
     textShadowRadius: 4,
   },
   appTagline: {
-    fontSize: 13,
-    color: 'rgba(255,255,255,0.8)',
+    fontSize: 12,
+    color: 'rgba(255,255,255,0.78)',
     fontWeight: '500',
-    letterSpacing: 0.5,
-    marginTop: -4,
+    letterSpacing: 0.4,
+    marginTop: -2,
   },
 
-  // Fila CEMAC
-  cemacRow: {
-    marginTop: 8,
-  },
+  // Badge CEMAC con banderas grandes
   cemacBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: 'rgba(255,255,255,0.18)',
-    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.16)',
+    borderRadius: 22,
     paddingHorizontal: 14,
     paddingVertical: 7,
     gap: 8,
     borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.3)',
+    borderColor: 'rgba(255,255,255,0.28)',
+    marginTop: 4,
   },
   cemacLabel: {
-    color: 'rgba(255,255,255,0.9)',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1.2,
+    color: 'rgba(255,255,255,0.88)',
+    fontSize: 9,
+    fontWeight: '800',
+    letterSpacing: 1.4,
   },
-  flagsRow: {
-    flexDirection: 'row',
-    gap: 3,
-  },
-  flag: {
-    fontSize: 17,
-    lineHeight: 20,
-  },
+  flagsRow: { flexDirection: 'row', gap: 4 },
+  flag:     { fontSize: 22, lineHeight: 26 },   // ← más grandes
 
-  // ── Tarjeta ──────────────────────────────────────────────────────
+  // ── Scroll ───────────────────────────────────────────────────────
+  kvFlex:  { flex: 1 },
+  scroll:  { flexGrow: 1, paddingBottom: 32 },
+  spacer:  { height: HEADER_H },  // empuja la tarjeta debajo del header estático
+
+  // ── Tarjeta formulario ───────────────────────────────────────────
   card: {
-    marginHorizontal: 16,
-    borderRadius: 28,
-    backgroundColor: '#ffffff',
-    paddingHorizontal: 24,
-    paddingVertical: 28,
+    marginHorizontal: 14,
+    borderRadius: 26,
+    paddingHorizontal: 20,
+    paddingTop: 20,
+    paddingBottom: 20,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 12 },
-    shadowOpacity: 0.18,
+    shadowOffset: { width: 0, height: 14 },
+    shadowOpacity: 0.16,
     shadowRadius: 24,
     elevation: 16,
   },
-  cardDark: {
-    backgroundColor: '#0f1f2b',
-  },
   cardTitle: {
-    fontSize: 24,
+    fontSize: 20,
     fontWeight: '700',
-    color: '#0f172a',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 3,
   },
-  cardSubtitle: {
-    fontSize: 14,
-    color: '#64748b',
+  cardSub: {
+    fontSize: 13,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 18,
   },
 
-  // ── Campos ───────────────────────────────────────────────────────
-  fieldGroup: {
-    marginBottom: 16,
-  },
-  fieldLabel: {
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 1,
-    color: '#94a3b8',
-    marginBottom: 6,
-  },
-
-  // Country
-  countrySelector: {
+  // País selector
+  countryBox: {
     flexDirection: 'row',
     alignItems: 'center',
     borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: 13,
-    paddingHorizontal: 14,
-    gap: 10,
+    borderRadius: 12,
+    height: 44,
+    paddingHorizontal: 12,
+    gap: 8,
   },
-  countryFlag: {
-    fontSize: 20,
-  },
-  countryName: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '600',
-  },
-  phoneCodeBadge: {
-    backgroundColor: '#00c8a015',
-    color: '#00a88a',
-    fontSize: 12,
-    fontWeight: '700',
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 8,
-    overflow: 'hidden',
-  },
-  chevron: {
-    fontSize: 10,
-    color: '#94a3b8',
-  },
+  cFlag:    { fontSize: 18 },
+  cName:    { flex: 1, fontSize: 14, fontWeight: '600' },
+  cBadge:   { fontSize: 11, fontWeight: '700', color: '#00a88a', backgroundColor: 'rgba(0,200,160,0.08)', paddingHorizontal: 7, paddingVertical: 2, borderRadius: 7, overflow: 'hidden' },
+  cChevron: { fontSize: 9 },
 
-  // Dropdown
+  // Dropdown país
   dropdown: {
-    marginTop: 6,
-    borderRadius: 14,
+    marginTop: 5,
+    borderRadius: 12,
     borderWidth: 1.5,
     overflow: 'hidden',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.1,
-    shadowRadius: 12,
+    shadowRadius: 10,
     elevation: 8,
   },
-  dropdownItem: {
+  ddItem:      { flexDirection: 'row', alignItems: 'center', paddingVertical: 10, paddingHorizontal: 12, borderBottomWidth: 1, gap: 8 },
+  ddItemActive:{ backgroundColor: 'rgba(0,200,160,0.06)' },
+  ddItemText:  { fontSize: 14, fontWeight: '500' },
+  ddSoonText:  { fontSize: 10, color: '#94a3b8', fontWeight: '500', marginTop: 1 },
+  ddCheck:     { color: '#00c8a0', fontSize: 13, fontWeight: '700' },
+
+  // Prefijo teléfono
+  prefixBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
-    paddingHorizontal: 14,
-    borderBottomWidth: 1,
-    gap: 10,
+    gap: 4,
+    paddingHorizontal: 10,
+    height: 44,
+    borderRightWidth: 1.5,
   },
-  dropdownItemActive: {
-    backgroundColor: '#00c8a010',
-  },
-  dropdownItemText: {
-    flex: 1,
-    fontSize: 15,
-    fontWeight: '500',
-  },
-  checkMark: {
-    color: '#00c8a0',
-    fontSize: 14,
-    fontWeight: '700',
-  },
+  prefixText: { fontSize: 13, fontWeight: '700' },
 
-  // Phone
-  phoneRow: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 0,
-  },
-  prefix: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    borderWidth: 1.5,
-    borderRightWidth: 0,
-    borderTopLeftRadius: 14,
-    borderBottomLeftRadius: 14,
-    paddingHorizontal: 12,
-    height: 48,
-  },
-  prefixFlag: {
-    fontSize: 16,
-  },
-  prefixCode: {
-    fontSize: 14,
-    fontWeight: '700',
-  },
-  phoneInput: {
-    flex: 1,
-    marginBottom: 0,
-  },
+  // Error
+  errBox: { backgroundColor: '#fff1f2', borderRadius: 10, padding: 10, marginBottom: 10 },
+  errText: { color: '#e11d48', fontSize: 13, fontWeight: '500' },
 
-  // ── Botón principal ───────────────────────────────────────────────
+  // Botón login
   loginBtn: {
-    marginTop: 8,
-    marginBottom: 12,
-    borderRadius: 14,
+    marginTop: 6,
+    marginBottom: 10,
+    borderRadius: 13,
     overflow: 'hidden',
     shadowColor: '#00c8a0',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.35,
-    shadowRadius: 12,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 5 },
+    shadowOpacity: 0.32,
+    shadowRadius: 10,
+    elevation: 7,
   },
-  loginBtnDisabled: {
-    opacity: 0.7,
-  },
-  loginBtnGradient: {
-    paddingVertical: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  loginBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.5,
-  },
+  loginGrad: { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  loginText: { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.4 },
 
   // Olvidé contraseña
-  forgotBtn: {
-    alignItems: 'center',
-    paddingVertical: 10,
-    marginBottom: 4,
-  },
-  forgotText: {
-    color: '#00a88a',
-    fontSize: 14,
-    fontWeight: '600',
-  },
+  forgotBtn:  { alignItems: 'center', paddingVertical: 8 },
+  forgotText: { color: '#00a88a', fontSize: 13, fontWeight: '600' },
 
   // Separador
-  separator: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 12,
-    marginVertical: 16,
-  },
-  separatorLine: {
-    flex: 1,
-    height: 1,
-  },
-  separatorText: {
-    fontSize: 13,
-    fontWeight: '500',
-  },
+  sep:     { flexDirection: 'row', alignItems: 'center', gap: 10, marginVertical: 12 },
+  sepLine: { flex: 1, height: 1 },
+  sepText: { fontSize: 12, fontWeight: '500' },
 
   // Crear cuenta
-  createBtn: {
-    borderWidth: 1.5,
-    borderRadius: 14,
-    paddingVertical: 14,
-    alignItems: 'center',
-    marginBottom: 16,
-  },
-  createBtnText: {
-    fontSize: 15,
-    fontWeight: '600',
-  },
+  createBtn:  { borderWidth: 1.5, borderRadius: 13, paddingVertical: 13, alignItems: 'center', marginBottom: 12 },
+  createText: { fontSize: 14, fontWeight: '600' },
 
   // Volver
-  backBtn: {
-    alignItems: 'center',
-    paddingVertical: 8,
-  },
-  backText: {
-    fontSize: 14,
-    color: '#94a3b8',
-  },
+  backBtn:  { alignItems: 'center', paddingVertical: 6 },
+  backText: { fontSize: 13 },
 
-  // ── Modal próximamente ────────────────────────────────────────────
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.55)',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 24,
-  },
-  modalCard: {
-    width: '100%',
-    borderRadius: 28,
-    overflow: 'hidden',
-    backgroundColor: '#fff',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 20 },
-    shadowOpacity: 0.3,
-    shadowRadius: 30,
-    elevation: 20,
-  },
-  // Parte superior con gradiente
-  modalGradientTop: {
-    height: 160,
-    alignItems: 'center',
-    justifyContent: 'center',
-    position: 'relative',
-    overflow: 'hidden',
-  },
-  modalOrbit: {
-    position: 'absolute',
-    width: 220,
-    height: 220,
-    borderRadius: 110,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.2)',
-    top: -60,
-    right: -60,
-  },
-  modalOrbitInner: {
-    position: 'absolute',
-    width: 140,
-    height: 140,
-    borderRadius: 70,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.15)',
-    bottom: -40,
-    left: -30,
-  },
-  modalFlagWrapper: {
-    position: 'relative',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalFlagBig: {
-    fontSize: 72,
-    lineHeight: 86,
-  },
-  modalClockBadge: {
-    position: 'absolute',
-    bottom: -4,
-    right: -8,
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.25)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalClockIcon: {
-    fontSize: 16,
-  },
-  // Cuerpo del modal
-  modalBody: {
-    paddingHorizontal: 24,
-    paddingTop: 20,
-    paddingBottom: 28,
-    backgroundColor: '#fff',
-  },
-  modalLangBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: '#f0fdf9',
-    color: '#00a88a',
-    fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.8,
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-    overflow: 'hidden',
-    marginBottom: 12,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0f172a',
-    lineHeight: 26,
-    marginBottom: 12,
-  },
-  modalText: {
-    fontSize: 14,
-    color: '#475569',
-    lineHeight: 22,
-    marginBottom: 20,
-  },
-  // Barra de progreso
-  progressBar: {
-    height: 6,
-    backgroundColor: '#e2e8f0',
-    borderRadius: 3,
-    overflow: 'hidden',
-    marginBottom: 6,
-  },
-  progressFill: {
-    width: '65%',
-    height: '100%',
-    borderRadius: 3,
-  },
-  progressLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '500',
-    marginBottom: 20,
-  },
-  // Botón del modal
-  modalBtn: {
-    borderRadius: 14,
-    overflow: 'hidden',
-    shadowColor: '#00c8a0',
-    shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 6,
-  },
-  modalBtnGradient: {
-    paddingVertical: 15,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalBtnText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '700',
-    letterSpacing: 0.4,
-  },
-
-  // Etiquetas "próximamente" dentro del dropdown
-  dropdownSoonLabel: {
-    fontSize: 11,
-    color: '#94a3b8',
-    fontWeight: '500',
-    marginTop: 1,
-  },
-  dropdownSoonBadge: {
-    fontSize: 16,
-  },
+  // ── Modal próximamente ───────────────────────────────────────────
+  modalOverlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.55)', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 22 },
+  modalCard:    { width: '100%', borderRadius: 26, overflow: 'hidden', backgroundColor: '#fff', shadowColor: '#000', shadowOffset: { width: 0, height: 20 }, shadowOpacity: 0.28, shadowRadius: 28, elevation: 20 },
+  modalTop:     { height: 150, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
+  mOrbit1:      { position: 'absolute', width: 200, height: 200, borderRadius: 100, borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)', top: -70, right: -50 },
+  mOrbit2:      { position: 'absolute', width: 130, height: 130, borderRadius: 65, borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)', bottom: -45, left: -30 },
+  mFlagWrap:    { position: 'relative', alignItems: 'center', justifyContent: 'center' },
+  mFlag:        { fontSize: 68, lineHeight: 80 },
+  mClockBadge:  { position: 'absolute', bottom: -4, right: -10, width: 30, height: 30, borderRadius: 15, backgroundColor: 'rgba(0,0,0,0.22)', alignItems: 'center', justifyContent: 'center' },
+  modalBody:    { paddingHorizontal: 22, paddingTop: 18, paddingBottom: 24, backgroundColor: '#fff' },
+  mLangBadge:   { alignSelf: 'flex-start', backgroundColor: '#f0fdf9', color: '#00a88a', fontSize: 10, fontWeight: '700', letterSpacing: 0.8, paddingHorizontal: 9, paddingVertical: 3, borderRadius: 7, overflow: 'hidden', marginBottom: 10 },
+  mTitle:       { fontSize: 17, fontWeight: '800', color: '#0f172a', lineHeight: 24, marginBottom: 10 },
+  mText:        { fontSize: 14, color: '#475569', lineHeight: 22, marginBottom: 18 },
+  mProgressTrack: { height: 5, backgroundColor: '#e2e8f0', borderRadius: 3, overflow: 'hidden', marginBottom: 5 },
+  mProgressFill:  { width: '65%', height: '100%', borderRadius: 3 },
+  mProgressLabel: { fontSize: 10, color: '#94a3b8', fontWeight: '500', marginBottom: 18 },
+  mBtn:         { borderRadius: 13, overflow: 'hidden', shadowColor: '#00c8a0', shadowOffset: { width: 0, height: 5 }, shadowOpacity: 0.28, shadowRadius: 8, elevation: 5 },
+  mBtnGrad:     { paddingVertical: 14, alignItems: 'center', justifyContent: 'center' },
+  mBtnText:     { color: '#fff', fontSize: 15, fontWeight: '700', letterSpacing: 0.4 },
 });
+
+const { height } = Dimensions.get('window');
