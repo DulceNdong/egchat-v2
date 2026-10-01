@@ -35,7 +35,7 @@ export default function WelcomeScreen() {
         }
       } catch {}
       router.replace('/(auth)/login' as any);
-    }, 6000);
+    }, 3000);
 
     return () => clearTimeout(timer);
   }, []);

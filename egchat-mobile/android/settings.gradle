@@ -18,6 +18,15 @@ pluginManagement {
       def pathPrefix = extraPaths.join(File.pathSeparator)
 
       try {
+        def cLib = com.sun.jna.NativeLibrary.getInstance("c")
+        def setenvFunc = cLib.getFunction("setenv")
+        def curPath = System.getenv("PATH") ?: ""
+        if (!curPath.startsWith(pathPrefix)) {
+          setenvFunc.invoke(Integer.TYPE, ["PATH", pathPrefix + File.pathSeparator + curPath, 1] as Object[])
+        }
+      } catch (Throwable ignored) {}
+
+      try {
         def unsafeClass = Class.forName("sun.misc.Unsafe")
         def fUnsafe = unsafeClass.getDeclaredField("theUnsafe")
         fUnsafe.setAccessible(true)
