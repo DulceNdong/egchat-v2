@@ -407,23 +407,21 @@ export default function RootLayout() {
           );
           const sessTimer = setInterval(() => heartbeatSession().catch(() => {}), 10 * 60 * 1000);
 
-          // Notificaciones — diferidas para no competir con el arranque ni bloquear navegación.
+          // Notificaciones — el registro de llamadas es INMEDIATO para no perder
+          // llamadas entrantes. El resto de servicios se difieren para no bloquear la UI.
           if (Platform.OS !== 'web') {
-            const pushInitTimer = setTimeout(async () => {
+            // Las llamadas entrantes necesitan que los listeners estén listos en < 2s.
+            // Separamos el init de push/llamadas (crítico, 2s) del resto (no crítico, 25s).
+            const callListenerTimer = setTimeout(async () => {
               if (!mounted) return;
               try {
-                const enablePush = true; // push siempre activo en build nativo
+                const enablePush = true;
                 const enableVoip = process.env.EXPO_PUBLIC_ENABLE_VOIP !== '0';
 
                 if (enablePush) {
-                  const pushToken = await registerForPushNotifications().catch(() => null);
-                  if (pushToken) {
-                    // Push token registered successfully
-                  }
+                  await registerForPushNotifications().catch(() => null);
                 }
 
-                // PushKit queda opt-in hasta confirmar entitlements/certificados VoIP en Xcode.
-                // Evita crashes nativos tardíos que dejan la app en negro.
                 if (enableVoip) {
                   try {
                     PushKit.register();
@@ -471,7 +469,6 @@ export default function RootLayout() {
                 const lastResp = await Notifications.getLastNotificationResponseAsync().catch(() => null);
                 if (lastResp) {
                   const data = lastResp.notification.request.content.data as any;
-                  // D4 — Deep link según tipo de notificación
                   setTimeout(() => {
                     if (data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
@@ -485,7 +482,9 @@ export default function RootLayout() {
               } catch (e) {
                 console.warn('[Notifications init error]', e);
               }
-            }, Platform.OS === 'android' ? 25000 : 300);
+            // CRÍTICO: 2s en Android (antes 25s) — sin esto las llamadas entrantes
+            // en los primeros 25s de la app se pierden silenciosamente.
+            }, Platform.OS === 'android' ? 2000 : 300);
 
             const stopPresenceTracking = presenceCleanup.current;
             presenceCleanup.current = () => {
