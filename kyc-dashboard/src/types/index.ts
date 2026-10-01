@@ -124,14 +124,6 @@ export interface KycDetail {
   doc_back_url:     string | null;
   selfie_url:       string | null;
   screening_results: ScreeningResult[];
-  // Campos extras del backend (detalle completo)
-  doc_expiry_date?: string | null;
-  days_to_expiry?:  number | null;
-  has_front_doc?:   boolean;
-  has_back_doc?:    boolean;
-  has_selfie?:      boolean;
-  monthly_income_range?: string | null;
-  employer?:        string | null;
 }
 
 export interface KycStats {
