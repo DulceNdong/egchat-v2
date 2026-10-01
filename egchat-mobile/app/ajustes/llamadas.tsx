@@ -1,5 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { TouchableOpacity, Text, View, StyleSheet, ActivityIndicator } from 'react-native';
+import { MaterialIcons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider,
