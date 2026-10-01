@@ -94,7 +94,7 @@ export default function SecurityScreen() {
     );
   }
 
-  const LimitCard = ({ type, title, icon }: { type: 'withdrawal' | 'transfer' | 'payment'; title: string; icon: string }) => {
+  const LimitCard = ({ type, title, icon }: { type: 'withdrawal' | 'transfer' | 'payment'; title: string; icon: React.ComponentProps<typeof MaterialIcons>['name'] }) => {
     const limit = settings.limits[type];
     const percentUsed = (limit.currentDay / limit.dailyLimit) * 100;
     const isEditing = editingType === type;
