@@ -613,7 +613,7 @@ export function startKeepAlive() {
   const ping = async () => {
     try { await fetch(`${BASE}/health`, { signal: AbortSignal.timeout ? AbortSignal.timeout(5000) : undefined }); } catch {}
   };
-  keepAliveInterval = setInterval(ping, 90 * 1000);
+  keepAliveInterval = setInterval(ping, 25 * 1000);
 }
 export function stopKeepAlive() {
   if (keepAliveInterval) { clearInterval(keepAliveInterval); keepAliveInterval = null; }
