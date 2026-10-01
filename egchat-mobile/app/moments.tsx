@@ -260,11 +260,26 @@ export default function MomentsScreen() {
       {item.images && item.images.length > 0 && (
         <View style={ps.imagesGrid}>
           {item.images.slice(0, 4).map((uri, i) => (
-            <Image key={i} source={{ uri }} style={[
-              ps.image,
-              item.images!.length === 1 && ps.imageSingle,
-              item.images!.length === 2 && ps.imageHalf,
-            ]} resizeMode="cover" />
+            <TouchableOpacity
+              key={i}
+              activeOpacity={0.88}
+              onPress={() => {
+                setViewerPost(item as MomentViewerPost);
+                setViewerImageIdx(i);
+              }}
+            >
+              <Image style={[
+                ps.image,
+                item.images!.length === 1 && ps.imageSingle,
+                item.images!.length === 2 && ps.imageHalf,
+              ]} source={{ uri }} resizeMode="cover" />
+              {/* Contador "+N más" en la 4ª imagen si hay más de 4 */}
+              {i === 3 && item.images!.length > 4 && (
+                <View style={ps.moreOverlay}>
+                  <Text style={ps.moreText}>+{item.images!.length - 4}</Text>
+                </View>
+              )}
+            </TouchableOpacity>
           ))}
         </View>
       )}
