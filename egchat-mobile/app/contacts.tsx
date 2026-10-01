@@ -242,9 +242,9 @@ export default function ContactsScreen() {
 
   const renderSectionHeader = useCallback(({ section }: { section: { title: string } }) => (
     <View style={[st.sectionHeader, { backgroundColor: C.bgSecondary }]}>
-      <Text style={[st.sectionTitle, { color: C.textTertiary }]}>{section.title}</Text>
+      <Text style={[st.sectionTitle, { color: C.textTertiary, fontSize: 12 * fontScale }]}>{section.title}</Text>
     </View>
-  ), [C]);
+  ), [C, fontScale]);
 
   const renderSeparator = useCallback(() => (
     <View style={[st.separator, { backgroundColor: C.borderLight, marginLeft: 76 }]} />
