@@ -671,6 +671,9 @@ export default function StoriesScreen() {
   const [commentText,     setCommentText]     = useState('');
   const [showMomentCreate,setShowMomentCreate]= useState(false);
   const [showMomentCamera,setShowMomentCamera]= useState(false);
+  // ── Visor de imágenes de momentos ─────────────────────────────
+  const [momentViewerPost,    setMomentViewerPost]    = useState<MomentViewerPost | null>(null);
+  const [momentViewerImgIdx,  setMomentViewerImgIdx]  = useState(0);
   const pendingMediaRef = React.useRef<MomentMedia | null>(null);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
