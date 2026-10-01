@@ -278,7 +278,7 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
                 <LastMsgIcon type={msgInfo.icon} color={msgIconColor} />
               </View>
             )}
-            <Text style={st.chatMsg} numberOfLines={1}>{msgInfo.label}</Text>
+            <Text style={[st.chatMsg, { fontSize: 13 * fs }]} numberOfLines={1}>{msgInfo.label}</Text>
           </View>
           {hasUnread && (
             <View style={st.badge}>
