@@ -88,6 +88,7 @@ export default function ContactsScreen() {
   const [showAdd,    setShowAdd]    = useState(false);
 
   const { isDark } = useThemeContext();
+  const { fontScale } = useFont();
   const C      = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
