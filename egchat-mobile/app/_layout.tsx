@@ -258,7 +258,7 @@ export default function RootLayout() {
     if (event.type === 'session_revoked') {
       handleSessionRevoked(event, () =>
         Alert.alert('Sesión cerrada', 'Tu sesión fue cerrada desde otro dispositivo.',
-          [{ text: 'OK', onPress: () => router.replace('/(auth)/login') }]),
+          [{ text: 'OK', onPress: () => router.replace('/welcome') }]),
       );
     }
   }, [globalUserId]));
