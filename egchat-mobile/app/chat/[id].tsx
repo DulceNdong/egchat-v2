@@ -2329,15 +2329,15 @@ export default function ChatScreen() {
             ]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
-            scrollEventThrottle={16}
+            scrollEventThrottle={Platform.OS === 'android' ? 100 : 16}
             onScrollBeginDrag={() => dismissPanels()}
             keyboardShouldPersistTaps="always"
             onContentSizeChange={() => flatListRef.current?.scrollToEnd({ animated: false })}
             // ── Optimizaciones de rendimiento ──────────────────────
-            initialNumToRender={15}
-            maxToRenderPerBatch={Platform.OS === 'android' ? 5 : 10}
-            updateCellsBatchingPeriod={Platform.OS === 'android' ? 100 : 80}
-            windowSize={Platform.OS === 'android' ? 5 : 7}
+            initialNumToRender={Platform.OS === 'android' ? 12 : 15}
+            maxToRenderPerBatch={Platform.OS === 'android' ? 4 : 10}
+            updateCellsBatchingPeriod={Platform.OS === 'android' ? 120 : 80}
+            windowSize={Platform.OS === 'android' ? 4 : 7}
             removeClippedSubviews={Platform.OS === 'android'}
             getItemLayout={undefined}
             // ────────────────────────────────────────────────────────
