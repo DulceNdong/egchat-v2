@@ -420,7 +420,7 @@ export default function LoginScreen() {
 }
 
 // ── StyleSheet principal ─────────────────────────────────────────────
-const HEADER_H = 220; // altura reservada para la zona estática del header
+const HEADER_H = 185; // altura reducida — menos verde visible
 
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#00c8a0' },
