@@ -1720,7 +1720,7 @@ export const ChatMessageBubble = React.memo(({
           <Image source={{ uri: imageUri }} style={s.bubbleImage} contentFit="cover" cachePolicy="memory-disk" />
         </TouchableOpacity>
       ) : message.type === 'image' ? (
-        <Text style={s.bubbleText}>Foto</Text>
+        <Text style={[s.bubbleText, { fontSize: 13.5 * fontScale }]}>Foto</Text>
       ) : null}
       {message.type === 'video' && (
         <VideoCard message={message} isOwn={isOwn} />
