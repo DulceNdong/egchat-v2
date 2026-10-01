@@ -139,8 +139,8 @@ export default function RootLayout() {
       // Verificar que realmente no hay token válido antes de redirigir
       const token = await getToken().catch(() => null);
       if (!token) {
-        // Sin token → sí hay que ir al login
-        router.replace('/(auth)/login');
+        // Sin token → ir a welcome screen
+        router.replace('/welcome');
         return;
       }
 
@@ -152,7 +152,7 @@ export default function RootLayout() {
         try {
           const stillValid = await getToken().catch(() => null);
           if (!stillValid) {
-            router.replace('/(auth)/login');
+            router.replace('/welcome');
           }
           // Si el token sigue ahí, ignorar el 401 — fue transitorio
         } catch {
