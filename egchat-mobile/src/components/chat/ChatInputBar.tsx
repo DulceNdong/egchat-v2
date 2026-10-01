@@ -137,7 +137,7 @@ export function ChatInputBar({
 
         <TextInput
           ref={inputRef}
-          style={s.input}
+          style={[s.input, { fontSize: 14 * fontScale }]}
           value={text}
           onChangeText={onChangeText}
           onSelectionChange={e => { selectionRef.current = e.nativeEvent.selection; }}
