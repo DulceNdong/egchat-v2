@@ -431,6 +431,28 @@ export default function MomentsScreen() {
         onClose={() => setShowCamera(false)}
         onDone={handleCameraDone}
       />
+
+      {/* ── Visor inmersivo de imágenes ─────────────────────── */}
+      <MomentImageViewer
+        visible={!!viewerPost}
+        post={viewerPost}
+        initialImageIndex={viewerImageIdx}
+        onClose={() => setViewerPost(null)}
+        onLike={(postId) => {
+          handleLike(postId);
+          // Actualizar el post en el viewer también
+          setViewerPost(prev =>
+            prev && prev.id === postId
+              ? { ...prev, liked_by_me: !prev.liked_by_me, likes: prev.liked_by_me ? prev.likes - 1 : prev.likes + 1 }
+              : prev
+          );
+        }}
+        onCommentPress={(postId) => {
+          setViewerPost(null);
+          // Pequeño delay para que el modal cierre antes de abrir comentarios
+          setTimeout(() => setCommentingPost(postId), 300);
+        }}
+      />
     </SafeAreaView>
   );
 }
