@@ -1,9 +1,14 @@
 /**
  * Timeline de auditoría — renderiza el historial de acciones KYC.
- * Accesible: lista ordenada con role="list".
+ * Iconos Lucide por categoría de acción + colores semánticos.
  */
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import {
+  UserPlus, FileText, Camera, CheckCircle2, XCircle,
+  AlertTriangle, Shield, Clock, RotateCcw, Bot,
+  Building2, AlertOctagon, FileWarning, Send, Zap,
+} from 'lucide-react';
 import type { AuditEntry } from '@/types';
 
 const ACTION_COLORS: Record<string, string> = {
