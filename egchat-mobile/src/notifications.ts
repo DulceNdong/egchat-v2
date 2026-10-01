@@ -167,10 +167,22 @@ export async function refreshAndroidChannels(): Promise<void> {
 
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
 export async function registerForPushNotifications(): Promise<string | null> {
-  if (Platform.OS === 'web') return null; // push no disponible en web
-  if (!PUSH_ENABLED) return null;         // push desactivado por configuración
+  if (Platform.OS === 'web') return null;
+  if (!PUSH_ENABLED) return null;
 
   await createChannels();
+
+  // Registrar background task para recibir llamadas con app suspendida (Android)
+  if (Platform.OS === 'android') {
+    try {
+      const isRegistered = await Notifications.getRegisteredTasksAsync()
+        .then(tasks => tasks.some(t => t.taskName === BACKGROUND_TASK))
+        .catch(() => false);
+      if (!isRegistered) {
+        await Notifications.registerTaskAsync(BACKGROUND_TASK).catch(() => {});
+      }
+    } catch { /* silencioso */ }
+  }
 
   const { status: existing } = await Notifications.getPermissionsAsync();
   let finalStatus = existing;
