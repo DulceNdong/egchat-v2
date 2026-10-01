@@ -268,8 +268,8 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
       </View>
       <View style={st.chatInfo}>
         <View style={st.chatRow}>
-          <Text style={st.chatName} numberOfLines={1}>{chatName}</Text>
-          {time ? <Text style={[st.chatTime, hasUnread && st.chatTimeUnread]}>{time}</Text> : null}
+          <Text style={[st.chatName, { fontSize: 15 * fs }]} numberOfLines={1}>{chatName}</Text>
+          {time ? <Text style={[st.chatTime, hasUnread && st.chatTimeUnread, { fontSize: 11 * fs }]}>{time}</Text> : null}
         </View>
         <View style={st.chatRow}>
           <View style={st.chatMsgRow}>
