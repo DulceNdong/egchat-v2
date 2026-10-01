@@ -262,7 +262,7 @@ export default function CallHistoryScreen() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#00b4e6' },
+  root: { flex: 1, backgroundColor: '#f9fafb' },
   header: { paddingBottom: 14 },
   headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6 },
   back: { padding: 6, borderRadius: 20 },
