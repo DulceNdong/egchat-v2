@@ -372,10 +372,22 @@ function MensajeriaScreenInner() {
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
+  // ── Debounced loadChats — agrupa múltiples eventos SSE/Supabase en una sola llamada ──
+  // Evita que 3 mensajes seguidos disparen 3 recargas HTTP completas.
+  const debouncedLoadChats = useCallback((userId: string) => {
+    if (loadDebounceRef.current) clearTimeout(loadDebounceRef.current);
+    loadDebounceRef.current = setTimeout(() => {
+      void loadChats(userId);
+      loadDebounceRef.current = null;
+    }, Platform.OS === 'android' ? 800 : 400);
+  }, [loadChats]);
+
   // ── SSE Stream — actualizar lista de chats al instante ────────────
+  // Supabase Realtime ya no se usa para la lista — SSE cubre el mismo caso
+  // y evitar tener dos fuentes duplicadas que disparen loadChats a la vez.
   useChatStream(currentUserId || undefined, (event) => {
     if (event.type === 'new_message' || event.type === 'chat_updated') {
-      loadChats(currentUserId);
+      debouncedLoadChats(currentUserId);
     }
   });
 
