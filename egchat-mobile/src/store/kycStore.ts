@@ -101,6 +101,7 @@ const initialPersonalData: PersonalData = {
 
 const initialDocumentData: DocumentData = {
   documentType: null,
+  documentNumber: '',
   frontImageUri: null, backImageUri: null,
   frontImageEncrypted: null, backImageEncrypted: null,
   ocrConfirmed: false, ocrData: {},
