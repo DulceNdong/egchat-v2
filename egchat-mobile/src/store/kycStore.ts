@@ -27,6 +27,7 @@ export interface PersonalData {
 
 export interface DocumentData {
   documentType: DocumentType;
+  documentNumber: string;     // número del DNI/pasaporte
   frontImageUri: string | null;
   backImageUri: string | null;
   frontImageEncrypted: string | null;  // ruta cifrada lista para subir
