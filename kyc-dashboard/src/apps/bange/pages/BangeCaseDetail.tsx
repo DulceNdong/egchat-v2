@@ -299,8 +299,10 @@ export default function BangeCaseDetail() {
                 { label: t('case.income'),         value: kyc.monthly_income_range },
                 { label: t('case.sourceOfFunds'),  value: kyc.source_of_funds },
                 { label: t('case.pep'),            value: kyc.politically_exposed ? '⚠️ Sí' : '✅ No' },
-                { label: t('case.docType'),        value: kyc.doc_type },
-                { label: t('case.docNumber'),      value: kyc.doc_number },
+                { label: t('case.docType'),   value: kyc.doc_type
+                    ? ({ dni: 'DNI', passport: 'Pasaporte', resident_card: 'Tarjeta de Residencia', DNI: 'DNI', PASSPORT: 'Pasaporte', RESIDENCE_PERMIT: 'Tarjeta de Residencia' }[kyc.doc_type] ?? kyc.doc_type.toUpperCase())
+                    : null },
+                { label: t('case.docNumber'), value: kyc.doc_number },
                 {
                   label: t('case.docExpiry'),
                   value: expiryDate ? (
