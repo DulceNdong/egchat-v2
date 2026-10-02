@@ -175,8 +175,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // Registrar background task para recibir llamadas con app suspendida (Android)
   if (Platform.OS === 'android') {
     try {
-      const isRegistered = await Notifications.getRegisteredTasksAsync()
-        .then(tasks => tasks.some(t => t.taskName === BACKGROUND_TASK))
+      const isRegistered = await TaskManager.getRegisteredTasksAsync()
+        .then((tasks: TaskManager.RegisteredTask[]) => tasks.some((t: TaskManager.RegisteredTask) => t.taskName === BACKGROUND_TASK))
         .catch(() => false);
       if (!isRegistered) {
         await Notifications.registerTaskAsync(BACKGROUND_TASK).catch(() => {});
