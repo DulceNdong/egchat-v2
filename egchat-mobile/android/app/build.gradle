@@ -4,14 +4,31 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
-// Detectar node dinámicamente para compatibilidad local y EAS Build
+// Detectar node: primero local.properties (NODE_BINARY), luego rutas comunes.
+// Android Studio no hereda el PATH del shell, por eso usamos rutas absolutas.
 def nodeExecutable = {
-    def candidates = ["/usr/local/bin/node", "/usr/bin/node", "node"]
+    // 1. local.properties → NODE_BINARY (más confiable en Android Studio)
+    def localProps = new Properties()
+    def localPropsFile = rootProject.file("local.properties")
+    if (localPropsFile.exists()) {
+        localPropsFile.withInputStream { localProps.load(it) }
+    }
+    def fromProps = localProps.getProperty("NODE_BINARY")
+    if (fromProps && new File(fromProps).exists()) return fromProps
+
+    // 2. Rutas absolutas conocidas (nvm, homebrew, sistema)
+    def candidates = [
+        "/usr/local/bin/node",
+        "/opt/homebrew/bin/node",
+        System.getProperty("user.home") + "/.nvm/versions/node/v24.16.0/bin/node",
+        System.getProperty("user.home") + "/.nvm/versions/node/v22.0.0/bin/node",
+        "/usr/bin/node",
+        "node"
+    ]
     for (candidate in candidates) {
         try {
-            def result = [candidate, "--version"].execute()
-            result.waitFor()
-            if (result.exitValue() == 0) return candidate
+            def f = new File(candidate)
+            if (f.exists() && f.canExecute()) return candidate
         } catch (Exception e) { /* skip */ }
     }
     return "node"
