@@ -37,7 +37,7 @@ import { SwipeChatItem } from '../../src/components/chat/SwipeChatItem';
 import { toast } from '../../src/components/Toast';
 import type { WeatherCondition } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
-import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
+import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
 import { haptics } from '../../src/hooks/useHaptics';
 import { useOffline } from '../../src/hooks/useOffline';
 import { EGAvatar } from '../../src/components/ui';
