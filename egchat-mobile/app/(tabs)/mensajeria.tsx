@@ -1162,7 +1162,7 @@ function MensajeriaScreenInner() {
         onMarkAllRead={() => markAllRead()}
         onClearAll={() => clearAllNotifications()}
         onNotifPress={(n) => {
-          removeNotification(n.id);
+          markNotificationRead(n.id);
           setShowNotifications(false);
           if (n.chatId) router.push(`/chat/${n.chatId}` as any);
         }}
