@@ -23,7 +23,10 @@ Notifications.setNotificationHandler({
     const isCall = data?.notificationType === 'incoming_call';
     return {
       shouldShowAlert: true,
-      shouldShowBanner: !isCall, // llamadas: CallKit/pantalla nativa lo maneja
+      // Llamadas: en iOS el CallKit las gestiona con su UI nativa.
+      // En Android NO hay CallKit → mostramos el banner para que el usuario
+      // vea la llamada aunque la app esté en primer plano.
+      shouldShowBanner: Platform.OS === 'ios' ? !isCall : true,
       shouldShowList: true,
       // Para mensajes en primer plano: NO reproducir sonido del sistema
       // porque RichNotifications.show() ya da el feedback visual/auditivo
