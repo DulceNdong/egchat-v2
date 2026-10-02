@@ -80,16 +80,7 @@
       },
       "jsEngine": "hermes",
       "softwareKeyboardLayoutMode": "resize",
-      "edgeToEdgeEnabled": false,
-      "navigationBar": {
-        "visible": "immersive",
-        "barStyle": "dark-content"
-      },
-      "statusBar": {
-        "translucent": true,
-        "backgroundColor": "transparent",
-        "barStyle": "light-content"
-      }
+      "edgeToEdgeEnabled": false
     },
     "plugins": [
       "expo-router",
@@ -148,7 +139,6 @@
       }
     },
     "runtimeVersion": "1.0.0",
-    "owner": "reddington120",
-    "appleTeamId": "XU6YD7ZJ2K"
+    "owner": "reddington120"
   }
 }
