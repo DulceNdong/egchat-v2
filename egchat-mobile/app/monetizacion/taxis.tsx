@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, Alert, StatusBar, RefreshControl,
+  Modal, StatusBar, RefreshControl,
 } from 'react-native';
 import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
