@@ -38,8 +38,8 @@ export function ChatHeader({
 }: ChatHeaderProps) {
   const insets = useSafeAreaInsets();
   const statusText = isTyping ? 'Escribiendo...' : subtitle;
-  const statusColor = isTyping ? '#00b894' : isOnline ? '#00b894' : '#94a3b8';
-  const iconColor = '#1e293b';
+  const statusColor = isTyping ? '#c76b8a' : isOnline ? '#7c9e8f' : '#a89bb0';
+  const iconColor = '#5c3d5e';
 
   const content = (
     <View style={[s.inner, { paddingTop: insets.top + 6 }]}>
