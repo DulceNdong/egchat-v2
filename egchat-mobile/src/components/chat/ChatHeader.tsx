@@ -98,19 +98,31 @@ export function ChatHeader({
     </View>
   );
 
-  // BlurView funciona en iOS nativamente. En Android usamos fondo blanco semitransparente.
+  // LinearGradient sakura/jade en ambas plataformas
+  // iOS: BlurView encima del gradiente para el efecto glass
   if (Platform.OS === 'ios') {
     return (
-      <BlurView intensity={60} tint="light" style={s.wrap}>
+      <LinearGradient
+        colors={['#f7e8f0', '#e8eef7', '#e8f5ef']}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 0 }}
+        style={s.wrap}
+      >
+        <BlurView intensity={25} tint="light" style={StyleSheet.absoluteFill} />
         {content}
-      </BlurView>
+      </LinearGradient>
     );
   }
 
   return (
-    <View style={[s.wrap, s.wrapAndroid]}>
+    <LinearGradient
+      colors={['#f7e8f0', '#ede8f5', '#e8f5ef']}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 0 }}
+      style={s.wrap}
+    >
       {content}
-    </View>
+    </LinearGradient>
   );
 }
 
