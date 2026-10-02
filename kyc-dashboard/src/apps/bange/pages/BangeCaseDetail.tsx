@@ -38,7 +38,6 @@ function DocFieldEdit({ applicationId, field, label, currentValue, type, options
   const [editing, setEditing] = useState(false);
   const [value,   setValue]   = useState(currentValue ?? '');
   const [saving,  setSaving]  = useState(false);
-  const { apiClient } = require('@/api/client') as { apiClient: any };
 
   async function handleSave() {
     setSaving(true);
@@ -47,12 +46,46 @@ function DocFieldEdit({ applicationId, field, label, currentValue, type, options
       await apiClient.patch(`/api/v1/admin/kyc/${applicationId}/doc-fields`, { [field]: value });
       onSaved();
       setEditing(false);
-    } catch {
-      // silencioso
-    } finally {
-      setSaving(false);
-    }
+    } catch { /* silencioso */ }
+    finally { setSaving(false); }
   }
+
+  return (
+    <div>
+      <dt className="text-xs text-gray-500 dark:text-gray-400 mb-1">{label}</dt>
+      {editing ? (
+        <div className="flex items-center gap-1">
+          {type === 'select' && options ? (
+            <select value={value} onChange={e => setValue(e.target.value)}
+              className="input text-sm flex-1 py-1" autoFocus>
+              {options.map(o => <option key={o.value} value={o.value}>{o.label}</option>)}
+            </select>
+          ) : (
+            <input type="text" value={value} onChange={e => setValue(e.target.value)}
+              placeholder={placeholder} className="input text-sm flex-1 py-1" autoFocus
+              onKeyDown={e => { if (e.key === 'Enter') handleSave(); if (e.key === 'Escape') setEditing(false); }} />
+          )}
+          <button onClick={handleSave} disabled={saving}
+            className="px-2 py-1 text-xs bg-brand-500 text-white rounded-lg hover:bg-brand-600 disabled:opacity-50">
+            {saving ? '…' : '✓'}
+          </button>
+          <button onClick={() => setEditing(false)}
+            className="px-2 py-1 text-xs bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-300 rounded-lg">
+            ✕
+          </button>
+        </div>
+      ) : (
+        <dd className="text-sm font-medium mt-0.5 cursor-pointer group flex items-center gap-1.5 hover:text-brand-500 transition-colors"
+          onClick={() => { setValue(currentValue ?? ''); setEditing(true); }} title="Clic para editar">
+          {currentValue
+            ? (options?.find(o => o.value === currentValue)?.label ?? currentValue)
+            : <span className="text-gray-400 italic text-xs">— Clic para añadir</span>}
+          <span className="opacity-0 group-hover:opacity-60 text-xs" aria-hidden="true">✏️</span>
+        </dd>
+      )}
+    </div>
+  );
+}
 
 // ── Qué datos mínimos se necesitan para activar el monedero ──────
 function getMissingFields(kyc: any): string[] {
