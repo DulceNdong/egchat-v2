@@ -130,15 +130,12 @@ const s = StyleSheet.create({
   wrap: {
     zIndex: 10,
     borderBottomWidth: 0.5,
-    borderBottomColor: 'rgba(0,0,0,0.08)',
-    shadowColor: '#000',
+    borderBottomColor: 'rgba(180,130,160,0.18)',
+    shadowColor: '#c084b0',
     shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.08,
+    shadowOpacity: 0.10,
     shadowRadius: 8,
     elevation: 4,
-  },
-  wrapAndroid: {
-    backgroundColor: 'rgba(255,255,255,0.97)',
   },
   inner: {
     flexDirection: 'row',
