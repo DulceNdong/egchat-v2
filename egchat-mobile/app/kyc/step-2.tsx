@@ -244,6 +244,7 @@ export default function Step2() {
 const BRAND = '#00C8A0';
 const st = StyleSheet.create({
   sectionTitle:     { fontSize: 14, fontWeight: '700', color: '#374151', marginTop: 16, marginBottom: 8 },
+  textInput:        { borderWidth: 1.5, borderColor: '#d1d5db', borderRadius: 10, padding: 12, fontSize: 15, color: '#111827', backgroundColor: '#fff', marginBottom: 4 },
   radioGroup:       { gap: 8 },
   radioBtn:         { flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderColor: '#d1d5db', borderRadius: 10, padding: 12 },
   radioBtnActive:   { borderColor: BRAND, backgroundColor: '#f0fdf9' },
