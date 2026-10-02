@@ -95,6 +95,8 @@ function LocalizedAppContent({ children }: { children: React.ReactNode }) {
 
 // Welcome es ruta especial — nunca se interrumpe con redirects
 const isWelcomePath = (path: string) => path === '/welcome';
+// Llamadas — el spinner de auth no debe tapar la pantalla de llamada entrante
+const isCallPath = (path: string) => path.startsWith('/call/');
 
 const isAuthPath = (path: string) =>
   path.startsWith('/(auth)')
