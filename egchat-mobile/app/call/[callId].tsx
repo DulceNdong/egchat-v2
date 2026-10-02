@@ -460,8 +460,13 @@ export default function CallScreen() {
   };
 
   // Registrar llamada en el chat como mensaje tipo 'call'
+  // Guard doble: loggedRef evita el doble disparo de hangUp + useEffect(callState==='ended')
+  // Solo el caller guarda el mensaje — el callee lo recibe por Supabase Realtime/SSE
   const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
     if (!chatId) return;
+    if (role !== 'caller') return;       // solo el caller inserta — evita duplicado caller+callee
+    if (loggedRef.current) return;       // ya se registró — evita doble disparo hangUp+useEffect
+    loggedRef.current = true;
     try {
       const isVideo = callType === 'video';
       const emoji = isVideo ? '📹' : '📞';
@@ -469,8 +474,7 @@ export default function CallScreen() {
       if (connected && secs > 0) {
         const mm = Math.floor(secs / 60).toString().padStart(2, '0');
         const ss = (secs % 60).toString().padStart(2, '0');
-        const dir = role === 'caller' ? 'saliente' : 'entrante';
-        text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} ${dir} (${mm}:${ss})`;
+        text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} (${mm}:${ss})`;
       } else {
         text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} perdida`;
       }
