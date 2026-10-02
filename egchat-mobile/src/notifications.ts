@@ -216,15 +216,14 @@ export async function registerForPushNotifications(): Promise<string | null> {
     });
     expoPushToken = tokenData.data;
   } catch (e) {
-    // Could not get Expo Push Token
-    // Try FCM native token (Android only)
-    if (Platform.OS === 'android') {
-      try {
-        const nativeToken = await Notifications.getDevicePushTokenAsync();
-        expoPushToken = nativeToken.data as string;
-      } catch (e2) {
-        // Could not get FCM native token
-      }
+    // Expo push token requires EAS registration. Falls back to native device token.
+    // This covers Xcode direct builds (iOS) and non-EAS Android builds.
+    try {
+      const nativeToken = await Notifications.getDevicePushTokenAsync();
+      expoPushToken = nativeToken.data as string;
+      console.log(`[Push] Usando token nativo (${Platform.OS}):`, String(expoPushToken).slice(-12));
+    } catch (e2) {
+      console.warn('[Push] No se pudo obtener token nativo:', e2);
     }
   }
 
