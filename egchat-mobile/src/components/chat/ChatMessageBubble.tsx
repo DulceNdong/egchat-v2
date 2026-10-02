@@ -300,8 +300,8 @@ const CallCard = ({ message, isOwn, onCallback }: {
       {/* Icono circular grande */}
       <View style={[cl.iconCircle, { backgroundColor: iconBg }]}>
         {isVideo
-          ? <VideoIcon color="#fff" size={22} />
-          : <PhoneIcon color="#fff" size={22} />}
+          ? <VideoIcon color="#fff" size={26} />
+          : <PhoneIcon color="#fff" size={26} />}
       </View>
 
       {/* Texto */}
