@@ -245,6 +245,10 @@ export async function syncTokenWithServer(expoPushToken: string) {
   const authToken = await getToken();
   if (!authToken) return;
 
+  // Detectar si es un token Expo (ExponentPushToken[...]) o un token nativo APNs/FCM
+  const isExpoToken = expoPushToken.startsWith('ExponentPushToken');
+  const tokenType = isExpoToken ? 'expo' : (Platform.OS === 'ios' ? 'apns' : 'fcm');
+
   try {
     const res = await fetch(`${API_BASE}/api/push/register-expo-token`, {
       method: 'POST',
@@ -252,7 +256,7 @@ export async function syncTokenWithServer(expoPushToken: string) {
         'Content-Type': 'application/json',
         Authorization: `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ expoPushToken, platform: Platform.OS }),
+      body: JSON.stringify({ expoPushToken, platform: Platform.OS, tokenType }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
