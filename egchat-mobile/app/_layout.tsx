@@ -367,19 +367,36 @@ export default function RootLayout() {
           if (!me?.id || !mounted) return;
 
           // ── Llamada pendiente (app estaba cerrada cuando llegó la llamada) ──
-          // Se comprueba ANTES de cualquier delay para no perder la llamada.
+          // Se comprueba con pequeño retry para asegurar que el router ya está montado.
           if (Platform.OS === 'android') {
-            consumePendingCall().then(pending => {
-              if (!pending || !mounted) return;
-              router.push({ pathname: '/call/[callId]', params: {
-                callId: pending.callId,
-                targetName: pending.callerName,
-                targetAvatar: pending.callerAvatar || '',
-                callType: pending.callType || 'audio',
-                role: 'callee',
-                offer: pending.offer ? JSON.stringify(pending.offer) : undefined,
-              }} as any);
-            }).catch(() => {});
+            const navigatePendingCall = async (retries = 5) => {
+              for (let i = 0; i < retries; i++) {
+                try {
+                  const pending = await consumePendingCall();
+                  if (!pending || !mounted) return;
+                  // Añadir al historial de campanita
+                  addNotification({
+                    type: 'call',
+                    title: `📞 Llamada entrante de ${pending.callerName}`,
+                    body: pending.callType === 'video' ? 'Videollamada perdida' : 'Llamada de voz perdida',
+                    chatId: undefined,
+                  });
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId: pending.callId,
+                    targetName: pending.callerName,
+                    targetAvatar: pending.callerAvatar || '',
+                    callType: pending.callType || 'audio',
+                    role: 'callee',
+                    offer: pending.offer ? JSON.stringify(pending.offer) : undefined,
+                  }} as any);
+                  return;
+                } catch {
+                  // router no listo aún — esperar 400ms y reintentar
+                  await new Promise(r => setTimeout(r, 400));
+                }
+              }
+            };
+            navigatePendingCall().catch(() => {});
           }
 
           // En equipos Android de gama media/baja, iniciar SSE, presencia y
