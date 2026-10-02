@@ -276,6 +276,30 @@ export function setupNotificationListeners(
   onMessage: (chatId: string) => void,
   onCall: (callData: { callId: string; callerName: string; callerAvatar?: string; callType: string; offer?: object }) => void
 ) {
+  // Guard anti-duplicado: evita navegar dos veces al mismo callId.
+  // Situación problemática: receivedSub dispara onCall cuando llega la push con
+  // app abierta, y luego responseSub la vuelve a disparar cuando el usuario toca
+  // la notificación. El guard lo bloquea durante 8s (tiempo más que suficiente).
+  let lastHandledCallId: string | null = null;
+  let lastHandledCallTs = 0;
+  const CALL_DEDUP_MS = 8000;
+
+  const handleIncomingCall = (data: any) => {
+    const callId = data?.callId;
+    if (!callId) return;
+    const now = Date.now();
+    if (callId === lastHandledCallId && now - lastHandledCallTs < CALL_DEDUP_MS) return;
+    lastHandledCallId = callId;
+    lastHandledCallTs = now;
+    onCall({
+      callId,
+      callerName: data.callerName,
+      callerAvatar: data.callerAvatar || '',
+      callType: data.callType || 'audio',
+      offer: data.offer,
+    });
+  };
+
   // Notificación recibida con app abierta
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data as any;
@@ -283,13 +307,7 @@ export function setupNotificationListeners(
       // NO llamar startRingtone() aquí en iOS — es redundante con el useEffect
       // de [callId].tsx (isIncoming) y crea el gap donde el sonido queda activo
       // si la pantalla no monta (llamada cancelada antes de navegar).
-      onCall({
-        callId: data.callId,
-        callerName: data.callerName,
-        callerAvatar: data.callerAvatar || '',
-        callType: data.callType || 'audio',
-        offer: data.offer,
-      });
+      handleIncomingCall(data);
     } else if (data?.chatId) {
       // NO llamar playNotification() aquí — el canal de notificaciones
       // (egchat-messages en Android, APNs en iOS) ya reproduce el tono.
@@ -317,13 +335,9 @@ export function setupNotificationListeners(
 
     if (data?.notificationType === 'incoming_call') {
       if (action === 'REJECT') return; // ignorar
-      onCall({
-        callId: data.callId,
-        callerName: data.callerName,
-        callerAvatar: data.callerAvatar || '',
-        callType: data.callType || 'audio',
-        offer: data.offer,
-      });
+      // Usar el mismo guard — si receivedSub ya navegó a esta llamada, este tap
+      // no dispara una segunda navegación.
+      handleIncomingCall(data);
     } else if (data?.chatId) {
       onMessage(data.chatId);
     } else if (data?.type === 'djangue_notification' && data?.groupId) {
