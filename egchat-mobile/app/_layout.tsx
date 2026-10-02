@@ -567,7 +567,7 @@ export default function RootLayout() {
               clearTimeout(realtimeStartTimer);
               clearTimeout(presenceStartTimer);
               clearTimeout(registerSessionTimer);
-              clearTimeout(pushInitTimer);
+              clearTimeout(callListenerTimer);
             };
             return;
           }
