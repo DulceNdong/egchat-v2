@@ -53,8 +53,8 @@ expoAutolinking.useExpoModules()
 
 rootProject.name = 'EGCHAT'
 
-println "DEBUG: before useExpoVersionCatalog"
-expoAutolinking.useExpoVersionCatalog()
+println "DEBUG expoAutolinking methods: " + expoAutolinking.metaClass.methods*.name.unique()
+// expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
 // includeBuild(expoAutolinking.reactNativeGradlePlugin)

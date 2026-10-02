@@ -113,6 +113,12 @@ export default function RootLayout() {
   const [globalUserId, setGlobalUserId]                     = useState<string | undefined>(undefined);
   const [incomingTransfer, setIncomingTransfer]             = useState<IncomingTransfer | null>(null);
   const [globalWalletBalance, setGlobalWalletBalance]       = useState<number | null>(null);
+  // ── Llamada entrante con app abierta ──────────────────────────────────────
+  const [incomingCall, setIncomingCall] = useState<{
+    callId: string; callerName: string; callerAvatar?: string;
+    callType: string; offer?: object;
+  } | null>(null);
+  const incomingCallRef = useRef<typeof incomingCall>(null);
   const notifCleanup    = useRef<(() => void) | null>(null);
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
