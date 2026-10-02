@@ -3,7 +3,6 @@ import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   Modal, Alert, StatusBar, RefreshControl,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
