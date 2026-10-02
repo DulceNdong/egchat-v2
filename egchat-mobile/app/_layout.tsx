@@ -573,12 +573,23 @@ export default function RootLayout() {
                       body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
                       chatId: undefined,
                     });
-                    router.push({ pathname: '/call/[callId]', params: {
-                      callId: callData.callId, targetName: callData.callerName,
-                      targetAvatar: callData.callerAvatar || '',
-                      callType: callData.callType || 'audio', role: 'callee',
-                      offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                    }} as any);
+                    // Mostrar overlay de llamada entrante (funciona aunque la app esté en cualquier pantalla)
+                    setIncomingCall({
+                      callId: callData.callId,
+                      callerName: callData.callerName,
+                      callerAvatar: callData.callerAvatar || '',
+                      callType: callData.callType || 'audio',
+                      offer: callData.offer,
+                    });
+                    // También intentar navegar — por si el overlay no monta a tiempo
+                    setTimeout(() => {
+                      router.push({ pathname: '/call/[callId]', params: {
+                        callId: callData.callId, targetName: callData.callerName,
+                        targetAvatar: callData.callerAvatar || '',
+                        callType: callData.callType || 'audio', role: 'callee',
+                        offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                      }} as any);
+                    }, 100);
                   },
                 );
 
