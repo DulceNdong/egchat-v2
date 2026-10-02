@@ -7,7 +7,6 @@ import {
   ScrollView,
   TouchableOpacity,
   Share,
-  Platform,
 } from 'react-native';
 
 export interface InformeData {
