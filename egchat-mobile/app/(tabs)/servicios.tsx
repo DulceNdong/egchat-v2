@@ -11,7 +11,7 @@ import SessionManager from '../../src/sessionManager';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
-import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
+import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { ServiceIcon } from '../../src/components/ServiceIcon';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
