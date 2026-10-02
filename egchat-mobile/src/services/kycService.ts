@@ -79,8 +79,9 @@ export async function uploadDocumentImage(
     headers: await authHeaders(),
     body: JSON.stringify({
       side,
-      image_data:     encryptedBase64,
-      document_type:  documentType,
+      image_data:      encryptedBase64,
+      document_type:   documentType,
+      document_number: docNumber ?? undefined,
     }),
   });
   if (!res.ok) throw new Error(`uploadDocumentImage: ${res.status}`);
