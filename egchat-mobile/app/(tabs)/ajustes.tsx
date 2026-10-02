@@ -350,7 +350,11 @@ function AjustesScreenInner() {
         notifications={notifications}
         onMarkAllRead={() => markAllRead()}
         onClearAll={() => clearAllNotifications()}
-        onNotifPress={(n) => { removeNotification(n.id); setShowNotifications(false); }}
+        onNotifPress={(n) => {
+          markNotificationRead(n.id);
+          setShowNotifications(false);
+          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+        }}
       />
       <HamburgerMenu
         visible={showMenu}
