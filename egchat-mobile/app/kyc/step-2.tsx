@@ -164,6 +164,23 @@ export default function Step2() {
         ))}
       </View>
 
+      {/* Número de documento */}
+      {d.documentType && (
+        <>
+          <Text style={st.sectionTitle}>Número de documento</Text>
+          <TextInput
+            style={st.textInput}
+            value={d.documentNumber ?? ''}
+            onChangeText={v => store.setDocumentData({ documentNumber: v })}
+            placeholder={d.documentType === 'passport' ? 'Ej. AB1234567' : 'Ej. GQ-12345678'}
+            placeholderTextColor="#9ca3af"
+            autoCapitalize="characters"
+            maxLength={30}
+            accessibilityLabel="Número de documento"
+          />
+        </>
+      )}
+
       {d.documentType && (
         <>
           {/* Foto frontal */}
