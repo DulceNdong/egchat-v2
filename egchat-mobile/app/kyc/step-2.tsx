@@ -77,7 +77,7 @@ export default function Step2() {
       const appId = store.applicationId;
       if (appId) {
         if (getNetworkStatus().isOnline) {
-          const res = await uploadDocumentImage(appId, 'front', enc, d.documentType);
+          const res = await uploadDocumentImage(appId, 'front', enc, d.documentType, d.documentNumber || undefined);
           if (res.ocrData && Object.keys(res.ocrData).length > 0) {
             store.setDocumentData({ ocrData: res.ocrData });
             setShowOcr(true);
