@@ -16,7 +16,7 @@ import { AccountSwitcher } from '../../src/components/AccountSwitcher';
 import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
-import { markAllRead, clearAllNotifications, removeNotification } from '../../src/store/appStore';
+import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
 import { SettingsSearch, SettingsSection, SettingsCard, SettingsDivider, SettingsRow } from '../../src/components/settings/SettingsUI';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { Colors, Spacing } from '../../src/theme';
