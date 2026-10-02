@@ -283,6 +283,15 @@ export default function RootLayout() {
       }
     };
 
+    // ── Capturar lastNotificationResponse ANTES de cualquier delay ──────
+    // Si el usuario tapó una notificación que lanzó la app desde cero,
+    // la respuesta solo está disponible durante unos ms tras el mount.
+    // Capturarla aquí y procesarla una vez el router esté listo.
+    let pendingLastResp: Awaited<ReturnType<typeof Notifications.getLastNotificationResponseAsync>> | null = null;
+    Notifications.getLastNotificationResponseAsync().then(r => {
+      pendingLastResp = r ?? null;
+    }).catch(() => {});
+
     const init = async () => {
       try {
         if (Platform.OS === 'ios') {
