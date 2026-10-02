@@ -71,18 +71,8 @@ pluginManagement {
   def nvmDir = new File(System.getProperty("user.home"), ".nvm/versions/node")
   def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin/node").absolutePath } : []
 
-  // Read NODE_BINARY from local.properties if not set as env var
-  def localNodeBinary = null
-  def localPropsFile = new File(rootDir, "local.properties")
-  if (localPropsFile.exists()) {
-    def localProps = new Properties()
-    localPropsFile.withInputStream { localProps.load(it) }
-    localNodeBinary = localProps.getProperty("NODE_BINARY")
-  }
-
   def nodeExec = ([
     System.getenv("NODE_BINARY"),
-    localNodeBinary,
     "/usr/local/bin/node",
     "/opt/homebrew/bin/node"
   ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"

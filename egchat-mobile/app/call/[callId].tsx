@@ -188,6 +188,7 @@ export default function CallScreen() {
   const [speakerOn, setSpeakerOn] = useState(true);
   const durationRef = useRef(0); // ref siempre actualizada para leer en hangUp
   const wasConnectedRef = useRef(false); // saber si llegó a conectarse
+  const loggedRef = useRef(false); // guard: logCallToChat solo se ejecuta una vez
   const [activeFilter, setActiveFilter] = useState<FilterId>('none');
   const [showFilters,  setShowFilters]  = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
