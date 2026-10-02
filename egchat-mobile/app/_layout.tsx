@@ -108,6 +108,85 @@ const isAuthPath = (path: string) =>
 const isRootPath = (path: string) =>
   path === '/' || path === '/index' || path === '/welcome';
 
+// ── Overlay de llamada entrante ───────────────────────────────────────────
+// Se muestra encima de cualquier pantalla cuando llega una llamada con la app abierta.
+function IncomingCallOverlay({
+  callData, onAccept, onReject,
+}: {
+  callData: { callId: string; callerName: string; callerAvatar?: string; callType: string };
+  onAccept: () => void;
+  onReject: () => void;
+}) {
+  const isVideo = callData.callType === 'video';
+  return (
+    <Modal
+      transparent
+      animationType="slide"
+      visible
+      statusBarTranslucent
+      onRequestClose={onReject}
+    >
+      <View style={ic.backdrop}>
+        <View style={ic.card}>
+          {/* Tipo de llamada */}
+          <Text style={ic.callType}>{isVideo ? 'Videollamada entrante' : 'Llamada de voz'}</Text>
+
+          {/* Avatar + nombre */}
+          <EGAvatar src={callData.callerAvatar} name={callData.callerName} size={72} />
+          <Text style={ic.name}>{callData.callerName}</Text>
+
+          {/* Acciones */}
+          <View style={ic.actions}>
+            {/* Rechazar */}
+            <View style={ic.actionCol}>
+              <TouchableOpacity style={ic.rejectBtn} onPress={onReject} activeOpacity={0.8}>
+                <Text style={ic.rejectIcon}>✕</Text>
+              </TouchableOpacity>
+              <Text style={ic.actionLabel}>Rechazar</Text>
+            </View>
+            {/* Aceptar */}
+            <View style={ic.actionCol}>
+              <TouchableOpacity style={ic.acceptBtn} onPress={onAccept} activeOpacity={0.8}>
+                <Text style={ic.acceptIcon}>{isVideo ? '▶' : '✆'}</Text>
+              </TouchableOpacity>
+              <Text style={ic.actionLabel}>Aceptar</Text>
+            </View>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+const ic = StyleSheet.create({
+  backdrop: {
+    flex: 1, backgroundColor: 'rgba(0,0,0,0.55)',
+    justifyContent: 'flex-end',
+  },
+  card: {
+    backgroundColor: '#1a1a1a', borderTopLeftRadius: 28, borderTopRightRadius: 28,
+    paddingHorizontal: 32, paddingVertical: 32, paddingBottom: 44,
+    alignItems: 'center', gap: 12,
+  },
+  callType: { fontSize: 13, color: 'rgba(255,255,255,0.55)', letterSpacing: 0.4, marginBottom: 4 },
+  name:     { fontSize: 22, fontWeight: '700', color: '#fff', marginTop: 4 },
+  actions:  { flexDirection: 'row', gap: 52, marginTop: 20 },
+  actionCol:{ alignItems: 'center', gap: 8 },
+  actionLabel: { fontSize: 12, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
+  rejectBtn: {
+    width: 68, height: 68, borderRadius: 34,
+    backgroundColor: '#ef4444',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  rejectIcon: { fontSize: 22, color: '#fff' },
+  acceptBtn: {
+    width: 68, height: 68, borderRadius: 34,
+    backgroundColor: '#22c55e',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  acceptIcon: { fontSize: 22, color: '#fff' },
+});
+
 export default function RootLayout() {
   const [checking, setChecking]                             = useState(true);
   const [globalUserId, setGlobalUserId]                     = useState<string | undefined>(undefined);
