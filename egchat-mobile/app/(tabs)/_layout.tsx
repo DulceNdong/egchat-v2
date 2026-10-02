@@ -1,6 +1,7 @@
 import { Tabs } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { Platform, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 import { useLanguage } from '../../src/context/LanguageContext';
