@@ -499,20 +499,49 @@ export default function RootLayout() {
                       router.push(`/chat/${chatIdOrDeepLink}` as any);
                     }
                   },
-                  (callData) => router.push({ pathname: '/call/[callId]', params: {
-                    callId: callData.callId, targetName: callData.callerName,
-                    targetAvatar: callData.callerAvatar || '',
-                    callType: callData.callType || 'audio', role: 'callee',
-                    offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                  }} as any),
+                  (callData) => {
+                    // Registrar en campanita cuando llega llamada con app abierta
+                    addNotification({
+                      type: 'call',
+                      title: `📞 Llamada de ${callData.callerName}`,
+                      body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                      chatId: undefined,
+                    });
+                    router.push({ pathname: '/call/[callId]', params: {
+                      callId: callData.callId, targetName: callData.callerName,
+                      targetAvatar: callData.callerAvatar || '',
+                      callType: callData.callType || 'audio', role: 'callee',
+                      offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                    }} as any);
+                  },
                 );
 
                 clearBadge();
-                const lastResp = await Notifications.getLastNotificationResponseAsync().catch(() => null);
+
+                // Usar la respuesta capturada al inicio de init() — si el usuario
+                // tapó una notificación que lanzó la app, esta ya tiene los datos.
+                const lastResp = pendingLastResp
+                  ?? await Notifications.getLastNotificationResponseAsync().catch(() => null);
                 if (lastResp) {
                   const data = lastResp.notification.request.content.data as any;
                   setTimeout(() => {
-                    if (data?.chatId) {
+                    if (data?.notificationType === 'incoming_call' && data?.callId) {
+                      // Tap en notificación de llamada → abrir pantalla de llamada
+                      addNotification({
+                        type: 'call',
+                        title: `📞 Llamada de ${data.callerName || 'Usuario'}`,
+                        body: (data.callType === 'video') ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                        chatId: undefined,
+                      });
+                      router.push({ pathname: '/call/[callId]', params: {
+                        callId: data.callId,
+                        targetName: data.callerName || 'Usuario',
+                        targetAvatar: data.callerAvatar || '',
+                        callType: data.callType || 'audio',
+                        role: 'callee',
+                        offer: data.offer ? JSON.stringify(data.offer) : undefined,
+                      }} as any);
+                    } else if (data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
                     } else if (data?.type === 'djangue_notification' && data?.groupId) {
                       router.push({ pathname: '/djangue-detail', params: { id: data.groupId } } as any);
