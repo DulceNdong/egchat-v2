@@ -364,49 +364,23 @@ export default function BangeCaseDetail() {
                 { label: t('case.income'),         value: kyc.monthly_income_range },
                 { label: t('case.sourceOfFunds'),  value: kyc.source_of_funds },
                 { label: t('case.pep'),            value: kyc.politically_exposed ? '⚠️ Sí' : '✅ No' },
+                { label: t('case.docType'),        value: kyc.doc_type },
+                { label: t('case.docNumber'),      value: kyc.doc_number },
+                {
+                  label: t('case.docExpiry'),
+                  value: expiryDate ? (
+                    <span className={daysLeft !== null && daysLeft <= 30 ? 'text-red-600 font-bold' : daysLeft !== null && daysLeft <= 90 ? 'text-amber-600 font-semibold' : undefined}>
+                      {format(new Date(expiryDate), 'dd/MM/yyyy')}
+                      {daysLeft !== null && daysLeft <= 90 && ` (${daysLeft}d)`}
+                    </span>
+                  ) : null,
+                },
               ].map(({ label, value }) => (
                 <div key={label}>
                   <dt className="text-xs text-gray-500 dark:text-gray-400">{label}</dt>
                   <dd className="text-sm font-medium mt-0.5">{value ?? <span className="text-gray-300">—</span>}</dd>
                 </div>
               ))}
-
-              {/* Tipo y número de documento — editables por el revisor */}
-              <div className="col-span-2 grid grid-cols-2 gap-x-6 gap-y-3 border-t border-gray-100 dark:border-gray-800 pt-3 mt-1">
-                <DocFieldEdit
-                  applicationId={kyc.id}
-                  field="doc_type"
-                  label={t('case.docType')}
-                  currentValue={kyc.doc_type}
-                  type="select"
-                  options={[
-                    { value: 'dni',           label: 'DNI / Cédula Nacional' },
-                    { value: 'passport',      label: 'Pasaporte' },
-                    { value: 'resident_card', label: 'Tarjeta de Residencia' },
-                  ]}
-                  onSaved={refetch}
-                />
-                <DocFieldEdit
-                  applicationId={kyc.id}
-                  field="doc_number"
-                  label={t('case.docNumber')}
-                  currentValue={kyc.doc_number}
-                  type="text"
-                  placeholder="Ej. GQ-123456789"
-                  onSaved={refetch}
-                />
-                <div>
-                  <dt className="text-xs text-gray-500 dark:text-gray-400">{t('case.docExpiry')}</dt>
-                  <dd className="text-sm font-medium mt-0.5">
-                    {expiryDate ? (
-                      <span className={daysLeft !== null && daysLeft <= 30 ? 'text-red-600 font-bold' : daysLeft !== null && daysLeft <= 90 ? 'text-amber-600 font-semibold' : undefined}>
-                        {format(new Date(expiryDate), 'dd/MM/yyyy')}
-                        {daysLeft !== null && daysLeft <= 90 && ` (${daysLeft}d)`}
-                      </span>
-                    ) : <span className="text-gray-300">—</span>}
-                  </dd>
-                </div>
-              </div>
             </dl>
           </section>
 
