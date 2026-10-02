@@ -366,6 +366,41 @@ export default function RootLayout() {
         try {
           if (!me?.id || !mounted) return;
 
+          // ── iOS VoIP PushKit — registrar listener INMEDIATAMENTE ──────────
+          // PushKit despierta la app en background antes de que el JS esté listo.
+          // El módulo nativo encola el evento y lo entrega en cuanto hay un listener.
+          // DEBE registrarse aquí, sin ningún delay, para no perder llamadas con
+          // la app cerrada/suspendida.
+          if (Platform.OS === 'ios') {
+            try {
+              const enableVoip = process.env.EXPO_PUBLIC_ENABLE_VOIP !== '0';
+              if (enableVoip) {
+                PushKit.register();
+                pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                  addNotification({
+                    type: 'call',
+                    title: `📞 Llamada de ${callData.callerName}`,
+                    body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                    chatId: undefined,
+                  });
+                  // Pequeño delay para que el router esté montado si la app acaba de despertar
+                  setTimeout(() => {
+                    router.push({ pathname: '/call/[callId]', params: {
+                      callId: callData.callId,
+                      targetName: callData.callerName,
+                      targetAvatar: (callData as any).callerAvatar || '',
+                      callType: callData.callType || 'audio',
+                      role: 'callee',
+                      offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                    }} as any);
+                  }, 300);
+                });
+              }
+            } catch (e) {
+              console.warn('[PushKit early init skipped]', e);
+            }
+          }
+
           // ── Llamada pendiente (app estaba cerrada cuando llegó la llamada) ──
           // Se comprueba con pequeño retry para asegurar que el router ya está montado.
           if (Platform.OS === 'android') {
