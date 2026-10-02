@@ -478,6 +478,13 @@ export default function RootLayout() {
                     });
 
                     pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                      // Registrar en campanita
+                      addNotification({
+                        type: 'call',
+                        title: `📞 Llamada de ${callData.callerName}`,
+                        body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                        chatId: undefined,
+                      });
                       router.push({ pathname: '/call/[callId]', params: {
                         callId: callData.callId, targetName: callData.callerName,
                         targetAvatar: (callData as any).callerAvatar || '',
