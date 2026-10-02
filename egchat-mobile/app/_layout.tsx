@@ -197,7 +197,6 @@ export default function RootLayout() {
     callId: string; callerName: string; callerAvatar?: string;
     callType: string; offer?: object;
   } | null>(null);
-  const incomingCallRef = useRef<typeof incomingCall>(null);
   const notifCleanup    = useRef<(() => void) | null>(null);
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
