@@ -364,6 +364,13 @@ export const markAllRead = () => {
   notify();
 };
 
+export const markNotificationRead = (id: string) => {
+  state.notifications = state.notifications.map(n =>
+    n.id === id ? { ...n, read: true } : n,
+  );
+  notify();
+};
+
 export const clearAllNotifications = () => {
   state.notifications = [];
   notify();
