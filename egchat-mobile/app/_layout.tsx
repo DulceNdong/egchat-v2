@@ -501,32 +501,47 @@ export default function RootLayout() {
 
                 if (enableVoip) {
                   try {
-                    PushKit.register();
-                    pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
-                      const t = await getT();
-                      if (!t) return;
-                      fetch(`${getB()}/api/push/register-voip-token`, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-                        body: JSON.stringify({ voipToken }),
-                      }).catch(() => {});
-                    });
-
-                    pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
-                      // Registrar en campanita
-                      addNotification({
-                        type: 'call',
-                        title: `📞 Llamada de ${callData.callerName}`,
-                        body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
-                        chatId: undefined,
+                    // iOS: PushKit ya fue registrado inmediatamente al autenticarse
+                    // (ver bloque "iOS VoIP PushKit — registrar listener INMEDIATAMENTE" arriba).
+                    // Aquí solo registramos el token updater, que no es crítico para recibir llamadas.
+                    if (Platform.OS === 'ios') {
+                      pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
+                        const t = await getT();
+                        if (!t) return;
+                        fetch(`${getB()}/api/push/register-voip-token`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+                          body: JSON.stringify({ voipToken }),
+                        }).catch(() => {});
                       });
-                      router.push({ pathname: '/call/[callId]', params: {
-                        callId: callData.callId, targetName: callData.callerName,
-                        targetAvatar: (callData as any).callerAvatar || '',
-                        callType: callData.callType || 'audio', role: 'callee',
-                        offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                      }} as any);
-                    });
+                    } else {
+                      // Android / otras plataformas: registrar todo aquí
+                      PushKit.register();
+                      pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
+                        const t = await getT();
+                        if (!t) return;
+                        fetch(`${getB()}/api/push/register-voip-token`, {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
+                          body: JSON.stringify({ voipToken }),
+                        }).catch(() => {});
+                      });
+
+                      pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                        addNotification({
+                          type: 'call',
+                          title: `📞 Llamada de ${callData.callerName}`,
+                          body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                          chatId: undefined,
+                        });
+                        router.push({ pathname: '/call/[callId]', params: {
+                          callId: callData.callId, targetName: callData.callerName,
+                          targetAvatar: (callData as any).callerAvatar || '',
+                          callType: callData.callType || 'audio', role: 'callee',
+                          offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+                        }} as any);
+                      });
+                    }
                   } catch (e) {
                     console.warn('[PushKit init skipped]', e);
                   }
