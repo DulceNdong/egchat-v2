@@ -46,7 +46,7 @@ import { DarkColors } from '../../src/theme/darkMode';
 import { useAppStore } from '../../src/store/useAppStore';
 import {
   fetchWeatherIfStale,
-  markAllRead, clearAllNotifications, removeNotification,
+  markAllRead, clearAllNotifications, removeNotification, markNotificationRead,
 } from '../../src/store/appStore';
 import * as Haptics from 'expo-haptics';
 
