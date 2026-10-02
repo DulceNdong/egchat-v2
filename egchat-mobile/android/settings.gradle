@@ -1,74 +1,17 @@
 pluginManagement {
-  try {
-    def userHome = System.getProperty("user.home") ?: ""
-    def nvmDir = new File(userHome, ".nvm/versions/node")
-    def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin").absolutePath } : []
-
-    def extraPaths = ([
-      "/usr/local/bin",
-      "/opt/homebrew/bin",
-      "/usr/local/opt/node/bin",
-      "${userHome}/.fnm/current/bin",
-      "${userHome}/.volta/bin",
-      "${userHome}/.asdf/shims",
-      System.getenv("NODE_BINARY") ? new File(System.getenv("NODE_BINARY")).parent : null
-    ] + (nvmBinPaths ?: [])).findAll { it && new File(it).exists() }
-
-    if (!extraPaths.isEmpty()) {
-      def pathPrefix = extraPaths.join(File.pathSeparator)
-
-      try {
-        def unsafeClass = Class.forName("sun.misc.Unsafe")
-        def fUnsafe = unsafeClass.getDeclaredField("theUnsafe")
-        fUnsafe.setAccessible(true)
-        def unsafe = fUnsafe.get(null)
-
-        def peClass = Class.forName("java.lang.ProcessEnvironment")
-
-        def getStaticField = { String fieldName ->
-          try {
-            def f = peClass.getDeclaredField(fieldName)
-            def base = unsafe.staticFieldBase(f)
-            def offset = unsafe.staticFieldOffset(f)
-            return unsafe.getObject(base, offset)
-          } catch (Throwable ignored) {
-            return null
-          }
-        }
-
-        def envMap = getStaticField("theEnvironment") as Map
-
-        if (envMap != null) {
-          def pathEntry = envMap.entrySet().find { it.key.toString().equalsIgnoreCase("PATH") }
-          if (pathEntry != null) {
-            def curPath = pathEntry.value.toString()
-            if (!curPath.startsWith(pathPrefix)) {
-              def newPathStr = pathPrefix + File.pathSeparator + curPath
-              def valObj = pathEntry.value
-              def extClass = valObj.getClass().getSuperclass()
-              def fStr = extClass.getDeclaredField("str")
-              def fBytes = extClass.getDeclaredField("bytes")
-
-              def strOffset = unsafe.objectFieldOffset(fStr)
-              def bytesOffset = unsafe.objectFieldOffset(fBytes)
-
-              unsafe.putObject(valObj, strOffset, newPathStr)
-              unsafe.putObject(valObj, bytesOffset, newPathStr.getBytes())
-            }
-          }
-        }
-      } catch (Throwable ignored) {}
-    }
-  } catch (Throwable ignored) {}
-
-  def nvmDir = new File(System.getProperty("user.home"), ".nvm/versions/node")
+  def userHome = System.getProperty("user.home") ?: ""
+  def nvmDir = new File(userHome, ".nvm/versions/node")
   def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin/node").absolutePath } : []
 
   def nodeExec = ([
     System.getenv("NODE_BINARY"),
+    System.getProperty("NODE_BINARY"),
     "/usr/local/bin/node",
-    "/opt/homebrew/bin/node"
+    "/opt/homebrew/bin/node",
+    "/usr/bin/node"
   ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"
+
+  System.setProperty("NODE_BINARY", nodeExec)
 
   def reactNativeGradlePlugin = new File(
     providers.exec {
@@ -93,6 +36,10 @@ plugins {
   id("expo-autolinking-settings")
 }
 
+def nodeExec = System.getProperty("NODE_BINARY") ?: "node"
+
+println "DEBUG: settings.gradle after plugins, nodeExec=${nodeExec}"
+
 extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
   if (System.getenv('EXPO_USE_COMMUNITY_AUTOLINKING') == '1') {
     ex.autolinkLibrariesFromCommand()
@@ -100,11 +47,14 @@ extensions.configure(com.facebook.react.ReactSettingsExtension) { ex ->
     ex.autolinkLibrariesFromCommand(expoAutolinking.rnConfigCommand)
   }
 }
+
+println "DEBUG: before useExpoModules"
 expoAutolinking.useExpoModules()
 
 rootProject.name = 'EGCHAT'
 
+println "DEBUG: before useExpoVersionCatalog"
 expoAutolinking.useExpoVersionCatalog()
 
 include ':app'
-includeBuild(expoAutolinking.reactNativeGradlePlugin)
+// includeBuild(expoAutolinking.reactNativeGradlePlugin)
