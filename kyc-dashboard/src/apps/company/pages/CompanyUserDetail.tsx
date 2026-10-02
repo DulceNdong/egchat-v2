@@ -79,7 +79,7 @@ export default function CompanyUserDetail() {
                 [t('case.profession'),   kyc.profession],
                 [t('case.sourceOfFunds'),kyc.source_of_funds],
                 [t('case.pep'),          kyc.politically_exposed ? '⚠️ Sí' : '✅ No'],
-                [t('case.docType'),      kyc.doc_type],
+                [t('case.docType'), kyc.doc_type ? ({ dni:'DNI', passport:'Pasaporte', resident_card:'Tarjeta de Residencia', DNI:'DNI', PASSPORT:'Pasaporte' }[kyc.doc_type] ?? kyc.doc_type.toUpperCase()) : null],
                 [t('case.docNumber'),    kyc.doc_number],
               ].map(([label, value]) => (
                 <div key={String(label)}>
