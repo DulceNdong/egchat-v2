@@ -83,6 +83,18 @@ const SECTIONS: { title: string; items: MenuItem[] }[] = [
       { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
     ],
   },
+  {
+    title: '💰 Administración',
+    items: [
+      { label: '📊 Dashboard Monetización', route: '/monetizacion' },
+      { label: '🏢 Empresas y Servicios', route: '/monetizacion/empresas' },
+      { label: '🚖 Gestión de Taxis', route: '/monetizacion/taxis' },
+      { label: '⛵ Gestión de Barcos', route: '/monetizacion/barcos' },
+      { label: '💳 Revenue Monedero', route: '/monetizacion/monedero' },
+      { label: '👤 Perfiles Financieros', route: '/monetizacion/perfil-financiero' },
+      { label: '🏪 Perfiles Negocios', route: '/monetizacion/perfil-negocio' },
+    ],
+  },
 ];
 
 const IconGear = () => (
