@@ -22,7 +22,7 @@ export default function WelcomeScreen() {
       Animated.timing(dotsOpacity, { toValue: 1, duration: 300, useNativeDriver: true }),
     ]).start();
 
-    // Tras 6s — si tiene sesión va a tabs, si no va a login
+    // Tras 3s — si tiene sesión va a tabs, si no va a login
     const timer = setTimeout(async () => {
       try {
         const isAuth = await authAPI.isAuthenticated();
