@@ -768,6 +768,23 @@ export default function RootLayout() {
             <ToastContainer />
             <OfflineBanner />
             <FloatingCallBar />
+            {/* ── Overlay llamada entrante (app abierta) ── */}
+            {incomingCall && (
+              <IncomingCallOverlay
+                callData={incomingCall}
+                onAccept={() => {
+                  const c = incomingCall;
+                  setIncomingCall(null);
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId: c.callId, targetName: c.callerName,
+                    targetAvatar: c.callerAvatar || '',
+                    callType: c.callType || 'audio', role: 'callee',
+                    offer: c.offer ? JSON.stringify(c.offer) : undefined,
+                  }} as any);
+                }}
+                onReject={() => setIncomingCall(null)}
+              />
+            )}
             <IncomingTransferModal
               transfer={incomingTransfer}
               onAccepted={(newBalance) => {
