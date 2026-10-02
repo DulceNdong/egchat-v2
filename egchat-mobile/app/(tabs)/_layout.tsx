@@ -79,6 +79,11 @@ const TabIcon = ({ name, color, focused }: { name: string; color: string; focuse
 export default function TabsLayout() {
   const { isDark } = useThemeContext();
   const { language } = useLanguage();
+  const insets = useSafeAreaInsets();
+
+  // La tab bar debe cubrir el home indicator (insets.bottom) + padding visual
+  const TAB_CONTENT_HEIGHT = 56;
+  const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
 
   return (
     <Tabs
@@ -98,7 +103,7 @@ export default function TabsLayout() {
           left: 0,
           right: 0,
           bottom: 0,
-          height: Platform.OS === 'ios' ? 92 : 68,
+          height: tabBarHeight,
           borderTopWidth: 0,
           elevation: 12,
           shadowColor: '#000',
@@ -107,7 +112,7 @@ export default function TabsLayout() {
           shadowRadius: 8,
           backgroundColor: 'transparent',
           overflow: 'hidden',
-          paddingBottom: Platform.OS === 'ios' ? 10 : 4,
+          paddingBottom: insets.bottom,
           paddingTop: Platform.OS === 'android' ? 4 : 0,
         },
         tabBarBackground: () => (
