@@ -73,6 +73,7 @@ export async function uploadDocumentImage(
   side: 'front' | 'back' | 'selfie',
   encryptedBase64: string,
   documentType: DocumentType,
+  docNumber?: string,
 ): Promise<{ imageUrl: string; ocrData?: Record<string, string> }> {
   const res = await fetch(`${BASE}/api/kyc/application/${applicationId}/document`, {
     method: 'POST',
