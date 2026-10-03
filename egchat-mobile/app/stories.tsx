@@ -2047,6 +2047,274 @@ const mps = StyleSheet.create({
 });
 
 // ══════════════════════════════════════════════════════════════════
+// MODAL GESTIONAR MIS ESTADOS
+// Lista los estados propios con edición de caption y borrado
+// ══════════════════════════════════════════════════════════════════
+
+interface MyStory {
+  id: string;
+  media_url?: string;
+  caption?: string;
+  created_at: string;
+  type?: string;
+  media?: Array<{ url: string; type?: string }>;
+  images?: string[];
+}
+
+function MyStoriesManagerModal({
+  visible, stories, onClose, onRefresh, C, isDark,
+}: {
+  visible: boolean;
+  stories: MyStory[];
+  onClose: () => void;
+  onRefresh: () => void;
+  C: typeof Colors;
+  isDark: boolean;
+}) {
+  const insets = useSafeAreaInsets();
+  const [editCaption, setEditCaption] = React.useState<{ id: string; caption: string } | null>(null);
+  const [savingCaption, setSavingCaption] = React.useState(false);
+  const [localStories, setLocalStories] = React.useState<MyStory[]>([]);
+
+  React.useEffect(() => {
+    if (visible) setLocalStories(stories);
+  }, [visible, stories]);
+
+  const handleSaveCaption = async () => {
+    if (!editCaption) return;
+    setSavingCaption(true);
+    try {
+      const token = await getToken();
+      const BASE  = getApiBase();
+      await fetch(`${BASE}/api/stories/${editCaption.id}`, {
+        method: 'PATCH',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ caption: editCaption.caption }),
+      });
+      setLocalStories(prev => prev.map(s =>
+        s.id === editCaption.id ? { ...s, caption: editCaption.caption } : s
+      ));
+      setEditCaption(null);
+      onRefresh();
+    } catch {
+      Alert.alert('Error', 'No se pudo guardar el texto');
+    } finally {
+      setSavingCaption(false);
+    }
+  };
+
+  const handleDeleteStory = (storyId: string) => {
+    Alert.alert('Eliminar estado', '¿Eliminar este estado completo?', [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Eliminar', style: 'destructive',
+        onPress: async () => {
+          try {
+            await storiesAPI.delete(storyId);
+            setLocalStories(prev => prev.filter(s => s.id !== storyId));
+            onRefresh();
+          } catch {
+            Alert.alert('Error', 'No se pudo eliminar el estado');
+          }
+        },
+      },
+    ]);
+  };
+
+  const handleDeleteMedia = (storyId: string) => {
+    Alert.alert(
+      'Eliminar medio',
+      'No es posible eliminar solo este medio. ¿Deseas eliminar el estado completo?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        { text: 'Eliminar estado', style: 'destructive', onPress: () => handleDeleteStory(storyId) },
+      ]
+    );
+  };
+
+  const isVideoUrl = (url?: string) =>
+    !!url && /\.(mp4|mov|m4v|webm)(\?|#|$)/i.test(url);
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <SafeAreaView style={{ flex: 1, backgroundColor: C.bgPrimary }} edges={['top']}>
+        {/* Header */}
+        <LinearGradient
+          colors={['#00C8A0', '#00B4E6']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 14, paddingTop: 14, gap: 10 }}
+        >
+          <TouchableOpacity
+            onPress={onClose}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}
+          >
+            <MIcon name="close" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Mis estados</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' }}>
+            {localStories.length} {localStories.length === 1 ? 'estado' : 'estados'}
+          </Text>
+        </LinearGradient>
+
+        {localStories.length === 0 ? (
+          <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
+            <MIcon name="auto-awesome" size={52} color={C.border} />
+            <Text style={{ color: C.textSecondary, fontSize: 15, fontWeight: '600' }}>Sin estados publicados</Text>
+          </View>
+        ) : (
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={{ padding: 14, paddingBottom: insets.bottom + 32 }}
+          >
+            {localStories.map((story) => {
+              // Construir lista de medias del estado
+              const mediaItems: Array<{ url: string; isVideo: boolean }> =
+                story.media && story.media.length > 0
+                  ? story.media.map(m => ({ url: m.url, isVideo: m.type === 'video' || isVideoUrl(m.url) }))
+                  : story.images && story.images.length > 0
+                    ? story.images.map(u => ({ url: u, isVideo: isVideoUrl(u) }))
+                    : story.media_url
+                      ? [{ url: story.media_url, isVideo: story.type === 'video' || isVideoUrl(story.media_url) }]
+                      : [];
+
+              return (
+                <View
+                  key={story.id}
+                  style={[mgst.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
+                >
+                  {/* Tiempo */}
+                  <Text style={[mgst.time, { color: C.textTertiary }]}>{timeAgo(story.created_at)}</Text>
+
+                  {/* Miniaturas de media */}
+                  {mediaItems.length > 0 && (
+                    <ScrollView
+                      horizontal
+                      showsHorizontalScrollIndicator={false}
+                      contentContainerStyle={{ gap: 8, paddingBottom: 10 }}
+                    >
+                      {mediaItems.map((m, mIdx) => (
+                        <View key={mIdx} style={mgst.thumbWrap}>
+                          {m.isVideo ? (
+                            <LinearGradient colors={['#1a1a2e', '#16213e']} style={mgst.thumb}>
+                              <MIcon name="play-circle-outline" size={28} color="rgba(255,255,255,0.75)" />
+                            </LinearGradient>
+                          ) : (
+                            <Image source={{ uri: m.url }} style={mgst.thumb} resizeMode="cover" />
+                          )}
+                          {/* Botón × para eliminar este medio */}
+                          <TouchableOpacity
+                            style={mgst.removeBtn}
+                            onPress={() => handleDeleteMedia(story.id)}
+                          >
+                            <Text style={{ color: '#fff', fontSize: 11, fontWeight: '800', lineHeight: 16 }}>×</Text>
+                          </TouchableOpacity>
+                        </View>
+                      ))}
+                    </ScrollView>
+                  )}
+
+                  {/* Caption */}
+                  {!!story.caption && (
+                    <Text style={[mgst.caption, { color: C.textSecondary }]} numberOfLines={2}>
+                      {story.caption}
+                    </Text>
+                  )}
+
+                  {/* Acciones */}
+                  <View style={mgst.actions}>
+                    <TouchableOpacity
+                      style={[mgst.actionBtn, { backgroundColor: BRAND2 + '18', borderColor: BRAND2 + '44', borderWidth: 1 }]}
+                      onPress={() => setEditCaption({ id: story.id, caption: story.caption || '' })}
+                      activeOpacity={0.8}
+                    >
+                      <MIcon name="edit" size={14} color={BRAND2} />
+                      <Text style={{ color: BRAND2, fontSize: 12, fontWeight: '700' }}>Editar texto</Text>
+                    </TouchableOpacity>
+                    <TouchableOpacity
+                      style={[mgst.actionBtn, { backgroundColor: '#ef444418', borderColor: '#ef444444', borderWidth: 1 }]}
+                      onPress={() => handleDeleteStory(story.id)}
+                      activeOpacity={0.8}
+                    >
+                      <MIcon name="delete" size={14} color="#ef4444" />
+                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Eliminar</Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              );
+            })}
+          </ScrollView>
+        )}
+
+        {/* Modal editar caption */}
+        <Modal
+          visible={!!editCaption}
+          transparent
+          animationType="slide"
+          onRequestClose={() => setEditCaption(null)}
+        >
+          <KeyboardAvoidingView
+            style={{ flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.5)' }}
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          >
+            <View style={[mgst.editSheet, { backgroundColor: C.bgPrimary }]}>
+              <Text style={[mgst.editTitle, { color: C.textPrimary }]}>Editar texto del estado</Text>
+              <TextInput
+                style={[mgst.editInput, { color: C.textPrimary, borderColor: C.borderLight, backgroundColor: C.bgSecondary }]}
+                value={editCaption?.caption ?? ''}
+                onChangeText={t => setEditCaption(prev => prev ? { ...prev, caption: t } : null)}
+                placeholder="Escribe algo..."
+                placeholderTextColor={C.textTertiary}
+                multiline
+                maxLength={300}
+                autoFocus
+              />
+              <View style={{ flexDirection: 'row', gap: 10, marginTop: 12 }}>
+                <TouchableOpacity
+                  style={[mgst.editBtn, { backgroundColor: C.bgTertiary, flex: 1 }]}
+                  onPress={() => setEditCaption(null)}
+                >
+                  <Text style={{ color: C.textSecondary, fontWeight: '600', fontSize: 14 }}>Cancelar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[mgst.editBtn, { backgroundColor: BRAND, flex: 2 }]}
+                  onPress={handleSaveCaption}
+                  disabled={savingCaption}
+                >
+                  {savingCaption
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Guardar</Text>
+                  }
+                </TouchableOpacity>
+              </View>
+            </View>
+          </KeyboardAvoidingView>
+        </Modal>
+      </SafeAreaView>
+    </Modal>
+  );
+}
+
+const mgst = StyleSheet.create({
+  card:      { borderRadius: 16, padding: 14, marginBottom: 12, borderWidth: StyleSheet.hairlineWidth },
+  time:      { fontSize: 11, fontWeight: '600', marginBottom: 8 },
+  thumbWrap: { position: 'relative', width: 80, height: 80 },
+  thumb:     { width: 80, height: 80, borderRadius: 10, alignItems: 'center', justifyContent: 'center', overflow: 'hidden' },
+  removeBtn: {
+    position: 'absolute', top: -6, right: -6,
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: '#ef4444',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  caption:   { fontSize: 13, lineHeight: 19, marginBottom: 10 },
+  actions:   { flexDirection: 'row', gap: 8, marginTop: 4 },
+  actionBtn: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingHorizontal: 12, paddingVertical: 7, borderRadius: 10 },
+  editSheet: { borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: 20, paddingBottom: 36 },
+  editTitle: { fontSize: 16, fontWeight: '700', marginBottom: 12 },
+  editInput: { borderWidth: 1.5, borderRadius: 12, padding: 12, fontSize: 15, minHeight: 80, textAlignVertical: 'top', lineHeight: 22 },
+  editBtn:   { paddingVertical: 12, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
+});
+
+// ══════════════════════════════════════════════════════════════════
 // ESTILOS PRINCIPALES
 // ══════════════════════════════════════════════════════════════════
 const st = StyleSheet.create({
