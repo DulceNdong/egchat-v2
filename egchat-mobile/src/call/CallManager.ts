@@ -601,19 +601,20 @@ export class CallManager {
     };
 
     // ── onnegotiationneeded ──────────────────────────────────────
-    // Solo el caller renegocia — el callee responde.
+    // FIX 5 — Renegociación simétrica: ambos roles pueden renegociar
+    // cuando la llamada ya está conectada (p.ej. callee añade vídeo
+    // en mitad de una llamada de audio).
     pc.onnegotiationneeded = async () => {
-      if (this._session?.role !== 'caller') return;
       if (this._commState !== 'connected') return;
-      // Renegociación en curso (p.ej. al añadir track de pantalla)
+      if (!this._session) return;
       try {
         const offer = await pc.createOffer({});
         await pc.setLocalDescription(offer);
         await callAPI.offer({
-          callId:       this._session!.callId,
+          callId:       this._session.callId,
           offer:        pc.localDescription,
-          targetUserId: this._session!.targetUserId,
-          type:         this._session!.callType,
+          targetUserId: this._session.targetUserId,
+          type:         this._session.callType,
         });
       } catch (e) {
         console.warn('[CallManager] onnegotiationneeded error:', e);
