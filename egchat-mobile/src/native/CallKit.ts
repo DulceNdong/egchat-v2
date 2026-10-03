@@ -1,18 +1,11 @@
 /**
  * EGChat — Puente nativo para llamadas
  * iOS: CallKit  |  Android: ConnectionService + Notificación full-screen
- *
- * Uso:
- *   import { NativeCallKit } from '../native/CallKit';
- *   NativeCallKit.showIncomingCall('Reddington', '', 'call_123', false);
- *   NativeCallKit.onAnswer(callId => router.push(`/call/${callId}`));
  */
-
 import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 
 const { EGChatCallModule } = NativeModules;
 
-// En web o si el módulo no está disponible, usamos stubs vacíos
 const isAvailable = !!EGChatCallModule && Platform.OS !== 'web';
 
 let emitter: NativeEventEmitter | null = null;
@@ -21,7 +14,7 @@ if (isAvailable) {
 }
 
 export const NativeCallKit = {
-  /** Muestra la pantalla/notificación de llamada entrante */
+  /** Muestra la pantalla/notificación de llamada entrante (app abierta) */
   showIncomingCall(
     callerName: string,
     callerAvatar: string,
@@ -54,6 +47,26 @@ export const NativeCallKit = {
   endCall(callId: string) {
     if (!isAvailable) return;
     EGChatCallModule.endCall(callId);
+  },
+
+  /** [Android] Lee y borra la llamada pendiente de SharedPreferences.
+   *  Equivalente a consumePendingCall() para el payload nativo (no AsyncStorage).
+   *  Devuelve null si no hay llamada pendiente o si caducó. */
+  getAndClearPendingCall(): Promise<string | null> {
+    if (!isAvailable || Platform.OS !== 'android') return Promise.resolve(null);
+    return EGChatCallModule.getAndClearPendingCall();
+  },
+
+  /** [Android] Inicia el ForegroundService para mantener la llamada activa en background */
+  startCallForegroundService(callId: string, callerName: string, isVideo: boolean) {
+    if (!isAvailable || Platform.OS !== 'android') return;
+    EGChatCallModule.startCallForegroundService(callId, callerName, isVideo);
+  },
+
+  /** [Android] Para el ForegroundService al finalizar la llamada */
+  stopCallForegroundService() {
+    if (!isAvailable || Platform.OS !== 'android') return;
+    EGChatCallModule.stopCallForegroundService();
   },
 
   /** Escuchar evento: usuario contestó desde la notificación */
