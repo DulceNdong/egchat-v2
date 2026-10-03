@@ -588,7 +588,7 @@ export default function CallScreen() {
       <View style={[s.topBar, { paddingTop: insets.top + 12 }]}>
         <TouchableOpacity
           style={s.glassChip}
-          onPress={openMessageMode}   // ← router.push, no navigate
+          onPress={openMessageMode}
           activeOpacity={0.8}
         >
           <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.5} strokeLinecap="round">
