@@ -1500,8 +1500,8 @@ export default function StoriesScreen() {
       )}
 
       {/* ── TAB: STREAMINGS / VIVOS ───────────────────────────── */}
-      {activeTab === 'streaming' && (
-        <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} contentContainerStyle={{ padding: 20 }} showsVerticalScrollIndicator={false}>
+      {activeTab === 'estados' && activeSubTab === 'sub_vivos' && (
+        <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
           <LinearGradient colors={[BRAND + '22', BRAND2 + '11']} style={st.liveBannerCard}>
             <View style={st.liveDotLarge} />
             <View style={{ flex: 1 }}>
