@@ -2045,6 +2045,11 @@ const st = StyleSheet.create({
     paddingHorizontal: 8, paddingTop: 4,
     borderBottomWidth: StyleSheet.hairlineWidth,
   },
+  subTabsWrap: {
+    flexDirection: 'row',
+    paddingHorizontal: 8, paddingTop: 2,
+    borderBottomWidth: StyleSheet.hairlineWidth,
+  },
   tab:          { flex: 1, alignItems: 'center', paddingVertical: 10, position: 'relative' },
   tabActive:    {},
   tabText:      { fontSize: 12, fontWeight: '600' },
