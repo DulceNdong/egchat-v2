@@ -244,29 +244,53 @@ export async function syncTokenWithServer(expoPushToken: string) {
   const authToken = await getToken();
   if (!authToken) return;
 
-  // Detectar si es un token Expo (ExponentPushToken[...]) o un token nativo APNs/FCM
-  const isExpoToken = expoPushToken.startsWith('ExponentPushToken');
-  const tokenType = isExpoToken ? 'expo' : (Platform.OS === 'ios' ? 'apns' : 'fcm');
+  const isExpoToken  = expoPushToken.startsWith('ExponentPushToken');
+  const tokenType    = isExpoToken ? 'expo' : (Platform.OS === 'ios' ? 'apns' : 'fcm');
 
   try {
     const res = await fetch(`${API_BASE}/api/push/register-expo-token`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${authToken}`,
+        'Content-Type':  'application/json',
+        Authorization:   `Bearer ${authToken}`,
       },
-      body: JSON.stringify({ expoPushToken, platform: Platform.OS, tokenType }),
+      body: JSON.stringify({
+        expoPushToken,
+        platform:  Platform.OS,
+        tokenType,
+      }),
     });
     if (!res.ok) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
       throw new Error(err.message || `HTTP ${res.status}`);
     }
-    console.log('✅ Expo push token registrado en servidor', {
-      platform: Platform.OS,
-      tokenSuffix: expoPushToken.slice(-12),
-    });
   } catch (e) {
     console.warn('No se pudo registrar token push:', e);
+  }
+}
+
+// ── Registrar token VoIP iOS (PushKit) ─────────────────────────────────────
+export async function syncVoIPTokenWithServer(voipToken: string) {
+  if (Platform.OS !== 'ios') return;
+  const authToken = await getToken();
+  if (!authToken) return;
+
+  try {
+    const res = await fetch(`${API_BASE}/api/push/register-voip-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type':  'application/json',
+        Authorization:   `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ voipToken }),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({ message: res.statusText }));
+      throw new Error(err.message || `HTTP ${res.status}`);
+    }
+    console.log('✅ Token VoIP registrado en servidor');
+  } catch (e) {
+    console.warn('No se pudo registrar token VoIP:', e);
   }
 }
 
