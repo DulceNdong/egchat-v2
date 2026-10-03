@@ -93,7 +93,7 @@
           "sounds": [
             "./assets/notification.wav"
           ],
-          "iosDisplayInForeground": true
+          "iosDisplayInForeground": false
         }
       ],
       [
