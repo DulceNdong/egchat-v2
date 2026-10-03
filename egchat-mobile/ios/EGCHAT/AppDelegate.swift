@@ -5,7 +5,7 @@ import UserNotifications
 import PushKit
 
 @UIApplicationMain
-public class AppDelegate: ExpoAppDelegate, UNUserNotificationCenterDelegate, PKPushRegistryDelegate {
+public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
 
   var window: UIWindow?
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
