@@ -3,8 +3,6 @@ import React
 import ReactAppDependencyProvider
 import UserNotifications
 import PushKit
-import FirebaseCore
-import FirebaseMessaging
 
 @UIApplicationMain
 public class AppDelegate: ExpoAppDelegate, UNUserNotificationCenterDelegate, MessagingDelegate, PKPushRegistryDelegate {
