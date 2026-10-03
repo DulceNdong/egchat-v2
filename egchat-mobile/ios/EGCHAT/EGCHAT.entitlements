@@ -10,10 +10,6 @@
     <key>com.apple.developer.usernotifications.communication</key>
     <true/>
 
-    <!-- VoIP PushKit — llamadas con app cerrada -->
-    <key>com.apple.developer.pushkit.unrestricted-development</key>
-    <true/>
-
     <!-- Associated Domains — deep links -->
     <key>com.apple.developer.associated-domains</key>
     <array>
