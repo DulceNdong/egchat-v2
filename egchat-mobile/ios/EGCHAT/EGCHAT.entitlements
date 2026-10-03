@@ -6,8 +6,8 @@
     <string>production</string>
     <key>com.apple.developer.usernotifications.communication</key>
     <true/>
-    <!-- PushKit VoIP desactivado — activar en Apple Developer Portal si se necesita -->
-    <!-- <key>com.apple.developer.pushkit.unrestricted-development</key> -->
-    <!-- <true/> -->
+    <!-- PushKit VoIP — llamadas con app cerrada (como WhatsApp) -->
+    <key>com.apple.developer.pushkit.unrestricted-development</key>
+    <true/>
   </dict>
 </plist>
