@@ -218,20 +218,23 @@ export class CallManager {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // ICENS TEMPORALES — obtenidas del servidor
+  // TURN TEMPORALES — obtenidas del servidor con reintento
   // Evita credenciales permanentes en el cliente.
+  // FIX G — reintento único a los 3s para cubrir cold start de Render.
   // ══════════════════════════════════════════════════════════════
   private async _getIceServers(): Promise<object[]> {
-    // Intentar obtener credenciales TURN temporales del backend Render.
-    // Si falla (cold start, sin red), usar fallback estático.
-    try {
-      const data = await callAPI.getTurnToken?.();
-      if (data?.iceServers && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
-        return [...STUN_SERVERS, ...data.iceServers];
-      }
-    } catch { /* fallback */ }
+    // Intentar hasta 2 veces con pausa entre intentos
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) await new Promise(r => setTimeout(r, 3_000));
+        const data = await callAPI.getTurnToken?.();
+        if (data?.iceServers && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+          return [...STUN_SERVERS, ...data.iceServers];
+        }
+      } catch { /* continuar al siguiente intento */ }
+    }
 
-    // Fallback: STUN gratis + TURN public (OpenRelay)
+    // Fallback: variable de entorno, luego OpenRelay (desarrollo)
     const envTurn = process.env.EXPO_PUBLIC_TURN_SERVERS;
     if (envTurn) {
       try {

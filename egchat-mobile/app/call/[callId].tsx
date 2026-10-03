@@ -135,6 +135,14 @@ const IC = {
       <Circle cx="12" cy="19" r="1" fill="#fff"/>
     </Svg>
   ),
+  flip: () => (
+    <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
+      <Path d="M20 7h-9"/>
+      <Path d="M14 17H5"/>
+      <Circle cx="17" cy="17" r="3"/>
+      <Circle cx="7" cy="7" r="3"/>
+    </Svg>
+  ),
   hangup: (small?: boolean) => {
     const sz = small ? 20 : 28;
     return (
