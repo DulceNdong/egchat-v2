@@ -1,6 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
-// FloatingCallBar — Mini barra de llamada activa (PiP global)
-// Se muestra encima de cualquier pantalla cuando isPip=true
+// FloatingCallBar — Mini barra PiP global
+// Visible cuando isPip=true (uiState === 'minimized' en el CallManager)
+// Acciones delegadas al CallManager via ActiveCallContext
 // ══════════════════════════════════════════════════════════════════
 import React, { useEffect, useRef } from 'react';
 import {
@@ -8,7 +9,7 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Svg, { Path, Line, Circle } from 'react-native-svg';
+import Svg, { Path, Line } from 'react-native-svg';
 import { EGAvatar } from '../ui';
 import { useActiveCall } from '../../context/ActiveCallContext';
 
@@ -39,41 +40,37 @@ const ExpandIcon = () => (
 );
 
 export function FloatingCallBar() {
-  const { activeCall, isPip, setIsPip, callControls } = useActiveCall();
-  const insets = useSafeAreaInsets();
+  const { callState, activeCall, isPip, expandCall, endCall, toggleMute } = useActiveCall();
+  const insets    = useSafeAreaInsets();
   const slideAnim = useRef(new Animated.Value(-80)).current;
+
+  const visible = isPip && activeCall !== null;
 
   useEffect(() => {
     Animated.spring(slideAnim, {
-      toValue: isPip && activeCall ? 0 : -80,
+      toValue:      visible ? 0 : -80,
       useNativeDriver: true,
-      tension: 80,
-      friction: 10,
+      tension:      80,
+      friction:     10,
     }).start();
-  }, [isPip, activeCall]);
+  }, [visible]);
 
   if (!activeCall) return null;
 
-  const expandCall = () => {
-    setIsPip(false);
-    // La pantalla de llamada sigue en el stack (no se desmontó con navigate).
-    // router.back() la trae al frente sin recrearla.
+  const handleExpand = () => {
+    expandCall();
+    // router.back() lleva de vuelta a la pantalla de llamada que sigue en el stack
+    // gracias a que openMessageMode usa router.push (no navigate)
     router.back();
   };
 
   const handleHangup = () => {
-    if (callControls?.endCall) {
-      callControls.endCall();
-    }
+    endCall();
   };
 
-  const handleMute = () => {
-    if (callControls?.toggleMute) {
-      callControls.toggleMute();
-    }
-  };
-
-  const isMuted = callControls?.isMuted ?? false;
+  const isMuted   = callState.isMuted;
+  const duration  = activeCall.duration;
+  const isReconnecting = callState.commState === 'reconnecting';
 
   return (
     <Animated.View
@@ -89,17 +86,21 @@ export function FloatingCallBar() {
       <View style={s.info}>
         <Text style={s.name} numberOfLines={1}>{activeCall.targetName}</Text>
         <View style={s.statusRow}>
-          <View style={s.greenDot}/>
+          <View style={[s.dot, { backgroundColor: isReconnecting ? '#f59e0b' : '#4ade80' }]}/>
           <Text style={s.status}>
-            {activeCall.duration > 0 ? `En llamada · ${formatDur(activeCall.duration)}` : 'Conectando...'}
+            {isReconnecting
+              ? 'Reconectando...'
+              : duration > 0
+                ? `En llamada · ${formatDur(duration)}`
+                : 'Conectando...'}
           </Text>
         </View>
       </View>
 
       {/* Mutear */}
       <TouchableOpacity
-        style={[s.iconBtn, isMuted && s.iconBtnActive]}
-        onPress={handleMute}
+        style={[s.iconBtn, isMuted && s.iconBtnMuted]}
+        onPress={toggleMute}
         activeOpacity={0.8}
       >
         <MicIcon off={isMuted}/>
@@ -110,8 +111,8 @@ export function FloatingCallBar() {
         <HangupIcon/>
       </TouchableOpacity>
 
-      {/* Expandir — vuelve a la pantalla de llamada */}
-      <TouchableOpacity style={s.expandBtn} onPress={expandCall} activeOpacity={0.8}>
+      {/* Expandir */}
+      <TouchableOpacity style={s.expandBtn} onPress={handleExpand} activeOpacity={0.8}>
         <ExpandIcon/>
       </TouchableOpacity>
     </Animated.View>
@@ -134,18 +135,18 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(12,12,38,0.92)',
     borderRadius: 18,
   },
-  info: { flex: 1, justifyContent: 'center' },
-  name: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
-  greenDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' },
-  status: { color: 'rgba(255,255,255,0.55)', fontSize: 11 },
+  info:       { flex: 1, justifyContent: 'center' },
+  name:       { color: '#fff', fontSize: 13, fontWeight: '700' },
+  statusRow:  { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
+  dot:        { width: 6, height: 6, borderRadius: 3 },
+  status:     { color: 'rgba(255,255,255,0.55)', fontSize: 11 },
   iconBtn: {
     width: 34, height: 34, borderRadius: 17,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
-  iconBtnActive: {
+  iconBtnMuted: {
     backgroundColor: 'rgba(239,68,68,0.35)',
     borderColor: '#ef4444',
   },
