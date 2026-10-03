@@ -977,11 +977,55 @@ export class CallManager {
         if (__DEV__) console.log('[CallManager] iOS inactive — interrupción probable');
       }
     });
+
+    // ── Listeners nativos de audio iOS ────────────────────────
+    // Se suscriben una sola vez al iniciar la primera llamada.
+    if (Platform.OS === 'ios' && !this._audioInterruptSub) {
+      this._audioInterruptSub = NativeCallKit.onAudioInterrupted(
+        ({ interrupted, callId }) => {
+          if (callId !== this._session?.callId) return;
+          if (interrupted) {
+            // Llamada telefónica entró o alarma sonó.
+            // Silenciar micrófono localmente; mantener PeerConnection.
+            if (this._localStream && !this._isMuted) {
+              this._localStream.getAudioTracks?.().forEach((t: any) => { t.enabled = false; });
+              // Nota: _isMuted NO se cambia — es una pausa temporal del sistema,
+              // no una acción del usuario. Al reanudar, se restaura.
+            }
+          } else {
+            // Interrupción terminó — restaurar estado de audio del usuario.
+            if (this._localStream) {
+              this._localStream.getAudioTracks?.().forEach((t: any) => {
+                t.enabled = !this._isMuted; // respetar la preferencia del usuario
+              });
+            }
+            this._applyAudioSession().catch(() => {});
+          }
+          this._notify();
+        }
+      );
+
+      this._audioRouteSub = NativeCallKit.onAudioRouteChanged(
+        ({ route, callId }) => {
+          if (__DEV__) console.log(`[CallManager] Ruta audio → ${route}`);
+          // Si la ruta cambió a Bluetooth, actualizar el flag interno
+          const isBT = route.toLowerCase().includes('bluetooth');
+          if (isBT !== this._isBluetoothOn) {
+            this._isBluetoothOn = isBT;
+            this._notify();
+          }
+        }
+      );
+    }
   }
 
   private _unsubscribeAppState(): void {
     this._appStateSub?.remove();
     this._appStateSub = null;
+    this._audioInterruptSub?.();
+    this._audioInterruptSub = null;
+    this._audioRouteSub?.();
+    this._audioRouteSub = null;
   }
 
   // ══════════════════════════════════════════════════════════════
