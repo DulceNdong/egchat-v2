@@ -20,6 +20,16 @@
 //   - Timer leak corregido en polling (no setInterval dentro de setInterval)
 //   - connected solo se declara cuando ICE/PC están realmente connected
 //   - Limpieza completa: tracks, PC, listeners, timers, referencias
+//
+// v2 — Reconexión robusta ante cambios de red:
+//   - Backoff exponencial para ICE restart (2s/4s/8s + jitter ±20%)
+//   - Flag _iceRestartPending evita doble-disparo desde dos listeners
+//   - ICE restart simétrico: callee detecta nuevo offer y responde
+//   - Offsets ICE como propiedades de clase (reseteo controlado en restart)
+//   - NetInfo listener proactivo para Wi-Fi↔4G/5G
+//   - Reconexión Supabase Realtime con backoff ante CHANNEL_ERROR
+//   - TURN token con reintento (cubre cold start de Render)
+//   - Timeouts ajustados para redes móviles lentas
 // ══════════════════════════════════════════════════════════════════
 
 import { Platform, AppState, AppStateStatus } from 'react-native';
