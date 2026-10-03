@@ -57,6 +57,21 @@ export const NativeCallKit = {
     return EGChatCallModule.getAndClearPendingCall();
   },
 
+  /**
+   * [Android] Lee y borra la acción pendiente guardada por CallActionReceiver
+   * cuando el usuario pulsó "Aceptar"/"Rechazar" con la app terminada.
+   *
+   * FIX C1: sin esto, la acción del botón de notificación se perdía silenciosamente
+   * porque EGChatCallModule.instance era null cuando CallActionReceiver disparaba.
+   *
+   * Devuelve JSON string { action: "answer"|"reject"|"end", callId: string }
+   * o null si no hay acción pendiente o caducó (>30s).
+   */
+  getAndClearPendingCallAction(): Promise<string | null> {
+    if (!isAvailable || Platform.OS !== 'android') return Promise.resolve(null);
+    return EGChatCallModule.getAndClearPendingCallAction();
+  },
+
   /** [Android] Inicia el ForegroundService para mantener la llamada activa en background */
   startCallForegroundService(callId: string, callerName: string, isVideo: boolean) {
     if (!isAvailable || Platform.OS !== 'android') return;
