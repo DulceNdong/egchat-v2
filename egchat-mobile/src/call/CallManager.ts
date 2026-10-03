@@ -309,6 +309,50 @@ export class CallManager {
     this._setPcState('connecting');
 
     callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription }).catch(() => {});
+
+    // ── C2: Glare detection ───────────────────────────────────────────
+    // Si B también llamó a A justo antes, ambos estarían en 'calling'.
+    // Desempate determinístico: el callId lexicográficamente MENOR gana
+    // el rol de caller. El perdedor cancela su llamada y acepta la del ganador.
+    try {
+      const incoming = await callAPI.incoming(targetUserId);
+      if (Array.isArray(incoming) && incoming.length > 0) {
+        const theirCall = incoming.find((c: any) => {
+          const cid = c.callerId || c.caller_id;
+          const tid = c.targetUserId || c.target_user_id;
+          return cid === targetUserId || tid === targetUserId;
+        });
+        if (theirCall) {
+          const theirCallId = theirCall.callId || theirCall.call_id;
+          if (theirCallId && theirCallId < callId) {
+            // Su callId es menor → ellos son el caller "oficial".
+            // Cancelamos nuestra llamada saliente y aceptamos la entrante.
+            await callAPI.cancel(callId).catch(() => {});
+            this._destroyPC();
+            if (this._localStream) {
+              this._localStream.getTracks?.().forEach((t: any) => { t.stop(); t.enabled = false; });
+              this._localStream = null;
+            }
+            this._reset();
+            this.registerIncoming({
+              callId:       theirCallId,
+              callType:     theirCall.type || callType,
+              callerName:   targetName,
+              callerAvatar: targetAvatar,
+              offer:        theirCall.offer,
+              chatId,
+            });
+            return;
+          }
+          // Nuestro callId es menor → somos el caller oficial.
+          // Cancelar silenciosamente la llamada entrante del peer.
+          const theirId = theirCall.callId || theirCall.call_id;
+          if (theirId) callAPI.cancel(theirId).catch(() => {});
+        }
+      }
+    } catch { /* no bloquear startCall si la detección glare falla */ }
+    // ── fin glare detection ───────────────────────────────────────────
+
     await callAPI.offer({ callId, offer: pc.localDescription, targetUserId, type: callType });
 
     this._setCommState('calling');
