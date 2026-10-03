@@ -1039,6 +1039,90 @@ export class CallManager {
   }
 
   // ══════════════════════════════════════════════════════════════
+  // PRIVADOS — Supabase Realtime
+  // ══════════════════════════════════════════════════════════════
+
+  /**
+   * Suscripción a cambios de estado en call_sessions via Supabase Realtime.
+   *
+   * USO PRINCIPAL:
+   *   - Detectar cuando otro dispositivo del mismo callee acepta → cancelar
+   *     la llamada entrante en este dispositivo sin esperar al polling.
+   *   - Detectar cuando el caller cancela → callee se entera en <200ms.
+   *   - Detectar estado 'connected' desde el servidor para sincronizar
+   *     el cronómetro oficial (connected_at de Supabase).
+   *
+   * IMPORTANTE: Realtime NO sustituye al polling para la señalización
+   * SDP/ICE — eso sigue por HTTP. Realtime es solo para el estado
+   * de alto nivel (ringing, accepted, ended, etc.).
+   */
+  private _subscribeRealtime(): void {
+    if (!this._session?.callId || this._realtimeSub) return;
+
+    this._realtimeSub = subscribeToCallState(
+      this._session.callId,
+
+      // onStatusChange: sincronizar estado con la fuente de verdad
+      (remoteStatus: CallStatus) => {
+        if (!this._session) return;
+
+        // Si ya estamos en un estado terminal, ignorar
+        if (isTerminal(this._commState as any)) return;
+
+        switch (remoteStatus) {
+          case 'accepted':
+            // Otro dispositivo del callee aceptó → si somos callee y estamos
+            // en ringing, cancelar localmente sin llamar al servidor de nuevo
+            if (this._session.role === 'callee' &&
+                (this._commState === 'ringing' || this._commState === 'accepted')) {
+              this._stopRingOnce();
+              this._setCommState('ended');
+              this._finalCleanup();
+              setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+            }
+            break;
+
+          case 'rejected':
+            if (this._session.role === 'caller' && this._commState === 'calling') {
+              this._setCommState('rejected');
+              this._finalCleanup();
+              setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+            }
+            break;
+
+          case 'ended':
+          case 'failed':
+          case 'missed':
+            if (!isTerminal(this._commState as any)) {
+              this._setCommState(remoteStatus as CallCommState);
+              this._finalCleanup();
+              setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 600);
+            }
+            break;
+
+          case 'connected':
+            // Sincronizar cronómetro con connected_at oficial del servidor
+            // (se hará en la próxima iteración del polling via callAPI.get)
+            break;
+        }
+      },
+
+      // onEnded: la sesión pasó a un estado terminal
+      () => {
+        if (!this._session) return;
+        if (isTerminal(this._commState as any)) return;
+        // El polling también lo detectará, pero Realtime es más rápido
+        if (!this._isEnding) this.endCall();
+      }
+    );
+  }
+
+  private _unsubscribeRealtime(): void {
+    this._realtimeSub?.();
+    this._realtimeSub = null;
+  }
+
+  // ══════════════════════════════════════════════════════════════
   // PRIVADOS — Ciclo de vida de la llamada
   // ══════════════════════════════════════════════════════════════
 
