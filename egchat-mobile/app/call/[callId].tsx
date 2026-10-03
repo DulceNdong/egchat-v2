@@ -1,6 +1,14 @@
 // ══════════════════════════════════════════════════════════════════
-// Pantalla de llamada — diseño moderno estilo asiático / glassmorphism
-// Audio + Video | Mini ventana PiP | Navegar chats en llamada | Fondo personalizable
+// Pantalla de llamada — consume el CallManager global
+// Audio + Video | PiP | Fondo personalizable | FaceFilter
+//
+// CAMBIOS vs versión anterior:
+//  • useWebRTC() → fachada del CallManager (misma API)
+//  • router.navigate → router.push al minimizar (la pantalla queda en stack)
+//  • activeCall/isPip/registerCallControls → useActiveCall() del nuevo contexto
+//  • Un solo efecto para iniciar la llamada (caller)
+//  • Un solo efecto para aceptar desde CallKit (callee)
+//  • endCall / logCallToChat con guard doble conservado
 // ══════════════════════════════════════════════════════════════════
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
@@ -28,15 +36,16 @@ import {
   PRESET_BACKGROUNDS,
 } from '../../src/components/call/CallBackgroundPicker';
 import { useActiveCall } from '../../src/context/ActiveCallContext';
+import { callManager } from '../../src/call/CallManager';
 
 // Guard: si el módulo nativo no está disponible, no crashear
 const FACE_FILTER_AVAILABLE = (() => {
-  try { return !!FaceFilter?.isAvailable; } catch (_e) { return false; }
+  try { return !!FaceFilter?.isAvailable; } catch { return false; }
 })();
 
 const { width: SW, height: SH } = Dimensions.get('window');
-const ACCENT    = '#00c8a0';
-const GLASS_BG  = 'rgba(30,30,60,0.75)';
+const ACCENT       = '#00c8a0';
+const GLASS_BG     = 'rgba(30,30,60,0.75)';
 const GLASS_BORDER = 'rgba(255,255,255,0.18)';
 
 // ── Botón glassmorphism ───────────────────────────────────────────
@@ -55,7 +64,7 @@ function GlassBtn({
       <View style={[
         gb.btn,
         { width: size, height: size, borderRadius: size / 2 },
-        active  && gb.btnActive,
+        active && gb.btnActive,
         danger  && gb.btnDanger,
       ]}>
         {icon}
@@ -65,7 +74,7 @@ function GlassBtn({
   );
 }
 const gb = StyleSheet.create({
-  wrap: { alignItems: 'center', gap: 5, minWidth: 64 },
+  wrap:     { alignItems: 'center', gap: 5, minWidth: 64 },
   btn: {
     backgroundColor: GLASS_BG,
     borderWidth: 1.5, borderColor: GLASS_BORDER,
@@ -75,7 +84,7 @@ const gb = StyleSheet.create({
   },
   btnActive: { backgroundColor: 'rgba(0,200,160,0.35)', borderColor: ACCENT },
   btnDanger: { backgroundColor: 'rgba(239,68,68,0.35)', borderColor: '#ef4444' },
-  label: { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '500', textAlign: 'center' },
+  label:    { color: 'rgba(255,255,255,0.85)', fontSize: 11, fontWeight: '500', textAlign: 'center' },
 });
 
 // ── Iconos ────────────────────────────────────────────────────────
@@ -92,22 +101,18 @@ const IC = {
   speaker: (on?: boolean) => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
       <Polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-      {on ? (
-        <><Path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><Path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>
-      ) : (
-        <Line x1="23" y1="9" x2="17" y2="15"/>
-      )}
+      {on
+        ? <><Path d="M19.07 4.93a10 10 0 0 1 0 14.14"/><Path d="M15.54 8.46a5 5 0 0 1 0 7.07"/></>
+        : <Line x1="23" y1="9" x2="17" y2="15"/>}
     </Svg>
   ),
   video: (off?: boolean) => (
     <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
-      {off ? (
-        <><Line x1="1" y1="1" x2="23" y2="23"/>
-          <Path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"/>
-        </>
-      ) : (
-        <><Polygon points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/></>
-      )}
+      {off
+        ? <><Line x1="1" y1="1" x2="23" y2="23"/>
+            <Path d="M21 21H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3m3-3h6l2 3h4a2 2 0 0 1 2 2v9.34"/>
+          </>
+        : <><Polygon points="23 7 16 12 23 17 23 7"/><Rect x="1" y="5" width="15" height="14" rx="2"/></>}
     </Svg>
   ),
   addUser: () => (
@@ -174,65 +179,68 @@ export default function CallScreen() {
     targetUserId, offer: offerParam, chatId,
   } = useLocalSearchParams() as CallParams;
 
+  // ── CallManager via hook fachada ──────────────────────────────
   const {
     callState, isMuted, isCamOff, isSignalingOnly,
     localStream, remoteStream,
     startCall, answerCall, endCall, toggleMute, toggleCamera,
   } = useWebRTC();
 
+  // ── Contexto UI ───────────────────────────────────────────────
+  const { setPip, minimizeCall } = useActiveCall();
+
   const insets = useSafeAreaInsets();
-  const { setActiveCall, setIsPip: setGlobalPip, registerCallControls, unregisterCallControls } = useActiveCall();
 
-  // Estado principal
-  const [duration,  setDuration]  = useState(0);
-  const [speakerOn, setSpeakerOn] = useState(true);
-  const durationRef = useRef(0); // ref siempre actualizada para leer en hangUp
-  const wasConnectedRef = useRef(false); // saber si llegó a conectarse
-  const loggedRef = useRef(false); // guard: logCallToChat solo se ejecuta una vez
-  const [activeFilter, setActiveFilter] = useState<FilterId>('none');
-  const [showFilters,  setShowFilters]  = useState(false);
+  // ── Estado local UI ───────────────────────────────────────────
+  const [duration,       setDuration]       = useState(0);
+  const [speakerOn,      setSpeakerOn]      = useState(true);
+  const [activeFilter,   setActiveFilter]   = useState<FilterId>('none');
+  const [showFilters,    setShowFilters]    = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
-
-  // Fondo personalizable
-  const [bg, setBg] = useState<CallBackground>({
+  const [bg,             setBg]             = useState<CallBackground>({
     type: 'preset', id: 'night', gradient: PRESET_BACKGROUNDS[1].gradient,
   });
-  const [showBgPicker, setShowBgPicker] = useState(false);
+  const [showBgPicker,   setShowBgPicker]   = useState(false);
+  const [isAccepting,    setIsAccepting]    = useState(false);
+  const [isRejecting,    setIsRejecting]    = useState(false);
 
-  // Animaciones
+  // ── Refs ──────────────────────────────────────────────────────
+  const initiated      = useRef(false);
+  const wasConnected   = useRef(false);
+  const loggedRef      = useRef(false);
+  const ringStopped    = useRef(false);
+  const durationRef    = useRef(0);
+  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
+  const screenStreamRef = useRef<any>(null);
+  const faceDetectorRef = useRef(false);
+  const faceFrameRef   = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [faces,         setFaces]           = useState<FaceData[]>([]);
+
+  // ── Animaciones ───────────────────────────────────────────────
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const dotAnims  = useRef([0, 1, 2].map(() => new Animated.Value(0.4))).current;
-  const timerRef  = useRef<ReturnType<typeof setInterval> | null>(null);
-  const initiated = useRef(false);
-  const screenStreamRef = useRef<any>(null);
-  const ringStopped = useRef(false); // guard: solo parar el ringtone una vez en iOS
-
-  // FaceFilter
-  const [faces, setFaces] = useState<FaceData[]>([]);
-  const faceDetectorRef = useRef(false);
-  const faceFrameRef    = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const isVideo   = callType === 'video';
   const name      = targetName || 'Usuario';
   const remoteUrl = remoteStream ? (remoteStream as any).toURL?.() || '' : '';
   const localUrl  = localStream  ? (localStream  as any).toURL?.() || '' : '';
 
-  // Cargar fondo guardado al montar
+  // ── Cargar fondo ───────────────────────────────────────────────
   useEffect(() => { loadCallBackground().then(setBg); }, []);
 
-  // FaceFilter init — solo si el módulo nativo está disponible
+  // ── FaceFilter init ────────────────────────────────────────────
   useEffect(() => {
     if (!FACE_FILTER_AVAILABLE || !isVideo) return;
     try {
       FaceFilter.initialize().then((ok: boolean) => { faceDetectorRef.current = ok; });
-    } catch (_e) {}
+    } catch {}
     return () => {
-      try { FaceFilter.release(); } catch (_e) {}
+      try { FaceFilter.release(); } catch {}
       faceDetectorRef.current = false;
     };
-  }, []);
+  }, [isVideo]);
 
-  // Loop detección faces
+  // ── Loop detección faces ───────────────────────────────────────
   useEffect(() => {
     if (faceFrameRef.current) { clearInterval(faceFrameRef.current); faceFrameRef.current = null; }
     if (!FACE_FILTER_AVAILABLE || activeFilter === 'none' || !faceDetectorRef.current || !localStream) {
@@ -245,12 +253,185 @@ export default function CallScreen() {
         const b64 = await s.captureFrame();
         if (!b64) return;
         setFaces(await FaceFilter.detectFaces(b64));
-      } catch (_e) {}
+      } catch {}
     }, 200);
-    return () => { if (faceFrameRef.current) { clearInterval(faceFrameRef.current); faceFrameRef.current = null; } };
+    return () => {
+      if (faceFrameRef.current) { clearInterval(faceFrameRef.current); faceFrameRef.current = null; }
+    };
   }, [activeFilter, localStream]);
 
-  // Screen share
+  // ── Iniciar como CALLER — solo una vez ────────────────────────
+  useEffect(() => {
+    if (initiated.current) return;
+    initiated.current = true;
+    // Si el manager ya tiene una llamada activa para este callId, no reiniciar
+    const existing = callManager.session;
+    if (existing?.callId === callId && callManager.isActive) return;
+    if (role === 'caller' && targetUserId) {
+      startCall(callType as 'audio' | 'video', targetUserId, callId, name, targetAvatar, chatId)
+        .catch(err => {
+          Alert.alert('Error', err.message || 'No se pudo iniciar la llamada');
+          router.back();
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Animaciones según estado ───────────────────────────────────
+  useEffect(() => {
+    if (callState === 'calling' || callState === 'ringing') {
+      Animated.loop(Animated.sequence([
+        Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
+        Animated.timing(pulseAnim, { toValue: 1,    duration: 800, useNativeDriver: true }),
+      ])).start();
+      dotAnims.forEach((a, i) => {
+        Animated.loop(Animated.sequence([
+          Animated.delay(i * 200),
+          Animated.timing(a, { toValue: 1,   duration: 500, useNativeDriver: true }),
+          Animated.timing(a, { toValue: 0.3, duration: 500, useNativeDriver: true }),
+        ])).start();
+      });
+    } else {
+      pulseAnim.setValue(1);
+      dotAnims.forEach(a => a.setValue(0.4));
+    }
+  }, [callState]);
+
+  // ── Conectado ─────────────────────────────────────────────────
+  useEffect(() => {
+    if (callState === 'connected') {
+      wasConnected.current = true;
+      // El CallManager ya inicia AVAudioSession y LiveActivity
+      // Aquí solo gestionamos el timer de duración para la UI local
+      if (timerRef.current) clearInterval(timerRef.current);
+      timerRef.current = setInterval(() => {
+        setDuration(d => {
+          const next = d + 1;
+          durationRef.current = next;
+          return next;
+        });
+      }, 1000);
+    }
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callState]);
+
+  // ── Finalizado ────────────────────────────────────────────────
+  useEffect(() => {
+    if (callState === 'ended' || callState === 'failed' || callState === 'missed') {
+      logCallToChat(wasConnected.current, durationRef.current);
+      setPip(false);
+      setTimeout(() => router.back(), 500);
+    }
+    if (callState === 'rejected') {
+      setPip(false);
+      setTimeout(() => router.back(), 300);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [callState]);
+
+  // ── CallKit handlers (callee) ─────────────────────────────────
+  useEffect(() => {
+    // El CallManager ya llamó showIncomingCall si llegó vía registerIncoming.
+    // Aquí solo escuchamos los eventos de respuesta nativa (botones CallKit).
+    const unsubAnswer = NativeCallKit.onAnswer((_cid) => acceptFromCallKit());
+    const unsubReject = NativeCallKit.onReject((_cid) => rejectFromCallKit());
+    return () => { unsubAnswer(); unsubReject(); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // ── Altavoz ────────────────────────────────────────────────────
+  const toggleSpeaker = useCallback(async () => {
+    const next = !speakerOn;
+    setSpeakerOn(next);
+    await callManager.toggleSpeaker();
+  }, [speakerOn]);
+
+  // ── Parar ringtone una sola vez ───────────────────────────────
+  const stopRingOnce = useCallback(async () => {
+    if (ringStopped.current) return;
+    ringStopped.current = true;
+    try { await stopRingtone(); } catch {}
+    await new Promise(r => setTimeout(r, 80));
+  }, []);
+
+  // ── Colgar ─────────────────────────────────────────────────────
+  const hangUp = useCallback(async () => {
+    if (role === 'callee' && !wasConnected.current) setIsRejecting(true);
+    stopDialingTone();
+    await stopRingOnce();
+    const secs      = durationRef.current;
+    const connected = wasConnected.current;
+    await endCall();
+    logCallToChat(connected, secs);
+    router.back();
+  }, [endCall, stopRingOnce, role]);
+
+  // ── Aceptar (UI botón en pantalla) ────────────────────────────
+  const accept = useCallback(async () => {
+    if (isAccepting) return;
+    setIsAccepting(true);
+    try {
+      // Si el manager no tiene sesión registrada para este callId, registrarla
+      const existing = callManager.session;
+      if (!existing || existing.callId !== callId) {
+        let parsedOffer: any = offerParam;
+        if (typeof parsedOffer === 'string') { try { parsedOffer = JSON.parse(parsedOffer); } catch {} }
+        callManager.registerIncoming({
+          callId,
+          callType: callType as 'audio' | 'video',
+          callerName: name,
+          callerAvatar: targetAvatar,
+          offer: parsedOffer,
+          chatId,
+        });
+      }
+      await callManager.acceptCall();
+    } catch (err: any) {
+      setIsAccepting(false);
+      Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión.');
+    }
+  }, [callId, offerParam, callType, name, targetAvatar, chatId, isAccepting]);
+
+  // ── Aceptar desde botón nativo CallKit ────────────────────────
+  const acceptFromCallKit = useCallback(() => {
+    accept().catch(() => {});
+  }, [accept]);
+
+  // ── Rechazar desde botón nativo CallKit ──────────────────────
+  const rejectFromCallKit = useCallback(() => {
+    callManager.rejectCall().then(() => router.back()).catch(() => router.back());
+  }, []);
+
+  // ── Minimizar — usar push para mantener pantalla en stack ──────
+  // ⚠️ CRÍTICO: NO usar router.navigate() — desmontaría la pantalla
+  const openMessageMode = useCallback(() => {
+    minimizeCall();
+    router.push('/(tabs)/mensajeria' as any);
+  }, [minimizeCall]);
+
+  // ── Historial de llamada ───────────────────────────────────────
+  const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
+    if (!chatId) return;
+    if (role !== 'caller') return;
+    if (loggedRef.current) return;
+    loggedRef.current = true;
+    try {
+      const isVid = callType === 'video';
+      const emoji = isVid ? '📹' : '📞';
+      let text: string;
+      if (connected && secs > 0) {
+        const mm = Math.floor(secs / 60).toString().padStart(2, '0');
+        const ss = (secs % 60).toString().padStart(2, '0');
+        text = `${emoji} ${isVid ? 'Videollamada' : 'Llamada'} (${mm}:${ss})`;
+      } else {
+        text = `${emoji} ${isVid ? 'Videollamada' : 'Llamada'} perdida`;
+      }
+      await chatAPI.sendMessage(chatId, { text, type: 'call' });
+    } catch { /* silencioso */ }
+  }, [chatId, callType, role]);
+
+  // ── Screen share ───────────────────────────────────────────────
   const toggleScreenShare = useCallback(async () => {
     if (Platform.OS === 'web') return;
     try {
@@ -273,283 +454,27 @@ export default function CallScreen() {
     }
   }, [isSharingScreen]);
 
-  // Altavoz
-  const toggleSpeaker = useCallback(async () => {
-    const next = !speakerOn;
-    setSpeakerOn(next);
-    if (Platform.OS !== 'web') {
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: false,
-          playThroughEarpieceAndroid: !next,
-        });
-      } catch (_e) {}
-    }
-  }, [speakerOn]);
-
-  // Iniciar llamada (caller) — solo si no hay ya una llamada activa
-  useEffect(() => {
-    if (initiated.current) return;
-    initiated.current = true;
-    // Si ya hay una llamada conectada en el contexto global (el usuario expandió
-    // desde el PiP), no reiniciar el WebRTC — la conexión sigue activa en el hook
-    if (callState === 'connected' || callState === 'calling' || callState === 'ringing') return;
-    if (role === 'caller' && targetUserId) {
-      startDialingTone().catch(() => {});
-      startCall(callType as 'audio' | 'video', targetUserId, callId).catch(err => {
-        stopDialingTone();
-        Alert.alert('Error', err.message || 'No se pudo iniciar la llamada');
-        router.back();
-      });
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Animaciones
-  useEffect(() => {
-    if (callState === 'calling' || callState === 'ringing') {
-      Animated.loop(Animated.sequence([
-        Animated.timing(pulseAnim, { toValue: 1.15, duration: 800, useNativeDriver: true }),
-        Animated.timing(pulseAnim, { toValue: 1,    duration: 800, useNativeDriver: true }),
-      ])).start();
-      dotAnims.forEach((a, i) => {
-        Animated.loop(Animated.sequence([
-          Animated.delay(i * 200),
-          Animated.timing(a, { toValue: 1,   duration: 500, useNativeDriver: true }),
-          Animated.timing(a, { toValue: 0.3, duration: 500, useNativeDriver: true }),
-        ])).start();
-      });
-    } else {
-      pulseAnim.setValue(1);
-      dotAnims.forEach(a => a.setValue(0.4));
-    }
-  }, [callState]);
-
-  // Timer + conectado
-  useEffect(() => {
-    if (callState === 'connected') {
-      wasConnectedRef.current = true;
-      stopDialingTone();
-      stopRingOnce(); // para el ringtone del callee al conectar
-      // Registrar llamada activa en contexto global
-      setActiveCall({
-        callId, targetName: name, targetAvatar,
-        callType: callType as 'audio' | 'video', duration: 0,
-        role: role as 'caller' | 'callee',
-        chatId,
-      });
-      timerRef.current = setInterval(() => {
-        setDuration(d => {
-          const next = d + 1;
-          durationRef.current = next;
-          // Actualizar duración en contexto global
-          setActiveCall(prev => prev ? { ...prev, duration: next } : null);
-          return next;
-        });
-      }, 1000);
-      LiveActivity.startCall(callId, name, isVideo);
-      NativeCallKit.dismissIncomingCall();
-    }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callState]);
-
-  // Fin de llamada — parar todo el audio de forma síncrona y navegar atrás
-  useEffect(() => {
-    if (callState === 'ended') {
-      stopDialingTone();
-      stopRingOnce();
-      LiveActivity.endCall();
-      NativeCallKit.endCall(callId);
-      logCallToChat(wasConnectedRef.current, durationRef.current);
-      setActiveCall(null);
-      setGlobalPip(false);
-      setTimeout(() => router.back(), 500);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [callState]);
-
-  // Registrar controles en el contexto global para que FloatingCallBar pueda colgar/mutear
-  useEffect(() => {
-    registerCallControls({ endCall, toggleMute, isMuted });
-  }, [endCall, toggleMute, isMuted, registerCallControls]);
-
-  // Limpiar controles al desmontar
-  useEffect(() => {
-    return () => { unregisterCallControls(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // CallKit handlers
-  useEffect(() => {
-    if (role === 'callee' && callState === 'idle') {
-      NativeCallKit.showIncomingCall(name, targetAvatar || '', callId, isVideo);
-    }
-    const unsubAnswer = NativeCallKit.onAnswer(() => accept());
-    const unsubReject = NativeCallKit.onReject(() => hangUp());
-    return () => { unsubAnswer(); unsubReject(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // Estados UI
-  const [isRejecting, setIsRejecting] = useState(false); // evita flash de pantalla activa al rechazar
-  const [isAccepting, setIsAccepting] = useState(false); // guard: evita doble tap en Aceptar
-  const uiState    = role === 'callee' && (callState === 'idle' || isRejecting) ? 'ringing' : callState;
+  // ── Estado UI derivado ────────────────────────────────────────
+  const uiState     = role === 'callee' && (callState === 'ringing' || isRejecting) ? 'ringing' : callState;
   const isIncoming  = uiState === 'ringing' && role === 'callee';
   const isCalling   = uiState === 'calling' || (uiState === 'ringing' && role === 'caller');
   const isConnected = uiState === 'connected';
 
-  // Para el ringtone una sola vez, evitando llamadas paralelas en iOS
-  const stopRingOnce = useCallback(async () => {
-    if (ringStopped.current) return;
-    ringStopped.current = true;
-    try { await stopRingtone(); } catch (_e) {}
-    // iOS necesita un pequeño delay antes de liberar la sesión de audio
-    await new Promise(r => setTimeout(r, 80));
-  }, []);
-
-  // Reiniciar el guard cuando llegue una nueva llamada entrante
-  useEffect(() => {
-    if (role === 'callee' && (callState === 'idle' || callState === 'ringing')) {
-      ringStopped.current = false;
-    }
-  }, [callState, role]);
-
-  // Ringtone para el callee — controlado por el guard
-  useEffect(() => {
-    if (isIncoming) {
-      ringStopped.current = false;
-      startRingtone().catch(() => {});
-    } else {
-      if (role === 'callee') stopRingOnce();
-    }
-    return () => { if (role === 'callee') stopRingOnce(); };
-  }, [isIncoming]);
-
-  // Ringtone de llamada saliente — solo caller, no interfiere con callee
-  useEffect(() => {
-    if (role !== 'caller') return;
-    if (isCalling) {
-      startRingtone().catch(() => {});
-    } else {
-      stopRingtone().catch(() => {});
-    }
-    return () => { if (role === 'caller') stopRingtone().catch(() => {}); };
-  }, [isCalling]);
-
-  // Safety net: parar todo audio al desmontar el componente, sin importar el rol
-  // Cubre casos donde el componente se desmonta antes de que los efectos
-  // anteriores lleguen a ejecutar su cleanup (crash, navegación forzada, etc.)
-  useEffect(() => {
-    return () => {
-      stopRingtone().catch(() => {});
-    };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const formatDur = (s: number) =>
-    `${Math.floor(s / 60).toString().padStart(2,'0')}:${(s % 60).toString().padStart(2,'0')}`;
-
   const statusLabel = () => {
-    if (isCalling)   return 'Llamando...';
-    if (isConnected) return formatDur(duration);
-    if (uiState === 'ended') return 'Llamada finalizada';
+    if (isCalling)                     return 'Llamando...';
+    if (uiState === 'connecting' ||
+        uiState === 'accepted')        return 'Conectando...';
+    if (uiState === 'reconnecting')    return 'Reconectando...';
+    if (isConnected)                   return formatDur(duration);
+    if (uiState === 'ended' ||
+        uiState === 'failed')          return 'Llamada finalizada';
     return 'Conectando...';
   };
 
-  // Registrar llamada en el chat como mensaje tipo 'call'
-  // Guard doble: loggedRef evita el doble disparo de hangUp + useEffect(callState==='ended')
-  // Solo el caller guarda el mensaje — el callee lo recibe por Supabase Realtime/SSE
-  const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
-    if (!chatId) return;
-    if (role !== 'caller') return;       // solo el caller inserta — evita duplicado caller+callee
-    if (loggedRef.current) return;       // ya se registró — evita doble disparo hangUp+useEffect
-    loggedRef.current = true;
-    try {
-      const isVideo = callType === 'video';
-      const emoji = isVideo ? '📹' : '📞';
-      let text: string;
-      if (connected && secs > 0) {
-        const mm = Math.floor(secs / 60).toString().padStart(2, '0');
-        const ss = (secs % 60).toString().padStart(2, '0');
-        text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} (${mm}:${ss})`;
-      } else {
-        text = `${emoji} ${isVideo ? 'Videollamada' : 'Llamada'} perdida`;
-      }
-      await chatAPI.sendMessage(chatId, { text, type: 'call' });
-    } catch (_e) { /* silencioso — no bloquear la UI */ }
-  }, [chatId, callType, role]);
+  const formatDur = (s: number) =>
+    `${Math.floor(s / 60).toString().padStart(2, '0')}:${(s % 60).toString().padStart(2, '0')}`;
 
-  const hangUp = useCallback(async () => {
-    // Si somos callee y aún no se conectó, mostrar pantalla entrante
-    // hasta que router.back() complete — evita el flash de pantalla activa
-    if (role === 'callee' && !wasConnectedRef.current) {
-      setIsRejecting(true);
-    }
-    stopDialingTone();
-    await stopRingOnce();
-    const secs = durationRef.current;
-    const connected = wasConnectedRef.current;
-    await endCall();
-    logCallToChat(connected, secs);
-    router.back();
-  }, [endCall, logCallToChat, stopRingOnce, role]);
-
-  const accept = useCallback(async () => {
-    if (!callId) return;
-    if (isAccepting) return;           // guard: evita doble tap / ejecuciones concurrentes
-    setIsAccepting(true);
-    try {
-      let offer: any = offerParam;
-      if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch (_e) {} }
-      if (typeof offer === 'string') { try { offer = JSON.parse(offer); } catch (_e) {} }
-
-      // Si el offer no llegó en el push o está vacío, lo buscamos en el servidor
-      // con hasta 5 reintentos (para cuando Render está despertando del hibernado)
-      const isValidOffer = (o: any) =>
-        o && typeof o === 'object' && o.type && o.sdp &&
-        o.sdp !== 'egchat-expo-go-signaling-only';
-
-      if (!isValidOffer(offer)) {
-        // 20 intentos × 3s = 60s — cubre el cold start de Render (30-50s en plan gratuito)
-        let found = false;
-        for (let attempt = 0; attempt < 20; attempt++) {
-          if (attempt > 0) await new Promise(r => setTimeout(r, 3000));
-          try {
-            const session = await callAPI.get(callId);
-            if (isValidOffer(session?.offer)) {
-              offer = session.offer;
-              found = true;
-              break;
-            }
-          } catch (_e) { /* reintenta */ }
-        }
-        if (!found) throw new Error('No se pudo obtener los datos de la llamada. Inténtalo de nuevo.');
-      }
-
-      await answerCall(callId, offer, callType as 'audio' | 'video');
-    } catch (err: any) {
-      setIsAccepting(false); // solo resetear en error — en éxito la pantalla cambia a 'connected'
-      Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión e inténtalo de nuevo.');
-    }
-  }, [callId, offerParam, callType, answerCall, isAccepting]);
-
-  // ── Botón Mensaje: minimiza la llamada visualmente sin desmontarla ──
-  const openMessageMode = useCallback(() => {
-    setGlobalPip(true);
-    // Navegar al tab de mensajería. La pantalla de llamada queda en el stack
-    // de Expo Router y NO se desmonta — el WebRTC sigue activo.
-    router.navigate('/(tabs)/mensajeria' as any);
-  }, [setGlobalPip]);
-
-  // Restaurar pantalla completa desde PiP
-  const expandFromPip = useCallback(() => {
-    setGlobalPip(false);
-  }, [setGlobalPip]);
-
-  // ── Fondo ─────────────────────────────────────────────────────────
+  // ── Fondo ──────────────────────────────────────────────────────
   const renderBg = () => {
     if (isVideo && remoteUrl) {
       return (
@@ -575,31 +500,26 @@ export default function CallScreen() {
     return (
       <View style={StyleSheet.absoluteFill}>
         {targetAvatar ? (
-          <Image
-            source={{ uri: targetAvatar }}
-            style={[StyleSheet.absoluteFill, { opacity: 0.18 }]}
-            resizeMode="cover"
-            blurRadius={22}
-          />
+          <Image source={{ uri: targetAvatar }} style={[StyleSheet.absoluteFill, { opacity: 0.18 }]} resizeMode="cover" blurRadius={22}/>
         ) : null}
         <LinearGradient colors={grad} locations={[0, 0.55, 1]} style={StyleSheet.absoluteFill}/>
       </View>
     );
   };
 
-  // ── PANTALLA LLAMADA ENTRANTE ────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // RENDER — LLAMADA ENTRANTE
+  // ══════════════════════════════════════════════════════════════
   if (isIncoming) {
     return (
       <View style={s.root}>
         <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
         {renderBg()}
-        {/* Overlay oscuro */}
         <LinearGradient
           colors={['rgba(0,0,0,0.3)', 'rgba(0,0,0,0.1)', 'rgba(0,0,0,0.6)']}
           style={StyleSheet.absoluteFill}
         />
         <View style={[s.incomingWrap, { paddingTop: insets.top + 70, paddingBottom: insets.bottom + 50 }]}>
-          {/* Avatar grande con glow */}
           <View style={s.incomingAvatarWrap}>
             <Animated.View style={[s.incomingPulse, { transform: [{ scale: pulseAnim }] }]}/>
             <View style={s.incomingRing}>
@@ -645,18 +565,21 @@ export default function CallScreen() {
     );
   }
 
-  // ── PANTALLA LLAMADA ACTIVA ──────────────────────────────────────
+  // ══════════════════════════════════════════════════════════════
+  // RENDER — LLAMADA ACTIVA
+  // ══════════════════════════════════════════════════════════════
   return (
     <View style={s.root}>
       <StatusBar barStyle="light-content" translucent backgroundColor="transparent"/>
       {renderBg()}
 
-      {/* ── Top bar ── */}
+      {/* Top bar */}
       <View style={[s.topBar, { paddingTop: insets.top + 12 }]}>
-        <TouchableOpacity style={s.glassChip} onPress={() => {
-          setGlobalPip(true);
-          router.navigate('/(tabs)/mensajeria' as any);
-        }} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={s.glassChip}
+          onPress={openMessageMode}   // ← router.push, no navigate
+          activeOpacity={0.8}
+        >
           <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.9)" strokeWidth={2.5} strokeLinecap="round">
             <Path d="M18 15 12 9 6 15"/>
           </Svg>
@@ -669,23 +592,28 @@ export default function CallScreen() {
             <Text style={s.timerText}>{formatDur(duration)}</Text>
           </View>
         )}
+        {uiState === 'reconnecting' && (
+          <View style={[s.timerChip, { borderColor: '#f59e0b' }]}>
+            <ActivityIndicator size="small" color="#f59e0b"/>
+            <Text style={[s.timerText, { color: '#f59e0b', marginLeft: 4 }]}>Reconectando</Text>
+          </View>
+        )}
 
         <TouchableOpacity style={s.glassIconBtn} onPress={() => setShowBgPicker(true)} activeOpacity={0.8}>
           {IC.bg()}
         </TouchableOpacity>
       </View>
 
-      {/* ── PiP video local ── */}
+      {/* PiP video local */}
       {isVideo && localStream && !isCamOff && (
         <View style={[s.localPip, { top: insets.top + 62 }]}>
           <RTCView streamURL={localUrl} style={StyleSheet.absoluteFill} objectFit="cover" mirror/>
         </View>
       )}
 
-      {/* ── Centro: avatar + nombre + estado ── */}
+      {/* Centro: avatar + nombre + estado */}
       {(!isVideo || !remoteUrl) && (
         <View style={s.centerBlock}>
-          {/* Waveform decorativo */}
           {isConnected && (
             <View style={s.waveRow}>
               {[3,6,10,7,14,9,5,12,8,5,11,7,4].map((h, i) => (
@@ -693,30 +621,26 @@ export default function CallScreen() {
               ))}
             </View>
           )}
-
-          {/* Avatar */}
           <View style={s.bigAvatarWrap}>
             <Animated.View style={[s.bigPulse, { transform: [{ scale: pulseAnim }] }]}/>
             <View style={s.bigRing}>
               <EGAvatar src={targetAvatar} name={name} size={110}/>
             </View>
           </View>
-
           <Text style={s.bigName}>{name}</Text>
           <View style={s.statusRow}>
             {isConnected && <View style={[s.dot2, { backgroundColor: '#4ade80' }]}/>}
-            {isCalling && <Animated.View style={[s.dot2, { transform: [{ scale: pulseAnim }] }]}/>}
+            {isCalling    && <Animated.View style={[s.dot2, { transform: [{ scale: pulseAnim }] }]}/>}
             <Text style={s.statusText}>{statusLabel()}</Text>
           </View>
           <Text style={s.callTypeLabel}>{isVideo ? 'Llamada de video' : 'Llamada de audio'}</Text>
         </View>
       )}
 
-      {/* ── Controles — bloque glassmorphism ── */}
+      {/* Controles */}
       <View style={[s.ctrlArea, { paddingBottom: insets.bottom + 24 }]}>
         <View style={s.ctrlPanel}>
-
-          {/* Fila 1: Video · Silenciar · Altavoz · Añadir */}
+          {/* Fila 1 */}
           <View style={s.ctrlRow}>
             <GlassBtn
               onPress={isVideo ? toggleCamera : () => Alert.alert('Video', 'Activa el video durante la llamada.')}
@@ -737,33 +661,33 @@ export default function CallScreen() {
               active={speakerOn}
             />
             <GlassBtn
-              onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas a esta llamada.')}
+              onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas.')}
               icon={IC.addUser()}
               label="Añadir"
             />
           </View>
 
-          {/* Fila 2: Mensaje · Colgar · Más */}
+          {/* Fila 2 */}
           <View style={s.ctrlRowCenter}>
             <GlassBtn
               onPress={openMessageMode}
               icon={IC.chat()}
               label="Mensaje"
             />
-
-            {/* Colgar — botón central prominente */}
             <View style={s.hangupWrap}>
               <TouchableOpacity style={s.hangupBtn} onPress={hangUp} activeOpacity={0.85}>
                 {IC.hangup()}
               </TouchableOpacity>
               <Text style={gb.label}>Colgar</Text>
             </View>
-
             <GlassBtn
               onPress={() => {
                 Alert.alert('Más opciones', '', [
                   { text: 'Cambiar fondo', onPress: () => setShowBgPicker(true) },
-                  { text: isVideo ? 'Filtros AR' : 'Compartir pantalla', onPress: isVideo ? () => setShowFilters(v => !v) : toggleScreenShare },
+                  {
+                    text: isVideo ? 'Filtros AR' : 'Compartir pantalla',
+                    onPress: isVideo ? () => setShowFilters(v => !v) : toggleScreenShare,
+                  },
                   { text: 'Cancelar', style: 'cancel' },
                 ]);
               }}
@@ -787,7 +711,6 @@ export default function CallScreen() {
               ))}
             </ScrollView>
           )}
-
         </View>
       </View>
 
@@ -811,7 +734,6 @@ export default function CallScreen() {
 const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#080820' },
 
-  // ── Top ──────────────────────────────────────────────────────────
   topBar: {
     position: 'absolute', left: 0, right: 0, zIndex: 20,
     flexDirection: 'row', alignItems: 'center',
@@ -823,14 +745,14 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
     borderRadius: 20, paddingVertical: 8, paddingHorizontal: 14,
   },
-  chipText: { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '500' },
+  chipText:  { color: 'rgba(255,255,255,0.9)', fontSize: 12, fontWeight: '500' },
   timerChip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     backgroundColor: 'rgba(255,255,255,0.12)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
     borderRadius: 16, paddingVertical: 6, paddingHorizontal: 12,
   },
-  timerDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' },
+  timerDot:  { width: 6, height: 6, borderRadius: 3, backgroundColor: '#4ade80' },
   timerText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   glassIconBtn: {
     width: 38, height: 38, borderRadius: 19,
@@ -838,8 +760,6 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
     alignItems: 'center', justifyContent: 'center',
   },
-
-  // ── PiP local ────────────────────────────────────────────────────
   localPip: {
     position: 'absolute', right: 16, width: 96, height: 130,
     borderRadius: 16, overflow: 'hidden', zIndex: 10,
@@ -847,14 +767,12 @@ const s = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.4, shadowRadius: 8, elevation: 10,
   },
-
-  // ── Centro ───────────────────────────────────────────────────────
   centerBlock: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     zIndex: 5, paddingTop: 80, paddingBottom: 20, paddingHorizontal: 24,
   },
-  waveRow: { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 12, opacity: 0.7 },
-  waveBar: { width: 3, borderRadius: 2, backgroundColor: ACCENT },
+  waveRow:    { flexDirection: 'row', alignItems: 'center', gap: 3, marginBottom: 12, opacity: 0.7 },
+  waveBar:    { width: 3, borderRadius: 2, backgroundColor: ACCENT },
   bigAvatarWrap: { alignItems: 'center', marginBottom: 22 },
   bigPulse: {
     position: 'absolute', width: 148, height: 148, borderRadius: 74,
@@ -871,29 +789,21 @@ const s = StyleSheet.create({
     fontSize: 26, fontWeight: '700', color: '#fff', marginBottom: 8,
     textShadowColor: 'rgba(0,0,0,0.7)', textShadowOffset: { width: 0, height: 1 }, textShadowRadius: 6,
   },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
-  dot2: { width: 7, height: 7, borderRadius: 4, backgroundColor: '#00e5ff' },
-  statusText: { color: 'rgba(255,255,255,0.75)', fontSize: 15 },
+  statusRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginBottom: 4 },
+  dot2:          { width: 7, height: 7, borderRadius: 4, backgroundColor: '#00e5ff' },
+  statusText:    { color: 'rgba(255,255,255,0.75)', fontSize: 15 },
   callTypeLabel: { color: 'rgba(255,255,255,0.45)', fontSize: 13, marginTop: 2 },
-
-  // ── Controles ────────────────────────────────────────────────────
   ctrlArea: {
     position: 'absolute', bottom: 0, left: 0, right: 0, zIndex: 5,
     paddingHorizontal: 12,
   },
   ctrlPanel: {
     backgroundColor: 'rgba(20,20,45,0.72)',
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.13)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)',
     borderRadius: 28,
-    paddingTop: 20,
-    paddingBottom: 12,
-    paddingHorizontal: 6,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -4 },
-    shadowOpacity: 0.28,
-    shadowRadius: 18,
-    elevation: 16,
+    paddingTop: 20, paddingBottom: 12, paddingHorizontal: 6,
+    shadowColor: '#000', shadowOffset: { width: 0, height: -4 },
+    shadowOpacity: 0.28, shadowRadius: 18, elevation: 16,
   },
   ctrlRow: {
     flexDirection: 'row', justifyContent: 'space-around',
@@ -911,7 +821,7 @@ const s = StyleSheet.create({
     shadowColor: '#FF3B30', shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.65, shadowRadius: 18, elevation: 18,
   },
-  filtersRow: { gap: 10, paddingHorizontal: 16, paddingVertical: 8 },
+  filtersRow:      { gap: 10, paddingHorizontal: 16, paddingVertical: 8 },
   filterChip: {
     width: 50, height: 50, borderRadius: 25,
     backgroundColor: GLASS_BG,
@@ -919,8 +829,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   filterChipActive: { backgroundColor: 'rgba(0,200,160,0.35)', borderColor: ACCENT },
-
-  // ── Incoming ─────────────────────────────────────────────────────
   incomingWrap: { flex: 1, alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 32 },
   incomingAvatarWrap: { alignItems: 'center', justifyContent: 'center' },
   incomingPulse: {
@@ -934,13 +842,13 @@ const s = StyleSheet.create({
     shadowColor: ACCENT, shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.45, shadowRadius: 28, elevation: 14,
   },
-  incomingName: { fontSize: 28, fontWeight: '800', color: '#fff', textAlign: 'center' },
+  incomingName:    { fontSize: 28, fontWeight: '800', color: '#fff', textAlign: 'center' },
   incomingTypeRow: { flexDirection: 'row', alignItems: 'center', gap: 8 },
-  incomingType: { color: 'rgba(255,255,255,0.65)', fontSize: 15 },
-  dotsRow: { flexDirection: 'row', gap: 6 },
-  dot: { width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT },
+  incomingType:    { color: 'rgba(255,255,255,0.65)', fontSize: 15 },
+  dotsRow:         { flexDirection: 'row', gap: 6 },
+  dot:             { width: 7, height: 7, borderRadius: 4, backgroundColor: ACCENT },
   incomingActions: { flexDirection: 'row', gap: 52 },
-  actionCol: { alignItems: 'center', gap: 10 },
+  actionCol:       { alignItems: 'center', gap: 10 },
   rejectBtn: {
     width: 72, height: 72, borderRadius: 36, backgroundColor: '#ef4444',
     alignItems: 'center', justifyContent: 'center',
@@ -954,36 +862,4 @@ const s = StyleSheet.create({
     shadowOpacity: 0.55, shadowRadius: 14, elevation: 14,
   },
   actionLabel: { color: 'rgba(255,255,255,0.65)', fontSize: 13, fontWeight: '500' },
-
-  // ── Mini barra PiP ────────────────────────────────────────────────
-  pipBar: {
-    position: 'absolute', left: 12, right: 12, zIndex: 9999,
-    height: 60, borderRadius: 16,
-    flexDirection: 'row', alignItems: 'center',
-    paddingHorizontal: 10, gap: 8,
-    overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)',
-    shadowColor: '#000', shadowOffset: { width: 0, height: 6 },
-    shadowOpacity: 0.4, shadowRadius: 12, elevation: 20,
-  },
-  pipAvatar: { flexShrink: 0 },
-  pipInfo: { flex: 1, justifyContent: 'center' },
-  pipName: { color: '#fff', fontSize: 13, fontWeight: '700' },
-  pipStatus: { color: 'rgba(255,255,255,0.55)', fontSize: 11, marginTop: 1 },
-  pipBtn: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  pipHangup: {
-    width: 36, height: 36, borderRadius: 18,
-    backgroundColor: '#ef4444',
-    alignItems: 'center', justifyContent: 'center',
-  },
-  pipExpand: {
-    width: 32, height: 32, borderRadius: 16,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-    alignItems: 'center', justifyContent: 'center',
-  },
 });
