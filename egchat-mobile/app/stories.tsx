@@ -1378,7 +1378,7 @@ export default function StoriesScreen() {
           )}
         </View>
         <View style={st.headerActions}>
-          {activeTab === 'estados' && (
+          {activeTab === 'estados' && activeSubTab === 'sub_estados' && (
             <>
               <TouchableOpacity style={st.headerBtn} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Galeria">
                 <MIcon name="image" size={21} color="#fff" />
@@ -1388,7 +1388,12 @@ export default function StoriesScreen() {
               </TouchableOpacity>
             </>
           )}
-          {activeTab === 'momentos' && (
+          {activeTab === 'estados' && activeSubTab === 'sub_vivos' && (
+            <TouchableOpacity style={st.headerBtn} onPress={() => setShowLive(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Iniciar vivo">
+              <MIcon name="fiber-manual-record" size={21} color="#fff" />
+            </TouchableOpacity>
+          )}
+          {activeTab === 'estados' && activeSubTab === 'sub_momentos' && (
             <>
               <TouchableOpacity style={st.headerBtn} onPress={() => setShowMomentCamera(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Camara momentos">
                 <MIcon name="photo-camera" size={21} color="#fff" />
