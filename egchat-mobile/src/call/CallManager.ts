@@ -394,7 +394,11 @@ export class CallManager {
     }
     if (session?.callId) {
       try { NativeCallKit.endCall(session.callId); } catch { /* */ }
-      try { await callAPI.end(session.callId); } catch { /* */ }
+      // RPC end_call es idempotente — safe si se llama dos veces
+      const reason = this._commState === 'failed' ? 'ice_failed'
+                   : this._commState === 'missed'  ? 'missed'
+                   : 'normal';
+      try { await callAPI.end(session.callId, reason); } catch { /* */ }
     }
 
     // Restituir ruta de audio al estado normal
