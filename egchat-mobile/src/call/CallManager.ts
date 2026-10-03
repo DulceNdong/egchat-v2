@@ -98,14 +98,14 @@ const TURN_FALLBACK = [
 ];
 
 // ── Timeouts ──────────────────────────────────────────────────────
-const CALL_TIMEOUT_MS        = 90_000;  // 90s sin respuesta → missed
-const ICE_DISCONNECTED_MS    =  4_000;  // 4s en disconnected antes de restart
-const ICE_RESTART_TIMEOUT_MS = 12_000;  // 12s para que el restart tenga éxito
-const RECONNECT_MAX          = 3;
-const POLL_FAST_IOS          =  900;    // ms
-const POLL_FAST_ANDROID      = 1_400;
-const POLL_SLOW_IOS          = 2_000;
-const POLL_SLOW_ANDROID      = 3_000;
+const CALL_TIMEOUT_MS           = 90_000;  // 90s sin respuesta → missed
+const ICE_DISCONNECTED_BASE_MS  =  2_000;  // base backoff (×2^intento, jitter ±20%)
+const ICE_RESTART_TIMEOUT_MS    = 20_000;  // 20s para que el restart tenga éxito (cubre 4G lento)
+const RECONNECT_MAX             = 4;       // 4 intentos antes de declarar failed
+const POLL_FAST_IOS             =  900;    // ms
+const POLL_FAST_ANDROID         = 1_400;
+const POLL_SLOW_IOS             = 2_000;
+const POLL_SLOW_ANDROID         = 3_000;
 
 // ── Estado de la PeerConnection (espejo del W3C) ───────────────────
 type PCState = 'none' | 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';

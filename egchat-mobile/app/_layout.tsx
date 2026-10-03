@@ -551,6 +551,53 @@ export default function RootLayout() {
               }
             };
             navigatePendingCall().catch(() => {});
+
+            // ── FIX C1: acción pendiente del botón de notificación ───────────
+            // Cuando el usuario pulsó "Aceptar"/"Rechazar" con la app terminada,
+            // CallActionReceiver guardó la acción en SharedPreferences porque
+            // EGChatCallModule.instance era null. Ahora JS está montado: consumirla.
+            const consumePendingAction = async () => {
+              try {
+                const raw = await NativeCallKit.getAndClearPendingCallAction();
+                if (!raw || !mounted) return;
+                const { action, callId } = JSON.parse(raw) as { action: string; callId: string };
+                if (!action || !callId) return;
+
+                if (action === 'reject' || action === 'end') {
+                  // Rechazó desde la notificación → asegurarnos de que el servidor
+                  // recibe el reject aunque JS no haya procesado la llamada antes.
+                  const { callAPI } = await import('../src/api');
+                  callAPI.reject(callId).catch(() => {});
+                  return;
+                }
+
+                if (action === 'answer') {
+                  // El usuario quiso aceptar → si hay pending call, navegar a ella.
+                  // consumePendingCall() ya fue llamado arriba; si devolvió datos,
+                  // ya estamos navegando. Si no (TTL expiró), informar al usuario.
+                  const stillPending = await consumePendingCall();
+                  if (stillPending && mounted) {
+                    callManager.registerIncoming({
+                      callId:       stillPending.callId,
+                      callerName:   stillPending.callerName,
+                      callerAvatar: stillPending.callerAvatar || '',
+                      callType:     stillPending.callType || 'audio',
+                      offer:        stillPending.offer ?? undefined,
+                    });
+                    router.push({ pathname: '/call/[callId]', params: {
+                      callId:       stillPending.callId,
+                      targetName:   stillPending.callerName,
+                      targetAvatar: stillPending.callerAvatar || '',
+                      callType:     stillPending.callType || 'audio',
+                      role:         'callee',
+                      offer:        stillPending.offer ? JSON.stringify(stillPending.offer) : undefined,
+                    }} as any);
+                  }
+                  // Si ya expiró, no hacer nada — la llamada terminó
+                }
+              } catch { /* silencioso */ }
+            };
+            consumePendingAction().catch(() => {});
           }
 
           // En equipos Android de gama media/baja, iniciar SSE, presencia y
