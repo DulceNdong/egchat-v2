@@ -130,9 +130,11 @@ export function useWebRTC() {
 
   return {
     callState, callType, isMuted, isCamOff, isSignalingOnly,
+    isSpeakerOn,
     hasNativeMedia: HAS_NATIVE_MEDIA, localStream, remoteStream,
     startCall, answerCall, endCall, toggleMute, toggleCamera, pollIncoming,
     switchCamera:    () => callManager.switchCamera(),
+    toggleSpeaker:   () => callManager.toggleSpeaker(),
     toggleBluetooth: () => callManager.toggleBluetooth(),
   };
 }
