@@ -152,6 +152,15 @@ export class CallManager {
   private _ringStopped     = false;
   private _reconnectCount  = 0;
 
+  // FIX A+C — Flag atómico para backoff: evita doble-disparo de _scheduleIceRestart
+  private _iceRestartPending = false;
+
+  // FIX B+H — Offsets ICE como propiedades de clase para reseteo controlado en restart
+  private _iceOffsetCaller = 0;
+  private _iceOffsetCallee = 0;
+  private _answerApplied   = false;
+  private _appliedOfferVersion = 0;   // detectar restart offer del caller (callee)
+
   // ── Timers ────────────────────────────────────────────────────
   private _pollingTimer:      ReturnType<typeof setInterval> | null = null;
   private _durationTimer:     ReturnType<typeof setInterval> | null = null;
@@ -160,11 +169,13 @@ export class CallManager {
   private _iceRestartTimer:   ReturnType<typeof setTimeout>  | null = null;
   private _pollPhase:         'fast' | 'slow' = 'fast';
 
-  // ── AppState y listeners nativos de audio ─────────────────────
+  // ── AppState, listeners nativos de audio y NetInfo ────────────
   private _appStateSub:       ReturnType<typeof AppState.addEventListener> | null = null;
   private _audioInterruptSub: (() => void) | null = null;
   private _audioRouteSub:     (() => void) | null = null;
+  private _netInfoSub:        (() => void) | null = null;   // FIX E
   private _lastAppState: AppStateStatus = 'active';
+  private _lastNetConnected: boolean | null = null;         // FIX E
 
   // ── Supabase Realtime ─────────────────────────────────────────
   // Suscripción al canal call-state para recibir cambios de estado

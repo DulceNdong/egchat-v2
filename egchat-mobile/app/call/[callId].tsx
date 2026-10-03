@@ -187,6 +187,7 @@ export default function CallScreen() {
     localStream, remoteStream,
     startCall, answerCall, endCall, toggleMute, toggleCamera,
     toggleSpeaker: hookToggleSpeaker,
+    switchCamera,
   } = useWebRTC();
 
   // ── Contexto UI ───────────────────────────────────────────────
