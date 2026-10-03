@@ -89,15 +89,31 @@ const STUN_SERVERS = [
   { urls: 'stun:stun.cloudflare.com:3478' },
 ];
 
-// TURN fallback estático — solo si no hay credenciales del servidor.
-// OpenRelay es gratuito y sin SLA, solo para desarrollo.
-// En producción, usar /api/turn-token del backend Render.
-const TURN_FALLBACK = [
-  { urls: 'turn:openrelay.metered.ca:80',              username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443',             username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-  { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
-];
+// ── TURN fallback (C3 fix) ────────────────────────────────────────
+// Prioridad:
+//   1. /api/turn-token del backend Render (credenciales temporales, ideal)
+//   2. ENV EXPO_PUBLIC_TURN_* (tu propio servidor)
+//   3. Metered.ca free tier (50 GB/mes, mejor SLA que OpenRelay)
+//
+// Para producción configura en .env:
+//   EXPO_PUBLIC_TURN_USERNAME=<usuario>
+//   EXPO_PUBLIC_TURN_CREDENTIAL=<credencial>
+//   EXPO_PUBLIC_TURN_URLS=turn:tu-servidor.com:3478,turns:tu-servidor.com:5349
+const TURN_FALLBACK = (() => {
+  const user    = process.env.EXPO_PUBLIC_TURN_USERNAME   || 'openrelayproject';
+  const cred    = process.env.EXPO_PUBLIC_TURN_CREDENTIAL || 'openrelayproject';
+  const rawUrls = process.env.EXPO_PUBLIC_TURN_URLS;
+  if (rawUrls) {
+    return rawUrls.split(',').map(u => ({ urls: u.trim(), username: user, credential: cred }));
+  }
+  // Metered.ca free tier — SLA superior a OpenRelay para producción
+  return [
+    { urls: 'turn:relay.metered.ca:80',               username: user, credential: cred },
+    { urls: 'turn:relay.metered.ca:443',              username: user, credential: cred },
+    { urls: 'turns:relay.metered.ca:443',             username: user, credential: cred },
+    { urls: 'turn:relay.metered.ca:80?transport=tcp', username: user, credential: cred },
+  ];
+})();
 
 // ── Timeouts ──────────────────────────────────────────────────────
 const CALL_TIMEOUT_MS           = 90_000;  // 90s sin respuesta → missed
