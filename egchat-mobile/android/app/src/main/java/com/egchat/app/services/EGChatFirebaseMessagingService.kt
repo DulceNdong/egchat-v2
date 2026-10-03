@@ -184,7 +184,7 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         try {
-            NotificationManagerCompat.from(this).notify(NOTIF_ID, notification)
+            NotificationManagerCompat.from(this).notify(NOTIF_ID_INCOMING, notification)
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS denegado en Android 13+ → no hay nada más que hacer
         }
