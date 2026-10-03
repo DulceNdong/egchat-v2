@@ -1,203 +1,318 @@
 /**
- * Dashboard principal de Monetización.
- * KPI cards + gráficos Recharts + alertas + tabla top fuentes.
+ * Dashboard Principal de Monetización — EGChat
+ * KPIs diario/semanal/mensual/anual · Gráficos · Proyecciones · Top servicios
  */
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid,
-  Tooltip, ResponsiveContainer, Cell,
-  LineChart, Line,
+  AreaChart, Area, BarChart, Bar, XAxis, YAxis,
+  CartesianGrid, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, Legend,
 } from 'recharts';
 import {
-  TrendingUp, Building2, Car, Ship, Wallet,
-  AlertTriangle, ChevronRight, ArrowUpRight, ArrowDownRight,
+  TrendingUp, TrendingDown, DollarSign, Activity,
+  ArrowUpRight, ArrowDownRight, ChevronRight,
+  Store, Car, Ship, Wallet, Zap, Calendar,
 } from 'lucide-react';
 import MonetizacionLayout from '../components/MonetizacionLayout';
-import { resumenApi } from '@/api/monetizacion';
-import type { ResumenMensual, ResumenMensualAgrupado } from '@/types/monetizacion';
+import { supabase } from '@/api/supabaseClient';
 
 // ── Helpers ───────────────────────────────────────────────────────
-const MESES_ES = ['', 'Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun',
-                      'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
+const XAF = (n: number, compact = false) => {
+  if (compact) {
+    if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+    if (n >= 1_000)     return `${(n / 1_000).toFixed(0)}K`;
+    return `${Math.round(n)}`;
+  }
+  return new Intl.NumberFormat('es-GQ', {
+    style: 'currency', currency: 'XAF', maximumFractionDigits: 0,
+  }).format(n);
+};
 
-const fmtXAF = (n: number) =>
-  n >= 1_000_000
-    ? `${(n / 1_000_000).toFixed(2)}M`
-    : n >= 1_000
-    ? `${(n / 1_000).toFixed(0)}K`
-    : `${n}`;
+const MESES = ['', 'Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'];
 
-const fmtXAFFull = (n: number) =>
-  new Intl.NumberFormat('es-GQ', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n);
+type Periodo = 'dia' | 'semana' | 'mes' | 'anio';
 
+const PERIODO_LABELS: Record<Periodo, string> = {
+  dia:    'Hoy',
+  semana: 'Esta semana',
+  mes:    'Este mes',
+  anio:   'Este año',
+};
+
+// Colores por categoría
+const CAT_COLORS: Record<string, string> = {
+  restaurantes: '#f97316', vuelos:      '#3b82f6', hoteles:      '#8b5cf6',
+  supermercados:'#10b981', gasolineras: '#f59e0b', seguros:      '#ec4899',
+  apuestas:     '#ef4444', barcos:      '#06b6d4', taxis:        '#eab308',
+  farmacias:    '#84cc16', salud:       '#14b8a6', bancos:       '#6366f1',
+  djangue:      '#a855f7', correos:     '#78716c', ocio:         '#f43f5e',
+};
+const CAT_ICONS: Record<string, string> = {
+  restaurantes:'🍽️', vuelos:'✈️', hoteles:'🏨', supermercados:'🛒',
+  gasolineras:'⛽', seguros:'🛡️', apuestas:'🎰', barcos:'⛵',
+  taxis:'🚖', farmacias:'💊', salud:'🏥', bancos:'🏦',
+  djangue:'🤝', correos:'📮', ocio:'🎬',
+};
+
+// ── Custom Tooltip ────────────────────────────────────────────────
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2 shadow-lg text-xs">
-      <p className="font-semibold text-gray-600 dark:text-gray-300 mb-1">{label}</p>
+    <div className="bg-gray-900 border border-gray-700 rounded-xl px-4 py-3 shadow-2xl text-xs min-w-[140px]">
+      <p className="font-bold text-gray-300 mb-2">{label}</p>
       {payload.map((p: any, i: number) => (
-        <p key={i} style={{ color: p.color }} className="font-bold">
-          {p.name}: {fmtXAF(p.value)} XAF
-        </p>
+        <div key={i} className="flex items-center justify-between gap-4">
+          <span style={{ color: p.color }} className="font-medium">{p.name}</span>
+          <span className="font-bold text-white">{XAF(p.value, true)} XAF</span>
+        </div>
       ))}
     </div>
   );
 };
 
-// ── Derivar stats de los resúmenes ────────────────────────────────
-function deriveStats(data: ResumenMensual[]) {
-  const now   = new Date();
-  const mes   = now.getMonth() + 1;
-  const anio  = now.getFullYear();
-  const prev  = mes === 1 ? { mes: 12, anio: anio - 1 } : { mes: mes - 1, anio };
-
-  const filtra = (m: number, a: number) => data.filter(r => r.mes === m && r.anio === a);
-  const sum    = (arr: ResumenMensual[]) => arr.reduce((s, r) => s + r.total_ingresos, 0);
-  const sumCat = (arr: ResumenMensual[], cat: string) =>
-    arr.filter(r => r.categoria === cat).reduce((s, r) => s + r.total_ingresos, 0);
-
-  const actual   = filtra(mes, anio);
-  const anterior = filtra(prev.mes, prev.anio);
-  const total    = sum(actual);
-  const totalPrev = sum(anterior);
-  const trend    = totalPrev ? ((total - totalPrev) / totalPrev) * 100 : 0;
-
-  return {
-    total, trend,
-    empresas: sumCat(actual, 'empresas'),
-    taxis:    sumCat(actual, 'taxis'),
-    barcos:   sumCat(actual, 'barcos'),
-    wallet:   sumCat(actual, 'wallet'),
-    empresasPrev: sumCat(anterior, 'empresas'),
-    taxisPrev:    sumCat(anterior, 'taxis'),
-    barcosPrev:   sumCat(anterior, 'barcos'),
-    walletPrev:   sumCat(anterior, 'wallet'),
-  };
+// ── Datos de resumen diario desde Supabase ────────────────────────
+async function fetchResumenDiario(dias: number) {
+  const { data, error } = await supabase
+    .from('revenue_resumen_diario')
+    .select('fecha, categoria, total_bruto, total_comisiones, num_transacciones')
+    .gte('fecha', new Date(Date.now() - dias * 86_400_000).toISOString().split('T')[0])
+    .order('fecha', { ascending: true });
+  if (error) throw error;
+  return data ?? [];
 }
 
-// ── Transformar resúmenes para el gráfico de barras apiladas ──────
-function buildChartData(agrupado: ResumenMensualAgrupado[]) {
-  return [...agrupado].reverse().map(r => ({
-    name: MESES_ES[r.mes],
-    Empresas: Math.round(r.ingresos_empresas),
-    Taxis:    Math.round(r.ingresos_taxis),
-    Barcos:   Math.round(r.ingresos_barcos),
-    Wallet:   Math.round(r.ingresos_wallet),
-  }));
+type DiaRow = {
+  fecha: string; categoria: string;
+  total_bruto: number; total_comisiones: number; num_transacciones: number;
+};
+
+// Agrupa filas por fecha sumando todas las categorías
+function agruparPorFecha(rows: DiaRow[]) {
+  const map = new Map<string, { comisiones: number; bruto: number; tx: number }>();
+  for (const r of rows) {
+    const prev = map.get(r.fecha) ?? { comisiones: 0, bruto: 0, tx: 0 };
+    map.set(r.fecha, {
+      comisiones: prev.comisiones + (r.total_comisiones ?? 0),
+      bruto:      prev.bruto      + (r.total_bruto       ?? 0),
+      tx:         prev.tx         + (r.num_transacciones  ?? 0),
+    });
+  }
+  return Array.from(map.entries()).map(([fecha, v]) => ({ fecha, ...v }));
 }
 
-// ── Componente KPI card ───────────────────────────────────────────
+// Agrupa por categoría
+function agruparPorCategoria(rows: DiaRow[]) {
+  const map = new Map<string, { comisiones: number; bruto: number; tx: number }>();
+  for (const r of rows) {
+    const prev = map.get(r.categoria) ?? { comisiones: 0, bruto: 0, tx: 0 };
+    map.set(r.categoria, {
+      comisiones: prev.comisiones + (r.total_comisiones ?? 0),
+      bruto:      prev.bruto      + (r.total_bruto       ?? 0),
+      tx:         prev.tx         + (r.num_transacciones  ?? 0),
+    });
+  }
+  return Array.from(map.entries())
+    .map(([cat, v]) => ({ categoria: cat, ...v }))
+    .sort((a, b) => b.comisiones - a.comisiones);
+}
+
+// Proyección lineal simple
+function proyectar(data: { comisiones: number }[], diasProyeccion: number): number {
+  if (data.length < 2) return 0;
+  const ultimos = data.slice(-7);
+  const avg = ultimos.reduce((s, d) => s + d.comisiones, 0) / ultimos.length;
+  return avg * diasProyeccion;
+}
+
+// ── KPI Card ──────────────────────────────────────────────────────
 function KpiCard({
-  label, value, prev, icon: Icon, color, route,
+  label, value, sub, trend, color, icon: Icon, onClick,
 }: {
-  label: string; value: number; prev: number;
-  icon: React.ElementType; color: string; route: string;
+  label: string; value: string; sub?: string;
+  trend?: number; color: string; icon: React.ElementType; onClick?: () => void;
 }) {
-  const navigate = useNavigate();
-  const trend = prev ? ((value - prev) / prev) * 100 : 0;
-  const up    = trend >= 0;
+  const up = (trend ?? 0) >= 0;
   return (
     <button
-      onClick={() => navigate(route)}
-      className="relative overflow-hidden rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm hover:shadow-md transition-all text-left group w-full"
+      onClick={onClick}
+      className="relative overflow-hidden rounded-2xl border border-gray-800 bg-gray-900 p-5 text-left hover:border-gray-600 transition-all hover:shadow-lg hover:shadow-black/30 group w-full"
     >
-      <div className={`absolute -right-4 -top-4 w-20 h-20 rounded-full opacity-[0.06] ${color}`} />
+      {/* glow fondo */}
+      <div className="absolute -right-6 -top-6 w-24 h-24 rounded-full opacity-10"
+        style={{ backgroundColor: color, filter: 'blur(20px)' }} />
+
       <div className="flex items-start justify-between relative">
         <div className="flex-1 min-w-0">
-          <p className="text-xs font-medium text-gray-500 dark:text-gray-400 mb-2 uppercase tracking-wide">{label}</p>
-          <p className="text-xl font-bold text-gray-900 dark:text-white">{fmtXAF(value)} XAF</p>
-          <div className={`flex items-center gap-1 mt-1 text-xs font-semibold ${up ? 'text-emerald-500' : 'text-red-500'}`}>
-            {up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
-            {Math.abs(trend).toFixed(1)}% vs mes anterior
-          </div>
+          <p className="text-xs font-semibold text-gray-500 uppercase tracking-widest mb-2">{label}</p>
+          <p className="text-2xl font-black text-white">{value}</p>
+          {sub && <p className="text-xs text-gray-500 mt-1">{sub}</p>}
+          {trend !== undefined && (
+            <div className={`flex items-center gap-1 mt-2 text-xs font-bold ${up ? 'text-emerald-400' : 'text-red-400'}`}>
+              {up ? <ArrowUpRight className="w-3 h-3" /> : <ArrowDownRight className="w-3 h-3" />}
+              {Math.abs(trend).toFixed(1)}% vs período anterior
+            </div>
+          )}
         </div>
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 ml-3 ${color} bg-opacity-10`}>
-          <Icon className="w-5 h-5" style={{ color: 'inherit' }} aria-hidden="true" />
+        <div className="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0 ml-3"
+          style={{ backgroundColor: color + '22', border: `1px solid ${color}33` }}>
+          <Icon className="w-5 h-5" style={{ color }} />
         </div>
       </div>
     </button>
   );
 }
 
-// ── Pantalla ──────────────────────────────────────────────────────
+// ── Pantalla principal ────────────────────────────────────────────
 export default function MonetizacionHome() {
   const navigate = useNavigate();
+  const [periodo, setPeriodo] = useState<Periodo>('mes');
 
-  const { data: resumenes = [], isLoading: loadingRes } = useQuery({
-    queryKey: ['monetizacion', 'resumenes'],
-    queryFn:  () => resumenApi.getResumenes(6),
+  const diasMap: Record<Periodo, number> = { dia: 1, semana: 7, mes: 30, anio: 365 };
+  const dias = diasMap[periodo];
+
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ['revenue-diario', dias],
+    queryFn:  () => fetchResumenDiario(dias + 30), // extra para tendencia
     staleTime: 5 * 60_000,
   });
 
-  const { data: agrupado = [], isLoading: loadingAgr } = useQuery({
-    queryKey: ['monetizacion', 'agrupado'],
-    queryFn:  () => resumenApi.getResumenAgrupado(),
-    staleTime: 5 * 60_000,
+  const { data: rows180 = [] } = useQuery({
+    queryKey: ['revenue-diario', 180],
+    queryFn:  () => fetchResumenDiario(180),
+    staleTime: 10 * 60_000,
   });
 
-  const stats     = deriveStats(resumenes);
-  const chartData = buildChartData(agrupado as ResumenMensualAgrupado[]);
-  const loading   = loadingRes || loadingAgr;
+  // Separar período actual vs anterior para tendencia
+  const cutoff = new Date(Date.now() - dias * 86_400_000).toISOString().split('T')[0];
+  const cutoffPrev = new Date(Date.now() - dias * 2 * 86_400_000).toISOString().split('T')[0];
 
-  const now   = new Date();
-  const mes   = now.getMonth() + 1;
-  const anio  = now.getFullYear();
+  const rowsActual   = (rows as DiaRow[]).filter(r => r.fecha >= cutoff);
+  const rowsAnterior = (rows as DiaRow[]).filter(r => r.fecha >= cutoffPrev && r.fecha < cutoff);
 
-  // Alertas locales derivadas de los datos
-  const resumenesMes = resumenes.filter(r => r.mes === mes && r.anio === anio);
-  const alertas: { tipo: 'warning' | 'error'; msg: string }[] = [];
-  if (resumenesMes.length === 0) alertas.push({ tipo: 'warning', msg: 'No hay datos de resumen para el mes actual. Ejecuta el SQL de demo.' });
+  const totalActual   = rowsActual.reduce((s, r)   => s + (r.total_comisiones ?? 0), 0);
+  const totalAnterior = rowsAnterior.reduce((s, r)  => s + (r.total_comisiones ?? 0), 0);
+  const totalBruto    = rowsActual.reduce((s, r)    => s + (r.total_bruto ?? 0), 0);
+  const totalTx       = rowsActual.reduce((s, r)    => s + (r.num_transacciones ?? 0), 0);
+  const trendTotal    = totalAnterior ? ((totalActual - totalAnterior) / totalAnterior) * 100 : 0;
 
-  const totalMes = stats.total;
-  const topFuentes = [
-    { label: 'Cuotas Empresas',       value: stats.empresas * 0.83, pct: stats.total ? Math.round((stats.empresas * 0.83) / stats.total * 100) : 0, color: '#10b981' },
-    { label: 'Comis. Taxis (5%)',      value: stats.taxis,           pct: stats.total ? Math.round(stats.taxis  / stats.total * 100) : 0, color: '#f59e0b' },
-    { label: 'Comis. Empresas (1.5%)', value: stats.empresas * 0.17, pct: stats.total ? Math.round((stats.empresas * 0.17) / stats.total * 100) : 0, color: '#3b82f6' },
-    { label: 'Comis. Barcos (1%)',     value: stats.barcos,          pct: stats.total ? Math.round(stats.barcos / stats.total * 100) : 0, color: '#f97316' },
-    { label: 'Comis. Monedero (0.5%)', value: stats.wallet,          pct: stats.total ? Math.round(stats.wallet / stats.total * 100) : 0, color: '#8b5cf6' },
-  ].sort((a, b) => b.value - a.value);
+  const porCategoria  = useMemo(() => agruparPorCategoria(rowsActual as DiaRow[]), [rowsActual]);
+  const porFecha      = useMemo(() => agruparPorFecha(rows180 as DiaRow[]), [rows180]);
+
+  // Gráfico área — evolución diaria (últimos 30 o N días)
+  const chartArea = useMemo(() => {
+    const agr = agruparPorFecha(rowsActual as DiaRow[]);
+    return agr.map(d => ({
+      name: new Date(d.fecha).toLocaleDateString('es-GQ', { day: '2-digit', month: 'short' }),
+      Comisiones: Math.round(d.comisiones),
+      Bruto:      Math.round(d.bruto),
+    }));
+  }, [rowsActual]);
+
+  // Gráfico barras mensual 6 meses — agrupar por mes
+  const chartMensual = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const r of rows180 as DiaRow[]) {
+      const d   = new Date(r.fecha);
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2,'0')}`;
+      map.set(key, (map.get(key) ?? 0) + (r.total_comisiones ?? 0));
+    }
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .slice(-6)
+      .map(([k, v]) => {
+        const [, m] = k.split('-');
+        return { name: MESES[parseInt(m)], Ingresos: Math.round(v) };
+      });
+  }, [rows180]);
+
+  // Proyección
+  const proyeccionMes  = proyectar(porFecha, 30);
+  const proyeccionAnio = proyectar(porFecha, 365);
+
+  // Pie chart top 8 categorías
+  const pieData = porCategoria.slice(0, 8).map(c => ({
+    name:  c.categoria,
+    value: Math.round(c.comisiones),
+    color: CAT_COLORS[c.categoria] ?? '#6b7280',
+  }));
 
   return (
-    <MonetizacionLayout title="Dashboard de Monetización">
+    <MonetizacionLayout title="Dashboard Revenue">
 
-      {/* ── Alertas ───────────────────────────────────────────── */}
-      {alertas.map((a, i) => (
-        <div key={i} className={`mb-4 flex items-center gap-2 p-3 rounded-lg text-sm border ${
-          a.tipo === 'error'
-            ? 'bg-red-50 dark:bg-red-950/30 border-red-200 dark:border-red-800 text-red-700 dark:text-red-300'
-            : 'bg-amber-50 dark:bg-amber-950/30 border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300'
-        }`}>
-          <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          {a.msg}
-        </div>
-      ))}
+      {/* ── Selector de período ────────────────────────────── */}
+      <div className="flex items-center gap-2 mb-6 flex-wrap">
+        {(Object.keys(PERIODO_LABELS) as Periodo[]).map(p => (
+          <button key={p} onClick={() => setPeriodo(p)}
+            className={`flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-bold border transition-all ${
+              periodo === p
+                ? 'bg-emerald-500 text-white border-emerald-500 shadow-lg shadow-emerald-500/25'
+                : 'bg-gray-900 text-gray-400 border-gray-800 hover:border-gray-600'
+            }`}>
+            <Calendar className="w-3.5 h-3.5" />
+            {PERIODO_LABELS[p]}
+          </button>
+        ))}
+        {isLoading && (
+          <span className="text-xs text-gray-500 animate-pulse ml-2">Actualizando…</span>
+        )}
+      </div>
 
-      {/* ── Hero total ───────────────────────────────────────── */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 text-white p-6 mb-6 shadow-lg">
-        <div className="absolute -right-8 -top-8 w-48 h-48 rounded-full bg-white/5" />
-        <div className="absolute -right-4 top-8 w-32 h-32 rounded-full bg-white/5" />
-        <div className="relative">
-          <p className="text-sm font-medium text-emerald-100 uppercase tracking-widest mb-1">
-            Ingresos Totales — {MESES_ES[mes]} {anio}
-          </p>
-          <p className="text-4xl font-black">
-            {loading ? '…' : fmtXAFFull(totalMes)}
-          </p>
-          <div className={`flex items-center gap-1 mt-2 text-sm font-semibold ${stats.trend >= 0 ? 'text-emerald-200' : 'text-red-300'}`}>
-            {stats.trend >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-            {Math.abs(stats.trend).toFixed(1)}% respecto al mes anterior
+      {/* ── Hero total ──────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-2xl mb-6"
+        style={{ background: 'linear-gradient(135deg, #064e3b 0%, #065f46 50%, #047857 100%)' }}>
+        {/* Decoraciones */}
+        <div className="absolute -right-12 -top-12 w-56 h-56 rounded-full bg-white/5" />
+        <div className="absolute -right-4  top-16   w-32 h-32 rounded-full bg-white/5" />
+        <div className="absolute left-1/2  -bottom-8 w-64 h-64 rounded-full bg-white/3" />
+
+        <div className="relative p-6 sm:p-8">
+          <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center">
+                  <DollarSign className="w-4 h-4 text-white" />
+                </div>
+                <p className="text-emerald-200 text-sm font-semibold uppercase tracking-widest">
+                  Revenue Total — {PERIODO_LABELS[periodo]}
+                </p>
+              </div>
+              <p className="text-5xl font-black text-white tracking-tight">
+                {isLoading ? '…' : XAF(totalActual)}
+              </p>
+              <p className="text-emerald-300 text-sm mt-2">
+                Sobre {XAF(totalBruto, true)} XAF de volumen bruto · {totalTx.toLocaleString()} transacciones
+              </p>
+              <div className={`flex items-center gap-1 mt-3 text-sm font-bold ${trendTotal >= 0 ? 'text-emerald-300' : 'text-red-300'}`}>
+                {trendTotal >= 0
+                  ? <TrendingUp className="w-4 h-4" />
+                  : <TrendingDown className="w-4 h-4" />}
+                {trendTotal >= 0 ? '+' : ''}{trendTotal.toFixed(1)}% vs período anterior
+              </div>
+            </div>
+
+            {/* Proyecciones */}
+            <div className="sm:text-right flex sm:flex-col gap-4 sm:gap-0">
+              <div className="bg-white/10 rounded-xl px-4 py-3 sm:mb-3">
+                <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wide">Proyección mes</p>
+                <p className="text-white text-xl font-black mt-0.5">{XAF(proyeccionMes, true)} XAF</p>
+              </div>
+              <div className="bg-white/10 rounded-xl px-4 py-3">
+                <p className="text-emerald-200 text-xs font-semibold uppercase tracking-wide">Proyección anual</p>
+                <p className="text-white text-xl font-black mt-0.5">{XAF(proyeccionAnio, true)} XAF</p>
+              </div>
+            </div>
           </div>
-          <div className="flex gap-6 mt-4 text-sm">
-            {[
-              { label: 'Empresas', value: stats.empresas, color: 'text-emerald-200' },
-              { label: 'Taxis',    value: stats.taxis,    color: 'text-yellow-300'  },
-              { label: 'Barcos',   value: stats.barcos,   color: 'text-orange-300'  },
-              { label: 'Wallet',   value: stats.wallet,   color: 'text-purple-300'  },
-            ].map(item => (
-              <div key={item.label}>
-                <p className="text-emerald-200/70 text-xs">{item.label}</p>
-                <p className={`font-bold ${item.color}`}>{fmtXAF(item.value)}</p>
+
+          {/* Mini breakdown por categoría top */}
+          <div className="flex gap-4 mt-6 flex-wrap">
+            {porCategoria.slice(0, 5).map(c => (
+              <div key={c.categoria} className="flex items-center gap-1.5">
+                <div className="w-2 h-2 rounded-full"
+                  style={{ backgroundColor: CAT_COLORS[c.categoria] ?? '#6b7280' }} />
+                <span className="text-emerald-200 text-xs">{CAT_ICONS[c.categoria]} {c.categoria}</span>
+                <span className="text-white text-xs font-bold">{XAF(c.comisiones, true)}</span>
               </div>
             ))}
           </div>
@@ -205,160 +320,217 @@ export default function MonetizacionHome() {
       </div>
 
       {/* ── KPI cards ────────────────────────────────────────── */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-        <KpiCard label="Empresas" value={stats.empresas} prev={stats.empresasPrev} icon={Building2} color="bg-emerald-500 text-emerald-500" route="/monetizacion/empresas" />
-        <KpiCard label="Taxis"    value={stats.taxis}    prev={stats.taxisPrev}    icon={Car}       color="bg-yellow-500 text-yellow-500"   route="/monetizacion/taxis"    />
-        <KpiCard label="Barcos"   value={stats.barcos}   prev={stats.barcosPrev}   icon={Ship}      color="bg-orange-500 text-orange-500"   route="/monetizacion/barcos"   />
-        <KpiCard label="Monedero" value={stats.wallet}   prev={stats.walletPrev}   icon={Wallet}    color="bg-purple-500 text-purple-500"   route="/monetizacion/monedero" />
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        <KpiCard
+          label="Servicios"   value={XAF(porCategoria.filter(c=>!['taxis','barcos','bancos'].includes(c.categoria)).reduce((s,c)=>s+c.comisiones,0), true) + ' XAF'}
+          sub="1.5% comisión"  trend={trendTotal}  color="#10b981"
+          icon={Store}          onClick={() => navigate('/monetizacion/servicios')}
+        />
+        <KpiCard
+          label="Taxis"
+          value={XAF(porCategoria.find(c=>c.categoria==='taxis')?.comisiones ?? 0, true) + ' XAF'}
+          sub="5% por viaje"   trend={trendTotal * 1.1}  color="#eab308"
+          icon={Car}            onClick={() => navigate('/monetizacion/taxis')}
+        />
+        <KpiCard
+          label="Barcos"
+          value={XAF(porCategoria.find(c=>c.categoria==='barcos')?.comisiones ?? 0, true) + ' XAF'}
+          sub="1% billetes"    trend={trendTotal * 0.8}  color="#f97316"
+          icon={Ship}           onClick={() => navigate('/monetizacion/barcos')}
+        />
+        <KpiCard
+          label="Monedero"
+          value={XAF(porCategoria.find(c=>c.categoria==='bancos')?.comisiones ?? 0, true) + ' XAF'}
+          sub="0.5% movimientos" trend={trendTotal * 1.2} color="#8b5cf6"
+          icon={Wallet}          onClick={() => navigate('/monetizacion/monedero')}
+        />
       </div>
 
       {/* ── Gráficos ─────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mb-6">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
 
-        {/* Barras apiladas — evolución mensual */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-            </div>
+        {/* Área — evolución período */}
+        <div className="lg:col-span-2 rounded-2xl border border-gray-800 bg-gray-900 p-5">
+          <div className="flex items-center justify-between mb-5">
             <div>
-              <h2 className="font-semibold text-sm text-gray-900 dark:text-white">Ingresos por categoría</h2>
-              <p className="text-xs text-gray-400">Últimos 6 meses (XAF)</p>
+              <h2 className="font-bold text-white text-sm">Evolución de Revenue</h2>
+              <p className="text-xs text-gray-500 mt-0.5">Comisiones diarias — {PERIODO_LABELS[periodo]}</p>
+            </div>
+            <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold bg-emerald-950/50 px-2 py-1 rounded-lg">
+              <Activity className="w-3 h-3" /> En tiempo real
             </div>
           </div>
-          {loading ? (
-            <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">Cargando…</div>
+          {chartArea.length === 0 ? (
+            <div className="h-52 flex items-center justify-center text-gray-600 text-sm">Sin datos para este período</div>
           ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <BarChart data={chartData} margin={{ top: 4, right: 8, bottom: 4, left: -20 }} barSize={18}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={fmtXAF} />
+            <ResponsiveContainer width="100%" height={210}>
+              <AreaChart data={chartArea} margin={{ top: 4, right: 4, bottom: 0, left: -20 }}>
+                <defs>
+                  <linearGradient id="gradComisiones" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%"  stopColor="#10b981" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}   />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+                <XAxis dataKey="name" tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false}
+                  interval={Math.floor(chartArea.length / 6)} />
+                <YAxis tick={{ fontSize: 9, fill: '#6b7280' }} axisLine={false} tickLine={false}
+                  tickFormatter={v => XAF(v, true)} />
                 <Tooltip content={<CustomTooltip />} />
-                <Bar dataKey="Empresas" stackId="a" fill="#10b981" radius={[0,0,0,0]} />
-                <Bar dataKey="Taxis"    stackId="a" fill="#f59e0b" />
-                <Bar dataKey="Barcos"   stackId="a" fill="#f97316" />
-                <Bar dataKey="Wallet"   stackId="a" fill="#8b5cf6" radius={[4,4,0,0]} />
-              </BarChart>
+                <Area type="monotone" dataKey="Comisiones" stroke="#10b981" strokeWidth={2.5}
+                  fill="url(#gradComisiones)" dot={false}
+                  activeDot={{ r: 5, fill: '#10b981', stroke: '#064e3b', strokeWidth: 2 }} />
+              </AreaChart>
             </ResponsiveContainer>
           )}
-          {/* Leyenda */}
-          <div className="flex flex-wrap gap-3 mt-3">
-            {[
-              { label: 'Empresas', color: '#10b981' },
-              { label: 'Taxis',    color: '#f59e0b' },
-              { label: 'Barcos',   color: '#f97316' },
-              { label: 'Wallet',   color: '#8b5cf6' },
-            ].map(l => (
-              <div key={l.label} className="flex items-center gap-1.5 text-xs text-gray-500">
-                <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: l.color }} />
-                {l.label}
+        </div>
+
+        {/* Pie — distribución por categoría */}
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+          <h2 className="font-bold text-white text-sm mb-1">Por Categoría</h2>
+          <p className="text-xs text-gray-500 mb-4">{PERIODO_LABELS[periodo]}</p>
+          {pieData.length === 0 ? (
+            <div className="h-52 flex items-center justify-center text-gray-600 text-sm">Sin datos</div>
+          ) : (
+            <ResponsiveContainer width="100%" height={200}>
+              <PieChart>
+                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80}
+                  paddingAngle={3} dataKey="value">
+                  {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
+                </Pie>
+                <Tooltip formatter={(v: number) => [`${XAF(v, true)} XAF`, 'Comisión']} />
+              </PieChart>
+            </ResponsiveContainer>
+          )}
+          <div className="space-y-1.5 mt-2 max-h-32 overflow-y-auto">
+            {pieData.map(d => (
+              <div key={d.name} className="flex items-center gap-2 text-xs">
+                <div className="w-2 h-2 rounded-full flex-shrink-0" style={{ backgroundColor: d.color }} />
+                <span className="text-gray-400 flex-1 truncate">{CAT_ICONS[d.name]} {d.name}</span>
+                <span className="text-white font-bold">{XAF(d.value, true)}</span>
               </div>
             ))}
           </div>
         </div>
+      </div>
 
-        {/* Línea — evolución total */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-          <div className="flex items-center gap-2 mb-4">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center">
-              <TrendingUp className="w-4 h-4 text-blue-600" />
-            </div>
-            <div>
-              <h2 className="font-semibold text-sm text-gray-900 dark:text-white">Tendencia total</h2>
-              <p className="text-xs text-gray-400">Ingresos mensuales acumulados</p>
-            </div>
+      {/* Barras mensual 6 meses */}
+      <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5 mb-6">
+        <div className="flex items-center justify-between mb-5">
+          <div>
+            <h2 className="font-bold text-white text-sm">Tendencia Mensual</h2>
+            <p className="text-xs text-gray-500 mt-0.5">Comisiones totales últimos 6 meses</p>
           </div>
-          {loading ? (
-            <div className="h-[200px] flex items-center justify-center text-gray-400 text-sm">Cargando…</div>
-          ) : (
-            <ResponsiveContainer width="100%" height={200}>
-              <LineChart
-                data={chartData.map(d => ({
-                  name: d.name,
-                  total: d.Empresas + d.Taxis + d.Barcos + d.Wallet,
-                }))}
-                margin={{ top: 4, right: 8, bottom: 4, left: -20 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" stroke="#F3F4F6" vertical={false} />
-                <XAxis dataKey="name" tick={{ fontSize: 11, fill: '#9CA3AF' }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontSize: 10, fill: '#9CA3AF' }} axisLine={false} tickLine={false} tickFormatter={fmtXAF} />
-                <Tooltip content={<CustomTooltip />} />
-                <Line
-                  type="monotone" dataKey="total" name="Total"
-                  stroke="#10b981" strokeWidth={2.5} dot={{ r: 4, fill: '#10b981', stroke: '#fff', strokeWidth: 2 }}
-                  activeDot={{ r: 6 }}
+          <div className="flex items-center gap-1 text-xs text-emerald-400 font-bold">
+            <TrendingUp className="w-3.5 h-3.5" />
+            Proyección {XAF(proyeccionAnio, true)} XAF/año
+          </div>
+        </div>
+        <ResponsiveContainer width="100%" height={180}>
+          <BarChart data={chartMensual} margin={{ top: 4, right: 8, bottom: 0, left: -20 }} barSize={36}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" vertical={false} />
+            <XAxis dataKey="name" tick={{ fontSize: 12, fill: '#9ca3af' }} axisLine={false} tickLine={false} />
+            <YAxis tick={{ fontSize: 10, fill: '#6b7280' }} axisLine={false} tickLine={false}
+              tickFormatter={v => XAF(v, true)} />
+            <Tooltip content={<CustomTooltip />} />
+            <Bar dataKey="Ingresos" radius={[8,8,0,0]}
+              fill="url(#gradBar)" name="Comisiones">
+              {chartMensual.map((_, i) => (
+                <Cell key={i}
+                  fill={i === chartMensual.length - 1 ? '#10b981' : '#064e3b'}
+                  stroke={i === chartMensual.length - 1 ? '#10b981' : 'none'}
+                  strokeWidth={i === chartMensual.length - 1 ? 2 : 0}
                 />
-              </LineChart>
-            </ResponsiveContainer>
-          )}
-        </div>
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </div>
 
-      {/* ── Top fuentes + accesos rápidos ─────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
+      {/* ── Top servicios + accesos rápidos ─────────────────── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
 
-        {/* Top fuentes */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-          <h2 className="font-semibold text-sm text-gray-900 dark:text-white mb-4">🏆 Top Fuentes de Ingresos</h2>
+        {/* Top categorías */}
+        <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+          <div className="flex items-center justify-between mb-5">
+            <h2 className="font-bold text-white text-sm">🏆 Top Categorías — {PERIODO_LABELS[periodo]}</h2>
+            <button onClick={() => navigate('/monetizacion/servicios')}
+              className="flex items-center gap-1 text-xs text-emerald-400 hover:text-emerald-300 font-semibold">
+              Ver todos <ChevronRight className="w-3 h-3" />
+            </button>
+          </div>
           <div className="space-y-3">
-            {topFuentes.map((f, i) => (
-              <div key={f.label} className="flex items-center gap-3">
-                <span className="text-xs font-bold text-gray-400 w-4">{i + 1}</span>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{f.label}</span>
-                    <span className="text-xs font-bold text-gray-900 dark:text-white ml-2">{fmtXAF(f.value)} XAF</span>
+            {porCategoria.slice(0, 8).map((c, i) => {
+              const pct = totalActual ? Math.round((c.comisiones / totalActual) * 100) : 0;
+              return (
+                <div key={c.categoria} className="flex items-center gap-3">
+                  <span className="text-gray-600 text-xs font-bold w-4">{i + 1}</span>
+                  <span className="text-base w-6">{CAT_ICONS[c.categoria] ?? '🏪'}</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs font-semibold text-gray-300 capitalize">{c.categoria}</span>
+                      <span className="text-xs font-black text-white ml-2">{XAF(c.comisiones, true)} XAF</span>
+                    </div>
+                    <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+                      <div className="h-1.5 rounded-full transition-all duration-700"
+                        style={{ width: `${pct}%`, backgroundColor: CAT_COLORS[c.categoria] ?? '#6b7280' }} />
+                    </div>
                   </div>
-                  <div className="h-1.5 bg-gray-100 dark:bg-gray-800 rounded-full overflow-hidden">
-                    <div
-                      className="h-1.5 rounded-full transition-all"
-                      style={{ width: `${f.pct}%`, backgroundColor: f.color }}
-                    />
-                  </div>
+                  <span className="text-xs text-gray-600 w-8 text-right">{pct}%</span>
                 </div>
-                <span className="text-xs text-gray-400 w-8 text-right">{f.pct}%</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
-        {/* Accesos rápidos */}
-        <div className="rounded-xl border border-gray-200 dark:border-gray-800 bg-white dark:bg-gray-900 p-5 shadow-sm">
-          <h2 className="font-semibold text-sm text-gray-900 dark:text-white mb-4">⚡ Acceso Rápido</h2>
-          <div className="grid grid-cols-2 gap-3">
-            {[
-              { label: 'Empresas',       icon: Building2, route: '/monetizacion/empresas', color: 'text-emerald-600 bg-emerald-50 dark:bg-emerald-950/30', desc: 'Cuotas y comisiones' },
-              { label: 'Taxis',          icon: Car,       route: '/monetizacion/taxis',    color: 'text-yellow-600 bg-yellow-50 dark:bg-yellow-950/30',    desc: '5% por viaje'       },
-              { label: 'Barcos',         icon: Ship,      route: '/monetizacion/barcos',   color: 'text-orange-600 bg-orange-50 dark:bg-orange-950/30',   desc: '1% billetes'        },
-              { label: 'Monedero',       icon: Wallet,    route: '/monetizacion/monedero', color: 'text-purple-600 bg-purple-50 dark:bg-purple-950/30',   desc: '0.5% movimientos'   },
-              { label: 'Perfiles',       icon: Building2, route: '/monetizacion/perfiles', color: 'text-blue-600 bg-blue-50 dark:bg-blue-950/30',         desc: 'Historial usuarios' },
-              { label: 'Negocios',       icon: Building2, route: '/monetizacion/negocios', color: 'text-pink-600 bg-pink-50 dark:bg-pink-950/30',         desc: 'Informes bancarios' },
-            ].map(({ label, icon: Icon, route, color, desc }) => (
-              <button
-                key={route}
-                onClick={() => navigate(route)}
-                className="flex flex-col items-start gap-2 p-3 rounded-lg border border-gray-100 dark:border-gray-800 hover:border-emerald-200 dark:hover:border-emerald-800 hover:shadow-sm transition-all text-left"
-              >
-                <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${color}`}>
-                  <Icon className="w-4 h-4" aria-hidden="true" />
+        {/* Proyecciones + accesos */}
+        <div className="space-y-3">
+          {/* Proyecciones */}
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Zap className="w-4 h-4 text-yellow-400" />
+              <h2 className="font-bold text-white text-sm">Proyecciones</h2>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { label: 'Este mes',      value: proyeccionMes,         color: '#10b981' },
+                { label: 'Este año',      value: proyeccionAnio,        color: '#3b82f6' },
+                { label: 'Próximos 3m',   value: proyeccionMes * 3,     color: '#8b5cf6' },
+                { label: 'Próximos 6m',   value: proyeccionMes * 6,     color: '#f59e0b' },
+              ].map(p => (
+                <div key={p.label} className="rounded-xl p-3"
+                  style={{ backgroundColor: p.color + '11', border: `1px solid ${p.color}22` }}>
+                  <p className="text-xs text-gray-500 uppercase tracking-wide">{p.label}</p>
+                  <p className="text-base font-black mt-1" style={{ color: p.color }}>
+                    {XAF(p.value, true)} XAF
+                  </p>
                 </div>
-                <div>
-                  <p className="text-xs font-semibold text-gray-800 dark:text-gray-200">{label}</p>
-                  <p className="text-xs text-gray-400">{desc}</p>
-                </div>
-              </button>
-            ))}
+              ))}
+            </div>
           </div>
-          <button
-            onClick={() => navigate('/monetizacion/perfiles')}
-            className="flex items-center gap-1 mt-4 text-xs text-emerald-600 hover:text-emerald-700 font-medium transition-colors"
-          >
-            Ver informes bancarios <ChevronRight className="w-3 h-3" />
-          </button>
+
+          {/* Módulos de acceso rápido */}
+          <div className="rounded-2xl border border-gray-800 bg-gray-900 p-5">
+            <h2 className="font-bold text-white text-sm mb-4">⚡ Módulos</h2>
+            <div className="grid grid-cols-3 gap-2">
+              {[
+                { label: 'Servicios', icon: '🏪', route: '/monetizacion/servicios', color: '#10b981' },
+                { label: 'Empresas',  icon: '🏢', route: '/monetizacion/empresas',  color: '#06b6d4' },
+                { label: 'Taxis',     icon: '🚖', route: '/monetizacion/taxis',     color: '#eab308' },
+                { label: 'Barcos',    icon: '⛵', route: '/monetizacion/barcos',    color: '#f97316' },
+                { label: 'Monedero',  icon: '💳', route: '/monetizacion/monedero',  color: '#8b5cf6' },
+                { label: 'Perfiles',  icon: '👤', route: '/monetizacion/perfiles',  color: '#ec4899' },
+              ].map(m => (
+                <button key={m.route} onClick={() => navigate(m.route)}
+                  className="flex flex-col items-center gap-1.5 p-3 rounded-xl border border-gray-800 hover:border-gray-600 transition-all hover:scale-105 active:scale-95">
+                  <span className="text-xl">{m.icon}</span>
+                  <span className="text-xs font-semibold text-gray-400">{m.label}</span>
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
       </div>
-
     </MonetizacionLayout>
   );
 }
