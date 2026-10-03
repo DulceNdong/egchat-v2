@@ -1148,6 +1148,10 @@ export class CallManager {
       if (Platform.OS === 'android') {
         try { NativeCallKit.startCallForegroundService(session.callId, session.targetName, session.callType === 'video'); } catch { /* */ }
       }
+
+      // Notificar a la fuente de verdad que ICE se estableció
+      // Esto actualiza connected_at en Supabase para el cronómetro oficial
+      callAPI.markConnected(session.callId).catch(() => {});
     }
 
     this._applyAudioSession().catch(() => {});
