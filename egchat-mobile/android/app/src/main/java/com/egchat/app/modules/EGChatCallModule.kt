@@ -37,7 +37,8 @@ class EGChatCallModule(private val reactContext: ReactApplicationContext) :
         const val NAME = "EGChatCallModule"
         private const val CHANNEL_ID = "egchat_calls"
         private const val CHANNEL_NAME = "Llamadas EGChat"
-        private const val NOTIF_ID = 1001
+        // Expuesto como const para que CallActionReceiver pueda cancelar la notificación
+        const val NOTIF_ID_INCOMING = 1001
 
         // Acciones del BroadcastReceiver
         const val ACTION_ANSWER = "com.egchat.app.CALL_ANSWER"
