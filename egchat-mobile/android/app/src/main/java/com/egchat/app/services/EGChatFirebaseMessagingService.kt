@@ -43,7 +43,8 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
     companion object {
         private const val CHANNEL_ID       = "egchat_calls_native"
         private const val CHANNEL_NAME     = "Llamadas EGChat"
-        private const val NOTIF_ID         = 9001
+        // Expuesto como const para que CallActionReceiver pueda cancelar la notificación
+        const val NOTIF_ID_INCOMING        = 9001
         const val PREFS_NAME               = "egchat_call_prefs"
         const val KEY_PENDING_CALL         = "pending_call_payload"
         const val KEY_PENDING_CALL_TS      = "pending_call_ts"
