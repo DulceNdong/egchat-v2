@@ -686,21 +686,14 @@ export default function RootLayout() {
                   const data = lastResp.notification.request.content.data as any;
                   setTimeout(() => {
                     if (data?.notificationType === 'incoming_call' && data?.callId) {
-                      // Tap en notificación de llamada → abrir pantalla de llamada
-                      addNotification({
-                        type: 'call',
-                        title: `📞 Llamada de ${data.callerName || 'Usuario'}`,
-                        body: (data.callType === 'video') ? 'Videollamada entrante' : 'Llamada de voz entrante',
-                        chatId: undefined,
+                      // Tap en notificación de llamada → usar punto de entrada único
+                      handleIncomingCall({
+                        callId:       data.callId,
+                        callerName:   data.callerName || 'Usuario',
+                        callerAvatar: data.callerAvatar || '',
+                        callType:     data.callType || 'audio',
+                        offer:        data.offer,
                       });
-                      router.push({ pathname: '/call/[callId]', params: {
-                        callId: data.callId,
-                        targetName: data.callerName || 'Usuario',
-                        targetAvatar: data.callerAvatar || '',
-                        callType: data.callType || 'audio',
-                        role: 'callee',
-                        offer: data.offer ? JSON.stringify(data.offer) : undefined,
-                      }} as any);
                     } else if (data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
                     } else if (data?.type === 'djangue_notification' && data?.groupId) {
