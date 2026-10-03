@@ -1127,14 +1127,40 @@ export class CallManager {
           this._applyAudioSession().catch(() => {});
           this._applyAudioRoute().catch(() => {});
         }
+
+        // FIX 4 — Reanudar vídeo si fue pausado por el sistema (background)
+        if (this._videoPausedBySystem && this._localStream && !this._isEnding) {
+          this._videoPausedBySystem = false;
+          const vtracks: any[] = this._localStream.getVideoTracks?.() || [];
+          vtracks.forEach((t: any) => { t.enabled = true; });
+
+          // Restaurar también en el sender si replaceTrack fue usado
+          if (this._pc && this._videoTrackRef) {
+            try {
+              const senders: any[] = this._pc.getSenders?.() || [];
+              const vs = senders.find((s: any) => !s.track || s.track.kind === 'video');
+              if (vs) vs.replaceTrack(this._videoTrackRef).catch(() => {});
+            } catch { /* ignorar */ }
+          }
+
+          this._isCamOff = false;
+          this._notify();
+        }
       }
 
-      // ── App pasa a background (no inactive) ──────────────────
-      // 'inactive' en iOS = llamada telefónica entrante o notificación
-      // en pantalla — la app sigue visible. No es background real.
-      // Solo aplicar audioSession en background real.
+      // ── App pasa a background ─────────────────────────────────
+      // FIX 4 — Pausar vídeo en background (iOS libera la cámara).
+      // Solo se pausa si el usuario NO había desactivado la cámara.
       if (next === 'background' && this.isActive) {
         this._applyAudioSession().catch(() => {});
+
+        if (!this._isCamOff && this._localStream) {
+          const vtracks: any[] = this._localStream.getVideoTracks?.() || [];
+          vtracks.forEach((t: any) => { t.enabled = false; });
+          this._videoPausedBySystem = true;
+          // NO cambiar _isCamOff — es pausa de sistema, no del usuario
+          this._notify();
+        }
       }
 
       // ── Interrupción temporal (iOS: llamada tel. o alarma) ────
