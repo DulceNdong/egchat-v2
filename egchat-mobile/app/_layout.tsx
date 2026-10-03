@@ -195,11 +195,41 @@ export default function RootLayout() {
   const [globalUserId, setGlobalUserId]                     = useState<string | undefined>(undefined);
   const [incomingTransfer, setIncomingTransfer]             = useState<IncomingTransfer | null>(null);
   const [globalWalletBalance, setGlobalWalletBalance]       = useState<number | null>(null);
-  // ── Llamada entrante con app abierta ──────────────────────────────────────
-  const [incomingCall, setIncomingCall] = useState<{
-    callId: string; callerName: string; callerAvatar?: string;
-    callType: string; offer?: object;
-  } | null>(null);
+  // ── Llamada entrante con app abierta ─────────────────────────────
+  // El CallManager es la única fuente de verdad.
+  // Aquí solo guardamos el payload para mostrar el overlay.
+  // NO hacemos router.push simultáneo — el overlay se encarga de navegar.
+  const [incomingCall, setIncomingCall] = useState<IncomingCallPayload | null>(null);
+
+  // Guard anti-duplicado: evita procesar el mismo callId dos veces
+  // (receivedSub + responseSub + PushKit pueden dispararse juntos)
+  const lastHandledCallId = useRef<string | null>(null);
+  const lastHandledCallTs = useRef<number>(0);
+  const CALL_DEDUP_MS = 8000;
+
+  /** Punto de entrada único para cualquier llamada entrante */
+  const handleIncomingCall = useCallback((payload: IncomingCallPayload) => {
+    const { callId } = payload;
+    if (!callId) return;
+    const now = Date.now();
+    if (callId === lastHandledCallId.current && now - lastHandledCallTs.current < CALL_DEDUP_MS) return;
+    lastHandledCallId.current = callId;
+    lastHandledCallTs.current = now;
+
+    // Registrar en el CallManager (fuente de verdad)
+    callManager.registerIncoming(payload);
+
+    // Añadir al historial de campanita
+    addNotification({
+      type: 'call',
+      title: `📞 Llamada de ${payload.callerName}`,
+      body: payload.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+      chatId: undefined,
+    });
+
+    // Mostrar overlay (el overlay navega cuando el usuario acepta)
+    setIncomingCall(payload);
+  }, []);
   const notifCleanup    = useRef<(() => void) | null>(null);
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
