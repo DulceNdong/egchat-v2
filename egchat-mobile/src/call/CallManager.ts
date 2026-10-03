@@ -33,6 +33,7 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { Platform, AppState, AppStateStatus } from 'react-native';
+import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
 import { callAPI } from '../api';
