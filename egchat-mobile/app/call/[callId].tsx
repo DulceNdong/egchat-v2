@@ -43,7 +43,8 @@ const FACE_FILTER_AVAILABLE = (() => {
   try { return !!FaceFilter?.isAvailable; } catch { return false; }
 })();
 
-const { width: SW, height: SH } = Dimensions.get('window');
+// FIX 7 — valor inicial; se actualiza dinámicamente con el listener
+const { width: SW0, height: SH0 } = Dimensions.get('window');
 const ACCENT       = '#00c8a0';
 const GLASS_BG     = 'rgba(30,30,60,0.75)';
 const GLASS_BORDER = 'rgba(255,255,255,0.18)';
