@@ -1071,12 +1071,24 @@ export class CallManager {
       this._audioRouteSub = NativeCallKit.onAudioRouteChanged(
         ({ route, callId }) => {
           if (__DEV__) console.log(`[CallManager] Ruta audio → ${route}`);
-          // Si la ruta cambió a Bluetooth, actualizar el flag interno
-          const isBT = route.toLowerCase().includes('bluetooth');
+          const routeLower = route.toLowerCase();
+          const isBT       = routeLower.includes('bluetooth');
+          const isSpeaker  = routeLower.includes('speaker');
+
+          let changed = false;
           if (isBT !== this._isBluetoothOn) {
             this._isBluetoothOn = isBT;
-            this._notify();
+            changed = true;
           }
+          // Si el sistema cambió la ruta a speaker o earpiece/headphones,
+          // sincronizar _isSpeakerOn para que el ícono de la pantalla sea correcto.
+          if (!isBT) {
+            if (isSpeaker !== this._isSpeakerOn) {
+              this._isSpeakerOn = isSpeaker;
+              changed = true;
+            }
+          }
+          if (changed) this._notify();
         }
       );
     }
