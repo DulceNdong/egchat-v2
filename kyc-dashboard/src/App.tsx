@@ -69,6 +69,7 @@ export default function App() {
               <Route path="/monetizacion/login" element={<MonetizacionLogin />} />
               <Route path="/monetizacion" element={<RoleGuard entities={['MONETIZACION']} />}>
                 <Route path="home"      element={<MonetizacionHome />} />
+                <Route path="servicios" element={<MonetizacionServicios />} />
                 <Route path="empresas"  element={<MonetizacionEmpresas />} />
                 <Route path="taxis"     element={<MonetizacionTaxis />} />
                 <Route path="barcos"    element={<MonetizacionBarcos />} />
