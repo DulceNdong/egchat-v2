@@ -447,7 +447,6 @@ export default function CallScreen() {
   // ── Historial de llamada ───────────────────────────────────────
   const logCallToChat = useCallback(async (connected: boolean, secs: number) => {
     if (!chatId) return;
-    if (role !== 'caller') return;
     if (loggedRef.current) return;
     loggedRef.current = true;
     try {
