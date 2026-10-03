@@ -1459,7 +1459,7 @@ export default function StoriesScreen() {
       )}
 
       {/* ── TAB: ESTADOS ─────────────────────────────────────── */}
-      {activeTab === 'estados' && (
+      {activeTab === 'estados' && activeSubTab === 'sub_estados' && (
         loading ? (
           <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
             <ActivityIndicator size="large" color={BRAND} />
