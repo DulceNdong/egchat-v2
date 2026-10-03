@@ -194,6 +194,17 @@ export default function CallScreen() {
 
   const insets = useSafeAreaInsets();
 
+  // FIX 7 — Dimensiones dinámicas: se actualizan al rotar la pantalla
+  const [screenSize, setScreenSize] = useState({ width: SW0, height: SH0 });
+  useEffect(() => {
+    const sub = Dimensions.addEventListener('change', ({ window }) => {
+      setScreenSize({ width: window.width, height: window.height });
+    });
+    return () => sub?.remove();
+  }, []);
+  const SW = screenSize.width;
+  const SH = screenSize.height;
+
   // ── Estado local UI ───────────────────────────────────────────
   const [duration,       setDuration]       = useState(0);
   const [activeFilter,   setActiveFilter]   = useState<FilterId>('none');
