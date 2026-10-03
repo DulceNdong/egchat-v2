@@ -43,10 +43,6 @@ class EGChatCallModule(private val reactContext: ReactApplicationContext) :
         const val ACTION_ANSWER = "com.egchat.app.CALL_ANSWER"
         const val ACTION_REJECT = "com.egchat.app.CALL_REJECT"
         const val ACTION_END    = "com.egchat.app.CALL_END"
-
-        // Singleton para emitir eventos desde el BroadcastReceiver
-        @Volatile
-        var instance: EGChatCallModule? = null
     }
 
     private var currentCallId: String? = null
