@@ -520,18 +520,24 @@ export class CallManager {
     this._notify();
   }
 
-  /** Intercambiar cámara frontal ↔ trasera */
+  /** Intercambiar cámara frontal ↔ trasera.
+   *
+   *  FIX 2 — _isFrontCamera se actualiza aquí y _getUserMedia lo usa
+   *  para pedir el facingMode correcto si el track muere y hay que
+   *  obtener un nuevo stream (p.ej. tras volver de background en iOS).
+   */
   async switchCamera(): Promise<void> {
     if (!this._localStream || this._isCamOff) return;
-    const tracks = this._localStream.getVideoTracks?.() || [];
+    const tracks: any[] = this._localStream.getVideoTracks?.() || [];
     if (tracks.length === 0) return;
 
     try {
-      // react-native-webrtc expone _switchCamera() en el track
       const track = tracks[0];
       if (typeof track._switchCamera === 'function') {
         track._switchCamera();
         this._isFrontCamera = !this._isFrontCamera;
+        // Actualizar también la referencia guardada para toggleCamera
+        this._videoTrackRef = track;
       }
     } catch (e) {
       console.warn('[CallManager] switchCamera error:', e);
