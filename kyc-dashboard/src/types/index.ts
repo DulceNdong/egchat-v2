@@ -3,8 +3,8 @@
 // ══════════════════════════════════════════════════════════════════
 
 // ── Auth ──────────────────────────────────────────────────────────
-export type AdminRole   = 'SUPER_ADMIN' | 'COMPLIANCE_OFFICER' | 'ANALYST' | 'BANK_VIEWER';
-export type AdminEntity = 'OUR_COMPANY' | 'BANGE';
+export type AdminRole   = 'SUPER_ADMIN' | 'COMPLIANCE_OFFICER' | 'ANALYST' | 'BANK_VIEWER' | 'MONETIZACION_ADMIN';
+export type AdminEntity = 'OUR_COMPANY' | 'BANGE' | 'MONETIZACION';
 
 export interface AdminUser {
   id:         string;
