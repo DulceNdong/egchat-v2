@@ -448,15 +448,64 @@ export class CallManager {
   }
 
   /** Desactivar / activar cámara.
-   *  Usa `_switchCamera()` de react-native-webrtc para rotar entre
-   *  cámara frontal y trasera si el track ya está activo. */
+   *
+   *  FIX 1 — Usa sender.replaceTrack(null/track) para informar
+   *  correctamente al par remoto, en lugar de solo track.enabled.
+   *  Algunos codecs (H264, VP8) siguen enviando frames negros si
+   *  solo se deshabilita el track sin reemplazarlo en el sender.
+   *
+   *  Flujo:
+   *   desactivar → replaceTrack(null) en el sender + track.enabled=false
+   *   activar    → replaceTrack(_videoTrackRef) + track.enabled=true
+   *
+   *  Si no hay PC activa (llamada aún conectando): solo track.enabled.
+   */
   toggleCamera(): void {
     if (!this._localStream) return;
-    const tracks = this._localStream.getVideoTracks?.() || [];
+    const tracks: any[] = this._localStream.getVideoTracks?.() || [];
     if (tracks.length === 0) return;
 
-    this._isCamOff = !this._isCamOff;
-    tracks.forEach((t: any) => { t.enabled = !this._isCamOff; });
+    const next = !this._isCamOff;  // true = apagar, false = encender
+    this._isCamOff = next;
+
+    // Guardar referencia al track original la primera vez
+    if (!this._videoTrackRef && tracks[0]) {
+      this._videoTrackRef = tracks[0];
+    }
+
+    const track = tracks[0];
+
+    if (this._pc) {
+      // Ruta preferida: replaceTrack informa al peer remoto
+      const senders: any[] = this._pc.getSenders?.() || [];
+      const videoSender = senders.find((s: any) => s.track?.kind === 'video' || (!s.track && this._videoTrackRef));
+
+      if (videoSender) {
+        try {
+          if (next) {
+            // Apagar: enviar pista nula al remoto
+            videoSender.replaceTrack(null);
+            if (track) track.enabled = false;
+          } else {
+            // Encender: restaurar la pista original
+            const restoreTrack = this._videoTrackRef || track;
+            if (restoreTrack) restoreTrack.enabled = true;
+            videoSender.replaceTrack(restoreTrack);
+          }
+        } catch (e) {
+          // Fallback si replaceTrack no está disponible (versión antigua de RNWRTC)
+          console.warn('[CallManager] replaceTrack no disponible, usando track.enabled:', e);
+          if (track) track.enabled = !next;
+        }
+      } else {
+        // No hay sender de vídeo (llamada de audio) — solo ajustar enabled
+        if (track) track.enabled = !next;
+      }
+    } else {
+      // PC aún no existe (p.ej. conectando) — solo track.enabled
+      if (track) track.enabled = !next;
+    }
+
     this._notify();
   }
 

@@ -215,6 +215,48 @@ class EGChatCallModule(private val reactContext: ReactApplicationContext) :
         }
     }
 
+    // ── Leer y limpiar la acción pendiente (fix C1) ────────────────────
+    // Cuando el usuario toca "Aceptar"/"Rechazar" con la app terminada,
+    // CallActionReceiver guarda la acción en SharedPreferences porque JS
+    // no estaba disponible. Al montar _layout.tsx, llama a este método
+    // para obtener la acción pendiente y navegar a la pantalla correcta.
+    @ReactMethod
+    fun getAndClearPendingCallAction(promise: com.facebook.react.bridge.Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(
+                com.egchat.app.services.EGChatFirebaseMessagingService.PREFS_NAME,
+                android.content.Context.MODE_PRIVATE
+            )
+            val action  = prefs.getString(com.egchat.app.modules.CallActionReceiver.KEY_PENDING_CALL_ACTION, null)
+            val callId  = prefs.getString(com.egchat.app.modules.CallActionReceiver.KEY_PENDING_CALL_ACTION_ID, null)
+            val ts      = prefs.getLong(com.egchat.app.modules.CallActionReceiver.KEY_PENDING_CALL_ACTION_TS, 0L)
+
+            // Limpiar siempre
+            prefs.edit()
+                .remove(com.egchat.app.modules.CallActionReceiver.KEY_PENDING_CALL_ACTION)
+                .remove(com.egchat.app.modules.CallActionReceiver.KEY_PENDING_CALL_ACTION_ID)
+                .remove(com.egchat.app.modules.CallActionReceiver.KEY_PENDING_CALL_ACTION_TS)
+                .apply()
+
+            // TTL 30s
+            if (action == null || callId == null ||
+                System.currentTimeMillis() - ts > 30_000L
+            ) {
+                promise.resolve(null)
+                return
+            }
+
+            // Devolver como JSON: { action: "answer"|"reject"|"end", callId: string }
+            val result = org.json.JSONObject().apply {
+                put("action", action)
+                put("callId", callId)
+            }
+            promise.resolve(result.toString())
+        } catch (e: Exception) {
+            promise.resolve(null)
+        }
+    }
+
     // ── Iniciar/parar ForegroundService de llamada activa ──────────────
     @ReactMethod
     fun startCallForegroundService(callId: String, callerName: String, isVideo: Boolean) {
