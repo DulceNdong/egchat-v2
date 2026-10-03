@@ -138,8 +138,10 @@ export class CallManager {
   private _iceRestartTimer:   ReturnType<typeof setTimeout>  | null = null;
   private _pollPhase:         'fast' | 'slow' = 'fast';
 
-  // ── AppState ──────────────────────────────────────────────────
-  private _appStateSub: ReturnType<typeof AppState.addEventListener> | null = null;
+  // ── AppState y listeners nativos de audio ─────────────────────
+  private _appStateSub:       ReturnType<typeof AppState.addEventListener> | null = null;
+  private _audioInterruptSub: (() => void) | null = null;
+  private _audioRouteSub:     (() => void) | null = null;
   private _lastAppState: AppStateStatus = 'active';
 
   // ── Observers ─────────────────────────────────────────────────
