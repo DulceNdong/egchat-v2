@@ -809,7 +809,12 @@ export default function RootLayout() {
               <Stack.Screen name="stories" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="map" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="_qr-scanner" options={{ presentation: 'fullScreenModal' }} />
-              <Stack.Screen name="call/[callId]" options={{ presentation: 'fullScreenModal', gestureEnabled: false }} />
+              <Stack.Screen name="call/[callId]" options={{
+                presentation: 'card',
+                animation: 'slide_from_bottom',
+                gestureEnabled: false,
+                headerShown: false,
+              }} />
               <Stack.Screen name="bancos" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="cemac" options={{ presentation: 'fullScreenModal' }} />
               <Stack.Screen name="ocio" options={{ presentation: 'fullScreenModal' }} />
