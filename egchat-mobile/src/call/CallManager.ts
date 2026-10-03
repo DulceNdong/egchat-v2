@@ -393,24 +393,38 @@ export class CallManager {
   // ══════════════════════════════════════════════════════════════
   async rejectCall(): Promise<void> {
     if (!this._session) return;
-    const { callId } = this._session;
+    const session = this._session;
+    const { callId } = session;
     this._stopRingOnce();
     this._setCommState('rejected');
-    // RPC reject_call es idempotente — seguro llamar varias veces
     try { await callAPI.reject(callId); } catch { /* ignorar */ }
     try { NativeCallKit.rejectCall(callId); } catch { /* */ }
+    // Guardar historial en chat
+    if (session.chatId) {
+      const myId = SessionManager.getInstance().getUser()?.id ?? '';
+      const callerId   = session.role === 'caller' ? myId : session.targetUserId;
+      const calleeId   = session.role === 'caller' ? session.targetUserId : myId;
+      saveCallMessage({ callId, chatId: session.chatId, callerId, calleeId, callType: session.callType, status: 'rejected', endReason: 'rejected_by_callee' }).catch(() => {});
+    }
     this._finalCleanup();
     this._setCommState('idle');
   }
 
   async cancelCall(): Promise<void> {
     if (!this._session) return;
-    const { callId } = this._session;
+    const session = this._session;
+    const { callId } = session;
     stopDialingTone();
     this._setCommState('ended');
-    // RPC cancel_call es idempotente
     try { await callAPI.cancel(callId); } catch { /* */ }
     try { NativeCallKit.endCall(callId); } catch { /* */ }
+    // Guardar historial en chat
+    if (session.chatId) {
+      const myId = SessionManager.getInstance().getUser()?.id ?? '';
+      const callerId = session.role === 'caller' ? myId : session.targetUserId;
+      const calleeId = session.role === 'caller' ? session.targetUserId : myId;
+      saveCallMessage({ callId, chatId: session.chatId, callerId, calleeId, callType: session.callType, status: 'ended', endReason: 'cancelled_by_caller' }).catch(() => {});
+    }
     this._finalCleanup();
     this._setCommState('idle');
   }
