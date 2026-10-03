@@ -37,6 +37,8 @@ import NetInfo, { NetInfoState } from '@react-native-community/netinfo';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
 import { callAPI } from '../api';
+import { saveCallMessage } from './callHistory';
+import SessionManager from '../sessionManager';
 import { stopRingtone, stopDialingTone, startRingtone, startDialingTone } from '../hooks/useSounds';
 import { NativeCallKit } from '../native/CallKit';
 import { LiveActivity } from '../native/LiveActivity';
