@@ -1727,6 +1727,16 @@ export default function StoriesScreen() {
         </Pressable>
       </Modal>
 
+      {/* MODAL GESTIONAR MIS ESTADOS */}
+      <MyStoriesManagerModal
+        visible={showStoriesManager}
+        stories={myStories}
+        onClose={() => setShowStoriesManager(false)}
+        onRefresh={loadStories}
+        C={C}
+        isDark={isDark}
+      />
+
       {/* VISOR DE STORIES */}
       {viewingGroup !== null && allGroupsForViewer.length > 0 && (
         <StoryViewer
