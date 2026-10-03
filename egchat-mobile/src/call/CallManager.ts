@@ -962,30 +962,68 @@ export class CallManager {
   // PRIVADOS — ICE restart y reconexión
   // ══════════════════════════════════════════════════════════════
 
+  // FIX A+C — Backoff exponencial + flag atómico para evitar doble-disparo.
+  //
+  // _iceRestartPending actúa como mutex: se activa al entrar y se limpia
+  // solo cuando el restart se completa (éxito o fallo). Esto previene que
+  // onconnectionstatechange y oniceconnectionstatechange disparen dos
+  // restarts simultáneos si ambos llegan en el mismo tick.
+  //
+  // Backoff: delay = ICE_DISCONNECTED_BASE_MS × 2^(intento-1) × jitter
+  //   intento 1: ~2s  (2000 × 1 × [0.8–1.2])
+  //   intento 2: ~4s  (2000 × 2 × [0.8–1.2])
+  //   intento 3: ~8s  (2000 × 4 × [0.8–1.2])
+  //   intento 4: ~16s (2000 × 8 × [0.8–1.2])
+  private _iceRestartPending = false;
+
   private _scheduleIceRestart(): void {
-    if (this._isEnding || this._reconnectTimer) return;
+    if (this._isEnding || this._iceRestartPending) return;
+    this._iceRestartPending = true;
+
+    // Calcular delay con backoff exponencial + jitter ±20%
+    const attempt    = this._reconnectCount + 1;
+    const baseDelay  = ICE_DISCONNECTED_BASE_MS * Math.pow(2, attempt - 1);
+    const jitter     = 0.8 + Math.random() * 0.4; // [0.8, 1.2]
+    const delay      = Math.min(baseDelay * jitter, 16_000); // tope 16s
+
+    if (__DEV__) console.log(`[CallManager] ICE restart en ${Math.round(delay)}ms (intento ${attempt}/${RECONNECT_MAX})`);
 
     this._reconnectTimer = setTimeout(async () => {
       this._reconnectTimer = null;
-      if (this._isEnding || !this._pc) return;
+
+      if (this._isEnding || !this._pc) {
+        this._iceRestartPending = false;
+        return;
+      }
 
       const ics = this._pc.iceConnectionState;
-      if (ics === 'connected' || ics === 'completed') return; // se recuperó solo
+      if (ics === 'connected' || ics === 'completed') {
+        // Se recuperó por sí solo durante el delay — no hacer nada
+        this._iceRestartPending = false;
+        return;
+      }
 
       if (this._reconnectCount >= RECONNECT_MAX) {
-        this._handleConnectionFailed(); return;
+        this._iceRestartPending = false;
+        this._handleConnectionFailed();
+        return;
       }
       this._reconnectCount++;
 
       try {
-        // Ambos roles pueden hacer ICE restart en react-native-webrtc
-        if (this._pc.signalingState === 'stable' || this._pc.signalingState === 'have-local-offer') {
+        const sigState = this._pc.signalingState;
+
+        // ── Caller: enviar nuevo offer con iceRestart:true ───────
+        if (sigState === 'stable' || sigState === 'have-local-offer') {
           const iceServers = await this._getIceServers();
-          // Actualizar configuración con nuevos servidores
           this._pc.setConfiguration?.({ iceServers });
 
           const restartOffer = await this._pc.createOffer({ iceRestart: true });
           await this._pc.setLocalDescription(restartOffer);
+
+          // Resetear offsets ICE para aceptar candidatos nuevos del restart
+          this._iceOffsetCaller = 0;
+          this._iceOffsetCallee = 0;
 
           await callAPI.offer({
             callId:       this._session!.callId,
@@ -994,17 +1032,32 @@ export class CallManager {
             type:         this._session!.callType,
           });
 
-          // Si no se resuelve en ICE_RESTART_TIMEOUT_MS → fallo
-          this._iceRestartTimer = setTimeout(() => {
-            this._iceRestartTimer = null;
-            const state = this._pc?.iceConnectionState;
-            if (state !== 'connected' && state !== 'completed' && !this._isEnding) {
-              this._handleConnectionFailed();
-            }
-          }, ICE_RESTART_TIMEOUT_MS);
+          if (__DEV__) console.log('[CallManager] ICE restart offer enviado');
         }
-      } catch { this._handleConnectionFailed(); }
-    }, ICE_DISCONNECTED_MS);
+        // ── Callee: puede que haya un restart offer esperando ────
+        // El callee no puede iniciar ICE restart sin el offer del caller.
+        // El polling lo detectará y procesará el nuevo offer en el
+        // siguiente ciclo. _iceRestartPending se mantiene activo
+        // hasta que el estado de ICE mejore.
+
+        // Timer de seguridad — si en ICE_RESTART_TIMEOUT_MS no hay
+        // mejora, declarar fallo
+        this._iceRestartTimer = setTimeout(() => {
+          this._iceRestartTimer = null;
+          this._iceRestartPending = false;
+          const state = this._pc?.iceConnectionState;
+          if (state !== 'connected' && state !== 'completed' && !this._isEnding) {
+            if (__DEV__) console.log('[CallManager] ICE restart timeout — fallo');
+            this._handleConnectionFailed();
+          }
+        }, ICE_RESTART_TIMEOUT_MS);
+
+      } catch (e) {
+        console.warn('[CallManager] _scheduleIceRestart error:', e);
+        this._iceRestartPending = false;
+        this._handleConnectionFailed();
+      }
+    }, delay);
   }
 
   private _clearIceRestartTimer(): void {
