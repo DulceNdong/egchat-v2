@@ -149,6 +149,11 @@ export class CallManager {
   private _audioRouteSub:     (() => void) | null = null;
   private _lastAppState: AppStateStatus = 'active';
 
+  // ── Supabase Realtime ─────────────────────────────────────────
+  // Suscripción al canal call-state para recibir cambios de estado
+  // en tiempo real desde otros dispositivos o desde el servidor.
+  private _realtimeSub: (() => void) | null = null;
+
   // ── Observers ─────────────────────────────────────────────────
   private _observers = new Set<CallStateObserver>();
 
