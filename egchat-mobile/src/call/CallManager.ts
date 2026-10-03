@@ -907,20 +907,27 @@ export class CallManager {
   // ══════════════════════════════════════════════════════════════
 
   /** Inicia el ciclo de polling.
-   *  No crea setInterval dentro de setInterval — usa _pollPhase para
-   *  reducir la frecuencia cuando ya no es necesaria tanta velocidad. */
+   *  FIX B+H — Usa propiedades de clase (_iceOffsetCaller, _iceOffsetCallee,
+   *  _answerApplied, _appliedOfferVersion) en vez de variables locales del
+   *  closure, lo que permite resetearlas desde _scheduleIceRestart() cuando
+   *  hay un ICE restart y se necesita procesar candidatos desde 0.
+   *
+   *  FIX B — El callee detecta un nuevo offer (ICE restart del caller)
+   *  cuando s.offerVersion > _appliedOfferVersion y responde con un nuevo
+   *  answer, completando el handshake simétrico. */
   private _startPoll(role: 'caller' | 'callee', phase: 'fast' | 'slow'): void {
     this._stopPolling();
     this._pollPhase = phase;
+
+    // Sincronizar propiedades de clase con el estado actual
+    // (al reiniciar el poll en fase slow, _answerApplied ya es true)
+    if (phase === 'slow' && role === 'caller') this._answerApplied = true;
 
     const INTERVAL = phase === 'fast'
       ? (Platform.OS === 'android' ? POLL_FAST_ANDROID : POLL_FAST_IOS)
       : (Platform.OS === 'android' ? POLL_SLOW_ANDROID : POLL_SLOW_IOS);
 
-    let callerIceOffset = 0;
-    let calleeIceOffset = 0;
-    let answerApplied   = false;
-    let polls           = 0;
+    let polls = 0;
 
     this._pollingTimer = setInterval(async () => {
       if (this._isEnding || this._commState === 'idle') { this._stopPolling(); return; }
@@ -937,33 +944,78 @@ export class CallManager {
         const s = await callAPI.get(this._session!.callId);
         if (!s || s.ended) { this.endCall(); return; }
 
-        // Caller: buscar Answer + ICE del callee
+        // ── Caller: Answer inicial + ICE del callee ──────────────
         if (role === 'caller') {
-          if (!answerApplied && s.answer && this._pc?.signalingState === 'have-local-offer') {
-            await this._pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(s.answer));
-            this._remoteDescSet = true;
-            answerApplied = true;
+          if (!this._answerApplied && s.answer &&
+              this._pc?.signalingState === 'have-local-offer') {
+            await this._pc.setRemoteDescription(
+              new NativeRTC!.RTCSessionDescription(s.answer),
+            );
+            this._remoteDescSet    = true;
+            this._answerApplied    = true;
+            this._iceRestartPending = false; // respuesta recibida — limpiar flag
             this._setCommState('connecting');
             this._stopCallTimeout();
             await this._drainIceQueue();
           }
-          if (answerApplied && s.calleeCandidates) {
-            const newCands = s.calleeCandidates.slice(calleeIceOffset);
-            calleeIceOffset = s.calleeCandidates.length;
+          if (this._answerApplied && s.calleeCandidates) {
+            const newCands = s.calleeCandidates.slice(this._iceOffsetCallee);
+            this._iceOffsetCallee  = s.calleeCandidates.length;
             await this._applyRemoteIceCandidates(newCands);
           }
           // Timeout de señalización
-          if (polls > 95 && !answerApplied) { this._setCommState('missed'); this.endCall(); }
+          if (polls > 95 && !this._answerApplied) {
+            this._setCommState('missed'); this.endCall();
+          }
         }
 
-        // Callee: buscar ICE del caller
-        if (role === 'callee' && s.callerCandidates) {
-          const newCands = s.callerCandidates.slice(callerIceOffset);
-          callerIceOffset = s.callerCandidates.length;
-          await this._applyRemoteIceCandidates(newCands);
+        // ── Callee: ICE del caller + detección de restart offer ──
+        if (role === 'callee') {
+          // FIX B — Detectar nuevo offer del caller (ICE restart)
+          // s.offerVersion aumenta cada vez que el caller envía un offer nuevo.
+          // Si la versión del servidor supera la aplicada localmente, procesar.
+          const serverOfferVersion: number = s.offerVersion ?? 1;
+          if (
+            this._pc &&
+            this._isValidSdp(s.offer) &&
+            serverOfferVersion > this._appliedOfferVersion &&
+            // Solo procesar si ya establecimos la conexión inicialmente
+            this._connectedOnce
+          ) {
+            if (__DEV__) console.log(`[CallManager] Callee: nuevo offer v${serverOfferVersion} (restart)`);
+            try {
+              await this._pc.setRemoteDescription(
+                new NativeRTC!.RTCSessionDescription(s.offer),
+              );
+              this._remoteDescSet        = true;
+              this._appliedOfferVersion  = serverOfferVersion;
+              // Resetear offsets para los nuevos candidatos post-restart
+              this._iceOffsetCaller      = 0;
+              this._iceOffsetCallee      = 0;
+              this._iceRestartPending    = false;
+              await this._drainIceQueue();
+
+              const answer = await this._pc.createAnswer();
+              await this._pc.setLocalDescription(answer);
+              await callAPI.answer({
+                callId: this._session!.callId,
+                answer: this._pc.localDescription,
+              });
+              if (__DEV__) console.log('[CallManager] Callee: answer de restart enviado');
+            } catch (e) {
+              console.warn('[CallManager] Callee restart offer error:', e);
+            }
+          }
+
+          // ICE candidates del caller
+          if (s.callerCandidates) {
+            const newCands = s.callerCandidates.slice(this._iceOffsetCaller);
+            this._iceOffsetCaller = s.callerCandidates.length;
+            await this._applyRemoteIceCandidates(newCands);
+          }
         }
 
-      } catch { /* retry en siguiente ciclo */ }
+      } catch { /* red caída — retry en siguiente ciclo */ }
     }, INTERVAL);
   }
 
