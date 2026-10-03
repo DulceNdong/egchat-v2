@@ -15,7 +15,8 @@
           "applinks:egchat-app.vercel.app"
         ],
         "aps-environment": "production",
-        "com.apple.developer.usernotifications.communication": true
+        "com.apple.developer.usernotifications.communication": true,
+        "com.apple.developer.pushkit.unrestricted-development": true
       },
       "infoPlist": {
         "UIBackgroundModes": [
