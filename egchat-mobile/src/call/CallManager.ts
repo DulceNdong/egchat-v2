@@ -119,8 +119,12 @@ export class CallManager {
   private _isCamOff      = false;
   private _isSpeakerOn   = true;
   private _isBluetoothOn = false;
-  private _isFrontCamera = true;     // para toggleCamera
+  private _isFrontCamera = true;              // para switchCamera
   private _isSignalingOnly = !HAS_NATIVE_MEDIA;
+  // FIX 3 / FIX 4: referencia al video track original para replaceTrack
+  private _videoTrackRef: any | null = null;
+  // FIX 4: flag para distinguir pausa de sistema (background iOS) vs. usuario
+  private _videoPausedBySystem = false;
 
   // ── Estado de la PeerConnection (espejo) ──────────────────────
   private _pcState: PCState = 'none';
