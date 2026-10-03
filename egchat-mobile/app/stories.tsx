@@ -576,36 +576,41 @@ async function fetchMomentsData(): Promise<MomentPost[]> {
   try { const c = await AsyncStorage.getItem(MOMENTS_CACHE); if (c) return JSON.parse(c); } catch {}
   return [];
 }
-async function createMomentPost(text: string, localImages: string[]): Promise<MomentPost | null> {
+async function createMomentPost(text: string, localImages: string[], videos: string[] = []): Promise<MomentPost | null> {
   try {
     const { getApiBase, getToken } = await import('../src/api');
     const BASE  = getApiBase();
     const token = await getToken();
 
     // ── Subir imágenes locales a Supabase Storage antes de POST ──
-    // Las URIs locales (file://) solo existen en el dispositivo emisor.
-    // Las subimos al bucket 'stories' (carpeta moments/) para obtener
-    // URLs públicas https:// visibles desde cualquier dispositivo.
     const me = await authAPI.me().catch(() => null);
     const userId = me?.id || 'anon';
 
     const uploadedImages: string[] = [];
     for (const uri of localImages) {
       if (uri.startsWith('http://') || uri.startsWith('https://')) {
-        // Ya es una URL pública — no necesita subirse
         uploadedImages.push(uri);
       } else {
-        // URI local — subir a Storage
         const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'image');
         if (publicUrl) uploadedImages.push(publicUrl);
-        // Si falla la subida, se omite esa imagen (no se bloquea el post)
+      }
+    }
+
+    // ── Subir videos locales ──────────────────────────────────────
+    const uploadedVideos: string[] = [];
+    for (const uri of videos) {
+      if (uri.startsWith('http://') || uri.startsWith('https://')) {
+        uploadedVideos.push(uri);
+      } else {
+        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'video');
+        if (publicUrl) uploadedVideos.push(publicUrl);
       }
     }
 
     const res = await fetch(`${BASE}/api/moments`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ text, images: uploadedImages }),
+      body: JSON.stringify({ text, images: uploadedImages, videos: uploadedVideos }),
     });
     if (res.ok) return res.json();
   } catch {}
@@ -617,7 +622,8 @@ async function createMomentPost(text: string, localImages: string[]): Promise<Mo
     user_name: me?.full_name || 'Yo',
     user_avatar: me?.avatar_url,
     text,
-    images: localImages, // Mostrar local para el propio usuario aunque no se subió
+    images: localImages,
+    videos,
     likes: 0,
     liked_by_me: false,
     comments: [],
