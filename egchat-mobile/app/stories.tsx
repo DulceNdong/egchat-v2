@@ -1606,6 +1606,19 @@ export default function StoriesScreen() {
                     ))}
                   </View>
                 )}
+                {item.videos && item.videos.length > 0 && (
+                  <View style={{ marginBottom: 10 }}>
+                    {item.videos.map((uri, i) => (
+                      <Video
+                        key={i}
+                        source={{ uri }}
+                        style={{ width: '100%', height: 200, borderRadius: 10, marginTop: i > 0 ? 6 : 0 }}
+                        resizeMode={ResizeMode.CONTAIN}
+                        useNativeControls
+                      />
+                    ))}
+                  </View>
+                )}
                 <View style={mps.actions}>
                   <TouchableOpacity style={mps.actionBtn} onPress={() => handleMomentLike(item.id)}>
                     <MIcon name={item.liked_by_me ? 'favorite' : 'favorite-border'} size={18} color={item.liked_by_me ? '#ef4444' : C.textTertiary} />
