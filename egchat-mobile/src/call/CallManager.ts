@@ -777,20 +777,44 @@ export class CallManager {
   }
 
   // ── getUserMedia ──────────────────────────────────────────────
+  // FIX 2 — usa _isFrontCamera para el facingMode correcto.
+  // FIX 6 — resolución adaptativa 720p ideal con fallback a 480p.
   private async _getUserMedia(type: 'audio' | 'video'): Promise<any> {
     if (!NativeRTC) throw new Error('react-native-webrtc no disponible');
 
-    const constraints = type === 'video'
-      ? { audio: true, video: { facingMode: 'user', width: 640, height: 480, frameRate: 24 } }
-      : { audio: true, video: false };
+    const facing = this._isFrontCamera ? 'user' : 'environment';
 
+    const videoConstraintsHD = {
+      facingMode: facing,
+      width:     { ideal: 1280 },
+      height:    { ideal: 720  },
+      frameRate: { ideal: 24, max: 30 },
+    };
+    const videoConstraintsSd = {
+      facingMode: facing,
+      width: 640, height: 480, frameRate: 24,
+    };
+
+    if (type !== 'video') {
+      return await NativeRTC.mediaDevices.getUserMedia({ audio: true, video: false });
+    }
+
+    // Intentar 720p primero; si el dispositivo no puede, bajar a 480p
     try {
-      return await NativeRTC.mediaDevices.getUserMedia(constraints);
+      return await NativeRTC.mediaDevices.getUserMedia({
+        audio: true,
+        video: videoConstraintsHD,
+      });
     } catch {
-      // Fallback sin constraints de video para compatibilidad
-      return await NativeRTC.mediaDevices.getUserMedia(
-        type === 'video' ? { audio: true, video: true } : { audio: true, video: false }
-      );
+      try {
+        return await NativeRTC.mediaDevices.getUserMedia({
+          audio: true,
+          video: videoConstraintsSd,
+        });
+      } catch {
+        // Último fallback: dejar que el dispositivo elija
+        return await NativeRTC.mediaDevices.getUserMedia({ audio: true, video: true });
+      }
     }
   }
 
