@@ -851,14 +851,22 @@ export default function RootLayout() {
                 onAccept={() => {
                   const c = incomingCall;
                   setIncomingCall(null);
+                  // El CallManager ya tiene la sesión registrada via handleIncomingCall().
+                  // Solo navegamos — [callId].tsx llama a callManager.acceptCall() al montar.
                   router.push({ pathname: '/call/[callId]', params: {
-                    callId: c.callId, targetName: c.callerName,
+                    callId:      c.callId,
+                    targetName:  c.callerName,
                     targetAvatar: c.callerAvatar || '',
-                    callType: c.callType || 'audio', role: 'callee',
-                    offer: c.offer ? JSON.stringify(c.offer) : undefined,
+                    callType:    c.callType || 'audio',
+                    role:        'callee',
+                    offer:       c.offer ? JSON.stringify(c.offer) : undefined,
                   }} as any);
                 }}
-                onReject={() => setIncomingCall(null)}
+                onReject={() => {
+                  setIncomingCall(null);
+                  // Rechazar en el manager para que limpie estado y envíe end al servidor
+                  callManager.rejectCall().catch(() => {});
+                }}
               />
             )}
             <IncomingTransferModal
