@@ -994,6 +994,11 @@ export class CallManager {
   /** Restaura la sesión de audio al estado normal al terminar la llamada.
    *  Se llama siempre desde _finalCleanup() para cubrir todos los paths
    *  de terminación (endCall, rejectCall, cancelCall, timeout, PC closed).
+   *
+   *  iOS: 'ambient' permite mezclar con otras apps (música, podcasts);
+   *       'soloAmbient' las silencia permanentemente — incorrecto post-llamada.
+   *       interruptionModeIOS: 0 (MixWithOthers) devuelve el audio previo a
+   *       pleno volumen; 2 (DuckOthers) lo mantiene atenuado.
    */
   private async _restoreAudioSession(): Promise<void> {
     if (Platform.OS === 'web') return;
@@ -1004,10 +1009,10 @@ export class CallManager {
         shouldDuckAndroid:          true,
         playThroughEarpieceAndroid: false,
         staysActiveInBackground:    false,
-        // iOS — categoría normal post-llamada
-        iosCategory:                'soloAmbient',
+        // iOS — categoría normal post-llamada: ambient permite mezclar
+        iosCategory:                'ambient',
         iosMode:                    'default',
-        interruptionModeIOS:        2,  // InterruptionModeIOS.DuckOthers
+        interruptionModeIOS:        0,  // InterruptionModeIOS.MixWithOthers
       } as any);
     } catch { /* ignorar */ }
   }
