@@ -1693,9 +1693,24 @@ export default function StoriesScreen() {
                 <MIcon name="chevron-right" size={14} color={C.border} />
               </TouchableOpacity>
             ))}
+            {myStories.length > 0 && (
+              <TouchableOpacity
+                style={[st.menuItem, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.borderLight }]}
+                onPress={() => { setMyStoryMenu(false); setShowStoriesManager(true); }}
+                activeOpacity={0.75}
+                accessibilityRole="button"
+                accessibilityLabel="Gestionar mis estados"
+              >
+                <View style={[st.menuIconWrap, { backgroundColor: BRAND2 + '22' }]}>
+                  <MIcon name="edit" size={18} color={BRAND2} />
+                </View>
+                <Text style={[st.menuItemText, { color: C.textPrimary }]}>Gestionar mis estados</Text>
+                <MIcon name="chevron-right" size={14} color={C.border} />
+              </TouchableOpacity>
+            )}
             {myGroup?.storyId && myStories.length > 0 && (
               <TouchableOpacity
-                style={st.menuItem}
+                style={[st.menuItem, { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: C.borderLight }]}
                 onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }}
                 activeOpacity={0.75}
                 accessibilityRole="button"
