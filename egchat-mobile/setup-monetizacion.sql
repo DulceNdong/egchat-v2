@@ -373,6 +373,25 @@ ALTER TABLE perfiles_financieros_negocios      ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historial_transacciones_usuarios   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE historial_transacciones_negocios   ENABLE ROW LEVEL SECURITY;
 
+-- Limpiar policies previas (idempotente)
+DROP POLICY IF EXISTS "admin_monetizacion_empresas"    ON monetizacion_empresas;
+DROP POLICY IF EXISTS "admin_monetizacion_taxistas"    ON monetizacion_taxistas;
+DROP POLICY IF EXISTS "admin_monetizacion_barcos"      ON monetizacion_barcos;
+DROP POLICY IF EXISTS "admin_monetizacion_resumen"     ON monetizacion_resumen_mensual;
+DROP POLICY IF EXISTS "admin_taxista_viajes"           ON monetizacion_taxista_viajes;
+DROP POLICY IF EXISTS "admin_billetes"                 ON monetizacion_billetes;
+DROP POLICY IF EXISTS "admin_wallet"                   ON monetizacion_wallet_movimientos;
+DROP POLICY IF EXISTS "admin_perfiles_usuarios"        ON perfiles_financieros_usuarios;
+DROP POLICY IF EXISTS "admin_perfiles_negocios"        ON perfiles_financieros_negocios;
+DROP POLICY IF EXISTS "admin_historial_usuarios"       ON historial_transacciones_usuarios;
+DROP POLICY IF EXISTS "admin_historial_negocios"       ON historial_transacciones_negocios;
+DROP POLICY IF EXISTS "admin_empresa_ingresos"         ON monetizacion_empresa_ingresos;
+DROP POLICY IF EXISTS "admin_taxista_horas"            ON monetizacion_taxista_horas;
+DROP POLICY IF EXISTS "user_own_historial"             ON historial_transacciones_usuarios;
+DROP POLICY IF EXISTS "user_own_perfil"                ON perfiles_financieros_usuarios;
+DROP POLICY IF EXISTS "user_own_wallet"                ON monetizacion_wallet_movimientos;
+DROP POLICY IF EXISTS "taxista_own_viajes"             ON monetizacion_taxista_viajes;
+
 -- Admin full access
 CREATE POLICY "admin_monetizacion_empresas" ON monetizacion_empresas
   FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
@@ -395,6 +414,10 @@ CREATE POLICY "admin_perfiles_negocios" ON perfiles_financieros_negocios
 CREATE POLICY "admin_historial_usuarios" ON historial_transacciones_usuarios
   FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 CREATE POLICY "admin_historial_negocios" ON historial_transacciones_negocios
+  FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+CREATE POLICY "admin_empresa_ingresos" ON monetizacion_empresa_ingresos
+  FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
+CREATE POLICY "admin_taxista_horas" ON monetizacion_taxista_horas
   FOR ALL USING ((auth.jwt() -> 'user_metadata' ->> 'role') = 'admin');
 
 -- Usuarios ven su propio historial y perfil
