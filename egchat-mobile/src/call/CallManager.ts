@@ -269,6 +269,7 @@ export class CallManager {
     this._startCallTimeout();
     this._startPoll('caller', 'fast');
     this._subscribeAppState();
+    this._subscribeRealtime();
   }
 
   // ══════════════════════════════════════════════════════════════
