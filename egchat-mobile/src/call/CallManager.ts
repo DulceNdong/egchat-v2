@@ -1448,12 +1448,14 @@ export class CallManager {
     this._connectedOnce = false;
 
     // 6. Flags
-    this._isMuted         = false;
-    this._isCamOff        = false;
-    this._isSpeakerOn     = true;
-    this._isBluetoothOn   = false;
-    this._isFrontCamera   = true;
-    this._reconnectCount  = 0;
+    this._isMuted              = false;
+    this._isCamOff             = false;
+    this._isSpeakerOn          = true;
+    this._isBluetoothOn        = false;
+    this._isFrontCamera        = true;
+    this._reconnectCount       = 0;
+    this._videoTrackRef        = null;   // FIX 1/2/4
+    this._videoPausedBySystem  = false;  // FIX 4
 
     this._notify();
   }
