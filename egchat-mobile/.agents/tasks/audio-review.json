@@ -1,0 +1,30 @@
+{
+  "verdict": "CHANGES_REQUESTED",
+  "findings": [
+    {
+      "id": "wrong-restore-category",
+      "severity": "high",
+      "confidence": "confirmed",
+      "summary": "_restoreAudioSession uses iosCategory 'soloAmbient' instead of 'ambient'. After hang-up, soloAmbient keeps other audio silenced for the session; ambient allows it to mix back in. Change to 'ambient'."
+    },
+    {
+      "id": "wrong-restore-interruption-mode",
+      "severity": "high",
+      "confidence": "confirmed",
+      "summary": "_restoreAudioSession uses interruptionModeIOS: 2 (DuckOthers) instead of 0 (MixWithOthers). Background audio that was playing before the call will not return to full volume. Change the literal to 0 (InterruptionModeIOS.MixWithOthers)."
+    },
+    {
+      "id": "finalCleanup-no-endCall",
+      "severity": "medium",
+      "confidence": "confirmed",
+      "summary": "_finalCleanup does not call NativeCallKit.endCall(callId) directly. All current caller paths (endCall, rejectCall, cancelCall) do call it before reaching _finalCleanup, so there is no active bug today, but the design is brittle — any future direct caller of _finalCleanup will silently skip CallKit teardown. Move the NativeCallKit.endCall call into _finalCleanup guarded by session?.callId."
+    },
+    {
+      "id": "tsc-evidence-absent",
+      "severity": "low",
+      "confidence": "confirmed",
+      "summary": "No tsc output file exists under .agents/. TypeScript compilation status is unverified. The Audio.setAudioModeAsync calls are cast with 'as any', which suppresses type errors for the iosCategory/iosMode/interruptionModeIOS fields that contain the mis-matched values."
+    }
+  ],
+  "reviewDoc": "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/.agents/tasks/audio-review.md"
+}
