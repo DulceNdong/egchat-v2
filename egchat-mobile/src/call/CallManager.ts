@@ -942,23 +942,37 @@ export class CallManager {
       const prev = this._lastAppState;
       this._lastAppState = next;
 
-      // App vuelve al primer plano después de estar en background
+      // ── App vuelve al primer plano ────────────────────────────
       if (prev !== 'active' && next === 'active') {
         if (this.isActive && this._pc) {
-          // Verificar si ICE sigue vivo; si no, intentar restart
           const ics = this._pc.iceConnectionState;
           if (ics === 'disconnected' || ics === 'failed') {
             this._scheduleIceRestart();
           }
-          // Re-aplicar sesión de audio (puede haberse perdido por interrupción telefónica)
           this._applyAudioSession().catch(() => {});
         }
       }
 
-      // Interrupción telefónica (iOS: background con call)
-      if (next === 'background' && this._commState === 'connected') {
-        // Mantener la sesión de audio activa en background
+      // ── App pasa a background (no inactive) ──────────────────
+      // 'inactive' en iOS = llamada telefónica entrante o notificación
+      // en pantalla — la app sigue visible. No es background real.
+      // Solo aplicar audioSession en background real.
+      if (next === 'background' && this.isActive) {
         this._applyAudioSession().catch(() => {});
+      }
+
+      // ── Interrupción temporal (iOS: llamada tel. o alarma) ────
+      // Estado 'inactive' en iOS indica que el sistema está interrumpiendo
+      // (p.ej. llamada telefónica entrante). El audio debe silenciarse
+      // pero la PeerConnection debe mantenerse.
+      // En Android este estado no existe — las interrupciones llegan
+      // via AudioFocusChangeListener en CallForegroundService.
+      if (next === 'inactive' && prev === 'active' && Platform.OS === 'ios') {
+        // La AVAudioSession será interrumpida por el sistema.
+        // No hacemos nada aquí — los observers de AVAudioSession en
+        // EGChatCallModule.swift manejan la pausa/reanudación real.
+        // Registrar para depuración.
+        if (__DEV__) console.log('[CallManager] iOS inactive — interrupción probable');
       }
     });
   }
