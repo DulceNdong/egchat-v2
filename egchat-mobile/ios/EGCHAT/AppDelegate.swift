@@ -67,6 +67,24 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
     willPresent notification: UNNotification,
     withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
   ) {
+    completionHandler([.banner, .sound, .badge])
+  }
+
+  // ── Usuario pulsó la notificación ──────────────────────────────
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    didReceive response: UNNotificationResponse,
+    withCompletionHandler completionHandler: @escaping () -> Void
+  ) {
+    super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
+  }
+
+  // ── Notificación recibida en primer plano ───────────────────────
+  public func userNotificationCenter(
+    _ center: UNUserNotificationCenter,
+    willPresent notification: UNNotification,
+    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+  ) {
     // Mostrar banner + sonido incluso con app en primer plano
     completionHandler([.banner, .sound, .badge])
   }
