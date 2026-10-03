@@ -44,29 +44,9 @@ class EGChatCallModule(private val reactContext: ReactApplicationContext) :
         const val ACTION_REJECT = "com.egchat.app.CALL_REJECT"
         const val ACTION_END    = "com.egchat.app.CALL_END"
 
-        // Singleton para emitir eventos desde el BroadcastReceiver y desde FirebaseMessagingService
+        // Singleton para emitir eventos desde el BroadcastReceiver y FirebaseMessagingService
         @Volatile
         var instance: EGChatCallModule? = null
-
-        /**
-         * Muestra la notificación de llamada entrante sin necesitar una instancia React Native.
-         * Llamado por EGChatFirebaseMessagingService cuando JS no está disponible.
-         */
-        fun showIncomingCallStatic(
-            context: android.content.Context,
-            callerName: String,
-            callerAvatar: String,
-            callId: String,
-            isVideo: Boolean
-        ) {
-            // Si la instancia RN existe, usarla (emite evento JS además de la notificación)
-            instance?.showIncomingCall(callerName, callerAvatar, callId, isVideo)
-                ?: run {
-                    // Sin RN — mostrar notificación directamente
-                    val service = EGChatFirebaseMessagingServiceCompat(context)
-                    service.showNotificationDirectly(callId, callerName, isVideo)
-                }
-        }
     }
 
     private var currentCallId: String? = null
