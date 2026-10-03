@@ -350,6 +350,7 @@ export class CallManager {
     this._setCommState('connecting');
     this._startPoll('callee', 'fast');
     this._subscribeAppState();
+    this._subscribeRealtime();
   }
 
   // ══════════════════════════════════════════════════════════════
