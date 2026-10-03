@@ -694,11 +694,21 @@ export default function CallScreen() {
               label={isSpeakerOn ? 'Altavoz' : 'Auricular'}
               active={isSpeakerOn}
             />
-            <GlassBtn
-              onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas.')}
-              icon={IC.addUser()}
-              label="Añadir"
-            />
+            {/* FIX 8 — Botón flip-cámara: solo visible en videollamada activa */}
+            {isVideo ? (
+              <GlassBtn
+                onPress={() => switchCamera()}
+                icon={IC.flip()}
+                label="Voltear"
+                active={false}
+              />
+            ) : (
+              <GlassBtn
+                onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas.')}
+                icon={IC.addUser()}
+                label="Añadir"
+              />
+            )}
           </View>
 
           {/* Fila 2 */}
