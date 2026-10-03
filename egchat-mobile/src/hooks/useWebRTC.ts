@@ -132,6 +132,7 @@ export function useWebRTC() {
     callState, callType, isMuted, isCamOff, isSignalingOnly,
     isSpeakerOn,
     hasNativeMedia: HAS_NATIVE_MEDIA, localStream, remoteStream,
+    duration: snapshot.session?.duration ?? 0,
     startCall, answerCall, endCall, toggleMute, toggleCamera, pollIncoming,
     switchCamera:    () => callManager.switchCamera(),
     toggleSpeaker:   () => callManager.toggleSpeaker(),
