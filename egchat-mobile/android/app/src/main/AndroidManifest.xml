@@ -70,6 +70,21 @@
         <action android:name="com.egchat.app.CALL_END"/>
       </intent-filter>
     </receiver>
+
+    <!-- FirebaseMessagingService: recibe FCM cuando JS no está disponible -->
+    <service
+      android:name=".services.EGChatFirebaseMessagingService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+      </intent-filter>
+    </service>
+
+    <!-- CallForegroundService: mantiene el proceso vivo durante llamadas activas -->
+    <service
+      android:name=".services.CallForegroundService"
+      android:foregroundServiceType="phoneCall"
+      android:exported="false"/>
     <receiver android:name=".modules.EGChatWidgetProvider" android:exported="true">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
