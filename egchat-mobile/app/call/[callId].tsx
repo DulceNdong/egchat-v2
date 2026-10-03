@@ -669,9 +669,9 @@ export default function CallScreen() {
             />
             <GlassBtn
               onPress={toggleSpeaker}
-              icon={IC.speaker(speakerOn)}
-              label={speakerOn ? 'Altavoz' : 'Auricular'}
-              active={speakerOn}
+              icon={IC.speaker(isSpeakerOn)}
+              label={isSpeakerOn ? 'Altavoz' : 'Auricular'}
+              active={isSpeakerOn}
             />
             <GlassBtn
               onPress={() => Alert.alert('Añadir participante', 'Próximamente podrás añadir más personas.')}
