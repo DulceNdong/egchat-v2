@@ -575,6 +575,8 @@ export const callAPI = {
   incoming: (userId: string) => get<any[]>(`/api/call/incoming/${userId}`),
   ice: (data: { callId: string; candidate: object; role: string; targetUserId?: string }) =>
     post<{ ok: boolean }>('/api/call/ice', data),
+  /** Obtiene credenciales TURN temporales del servidor (TTL 24h via Twilio). */
+  getTurnToken: () => get<{ iceServers: object[] }>('/api/turn-token'),
   /**
    * Envía un VoIP push al destinatario para despertarlo y mostrar
    * la UI de llamada entrante nativa (CallKit en iOS, notificación en Android).
