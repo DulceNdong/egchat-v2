@@ -1827,19 +1827,39 @@ export default function StoriesScreen() {
 // MODAL CREAR MOMENTO (extraido para limpieza)
 // ══════════════════════════════════════════════════════════════════
 function MomentCreateModal({
-  visible, onClose, onCreated, C, isDark,
+  visible, onClose, onCreated, C, isDark, pendingMedia,
 }: {
   visible: boolean;
   onClose: () => void;
   onCreated: (p: MomentPost) => void;
   C: typeof Colors;
   isDark: boolean;
+  pendingMedia?: MomentMedia | null;
 }) {
   const [text, setText] = React.useState('');
   const [images, setImages] = React.useState<string[]>([]);
+  const [videos, setVideos] = React.useState<string[]>([]);
   const [creating, setCreating] = React.useState(false);
   const [uploadingImages, setUploadingImages] = React.useState(false);
+  const [uploadingVideos, setUploadingVideos] = React.useState(false);
   const insets = useSafeAreaInsets();
+
+  // Precargar media que viene de la cámara
+  React.useEffect(() => {
+    if (visible && pendingMedia?.uri) {
+      if (pendingMedia.type === 'video') {
+        setVideos([pendingMedia.uri]);
+        setImages([]);
+      } else {
+        setImages([pendingMedia.uri]);
+        setVideos([]);
+      }
+    } else if (!visible) {
+      setText('');
+      setImages([]);
+      setVideos([]);
+    }
+  }, [visible, pendingMedia]);
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -1854,16 +1874,27 @@ function MomentCreateModal({
     }
   };
 
+  const handlePickVideo = async () => {
+    const asset = await pickVideo();
+    if (asset) setVideos(prev => [...prev, asset.uri].slice(0, 3));
+  };
+
   const handleCreate = async () => {
-    if (!text.trim() && images.length === 0) { Alert.alert('Escribe algo o añade una foto'); return; }
+    if (!text.trim() && images.length === 0 && videos.length === 0) {
+      Alert.alert('Escribe algo o añade una foto/video'); return;
+    }
     setCreating(true);
     if (images.length > 0) setUploadingImages(true);
+    if (videos.length > 0) setUploadingVideos(true);
     try {
-      const post = await createMomentPost(text.trim(), images);
+      const post = await createMomentPost(text.trim(), images, videos);
       setUploadingImages(false);
-      if (post) { onCreated(post); setText(''); setImages([]); }
-    } finally { setCreating(false); setUploadingImages(false); }
+      setUploadingVideos(false);
+      if (post) { onCreated(post); setText(''); setImages([]); setVideos([]); }
+    } finally { setCreating(false); setUploadingImages(false); setUploadingVideos(false); }
   };
+
+  const uploadLabel = uploadingVideos ? 'Subiendo video...' : uploadingImages ? 'Subiendo...' : 'Publicando...';
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
@@ -1879,7 +1910,7 @@ function MomentCreateModal({
             {creating
               ? <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                   <ActivityIndicator color="#fff" size="small" />
-                  <Text style={{ color: '#fff', fontSize: 12 }}>{uploadingImages ? 'Subiendo...' : 'Publicando...'}</Text>
+                  <Text style={{ color: '#fff', fontSize: 12 }}>{uploadLabel}</Text>
                 </View>
               : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Publicar</Text>}
           </TouchableOpacity>
@@ -1896,8 +1927,10 @@ function MomentCreateModal({
             autoFocus
           />
           <Text style={{ fontSize: 11, textAlign: 'right', marginTop: 4, marginBottom: 16, color: C.textTertiary }}>{text.length}/500</Text>
+
+          {/* ── Imágenes ─── */}
           {images.length > 0 ? (
-            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8 }}>
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 8 }}>
               {images.map((uri, i) => (
                 <View key={i} style={{ position: 'relative', width: 80, height: 80 }}>
                   <Image source={{ uri }} style={{ width: 80, height: 80, borderRadius: 8 }} />
@@ -1905,7 +1938,7 @@ function MomentCreateModal({
                     style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' }}
                     onPress={() => setImages(prev => prev.filter((_, j) => j !== i))}
                   >
-                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>x</Text>
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>×</Text>
                   </TouchableOpacity>
                 </View>
               ))}
@@ -1924,7 +1957,35 @@ function MomentCreateModal({
               onPress={handlePickImage}
             >
               <MIcon name="image" size={24} color={C.textTertiary} />
-              <Text style={{ fontSize: 15, color: C.textTertiary }}>Anadir fotos</Text>
+              <Text style={{ fontSize: 15, color: C.textTertiary }}>Añadir fotos</Text>
+            </TouchableOpacity>
+          )}
+
+          {/* ── Videos ─── */}
+          {videos.length > 0 && (
+            <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 8 }}>
+              {videos.map((uri, i) => (
+                <View key={i} style={{ position: 'relative', width: 80, height: 80, backgroundColor: '#000', borderRadius: 8, alignItems: 'center', justifyContent: 'center' }}>
+                  <Text style={{ fontSize: 24, color: '#fff' }}>▶</Text>
+                  <TouchableOpacity
+                    style={{ position: 'absolute', top: -6, right: -6, width: 22, height: 22, borderRadius: 11, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center' }}
+                    onPress={() => setVideos(prev => prev.filter((_, j) => j !== i))}
+                  >
+                    <Text style={{ color: '#fff', fontSize: 12, fontWeight: '700' }}>×</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+            </View>
+          )}
+
+          {/* ── Añadir video ─── */}
+          {videos.length < 3 && (
+            <TouchableOpacity
+              style={{ flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.borderLight, borderRadius: 10, padding: 16, marginTop: 10 }}
+              onPress={handlePickVideo}
+            >
+              <MIcon name="videocam" size={24} color={C.textTertiary} />
+              <Text style={{ fontSize: 15, color: C.textTertiary }}>Añadir video</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
