@@ -1,305 +1,369 @@
 /**
  * EGChat — Historial de llamadas
- * Lista todas las llamadas con filtros: Todas, Perdidas, Salientes, Entrantes
- * Botón para devolver la llamada directamente
+ * Fuente de verdad: tabla call_sessions via RPC get_call_history
+ * Filtros: Todas | Perdidas | Salientes | Entrantes
  */
 import React, { useEffect, useState, useCallback } from 'react';
 import {
   View, Text, FlatList, TouchableOpacity,
-  StyleSheet, ActivityIndicator,
+  StyleSheet, ActivityIndicator, RefreshControl,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
-import Svg, { Path, Polygon, Rect, Line, Circle } from 'react-native-svg';
+import Svg, { Path, Polygon, Rect } from 'react-native-svg';
 import { EGAvatar } from '../src/components/ui';
 import { chatAPI, userAPI } from '../src/api';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { Colors } from '../src/theme';
 import { DarkColors } from '../src/theme/darkMode';
+import {
+  getCallHistory,
+  getCallDirection,
+  formatCallDuration,
+  type CallHistoryEntry,
+  type CallDirection,
+} from '../src/call/callHistory';
+
+// ── Tipos ────────────────────────────────────────────────────────
 
 type CallFilter = 'all' | 'missed' | 'outgoing' | 'incoming';
 
 interface CallRecord {
-  id: string;
-  callId: string;
-  contactName: string;
-  contactAvatar?: string;
-  contactUserId: string;
-  type: 'audio' | 'video';
-  direction: 'incoming' | 'outgoing' | 'missed';
-  duration?: number;   // segundos
-  timestamp: string;
+  entry:         CallHistoryEntry;
+  direction:     CallDirection;
+  contactName:   string;
+  contactAvatar: string | undefined;
+  chatId:        string | null;
 }
 
-function formatDuration(s?: number): string {
-  if (!s) return '';
-  if (s < 60) return `${s}s`;
-  return `${Math.floor(s / 60)}m ${s % 60}s`;
-}
+// ── Helpers de formato ────────────────────────────────────────────
 
 function formatTime(ts: string): string {
-  const d = new Date(ts);
+  const d   = new Date(ts);
   const now = new Date();
   const diff = now.getTime() - d.getTime();
-  if (diff < 86400000) return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-  if (diff < 604800000) return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()];
+  if (diff < 86_400_000) return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
+  if (diff < 604_800_000) return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()];
   return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
 }
 
-const PhoneIcon = ({ color, size = 16 }: any) => (
-  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round">
-    <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.2h3a2 2 0 0 1 2 1.72c.13.96.36 1.9.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l1.86-1.86a2 2 0 0 1 2.11-.45c.91.34 1.85.57 2.81.7A2 2 0 0 1 22 16.92z"/>
+function statusLabel(entry: CallHistoryEntry, dir: CallDirection): string {
+  if (entry.status === 'missed')    return 'Perdida';
+  if (entry.status === 'rejected')  return 'Rechazada';
+  if (entry.status === 'failed')    return 'No conectó';
+  if (entry.end_reason === 'cancelled_by_caller') return 'Cancelada';
+  return dir === 'outgoing' ? 'Saliente' : 'Entrante';
+}
+
+function statusColor(entry: CallHistoryEntry): string {
+  if (entry.status === 'missed' || entry.status === 'failed') return '#ef4444';
+  if (entry.status === 'rejected') return '#f97316';
+  if (entry.end_reason === 'cancelled_by_caller') return '#f97316';
+  return '#22c55e';
+}
+
+// ── Iconos SVG ───────────────────────────────────────────────────
+
+const PhoneIcon = ({ color, size = 18 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.79a16 16 0 0 0 6.29 6.29l1.86-1.86a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
   </Svg>
 );
 
-const VideoIcon = ({ color, size = 16 }: any) => (
+const VideoIcon = ({ color, size = 18 }: { color: string; size?: number }) => (
   <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
-    {/* Cuerpo de la cámara */}
-    <Rect x="2" y="7" width="13" height="11" rx="2.5"/>
-    {/* Lente */}
-    <Circle cx="8.5" cy="12.5" r="2.5"/>
-    {/* Flap lateral */}
-    <Path d="M15 10.5l5.5-2.5v9L15 14.5"/>
-    {/* Punto de lente */}
-    <Circle cx="8.5" cy="12.5" r="1" fill={color} stroke="none"/>
+    <Polygon points="23 7 16 12 23 17 23 7"/>
+    <Rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
   </Svg>
 );
+
+const ArrowUpRight = ({ color, size = 12 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M7 17L17 7M7 7h10v10"/>
+  </Svg>
+);
+
+const ArrowDownLeft = ({ color, size = 12 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M17 7L7 17M17 17H7V7"/>
+  </Svg>
+);
+
+const RefreshIcon = ({ color, size = 20 }: { color: string; size?: number }) => (
+  <Svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
+    <Path d="M23 4v6h-6"/><Path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+  </Svg>
+);
+
+// ── Pantalla principal ────────────────────────────────────────────
 
 export default function CallHistoryScreen() {
-  const { isDark } = useThemeContext();
-  const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { isDark }    = useThemeContext();
+  const C             = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const insets        = useSafeAreaInsets();
 
-  const [calls, setCalls] = useState<CallRecord[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<CallFilter>('all');
-  const [currentUserId, setCurrentUserId] = useState<string>('');
-  const insets = useSafeAreaInsets();
+  const [records,   setRecords]   = useState<CallRecord[]>([]);
+  const [loading,   setLoading]   = useState(true);
+  const [refreshing,setRefreshing]= useState(false);
+  const [filter,    setFilter]    = useState<CallFilter>('all');
+  const [myUserId,  setMyUserId]  = useState('');
 
-  useEffect(() => {
-    userAPI.getProfile()
-      .then((p: any) => {
-        const uid = p?.id || '';
-        setCurrentUserId(uid);
-        loadCallHistory();
-      })
-      .catch(() => loadCallHistory());
+  // Mapa chatId → nombre/avatar del contacto (para enriquecer la lista)
+  const [chatMap, setChatMap] = useState<Record<string, { name: string; avatar?: string }>>({});
+
+  // ── Cargar chats (para nombres) ──────────────────────────────
+  const loadChats = useCallback(async () => {
+    try {
+      const chats = await chatAPI.getChats();
+      const map: Record<string, { name: string; avatar?: string }> = {};
+      for (const c of (chats || [])) {
+        if (c.id) map[c.id] = { name: c.name || c.title || 'Contacto', avatar: c.avatar_url };
+      }
+      setChatMap(map);
+    } catch { /* ignorar */ }
   }, []);
 
-  // Extrae el nombre real del otro participante en un chat privado
-  const getContactName = (chat: any, userId: string): string => {
-    if (chat.type === 'group') return chat.name || 'Grupo';
-    const other = (chat.participants || []).find((p: any) => p.user_id !== userId);
+  // ── Cargar historial desde call_sessions ─────────────────────
+  const load = useCallback(async (uid: string) => {
+    if (!uid) return;
+    const entries = await getCallHistory(uid, 100);
+
+    const recs: CallRecord[] = entries.map(entry => {
+      const dir         = getCallDirection(entry, uid);
+      const contactId   = entry.caller_id === uid ? entry.target_user_id : entry.caller_id;
+      const chatInfo    = entry.chat_id ? chatMap[entry.chat_id] : undefined;
+      return {
+        entry,
+        direction:     dir,
+        contactName:   chatInfo?.name ?? contactId.slice(0, 8) + '…',
+        contactAvatar: chatInfo?.avatar,
+        chatId:        entry.chat_id,
+      };
+    });
+
+    setRecords(recs);
+  }, [chatMap]);
+
+  // ── Inicialización ───────────────────────────────────────────
+  useEffect(() => {
+    (async () => {
+      setLoading(true);
+      try {
+        await loadChats();
+        const profile = await userAPI.getProfile().catch(() => null);
+        const uid     = profile?.id || '';
+        setMyUserId(uid);
+        await load(uid);
+      } finally {
+        setLoading(false);
+      }
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Re-cargar si chatMap cambia (segunda pasada con nombres reales)
+  useEffect(() => {
+    if (myUserId) load(myUserId);
+  }, [chatMap, myUserId, load]);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    await loadChats();
+    await load(myUserId);
+    setRefreshing(false);
+  }, [myUserId, load, loadChats]);
+
+  // ── Filtrado ─────────────────────────────────────────────────
+  const filtered: CallRecord[] = filter === 'all'
+    ? records
+    : records.filter(r => {
+        if (filter === 'missed')   return r.entry.status === 'missed';
+        if (filter === 'outgoing') return r.direction === 'outgoing';
+        if (filter === 'incoming') return r.direction === 'incoming';
+        return true;
+      });
+
+  // ── Acción: devolver llamada ─────────────────────────────────
+  const callBack = useCallback((rec: CallRecord) => {
+    const contactId = rec.entry.caller_id === myUserId
+      ? rec.entry.target_user_id
+      : rec.entry.caller_id;
+
+    router.push({
+      pathname: '/call/[callId]' as any,
+      params: {
+        callId:       `call_${Date.now()}`,
+        targetName:   rec.contactName,
+        callType:     rec.entry.call_type,
+        role:         'caller',
+        targetUserId: contactId,
+      },
+    });
+  }, [myUserId]);
+
+  // ── Labels de filtro ─────────────────────────────────────────
+  const FILTER_LABELS: Record<CallFilter, string> = {
+    all:      'Todas',
+    missed:   'Perdidas',
+    outgoing: 'Salientes',
+    incoming: 'Entrantes',
+  };
+
+  // ── Item de lista ────────────────────────────────────────────
+  const renderItem = ({ item }: { item: CallRecord }) => {
+    const e        = item.entry;
+    const isVideo  = e.call_type === 'video';
+    const dir      = item.direction;
+    const sc       = statusColor(e);
+    const dur      = formatCallDuration(e.duration_seconds);
+    const canCB    = e.status === 'missed' || e.status === 'rejected';
+
     return (
-      other?.full_name ||
-      other?.users?.full_name ||
-      other?.user?.full_name ||
-      chat.name ||
-      'Sin nombre'
+      <TouchableOpacity
+        style={[s.item, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}
+        onPress={canCB ? () => callBack(item) : undefined}
+        activeOpacity={canCB ? 0.7 : 1}
+      >
+        {/* Avatar */}
+        <View style={s.avatarWrap}>
+          <EGAvatar
+            uri={item.contactAvatar}
+            name={item.contactName}
+            size={46}
+          />
+          {/* Badge audio/video */}
+          <View style={[s.typeBadge, { backgroundColor: isVideo ? '#3b82f6' : '#22c55e' }]}>
+            {isVideo
+              ? <VideoIcon color="#fff" size={9} />
+              : <PhoneIcon color="#fff" size={9} />}
+          </View>
+        </View>
+
+        {/* Info central */}
+        <View style={s.mid}>
+          <Text style={[s.name, { color: C.textPrimary }]} numberOfLines={1}>
+            {item.contactName}
+          </Text>
+          <View style={s.subRow}>
+            {/* Flecha dirección */}
+            {dir === 'outgoing'
+              ? <ArrowUpRight   color={sc} size={12} />
+              : dir === 'missed'
+                ? <ArrowDownLeft color="#ef4444" size={12} />
+                : <ArrowDownLeft color="#22c55e" size={12} />}
+            <Text style={[s.sub, { color: sc }]}>
+              {statusLabel(e, dir)}
+            </Text>
+            {dur !== '' && (
+              <Text style={[s.sub, { color: C.textTertiary }]}>· {dur}</Text>
+            )}
+          </View>
+        </View>
+
+        {/* Derecha: hora + botón llamar */}
+        <View style={s.right}>
+          <Text style={[s.time, { color: C.textTertiary }]}>
+            {formatTime(e.created_at)}
+          </Text>
+          <TouchableOpacity
+            onPress={() => callBack(item)}
+            style={[s.callBtn, { backgroundColor: isVideo ? 'rgba(59,130,246,0.12)' : 'rgba(0,200,160,0.10)' }]}
+            hitSlop={8}
+          >
+            {isVideo
+              ? <VideoIcon color="#3b82f6" size={18} />
+              : <PhoneIcon color="#00c8a0" size={18} />}
+          </TouchableOpacity>
+        </View>
+      </TouchableOpacity>
     );
   };
 
-  const getContactAvatar = (chat: any, userId: string): string | undefined => {
-    if (chat.type === 'group') return chat.avatar_url;
-    const other = (chat.participants || []).find((p: any) => p.user_id !== userId);
-    const raw = other?.avatar_url || other?.users?.avatar_url || other?.user?.avatar_url;
-    if (!raw || !raw.startsWith('http')) return undefined;
-    return raw;
-  };
-
-  const getContactUserId = (chat: any, userId: string, senderId: string): string => {
-    // Si el mensaje lo envió el usuario actual, el contacto es el otro participante
-    if (senderId === userId) {
-      const other = (chat.participants || []).find((p: any) => p.user_id !== userId);
-      return other?.user_id || senderId;
-    }
-    return senderId;
-  };
-
-  useEffect(() => { loadCallHistory(); }, []);
-
-  const loadCallHistory = async () => {
-    setLoading(true);
-    try {
-      // Obtener userId actual si aún no está cargado
-      let userId = currentUserId;
-      if (!userId) {
-        const profile = await userAPI.getProfile().catch(() => null);
-        userId = profile?.id || '';
-        if (userId) setCurrentUserId(userId);
-      }
-
-      const chats = await chatAPI.getChats();
-      const records: CallRecord[] = [];
-
-      for (const chat of chats.slice(0, 20)) {
-        const msgs = await chatAPI.getMessages(chat.id, 1, 50).catch(() => []);
-        const callMsgs = (msgs || []).filter((m: any) =>
-          m.text?.includes('Llamada') || m.text?.includes('llamada') || m.type === 'call'
-        );
-        for (const msg of callMsgs) {
-          const txt = msg.text || '';
-          records.push({
-            id: msg.id,
-            callId: msg.id,
-            contactName: getContactName(chat, userId),
-            contactAvatar: getContactAvatar(chat, userId),
-            contactUserId: getContactUserId(chat, userId, msg.sender_id || ''),
-            type: txt.includes('📹') || txt.toLowerCase().includes('video') ? 'video' : 'audio',
-            direction: txt.includes('saliente') ? 'outgoing'
-              : txt.includes('perdida') ? 'missed' : 'incoming',
-            duration: undefined,
-            timestamp: msg.created_at,
-          });
-        }
-      }
-
-      records.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-      setCalls(records);
-    } catch {}
-    setLoading(false);
-  };
-
-  const filtered = filter === 'all' ? calls : calls.filter(c => c.direction === filter);
-
-  const callBack = (record: CallRecord) => {
-    router.push({
-      pathname: '/call/[callId]',
-      params: {
-        callId: `call_${Date.now()}`,
-        targetName: record.contactName,
-        callType: record.type,
-        role: 'caller',
-        targetUserId: record.contactUserId,
-      },
-    } as any);
-  };
-
-  const dirColor = (d: string) =>
-    d === 'missed' ? '#ef4444' : d === 'outgoing' ? '#00c8a0' : '#6b7280';
-
-  const dirLabel = (d: string) =>
-    d === 'missed' ? 'Perdida' : d === 'outgoing' ? 'Saliente' : 'Entrante';
-
-  const dirArrow = (d: string, color: string) => d === 'outgoing'
-    ? <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"><Path d="M7 17L17 7M7 7h10v10"/></Svg>
-    : <Svg width={10} height={10} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={3} strokeLinecap="round"><Path d="M17 7L7 17M17 17H7V7"/></Svg>;
-
+  // ── Render ───────────────────────────────────────────────────
   return (
-    <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
-      <LinearGradient colors={['#00b4e6', '#0088cc']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[s.header, { paddingTop: insets.top + 14 }]}>
-        <View style={s.headerRow}>
-          <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
-            <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
-              <Line x1="19" y1="12" x2="5" y2="12"/>
-              <Path d="M12 19l-7-7 7-7"/>
-            </Svg>
-          </TouchableOpacity>
-          <Text style={s.title}>Historial de llamadas</Text>
-          <TouchableOpacity onPress={loadCallHistory} style={s.back} hitSlop={10}>
-            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
-              <Path d="M23 4v6h-6"/>
-              <Path d="M1 20v-6h6"/>
-              <Path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>
-            </Svg>
-          </TouchableOpacity>
-        </View>
+    <View style={[s.root, { backgroundColor: C.bgPrimary }]}>
+      {/* Header */}
+      <LinearGradient
+        colors={['#0d1b2a', '#1a2f4e']}
+        style={[s.header, { paddingTop: insets.top + 8 }]}
+      >
+        <TouchableOpacity onPress={() => router.back()} style={s.back} hitSlop={10}>
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
+            <Path d="M19 12H5M12 19l-7-7 7-7"/>
+          </Svg>
+        </TouchableOpacity>
+        <Text style={s.title}>Historial de llamadas</Text>
+        <TouchableOpacity onPress={onRefresh} style={s.back} hitSlop={10}>
+          <RefreshIcon color="#fff" size={20} />
+        </TouchableOpacity>
       </LinearGradient>
 
       {/* Filtros */}
       <View style={[s.filters, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
-        {(['all','missed','outgoing','incoming'] as CallFilter[]).map(f => (
+        {(Object.keys(FILTER_LABELS) as CallFilter[]).map(f => (
           <TouchableOpacity
             key={f}
-            style={[s.chip, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }, filter === f && s.chipActive]}
             onPress={() => setFilter(f)}
+            style={[s.filterBtn, filter === f && s.filterActive]}
           >
-            <Text style={[s.chipText, { color: C.textSecondary }, filter === f && s.chipTextActive]}>
-              {f === 'all' ? 'Todas' : f === 'missed' ? 'Perdidas' : f === 'outgoing' ? 'Salientes' : 'Entrantes'}
+            <Text style={[s.filterTxt, { color: filter === f ? '#00c8a0' : C.textSecondary }]}>
+              {FILTER_LABELS[f]}
             </Text>
           </TouchableOpacity>
         ))}
       </View>
 
+      {/* Lista */}
       {loading ? (
-        <ActivityIndicator color="#00c8a0" style={{ marginTop: 40 }} />
+        <View style={s.center}>
+          <ActivityIndicator color="#00c8a0" size="large" />
+        </View>
+      ) : filtered.length === 0 ? (
+        <View style={s.center}>
+          <PhoneIcon color={C.textTertiary} size={40} />
+          <Text style={[s.empty, { color: C.textTertiary }]}>Sin llamadas</Text>
+        </View>
       ) : (
         <FlatList
           data={filtered}
-          keyExtractor={item => item.id}
-          contentContainerStyle={{ paddingVertical: 8 }}
-          ListEmptyComponent={
-            <View style={s.empty}>
-              <Text style={[s.emptyText, { color: C.textSecondary }]}>Sin llamadas recientes</Text>
-            </View>
+          keyExtractor={r => r.entry.call_id}
+          renderItem={renderItem}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#00c8a0"
+            />
           }
-          renderItem={({ item }) => {
-            const color = dirColor(item.direction);
-            return (
-              <View style={[s.row, { backgroundColor: C.bgPrimary, borderBottomColor: C.borderLight }]}>
-                <EGAvatar name={item.contactName} src={item.contactAvatar} size={48} />
-                <View style={s.info}>
-                  <Text style={[s.name, { color: C.textPrimary }]}>{item.contactName}</Text>
-                  <View style={s.meta}>
-                    {dirArrow(item.direction, color)}
-                    {item.type === 'video'
-                      ? <VideoIcon color={color} size={12}/>
-                      : <PhoneIcon color={color} size={12}/>}
-                    <Text style={[s.dir, { color }]}>{dirLabel(item.direction)}</Text>
-                    {item.duration ? <Text style={[s.dur, { color: C.textTertiary }]}> · {formatDuration(item.duration)}</Text> : null}
-                  </View>
-                </View>
-                <View style={s.right}>
-                  <Text style={[s.time, { color: C.textTertiary }]}>{formatTime(item.timestamp)}</Text>
-                  <TouchableOpacity onPress={() => callBack(item)} style={s.callBtn}>
-                    {item.type === 'video'
-                      ? <VideoIcon color="#00c8a0" size={20}/>
-                      : <PhoneIcon color="#00c8a0" size={20}/>}
-                  </TouchableOpacity>
-                </View>
-              </View>
-            );
-          }}
+          contentContainerStyle={{ paddingBottom: insets.bottom + 16 }}
         />
       )}
-    </SafeAreaView>
+    </View>
   );
 }
 
+// ── Estilos ───────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  root: { flex: 1 },
-  header: { paddingBottom: 14 },
-  headerRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingTop: 6 },
-  back: { padding: 6, borderRadius: 20 },
-  title: { fontSize: 17, fontWeight: '700', color: '#fff', flex: 1, textAlign: 'center', marginHorizontal: 8 },
-  filters: {
-    flexDirection: 'row', gap: 8, paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: 1,
-  },
-  chip: {
-    paddingHorizontal: 14, paddingVertical: 7, borderRadius: 20,
-    borderWidth: 1,
-  },
-  chipActive: { backgroundColor: '#00c8a0', borderColor: '#00c8a0' },
-  chipText: { fontSize: 12, fontWeight: '600' },
-  chipTextActive: { color: '#fff' },
-  row: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 16, paddingVertical: 12,
-    borderBottomWidth: StyleSheet.hairlineWidth,
-  },
-  info: { flex: 1, gap: 4 },
-  name: { fontSize: 15, fontWeight: '600' },
-  meta: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  dir: { fontSize: 12, fontWeight: '600' },
-  dur: { fontSize: 12 },
-  right: { alignItems: 'flex-end', gap: 8 },
-  time: { fontSize: 11, fontWeight: '500' },
-  callBtn: {
-    padding: 8, borderRadius: 20,
-    backgroundColor: 'rgba(0,200,160,0.1)',
-    borderWidth: 1, borderColor: 'rgba(0,200,160,0.25)',
-  },
-  empty: { alignItems: 'center', paddingTop: 80, gap: 12 },
-  emptyText: { fontSize: 15, fontWeight: '500' },
+  root:       { flex: 1 },
+  header:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingBottom: 14, gap: 12 },
+  back:       { padding: 4 },
+  title:      { flex: 1, fontSize: 17, fontWeight: '700', color: '#fff', textAlign: 'center' },
+  filters:    { flexDirection: 'row', borderBottomWidth: StyleSheet.hairlineWidth, paddingHorizontal: 8 },
+  filterBtn:  { flex: 1, alignItems: 'center', paddingVertical: 10 },
+  filterActive: { borderBottomWidth: 2, borderBottomColor: '#00c8a0' },
+  filterTxt:  { fontSize: 13, fontWeight: '600' },
+  item:       { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 12, gap: 12, borderBottomWidth: StyleSheet.hairlineWidth },
+  avatarWrap: { position: 'relative' },
+  typeBadge:  { position: 'absolute', bottom: -2, right: -2, width: 16, height: 16, borderRadius: 8, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: '#fff' },
+  mid:        { flex: 1, gap: 3 },
+  name:       { fontSize: 15, fontWeight: '600' },
+  subRow:     { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  sub:        { fontSize: 13, fontWeight: '500' },
+  right:      { alignItems: 'flex-end', gap: 8 },
+  time:       { fontSize: 11, fontWeight: '500' },
+  callBtn:    { width: 36, height: 36, borderRadius: 18, alignItems: 'center', justifyContent: 'center' },
+  center:     { flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 },
+  empty:      { fontSize: 15, fontWeight: '500', marginTop: 8 },
 });
