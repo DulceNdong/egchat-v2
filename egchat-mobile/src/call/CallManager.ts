@@ -484,7 +484,7 @@ export class CallManager {
     try { NativeCallKit.rejectCall(callId); } catch { /* */ }
     // Guardar historial en chat
     if (session.chatId) {
-      const myId = SessionManager.getInstance().getUser()?.id ?? '';
+      const myId       = session.myUserId ?? '';
       const callerId   = session.role === 'caller' ? myId : session.targetUserId;
       const calleeId   = session.role === 'caller' ? session.targetUserId : myId;
       saveCallMessage({ callId, chatId: session.chatId, callerId, calleeId, callType: session.callType, status: 'rejected', endReason: 'rejected_by_callee' }).catch(() => {});
