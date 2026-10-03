@@ -193,6 +193,7 @@ export default function CallScreen() {
     callState, isMuted, isCamOff, isSignalingOnly,
     isSpeakerOn,
     localStream, remoteStream,
+    duration,
     startCall, answerCall, endCall, toggleMute, toggleCamera,
     toggleSpeaker: hookToggleSpeaker,
     switchCamera,

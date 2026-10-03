@@ -388,6 +388,10 @@ export class CallManager {
       chatId:      payload.chatId,
       duration:    0,
     };
+    // Cachear myUserId para historial (sin async en los métodos de fin)
+    SessionManager.getInstance().getUser().then(u => {
+      if (this._session && u?.id) this._session.myUserId = u.id;
+    }).catch(() => {});
     this._setCommState('ringing');
     this._setUIState('full');
     startRingtone().catch(() => {});
