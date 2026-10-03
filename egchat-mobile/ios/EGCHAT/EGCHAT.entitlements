@@ -4,14 +4,10 @@
   <dict>
     <!-- Push Notifications (producción) -->
     <key>aps-environment</key>
-    <string>production</string>
+    <string>development</string>
 
     <!-- Communication Notifications -->
     <key>com.apple.developer.usernotifications.communication</key>
-    <true/>
-
-    <!-- VoIP PushKit — requerido para PushKit en TestFlight y producción -->
-    <key>com.apple.developer.pushkit.unrestricted-development</key>
     <true/>
 
     <!-- Associated Domains — deep links -->
@@ -19,10 +15,6 @@
     <array>
       <string>applinks:egchat-app.vercel.app</string>
     </array>
-
-    <!-- Maps -->
-    <key>com.apple.developer.maps</key>
-    <true/>
 
     <!-- Data Protection -->
     <key>com.apple.developer.default-data-protection</key>
