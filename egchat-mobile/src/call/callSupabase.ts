@@ -161,13 +161,39 @@ export function subscribeToCallState(
       },
     );
 
-  channel.subscribe((status) => {
-    if (status === 'CHANNEL_ERROR') {
-      console.warn(`[callSupabase] Error en canal call-state:${callId}`);
-    }
-  });
+  // FIX D — Reconexión con backoff ante CHANNEL_ERROR.
+  // Si Supabase Realtime cae (cambio de red, timeout), el canal queda muerto.
+  // Reintentamos la suscripción con backoff exponencial hasta 3 veces.
+  let retries = 0;
+  const MAX_RETRIES = 3;
+  let destroyed = false;
 
-  return () => { supabase.removeChannel(channel); };
+  const doSubscribe = () => {
+    channel.subscribe((status) => {
+      if (status === 'CHANNEL_ERROR' && !destroyed) {
+        retries++;
+        if (retries <= MAX_RETRIES) {
+          const delay = Math.min(1000 * Math.pow(2, retries - 1), 8000); // 1s, 2s, 4s
+          console.warn(`[callSupabase] CHANNEL_ERROR call-state:${callId} — reintento ${retries}/${MAX_RETRIES} en ${delay}ms`);
+          setTimeout(() => {
+            if (!destroyed) doSubscribe();
+          }, delay);
+        } else {
+          console.error(`[callSupabase] Canal call-state:${callId} no recuperable tras ${MAX_RETRIES} intentos`);
+        }
+      }
+      if (status === 'SUBSCRIBED') {
+        retries = 0; // resetear contador al reconectar
+      }
+    });
+  };
+
+  doSubscribe();
+
+  return () => {
+    destroyed = true;
+    supabase.removeChannel(channel);
+  };
 }
 
 /**
