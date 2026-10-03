@@ -23,6 +23,9 @@ import SessionManager from '../src/sessionManager';
 import { NativeCallKit } from '../src/native/CallKit';
 import { PushKit } from '../src/native/PushKit';
 import { EGAvatar } from '../src/components/ui/EGAvatar';
+// ── CallManager global — se inicializa aquí una sola vez ──────────
+import { callManager } from '../src/call/CallManager';
+import type { IncomingCallPayload } from '../src/call/types';
 
 import {
   registerSession, heartbeatSession, handleSyncMessage, handleSessionRevoked,
