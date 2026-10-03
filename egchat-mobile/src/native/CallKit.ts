@@ -89,4 +89,25 @@ export const NativeCallKit = {
     const sub = emitter.addListener('callEnded', callback);
     return () => sub.remove();
   },
+
+  /**
+   * [iOS] Escuchar interrupción de AVAudioSession.
+   * Llega cuando una llamada telefónica entra o una alarma suena.
+   * interrupted=true → pausa, interrupted=false → reanuda.
+   */
+  onAudioInterrupted(callback: (data: { interrupted: boolean; callId: string }) => void) {
+    if (!emitter) return () => {};
+    const sub = emitter.addListener('audioInterrupted', callback);
+    return () => sub.remove();
+  },
+
+  /**
+   * [iOS] Escuchar cambio de ruta de audio.
+   * Llega cuando se conecta/desconecta Bluetooth, auriculares, etc.
+   */
+  onAudioRouteChanged(callback: (data: { route: string; callId: string }) => void) {
+    if (!emitter) return () => {};
+    const sub = emitter.addListener('audioRouteChanged', callback);
+    return () => sub.remove();
+  },
 };
