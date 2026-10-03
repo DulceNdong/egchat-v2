@@ -84,6 +84,7 @@
     },
     "plugins": [
       "expo-router",
+      "./plugins/withPushKit",
       [
         "expo-notifications",
         {
