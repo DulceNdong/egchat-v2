@@ -35,6 +35,8 @@ export interface CallSession {
   targetAvatar?: string;
   chatId?: string;
   offer?: object;
+  /** UUID del usuario local (para historial sin async) */
+  myUserId?: string;
   /** Timestamp Unix en ms de cuando empezó la llamada */
   startedAt?: number;
   /** Segundos de duración (solo cuando está connected) */
