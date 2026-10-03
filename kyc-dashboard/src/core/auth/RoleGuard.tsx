@@ -25,14 +25,20 @@ export function RoleGuard({ entities, roles }: RoleGuardProps) {
   }
 
   if (!admin) {
-    // Redirigir al login correspondiente según el path
-    const loginPath = location.pathname.startsWith('/bange') ? '/bange/login' : '/company/login';
+    const loginPath = location.pathname.startsWith('/bange')
+      ? '/bange/login'
+      : location.pathname.startsWith('/monetizacion')
+      ? '/monetizacion/login'
+      : '/company/login';
     return <Navigate to={loginPath} state={{ from: location }} replace />;
   }
 
   // Verificar entidad
   if (entities && !entities.includes(admin.entity)) {
-    const redirectPath = admin.entity === 'BANGE' ? '/bange/queue' : '/company/home';
+    const redirectPath =
+      admin.entity === 'BANGE'        ? '/bange/queue' :
+      admin.entity === 'MONETIZACION' ? '/monetizacion/home' :
+      '/company/home';
     return <Navigate to={redirectPath} replace />;
   }
 
