@@ -26,7 +26,8 @@ import AVFoundation
 @objc(EGChatCallModule)
 class EGChatCallModule: RCTEventEmitter, CXProviderDelegate {
 
-  @objc static weak var shared: EGChatCallModule?
+  // Strong reference — el módulo no debe ser recolectado antes de recibir el push VoIP
+  @objc static var shared: EGChatCallModule?
 
   private var provider:       CXProvider?
   private var callController = CXCallController()
