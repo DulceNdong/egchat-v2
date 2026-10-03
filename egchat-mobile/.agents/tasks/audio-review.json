@@ -11,19 +11,13 @@
       "id": "wrong-restore-interruption-mode",
       "severity": "high",
       "confidence": "confirmed",
-      "summary": "_restoreAudioSession uses interruptionModeIOS: 2 (DuckOthers) instead of 0 (MixWithOthers). Background audio that was playing before the call will not return to full volume. Change the literal to 0 (InterruptionModeIOS.MixWithOthers)."
+      "summary": "_restoreAudioSession uses interruptionModeIOS: 2 (DuckOthers) instead of 0 (MixWithOthers). Background audio that was playing before the call will not return to full volume. Change the literal to 0."
     },
     {
-      "id": "finalCleanup-no-endCall",
+      "id": "finalCleanup-missing-callkit-endcall",
       "severity": "medium",
       "confidence": "confirmed",
-      "summary": "_finalCleanup does not call NativeCallKit.endCall(callId) directly. All current caller paths (endCall, rejectCall, cancelCall) do call it before reaching _finalCleanup, so there is no active bug today, but the design is brittle — any future direct caller of _finalCleanup will silently skip CallKit teardown. Move the NativeCallKit.endCall call into _finalCleanup guarded by session?.callId."
-    },
-    {
-      "id": "tsc-evidence-absent",
-      "severity": "low",
-      "confidence": "confirmed",
-      "summary": "No tsc output file exists under .agents/. TypeScript compilation status is unverified. The Audio.setAudioModeAsync calls are cast with 'as any', which suppresses type errors for the iosCategory/iosMode/interruptionModeIOS fields that contain the mis-matched values."
+      "summary": "_finalCleanup does not call NativeCallKit.endCall(callId). All current termination paths call it upstream before reaching _finalCleanup, so no active bug today, but criterion 3 requires the call inside _finalCleanup. Add it guarded by session?.callId."
     }
   ],
   "reviewDoc": "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/.agents/tasks/audio-review.md"
