@@ -1,7 +1,6 @@
 import Expo
 import React
 import ReactAppDependencyProvider
-import UserNotifications
 import PushKit
 
 @UIApplicationMain
@@ -10,17 +9,12 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
   var window: UIWindow?
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
-
-  // VoIP registry
   private var voipRegistry: PKPushRegistry?
 
   public override func application(
     _ application: UIApplication,
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
-
-    // ── Notificaciones push — expo-notifications lo gestiona ─────────
-    application.registerForRemoteNotifications()
 
     // ── VoIP PushKit ──────────────────────────────────────────────
     voipRegistry = PKPushRegistry(queue: .main)
@@ -46,7 +40,7 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // ── APNs token → expo-notifications lo gestiona ─────────────────
+  // ── APNs token ───────────────────────────────────────────────────
   public override func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
@@ -54,62 +48,17 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
-  public override func application(
-    _ application: UIApplication,
-    didFailToRegisterForRemoteNotificationsWithError error: Error
-  ) {
-    print("[EGChat] APNs registration failed: \(error)")
-  }
-
-  // ── Notificación recibida en primer plano ───────────────────────
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    willPresent notification: UNNotification,
-    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-  ) {
-    completionHandler([.banner, .sound, .badge])
-  }
-
-  // ── Usuario pulsó la notificación ──────────────────────────────
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse,
-    withCompletionHandler completionHandler: @escaping () -> Void
-  ) {
-    super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-  }
-
-  // ── Notificación recibida en primer plano ───────────────────────
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    willPresent notification: UNNotification,
-    withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
-  ) {
-    // Mostrar banner + sonido incluso con app en primer plano
-    completionHandler([.banner, .sound, .badge])
-  }
-
-  // ── Usuario pulsó la notificación ──────────────────────────────
-  public func userNotificationCenter(
-    _ center: UNUserNotificationCenter,
-    didReceive response: UNNotificationResponse,
-    withCompletionHandler completionHandler: @escaping () -> Void
-  ) {
-    super.userNotificationCenter(center, didReceive: response, withCompletionHandler: completionHandler)
-  }
-
-  // ── VoIP PushKit: token registrado ─────────────────────────────
+  // ── VoIP PushKit: token ──────────────────────────────────────────
   public func pushRegistry(
     _ registry: PKPushRegistry,
     didUpdate pushCredentials: PKPushCredentials,
     for type: PKPushType
   ) {
     let token = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
-    print("[EGChat] VoIP token: \(token)")
     EGChatPushKitModule.emitTokenUpdated(token)
   }
 
-  // ── VoIP PushKit: push entrante ─────────────────────────────────
+  // ── VoIP PushKit: llamada entrante ───────────────────────────────
   public func pushRegistry(
     _ registry: PKPushRegistry,
     didReceiveIncomingPushWith payload: PKPushPayload,
@@ -121,7 +70,7 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
     completion()
   }
 
-  // ── Linking ─────────────────────────────────────────────────────
+  // ── Linking ──────────────────────────────────────────────────────
   public override func application(
     _ app: UIApplication,
     open url: URL,
