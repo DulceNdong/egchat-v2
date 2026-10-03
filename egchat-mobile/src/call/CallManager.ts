@@ -907,48 +907,90 @@ export class CallManager {
   // PRIVADOS — Audio
   // ══════════════════════════════════════════════════════════════
 
-  /** Configura AVAudioSession (iOS) y AudioFocus (Android) para llamada activa */
+  /** Configura AVAudioSession (iOS) y AudioFocus (Android) para llamada activa.
+   *
+   *  iOS: iosCategory 'playAndRecord' mantiene el micrófono activo en background
+   *  y al bloquear pantalla. iosMode 'voiceChat' enruta al auricular y activa
+   *  cancelación de eco del sistema. interruptionModeIOS DO_NOT_MIX (1) toma
+   *  foco completo y evita que otra app silencia la llamada permanentemente.
+   *
+   *  Android: shouldDuckAndroid false da prioridad total al audio de la llamada.
+   */
   private async _applyAudioSession(): Promise<void> {
     if (Platform.OS === 'web') return;
     try {
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS:        true,
-        playsInSilentModeIOS:      true,
-        shouldDuckAndroid:         false,
+        allowsRecordingIOS:         true,
+        playsInSilentModeIOS:       true,
+        staysActiveInBackground:    true,
+        shouldDuckAndroid:          false,
         playThroughEarpieceAndroid: !this._isSpeakerOn && !this._isBluetoothOn,
-        staysActiveInBackground:   true,
-      });
+        // iOS — categoría y modo para llamada activa
+        iosCategory:                'playAndRecord',
+        iosMode:                    'voiceChat',
+        interruptionModeIOS:        1,  // InterruptionModeIOS.DoNotMix
+      } as any);
     } catch (e) {
       console.warn('[CallManager] setAudioModeAsync error:', e);
     }
   }
 
-  /** Aplica la ruta de audio según el estado actual */
+  /** Aplica la ruta de audio según el estado actual (altavoz / auricular / BT).
+   *
+   *  iOS: voiceChat → auricular con echo-cancellation;
+   *       spokenAudio → altavoz con mayor volumen.
+   *
+   *  NOTA BLUETOOTH (iOS): el routing BT real es controlado por
+   *  AVAudioSession/CallKit a nivel nativo. Desde JS solo podemos indicar
+   *  la preferencia de salida; el sistema elige el dispositivo BT activo.
+   *  _isBluetoothOn se actualiza via onAudioRouteChanged cuando el sistema
+   *  confirma el cambio de ruta.
+   */
   private async _applyAudioRoute(): Promise<void> {
     if (Platform.OS === 'web') return;
+
+    if (this._isBluetoothOn) {
+      // Advertencia: en iOS no se puede forzar BT desde JS.
+      // El sistema elige el dispositivo BT prioritario.
+      if (Platform.OS === 'ios') {
+        console.warn('[CallManager] toggleBluetooth: en iOS el routing BT es controlado por AVAudioSession/CallKit. Solo se puede indicar preferencia desde JS.');
+      }
+    }
+
     try {
+      const useEarpiece = !this._isSpeakerOn && !this._isBluetoothOn;
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS:        true,
-        playsInSilentModeIOS:      true,
-        shouldDuckAndroid:         false,
-        // Auricular si: speakerOn=false && bluetooth=false
-        playThroughEarpieceAndroid: !this._isSpeakerOn && !this._isBluetoothOn,
-        staysActiveInBackground:   true,
-      });
+        allowsRecordingIOS:         true,
+        playsInSilentModeIOS:       true,
+        staysActiveInBackground:    true,
+        shouldDuckAndroid:          false,
+        playThroughEarpieceAndroid: useEarpiece,
+        // voiceChat → auricular+EC; spokenAudio → altavoz
+        iosCategory:                'playAndRecord',
+        iosMode:                    useEarpiece ? 'voiceChat' : 'spokenAudio',
+        interruptionModeIOS:        1,  // InterruptionModeIOS.DoNotMix
+      } as any);
     } catch { /* ignorar */ }
   }
 
-  /** Restaura la sesión de audio al estado normal al terminar la llamada */
+  /** Restaura la sesión de audio al estado normal al terminar la llamada.
+   *  Se llama siempre desde _finalCleanup() para cubrir todos los paths
+   *  de terminación (endCall, rejectCall, cancelCall, timeout, PC closed).
+   */
   private async _restoreAudioSession(): Promise<void> {
     if (Platform.OS === 'web') return;
     try {
       await Audio.setAudioModeAsync({
-        allowsRecordingIOS:        false,
-        playsInSilentModeIOS:      true,
-        shouldDuckAndroid:         true,
+        allowsRecordingIOS:         false,
+        playsInSilentModeIOS:       false,   // cerrar sesión iOS completamente
+        shouldDuckAndroid:          true,
         playThroughEarpieceAndroid: false,
-        staysActiveInBackground:   false,
-      });
+        staysActiveInBackground:    false,
+        // iOS — categoría normal post-llamada
+        iosCategory:                'soloAmbient',
+        iosMode:                    'default',
+        interruptionModeIOS:        2,  // InterruptionModeIOS.DuckOthers
+      } as any);
     } catch { /* ignorar */ }
   }
 
