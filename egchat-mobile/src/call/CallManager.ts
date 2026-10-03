@@ -281,6 +281,11 @@ export class CallManager {
     this._reset();
     this._session = { callId, callType, role: 'caller', targetUserId, targetName, targetAvatar, chatId, duration: 0 };
 
+    // Cachear myUserId para historial (sin async en los métodos de fin)
+    SessionManager.getInstance().getUser().then(u => {
+      if (this._session && u?.id) this._session.myUserId = u.id;
+    }).catch(() => {});
+
     if (!HAS_NATIVE_MEDIA) {
       this._isSignalingOnly = true;
       this._setCommState('calling');
