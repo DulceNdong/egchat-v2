@@ -1414,6 +1414,52 @@ export class CallManager {
     this._audioInterruptSub = null;
     this._audioRouteSub?.();
     this._audioRouteSub = null;
+    // FIX E — limpiar listener de NetInfo
+    this._netInfoSub?.();
+    this._netInfoSub = null;
+  }
+
+  // FIX E — Listener proactivo de cambio de red (Wi-Fi ↔ 4G/5G).
+  //
+  // Objetivo: detectar el cambio ANTES de que WebRTC lo note (~5-10s latencia)
+  // para iniciar ICE restart de forma anticipada.
+  //
+  // Casos cubiertos:
+  //   Wi-Fi → 4G/5G : isConnected=true, type cambia → forzar restart
+  //   4G/5G → Wi-Fi : idem
+  //   Red caída     : isConnected=false → marcar reconnecting si connected
+  //   Red recuperada: isConnected=true  → forzar restart si reconnecting
+  private _subscribeNetwork(): void {
+    if (this._netInfoSub) return;
+    this._netInfoSub = NetInfo.addEventListener((state: NetInfoState) => {
+      if (!this.isActive || this._isEnding) return;
+
+      const isConnected = state.isConnected ?? false;
+
+      // Red recuperada estando en reconexión → iniciar restart de inmediato
+      if (isConnected && this._lastNetConnected === false &&
+          this._commState === 'reconnecting') {
+        if (__DEV__) console.log('[CallManager] NetInfo: red recuperada — restart ICE proactivo');
+        this._scheduleIceRestart();
+      }
+
+      // Red caída estando conectado → anticipar reconnecting
+      if (!isConnected && this._commState === 'connected') {
+        if (__DEV__) console.log('[CallManager] NetInfo: sin red — reconnecting anticipado');
+        this._setCommState('reconnecting');
+      }
+
+      // Cambio de tipo de red (Wi-Fi ↔ 4G) estando conectado → restart proactivo
+      // isConnected se mantiene true pero el camino ICE ya no es válido
+      if (isConnected && this._lastNetConnected === true &&
+          this._commState === 'connected') {
+        if (__DEV__) console.log('[CallManager] NetInfo: cambio de tipo de red — restart ICE proactivo');
+        this._setCommState('reconnecting');
+        this._scheduleIceRestart();
+      }
+
+      this._lastNetConnected = isConnected;
+    });
   }
 
   // ══════════════════════════════════════════════════════════════
