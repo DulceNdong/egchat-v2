@@ -625,13 +625,8 @@ export default function RootLayout() {
                     // Aquí solo registramos el token updater, que no es crítico para recibir llamadas.
                     if (Platform.OS === 'ios') {
                       pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
-                        const t = await getT();
-                        if (!t) return;
-                        fetch(`${getB()}/api/push/register-voip-token`, {
-                          method: 'POST',
-                          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${t}` },
-                          body: JSON.stringify({ voipToken }),
-                        }).catch(() => {});
+                        const { syncVoIPTokenWithServer } = await import('../src/notifications');
+                        await syncVoIPTokenWithServer(voipToken);
                       });
                     } else {
                       // Android / otras plataformas: registrar todo aquí
