@@ -478,11 +478,35 @@ const PENDING_CALL_TTL = 60 * 1000; // 60s — si es más antigua se ignora
 
 export async function consumePendingCall(): Promise<PendingCall | null> {
   try {
+    // Android: intentar primero desde SharedPreferences nativo
+    // (escrito por FirebaseMessagingService o MainActivity sin depender de JS)
+    if (Platform.OS === 'android') {
+      const { NativeCallKit } = await import('./native/CallKit');
+      const nativeJson = await NativeCallKit.getAndClearPendingCall();
+      if (nativeJson) {
+        try {
+          const parsed = JSON.parse(nativeJson);
+          if (parsed?.callId) {
+            // También limpiar AsyncStorage por si hay uno antiguo
+            await AsyncStorage.removeItem(PENDING_CALL_KEY).catch(() => {});
+            return {
+              callId:      parsed.callId,
+              callerName:  parsed.callerName  || 'Usuario',
+              callerAvatar: parsed.callerAvatar || '',
+              callType:    (parsed.callType   || 'audio') as 'audio' | 'video',
+              offer:       parsed.offer ? JSON.parse(parsed.offer) : null,
+              timestamp:   Date.now(),
+            };
+          }
+        } catch { /* JSON malformado — continuar con AsyncStorage */ }
+      }
+    }
+
+    // Fallback: AsyncStorage (escrito por el BGTask de expo-task-manager)
     const raw = await AsyncStorage.getItem(PENDING_CALL_KEY);
     if (!raw) return null;
-    await AsyncStorage.removeItem(PENDING_CALL_KEY); // consumir una sola vez
+    await AsyncStorage.removeItem(PENDING_CALL_KEY);
     const data: PendingCall = JSON.parse(raw);
-    // Ignorar si la llamada tiene más de 60s (el caller ya colgó)
     if (Date.now() - data.timestamp > PENDING_CALL_TTL) return null;
     return data;
   } catch {
