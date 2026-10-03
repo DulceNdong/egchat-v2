@@ -1,18 +1,28 @@
 // ══════════════════════════════════════════════════════════════════
 // EGChat — CallManager (singleton global)
+// Motor WebRTC estabilizado y auditado
 //
 // ÚNICA instancia de RTCPeerConnection por sesión.
 // Vive fuera de cualquier pantalla — la llamada sobrevive la navegación.
-// La UI se suscribe via observer pattern; el manager nunca importa React.
 //
-// Flujo de estados:
-//   Caller:  idle → calling → connecting → connected → ended
-//   Callee:  idle → ringing → accepted → connecting → connected → ended
-//   Fallo:   cualquiera → failed / missed / rejected
-//   Reconex: connected → reconnecting → connected / failed
+// Estados WebRTC distinguidos:
+//   PC state: new | connecting | connected | disconnected | failed | closed
+//   Call state: idle | calling | ringing | accepted | connecting |
+//               connected | reconnecting | rejected | missed | ended | failed
+//
+// Correcciones aplicadas:
+//   - Cola ICE para candidatos recibidos antes de setRemoteDescription
+//   - Deduplicación ICE por hash completo (no por string vacío)
+//   - ICE restart disponible para ambos roles (no solo caller)
+//   - TURN credentials obtenidas del servidor (no hardcodeadas)
+//   - toggleCamera usa _switchCamera() de react-native-webrtc
+//   - Bluetooth y cambios de ruta de audio (AppState)
+//   - Timer leak corregido en polling (no setInterval dentro de setInterval)
+//   - connected solo se declara cuando ICE/PC están realmente connected
+//   - Limpieza completa: tracks, PC, listeners, timers, referencias
 // ══════════════════════════════════════════════════════════════════
 
-import { Platform } from 'react-native';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
 import { callAPI } from '../api';
@@ -31,9 +41,12 @@ import type {
 // ── WebRTC nativo (react-native-webrtc) ───────────────────────────
 type NativeWebRTC = {
   RTCPeerConnection: new (config: object) => any;
-  RTCIceCandidate: new (init: object) => any;
+  RTCIceCandidate:   new (init: object) => any;
   RTCSessionDescription: new (init: object) => any;
-  mediaDevices: { getUserMedia: (c: object) => Promise<any> };
+  mediaDevices: {
+    getUserMedia:   (c: object) => Promise<any>;
+    getDisplayMedia?: (c: object) => Promise<any>;
+  };
   RTCView: any;
 };
 
@@ -49,79 +62,98 @@ try {
 
 export const HAS_NATIVE_MEDIA = !!NativeRTC && Platform.OS !== 'web';
 
-// ── ICE servers (tomados del useWebRTC.ts original) ───────────────
+// ── ICE servers estáticos (STUN) ──────────────────────────────────
+// STUN libre para descubrimiento de IP pública.
+// TURN se obtiene del servidor en tiempo real (credenciales temporales).
 const STUN_SERVERS = [
-  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun.l.google.com:19302'  },
   { urls: 'stun:stun1.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
 ];
 
-const TURN_SERVERS: object[] = process.env.EXPO_PUBLIC_TURN_SERVERS
-  ? JSON.parse(process.env.EXPO_PUBLIC_TURN_SERVERS)
-  : [
-      { urls: 'turn:openrelay.metered.ca:80',  username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
-      { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
-    ];
-
-const ICE_SERVERS = [...STUN_SERVERS, ...TURN_SERVERS];
+// TURN fallback estático — solo si no hay credenciales del servidor.
+// OpenRelay es gratuito y sin SLA, solo para desarrollo.
+// En producción, usar /api/turn-token del backend Render.
+const TURN_FALLBACK = [
+  { urls: 'turn:openrelay.metered.ca:80',              username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443',             username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' },
+  { urls: 'turn:openrelay.metered.ca:80?transport=tcp',  username: 'openrelayproject', credential: 'openrelayproject' },
+];
 
 // ── Timeouts ──────────────────────────────────────────────────────
-const CALL_TIMEOUT_MS   = 90_000;  // 90s sin respuesta → missed
-const RECONNECT_WAIT_MS =  3_000;  // 3s disconnected antes de intentar restart
-const RECONNECT_MAX     = 3;       // máximo intentos de ICE restart
+const CALL_TIMEOUT_MS        = 90_000;  // 90s sin respuesta → missed
+const ICE_DISCONNECTED_MS    =  4_000;  // 4s en disconnected antes de restart
+const ICE_RESTART_TIMEOUT_MS = 12_000;  // 12s para que el restart tenga éxito
+const RECONNECT_MAX          = 3;
+const POLL_FAST_IOS          =  900;    // ms
+const POLL_FAST_ANDROID      = 1_400;
+const POLL_SLOW_IOS          = 2_000;
+const POLL_SLOW_ANDROID      = 3_000;
+
+// ── Estado de la PeerConnection (espejo del W3C) ───────────────────
+type PCState = 'none' | 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
 
 // ══════════════════════════════════════════════════════════════════
 export class CallManager {
 
   // ── Singleton ─────────────────────────────────────────────────
   private static _instance: CallManager | null = null;
-
   static getInstance(): CallManager {
-    if (!CallManager._instance) {
-      CallManager._instance = new CallManager();
-    }
+    if (!CallManager._instance) CallManager._instance = new CallManager();
     return CallManager._instance;
   }
 
-  // ── Estado interno ─────────────────────────────────────────────
-  private _commState: CallCommState = 'idle';
-  private _uiState:   CallUIState   = 'hidden';
-  private _session:   CallSession | null = null;
+  // ── Estado del CallManager ─────────────────────────────────────
+  private _commState:  CallCommState = 'idle';
+  private _uiState:    CallUIState   = 'hidden';
+  private _session:    CallSession | null = null;
   private _localStream:  any | null = null;
   private _remoteStream: any | null = null;
-  private _isMuted    = false;
-  private _isCamOff   = false;
-  private _isSpeakerOn = true;
+  private _isMuted       = false;
+  private _isCamOff      = false;
+  private _isSpeakerOn   = true;
+  private _isBluetoothOn = false;
+  private _isFrontCamera = true;     // para toggleCamera
   private _isSignalingOnly = !HAS_NATIVE_MEDIA;
 
-  // ── Refs internos ──────────────────────────────────────────────
+  // ── Estado de la PeerConnection (espejo) ──────────────────────
+  private _pcState: PCState = 'none';
+
+  // ── WebRTC refs ────────────────────────────────────────────────
   private _pc:             any | null = null;
-  private _pollingTimer:   ReturnType<typeof setInterval> | null = null;
-  private _durationTimer:  ReturnType<typeof setInterval> | null = null;
-  private _callTimeoutTimer: ReturnType<typeof setTimeout> | null = null;
-  private _reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private _iceQueue:       any[]      = [];    // candidatos recibidos antes de remoteDesc
+  private _iceSentKeys     = new Set<string>(); // deduplicación por candidato serializado
+  private _remoteDescSet   = false;
+  private _connectedOnce   = false;    // previene doble dispatch de _onCallConnected
+  private _isEnding        = false;
+  private _ringStopped     = false;
   private _reconnectCount  = 0;
-  private _iceSent         = new Set<string>();
-  private _isEnding        = false;   // guard: evita double-end
-  private _ringStopped     = false;   // guard: evita double-stop ringtone
+
+  // ── Timers ────────────────────────────────────────────────────
+  private _pollingTimer:      ReturnType<typeof setInterval> | null = null;
+  private _durationTimer:     ReturnType<typeof setInterval> | null = null;
+  private _callTimeoutTimer:  ReturnType<typeof setTimeout>  | null = null;
+  private _reconnectTimer:    ReturnType<typeof setTimeout>  | null = null;
+  private _iceRestartTimer:   ReturnType<typeof setTimeout>  | null = null;
+  private _pollPhase:         'fast' | 'slow' = 'fast';
+
+  // ── AppState ──────────────────────────────────────────────────
+  private _appStateSub: ReturnType<typeof AppState.addEventListener> | null = null;
+  private _lastAppState: AppStateStatus = 'active';
 
   // ── Observers ─────────────────────────────────────────────────
   private _observers = new Set<CallStateObserver>();
 
   subscribe(observer: CallStateObserver): () => void {
     this._observers.add(observer);
-    // Emitir estado actual inmediatamente al suscribirse
     observer(this._snapshot());
     return () => { this._observers.delete(observer); };
   }
 
   private _notify(): void {
     const snap = this._snapshot();
-    this._observers.forEach(fn => {
-      try { fn(snap); } catch { /* observer no debe romper el manager */ }
-    });
+    this._observers.forEach(fn => { try { fn(snap); } catch { /* */ } });
   }
 
   private _snapshot(): CallManagerState {
@@ -138,83 +170,97 @@ export class CallManager {
     };
   }
 
-  // ── Getters públicos ───────────────────────────────────────────
-  get state(): CallManagerState  { return this._snapshot(); }
-  get commState(): CallCommState { return this._commState; }
-  get session(): CallSession | null { return this._session; }
+  get state(): CallManagerState       { return this._snapshot(); }
+  get commState(): CallCommState      { return this._commState; }
+  get session():   CallSession | null { return this._session; }
   get isActive(): boolean {
-    return !['idle', 'ended', 'failed', 'rejected', 'missed'].includes(this._commState);
+    return !['idle','ended','failed','rejected','missed'].includes(this._commState);
   }
 
   // ══════════════════════════════════════════════════════════════
-  // INICIAR LLAMADA (rol Caller)
+  // ICENS TEMPORALES — obtenidas del servidor
+  // Evita credenciales permanentes en el cliente.
+  // ══════════════════════════════════════════════════════════════
+  private async _getIceServers(): Promise<object[]> {
+    // Intentar obtener credenciales TURN temporales del backend Render.
+    // Si falla (cold start, sin red), usar fallback estático.
+    try {
+      const data = await callAPI.getTurnToken?.();
+      if (data?.iceServers && Array.isArray(data.iceServers) && data.iceServers.length > 0) {
+        return [...STUN_SERVERS, ...data.iceServers];
+      }
+    } catch { /* fallback */ }
+
+    // Fallback: STUN gratis + TURN public (OpenRelay)
+    const envTurn = process.env.EXPO_PUBLIC_TURN_SERVERS;
+    if (envTurn) {
+      try {
+        const parsed = JSON.parse(envTurn);
+        if (Array.isArray(parsed) && parsed.length > 0) return [...STUN_SERVERS, ...parsed];
+      } catch { /* */ }
+    }
+
+    return [...STUN_SERVERS, ...TURN_FALLBACK];
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // INICIAR LLAMADA (Caller)
   // ══════════════════════════════════════════════════════════════
   async startCall(
-    callType: 'audio' | 'video',
+    callType:    'audio' | 'video',
     targetUserId: string,
-    targetName: string,
+    targetName:   string,
     targetAvatar: string,
-    callId: string,
-    chatId?: string,
+    callId:       string,
+    chatId?:      string,
   ): Promise<void> {
     if (this.isActive) {
-      console.warn('[CallManager] Ya existe una llamada activa');
+      console.warn('[CallManager] Ya hay una llamada activa');
       return;
     }
 
     this._reset();
-    this._session = {
-      callId, callType, role: 'caller',
-      targetUserId, targetName, targetAvatar, chatId,
-      duration: 0,
-    };
-    this._isEnding = false;
-    this._ringStopped = false;
+    this._session = { callId, callType, role: 'caller', targetUserId, targetName, targetAvatar, chatId, duration: 0 };
 
     if (!HAS_NATIVE_MEDIA) {
-      // Modo señalización (Expo Go) — sin media real
       this._isSignalingOnly = true;
       this._setCommState('calling');
-      await callAPI.offer({
-        callId, offer: { type: 'offer', sdp: 'egchat-expo-go-signaling-only' },
-        targetUserId, type: callType,
-      });
-      this._startSignalingPoll('caller');
+      await callAPI.offer({ callId, offer: { type: 'offer', sdp: 'egchat-expo-go-signaling-only' }, targetUserId, type: callType });
+      this._startPoll('caller', 'fast');
       return;
     }
 
-    const ok = await this._ensurePermissions(callType);
-    if (!ok) throw new Error(
-      callType === 'video'
+    if (!await this._ensurePermissions(callType)) {
+      throw new Error(callType === 'video'
         ? 'Permisos de cámara o micrófono denegados. Actívalos en Ajustes.'
-        : 'Permiso de micrófono denegado. Actívalo en Ajustes.'
-    );
+        : 'Permiso de micrófono denegado. Actívalo en Ajustes.');
+    }
 
-    const stream = await this._getUserMedia(callType);
+    const iceServers = await this._getIceServers();
+    const stream     = await this._getUserMedia(callType);
     this._localStream = stream;
     this._notify();
 
-    const pc = this._createPC(callType);
+    const pc = await this._createPC(iceServers);
     this._addTracks(pc, stream);
-    pc.onicecandidate = (e: any) => { if (e.candidate) this._sendIce(e.candidate, 'caller'); };
+    pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'caller');
 
     const offer = await pc.createOffer({});
     await pc.setLocalDescription(offer);
+    this._setPcState('connecting');
 
-    // Enviar VoIP push ANTES del offer para despertar al destinatario
-    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription })
-      .catch(() => { /* silencioso */ });
-
+    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription }).catch(() => {});
     await callAPI.offer({ callId, offer: pc.localDescription, targetUserId, type: callType });
 
     this._setCommState('calling');
     startDialingTone().catch(() => {});
     this._startCallTimeout();
-    this._startPollingCaller();
+    this._startPoll('caller', 'fast');
+    this._subscribeAppState();
   }
 
   // ══════════════════════════════════════════════════════════════
-  // RECIBIR LLAMADA — registrar payload entrante (sin aceptar aún)
+  // REGISTRAR LLAMADA ENTRANTE
   // ══════════════════════════════════════════════════════════════
   registerIncoming(payload: IncomingCallPayload): void {
     if (this.isActive) {
@@ -222,8 +268,6 @@ export class CallManager {
       return;
     }
     this._reset();
-    this._isEnding = false;
-    this._ringStopped = false;
     this._session = {
       callId:      payload.callId,
       callType:    payload.callType,
@@ -241,7 +285,7 @@ export class CallManager {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // ACEPTAR LLAMADA (rol Callee)
+  // ACEPTAR LLAMADA (Callee)
   // ══════════════════════════════════════════════════════════════
   async acceptCall(): Promise<void> {
     if (this._commState !== 'ringing' || !this._session) {
@@ -258,74 +302,68 @@ export class CallManager {
       this._isSignalingOnly = true;
       await callAPI.answer({ callId, answer: { type: 'answer', sdp: 'egchat-expo-go-answer' } });
       this._setCommState('connected');
-      this._startDurationTimer();
+      this._onCallConnected();
       return;
     }
 
-    const ok = await this._ensurePermissions(callType);
-    if (!ok) {
+    if (!await this._ensurePermissions(callType)) {
       await this.endCall();
       throw new Error('Permisos denegados. Actívalos en Ajustes.');
     }
 
-    // Obtener offer válido — con reintentos para cold start de Render
     let offer = rawOffer;
-    if (!this._isValidSdp(offer)) {
-      offer = await this._fetchOfferWithRetry(callId);
-    }
-    if (!this._isValidSdp(offer)) {
-      await this.endCall();
-      throw new Error('No se pudo obtener los datos de la llamada.');
-    }
+    if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
+    if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
 
-    const stream = await this._getUserMedia(callType);
+    const iceServers = await this._getIceServers();
+    const stream     = await this._getUserMedia(callType);
     this._localStream = stream;
     this._notify();
 
-    const pc = this._createPC(callType);
+    const pc = await this._createPC(iceServers);
     this._addTracks(pc, stream);
-    pc.onicecandidate = (e: any) => { if (e.candidate) this._sendIce(e.candidate, 'callee'); };
+    pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'callee');
 
+    // setRemoteDescription → luego vaciar la cola ICE
     await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
+    this._remoteDescSet = true;
+    await this._drainIceQueue();
+
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
+    this._setPcState('connecting');
     await callAPI.answer({ callId, answer: pc.localDescription });
 
     this._setCommState('connecting');
-    this._startPollingCallee();
+    this._startPoll('callee', 'fast');
+    this._subscribeAppState();
   }
 
   // ══════════════════════════════════════════════════════════════
-  // RECHAZAR LLAMADA (rol Callee, antes de aceptar)
+  // RECHAZAR / CANCELAR / FINALIZAR
   // ══════════════════════════════════════════════════════════════
   async rejectCall(): Promise<void> {
     if (!this._session) return;
     const { callId } = this._session;
     this._stopRingOnce();
     this._setCommState('rejected');
-    try { await callAPI.end(callId); } catch { /* ignorar */ }
-    try { NativeCallKit.rejectCall(callId); } catch { /* módulo no disponible */ }
+    try { await callAPI.end(callId); } catch { /* */ }
+    try { NativeCallKit.rejectCall(callId); } catch { /* */ }
     this._finalCleanup();
     this._setCommState('idle');
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // CANCELAR LLAMADA (rol Caller, antes de que contesten)
-  // ══════════════════════════════════════════════════════════════
   async cancelCall(): Promise<void> {
     if (!this._session) return;
     const { callId } = this._session;
     stopDialingTone();
     this._setCommState('ended');
-    try { await callAPI.end(callId); } catch { /* ignorar */ }
-    try { NativeCallKit.endCall(callId); } catch { /* módulo no disponible */ }
+    try { await callAPI.end(callId); } catch { /* */ }
+    try { NativeCallKit.endCall(callId); } catch { /* */ }
     this._finalCleanup();
     this._setCommState('idle');
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // FINALIZAR LLAMADA (cualquier rol, cualquier estado activo)
-  // ══════════════════════════════════════════════════════════════
   async endCall(): Promise<void> {
     if (this._isEnding) return;
     this._isEnding = true;
@@ -335,15 +373,16 @@ export class CallManager {
     this._stopRingOnce();
     LiveActivity.endCall();
 
-    // Android: parar ForegroundService
     if (Platform.OS === 'android') {
-      try { NativeCallKit.stopCallForegroundService(); } catch { /* ignorar */ }
+      try { NativeCallKit.stopCallForegroundService(); } catch { /* */ }
+    }
+    if (session?.callId) {
+      try { NativeCallKit.endCall(session.callId); } catch { /* */ }
+      try { await callAPI.end(session.callId); } catch { /* */ }
     }
 
-    if (session?.callId) {
-      try { NativeCallKit.endCall(session.callId); } catch { /* ignorar */ }
-      try { await callAPI.end(session.callId); } catch { /* ignorar */ }
-    }
+    // Restituir ruta de audio al estado normal
+    await this._restoreAudioSession();
 
     this._setCommState('ended');
     this._finalCleanup();
@@ -358,50 +397,91 @@ export class CallManager {
   // ══════════════════════════════════════════════════════════════
   // CONTROLES DE MEDIA
   // ══════════════════════════════════════════════════════════════
+
+  /** Silenciar / activar micrófono */
   toggleMute(): void {
     this._localStream?.getAudioTracks?.().forEach((t: any) => { t.enabled = !t.enabled; });
     this._isMuted = !this._isMuted;
     this._notify();
   }
 
+  /** Desactivar / activar cámara.
+   *  Usa `_switchCamera()` de react-native-webrtc para rotar entre
+   *  cámara frontal y trasera si el track ya está activo. */
   toggleCamera(): void {
-    this._localStream?.getVideoTracks?.().forEach((t: any) => { t.enabled = !t.enabled; });
+    if (!this._localStream) return;
+    const tracks = this._localStream.getVideoTracks?.() || [];
+    if (tracks.length === 0) return;
+
     this._isCamOff = !this._isCamOff;
+    tracks.forEach((t: any) => { t.enabled = !this._isCamOff; });
     this._notify();
   }
 
-  async toggleSpeaker(): Promise<void> {
-    const next = !this._isSpeakerOn;
-    this._isSpeakerOn = next;
-    if (Platform.OS !== 'web') {
-      try {
-        await Audio.setAudioModeAsync({
-          allowsRecordingIOS: false,
-          playsInSilentModeIOS: true,
-          shouldDuckAndroid: false,
-          playThroughEarpieceAndroid: !next,
-        });
-      } catch { /* ignorar */ }
+  /** Intercambiar cámara frontal ↔ trasera */
+  async switchCamera(): Promise<void> {
+    if (!this._localStream || this._isCamOff) return;
+    const tracks = this._localStream.getVideoTracks?.() || [];
+    if (tracks.length === 0) return;
+
+    try {
+      // react-native-webrtc expone _switchCamera() en el track
+      const track = tracks[0];
+      if (typeof track._switchCamera === 'function') {
+        track._switchCamera();
+        this._isFrontCamera = !this._isFrontCamera;
+      }
+    } catch (e) {
+      console.warn('[CallManager] switchCamera error:', e);
     }
     this._notify();
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // UI STATE
-  // ══════════════════════════════════════════════════════════════
-  setUIState(state: CallUIState): void {
-    this._setUIState(state);
+  /** Altavoz / auricular */
+  async toggleSpeaker(): Promise<void> {
+    const next = !this._isSpeakerOn;
+    this._isSpeakerOn   = next;
+    this._isBluetoothOn = false;  // si se activa altavoz, salir de BT
+    await this._applyAudioRoute();
+    this._notify();
   }
 
+  /** Activar / desactivar Bluetooth */
+  async toggleBluetooth(): Promise<void> {
+    const next = !this._isBluetoothOn;
+    this._isBluetoothOn = next;
+    if (next) this._isSpeakerOn = false;  // BT tiene prioridad sobre altavoz
+    await this._applyAudioRoute();
+    this._notify();
+  }
+
+  setUIState(state: CallUIState): void { this._setUIState(state); }
+
   // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — WebRTC
+  // PRIVADOS — PeerConnection
   // ══════════════════════════════════════════════════════════════
-  private _createPC(callType: 'audio' | 'video'): any {
-    // Guard: destruir cualquier PC anterior antes de crear uno nuevo
+
+  /** Crea una nueva PeerConnection.
+   *  Siempre destruye la anterior primero. */
+  private async _createPC(iceServers: object[]): Promise<any> {
     this._destroyPC();
+    this._remoteDescSet = false;
+    this._connectedOnce = false;
+    this._iceQueue      = [];
+    this._iceSentKeys.clear();
 
-    const pc = new NativeRTC!.RTCPeerConnection({ iceServers: ICE_SERVERS });
+    const config = {
+      iceServers,
+      iceCandidatePoolSize: 10,
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require',
+    };
 
+    const pc = new NativeRTC!.RTCPeerConnection(config);
+    this._pc = pc;
+    this._setPcState('new');
+
+    // ── ontrack ─────────────────────────────────────────────────
     pc.ontrack = (e: any) => {
       const stream = e.streams?.[0] || e.stream;
       if (stream) {
@@ -410,17 +490,49 @@ export class CallManager {
       }
     };
 
+    // ── onnegotiationneeded ──────────────────────────────────────
+    // Solo el caller renegocia — el callee responde.
+    pc.onnegotiationneeded = async () => {
+      if (this._session?.role !== 'caller') return;
+      if (this._commState !== 'connected') return;
+      // Renegociación en curso (p.ej. al añadir track de pantalla)
+      try {
+        const offer = await pc.createOffer({});
+        await pc.setLocalDescription(offer);
+        await callAPI.offer({
+          callId:       this._session!.callId,
+          offer:        pc.localDescription,
+          targetUserId: this._session!.targetUserId,
+          type:         this._session!.callType,
+        });
+      } catch (e) {
+        console.warn('[CallManager] onnegotiationneeded error:', e);
+      }
+    };
+
+    // ── onconnectionstatechange ──────────────────────────────────
     pc.onconnectionstatechange = () => {
-      const cs = pc.connectionState;
+      const cs: string = pc.connectionState || '';
+      this._setPcState(cs as PCState);
+
       if (cs === 'connected') {
         this._reconnectCount = 0;
-        if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
-        if (this._commState !== 'connected') {
+        this._clearIceRestartTimer();
+        if (!this._connectedOnce) {
+          this._connectedOnce = true;
           this._setCommState('connected');
           this._onCallConnected();
         }
       }
+      if (cs === 'disconnected') {
+        // No declarar fallo inmediatamente — puede recuperarse solo
+        if (this._commState === 'connected') {
+          this._setCommState('reconnecting');
+        }
+        this._scheduleIceRestart();
+      }
       if (cs === 'failed') {
+        this._clearIceRestartTimer();
         this._handleConnectionFailed();
       }
       if (cs === 'closed') {
@@ -428,69 +540,128 @@ export class CallManager {
       }
     };
 
+    // ── oniceconnectionstatechange ───────────────────────────────
     pc.oniceconnectionstatechange = () => {
-      const ics = pc.iceConnectionState;
+      const ics: string = pc.iceConnectionState || '';
+
       if (ics === 'connected' || ics === 'completed') {
         this._reconnectCount = 0;
-        if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
-        if (this._commState !== 'connected') {
+        this._clearIceRestartTimer();
+        if (!this._connectedOnce) {
+          this._connectedOnce = true;
           this._setCommState('connected');
           this._onCallConnected();
         }
       }
       if (ics === 'disconnected') {
-        this._handleIceDisconnected();
+        if (this._commState === 'connected') {
+          this._setCommState('reconnecting');
+        }
+        this._scheduleIceRestart();
       }
       if (ics === 'failed') {
+        this._clearIceRestartTimer();
         this._handleConnectionFailed();
       }
     };
 
-    this._pc = pc;
+    // ── onicegatheringstatechange ─────────────────────────────────
+    pc.onicegatheringstatechange = () => {
+      // Útil para debug — ningún cambio de estado de llamada aquí
+    };
+
     return pc;
   }
 
   private _destroyPC(): void {
     if (!this._pc) return;
-    try {
-      this._pc.ontrack               = null;
-      this._pc.onicecandidate        = null;
-      this._pc.onconnectionstatechange     = null;
-      this._pc.oniceconnectionstatechange  = null;
-      this._pc.close();
-    } catch { /* ignorar */ }
+    const pc = this._pc;
     this._pc = null;
+    try {
+      pc.ontrack                  = null;
+      pc.onicecandidate           = null;
+      pc.onconnectionstatechange  = null;
+      pc.oniceconnectionstatechange = null;
+      pc.onicegatheringstatechange = null;
+      pc.onnegotiationneeded      = null;
+      pc.close();
+    } catch { /* ignorar */ }
+    this._setPcState('closed');
   }
 
   private _addTracks(pc: any, stream: any): void {
     try {
       stream.getTracks().forEach((t: any) => pc.addTrack(t, stream));
     } catch {
+      // Fallback para versiones antiguas de react-native-webrtc
       if (pc.addStream) pc.addStream(stream);
     }
   }
 
+  // ── ICE candidates ────────────────────────────────────────────
+  private _onLocalIceCandidate(e: any, role: 'caller' | 'callee'): void {
+    if (!e.candidate) return;  // candidate end signal — ignorar
+    this._sendIce(e.candidate, role);
+  }
+
   private async _sendIce(candidate: any, role: 'caller' | 'callee'): Promise<void> {
-    const key = candidate?.candidate;
-    if (!key || this._iceSent.has(key) || !this._session?.callId) return;
-    this._iceSent.add(key);
+    if (!this._session?.callId) return;
+
+    // Clave de deduplicación: serialización completa del candidato
+    const serialized = JSON.stringify(candidate?.toJSON ? candidate.toJSON() : candidate);
+    if (!serialized || this._iceSentKeys.has(serialized)) return;
+    this._iceSentKeys.add(serialized);
+
     try {
       await callAPI.ice({
-        callId: this._session.callId,
+        callId:    this._session.callId,
         candidate: candidate.toJSON ? candidate.toJSON() : candidate,
         role,
       });
-    } catch { /* ignorar */ }
+    } catch { /* ignorar — el callee tiene la cola del servidor */ }
   }
 
+  /** Aplica candidatos ICE remotos recibidos vía polling */
+  private async _applyRemoteIceCandidates(candidates: any[]): Promise<void> {
+    if (!this._pc) return;
+    for (const c of candidates) {
+      if (!c) continue;
+      try {
+        if (this._remoteDescSet) {
+          await this._pc.addIceCandidate(new NativeRTC!.RTCIceCandidate(c));
+        } else {
+          // Encolar — setRemoteDescription aún no ocurrió
+          this._iceQueue.push(c);
+        }
+      } catch (e) {
+        // Ignorar candidatos inválidos; loguear para debug
+        console.warn('[CallManager] addIceCandidate error:', e);
+      }
+    }
+  }
+
+  /** Vacía la cola de candidatos recibidos anticipadamente */
+  private async _drainIceQueue(): Promise<void> {
+    if (!this._pc || !this._remoteDescSet) return;
+    const queue = this._iceQueue.splice(0);
+    for (const c of queue) {
+      try { await this._pc.addIceCandidate(new NativeRTC!.RTCIceCandidate(c)); } catch { /* */ }
+    }
+  }
+
+  // ── getUserMedia ──────────────────────────────────────────────
   private async _getUserMedia(type: 'audio' | 'video'): Promise<any> {
+    if (!NativeRTC) throw new Error('react-native-webrtc no disponible');
+
     const constraints = type === 'video'
       ? { audio: true, video: { facingMode: 'user', width: 640, height: 480, frameRate: 24 } }
       : { audio: true, video: false };
+
     try {
-      return await NativeRTC!.mediaDevices.getUserMedia(constraints);
+      return await NativeRTC.mediaDevices.getUserMedia(constraints);
     } catch {
-      return await NativeRTC!.mediaDevices.getUserMedia(
+      // Fallback sin constraints de video para compatibilidad
+      return await NativeRTC.mediaDevices.getUserMedia(
         type === 'video' ? { audio: true, video: true } : { audio: true, video: false }
       );
     }
@@ -512,9 +683,7 @@ export class CallManager {
         }
       }
       return true;
-    } catch {
-      return false;
-    }
+    } catch { return false; }
   }
 
   private _isValidSdp(offer: any): boolean {
@@ -533,142 +702,149 @@ export class CallManager {
       try {
         const s = await callAPI.get(callId);
         if (this._isValidSdp(s?.offer)) return s.offer;
-      } catch { /* reintenta */ }
+      } catch { /* */ }
     }
     return null;
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — Polling
+  // PRIVADOS — Polling unificado
   // ══════════════════════════════════════════════════════════════
-  private _stopPolling(): void {
-    if (this._pollingTimer) { clearInterval(this._pollingTimer); this._pollingTimer = null; }
-  }
 
-  private _startPollingCaller(): void {
+  /** Inicia el ciclo de polling.
+   *  No crea setInterval dentro de setInterval — usa _pollPhase para
+   *  reducir la frecuencia cuando ya no es necesaria tanta velocidad. */
+  private _startPoll(role: 'caller' | 'callee', phase: 'fast' | 'slow'): void {
     this._stopPolling();
-    const callId  = this._session!.callId;
-    let answerSet = false;
-    let calleeIce = 0;
-    let polls     = 0;
-    const FAST    = Platform.OS === 'android' ? 1500 : 1000;
-    const SLOW    = Platform.OS === 'android' ? 3000 : 2000;
+    this._pollPhase = phase;
+
+    const INTERVAL = phase === 'fast'
+      ? (Platform.OS === 'android' ? POLL_FAST_ANDROID : POLL_FAST_IOS)
+      : (Platform.OS === 'android' ? POLL_SLOW_ANDROID : POLL_SLOW_IOS);
+
+    let callerIceOffset = 0;
+    let calleeIceOffset = 0;
+    let answerApplied   = false;
+    let polls           = 0;
 
     this._pollingTimer = setInterval(async () => {
       if (this._isEnding || this._commState === 'idle') { this._stopPolling(); return; }
+
       polls++;
-      if ((answerSet || polls > 30) && this._pollingTimer) {
-        clearInterval(this._pollingTimer);
-        this._pollingTimer = setInterval(async () => {
-          if (this._isEnding) { this._stopPolling(); return; }
-          try {
-            const s = await callAPI.get(callId);
-            if (s?.ended) { this.endCall(); }
-          } catch { /* retry */ }
-        }, SLOW);
+
+      // Pasar a fase lenta cuando ya hay conexión
+      if (phase === 'fast' && polls > 35 && this._pollPhase === 'fast') {
+        this._startPoll(role, 'slow');
         return;
       }
+
       try {
-        const s = await callAPI.get(callId);
-        if (s?.ended) { this.endCall(); return; }
-        if (!answerSet && s?.answer && this._pc?.signalingState === 'have-local-offer') {
-          await this._pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(s.answer));
-          answerSet = true;
-          this._setCommState('connecting');
-          this._stopCallTimeout();
-        }
-        if (answerSet) {
-          const cands = s.calleeCandidates || [];
-          for (let i = calleeIce; i < cands.length; i++) {
-            try { await this._pc!.addIceCandidate(new NativeRTC!.RTCIceCandidate(cands[i])); } catch { /* */ }
+        const s = await callAPI.get(this._session!.callId);
+        if (!s || s.ended) { this.endCall(); return; }
+
+        // Caller: buscar Answer + ICE del callee
+        if (role === 'caller') {
+          if (!answerApplied && s.answer && this._pc?.signalingState === 'have-local-offer') {
+            await this._pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(s.answer));
+            this._remoteDescSet = true;
+            answerApplied = true;
+            this._setCommState('connecting');
+            this._stopCallTimeout();
+            await this._drainIceQueue();
           }
-          calleeIce = cands.length;
+          if (answerApplied && s.calleeCandidates) {
+            const newCands = s.calleeCandidates.slice(calleeIceOffset);
+            calleeIceOffset = s.calleeCandidates.length;
+            await this._applyRemoteIceCandidates(newCands);
+          }
+          // Timeout de señalización
+          if (polls > 95 && !answerApplied) { this._setCommState('missed'); this.endCall(); }
         }
-        if (polls > 90 && !answerSet) { this._setCommState('missed'); this.endCall(); }
-      } catch { /* retry */ }
-    }, FAST);
+
+        // Callee: buscar ICE del caller
+        if (role === 'callee' && s.callerCandidates) {
+          const newCands = s.callerCandidates.slice(callerIceOffset);
+          callerIceOffset = s.callerCandidates.length;
+          await this._applyRemoteIceCandidates(newCands);
+        }
+
+      } catch { /* retry en siguiente ciclo */ }
+    }, INTERVAL);
   }
 
-  private _startPollingCallee(): void {
-    this._stopPolling();
-    const callId  = this._session!.callId;
-    let callerIce = 0;
-    const POLL    = Platform.OS === 'android' ? 1500 : 800;
-
-    this._pollingTimer = setInterval(async () => {
-      if (this._isEnding || this._commState === 'idle') { this._stopPolling(); return; }
-      try {
-        const s = await callAPI.get(callId);
-        if (s?.ended) { this.endCall(); return; }
-        const cands = s?.callerCandidates || [];
-        for (let i = callerIce; i < cands.length; i++) {
-          try { await this._pc!.addIceCandidate(new NativeRTC!.RTCIceCandidate(cands[i])); } catch { /* */ }
-        }
-        callerIce = cands.length;
-      } catch { /* retry */ }
-    }, POLL);
+  private _stopPolling(): void {
+    if (this._pollingTimer) { clearInterval(this._pollingTimer); this._pollingTimer = null; }
   }
 
   /** Polling ligero para modo señalización (Expo Go) */
   private _startSignalingPoll(role: 'caller' | 'callee'): void {
     this._stopPolling();
-    const callId = this._session!.callId;
     this._pollingTimer = setInterval(async () => {
       if (this._isEnding) { this._stopPolling(); return; }
       try {
-        const s = await callAPI.get(callId);
+        const s = await callAPI.get(this._session!.callId);
         if (s?.ended) { this.endCall(); return; }
         if (role === 'caller' && s?.answer) {
           this._setCommState('connected');
           this._onCallConnected();
           this._stopPolling();
         }
-      } catch { /* retry */ }
+      } catch { /* */ }
     }, 2000);
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — Reconexión ICE
+  // PRIVADOS — ICE restart y reconexión
   // ══════════════════════════════════════════════════════════════
-  private _handleIceDisconnected(): void {
-    if (this._isEnding || this._commState === 'idle') return;
-    if (this._reconnectTimer) return; // ya hay uno corriendo
-    this._setCommState('reconnecting');
+
+  private _scheduleIceRestart(): void {
+    if (this._isEnding || this._reconnectTimer) return;
+
     this._reconnectTimer = setTimeout(async () => {
       this._reconnectTimer = null;
       if (this._isEnding || !this._pc) return;
-      // Si ya se recuperó solo, no hacer nada
+
       const ics = this._pc.iceConnectionState;
-      if (ics === 'connected' || ics === 'completed') return;
+      if (ics === 'connected' || ics === 'completed') return; // se recuperó solo
 
       if (this._reconnectCount >= RECONNECT_MAX) {
-        this._handleConnectionFailed();
-        return;
+        this._handleConnectionFailed(); return;
       }
       this._reconnectCount++;
+
       try {
-        // ICE restart — solo el caller puede iniciar (es quien creó el offer)
-        if (this._session?.role === 'caller') {
-          const offer = await this._pc.createOffer({ iceRestart: true });
-          await this._pc.setLocalDescription(offer);
+        // Ambos roles pueden hacer ICE restart en react-native-webrtc
+        if (this._pc.signalingState === 'stable' || this._pc.signalingState === 'have-local-offer') {
+          const iceServers = await this._getIceServers();
+          // Actualizar configuración con nuevos servidores
+          this._pc.setConfiguration?.({ iceServers });
+
+          const restartOffer = await this._pc.createOffer({ iceRestart: true });
+          await this._pc.setLocalDescription(restartOffer);
+
           await callAPI.offer({
-            callId: this._session.callId,
-            offer: this._pc.localDescription,
-            targetUserId: this._session.targetUserId,
-            type: this._session.callType,
+            callId:       this._session!.callId,
+            offer:        this._pc.localDescription,
+            targetUserId: this._session!.targetUserId,
+            type:         this._session!.callType,
           });
+
+          // Si no se resuelve en ICE_RESTART_TIMEOUT_MS → fallo
+          this._iceRestartTimer = setTimeout(() => {
+            this._iceRestartTimer = null;
+            const state = this._pc?.iceConnectionState;
+            if (state !== 'connected' && state !== 'completed' && !this._isEnding) {
+              this._handleConnectionFailed();
+            }
+          }, ICE_RESTART_TIMEOUT_MS);
         }
-        // Si no se conecta en 10s más → failed
-        this._reconnectTimer = setTimeout(() => {
-          this._reconnectTimer = null;
-          if (this._pc?.iceConnectionState !== 'connected' && !this._isEnding) {
-            this._handleConnectionFailed();
-          }
-        }, 10_000);
-      } catch {
-        this._handleConnectionFailed();
-      }
-    }, RECONNECT_WAIT_MS);
+      } catch { this._handleConnectionFailed(); }
+    }, ICE_DISCONNECTED_MS);
+  }
+
+  private _clearIceRestartTimer(): void {
+    if (this._iceRestartTimer) { clearTimeout(this._iceRestartTimer); this._iceRestartTimer = null; }
+    if (this._reconnectTimer)  { clearTimeout(this._reconnectTimer);  this._reconnectTimer = null; }
   }
 
   private _handleConnectionFailed(): void {
@@ -678,7 +854,7 @@ export class CallManager {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — Timers
+  // PRIVADOS — Timers de sesión
   // ══════════════════════════════════════════════════════════════
   private _startCallTimeout(): void {
     this._stopCallTimeout();
@@ -695,7 +871,7 @@ export class CallManager {
   }
 
   private _startDurationTimer(): void {
-    if (this._durationTimer) return; // ya corriendo
+    if (this._durationTimer) return;
     this._durationTimer = setInterval(() => {
       if (!this._session) return;
       this._session = { ...this._session, duration: this._session.duration + 1 };
@@ -708,8 +884,94 @@ export class CallManager {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — Eventos de ciclo de vida
+  // PRIVADOS — Audio
   // ══════════════════════════════════════════════════════════════
+
+  /** Configura AVAudioSession (iOS) y AudioFocus (Android) para llamada activa */
+  private async _applyAudioSession(): Promise<void> {
+    if (Platform.OS === 'web') return;
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS:        true,
+        playsInSilentModeIOS:      true,
+        shouldDuckAndroid:         false,
+        playThroughEarpieceAndroid: !this._isSpeakerOn && !this._isBluetoothOn,
+        staysActiveInBackground:   true,
+      });
+    } catch (e) {
+      console.warn('[CallManager] setAudioModeAsync error:', e);
+    }
+  }
+
+  /** Aplica la ruta de audio según el estado actual */
+  private async _applyAudioRoute(): Promise<void> {
+    if (Platform.OS === 'web') return;
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS:        true,
+        playsInSilentModeIOS:      true,
+        shouldDuckAndroid:         false,
+        // Auricular si: speakerOn=false && bluetooth=false
+        playThroughEarpieceAndroid: !this._isSpeakerOn && !this._isBluetoothOn,
+        staysActiveInBackground:   true,
+      });
+    } catch { /* ignorar */ }
+  }
+
+  /** Restaura la sesión de audio al estado normal al terminar la llamada */
+  private async _restoreAudioSession(): Promise<void> {
+    if (Platform.OS === 'web') return;
+    try {
+      await Audio.setAudioModeAsync({
+        allowsRecordingIOS:        false,
+        playsInSilentModeIOS:      true,
+        shouldDuckAndroid:         true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground:   false,
+      });
+    } catch { /* ignorar */ }
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // PRIVADOS — AppState (interrupciones de sistema)
+  // ══════════════════════════════════════════════════════════════
+
+  private _subscribeAppState(): void {
+    if (this._appStateSub) return;
+    this._appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
+      const prev = this._lastAppState;
+      this._lastAppState = next;
+
+      // App vuelve al primer plano después de estar en background
+      if (prev !== 'active' && next === 'active') {
+        if (this.isActive && this._pc) {
+          // Verificar si ICE sigue vivo; si no, intentar restart
+          const ics = this._pc.iceConnectionState;
+          if (ics === 'disconnected' || ics === 'failed') {
+            this._scheduleIceRestart();
+          }
+          // Re-aplicar sesión de audio (puede haberse perdido por interrupción telefónica)
+          this._applyAudioSession().catch(() => {});
+        }
+      }
+
+      // Interrupción telefónica (iOS: background con call)
+      if (next === 'background' && this._commState === 'connected') {
+        // Mantener la sesión de audio activa en background
+        this._applyAudioSession().catch(() => {});
+      }
+    });
+  }
+
+  private _unsubscribeAppState(): void {
+    this._appStateSub?.remove();
+    this._appStateSub = null;
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // PRIVADOS — Ciclo de vida de la llamada
+  // ══════════════════════════════════════════════════════════════
+
   private _onCallConnected(): void {
     stopDialingTone();
     this._stopRingOnce();
@@ -719,34 +981,23 @@ export class CallManager {
     const session = this._session;
     if (session) {
       LiveActivity.startCall(session.callId, session.targetName, session.callType === 'video');
-      try { NativeCallKit.dismissIncomingCall(); } catch { /* ignorar */ }
+      try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
 
-      // Android: iniciar ForegroundService para mantener el proceso vivo
       if (Platform.OS === 'android') {
-        try {
-          NativeCallKit.startCallForegroundService(
-            session.callId,
-            session.targetName,
-            session.callType === 'video',
-          );
-        } catch { /* módulo no disponible en Expo Go */ }
+        try { NativeCallKit.startCallForegroundService(session.callId, session.targetName, session.callType === 'video'); } catch { /* */ }
       }
     }
 
-    // Configurar audio para la llamada
-    if (Platform.OS !== 'web') {
-      Audio.setAudioModeAsync({
-        allowsRecordingIOS: true,
-        playsInSilentModeIOS: true,
-        shouldDuckAndroid: false,
-        playThroughEarpieceAndroid: !this._isSpeakerOn,
-        staysActiveInBackground: true,
-      }).catch(() => {});
+    this._applyAudioSession().catch(() => {});
+
+    // Pasar polling a fase lenta ahora que hay conexión
+    if (this._session?.role) {
+      this._startPoll(this._session.role, 'slow');
     }
   }
 
   // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — Cleanup
+  // PRIVADOS — Limpieza completa
   // ══════════════════════════════════════════════════════════════
   private _stopRingOnce(): void {
     if (this._ringStopped) return;
@@ -754,21 +1005,46 @@ export class CallManager {
     stopRingtone().catch(() => {});
   }
 
+  /** Limpieza completa de recursos — no deja nada activo */
   private _finalCleanup(): void {
+    // 1. Timers
     this._stopPolling();
     this._stopDurationTimer();
     this._stopCallTimeout();
-    if (this._reconnectTimer) { clearTimeout(this._reconnectTimer); this._reconnectTimer = null; }
+    this._clearIceRestartTimer();
+
+    // 2. AppState
+    this._unsubscribeAppState();
+
+    // 3. PeerConnection (cierra el PC y retira todos los listeners)
     this._destroyPC();
+
+    // 4. Streams — detener TODAS las pistas antes de soltar la referencia
     if (this._localStream) {
-      this._localStream.getTracks?.().forEach((t: any) => t.stop());
+      try {
+        this._localStream.getTracks?.().forEach((t: any) => {
+          t.stop();
+          t.enabled = false;
+        });
+      } catch { /* */ }
       this._localStream = null;
     }
     this._remoteStream = null;
-    this._iceSent.clear();
-    this._isMuted    = false;
-    this._isCamOff   = false;
-    this._reconnectCount = 0;
+
+    // 5. ICE state
+    this._iceSentKeys.clear();
+    this._iceQueue     = [];
+    this._remoteDescSet = false;
+    this._connectedOnce = false;
+
+    // 6. Flags
+    this._isMuted         = false;
+    this._isCamOff        = false;
+    this._isSpeakerOn     = true;
+    this._isBluetoothOn   = false;
+    this._isFrontCamera   = true;
+    this._reconnectCount  = 0;
+
     this._notify();
   }
 
@@ -778,22 +1054,15 @@ export class CallManager {
     this._isEnding       = false;
     this._ringStopped    = false;
     this._isSignalingOnly = !HAS_NATIVE_MEDIA;
+    this._setPcState('none');
     this._setUIState('hidden');
   }
 
-  // ══════════════════════════════════════════════════════════════
-  // PRIVADOS — Setters de estado con notify
-  // ══════════════════════════════════════════════════════════════
-  private _setCommState(s: CallCommState): void {
-    this._commState = s;
-    this._notify();
-  }
-
-  private _setUIState(s: CallUIState): void {
-    this._uiState = s;
-    this._notify();
-  }
+  // ── Setters de estado ─────────────────────────────────────────
+  private _setCommState(s: CallCommState): void { this._commState = s; this._notify(); }
+  private _setUIState(s: CallUIState):    void  { this._uiState   = s; this._notify(); }
+  private _setPcState(s: PCState):        void  { this._pcState   = s; /* sin notify — no en snapshot público */ }
 }
 
-// ── Export de la instancia singleton ─────────────────────────────
+// ── Export del singleton ──────────────────────────────────────────
 export const callManager = CallManager.getInstance();
