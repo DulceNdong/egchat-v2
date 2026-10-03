@@ -1410,16 +1410,13 @@ export default function StoriesScreen() {
       <View style={[st.tabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
         {([
           { id: 'estados'   as StoryTab, label: 'Estados'  },
-          { id: 'streaming' as StoryTab, label: 'Vivos'    },
           { id: 'canales'   as StoryTab, label: 'Canales Dulce' },
-          { id: 'momentos'  as StoryTab, label: 'Momentos' },
         ]).map(t => (
           <TouchableOpacity
             key={t.id}
             style={[st.tab, activeTab === t.id && st.tabActive]}
             onPress={() => {
               setActiveTab(t.id);
-              if (t.id === 'momentos' && momentPosts.length === 0) loadMoments();
             }}
             activeOpacity={0.8}
             accessibilityRole="tab"
@@ -1432,6 +1429,34 @@ export default function StoriesScreen() {
           </TouchableOpacity>
         ))}
       </View>
+
+      {/* SUB-TABS: solo visible cuando activeTab === 'estados' */}
+      {activeTab === 'estados' && (
+        <View style={[st.subTabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
+          {([
+            { id: 'sub_estados'  as EstadoSubTab, label: 'Estados'  },
+            { id: 'sub_vivos'    as EstadoSubTab, label: 'Vivos'    },
+            { id: 'sub_momentos' as EstadoSubTab, label: 'Momentos' },
+          ]).map(t => (
+            <TouchableOpacity
+              key={t.id}
+              style={[st.tab, activeSubTab === t.id && st.tabActive]}
+              onPress={() => {
+                setActiveSubTab(t.id);
+                if (t.id === 'sub_momentos' && momentPosts.length === 0) loadMoments();
+              }}
+              activeOpacity={0.8}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: activeSubTab === t.id }}
+            >
+              <Text style={[st.tabText, { color: C.textTertiary }, activeSubTab === t.id && { color: C.textPrimary, fontWeight: '700' }]}>
+                {t.label}
+              </Text>
+              {activeSubTab === t.id && <View style={[st.tabIndicator, { backgroundColor: BRAND }]} />}
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* ── TAB: ESTADOS ─────────────────────────────────────── */}
       {activeTab === 'estados' && (
