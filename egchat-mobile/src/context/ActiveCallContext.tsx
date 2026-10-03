@@ -27,15 +27,17 @@ interface ActiveCallContextType {
 
   // Acciones de UI
   setUIState: (state: CallUIState) => void;
-  setPip: (pip: boolean) => void;          // shortcut: true = minimized, false = full
+  setPip: (pip: boolean) => void;
   expandCall: () => void;
   minimizeCall: () => void;
 
   // Acciones del manager (delegadas directamente)
-  endCall:       () => Promise<void>;
-  toggleMute:    () => void;
-  toggleCamera:  () => void;
-  toggleSpeaker: () => Promise<void>;
+  endCall:        () => Promise<void>;
+  toggleMute:     () => void;
+  toggleCamera:   () => void;
+  switchCamera:   () => Promise<void>;
+  toggleSpeaker:  () => Promise<void>;
+  toggleBluetooth: () => Promise<void>;
 }
 
 // ── Contexto ──────────────────────────────────────────────────────
