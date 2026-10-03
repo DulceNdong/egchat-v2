@@ -46,6 +46,14 @@ export default function RootRedirect() {
             <span className="font-semibold">Portal Empresa</span>
             <span className="text-xs text-slate-400">Monitorización AML</span>
           </a>
+          <a
+            href="/monetizacion/login"
+            className="flex flex-col items-center gap-2 px-8 py-6 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 text-white transition-colors border border-emerald-500/30"
+          >
+            <span className="text-3xl">💰</span>
+            <span className="font-semibold">Portal Monetización</span>
+            <span className="text-xs text-slate-400">Revenue & finanzas</span>
+          </a>
         </div>
       </div>
     </div>
