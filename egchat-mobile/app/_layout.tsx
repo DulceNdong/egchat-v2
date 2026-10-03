@@ -664,30 +664,15 @@ export default function RootLayout() {
                     }
                   },
                   (callData) => {
-                    // Registrar en campanita cuando llega llamada con app abierta
-                    addNotification({
-                      type: 'call',
-                      title: `📞 Llamada de ${callData.callerName}`,
-                      body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
-                      chatId: undefined,
-                    });
-                    // Mostrar overlay de llamada entrante (funciona aunque la app esté en cualquier pantalla)
-                    setIncomingCall({
-                      callId: callData.callId,
-                      callerName: callData.callerName,
+                    // Punto de entrada único: CallManager + overlay
+                    // NO hacer router.push aquí — el overlay navega cuando el usuario acepta
+                    handleIncomingCall({
+                      callId:       callData.callId,
+                      callerName:   callData.callerName,
                       callerAvatar: callData.callerAvatar || '',
-                      callType: callData.callType || 'audio',
-                      offer: callData.offer,
+                      callType:     callData.callType || 'audio',
+                      offer:        callData.offer,
                     });
-                    // También intentar navegar — por si el overlay no monta a tiempo
-                    setTimeout(() => {
-                      router.push({ pathname: '/call/[callId]', params: {
-                        callId: callData.callId, targetName: callData.callerName,
-                        targetAvatar: callData.callerAvatar || '',
-                        callType: callData.callType || 'audio', role: 'callee',
-                        offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                      }} as any);
-                    }, 100);
                   },
                 );
 
