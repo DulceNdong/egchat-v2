@@ -1356,6 +1356,8 @@ export class CallManager {
 
   private _subscribeAppState(): void {
     if (this._appStateSub) return;
+    // FIX E — iniciar listener de red junto con AppState
+    this._subscribeNetwork();
     this._appStateSub = AppState.addEventListener('change', (next: AppStateStatus) => {
       const prev = this._lastAppState;
       this._lastAppState = next;
