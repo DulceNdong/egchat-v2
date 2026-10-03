@@ -361,7 +361,8 @@ export class CallManager {
     const { callId } = this._session;
     this._stopRingOnce();
     this._setCommState('rejected');
-    try { await callAPI.end(callId); } catch { /* */ }
+    // RPC reject_call es idempotente — seguro llamar varias veces
+    try { await callAPI.reject(callId); } catch { /* ignorar */ }
     try { NativeCallKit.rejectCall(callId); } catch { /* */ }
     this._finalCleanup();
     this._setCommState('idle');
@@ -372,7 +373,8 @@ export class CallManager {
     const { callId } = this._session;
     stopDialingTone();
     this._setCommState('ended');
-    try { await callAPI.end(callId); } catch { /* */ }
+    // RPC cancel_call es idempotente
+    try { await callAPI.cancel(callId); } catch { /* */ }
     try { NativeCallKit.endCall(callId); } catch { /* */ }
     this._finalCleanup();
     this._setCommState('idle');
