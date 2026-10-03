@@ -7,6 +7,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, Building2, Car, Ship,
   Wallet, Users, Briefcase, LogOut, Sun, Moon,
+  Store,
 } from 'lucide-react';
 import { useAuth } from '@/core/auth/AuthContext';
 import { useTheme } from '@/core/theme/ThemeContext';
@@ -19,6 +20,7 @@ interface MonetizacionLayoutProps {
 
 const NAV_ITEMS = [
   { to: '/monetizacion/home',      icon: LayoutDashboard, label: 'Dashboard'         },
+  { to: '/monetizacion/servicios', icon: Store,           label: 'Servicios'         },
   { to: '/monetizacion/empresas',  icon: Building2,       label: 'Empresas'          },
   { to: '/monetizacion/taxis',     icon: Car,             label: 'Taxis'             },
   { to: '/monetizacion/barcos',    icon: Ship,            label: 'Barcos'            },
