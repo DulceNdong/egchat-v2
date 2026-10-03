@@ -128,21 +128,10 @@ export function useWebRTC() {
   }, []);
 
   return {
-    // Estado
-    callState,
-    callType,
-    isMuted,
-    isCamOff,
-    isSignalingOnly,
-    hasNativeMedia: HAS_NATIVE_MEDIA,
-    localStream,
-    remoteStream,
-    // Acciones
-    startCall,
-    answerCall,
-    endCall,
-    toggleMute,
-    toggleCamera,
-    pollIncoming,
+    callState, callType, isMuted, isCamOff, isSignalingOnly,
+    hasNativeMedia: HAS_NATIVE_MEDIA, localStream, remoteStream,
+    startCall, answerCall, endCall, toggleMute, toggleCamera, pollIncoming,
+    switchCamera:    () => callManager.switchCamera(),
+    toggleBluetooth: () => callManager.toggleBluetooth(),
   };
 }
