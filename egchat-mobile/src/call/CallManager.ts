@@ -335,6 +335,11 @@ export class CallManager {
     this._stopRingOnce();
     LiveActivity.endCall();
 
+    // Android: parar ForegroundService
+    if (Platform.OS === 'android') {
+      try { NativeCallKit.stopCallForegroundService(); } catch { /* ignorar */ }
+    }
+
     if (session?.callId) {
       try { NativeCallKit.endCall(session.callId); } catch { /* ignorar */ }
       try { await callAPI.end(session.callId); } catch { /* ignorar */ }
@@ -343,7 +348,6 @@ export class CallManager {
     this._setCommState('ended');
     this._finalCleanup();
 
-    // Pequeño delay para que la UI pueda mostrar "Llamada finalizada"
     setTimeout(() => {
       this._setCommState('idle');
       this._session = null;
