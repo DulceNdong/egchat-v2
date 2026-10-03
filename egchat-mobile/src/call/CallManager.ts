@@ -1169,8 +1169,11 @@ export class CallManager {
     this._stopCallTimeout();
     this._clearIceRestartTimer();
 
-    // 2. AppState
+    // 2. AppState y listeners nativos
     this._unsubscribeAppState();
+
+    // 3. Realtime
+    this._unsubscribeRealtime();
 
     // 3. PeerConnection (cierra el PC y retira todos los listeners)
     this._destroyPC();
