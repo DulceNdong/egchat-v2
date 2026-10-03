@@ -265,62 +265,135 @@ const ArrowUpRight = ({ color, size = 12 }: { color: string; size?: number }) =>
   </Svg>
 );
 
+// ── CallCard helpers ────────────────────────────────────────────────
+
+/** Parsea message.metadata (string JSON u objeto) de forma segura. */
+function _parseCallMeta(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  try {
+    const obj = typeof raw === 'string' ? JSON.parse(raw) : raw;
+    if (obj && typeof obj === 'object' && 'callId' in (obj as object)) {
+      return obj as Record<string, unknown>;
+    }
+  } catch { /* */ }
+  return null;
+}
+
+/** Formatea segundos en "m:ss" o "Xs". */
+function _fmtDur(s: number | null | undefined): string {
+  if (!s || s <= 0) return '';
+  if (s < 60) return `${s}s`;
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+}
+
 const CallCard = ({ message, isOwn, onCallback }: {
   message: ChatMessage; isOwn: boolean; onCallback?: () => void;
 }) => {
-  const txt = message.text || '';
-  const isVideo   = txt.includes('📹') || txt.toLowerCase().includes('video');
-  const isPerdida = txt.toLowerCase().includes('perdida') || txt.toLowerCase().includes('missed');
-  const isSaliente= txt.toLowerCase().includes('saliente') || txt.toLowerCase().includes('outgoing') || isOwn;
-  const isRecibida= !isPerdida && !isSaliente;
+  // ── 1. Intentar datos estructurados desde metadata ──
+  const meta = _parseCallMeta((message as any).metadata);
 
-  const durMatch = txt.match(/\((\d+:\d+)\)/);
-  const duration = durMatch ? durMatch[1] : null;
+  let isVideo    = false;
+  let isPerdida  = false;
+  let isRejected = false;
+  let isFailed   = false;
+  let isCancelled= false;
+  let isSaliente = isOwn;
+  let durStr     = '';
 
-  // Colores del icono circular: verde = completada, rojo = perdida, azul = video perdida
-  const iconBg   = isPerdida ? '#ef4444' : isVideo ? '#3b82f6' : '#22c55e';
-  const statusColor = isPerdida ? '#ef4444' : isRecibida ? '#22c55e' : '#6b7280';
+  if (meta) {
+    // Datos ricos desde metadata JSONB
+    isVideo     = meta.callType === 'video';
+    const st    = (meta.status as string) || 'ended';
+    const reason= (meta.end_reason as string) || '';
+    isPerdida   = st === 'missed';
+    isRejected  = st === 'rejected';
+    isFailed    = st === 'failed';
+    isCancelled = reason === 'cancelled_by_caller';
+    isSaliente  = isOwn;  // isOwn sigue siendo el proxy más fiable en el chat
+    durStr      = _fmtDur(meta.duration_seconds as number | null);
+  } else {
+    // Fallback legacy: parsear texto con emoji/palabras
+    const txt   = message.text || '';
+    isVideo     = txt.includes('📹') || txt.toLowerCase().includes('video');
+    isPerdida   = txt.toLowerCase().includes('perdida') || txt.toLowerCase().includes('missed');
+    isSaliente  = txt.toLowerCase().includes('saliente') || txt.toLowerCase().includes('outgoing') || isOwn;
+    const m     = txt.match(/\((\d+:\d+)\)/);
+    durStr      = m ? m[1] : '';
+  }
 
-  const title = isVideo
-    ? (isPerdida ? 'Llamada de vídeo' : 'Llamada de vídeo')
-    : 'Llamada de voz';
+  const isCompleted = !isPerdida && !isRejected && !isFailed && !isCancelled;
+
+  // ── 2. Paleta visual por estado ──
+  // Verde = completada | Rojo = perdida/fallida | Naranja = rechazada/cancelada | Azul = vídeo
+  const iconBg: string = isPerdida || isFailed
+    ? '#ef4444'
+    : isRejected || isCancelled
+      ? '#f97316'
+      : isVideo
+        ? '#3b82f6'
+        : '#22c55e';
+
+  const statusColor: string = isPerdida || isFailed
+    ? '#ef4444'
+    : isRejected || isCancelled
+      ? '#f97316'
+      : isCompleted
+        ? '#22c55e'
+        : '#6b7280';
+
+  // ── 3. Etiquetas ──
+  const title = isVideo ? 'Llamada de vídeo' : 'Llamada de voz';
 
   const statusLabel = isPerdida
     ? 'Perdida'
-    : isSaliente
-      ? (duration ? 'Tú llamaste' : 'Saliente')
-      : (duration ? 'Recibida' : 'Recibida');
+    : isRejected
+      ? 'Rechazada'
+      : isFailed
+        ? 'No conectó'
+        : isCancelled
+          ? 'Cancelada'
+          : isSaliente
+            ? (durStr ? 'Tú llamaste' : 'Saliente')
+            : (durStr ? 'Recibida'   : 'Recibida');
+
+  const canCallback = (isPerdida || isRejected) && !!onCallback;
 
   return (
     <TouchableOpacity
-      onPress={isPerdida && onCallback ? onCallback : undefined}
-      activeOpacity={isPerdida && onCallback ? 0.7 : 1}
+      onPress={canCallback ? onCallback : undefined}
+      activeOpacity={canCallback ? 0.7 : 1}
       style={cl.card}
     >
-      {/* Icono circular grande */}
+      {/* Icono circular con flecha de dirección */}
       <View style={[cl.iconCircle, { backgroundColor: iconBg }]}>
         {isVideo
-          ? <VideoIcon color="#fff" size={26} />
-          : <PhoneIcon color="#fff" size={26} />}
+          ? <VideoIcon color="#fff" size={24} />
+          : <PhoneIcon color="#fff" size={24} />}
+        {/* Indicador de dirección en la esquina */}
+        <View style={[cl.dirBadge, { backgroundColor: iconBg }]}>
+          {isSaliente
+            ? <ArrowUpRight   color="#fff" size={9} />
+            : <ArrowDownLeft  color="#fff" size={9} />}
+        </View>
       </View>
 
       {/* Texto */}
       <View style={cl.info}>
         <Text style={cl.title}>{title}</Text>
         <Text style={[cl.status, { color: statusColor }]}>{statusLabel}</Text>
-        {duration && (
+        {durStr !== '' && (
           <View style={cl.durRow}>
             <ClockIcon size={11} color="#9ca3af" />
-            <Text style={cl.durText}>{duration}</Text>
+            <Text style={cl.durText}>{durStr}</Text>
           </View>
         )}
-        {isPerdida && (
+        {canCallback && (
           <Text style={cl.callbackHint}>Toca para volver a llamar</Text>
         )}
       </View>
 
-      {/* Flecha derecha en perdidas */}
-      {isPerdida && (
+      {/* Flecha "devolver" en perdidas/rechazadas */}
+      {canCallback && (
         <View style={cl.arrow}>
           <ArrowUpRight color="#9ca3af" size={16} />
         </View>
@@ -352,6 +425,19 @@ const cl = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     flexShrink: 0,
+    position: 'relative',
+  },
+  dirBadge: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1.5,
+    borderColor: '#fff',
   },
   info: { flex: 1, gap: 2 },
   title: { fontSize: 14, fontWeight: '700', color: '#111827', lineHeight: 18 },
