@@ -659,10 +659,12 @@ export default function StoriesScreen() {
   const [showMusicPicker, setShowMusicPicker] = useState(false);
   const [viewingGroup, setViewingGroup] = useState<number | null>(null);
   const [activeTab,    setActiveTab]    = useState<StoryTab>('estados');
+  const [activeSubTab, setActiveSubTab] = useState<EstadoSubTab>('sub_estados');
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
   const [myStoryMenu,  setMyStoryMenu]  = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [showLive,     setShowLive]     = useState(false);
+  const [showStoriesManager, setShowStoriesManager] = useState(false);
   // ── Momentos state ────────────────────────────────────────────
   const [momentPosts,     setMomentPosts]     = useState<MomentPost[]>([]);
   const [momentLoading,   setMomentLoading]   = useState(false);
