@@ -1538,7 +1538,7 @@ export default function StoriesScreen() {
       )}
 
       {/* ── TAB: MOMENTOS ────────────────────────────────────── */}
-      {activeTab === 'momentos' && (
+      {activeTab === 'estados' && activeSubTab === 'sub_momentos' && (
         momentLoading ? (
           <View style={[st.center, { backgroundColor: C.bgPrimary }]}>
             <ActivityIndicator size="large" color={BRAND} />
