@@ -1079,10 +1079,12 @@ export class CallManager {
   private _clearIceRestartTimer(): void {
     if (this._iceRestartTimer) { clearTimeout(this._iceRestartTimer); this._iceRestartTimer = null; }
     if (this._reconnectTimer)  { clearTimeout(this._reconnectTimer);  this._reconnectTimer = null; }
+    this._iceRestartPending = false;
   }
 
   private _handleConnectionFailed(): void {
     if (this._isEnding) return;
+    this._iceRestartPending = false;
     this._setCommState('failed');
     this.endCall();
   }
