@@ -195,7 +195,6 @@ export default function CallScreen() {
 
   // ── Estado local UI ───────────────────────────────────────────
   const [duration,       setDuration]       = useState(0);
-  const [speakerOn,      setSpeakerOn]      = useState(true);
   const [activeFilter,   setActiveFilter]   = useState<FilterId>('none');
   const [showFilters,    setShowFilters]    = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
