@@ -19,11 +19,7 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
 
-    // ── Notificaciones push ───────────────────────────────────────
-    UNUserNotificationCenter.current().delegate = self
-    UNUserNotificationCenter.current().requestAuthorization(
-      options: [.alert, .badge, .sound, .criticalAlert]
-    ) { _, _ in }
+    // ── Notificaciones push — expo-notifications lo gestiona ─────────
     application.registerForRemoteNotifications()
 
     // ── VoIP PushKit ──────────────────────────────────────────────
