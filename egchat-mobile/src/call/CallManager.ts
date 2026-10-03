@@ -712,13 +712,21 @@ export class CallManager {
     this._stopCallTimeout();
     this._startDurationTimer();
 
-    if (this._session) {
-      LiveActivity.startCall(
-        this._session.callId,
-        this._session.targetName,
-        this._session.callType === 'video',
-      );
+    const session = this._session;
+    if (session) {
+      LiveActivity.startCall(session.callId, session.targetName, session.callType === 'video');
       try { NativeCallKit.dismissIncomingCall(); } catch { /* ignorar */ }
+
+      // Android: iniciar ForegroundService para mantener el proceso vivo
+      if (Platform.OS === 'android') {
+        try {
+          NativeCallKit.startCallForegroundService(
+            session.callId,
+            session.targetName,
+            session.callType === 'video',
+          );
+        } catch { /* módulo no disponible en Expo Go */ }
+      }
     }
 
     // Configurar audio para la llamada
