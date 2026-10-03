@@ -23,6 +23,7 @@ import CompanyReports    from '@/apps/company/pages/CompanyReports';
 // Monetización pages
 import MonetizacionLogin    from '@/apps/monetizacion/pages/MonetizacionLogin';
 import MonetizacionHome     from '@/apps/monetizacion/pages/MonetizacionHome';
+import MonetizacionServicios from '@/apps/monetizacion/pages/MonetizacionServicios';
 import MonetizacionEmpresas from '@/apps/monetizacion/pages/MonetizacionEmpresas';
 import MonetizacionTaxis    from '@/apps/monetizacion/pages/MonetizacionTaxis';
 import MonetizacionBarcos   from '@/apps/monetizacion/pages/MonetizacionBarcos';
