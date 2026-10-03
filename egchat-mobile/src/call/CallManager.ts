@@ -532,7 +532,7 @@ export class CallManager {
       try { await callAPI.end(session.callId, reason); } catch { /* */ }
       // Guardar historial en chat
       if (session.chatId) {
-        const myId     = SessionManager.getInstance().getUser()?.id ?? '';
+        const myId     = session.myUserId ?? '';
         const callerId = session.role === 'caller' ? myId : session.targetUserId;
         const calleeId = session.role === 'caller' ? session.targetUserId : myId;
         const finalStatus = reason === 'ice_failed' ? 'failed' : reason === 'missed' ? 'missed' : 'ended';
