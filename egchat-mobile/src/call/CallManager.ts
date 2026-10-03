@@ -29,6 +29,11 @@ import { callAPI } from '../api';
 import { stopRingtone, stopDialingTone, startRingtone, startDialingTone } from '../hooks/useSounds';
 import { NativeCallKit } from '../native/CallKit';
 import { LiveActivity } from '../native/LiveActivity';
+import {
+  subscribeToCallState,
+  isTerminal,
+  type CallStatus,
+} from './callSupabase';
 import type {
   CallCommState,
   CallUIState,

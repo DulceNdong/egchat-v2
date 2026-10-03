@@ -566,22 +566,30 @@ export const contactsAPI = {
 // LLAMADAS (señalización WebRTC)
 // ══════════════════════════════════════════════════════════════════
 export const callAPI = {
-  offer: (data: { callId: string; offer: object; targetUserId: string; type: string; groupId?: string }) =>
-    post<{ ok: boolean }>('/api/call/offer', data),
+  offer: (data: { callId: string; offer: object; targetUserId: string; type: string; groupId?: string; chatId?: string }) =>
+    post<{ ok: boolean; idempotent?: boolean }>('/api/call/offer', data),
   answer: (data: { callId: string; answer: object }) =>
-    post<{ ok: boolean }>('/api/call/answer', data),
-  get: (callId: string) => get<any>(`/api/call/${callId}`),
-  end: (callId: string) => del<{ ok: boolean }>(`/api/call/${callId}`),
+    post<{ ok: boolean; idempotent?: boolean }>('/api/call/answer', data),
+  get:    (callId: string) => get<any>(`/api/call/${callId}`),
+  end:    (callId: string, reason?: string) =>
+    del<{ ok: boolean; idempotent?: boolean; duration_seconds?: number }>(
+      `/api/call/${callId}${reason ? '?reason=' + reason : ''}`
+    ),
+  /** Rechazar llamada (callee, antes de aceptar) */
+  reject: (callId: string) =>
+    post<{ ok: boolean; idempotent?: boolean }>('/api/call/reject', { callId }),
+  /** Cancelar llamada (caller, antes de que contesten) */
+  cancel: (callId: string) =>
+    post<{ ok: boolean; idempotent?: boolean }>('/api/call/cancel', { callId }),
+  /** Marcar ICE como connected en la fuente de verdad */
+  markConnected: (callId: string) =>
+    post<{ ok: boolean; idempotent?: boolean }>('/api/call/connected', { callId }),
   incoming: (userId: string) => get<any[]>(`/api/call/incoming/${userId}`),
   ice: (data: { callId: string; candidate: object; role: string; targetUserId?: string }) =>
     post<{ ok: boolean }>('/api/call/ice', data),
-  /** Obtiene credenciales TURN temporales del servidor (TTL 24h via Twilio). */
+  /** Credenciales TURN temporales (TTL 24h via Twilio) */
   getTurnToken: () => get<{ iceServers: object[] }>('/api/turn-token'),
-  /**
-   * Envía un VoIP push al destinatario para despertarlo y mostrar
-   * la UI de llamada entrante nativa (CallKit en iOS, notificación en Android).
-   * Llamar esto ANTES de enviar el offer WebRTC para que la app esté lista.
-   */
+  /** VoIP push al destinatario para activar CallKit/FCM */
   sendVoipPush: (data: {
     targetUserId: string;
     callId: string;
