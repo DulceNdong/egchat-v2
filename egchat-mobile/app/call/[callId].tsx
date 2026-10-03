@@ -405,9 +405,20 @@ export default function CallScreen() {
 
   // ── Minimizar — usar push para mantener pantalla en stack ──────
   // ⚠️ CRÍTICO: NO usar router.navigate() — desmontaría la pantalla
+  // ⚠️ fullScreenModal: cuando la pantalla de llamada es un modal,
+  //    router.push() desde dentro del modal apila sobre el modal.
+  //    Usamos minimizeCall() + router.dismiss() para cerrar el modal
+  //    y volver al stack de tabs, manteniendo el WebRTC vivo en el manager.
   const openMessageMode = useCallback(() => {
     minimizeCall();
-    router.push('/(tabs)/mensajeria' as any);
+    // dismiss() cierra el modal fullScreenModal y vuelve a la pantalla anterior
+    // sin desmontar la lógica de CallManager (que vive fuera del árbol React)
+    try {
+      router.dismiss();
+    } catch {
+      // Fallback si dismiss no está disponible (Expo Router < 3.4)
+      router.push('/(tabs)/mensajeria' as any);
+    }
   }, [minimizeCall]);
 
   // ── Historial de llamada ───────────────────────────────────────
