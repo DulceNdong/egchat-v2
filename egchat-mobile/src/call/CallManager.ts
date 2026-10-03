@@ -1011,7 +1011,10 @@ export class CallManager {
           if (ics === 'disconnected' || ics === 'failed') {
             this._scheduleIceRestart();
           }
+          // Re-aplicar sesión Y ruta para respetar la elección del usuario
+          // (altavoz/auricular) después de volver de background
           this._applyAudioSession().catch(() => {});
+          this._applyAudioRoute().catch(() => {});
         }
       }
 
