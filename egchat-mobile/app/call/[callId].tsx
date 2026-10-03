@@ -216,7 +216,6 @@ export default function CallScreen() {
   const SH = screenSize.height;
 
   // ── Estado local UI ───────────────────────────────────────────
-  const [duration,       setDuration]       = useState(0);
   const [activeFilter,   setActiveFilter]   = useState<FilterId>('none');
   const [showFilters,    setShowFilters]    = useState(false);
   const [isSharingScreen, setIsSharingScreen] = useState(false);
@@ -232,8 +231,8 @@ export default function CallScreen() {
   const wasConnected   = useRef(false);
   const loggedRef      = useRef(false);
   const ringStopped    = useRef(false);
+  // durationRef sincronizado con duration del CallManager (M5 fix)
   const durationRef    = useRef(0);
-  const timerRef       = useRef<ReturnType<typeof setInterval> | null>(null);
   const screenStreamRef = useRef<any>(null);
   const faceDetectorRef = useRef(false);
   const faceFrameRef   = useRef<ReturnType<typeof setInterval> | null>(null);
