@@ -443,11 +443,27 @@ export class CallManager {
     }
     if (session?.callId) {
       try { NativeCallKit.endCall(session.callId); } catch { /* */ }
-      // RPC end_call es idempotente — safe si se llama dos veces
       const reason = this._commState === 'failed' ? 'ice_failed'
                    : this._commState === 'missed'  ? 'missed'
                    : 'normal';
       try { await callAPI.end(session.callId, reason); } catch { /* */ }
+      // Guardar historial en chat
+      if (session.chatId) {
+        const myId     = SessionManager.getInstance().getUser()?.id ?? '';
+        const callerId = session.role === 'caller' ? myId : session.targetUserId;
+        const calleeId = session.role === 'caller' ? session.targetUserId : myId;
+        const finalStatus = reason === 'ice_failed' ? 'failed' : reason === 'missed' ? 'missed' : 'ended';
+        saveCallMessage({
+          callId:          session.callId,
+          chatId:          session.chatId,
+          callerId,
+          calleeId,
+          callType:        session.callType,
+          status:          finalStatus,
+          durationSeconds: session.duration > 0 ? session.duration : null,
+          endReason:       reason,
+        }).catch(() => {});
+      }
     }
 
     // Restituir ruta de audio al estado normal
