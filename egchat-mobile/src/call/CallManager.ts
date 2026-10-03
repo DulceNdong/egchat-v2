@@ -329,7 +329,25 @@ export class CallManager {
     if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
 
     const iceServers = await this._getIceServers();
-    const stream     = await this._getUserMedia(callType);
+
+    // Guardia contra tracks duplicados: si ya hay un stream con tracks vivos,
+    // reutilizarlo en lugar de crear uno nuevo (protege contra doble-tap en "Aceptar").
+    let stream: any;
+    if (
+      this._localStream &&
+      this._localStream.getTracks?.().some((t: any) => t.readyState === 'live')
+    ) {
+      stream = this._localStream;
+    } else {
+      // Limpiar el stream anterior si sus tracks ya están muertos
+      if (this._localStream) {
+        try {
+          this._localStream.getTracks?.().forEach((t: any) => { t.stop(); t.enabled = false; });
+        } catch { /* */ }
+        this._localStream = null;
+      }
+      stream = await this._getUserMedia(callType);
+    }
     this._localStream = stream;
     this._notify();
 
