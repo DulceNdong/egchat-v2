@@ -342,11 +342,12 @@ export default function CallScreen() {
   }, []);
 
   // ── Altavoz ────────────────────────────────────────────────────
-  const toggleSpeaker = useCallback(async () => {
-    const next = !speakerOn;
-    setSpeakerOn(next);
-    await callManager.toggleSpeaker();
-  }, [speakerOn]);
+  // isSpeakerOn viene del hook (derivado del CallManager) — fuente de verdad.
+  // Al togglear, se llama al manager a través del hook; el observer actualiza
+  // isSpeakerOn automáticamente, sin estado local independiente.
+  const toggleSpeaker = useCallback(() => {
+    hookToggleSpeaker();
+  }, [hookToggleSpeaker]);
 
   // ── Parar ringtone una sola vez ───────────────────────────────
   const stopRingOnce = useCallback(async () => {
