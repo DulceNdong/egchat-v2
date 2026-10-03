@@ -1258,7 +1258,17 @@ export class CallManager {
     //    timeouts, Realtime onEnded y PC connectionstate=closed.
     this._restoreAudioSession().catch(() => {});
 
-    // 0b. Detener el ForegroundService de Android en TODOS los paths.
+    // 0b. Cerrar la llamada en CallKit si aún tiene un callId activo.
+    //     endCall() ya lo llama upstream, pero paths como rejectCall,
+    //     cancelCall y el handler de Realtime llegan aquí directamente.
+    //     NativeCallKit.endCall() es idempotente — llamarla dos veces
+    //     no causa errores.
+    const session = this._session;
+    if (session?.callId) {
+      try { NativeCallKit.endCall(session.callId); } catch { /* */ }
+    }
+
+    // 0c. Detener el ForegroundService de Android en TODOS los paths.
     //     stopCallForegroundService() es idempotente — llamarla dos veces
     //     (aquí y en endCall) no causa problemas.
     if (Platform.OS === 'android') {
