@@ -7,6 +7,10 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		E1F2A3B4C5D6E7F8A9B0C1D2 /* EGChatCallModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = A1B2C3D4E5F6A7B8C9D0E1F2 /* EGChatCallModule.swift */; };
+		F1A2B3C4D5E6F7A8B9C0D1E2 /* EGChatCallModule.m in Sources */ = {isa = PBXBuildFile; fileRef = B1C2D3E4F5A6B7C8D9E0F1A2 /* EGChatCallModule.m */; };
+		A2B3C4D5E6F7A8B9C0D1E2F3 /* EGChatPushKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = C1D2E3F4A5B6C7D8E9F0A1B2 /* EGChatPushKitModule.swift */; };
+		B2C3D4E5F6A7B8C9D0E1F2A3 /* EGChatPushKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = D1E2F3A4B5C6D7E8F9A0B1C2 /* EGChatPushKitModule.m */; };
 		13B07FBF1A68108700A75B9A /* Images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 13B07FB51A68108700A75B9A /* Images.xcassets */; };
 		2494A723F1034611BF8D5AEA /* GoogleService-Info.plist in Resources */ = {isa = PBXBuildFile; fileRef = 4CEE55B487D54106AA16F07C /* GoogleService-Info.plist */; };
 		25DBFDB3EA1298C049697C64 /* libPods-EGCHAT.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 87221F1FEEB1042B070F09F7 /* libPods-EGCHAT.a */; };
@@ -19,6 +23,10 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
+		A1B2C3D4E5F6A7B8C9D0E1F2 /* EGChatCallModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatCallModule.swift; path = EGCHAT/EGChatCallModule.swift; sourceTree = "<group>"; };
+		B1C2D3E4F5A6B7C8D9E0F1A2 /* EGChatCallModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatCallModule.m; path = EGCHAT/EGChatCallModule.m; sourceTree = "<group>"; };
+		C1D2E3F4A5B6C7D8E9F0A1B2 /* EGChatPushKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatPushKitModule.swift; path = EGCHAT/EGChatPushKitModule.swift; sourceTree = "<group>"; };
+		D1E2F3A4B5C6D7E8F9A0B1C2 /* EGChatPushKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatPushKitModule.m; path = EGCHAT/EGChatPushKitModule.m; sourceTree = "<group>"; };
 		06F7619C6EB7DA9F40CC6A5A /* ExpoModulesProvider.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; name = ExpoModulesProvider.swift; path = "Pods/Target Support Files/Pods-EGCHAT/ExpoModulesProvider.swift"; sourceTree = "<group>"; };
 		13B07F961A680F5B00A75B9A /* EGCHAT.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = EGCHAT.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		13B07FB51A68108700A75B9A /* Images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; name = Images.xcassets; path = EGCHAT/Images.xcassets; sourceTree = "<group>"; };
@@ -61,6 +69,10 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				A1B2C3D4E5F6A7B8C9D0E1F2 /* EGChatCallModule.swift */,
+				B1C2D3E4F5A6B7C8D9E0F1A2 /* EGChatCallModule.m */,
+				C1D2E3F4A5B6C7D8E9F0A1B2 /* EGChatPushKitModule.swift */,
+				D1E2F3A4B5C6D7E8F9A0B1C2 /* EGChatPushKitModule.m */,
 				F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
@@ -364,6 +376,10 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				E1F2A3B4C5D6E7F8A9B0C1D2 /* EGChatCallModule.swift in Sources */,
+				F1A2B3C4D5E6F7A8B9C0D1E2 /* EGChatCallModule.m in Sources */,
+				A2B3C4D5E6F7A8B9C0D1E2F3 /* EGChatPushKitModule.swift in Sources */,
+				B2C3D4E5F6A7B8C9D0E1F2A3 /* EGChatPushKitModule.m in Sources */,
 				54F9360E4F260D83EF3D09AE /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
