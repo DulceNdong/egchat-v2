@@ -50,12 +50,11 @@ public class AppDelegate: ExpoAppDelegate, UNUserNotificationCenterDelegate, PKP
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // ── APNs token → FCM ────────────────────────────────────────────
+  // ── APNs token → expo-notifications lo gestiona ─────────────────
   public override func application(
     _ application: UIApplication,
     didRegisterForRemoteNotificationsWithDeviceToken deviceToken: Data
   ) {
-    Messaging.messaging().apnsToken = deviceToken
     super.application(application, didRegisterForRemoteNotificationsWithDeviceToken: deviceToken)
   }
 
@@ -64,18 +63,6 @@ public class AppDelegate: ExpoAppDelegate, UNUserNotificationCenterDelegate, PKP
     didFailToRegisterForRemoteNotificationsWithError error: Error
   ) {
     print("[EGChat] APNs registration failed: \(error)")
-  }
-
-  // ── FCM token refresh ───────────────────────────────────────────
-  public func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-    guard let token = fcmToken else { return }
-    print("[EGChat] FCM token: \(token)")
-    // Enviar al servidor via JS — expo-notifications lo gestiona automáticamente
-    NotificationCenter.default.post(
-      name: Notification.Name("FCMTokenRefreshed"),
-      object: nil,
-      userInfo: ["token": token]
-    )
   }
 
   // ── Notificación recibida en primer plano ───────────────────────
