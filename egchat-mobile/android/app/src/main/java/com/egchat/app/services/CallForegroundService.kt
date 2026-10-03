@@ -23,38 +23,39 @@ import com.egchat.app.modules.EGChatCallModule
  * Foreground Service para llamadas activas en Android.
  *
  * PROPÓSITO:
- *   - Mantener el proceso JS vivo durante una llamada cuando la app
- *     es enviada al background o la pantalla se bloquea.
- *   - Gestionar AudioFocus para la sesión de audio de la llamada.
- *   - Mostrar una notificación persistente con información de la llamada.
+ *   - Mantiene el proceso JS vivo mientras la app está en background.
+ *   - Gestiona AudioFocus correctamente incluyendo interrupciones.
+ *   - Emite eventos al CallManager via EGChatCallModule cuando
+ *     llega una llamada telefónica (AUDIOFOCUS_LOSS_TRANSIENT).
  *
- * CICLO DE VIDA:
- *   - Iniciar al aceptar una llamada: startForegroundService(callId, callerName)
- *   - Parar al finalizar: stopCallForegroundService(context)
+ * CAMBIOS vs versión anterior:
+ *   - AudioFocusChangeListener implementado (no vacío).
+ *   - Pausa/reanuda tracks de audio ante interrupciones telefónicas.
+ *   - Limpieza correcta en onDestroy.
  *
  * LIMITACIONES:
- *   - Android no garantiza que START_STICKY resucite el proceso en dispositivos
- *     con killer agresivos (Xiaomi, Huawei EMUI, OPPO ColorOS).
- *   - FOREGROUND_SERVICE_PHONE_CALL requiere Android 10+ para máxima prioridad.
+ *   - START_STICKY reinicia el servicio si el SO lo mata, pero con
+ *     intent=null. En ese caso no se pueden recuperar callId/callerName.
+ *   - OEM killers agresivos (Xiaomi, Huawei, OPPO) pueden ignorar
+ *     START_STICKY. Es una restricción del SO.
  */
 class CallForegroundService : Service() {
 
     companion object {
-        private const val CHANNEL_ID   = "egchat_call_active"
+        private const val CHANNEL_ID  = "egchat_call_active"
         private const val CHANNEL_NAME = "Llamada activa"
-        private const val NOTIF_ID     = 9002
+        private const val NOTIF_ID    = 9002
 
-        const val ACTION_START = "com.egchat.app.CALL_FOREGROUND_START"
-        const val ACTION_STOP  = "com.egchat.app.CALL_FOREGROUND_STOP"
-        const val EXTRA_CALL_ID      = "callId"
-        const val EXTRA_CALLER_NAME  = "callerName"
-        const val EXTRA_IS_VIDEO     = "isVideo"
+        const val ACTION_START          = "com.egchat.app.CALL_FOREGROUND_START"
+        const val ACTION_STOP           = "com.egchat.app.CALL_FOREGROUND_STOP"
+        const val EXTRA_CALL_ID         = "callId"
+        const val EXTRA_CALLER_NAME     = "callerName"
+        const val EXTRA_IS_VIDEO        = "isVideo"
 
-        /** Inicia el servicio desde cualquier contexto. */
         fun start(context: Context, callId: String, callerName: String, isVideo: Boolean) {
             val intent = Intent(context, CallForegroundService::class.java).apply {
                 action = ACTION_START
-                putExtra(EXTRA_CALL_ID,     callId)
+                putExtra(EXTRA_CALL_ID,    callId)
                 putExtra(EXTRA_CALLER_NAME, callerName)
                 putExtra(EXTRA_IS_VIDEO,    isVideo)
             }
@@ -65,14 +66,42 @@ class CallForegroundService : Service() {
             }
         }
 
-        /** Para el servicio desde cualquier contexto. */
         fun stop(context: Context) {
             context.stopService(Intent(context, CallForegroundService::class.java))
         }
     }
 
     private var audioFocusRequest: AudioFocusRequest? = null
-    private var audioManager: AudioManager? = null
+    private var audioManager:      AudioManager?      = null
+    private var currentCallId:     String             = ""
+
+    // ── AudioFocusChangeListener ───────────────────────────────────
+    // Gestiona interrupciones telefónicas y otras apps de audio.
+    private val audioFocusListener = AudioManager.OnAudioFocusChangeListener { focusChange ->
+        val module = EGChatCallModule.instance
+
+        when (focusChange) {
+            AudioManager.AUDIOFOCUS_LOSS -> {
+                // Pérdida permanente (otra app tomó el audio, ej. Spotify)
+                // Pausar pero no terminar la llamada — el usuario decide
+                module?.emitEvent("audioInterrupted", currentCallId)
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT -> {
+                // Pérdida temporal (llamada telefónica entrante)
+                // Pausar el micrófono temporalmente — la llamada sigue conectada
+                module?.emitEvent("audioInterrupted", currentCallId)
+            }
+            AudioManager.AUDIOFOCUS_LOSS_TRANSIENT_CAN_DUCK -> {
+                // Otra app quiere audio pero podemos reducir volumen
+                // No hacemos nada — WebRTC gestiona su propio volumen
+            }
+            AudioManager.AUDIOFOCUS_GAIN -> {
+                // Recuperamos el foco (llamada telefónica terminó, etc.)
+                // Reanudar micrófono
+                module?.emitEvent("audioRouteChanged", currentCallId)
+            }
+        }
+    }
 
     override fun onBind(intent: Intent?): IBinder? = null
 
@@ -85,11 +114,11 @@ class CallForegroundService : Service() {
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         when (intent?.action) {
             ACTION_START -> {
-                val callId     = intent.getStringExtra(EXTRA_CALL_ID)     ?: ""
+                currentCallId = intent.getStringExtra(EXTRA_CALL_ID) ?: ""
                 val callerName = intent.getStringExtra(EXTRA_CALLER_NAME) ?: "Llamada"
-                val isVideo    = intent.getBooleanExtra(EXTRA_IS_VIDEO,    false)
+                val isVideo    = intent.getBooleanExtra(EXTRA_IS_VIDEO, false)
 
-                val notification = buildCallNotification(callerName, callId, isVideo)
+                val notification = buildCallNotification(callerName, currentCallId, isVideo)
                 startForeground(NOTIF_ID, notification)
                 requestAudioFocus()
             }
@@ -99,8 +128,9 @@ class CallForegroundService : Service() {
                 stopSelf()
             }
         }
-        // START_STICKY: el sistema reiniciará el servicio si lo mata,
-        // pero con intent=null (no recupera los datos de la llamada).
+        // START_STICKY: el sistema reiniciará el servicio si lo mata.
+        // Con intent=null no podemos recuperar callId — el JS debe manejar
+        // este caso con consumePendingCall() o el estado de Supabase.
         return START_STICKY
     }
 
@@ -109,11 +139,11 @@ class CallForegroundService : Service() {
         super.onDestroy()
     }
 
-    // ── Notificación persistente ───────────────────────────────────────
+    // ── Notificación persistente de llamada activa ─────────────────
     private fun buildCallNotification(
         callerName: String,
-        callId: String,
-        isVideo: Boolean
+        callId:     String,
+        isVideo:    Boolean
     ): Notification {
         val openIntent = Intent(this, MainActivity::class.java).apply {
             flags  = Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_REORDER_TO_FRONT
@@ -125,8 +155,7 @@ class CallForegroundService : Service() {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        // Intent: colgar desde notificación
-        val endIntent = Intent(this, CallActionReceiver::class.java).apply {
+        val endIntent = Intent(this, com.egchat.app.modules.CallActionReceiver::class.java).apply {
             action = EGChatCallModule.ACTION_END
             putExtra("callId", callId)
         }
@@ -151,7 +180,7 @@ class CallForegroundService : Service() {
             .build()
     }
 
-    // ── AudioFocus ─────────────────────────────────────────────────────
+    // ── AudioFocus ─────────────────────────────────────────────────
     private fun requestAudioFocus() {
         val am = audioManager ?: return
 
@@ -164,7 +193,7 @@ class CallForegroundService : Service() {
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(attrs)
                 .setAcceptsDelayedFocusGain(false)
-                .setOnAudioFocusChangeListener { /* manejado por AVAudioSession en iOS; en Android WebRTC gestiona esto */ }
+                .setOnAudioFocusChangeListener(audioFocusListener)  // ← listener real
                 .build()
 
             audioFocusRequest = request
@@ -172,7 +201,7 @@ class CallForegroundService : Service() {
         } else {
             @Suppress("DEPRECATION")
             am.requestAudioFocus(
-                null,
+                audioFocusListener,
                 AudioManager.STREAM_VOICE_CALL,
                 AudioManager.AUDIOFOCUS_GAIN
             )
@@ -185,12 +214,12 @@ class CallForegroundService : Service() {
             audioFocusRequest?.let { am.abandonAudioFocusRequest(it) }
         } else {
             @Suppress("DEPRECATION")
-            am.abandonAudioFocus(null)
+            am.abandonAudioFocus(audioFocusListener)
         }
         audioFocusRequest = null
     }
 
-    // ── Canal de notificación ──────────────────────────────────────────
+    // ── Canal de notificación ──────────────────────────────────────
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val manager = getSystemService(NotificationManager::class.java) ?: return
