@@ -1,24 +1,5 @@
 {
-  "verdict": "CHANGES_REQUESTED",
-  "findings": [
-    {
-      "id": "wrong-restore-category",
-      "severity": "high",
-      "confidence": "confirmed",
-      "summary": "_restoreAudioSession uses iosCategory 'soloAmbient' instead of 'ambient'. After hang-up, soloAmbient keeps other audio silenced for the session; ambient allows it to mix back in. Change to 'ambient'."
-    },
-    {
-      "id": "wrong-restore-interruption-mode",
-      "severity": "high",
-      "confidence": "confirmed",
-      "summary": "_restoreAudioSession uses interruptionModeIOS: 2 (DuckOthers) instead of 0 (MixWithOthers). Background audio that was playing before the call will not return to full volume. Change the literal to 0."
-    },
-    {
-      "id": "finalCleanup-missing-callkit-endcall",
-      "severity": "medium",
-      "confidence": "confirmed",
-      "summary": "_finalCleanup does not call NativeCallKit.endCall(callId). All current termination paths call it upstream before reaching _finalCleanup, so no active bug today, but criterion 3 requires the call inside _finalCleanup. Add it guarded by session?.callId."
-    }
-  ],
+  "verdict": "APPROVED",
+  "findings": [],
   "reviewDoc": "/Users/raymonreddintone/Desktop/EGCHAT_NATIVA/egchat-mobile/.agents/tasks/audio-review.md"
 }
