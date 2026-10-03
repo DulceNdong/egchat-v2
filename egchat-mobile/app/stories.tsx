@@ -542,6 +542,7 @@ interface MomentPost {
   user_avatar?: string;
   text?: string;
   images?: string[];
+  videos?: string[];
   likes: number;
   liked_by_me: boolean;
   comments: MomentComment[];
