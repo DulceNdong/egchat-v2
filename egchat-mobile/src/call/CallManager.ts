@@ -1230,6 +1230,18 @@ export class CallManager {
 
   /** Limpieza completa de recursos — no deja nada activo */
   private _finalCleanup(): void {
+    // 0. Restaurar AudioSession ANTES de cerrar todo lo demás.
+    //    Cubre paths que no pasan por endCall: rejectCall, cancelCall,
+    //    timeouts, Realtime onEnded y PC connectionstate=closed.
+    this._restoreAudioSession().catch(() => {});
+
+    // 0b. Detener el ForegroundService de Android en TODOS los paths.
+    //     stopCallForegroundService() es idempotente — llamarla dos veces
+    //     (aquí y en endCall) no causa problemas.
+    if (Platform.OS === 'android') {
+      try { NativeCallKit.stopCallForegroundService(); } catch { /* */ }
+    }
+
     // 1. Timers
     this._stopPolling();
     this._stopDurationTimer();
