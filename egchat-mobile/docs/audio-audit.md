@@ -26,6 +26,9 @@ Generada tras auditar `CallManager.ts`, `useWebRTC.ts`, `app/call/[callId].tsx` 
 | Problema | Archivos | Solución |
 |---|---|---|
 | `_restoreAudioSession` no se llamaba en todos los paths de terminación | `CallManager.ts` | Movida al inicio de `_finalCleanup()` con `.catch(()=>{})` para cubrir `rejectCall`, `cancelCall`, timeouts y `PC closed` |
+| `_restoreAudioSession` usaba `iosCategory: 'soloAmbient'` en vez de `'ambient'` | `CallManager.ts` | Corregido a `'ambient'`; `soloAmbient` silencia otras apps de forma permanente post-llamada |
+| `_restoreAudioSession` usaba `interruptionModeIOS: 2` (DuckOthers) en vez de `0` (MixWithOthers) | `CallManager.ts` | Corregido a `0`; con DuckOthers la música previa a la llamada no recupera su volumen original |
+| `_finalCleanup` no llamaba `NativeCallKit.endCall` directamente | `CallManager.ts` | Añadida llamada guarded por `session?.callId`; idempotente — doble llamada desde `endCall` + `_finalCleanup` no causa errores |
 | ForegroundService Android solo se detenía en `endCall` | `CallManager.ts` | `NativeCallKit.stopCallForegroundService()` añadido en `_finalCleanup()` para todos los paths |
 | Doble-tap "Aceptar" creaba streams/tracks duplicados | `CallManager.ts` — `acceptCall` | Guardia: si `_localStream` tiene tracks `live`, se reutiliza; si no, se limpia y crea nuevo |
 | Botón altavoz tenía estado local desincronizado del manager | `[callId].tsx` | Eliminado `useState(true)` local; `isSpeakerOn` y `toggleSpeaker` vienen del hook (fuente de verdad: CallManager) |
