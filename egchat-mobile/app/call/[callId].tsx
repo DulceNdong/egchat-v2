@@ -182,8 +182,10 @@ export default function CallScreen() {
   // ── CallManager via hook fachada ──────────────────────────────
   const {
     callState, isMuted, isCamOff, isSignalingOnly,
+    isSpeakerOn,
     localStream, remoteStream,
     startCall, answerCall, endCall, toggleMute, toggleCamera,
+    toggleSpeaker: hookToggleSpeaker,
   } = useWebRTC();
 
   // ── Contexto UI ───────────────────────────────────────────────
