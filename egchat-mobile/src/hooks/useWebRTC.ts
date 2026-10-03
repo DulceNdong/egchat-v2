@@ -42,6 +42,7 @@ export function useWebRTC() {
   const callType     = snapshot.session?.callType ?? 'audio';
   const isMuted      = snapshot.isMuted;
   const isCamOff     = snapshot.isCamOff;
+  const isSpeakerOn  = snapshot.isSpeakerOn;
   const isSignalingOnly = snapshot.isSignalingOnly;
   const localStream  = snapshot.localStream;
   const remoteStream = snapshot.remoteStream;
