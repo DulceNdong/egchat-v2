@@ -17,7 +17,9 @@ export default function RootRedirect() {
   }
 
   if (admin) {
-    return <Navigate to={admin.entity === 'BANGE' ? '/bange/queue' : '/company/home'} replace />;
+    if (admin.entity === 'BANGE')        return <Navigate to="/bange/queue"         replace />;
+    if (admin.entity === 'MONETIZACION') return <Navigate to="/monetizacion/home"   replace />;
+    return <Navigate to="/company/home" replace />;
   }
 
   // Portal selector
