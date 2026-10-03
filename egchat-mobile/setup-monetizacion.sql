@@ -3,6 +3,13 @@
 -- Ejecutar en Supabase SQL Editor
 -- ============================================================
 
+-- Drop tablas con columnas generadas problemáticas (las recrea sin GENERATED ALWAYS AS)
+DROP TABLE IF EXISTS historial_transacciones_negocios CASCADE;
+DROP TABLE IF EXISTS historial_transacciones_usuarios CASCADE;
+DROP TABLE IF EXISTS monetizacion_wallet_movimientos CASCADE;
+DROP TABLE IF EXISTS monetizacion_billetes CASCADE;
+DROP TABLE IF EXISTS monetizacion_taxista_viajes CASCADE;
+
 -- -------------------------
 -- 1. EMPRESAS DE SERVICIOS
 -- -------------------------
