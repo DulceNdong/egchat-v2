@@ -146,12 +146,12 @@ class EGChatCallModule(private val reactContext: ReactApplicationContext) :
             activity?.setTurnScreenOn(true)
         }
 
-        NotificationManagerCompat.from(reactContext).notify(NOTIF_ID, notification)
+        NotificationManagerCompat.from(reactContext).notify(NOTIF_ID_INCOMING, notification)
     }
 
     @ReactMethod
     fun dismissIncomingCall() {
-        NotificationManagerCompat.from(reactContext).cancel(NOTIF_ID)
+        NotificationManagerCompat.from(reactContext).cancel(NOTIF_ID_INCOMING)
         currentCallId = null
     }
 

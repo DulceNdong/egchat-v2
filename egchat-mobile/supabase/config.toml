@@ -1,0 +1,35 @@
+# Supabase CLI configuration for EGChat
+# Project ref: fqfxtjnfhvpggssbymdn
+# Dashboard: https://supabase.com/dashboard/project/fqfxtjnfhvpggssbymdn
+
+[api]
+project_id = "fqfxtjnfhvpggssbymdn"
+
+[db]
+port = 5432
+shadow_port = 5433
+major_version = 15
+
+[studio]
+port = 3000
+
+[inbucket]
+port = 54324
+
+[storage]
+file_size_limit = "50MiB"
+
+[auth]
+site_url = "https://egchat-app.vercel.app"
+additional_redirect_urls = ["egchat://"]
+jwt_expiry = 3600
+enable_refresh_token_rotation = true
+
+[edge_runtime]
+policy = "per_worker"
+
+[functions.deliver-call-push]
+verify_jwt = false   # Autenticación via x-service-token header, no JWT de Supabase
+
+[functions.register-device-token]
+verify_jwt = false   # Usa JWT custom del backend Render, verificado dentro de la función
