@@ -497,23 +497,14 @@ export default function RootLayout() {
               if (enableVoip) {
                 PushKit.register();
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
-                  addNotification({
-                    type: 'call',
-                    title: `📞 Llamada de ${callData.callerName}`,
-                    body: callData.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
-                    chatId: undefined,
+                  // Punto de entrada único — no duplicar con router.push aquí
+                  handleIncomingCall({
+                    callId:       callData.callId,
+                    callerName:   callData.callerName,
+                    callerAvatar: (callData as any).callerAvatar || '',
+                    callType:     callData.callType || 'audio',
+                    offer:        callData.offer,
                   });
-                  // Pequeño delay para que el router esté montado si la app acaba de despertar
-                  setTimeout(() => {
-                    router.push({ pathname: '/call/[callId]', params: {
-                      callId: callData.callId,
-                      targetName: callData.callerName,
-                      targetAvatar: (callData as any).callerAvatar || '',
-                      callType: callData.callType || 'audio',
-                      role: 'callee',
-                      offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                    }} as any);
-                  }, 300);
                 });
               }
             } catch (e) {
