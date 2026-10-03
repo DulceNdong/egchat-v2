@@ -19,10 +19,6 @@ public class AppDelegate: ExpoAppDelegate, UNUserNotificationCenterDelegate, PKP
     didFinishLaunchingWithOptions launchOptions: [UIApplication.LaunchOptionsKey: Any]? = nil
   ) -> Bool {
 
-    // ── Firebase ──────────────────────────────────────────────────
-    FirebaseApp.configure()
-    Messaging.messaging().delegate = self
-
     // ── Notificaciones push ───────────────────────────────────────
     UNUserNotificationCenter.current().delegate = self
     UNUserNotificationCenter.current().requestAuthorization(
