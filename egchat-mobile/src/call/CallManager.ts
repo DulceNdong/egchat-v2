@@ -701,7 +701,23 @@ export class CallManager {
 
   private _addTracks(pc: any, stream: any): void {
     try {
-      stream.getTracks().forEach((t: any) => pc.addTrack(t, stream));
+      stream.getTracks().forEach((t: any) => {
+        pc.addTrack(t, stream);
+
+        // FIX 3 — Handler track.onended: detecta pérdida de cámara
+        // (background iOS, interrupción del sistema en Android)
+        // sin terminar la llamada.
+        if (t.kind === 'video') {
+          t.onended = () => {
+            if (__DEV__) console.log('[CallManager] video track ended (sistema)');
+            if (!this._isCamOff) {
+              this._isCamOff = true;
+              this._videoPausedBySystem = true;
+              this._notify();
+            }
+          };
+        }
+      });
     } catch {
       // Fallback para versiones antiguas de react-native-webrtc
       if (pc.addStream) pc.addStream(stream);
