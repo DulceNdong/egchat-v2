@@ -520,20 +520,28 @@ export default function RootLayout() {
                 try {
                   const pending = await consumePendingCall();
                   if (!pending || !mounted) return;
-                  // Añadir al historial de campanita
+                  // Registrar en CallManager y navegar directamente
+                  // (no hay overlay posible — la app acaba de abrirse desde cero)
+                  callManager.registerIncoming({
+                    callId:       pending.callId,
+                    callerName:   pending.callerName,
+                    callerAvatar: pending.callerAvatar || '',
+                    callType:     pending.callType || 'audio',
+                    offer:        pending.offer ?? undefined,
+                  });
                   addNotification({
                     type: 'call',
                     title: `📞 Llamada entrante de ${pending.callerName}`,
-                    body: pending.callType === 'video' ? 'Videollamada perdida' : 'Llamada de voz perdida',
+                    body: pending.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
                     chatId: undefined,
                   });
                   router.push({ pathname: '/call/[callId]', params: {
-                    callId: pending.callId,
-                    targetName: pending.callerName,
+                    callId:      pending.callId,
+                    targetName:  pending.callerName,
                     targetAvatar: pending.callerAvatar || '',
-                    callType: pending.callType || 'audio',
-                    role: 'callee',
-                    offer: pending.offer ? JSON.stringify(pending.offer) : undefined,
+                    callType:    pending.callType || 'audio',
+                    role:        'callee',
+                    offer:       pending.offer ? JSON.stringify(pending.offer) : undefined,
                   }} as any);
                   return;
                 } catch {
