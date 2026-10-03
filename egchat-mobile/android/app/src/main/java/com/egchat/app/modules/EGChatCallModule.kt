@@ -180,6 +180,53 @@ class EGChatCallModule(private val reactContext: ReactApplicationContext) :
     @ReactMethod
     fun removeListeners(count: Int) { /* noop */ }
 
+    // ── Leer y limpiar la llamada pendiente guardada por FirebaseMessagingService ──
+    // Llamado desde JS (notifications.ts) cuando la app abre tras un FCM.
+    // Devuelve null si no hay llamada pendiente o si caducó (>90s).
+    @ReactMethod
+    fun getAndClearPendingCall(promise: com.facebook.react.bridge.Promise) {
+        try {
+            val prefs = reactContext.getSharedPreferences(
+                com.egchat.app.services.EGChatFirebaseMessagingService.PREFS_NAME,
+                android.content.Context.MODE_PRIVATE
+            )
+            val json = prefs.getString(
+                com.egchat.app.services.EGChatFirebaseMessagingService.KEY_PENDING_CALL, null
+            )
+            val ts = prefs.getLong(
+                com.egchat.app.services.EGChatFirebaseMessagingService.KEY_PENDING_CALL_TS, 0L
+            )
+
+            // Limpiar independientemente del resultado
+            prefs.edit()
+                .remove(com.egchat.app.services.EGChatFirebaseMessagingService.KEY_PENDING_CALL)
+                .remove(com.egchat.app.services.EGChatFirebaseMessagingService.KEY_PENDING_CALL_TS)
+                .apply()
+
+            if (json == null || System.currentTimeMillis() - ts > 90_000L) {
+                promise.resolve(null)
+                return
+            }
+
+            promise.resolve(json)
+        } catch (e: Exception) {
+            promise.resolve(null)
+        }
+    }
+
+    // ── Iniciar/parar ForegroundService de llamada activa ──────────────
+    @ReactMethod
+    fun startCallForegroundService(callId: String, callerName: String, isVideo: Boolean) {
+        com.egchat.app.services.CallForegroundService.start(
+            reactContext, callId, callerName, isVideo
+        )
+    }
+
+    @ReactMethod
+    fun stopCallForegroundService() {
+        com.egchat.app.services.CallForegroundService.stop(reactContext)
+    }
+
     // ── Emitir eventos a JavaScript ───────────────────────────────────────
 
     fun emitEvent(eventName: String, callId: String) {
