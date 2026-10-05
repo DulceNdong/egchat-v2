@@ -87,6 +87,8 @@ const facturacionTotal = PERFILES_DEMO.reduce(
   (s, p) => s + p.facturacionMensual[p.facturacionMensual.length - 1], 0
 );
 
+// Estas constantes son solo para el fallback demo — las dinámicas se calculan en el componente
+
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function PerfilNegocioScreen() {
   const [search, setSearch] = useState('');
