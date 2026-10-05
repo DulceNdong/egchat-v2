@@ -2881,9 +2881,10 @@ export default function ChatScreen() {
       <ForwardWithCommentModal
         visible={showForwardModal}
         message={forwardMsg}
+        messages={forwardSelectedMsgs.length > 0 ? forwardSelectedMsgs : undefined}
         currentUserId={currentUserId}
-        onClose={() => { setShowForwardModal(false); setForwardMsg(null); }}
-        onForwarded={() => { setShowForwardModal(false); setForwardMsg(null); }}
+        onClose={() => { setShowForwardModal(false); setForwardMsg(null); setForwardSelectedMsgs([]); }}
+        onForwarded={() => { setShowForwardModal(false); setForwardMsg(null); setForwardSelectedMsgs([]); }}
       />
 
       {/* PTT — Walkie-talkie */}
