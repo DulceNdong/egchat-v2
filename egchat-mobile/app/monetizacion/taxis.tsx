@@ -1,36 +1,19 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, StatusBar, RefreshControl,
+  Modal, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
-
-// ── Tipos ──────────────────────────────────────────────────────────────────
-interface Taxista {
-  id: string;
-  nombre: string;
-  apellido: string;
-  telefono: string;
-  num_licencia: string;
-  marca_vehiculo: string;
-  modelo_vehiculo: string;
-  color_vehiculo: string;
-  fecha_venc_carnet: string;   // YYYY-MM-DD
-  fecha_venc_seguro: string;
-  fecha_venc_revision: string;
-  total_viajes_mes: number;
-  horas_activo_mes: number;
-  ingresos_viajes_mes: number; // monto bruto de viajes
-  activo: boolean;
-  verificado: boolean;
-}
+import { useTaxistas } from '../../src/hooks/useMonetizacion';
+import type { TaxistaConIngresos } from '../../src/types/monetizacion';
 
 // ── Utilidades ─────────────────────────────────────────────────────────────
 const hoy = new Date();
 
-function docStatus(fechaStr: string): 'vigente' | 'proximo' | 'vencido' {
+function docStatus(fechaStr: string | null): 'vigente' | 'proximo' | 'vencido' {
+  if (!fechaStr) return 'vencido';
   const fecha = new Date(fechaStr);
   const diff = (fecha.getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24);
   if (diff < 0) return 'vencido';
@@ -44,7 +27,8 @@ function docColor(status: string) {
   return '#00FF88';
 }
 
-function daysLeft(fechaStr: string) {
+function daysLeft(fechaStr: string | null) {
+  if (!fechaStr) return 'Sin fecha';
   const diff = Math.ceil((new Date(fechaStr).getTime() - hoy.getTime()) / (1000 * 60 * 60 * 24));
   if (diff < 0) return `Venció hace ${Math.abs(diff)}d`;
   if (diff === 0) return 'Vence hoy';
@@ -56,40 +40,55 @@ const fmt = (n: number) =>
 
 const COMISION_PCT = 5;
 
-// ── Datos demo ─────────────────────────────────────────────────────────────
-const TAXISTAS_DEMO: Taxista[] = [
-  { id: '1', nombre: 'Marcos', apellido: 'Nfono Ela', telefono: '+240 222 111 001', num_licencia: 'GQ-TX-0021', marca_vehiculo: 'Toyota', modelo_vehiculo: 'Corolla', color_vehiculo: 'Blanco', fecha_venc_carnet: '2027-03-15', fecha_venc_seguro: '2026-11-20', fecha_venc_revision: '2026-10-05', total_viajes_mes: 87, horas_activo_mes: 142, ingresos_viajes_mes: 1305000, activo: true, verificado: true },
-  { id: '2', nombre: 'Samuel', apellido: 'Owono Mba', telefono: '+240 222 111 002', num_licencia: 'GQ-TX-0034', marca_vehiculo: 'Hyundai', modelo_vehiculo: 'Accent', color_vehiculo: 'Rojo', fecha_venc_carnet: '2026-10-28', fecha_venc_seguro: '2027-01-10', fecha_venc_revision: '2027-02-14', total_viajes_mes: 65, horas_activo_mes: 108, ingresos_viajes_mes: 975000, activo: true, verificado: true },
-  { id: '3', nombre: 'Pedro', apellido: 'Abaga Nguema', telefono: '+240 222 111 003', num_licencia: 'GQ-TX-0047', marca_vehiculo: 'Kia', modelo_vehiculo: 'Rio', color_vehiculo: 'Azul', fecha_venc_carnet: '2025-08-01', fecha_venc_seguro: '2025-07-15', fecha_venc_revision: '2026-04-20', total_viajes_mes: 43, horas_activo_mes: 76, ingresos_viajes_mes: 645000, activo: false, verificado: false },
-  { id: '4', nombre: 'Luis', apellido: 'Esono Ondo', telefono: '+240 222 111 004', num_licencia: 'GQ-TX-0052', marca_vehiculo: 'Nissan', modelo_vehiculo: 'Sentra', color_vehiculo: 'Gris', fecha_venc_carnet: '2027-06-30', fecha_venc_seguro: '2026-12-01', fecha_venc_revision: '2026-10-18', total_viajes_mes: 102, horas_activo_mes: 165, ingresos_viajes_mes: 1530000, activo: true, verificado: true },
-  { id: '5', nombre: 'José', apellido: 'Nve Mba', telefono: '+240 222 111 005', num_licencia: 'GQ-TX-0065', marca_vehiculo: 'Toyota', modelo_vehiculo: 'Yaris', color_vehiculo: 'Negro', fecha_venc_carnet: '2027-01-22', fecha_venc_seguro: '2026-10-30', fecha_venc_revision: '2027-03-08', total_viajes_mes: 78, horas_activo_mes: 130, ingresos_viajes_mes: 1170000, activo: true, verificado: true },
-  { id: '6', nombre: 'Ana', apellido: 'Nguema Eyama', telefono: '+240 222 111 006', num_licencia: 'GQ-TX-0078', marca_vehiculo: 'Suzuki', modelo_vehiculo: 'Swift', color_vehiculo: 'Plateado', fecha_venc_carnet: '2026-11-05', fecha_venc_seguro: '2027-02-28', fecha_venc_revision: '2026-12-10', total_viajes_mes: 55, horas_activo_mes: 95, ingresos_viajes_mes: 825000, activo: true, verificado: true },
+// ── Datos demo (fallback mientras Supabase no tenga datos) ─────────────────
+const TAXISTAS_DEMO: TaxistaConIngresos[] = [
+  { id: '1', nombre: 'Marcos', apellido: 'Nfono Ela', telefono: '+240 222 111 001', num_licencia: 'GQ-TX-0021', marca_vehiculo: 'Toyota', modelo_vehiculo: 'Corolla', color_vehiculo: 'Blanco', fecha_venc_carnet: '2027-03-15', fecha_venc_seguro: '2026-11-20', fecha_venc_revision_tecnica: '2026-10-05', fecha_venc_revision: '2026-10-05', total_viajes_mes: 87, horas_activo_mes: 142, ingresos_viajes_mes: 1305000, activo: true, verificado: true },
+  { id: '2', nombre: 'Samuel', apellido: 'Owono Mba', telefono: '+240 222 111 002', num_licencia: 'GQ-TX-0034', marca_vehiculo: 'Hyundai', modelo_vehiculo: 'Accent', color_vehiculo: 'Rojo', fecha_venc_carnet: '2026-10-28', fecha_venc_seguro: '2027-01-10', fecha_venc_revision_tecnica: '2027-02-14', fecha_venc_revision: '2027-02-14', total_viajes_mes: 65, horas_activo_mes: 108, ingresos_viajes_mes: 975000, activo: true, verificado: true },
+  { id: '3', nombre: 'Pedro', apellido: 'Abaga Nguema', telefono: '+240 222 111 003', num_licencia: 'GQ-TX-0047', marca_vehiculo: 'Kia', modelo_vehiculo: 'Rio', color_vehiculo: 'Azul', fecha_venc_carnet: '2025-08-01', fecha_venc_seguro: '2025-07-15', fecha_venc_revision_tecnica: '2026-04-20', fecha_venc_revision: '2026-04-20', total_viajes_mes: 43, horas_activo_mes: 76, ingresos_viajes_mes: 645000, activo: false, verificado: false },
+  { id: '4', nombre: 'Luis', apellido: 'Esono Ondo', telefono: '+240 222 111 004', num_licencia: 'GQ-TX-0052', marca_vehiculo: 'Nissan', modelo_vehiculo: 'Sentra', color_vehiculo: 'Gris', fecha_venc_carnet: '2027-06-30', fecha_venc_seguro: '2026-12-01', fecha_venc_revision_tecnica: '2026-10-18', fecha_venc_revision: '2026-10-18', total_viajes_mes: 102, horas_activo_mes: 165, ingresos_viajes_mes: 1530000, activo: true, verificado: true },
+  { id: '5', nombre: 'José', apellido: 'Nve Mba', telefono: '+240 222 111 005', num_licencia: 'GQ-TX-0065', marca_vehiculo: 'Toyota', modelo_vehiculo: 'Yaris', color_vehiculo: 'Negro', fecha_venc_carnet: '2027-01-22', fecha_venc_seguro: '2026-10-30', fecha_venc_revision_tecnica: '2027-03-08', fecha_venc_revision: '2027-03-08', total_viajes_mes: 78, horas_activo_mes: 130, ingresos_viajes_mes: 1170000, activo: true, verificado: true },
+  { id: '6', nombre: 'Ana', apellido: 'Nguema Eyama', telefono: '+240 222 111 006', num_licencia: 'GQ-TX-0078', marca_vehiculo: 'Suzuki', modelo_vehiculo: 'Swift', color_vehiculo: 'Plateado', fecha_venc_carnet: '2026-11-05', fecha_venc_seguro: '2027-02-28', fecha_venc_revision_tecnica: '2026-12-10', fecha_venc_revision: '2026-12-10', total_viajes_mes: 55, horas_activo_mes: 95, ingresos_viajes_mes: 825000, activo: true, verificado: true },
 ];
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function TaxisScreen() {
-  const [refreshing, setRefreshing] = useState(false);
-  const [detailTaxista, setDetailTaxista] = useState<Taxista | null>(null);
+  const { taxistas, loading, error, refresh } = useTaxistas();
+  const [detailTaxista, setDetailTaxista] = useState<TaxistaConIngresos | null>(null);
   const [filtro, setFiltro] = useState<'todos' | 'activo' | 'alerta'>('todos');
 
+  // Use live data when available, fall back to demo data
+  const fuenteDatos = taxistas.length > 0 ? taxistas : TAXISTAS_DEMO;
+
   const taxistasFiltrados = filtro === 'todos'
-    ? TAXISTAS_DEMO
+    ? fuenteDatos
     : filtro === 'activo'
-    ? TAXISTAS_DEMO.filter(t => t.activo && t.verificado)
-    : TAXISTAS_DEMO.filter(t =>
+    ? fuenteDatos.filter(t => t.activo && t.verificado)
+    : fuenteDatos.filter(t =>
         docStatus(t.fecha_venc_carnet) !== 'vigente' ||
         docStatus(t.fecha_venc_seguro) !== 'vigente' ||
         docStatus(t.fecha_venc_revision) !== 'vigente'
       );
 
-  const totalViajes = TAXISTAS_DEMO.reduce((s, t) => s + t.total_viajes_mes, 0);
-  const totalHoras = TAXISTAS_DEMO.reduce((s, t) => s + t.horas_activo_mes, 0);
-  const totalIngresos = TAXISTAS_DEMO.reduce((s, t) => s + t.ingresos_viajes_mes, 0);
+  const totalViajes = fuenteDatos.reduce((s, t) => s + t.total_viajes_mes, 0);
+  const totalHoras = fuenteDatos.reduce((s, t) => s + t.horas_activo_mes, 0);
+  const totalIngresos = fuenteDatos.reduce((s, t) => s + t.ingresos_viajes_mes, 0);
   const totalComisiones = totalIngresos * COMISION_PCT / 100;
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+
+      {/* Loading inicial */}
+      {loading && taxistas.length === 0 && (
+        <ActivityIndicator color="#FFD700" style={{ marginTop: 40 }} />
+      )}
+
+      {/* Error cuando no hay datos */}
+      {error && taxistas.length === 0 && !loading && (
+        <Text style={{ color: '#FF4444', textAlign: 'center', marginTop: 40, paddingHorizontal: 20 }}>
+          {error}
+        </Text>
+      )}
 
       {/* Métricas */}
       <View style={styles.metricsRow}>
@@ -98,7 +97,7 @@ export default function TaxisScreen() {
       </View>
       <View style={styles.metricsRow}>
         <MetricCard label="Horas Activas" value={`${totalHoras}h`} icon="⏱️" accentColor="#FF8800" subValue="Este mes" />
-        <MetricCard label="Taxistas Activos" value={`${TAXISTAS_DEMO.filter(t => t.activo).length}`} icon="🚖" accentColor="#00D4FF" subValue={`de ${TAXISTAS_DEMO.length} registrados`} />
+        <MetricCard label="Taxistas Activos" value={`${fuenteDatos.filter(t => t.activo).length}`} icon="🚖" accentColor="#00D4FF" subValue={`de ${fuenteDatos.length} registrados`} />
       </View>
 
       {/* Filtros */}
@@ -125,7 +124,7 @@ export default function TaxisScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 800); }} tintColor="#FFD700" />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FFD700" />
         }
       >
         {taxistasFiltrados.map(taxista => {
@@ -227,9 +226,9 @@ export default function TaxisScreen() {
                   <RevenueTable
                     showBars={false}
                     rows={[
-                      { label: '🪪 Carnet conducir', value: `${detailTaxista.fecha_venc_carnet} (${daysLeft(detailTaxista.fecha_venc_carnet)})`, color: docColor(docStatus(detailTaxista.fecha_venc_carnet)) },
-                      { label: '🛡 Seguro vehículo', value: `${detailTaxista.fecha_venc_seguro} (${daysLeft(detailTaxista.fecha_venc_seguro)})`, color: docColor(docStatus(detailTaxista.fecha_venc_seguro)) },
-                      { label: '🔧 Revisión técnica', value: `${detailTaxista.fecha_venc_revision} (${daysLeft(detailTaxista.fecha_venc_revision)})`, color: docColor(docStatus(detailTaxista.fecha_venc_revision)) },
+                      { label: '🪪 Carnet conducir', value: `${detailTaxista.fecha_venc_carnet ?? 'Sin fecha'} (${daysLeft(detailTaxista.fecha_venc_carnet)})`, color: docColor(docStatus(detailTaxista.fecha_venc_carnet)) },
+                      { label: '🛡 Seguro vehículo', value: `${detailTaxista.fecha_venc_seguro ?? 'Sin fecha'} (${daysLeft(detailTaxista.fecha_venc_seguro)})`, color: docColor(docStatus(detailTaxista.fecha_venc_seguro)) },
+                      { label: '🔧 Revisión técnica', value: `${detailTaxista.fecha_venc_revision ?? 'Sin fecha'} (${daysLeft(detailTaxista.fecha_venc_revision)})`, color: docColor(docStatus(detailTaxista.fecha_venc_revision)) },
                     ]}
                   />
                 </ScrollView>
