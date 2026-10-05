@@ -22,6 +22,7 @@ interface ChatSummary {
 interface Props {
   visible: boolean;
   message: ChatMessage | null;
+  messages?: ChatMessage[];   // ← para reenvío múltiple
   currentUserId: string;
   onClose: () => void;
   onForwarded?: () => void;
