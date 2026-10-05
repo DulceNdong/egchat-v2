@@ -1,28 +1,16 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, StatusBar, RefreshControl,
+  Modal, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/BarChart';
+import { useBarcos } from '../../src/hooks/useMonetizacion';
+import type { BarcoConStats } from '../../src/types/monetizacion';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
-interface Barco {
-  id: string;
-  nombre_operador: string;
-  nombre_barco: string;
-  matricula: string;
-  ruta: string;
-  origen: string;
-  destino: string;
-  capacidad: number;
-  precio_base: number;
-  activo: boolean;
-  billetes_mes: number;
-  recaudacion_mes: number;
-}
 
 interface VentaMensual {
   mes: string;
