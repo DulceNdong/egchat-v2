@@ -1629,6 +1629,9 @@ export class CallManager {
 
     const session = this._session;
     if (session) {
+      // B3 fix: guardar timestamp de conexión para calcular duración real al colgar
+      this._session = { ...session, startedAt: Date.now() };
+
       LiveActivity.startCall(session.callId, session.targetName, session.callType === 'video');
       try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
 
@@ -1636,8 +1639,6 @@ export class CallManager {
         try { NativeCallKit.startCallForegroundService(session.callId, session.targetName, session.callType === 'video'); } catch { /* */ }
       }
 
-      // Notificar a la fuente de verdad que ICE se estableció
-      // Esto actualiza connected_at en Supabase para el cronómetro oficial
       callAPI.markConnected(session.callId).catch(() => {});
     }
 
