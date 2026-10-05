@@ -1,15 +1,17 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, TextInput, Alert, StatusBar, RefreshControl,
+  Modal, TextInput, Alert, StatusBar, RefreshControl, ActivityIndicator,
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
+import { useEmpresas } from '../../src/hooks/useMonetizacion';
+import type { Empresa, EstadoPago } from '../../src/types/monetizacion';
 
-// ── Tipos ──────────────────────────────────────────────────────────────────
-interface Empresa {
+// ── Tipos UI (compatibilidad con la pantalla) ──────────────────────────────
+interface EmpresaUI {
   id: string;
   nombre: string;
   responsable: string;
@@ -18,12 +20,28 @@ interface Empresa {
   cuota_mensual: number;
   comision_pct: number;
   ventas_mes: number;
-  estado_pago: 'pagado' | 'pendiente' | 'vencido';
+  estado_pago: EstadoPago;
   activa: boolean;
 }
 
-// ── Datos demo ─────────────────────────────────────────────────────────────
-const EMPRESAS_DEMO: Empresa[] = [
+// Mapea los campos de Supabase a los que usa la UI
+function toUI(e: Empresa): EmpresaUI {
+  return {
+    id: e.id,
+    nombre: e.nombre,
+    responsable: e.responsable,
+    email: e.email ?? '',
+    tipo: e.tipo_servicio,
+    cuota_mensual: e.cuota_mensual,
+    comision_pct: e.comision_pct,
+    ventas_mes: e.total_ventas_mes,
+    estado_pago: e.estado_pago,
+    activa: e.activa,
+  };
+}
+
+// ── Datos demo fallback ────────────────────────────────────────────────────
+const EMPRESAS_DEMO: EmpresaUI[] = [
   { id: '1', nombre: 'Supermercados BM Malabo', responsable: 'Carlos Ngema', email: 'c.ngema@bm.gq', tipo: '🛒 Supermercado', cuota_mensual: 150000, comision_pct: 1.5, ventas_mes: 4800000, estado_pago: 'pagado', activa: true },
   { id: '2', nombre: 'Farmacia Central GE', responsable: 'María Esono', email: 'm.esono@farmacia.gq', tipo: '💊 Farmacia', cuota_mensual: 80000, comision_pct: 1.5, ventas_mes: 1200000, estado_pago: 'pagado', activa: true },
   { id: '3', nombre: 'Restaurante El Patio', responsable: 'José Mba', email: 'j.mba@elpatio.gq', tipo: '🍽️ Restaurante', cuota_mensual: 60000, comision_pct: 1.5, ventas_mes: 680000, estado_pago: 'pendiente', activa: true },
@@ -36,17 +54,21 @@ const EMPRESAS_DEMO: Empresa[] = [
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-GQ', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n);
 
-const totalCuotas = EMPRESAS_DEMO.reduce((s, e) => s + e.cuota_mensual, 0);
-const totalComisiones = EMPRESAS_DEMO.reduce((s, e) => s + (e.ventas_mes * e.comision_pct / 100), 0);
-const totalIngresos = totalCuotas + totalComisiones;
-
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function EmpresasScreen() {
-  const [empresas, setEmpresas] = useState<Empresa[]>(EMPRESAS_DEMO);
+  const { empresas: rawEmpresas, loading, error, refresh, crearEmpresa, marcarPago } = useEmpresas();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
-  const [detailEmpresa, setDetailEmpresa] = useState<Empresa | null>(null);
-  const [filtro, setFiltro] = useState<'todas' | 'pagado' | 'pendiente' | 'vencido'>('todas');
+  const [detailEmpresa, setDetailEmpresa] = useState<EmpresaUI | null>(null);
+  const [filtro, setFiltro] = useState<'todas' | EstadoPago>('todas');
+
+  // Use real data if available, else fallback to demo
+  const empresas: EmpresaUI[] = rawEmpresas.length > 0 ? rawEmpresas.map(toUI) : EMPRESAS_DEMO;
+  const usingRealData = rawEmpresas.length > 0;
+
+  const totalCuotas = empresas.reduce((s, e) => s + e.cuota_mensual, 0);
+  const totalComisiones = empresas.reduce((s, e) => s + (e.ventas_mes * e.comision_pct / 100), 0);
+  const totalIngresos = totalCuotas + totalComisiones;
 
   // Form nueva empresa
   const [form, setForm] = useState({
@@ -58,39 +80,66 @@ export default function EmpresasScreen() {
     ? empresas
     : empresas.filter(e => e.estado_pago === filtro);
 
-  const handleAdd = () => {
+  const onRefresh = useCallback(() => {
+    setRefreshing(true);
+    refresh();
+    setTimeout(() => setRefreshing(false), 1000);
+  }, [refresh]);
+
+  const handleAdd = async () => {
     if (!form.nombre || !form.responsable) {
       Alert.alert('Error', 'Nombre y responsable son obligatorios');
       return;
     }
-    const nueva: Empresa = {
-      id: Date.now().toString(),
-      nombre: form.nombre,
-      responsable: form.responsable,
-      email: form.email,
-      tipo: form.tipo,
-      cuota_mensual: parseFloat(form.cuota_mensual) || 50000,
-      comision_pct: parseFloat(form.comision_pct) || 1.5,
-      ventas_mes: 0,
-      estado_pago: 'pendiente',
-      activa: true,
-    };
-    setEmpresas(prev => [nueva, ...prev]);
-    setModalVisible(false);
-    setForm({ nombre: '', responsable: '', email: '', tipo: 'General', cuota_mensual: '50000', comision_pct: '1.5' });
+    try {
+      if (usingRealData) {
+        await crearEmpresa({
+          nombre: form.nombre,
+          responsable: form.responsable,
+          email: form.email,
+          tipo_servicio: form.tipo,
+          cuota_mensual: parseFloat(form.cuota_mensual) || 50000,
+          comision_pct: parseFloat(form.comision_pct) || 1.5,
+        });
+      }
+      setModalVisible(false);
+      setForm({ nombre: '', responsable: '', email: '', tipo: 'General', cuota_mensual: '50000', comision_pct: '1.5' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al guardar';
+      Alert.alert('Error', msg);
+    }
   };
 
-  const handleToggleEstado = (id: string) => {
-    setEmpresas(prev => prev.map(e =>
-      e.id === id
-        ? { ...e, estado_pago: e.estado_pago === 'pagado' ? 'pendiente' : 'pagado' as any }
-        : e
-    ));
+  const handleToggleEstado = async (id: string, estadoActual: EstadoPago) => {
+    const nuevoEstado: EstadoPago = estadoActual === 'pagado' ? 'pendiente' : 'pagado';
+    try {
+      if (usingRealData) {
+        await marcarPago(id, nuevoEstado);
+      }
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Error al actualizar';
+      Alert.alert('Error', msg);
+    }
   };
 
   return (
     <View style={styles.root}>
       <StatusBar barStyle="light-content" backgroundColor="#0A0A0A" />
+
+      {/* Loading */}
+      {loading && (
+        <View style={styles.loadingBar}>
+          <ActivityIndicator size="small" color="#00D4FF" />
+          <Text style={styles.loadingText}>Cargando...</Text>
+        </View>
+      )}
+
+      {/* Error */}
+      {error && !loading && (
+        <View style={styles.errorBar}>
+          <Text style={styles.errorText}>⚠ {error} — datos de ejemplo</Text>
+        </View>
+      )}
 
       {/* Resumen métricas */}
       <View style={styles.metricsBar}>
@@ -124,7 +173,7 @@ export default function EmpresasScreen() {
         contentContainerStyle={{ paddingBottom: 100 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 800); }} tintColor="#00D4FF" />
+          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#00D4FF" />
         }
       >
         {empresasFiltradas.map(empresa => {
@@ -170,7 +219,7 @@ export default function EmpresasScreen() {
                     styles.pagoBtn,
                     { backgroundColor: empresa.estado_pago === 'pagado' ? '#00FF8820' : '#FFD70020' },
                   ]}
-                  onPress={() => handleToggleEstado(empresa.id)}
+                  onPress={() => handleToggleEstado(empresa.id, empresa.estado_pago)}
                 >
                   <Text style={[
                     styles.pagoBtnText,
@@ -280,6 +329,10 @@ export default function EmpresasScreen() {
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0A0A0A' },
   scroll: { flex: 1 },
+  loadingBar: { flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 6 },
+  loadingText: { fontSize: 12, color: '#8888AA' },
+  errorBar: { marginHorizontal: 16, marginTop: 4, padding: 8, backgroundColor: '#FF440011', borderRadius: 8, borderWidth: 1, borderColor: '#FF444433' },
+  errorText: { fontSize: 12, color: '#FF8888' },
   metricsBar: { flexDirection: 'row', paddingHorizontal: 10, paddingTop: 12 },
   totalBar: { marginHorizontal: 16, marginTop: 4, marginBottom: 8, borderRadius: 12, overflow: 'hidden' },
   totalGrad: { padding: 14, borderRadius: 12, borderWidth: 1, borderColor: '#00FF8833' },

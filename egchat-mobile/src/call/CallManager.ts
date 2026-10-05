@@ -1126,7 +1126,6 @@ export class CallManager {
   //   intento 1: ~2s  (2000 × 1 × [0.8–1.2])
   //   intento 2: ~4s  (2000 × 2 × [0.8–1.2])
   //   intento 3: ~8s  (2000 × 4 × [0.8–1.2])
-  private _iceRestartPending = false;
 
   private _scheduleIceRestart(): void {
     if (this._isEnding || this._iceRestartPending) return;
