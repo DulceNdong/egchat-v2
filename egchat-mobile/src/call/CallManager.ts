@@ -15,7 +15,7 @@
 //   - Deduplicación ICE por hash completo (no por string vacío)
 //   - ICE restart disponible para ambos roles (no solo caller)
 //   - TURN credentials obtenidas del servidor (no hardcodeadas)
-//   - toggleCamera usa _switchCamera() de react-native-webrtc
+//   - toggleCamera apaga/enciende la cámara vía replaceTrack(null/track)
 //   - Bluetooth y cambios de ruta de audio (AppState)
 //   - Timer leak corregido en polling (no setInterval dentro de setInterval)
 //   - connected solo se declara cuando ICE/PC están realmente connected
