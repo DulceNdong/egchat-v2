@@ -183,16 +183,23 @@ export default function PerfilNegocioScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 800); }} tintColor="#FF4488" />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FF4488" />
         }
       >
+        {loading && perfiles.length === 0 && (
+          <ActivityIndicator color="#FF4488" style={{ marginTop: 40 }} />
+        )}
+        {error && perfiles.length === 0 && !loading && (
+          <Text style={{ color: '#FF4444', textAlign: 'center', marginTop: 40 }}>{error}</Text>
+        )}
+
         {/* Métricas */}
         <View style={styles.metricsRow}>
           <MetricCard label="Negocios" value={`${totalNegocios}`} icon="🏪" accentColor="#FF4488" subValue="Registrados" />
-          <MetricCard label="Score Promedio" value={`${scorePromedio}/100`} icon="📊" accentColor={scoreColor(scorePromedio)} />
+          <MetricCard label="Score Promedio" value={`${scorePromedioVal}/100`} icon="📊" accentColor={scoreColor(scorePromedioVal)} />
         </View>
         <View style={styles.metricsRow}>
-          <MetricCard label="Facturación Mes" value={fmt(facturacionTotal)} icon="💰" accentColor="#FF4488" fullWidth />
+          <MetricCard label="Facturación Mes" value={fmt(facturacionTotalVal)} icon="💰" accentColor="#FF4488" fullWidth />
         </View>
 
         {/* Búsqueda */}
