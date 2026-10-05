@@ -36,7 +36,6 @@ function scoreColor(s: number) {
 
 const MESES = ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
 
-// ── Datos demo ─────────────────────────────────────────────────────────────
 const PERFILES_DEMO: PerfilNegocio[] = [
   {
     id: '1', razonSocial: 'Telecomunicaciones GETESA', nif: 'GQ-001-2019',
