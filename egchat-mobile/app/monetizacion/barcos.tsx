@@ -24,7 +24,23 @@ const fmt = (n: number) =>
   new Intl.NumberFormat('es-GQ', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n);
 
 // ── Datos demo ─────────────────────────────────────────────────────────────
-const BARCOS_DEMO: Barco[] = [
+// ── Tipos locales de demo ──────────────────────────────────────────────────
+interface BarcoDemo {
+  id: string;
+  nombre_operador: string;
+  nombre_barco: string;
+  matricula: string;
+  ruta: string;
+  origen: string;
+  destino: string;
+  capacidad: number;
+  precio_base: number;
+  activo: boolean;
+  billetes_mes: number;
+  recaudacion_mes: number;
+}
+
+const BARCOS_DEMO: BarcoDemo[] = [
   { id: '1', nombre_operador: 'Naviera Bioko S.A.', nombre_barco: 'Bioko Express', matricula: 'GQ-001-MBO', ruta: 'Malabo → Bata', origen: 'Malabo', destino: 'Bata', capacidad: 120, precio_base: 45000, activo: true, billetes_mes: 42, recaudacion_mes: 1890000 },
   { id: '2', nombre_operador: 'Transportes del Litoral', nombre_barco: 'Costa Verde', matricula: 'GQ-002-BTA', ruta: 'Bata → Malabo', origen: 'Bata', destino: 'Malabo', capacidad: 90, precio_base: 45000, activo: true, billetes_mes: 35, recaudacion_mes: 1575000 },
   { id: '3', nombre_operador: 'Naviera Guinea Ecuatorial', nombre_barco: 'Mongomo Star', matricula: 'GQ-003-MBO', ruta: 'Malabo → Annobon', origen: 'Malabo', destino: 'Annobon', capacidad: 60, precio_base: 80000, activo: true, billetes_mes: 9, recaudacion_mes: 720000 },
