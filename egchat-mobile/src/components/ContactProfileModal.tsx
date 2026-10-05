@@ -256,6 +256,7 @@ export const ContactProfileModal: React.FC<Props> = ({
   const [showPhotoModal, setShowPhotoModal] = useState(false);
   const [note, setNote] = useState('');
   const [editingNote, setEditingNote] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   if (!cp) return null;
 
@@ -266,6 +267,119 @@ export const ContactProfileModal: React.FC<Props> = ({
   const isPinned = pinnedChats.includes(cpId);
   const msgs = chatMessages[cpId] || [];
   const mediaItems = msgs.filter((m: any) => m.imageUrl || m.fileUrl);
+
+  // ─── Acciones reales ─────────────────────────────────────────────
+  const handleBlock = () => {
+    const name = cp.title || cp.name || 'este contacto';
+    if (isBlocked) {
+      // Desbloquear — no necesita advertencia de irreversibilidad
+      Alert.alert(
+        'Desbloquear contacto',
+        `¿Quieres volver a recibir mensajes de ${name}?`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Desbloquear',
+            onPress: async () => {
+              setActionLoading(true);
+              try {
+                const uid = targetUserId || cpId;
+                await blockAPI.unblock(uid);
+                onBlockToggle?.(cpId);
+              } catch {
+                Alert.alert('Error', 'No se pudo desbloquear. Verifica tu conexión.');
+              } finally {
+                setActionLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        '🚫 Bloquear contacto',
+        `¿Bloquear a ${name}?\n\nYa no podrá enviarte mensajes ni llamarte. Esta acción se puede deshacer desde Ajustes > Privacidad > Contactos bloqueados.`,
+        [
+          { text: 'Cancelar', style: 'cancel' },
+          {
+            text: 'Bloquear',
+            style: 'destructive',
+            onPress: async () => {
+              setActionLoading(true);
+              try {
+                const uid = targetUserId || cpId;
+                await blockAPI.block(uid);
+                onBlockToggle?.(cpId);
+              } catch {
+                Alert.alert('Error', 'No se pudo bloquear. Verifica tu conexión.');
+              } finally {
+                setActionLoading(false);
+              }
+            },
+          },
+        ]
+      );
+    }
+  };
+
+  const handleReport = () => {
+    const name = cp.title || cp.name || 'este contacto';
+    Alert.alert(
+      '🚩 Reportar contacto',
+      `¿Reportar a ${name} por comportamiento inapropiado?\n\n⚠️ Esta acción es irreversible. El equipo de EGChat revisará el reporte. El contacto no sabrá que lo reportaste.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Reportar',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const uid = targetUserId || cpId;
+              await reportAPI.reportUser(uid, 'comportamiento_inapropiado');
+              Alert.alert('Reporte enviado', `Gracias. Hemos recibido tu reporte sobre ${name}. Lo revisaremos pronto.`);
+            } catch {
+              Alert.alert('Error', 'No se pudo enviar el reporte. Verifica tu conexión.');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleDeleteContact = () => {
+    const name = cp.title || cp.name || 'este contacto';
+    Alert.alert(
+      '🗑️ Eliminar contacto',
+      `¿Eliminar a ${name} de tu lista de contactos?\n\n⚠️ Esta acción es irreversible. Se eliminará permanentemente de tus contactos. Los mensajes anteriores no se borrarán.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Eliminar permanentemente',
+          style: 'destructive',
+          onPress: async () => {
+            setActionLoading(true);
+            try {
+              const uid = targetUserId || cpId;
+              const removed = await contactsAPI.removeByUserId(uid);
+              if (!removed) {
+                // intentar por id de fila directo
+                await contactsAPI.remove(cpId);
+              }
+              onDeleteContact?.(cpId);
+              onClose();
+            } catch {
+              Alert.alert('Error', 'No se pudo eliminar el contacto. Verifica tu conexión.');
+            } finally {
+              setActionLoading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
 
   const sharedGroups = allGroups.filter((g: any) => {
     const members = g.members_list || g.participants || [];
