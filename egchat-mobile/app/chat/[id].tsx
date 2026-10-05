@@ -94,6 +94,7 @@ import { useChatStream } from '../../src/hooks/useChatStream';
 import { playMessageReceived } from '../../src/hooks/useSounds';
 import { notifyReaction } from '../../src/notifications';
 import { isIncognitoChat, setIncognitoMode } from '../../src/services/incognitoMode';
+import { editMessage } from '../../src/services/editMessage';
 import { useScreenSecurity, useIOSPrivacyBlur } from '../../src/services/screenSecurity';
 import { PrivacyBlurOverlay } from '../../src/components/PrivacyBlurOverlay';
 import { pinMessage, getPinnedMessages, type PinnedMessage } from '../../src/services/pinnedMessages';
