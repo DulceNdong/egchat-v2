@@ -318,23 +318,13 @@ export default function CallScreen() {
     }
   }, [callState]);
 
-  // ── Conectado ─────────────────────────────────────────────────
+  // ── Conectado (M5 fix: timer eliminado, duration viene del CallManager) ──
   useEffect(() => {
     if (callState === 'connected') {
       wasConnected.current = true;
-      // El CallManager ya inicia AVAudioSession y LiveActivity
-      // Aquí solo gestionamos el timer de duración para la UI local
-      if (timerRef.current) clearInterval(timerRef.current);
-      timerRef.current = setInterval(() => {
-        setDuration(d => {
-          const next = d + 1;
-          durationRef.current = next;
-          return next;
-        });
-      }, 1000);
+      // El CallManager ya gestiona _durationTimer internamente.
+      // `duration` llega directo del hook useWebRTC() — sin timer local.
     }
-    return () => { if (timerRef.current) clearInterval(timerRef.current); };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [callState]);
 
   // ── Finalizado ────────────────────────────────────────────────
