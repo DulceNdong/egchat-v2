@@ -318,7 +318,10 @@ export default function CallScreen() {
     }
   }, [callState]);
 
-  // ── Conectado (M5 fix: timer eliminado, duration viene del CallManager) ──
+  // ── Sincronizar durationRef con duration del CallManager ─────
+  // durationRef se usa en logCallToChat al colgar, donde duration puede
+  // estar desactualizado si el componente no re-renderizó justo antes.
+  useEffect(() => { durationRef.current = duration; }, [duration]);
   useEffect(() => {
     if (callState === 'connected') {
       wasConnected.current = true;
