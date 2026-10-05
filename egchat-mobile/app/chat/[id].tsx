@@ -858,6 +858,7 @@ export default function ChatScreen() {
   const loadMore = useCallback(async () => {
     if (!hasMore || loadingMore) return;
     setLoadingMore(true);
+    isLoadingMoreRef.current = true;
     try {
       const nextPage = page + 1;
       const older = await chatAPI.getMessages(chatId, nextPage, 50);
@@ -869,7 +870,11 @@ export default function ChatScreen() {
         setHasMore(false);
       }
     } catch {}
-    finally { setLoadingMore(false); }
+    finally {
+      setLoadingMore(false);
+      // Pequeño delay antes de desactivar la bandera para que el useEffect no reaccione
+      setTimeout(() => { isLoadingMoreRef.current = false; }, 300);
+    }
   }, [chatId, page, hasMore, loadingMore]);
 
   const sendMessage = useCallback(async () => {
