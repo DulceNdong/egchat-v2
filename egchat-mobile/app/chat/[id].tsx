@@ -333,6 +333,7 @@ export default function ChatScreen() {
   // ── C7 Reenvío con comentario ──────────────────────────────────
   const [showForwardModal, setShowForwardModal] = useState(false);
   const [forwardMsg, setForwardMsg] = useState<Message | null>(null);
+  const [forwardSelectedMsgs, setForwardSelectedMsgs] = useState<Message[]>([]);
   // ── F1 Respuestas rápidas ──────────────────────────────────────
   const [quickReplies, setQuickReplies] = useState<QuickReply[]>([]);
   const [quickReplySuggestions, setQuickReplySuggestions] = useState<QuickReply[]>([]);
