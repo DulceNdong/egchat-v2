@@ -1273,7 +1273,13 @@ const MoneyCard = ({
   onCancel?: () => void;
 }) => {
   const [loading, setLoading] = React.useState<'accept' | 'cancel' | null>(null);
-  const [done, setDone]       = React.useState<'accepted' | 'cancelled' | null>(null);
+  // Derivar estado inicial desde el texto del mensaje para persistencia entre recargas
+  const initialDone: 'accepted' | 'cancelled' | null =
+    text.includes('✅ Transferencia recibida') ? 'accepted'
+    : text.includes('❌ Transferencia rechazada') ? 'cancelled'
+    : null;
+
+  const [done, setDone] = React.useState<'accepted' | 'cancelled' | null>(initialDone);
 
   const lines      = (text || '').split('\n');
   const amountLine = lines.find(l => l.includes('💰')) || '';
