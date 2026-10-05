@@ -2093,10 +2093,12 @@ export default function ChatScreen() {
     }
     await walletAPI.acceptTransfer(resolvedId);
     // Reemplazar "⏳ Pendiente de aceptación" → "✅ Transferencia recibida"
-    // para que al recargar el mensaje ya no muestre los botones
+    // y persistir en BD para que al recargar el chat ya no aparezcan los botones
     setMessages(prev => prev.map(m => {
       if (m.text?.includes('⏳ Pendiente') && m.text?.includes(resolvedId)) {
-        return { ...m, text: m.text.replace('⏳ Pendiente de aceptación', '✅ Transferencia recibida') };
+        const newText = m.text.replace('⏳ Pendiente de aceptación', '✅ Transferencia recibida');
+        editMessage(m.id, newText).catch(() => { /* silencioso — el estado local ya está actualizado */ });
+        return { ...m, text: newText };
       }
       return m;
     }));
@@ -2114,10 +2116,12 @@ export default function ChatScreen() {
     }
     await walletAPI.cancelTransfer(resolvedId);
     // Reemplazar "⏳ Pendiente de aceptación" → "❌ Transferencia rechazada"
-    // para que al recargar el mensaje ya no muestre los botones
+    // y persistir en BD para que al recargar el chat ya no aparezcan los botones
     setMessages(prev => prev.map(m => {
       if (m.text?.includes('⏳ Pendiente') && m.text?.includes(resolvedId)) {
-        return { ...m, text: m.text.replace('⏳ Pendiente de aceptación', '❌ Transferencia rechazada') };
+        const newText = m.text.replace('⏳ Pendiente de aceptación', '❌ Transferencia rechazada');
+        editMessage(m.id, newText).catch(() => { /* silencioso — el estado local ya está actualizado */ });
+        return { ...m, text: newText };
       }
       return m;
     }));
