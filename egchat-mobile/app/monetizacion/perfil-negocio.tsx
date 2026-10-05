@@ -8,21 +8,29 @@ import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/BarChart';
 import { usePerfilNegocio } from '../../src/hooks/useMonetizacion';
-import type { PerfilFinancieroNegocio } from '../../src/types/monetizacion';
+import type { PerfilFinancieroNegocio, HistorialTxNegocio } from '../../src/types/monetizacion';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
-interface PerfilNegocio {
+
+type PerfilConFact = PerfilFinancieroNegocio & {
+  historial: HistorialTxNegocio[];
+  empresa?: { nombre: string; responsable: string; email: string; estado_pago: string } | null;
+  facturacionMensualData: number[]; // los 6 meses para el gráfico
+};
+
+// Tipo del fallback demo (estructura legacy, solo para mapear)
+interface PerfilNegocioDemo {
   id: string;
   razonSocial: string;
   nif: string;
   responsable: string;
   sector: string;
   mesesOperacion: number;
-  facturacionMensual: number[];  // últimos 6 meses
+  facturacionMensual: number[];
   numTransacciones: number;
   scoreFinanciero: number;
   serviciosActivos: string[];
-  tendencia: number; // % cambio último mes
+  tendencia: number;
 }
 
 const fmt = (n: number) =>
@@ -36,7 +44,7 @@ function scoreColor(s: number) {
 
 const MESES = ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
 
-const PERFILES_DEMO: PerfilNegocio[] = [
+const PERFILES_DEMO: PerfilNegocioDemo[] = [
   {
     id: '1', razonSocial: 'Telecomunicaciones GETESA', nif: 'GQ-001-2019',
     responsable: 'Pedro Abeso', sector: '📡 Telecomunicaciones',
@@ -81,93 +89,75 @@ const PERFILES_DEMO: PerfilNegocio[] = [
   },
 ];
 
-const totalNegocios = PERFILES_DEMO.length;
-const scorePromedio = Math.round(PERFILES_DEMO.reduce((s, p) => s + p.scoreFinanciero, 0) / totalNegocios);
-const facturacionTotal = PERFILES_DEMO.reduce(
-  (s, p) => s + p.facturacionMensual[p.facturacionMensual.length - 1], 0
-);
-
-// Estas constantes son solo para el fallback demo — las dinámicas se calculan en el componente
-
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function PerfilNegocioScreen() {
   const [search, setSearch] = useState('');
-  const [selectedPerfil, setSelectedPerfil] = useState<PerfilNegocio | null>(null);
+  const [selectedPerfil, setSelectedPerfil] = useState<PerfilConFact | null>(null);
+  const [loadingDetalle, setLoadingDetalle] = useState(false);
   const [informeVisible, setInformeVisible] = useState(false);
   const [informeData, setInformeData] = useState<InformeData | null>(null);
   const [filtroScore, setFiltroScore] = useState<'todos' | 'alto' | 'medio' | 'bajo'>('todos');
-  const [facturacionCache, setFacturacionCache] = useState<{ [id: string]: number[] }>({});
 
   const { perfiles, loading, error, refresh, fetchHistorial, fetchFacturacionMensual } = usePerfilNegocio();
 
-  // Mapear datos del hook a la interfaz local PerfilNegocio
-  const perfilesMapeados: PerfilNegocio[] = perfiles.map(p => ({
-    id: p.empresa_id,
-    razonSocial: p.empresa?.nombre ?? p.razon_social ?? 'Sin nombre',
-    nif: p.nif ?? '',
-    responsable: p.empresa?.responsable ?? '',
-    sector: p.sector ?? '',
-    mesesOperacion: p.meses_operacion ?? 0,
-    facturacionMensual: facturacionCache[p.empresa_id] ?? [0, 0, 0, 0, 0, p.facturacion_mensual_promedio ?? 0],
-    numTransacciones: p.num_transacciones_total ?? 0,
-    scoreFinanciero: p.score_financiero ?? 0,
-    serviciosActivos: p.servicios_activos ?? [],
-    tendencia: 0,
-  }));
+  // Fallback: si Supabase no devuelve datos, usa el demo mapeado al nuevo shape
+  const fuentePerfiles: PerfilConFact[] = perfiles.length > 0
+    ? perfiles.map(p => ({ ...p, facturacionMensualData: Array(6).fill(0) }))
+    : PERFILES_DEMO.map(p => ({
+        empresa_id: p.id,
+        razon_social: p.razonSocial,
+        nif: p.nif,
+        sector: p.sector.replace(/\p{Emoji}/gu, '').trim(),
+        score_financiero: p.scoreFinanciero,
+        facturacion_mensual_promedio: Math.round(
+          p.facturacionMensual.filter(v => v > 0).reduce((a, b) => a + b, 0) /
+          Math.max(p.facturacionMensual.filter(v => v > 0).length, 1),
+        ),
+        facturacion_total: p.facturacionMensual.reduce((a, b) => a + b, 0),
+        meses_operacion: p.mesesOperacion,
+        num_transacciones_total: p.numTransacciones,
+        servicios_activos: p.serviciosActivos,
+        historial: [],
+        empresa: { nombre: p.razonSocial, responsable: p.responsable, email: '', estado_pago: 'pendiente' },
+        facturacionMensualData: p.facturacionMensual,
+      }));
 
-  const fuente: PerfilNegocio[] = perfilesMapeados.length > 0 ? perfilesMapeados : PERFILES_DEMO;
-
-  const totalNegocios = fuente.length;
-  const scorePromedioVal = totalNegocios > 0
-    ? Math.round(fuente.reduce((s, p) => s + p.scoreFinanciero, 0) / totalNegocios)
+  // Métricas globales
+  const totalNegocios = fuentePerfiles.length;
+  const scorePromedio = fuentePerfiles.length > 0
+    ? Math.round(fuentePerfiles.reduce((s, p) => s + p.score_financiero, 0) / fuentePerfiles.length)
     : 0;
-  const facturacionTotalVal = fuente.reduce(
-    (s, p) => s + (p.facturacionMensual[p.facturacionMensual.length - 1] ?? 0), 0,
-  );
+  const facturacionTotal = fuentePerfiles.reduce((s, p) => s + p.facturacion_mensual_promedio, 0);
 
-  const handleOpenPerfil = async (perfil: PerfilNegocio) => {
-    const isExpanded = selectedPerfil?.id === perfil.id;
-    setSelectedPerfil(isExpanded ? null : perfil);
-    if (!isExpanded && !facturacionCache[perfil.id]) {
-      try {
-        const fact = await fetchFacturacionMensual(perfil.id);
-        setFacturacionCache(prev => ({ ...prev, [perfil.id]: fact }));
-        setSelectedPerfil(prev => prev ? { ...prev, facturacionMensual: fact } : null);
-      } catch { /* usar datos actuales */ }
-    }
-  };
-
-  const perfilesFiltrados = fuente
-    .filter(p => p.razonSocial.toLowerCase().includes(search.toLowerCase()))
+  const perfilesFiltrados = fuentePerfiles
+    .filter(p => p.razon_social.toLowerCase().includes(search.toLowerCase()))
     .filter(p => {
-      if (filtroScore === 'alto') return p.scoreFinanciero >= 70;
-      if (filtroScore === 'medio') return p.scoreFinanciero >= 40 && p.scoreFinanciero < 70;
-      if (filtroScore === 'bajo') return p.scoreFinanciero < 40;
+      if (filtroScore === 'alto') return p.score_financiero >= 70;
+      if (filtroScore === 'medio') return p.score_financiero >= 40 && p.score_financiero < 70;
+      if (filtroScore === 'bajo') return p.score_financiero < 40;
       return true;
     });
 
-  const handleGenerarInforme = (perfil: PerfilNegocio) => {
-    const facturacionPromedio = perfil.facturacionMensual.filter(v => v > 0).length > 0
-      ? perfil.facturacionMensual.reduce((a, b) => a + b, 0) / Math.max(perfil.facturacionMensual.filter(v => v > 0).length, 1)
-      : 0;
-    const facturacionTotalAcum = perfil.facturacionMensual.reduce((a, b) => a + b, 0);
+  const handleGenerarInforme = (perfil: PerfilConFact) => {
+    const facturacionPromedio = perfil.facturacion_mensual_promedio;
+    const facturacionTotalAcum = perfil.facturacion_total;
 
     setInformeData({
       tipo: 'negocio',
-      nombre: perfil.razonSocial,
-      razonSocial: perfil.razonSocial,
-      nif: perfil.nif,
-      sector: perfil.sector.replace(/\p{Emoji}/gu, '').trim(),
-      periodo: `Últimos ${perfil.mesesOperacion} meses`,
-      scoreFinanciero: perfil.scoreFinanciero,
-      numTransacciones: perfil.numTransacciones,
+      nombre: perfil.empresa?.nombre ?? perfil.razon_social,
+      razonSocial: perfil.razon_social,
+      nif: perfil.nif ?? '',
+      sector: (perfil.sector ?? 'Sin sector').replace(/\p{Emoji}/gu, '').trim(),
+      periodo: `Últimos ${perfil.meses_operacion} meses`,
+      scoreFinanciero: perfil.score_financiero,
+      numTransacciones: perfil.num_transacciones_total,
       facturacionMensualPromedio: Math.round(facturacionPromedio),
       facturacionTotal: facturacionTotalAcum,
-      mesesOperacion: perfil.mesesOperacion,
-      serviciosActivos: perfil.serviciosActivos,
-      observaciones: perfil.scoreFinanciero >= 70
+      mesesOperacion: perfil.meses_operacion,
+      serviciosActivos: perfil.servicios_activos,
+      observaciones: perfil.score_financiero >= 70
         ? 'Negocio con facturación estable y creciente. Historial sólido en plataforma EGChat. Recomendado para líneas de crédito empresarial.'
-        : perfil.scoreFinanciero >= 40
+        : perfil.score_financiero >= 40
         ? 'Negocio en crecimiento con historial moderado. Evaluar condiciones según volumen solicitado.'
         : 'Negocio con actividad insuficiente en la plataforma. Se recomienda mayor historial antes de aprobar crédito.',
     });
@@ -186,6 +176,7 @@ export default function PerfilNegocioScreen() {
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FF4488" />
         }
       >
+        {/* Loading / Error */}
         {loading && perfiles.length === 0 && (
           <ActivityIndicator color="#FF4488" style={{ marginTop: 40 }} />
         )}
@@ -196,10 +187,10 @@ export default function PerfilNegocioScreen() {
         {/* Métricas */}
         <View style={styles.metricsRow}>
           <MetricCard label="Negocios" value={`${totalNegocios}`} icon="🏪" accentColor="#FF4488" subValue="Registrados" />
-          <MetricCard label="Score Promedio" value={`${scorePromedioVal}/100`} icon="📊" accentColor={scoreColor(scorePromedioVal)} />
+          <MetricCard label="Score Promedio" value={`${scorePromedio}/100`} icon="📊" accentColor={scoreColor(scorePromedio)} />
         </View>
         <View style={styles.metricsRow}>
-          <MetricCard label="Facturación Mes" value={fmt(facturacionTotalVal)} icon="💰" accentColor="#FF4488" fullWidth />
+          <MetricCard label="Facturación Mes" value={fmt(facturacionTotal)} icon="💰" accentColor="#FF4488" fullWidth />
         </View>
 
         {/* Búsqueda */}
@@ -239,22 +230,40 @@ export default function PerfilNegocioScreen() {
           ))}
         </View>
 
+        {/* Lista perfiles negocio */}
         {perfilesFiltrados.map(perfil => {
-          const sc = perfil.scoreFinanciero;
+          const sc = perfil.score_financiero;
           const sc_color = scoreColor(sc);
-          const facturacionActual = perfil.facturacionMensual[perfil.facturacionMensual.length - 1];
-          const isExpanded = selectedPerfil?.id === perfil.id;
+          const facturacionActual = perfil.facturacion_mensual_promedio;
+          const isExpanded = selectedPerfil?.empresa_id === perfil.empresa_id;
 
           const chartData: BarChartDataPoint[] = MESES.map((m, i) => ({
             label: m,
-            value: perfil.facturacionMensual[i],
+            value: (isExpanded ? selectedPerfil?.facturacionMensualData[i] : perfil.facturacionMensualData[i]) ?? 0,
           }));
 
           return (
             <TouchableOpacity
-              key={perfil.id}
+              key={perfil.empresa_id}
               style={styles.card}
-              onPress={() => handleOpenPerfil(perfil)}
+              onPress={async () => {
+                if (selectedPerfil?.empresa_id === perfil.empresa_id) {
+                  setSelectedPerfil(null);
+                } else {
+                  setSelectedPerfil({ ...perfil, historial: [], facturacionMensualData: Array(6).fill(0) });
+                  setLoadingDetalle(true);
+                  try {
+                    const [hist, fact] = await Promise.all([
+                      fetchHistorial(perfil.empresa_id),
+                      fetchFacturacionMensual(perfil.empresa_id),
+                    ]);
+                    setSelectedPerfil(prev =>
+                      prev ? { ...prev, historial: hist, facturacionMensualData: fact } : null,
+                    );
+                  } catch { /* keep empty */ }
+                  finally { setLoadingDetalle(false); }
+                }
+              }}
               activeOpacity={0.85}
             >
               {/* Cabecera */}
@@ -264,9 +273,9 @@ export default function PerfilNegocioScreen() {
                   <Text style={styles.avatarLabel}>score</Text>
                 </View>
                 <View style={styles.cardInfo}>
-                  <Text style={styles.cardNombre} numberOfLines={1}>{perfil.razonSocial}</Text>
-                  <Text style={styles.cardSub}>{perfil.sector}</Text>
-                  <Text style={styles.cardSub}>👤 {perfil.responsable} · NIF: {perfil.nif}</Text>
+                  <Text style={styles.cardNombre} numberOfLines={1}>{perfil.razon_social}</Text>
+                  <Text style={styles.cardSub}>{(perfil.sector ?? 'Sin sector')}</Text>
+                  <Text style={styles.cardSub}>👤 {perfil.empresa?.responsable ?? ''} · NIF: {perfil.nif ?? ''}</Text>
                 </View>
               </View>
 
@@ -278,12 +287,12 @@ export default function PerfilNegocioScreen() {
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statVal}>{perfil.numTransacciones}</Text>
+                  <Text style={styles.statVal}>{perfil.num_transacciones_total}</Text>
                   <Text style={styles.statLabel}>Transacciones</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
-                  <Text style={styles.statVal}>{perfil.mesesOperacion}m</Text>
+                  <Text style={styles.statVal}>{perfil.meses_operacion}m</Text>
                   <Text style={styles.statLabel}>Operando</Text>
                 </View>
               </View>
@@ -298,26 +307,23 @@ export default function PerfilNegocioScreen() {
                 </Text>
               </View>
 
-              {/* Tendencia */}
-              {perfil.tendencia !== 0 && (
-                <Text style={[styles.tendencia, { color: perfil.tendencia > 0 ? '#00FF88' : '#FF4444' }]}>
-                  {perfil.tendencia > 0 ? '↑' : '↓'} {Math.abs(perfil.tendencia)}% vs mes anterior
-                </Text>
-              )}
-
               {/* Expandido */}
               {isExpanded && (
                 <View style={styles.expanded}>
                   {/* Gráfico facturación */}
                   <Text style={styles.expandedTitle}>📈 Facturación 6 Meses</Text>
                   <View style={styles.expandedChart}>
-                    <BarChart
-                      data={chartData}
-                      height={160}
-                      barColor="#FF4488"
-                      barColorSecondary="#881144"
-                      formatValue={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${(v / 1000).toFixed(0)}K`}
-                    />
+                    {loadingDetalle ? (
+                      <ActivityIndicator color="#FF4488" style={{ marginVertical: 20 }} />
+                    ) : (
+                      <BarChart
+                        data={chartData}
+                        height={160}
+                        barColor="#FF4488"
+                        barColorSecondary="#881144"
+                        formatValue={v => v >= 1000000 ? `${(v / 1000000).toFixed(1)}M` : `${(v / 1000).toFixed(0)}K`}
+                      />
+                    )}
                   </View>
 
                   {/* Detalle financiero */}
@@ -325,20 +331,20 @@ export default function PerfilNegocioScreen() {
                   <RevenueTable
                     showBars={false}
                     rows={[
-                      { label: 'NIF Fiscal', value: perfil.nif },
-                      { label: 'Sector', value: perfil.sector.replace(/\p{Emoji}/gu, '').trim() },
-                      { label: 'Meses en operación', value: `${perfil.mesesOperacion} meses` },
+                      { label: 'NIF Fiscal', value: perfil.nif ?? 'N/A' },
+                      { label: 'Sector', value: (perfil.sector ?? 'Sin sector').replace(/\p{Emoji}/gu, '').trim() },
+                      { label: 'Meses en operación', value: `${perfil.meses_operacion} meses` },
                       {
                         label: 'Facturación promedio',
-                        value: fmt(Math.round(perfil.facturacionMensual.filter(v => v > 0).reduce((a, b) => a + b, 0) / Math.max(perfil.facturacionMensual.filter(v => v > 0).length, 1))),
+                        value: fmt(perfil.facturacion_mensual_promedio),
                         color: '#FF4488',
                       },
                       {
                         label: 'Facturación total',
-                        value: fmt(perfil.facturacionMensual.reduce((a, b) => a + b, 0)),
+                        value: fmt(perfil.facturacion_total),
                         color: '#00D4FF',
                       },
-                      { label: 'Servicios activos', value: perfil.serviciosActivos.join(', ') || 'Ninguno' },
+                      { label: 'Servicios activos', value: perfil.servicios_activos.join(', ') || 'Ninguno' },
                     ]}
                   />
 
@@ -354,7 +360,7 @@ export default function PerfilNegocioScreen() {
           );
         })}
 
-        {perfilesFiltrados.length === 0 && (
+        {perfilesFiltrados.length === 0 && !loading && (
           <View style={styles.empty}>
             <Text style={styles.emptyText}>No se encontraron negocios</Text>
           </View>
@@ -405,7 +411,6 @@ const styles = StyleSheet.create({
   scoreBarBg: { flex: 1, height: 6, backgroundColor: '#2A2A4A', borderRadius: 3, overflow: 'hidden' },
   scoreBarFill: { height: 6, borderRadius: 3 },
   scoreLabel: { fontSize: 11, fontWeight: '700', minWidth: 90, textAlign: 'right' },
-  tendencia: { fontSize: 11, fontWeight: '600', marginTop: 6 },
   expanded: { marginTop: 14, borderTopWidth: 1, borderTopColor: '#2A2A4A', paddingTop: 14 },
   expandedTitle: { fontSize: 13, fontWeight: '800', color: '#FF4488', marginBottom: 10 },
   expandedChart: { backgroundColor: '#0F0F1E', borderRadius: 10, padding: 12, overflow: 'hidden' },
