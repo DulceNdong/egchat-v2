@@ -87,7 +87,7 @@
       "node": "20.18.0",
       "android": {
         "buildType": "app-bundle",
-        "resourceClass": "large"
+        "resourceClass": "medium"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
@@ -101,7 +101,7 @@
         "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
         "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
         "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
-        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx3072m -Dorg.gradle.daemon=false -Dkotlin.incremental=false -Dkotlin.compiler.execution.strategy=in-process"
       },
       "ios": {
         "autoIncrement": true,
