@@ -134,6 +134,8 @@ export default function PerfilNegocioScreen() {
       } catch { /* usar datos actuales */ }
     }
   };
+
+  const perfilesFiltrados = fuente
     .filter(p => p.razonSocial.toLowerCase().includes(search.toLowerCase()))
     .filter(p => {
       if (filtroScore === 'alto') return p.scoreFinanciero >= 70;
