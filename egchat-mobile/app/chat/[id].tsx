@@ -3171,7 +3171,16 @@ export default function ChatScreen() {
           isGroup,
           type: isGroup ? 'group' : 'private',
         }}
+        targetUserId={otherParticipant?.user_id ? String(otherParticipant.user_id) : undefined}
         onClose={() => setShowProfile(false)}
+        onMuteToggle={() => {
+          const next = !isMuted;
+          setIsMuted(next);
+        }}
+        onDeleteContact={async () => {
+          // ya se maneja dentro del modal, solo cerrar
+          setShowProfile(false);
+        }}
         onStartCall={(type) => {
           setShowProfile(false);
           router.push({
