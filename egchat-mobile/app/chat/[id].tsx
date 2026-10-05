@@ -2017,9 +2017,15 @@ export default function ChatScreen() {
     const msgs = messages.filter(m => selectedIds.has(m.id));
     if (msgs.length === 0) return;
     exitSelectMode();
-    // Reenviar el primero con el modal; si hay varios, los encola en globals para el modal
-    (global as any).__egchat_forward_msgs = msgs;
-    setForwardMsg(msgs[0]);
+    if (msgs.length === 1) {
+      // Un solo mensaje: flujo individual (compatible con modal original)
+      setForwardMsg(msgs[0]);
+      setForwardSelectedMsgs([]);
+    } else {
+      // Múltiples mensajes: pasar el array completo al modal
+      setForwardMsg(null);
+      setForwardSelectedMsgs(msgs);
+    }
     setShowForwardModal(true);
   }, [messages, selectedIds, exitSelectMode]);
 
