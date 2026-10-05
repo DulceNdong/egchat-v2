@@ -4770,145 +4770,560 @@ app.get('/api/turn-token', auth, async (req, res) => {
 });
 
 // Iniciar llamada — caller envía offer + push al destinatario
+// ─────────────────────────────────────────────────────────────────────────────
+// LLAMADAS WebRTC — Señalización y gestión de estado
+//
+// FUENTE DE VERDAD: Supabase PostgreSQL via RPCs atómicas con FOR UPDATE.
+//
+// RACE CONDITIONS RESUELTAS:
+//   Accept + Accept → solo uno hace la transición, el otro recibe 'idempotent'
+//   Cancel + Accept → accept_call falla con invalid_transition
+//   End + End       → end_call es idempotente
+//   Dos dispositivos del callee → el primero acepta, el resto recibe 409
+// ─────────────────────────────────────────────────────────────────────────────
+
 app.post('/api/call/offer', auth, async (req, res) => {
   const { callId, offer, targetUserId, type, groupId } = req.body;
   if (!callId || !offer) return res.status(400).json({ error: 'callId y offer requeridos' });
+  if (!targetUserId) return res.status(400).json({ error: 'targetUserId requerido' });
   try {
-    await supabase.from('call_sessions').upsert({
-      call_id: callId,
-      offer: JSON.stringify(offer),
-      answer: null,
-      caller_candidates: '[]',
-      callee_candidates: '[]',
-      type: type || 'audio',
-      caller_id: req.user.id,
-      target_user_id: targetUserId,
-      ended: false,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...(groupId ? { group_id: groupId } : {}),
-    }, { onConflict: 'call_id' });
+    const nonce = `${callId}_${req.user.id}`;
+    const { data: callData, error: callErr } = await supabase.rpc('initiate_call', {
+      p_call_id:   callId,
+      p_caller_id: req.user.id,
+      p_callee_id: targetUserId,
+      p_call_type: type || 'audio',
+      p_offer:     offer,
+      p_chat_id:   req.body.chatId || null,
+      p_nonce:     nonce,
+    });
 
-    // Push al destinatario con info de llamada grupal si aplica
+    if (callErr) {
+      if (callErr.message && callErr.message.includes('caller_already_in_call')) {
+        return res.status(409).json({ error: 'El llamante ya tiene una llamada activa' });
+      }
+      // Fallback si la RPC no existe aún (migración no ejecutada)
+      await supabase.from('call_sessions').upsert({
+        call_id: callId, offer: JSON.stringify(offer), answer: null,
+        caller_candidates: '[]', callee_candidates: '[]',
+        type: type || 'audio', caller_id: req.user.id,
+        target_user_id: targetUserId, ended: false,
+        created_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+        ...(groupId ? { group_id: groupId } : {}),
+      }, { onConflict: 'call_id' });
+    } else {
+      // Guardar offer como texto para polling legacy
+      await supabase.from('call_sessions').update({
+        offer: JSON.stringify(offer), updated_at: new Date().toISOString(),
+        ...(groupId ? { group_id: groupId } : {}),
+      }).eq('call_id', callId);
+    }
+
     if (targetUserId) {
       try {
         const { data: caller } = await supabase
           .from('users').select('full_name, avatar_url').eq('id', req.user.id).single();
         const callerName = caller?.full_name || 'Alguien';
-        const isVideo = (type || 'audio') === 'video';
-        const callPushPayload = {
+        const isVideo    = (type || 'audio') === 'video';
+        await sendPushToUser(targetUserId, {
           title: isVideo ? `📹 Videollamada de ${callerName}` : `📞 Llamada de ${callerName}`,
-          body: isVideo ? 'Toca para responder la videollamada' : 'Toca para responder la llamada',
-          icon: caller?.avatar_url || '/favicon.svg',
-          badge: '/favicon.svg',
-          tag: `call-${callId}`,
-          requireInteraction: true,
-          url: '/',
-          callId,
-          callerId: req.user.id,
-          callerName,
-          callType: type || 'audio',
-          notificationType: 'incoming_call',
-          // Incluir el offer en el push para que el callee pueda contestar
-          // inmediatamente sin esperar a que Render despierte del cold start
-          offer: offer,
-        };
-
-        // Enviar push inmediatamente — una sola vez
-        // (el SW tiene requireInteraction:true, la notificación no desaparece sola)
-        await sendPushToUser(targetUserId, callPushPayload);
-
-      } catch (pushErr) {
-        console.warn('Push call notification failed:', pushErr.message);
-      }
+<<<<<<< Updated upstream
+          body:  isVideo ? 'Toca para responder la videollamada' : 'Toca para responder la llamada',
+          tag: `call-${callId}`, requireInteraction: true,
+          callId, callerId: req.user.id, callerName,
+          callType: type || 'audio', notificationType: 'incoming_call',
+        });
+      } catch (pushErr) { console.warn('[call/offer] Push failed:', pushErr.message); }
     }
 
-    res.json({ ok: true });
+    res.json({ ok: true, idempotent: callData && callData.idempotent ? true : false });
   } catch (e) {
-    res.status(500).json({ error: 'Error guardando sesión' });
+    console.error('[call/offer]', e.message);
+    res.status(500).json({ error: 'Error iniciando llamada' });
   }
 });
 
-// Callee responde con answer
+// Callee responde con answer — usa RPC atómica accept_call (FOR UPDATE)
 app.post('/api/call/answer', auth, async (req, res) => {
   const { callId, answer } = req.body;
-  const { data } = await supabase.from('call_sessions').select('call_id').eq('call_id', callId).eq('ended', false).single();
-  if (!data) return res.status(404).json({ error: 'Llamada no encontrada' });
-  await supabase.from('call_sessions').update({ answer: JSON.stringify(answer), updated_at: new Date().toISOString() }).eq('call_id', callId);
-  res.json({ ok: true });
+  if (!callId) return res.status(400).json({ error: 'callId requerido' });
+  try {
+    const { data, error } = await supabase.rpc('accept_call', {
+      p_call_id:   callId,
+      p_callee_id: req.user.id,
+      p_answer:    answer || null,
+    });
+
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('not_authorized'))        return res.status(403).json({ error: 'No autorizado' });
+      if (msg.includes('call_not_found'))        return res.status(404).json({ error: 'Llamada no encontrada' });
+      if (msg.includes('call_expired'))          return res.status(410).json({ error: 'La llamada ha caducado' });
+      if (msg.includes('invalid_transition'))    return res.status(409).json({ error: 'Transición inválida: ' + msg });
+      if (msg.includes('concurrent_modification')) return res.status(409).json({ error: 'La llamada ya fue respondida en otro dispositivo' });
+      // Fallback si la RPC no existe
+      const { data: existing } = await supabase.from('call_sessions').select('call_id').eq('call_id', callId).eq('ended', false).single();
+      if (!existing) return res.status(404).json({ error: 'Llamada no encontrada' });
+      await supabase.from('call_sessions').update({ answer: JSON.stringify(answer), updated_at: new Date().toISOString() }).eq('call_id', callId);
+      return res.json({ ok: true });
+    }
+
+    if (answer) {
+      await supabase.from('call_sessions').update({
+        answer: JSON.stringify(answer), updated_at: new Date().toISOString(),
+      }).eq('call_id', callId);
+    }
+    res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
+  } catch (e) {
+    console.error('[call/answer]', e.message);
+    res.status(500).json({ error: 'Error aceptando llamada' });
+  }
 });
 
-// Enviar ICE candidate
+// ICE candidates
 app.post('/api/call/ice', auth, async (req, res) => {
   const { callId, candidate, role } = req.body;
-  const { data } = await supabase.from('call_sessions').select('caller_candidates, callee_candidates').eq('call_id', callId).single();
-  if (!data) return res.status(404).json({ error: 'Llamada no encontrada' });
-  if (role === 'caller') {
-    const arr = JSON.parse(data.caller_candidates || '[]');
+  if (!callId || !candidate) return res.status(400).json({ error: 'callId y candidate requeridos' });
+  try {
+    const { data } = await supabase.from('call_sessions')
+      .select('caller_candidates, callee_candidates, status, ended')
+      .eq('call_id', callId).single();
+    if (!data) return res.status(404).json({ error: 'Llamada no encontrada' });
+    const status = data.status || '';
+    if (data.ended || ['ended','rejected','missed','failed'].includes(status)) {
+      return res.json({ ok: true, skipped: true });
+    }
+    const field = role === 'caller' ? 'caller_candidates' : 'callee_candidates';
+    const arr = JSON.parse(data[field] || '[]');
     arr.push(candidate);
-    await supabase.from('call_sessions').update({ caller_candidates: JSON.stringify(arr), updated_at: new Date().toISOString() }).eq('call_id', callId);
-  } else {
-    const arr = JSON.parse(data.callee_candidates || '[]');
-    arr.push(candidate);
-    await supabase.from('call_sessions').update({ callee_candidates: JSON.stringify(arr), updated_at: new Date().toISOString() }).eq('call_id', callId);
+    await supabase.from('call_sessions').update({ [field]: JSON.stringify(arr), updated_at: new Date().toISOString() }).eq('call_id', callId);
+    res.json({ ok: true });
+  } catch (e) {
+    console.error('[call/ice]', e.message);
+    res.status(500).json({ error: 'Error ICE' });
   }
-  res.json({ ok: true });
 });
 
-// Polling — obtener estado de la llamada
+// Polling — estado completo con campos nuevos
 app.get('/api/call/:callId', auth, async (req, res) => {
-  const { data } = await supabase.from('call_sessions').select('*').eq('call_id', req.params.callId).single();
-  if (!data) return res.status(404).json({ error: 'Llamada no encontrada' });
-  res.json({
-    offer: JSON.parse(data.offer || 'null'),
-    answer: data.answer ? JSON.parse(data.answer) : null,
-    callerCandidates: JSON.parse(data.caller_candidates || '[]'),
-    calleeCandidates: JSON.parse(data.callee_candidates || '[]'),
-    type: data.type,
-    callerId: data.caller_id,
-    targetUserId: data.target_user_id,
-    ended: data.ended,
-  });
+  try {
+    const { data } = await supabase.from('call_sessions').select('*').eq('call_id', req.params.callId).single();
+    if (!data) return res.status(404).json({ error: 'Llamada no encontrada' });
+    res.json({
+      offer:            JSON.parse(data.offer || 'null'),
+      answer:           data.answer ? JSON.parse(data.answer) : null,
+      callerCandidates: JSON.parse(data.caller_candidates || '[]'),
+      calleeCandidates: JSON.parse(data.callee_candidates || '[]'),
+      type:             data.type,
+      callerId:         data.caller_id,
+      targetUserId:     data.target_user_id,
+      ended:            data.ended,
+      status:           data.status || (data.ended ? 'ended' : 'ringing'),
+      connectedAt:      data.connected_at || null,
+      endedAt:          data.ended_at || null,
+      version:          data.version || 1,
+    });
+  } catch (e) {
+    console.error('[call/get]', e.message);
+    res.status(500).json({ error: 'Error obteniendo estado' });
+  }
 });
 
-// Terminar llamada
+// Terminar llamada — usa RPC end_call (idempotente)
 app.delete('/api/call/:callId', auth, async (req, res) => {
-  await supabase.from('call_sessions').update({ ended: true, updated_at: new Date().toISOString() }).eq('call_id', req.params.callId);
-  // Borrar después de 15 segundos
-  setTimeout(async () => {
-    await supabase.from('call_sessions').delete().eq('call_id', req.params.callId);
-  }, 15000);
-  res.json({ ok: true });
+  try {
+    const reason = req.query.reason || 'normal';
+    const { data, error } = await supabase.rpc('end_call', {
+      p_call_id: req.params.callId,
+      p_user_id: req.user.id,
+      p_reason:  reason,
+    });
+
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('not_authorized')) return res.status(403).json({ error: 'No autorizado' });
+      if (msg.includes('call_not_found')) return res.json({ ok: true, idempotent: true });
+      // Fallback
+      await supabase.from('call_sessions').update({ ended: true, updated_at: new Date().toISOString() }).eq('call_id', req.params.callId);
+    }
+
+    setTimeout(async () => {
+      try { await supabase.from('call_sessions').delete().eq('call_id', req.params.callId); } catch {}
+    }, 30000);
+
+    res.json({ ok: true, idempotent: data && data.idempotent ? true : false, duration_seconds: data && data.duration_seconds ? data.duration_seconds : 0 });
+  } catch (e) {
+    console.error('[call/delete]', e.message);
+    res.status(500).json({ error: 'Error terminando llamada' });
+  }
 });
 
-// Notificar llamada entrante (el callee hace polling de esto)
+// Rechazar llamada — usa RPC reject_call
+app.post('/api/call/reject', auth, async (req, res) => {
+  const { callId } = req.body;
+  if (!callId) return res.status(400).json({ error: 'callId requerido' });
+  try {
+    const { data, error } = await supabase.rpc('reject_call', { p_call_id: callId, p_callee_id: req.user.id });
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('not_authorized'))    return res.status(403).json({ error: 'No autorizado' });
+      if (msg.includes('call_not_found'))    return res.status(404).json({ error: 'No encontrada' });
+      if (msg.includes('invalid_transition')) return res.status(409).json({ error: msg });
+      throw error;
+    }
+    res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
+  } catch (e) {
+    console.error('[call/reject]', e.message);
+    res.status(500).json({ error: 'Error rechazando llamada' });
+  }
+});
+
+// Cancelar llamada (caller) — usa RPC cancel_call
+app.post('/api/call/cancel', auth, async (req, res) => {
+  const { callId } = req.body;
+  if (!callId) return res.status(400).json({ error: 'callId requerido' });
+  try {
+    const { data, error } = await supabase.rpc('cancel_call', { p_call_id: callId, p_caller_id: req.user.id });
+    if (error) {
+      const msg = error.message || '';
+      if (msg.includes('not_authorized'))    return res.status(403).json({ error: 'No autorizado' });
+      if (msg.includes('call_not_found'))    return res.json({ ok: true, idempotent: true });
+      if (msg.includes('invalid_transition')) return res.status(409).json({ error: msg });
+      throw error;
+    }
+    res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
+  } catch (e) {
+    console.error('[call/cancel]', e.message);
+    res.status(500).json({ error: 'Error cancelando llamada' });
+  }
+});
+
+// Marcar connected — usa RPC mark_call_connected
+app.post('/api/call/connected', auth, async (req, res) => {
+  const { callId } = req.body;
+  if (!callId) return res.status(400).json({ error: 'callId requerido' });
+  try {
+    const { data, error } = await supabase.rpc('mark_call_connected', { p_call_id: callId, p_user_id: req.user.id });
+    if (error) { return res.json({ ok: true, skipped: true }); }
+    res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
+  } catch (e) {
+    res.json({ ok: true, skipped: true });
+  }
+});
+
+// Llamadas entrantes — solo status='ringing' y no expiradas
 app.get('/api/call/incoming/:userId', auth, async (req, res) => {
-  const { data } = await supabase
-    .from('call_sessions')
-    .select('*')
-    .eq('target_user_id', req.params.userId)
-    .eq('ended', false)
-    .is('answer', null)
-    .order('created_at', { ascending: false })
-    .limit(5);
-  if (!data || data.length === 0) return res.json([]);
-  // Limpiar sesiones muy antiguas (más de 150 segundos — tiempo para desbloquear teléfono hibernado)
-  const now = Date.now();
-  const valid = data.filter(s => now - new Date(s.created_at).getTime() < 150000);
-  res.json(valid.map(s => ({
-    callId: s.call_id,
-    callerId: s.caller_id,
-    type: s.type,
-    offer: JSON.parse(s.offer || 'null'),
-  })));
+  try {
+    const { data } = await supabase.from('call_sessions')
+      .select('*')
+      .eq('target_user_id', req.params.userId)
+      .in('status', ['ringing'])
+      .eq('ended', false)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(3);
+    if (!data || data.length === 0) return res.json([]);
+    res.json(data.map(s => ({
+      callId: s.call_id, callerId: s.caller_id,
+      type: s.type, offer: JSON.parse(s.offer || 'null'), status: s.status,
+    })));
+  } catch (e) {
+    console.error('[call/incoming]', e.message);
+    res.json([]);
+  }
 });
 
-// Limpiar sesiones antiguas cada 5 minutos
+// Limpieza periódica usando RPC expire_stale_calls
 setInterval(async () => {
-  const cutoff = new Date(Date.now() - 300000).toISOString(); // 5 minutos — suficiente para llamadas largas
-  await supabase.from('call_sessions').delete().lt('created_at', cutoff);
+  try {
+    await supabase.rpc('expire_stale_calls');
+    const cutoff = new Date(Date.now() - 30 * 60 * 1000).toISOString();
+    await supabase.from('call_sessions').delete()
+      .in('status', ['ended','rejected','missed','failed'])
+      .lt('ended_at', cutoff);
+  } catch (e) { console.warn('[cleanup]', e.message); }
 }, 300000);
 // ─────────────────────────────────────────────────────────────────────────────
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ADMIN — Ejecutar migraciones SQL (temporal, usar una sola vez)
+// ─────────────────────────────────────────────────────────────────────────────
+app.post('/api/admin/run-migration', async (req, res) => {
+  const key = req.headers['x-admin-key'] || req.body?.adminKey;
+  if (!key || key !== adminResetKey) return res.status(403).json({ message: 'No autorizado' });
+  const { migration } = req.body; // 'calls' | 'tokens'
+  const results = [];
+
+  // Migración 1: sistema de llamadas (tablas + RPCs atómicas)
+  const callsMigration = `
+    -- Ampliar call_sessions
+    DO $$ BEGIN
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='status') THEN
+        ALTER TABLE call_sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'ringing' CHECK (status IN ('ringing','accepted','connecting','connected','reconnecting','rejected','missed','ended','failed'));
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='expires_at') THEN
+        ALTER TABLE call_sessions ADD COLUMN expires_at TIMESTAMPTZ NOT NULL DEFAULT (NOW() + INTERVAL '5 minutes');
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='connected_at') THEN
+        ALTER TABLE call_sessions ADD COLUMN connected_at TIMESTAMPTZ;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='ended_at') THEN
+        ALTER TABLE call_sessions ADD COLUMN ended_at TIMESTAMPTZ;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='duration_seconds') THEN
+        ALTER TABLE call_sessions ADD COLUMN duration_seconds INTEGER;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='end_reason') THEN
+        ALTER TABLE call_sessions ADD COLUMN end_reason TEXT;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='version') THEN
+        ALTER TABLE call_sessions ADD COLUMN version INTEGER NOT NULL DEFAULT 1;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='chat_id') THEN
+        ALTER TABLE call_sessions ADD COLUMN chat_id UUID;
+      END IF;
+      IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='offer_nonce') THEN
+        ALTER TABLE call_sessions ADD COLUMN offer_nonce TEXT;
+      END IF;
+    END $$;
+
+    -- Tabla call_participants
+    CREATE TABLE IF NOT EXISTS call_participants (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      call_id VARCHAR(100) NOT NULL REFERENCES call_sessions(call_id) ON DELETE CASCADE,
+      user_id UUID NOT NULL,
+      role TEXT NOT NULL CHECK (role IN ('caller','callee')),
+      joined_at TIMESTAMPTZ DEFAULT NOW(),
+      left_at TIMESTAMPTZ,
+      UNIQUE (call_id, user_id)
+    );
+    CREATE INDEX IF NOT EXISTS idx_call_participants_user ON call_participants(user_id, call_id);
+
+    -- Tabla call_signals
+    CREATE TABLE IF NOT EXISTS call_signals (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      call_id VARCHAR(100) NOT NULL REFERENCES call_sessions(call_id) ON DELETE CASCADE,
+      from_user UUID NOT NULL,
+      to_user UUID,
+      signal_type TEXT NOT NULL CHECK (signal_type IN ('offer','answer','ice','restart_ice')),
+      payload JSONB NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT NOW(),
+      nonce TEXT UNIQUE
+    );
+    CREATE INDEX IF NOT EXISTS idx_call_signals_call ON call_signals(call_id, created_at);
+
+    -- Tabla call_events
+    CREATE TABLE IF NOT EXISTS call_events (
+      id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+      call_id VARCHAR(100) NOT NULL REFERENCES call_sessions(call_id) ON DELETE CASCADE,
+      user_id UUID,
+      event TEXT NOT NULL CHECK (event IN ('initiated','push_sent','ringing','accepted','connecting','connected','reconnecting','ended','rejected','missed','failed','expired')),
+      metadata JSONB DEFAULT '{}',
+      occurred_at TIMESTAMPTZ DEFAULT NOW()
+    );
+    CREATE INDEX IF NOT EXISTS idx_call_events_call ON call_events(call_id, occurred_at);
+
+    -- Índices adicionales
+    CREATE INDEX IF NOT EXISTS idx_call_sessions_status ON call_sessions(status, expires_at);
+    CREATE INDEX IF NOT EXISTS idx_call_sessions_caller ON call_sessions(caller_id, status);
+    CREATE INDEX IF NOT EXISTS idx_call_sessions_expires ON call_sessions(expires_at) WHERE status NOT IN ('ended','rejected','missed','failed');
+  `;
+
+  // RPC initiate_call
+  const rpcInitiate = `
+    CREATE OR REPLACE FUNCTION initiate_call(p_call_id TEXT, p_caller_id UUID, p_callee_id UUID, p_call_type TEXT DEFAULT 'audio', p_offer JSONB DEFAULT NULL, p_chat_id UUID DEFAULT NULL, p_nonce TEXT DEFAULT NULL)
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_existing call_sessions%ROWTYPE; v_expires_at TIMESTAMPTZ := NOW() + INTERVAL '90 seconds';
+    BEGIN
+      IF p_nonce IS NOT NULL THEN
+        SELECT * INTO v_existing FROM call_sessions WHERE offer_nonce = p_nonce LIMIT 1;
+        IF FOUND THEN RETURN jsonb_build_object('call_id', v_existing.call_id, 'status', v_existing.status, 'idempotent', true); END IF;
+      END IF;
+      IF EXISTS (SELECT 1 FROM call_sessions WHERE caller_id = p_caller_id::TEXT AND status NOT IN ('ended','rejected','missed','failed') AND expires_at > NOW()) THEN
+        RAISE EXCEPTION 'caller_already_in_call';
+      END IF;
+      INSERT INTO call_sessions (call_id, offer, caller_candidates, callee_candidates, type, caller_id, target_user_id, ended, status, expires_at, chat_id, offer_nonce, created_at, updated_at, version)
+      VALUES (p_call_id, CASE WHEN p_offer IS NOT NULL THEN p_offer::TEXT ELSE NULL END, '[]', '[]', p_call_type, p_caller_id::TEXT, p_callee_id::TEXT, FALSE, 'ringing', v_expires_at, p_chat_id, p_nonce, NOW(), NOW(), 1)
+      ON CONFLICT (call_id) DO NOTHING;
+      INSERT INTO call_participants (call_id, user_id, role) VALUES (p_call_id, p_caller_id, 'caller'), (p_call_id, p_callee_id, 'callee') ON CONFLICT (call_id, user_id) DO NOTHING;
+      INSERT INTO call_events (call_id, user_id, event, metadata) VALUES (p_call_id, p_caller_id, 'initiated', jsonb_build_object('type', p_call_type));
+      RETURN jsonb_build_object('call_id', p_call_id, 'status', 'ringing', 'expires_at', v_expires_at, 'idempotent', false);
+    END; $$;
+  `;
+
+  const rpcAccept = `
+    CREATE OR REPLACE FUNCTION accept_call(p_call_id TEXT, p_callee_id UUID, p_answer JSONB DEFAULT NULL)
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_session call_sessions%ROWTYPE;
+    BEGIN
+      SELECT * INTO v_session FROM call_sessions WHERE call_id = p_call_id FOR UPDATE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'call_not_found'; END IF;
+      IF v_session.target_user_id <> p_callee_id::TEXT THEN RAISE EXCEPTION 'not_authorized'; END IF;
+      IF v_session.expires_at < NOW() THEN
+        UPDATE call_sessions SET status='missed', ended=TRUE, ended_at=NOW(), updated_at=NOW() WHERE call_id=p_call_id;
+        RAISE EXCEPTION 'call_expired';
+      END IF;
+      IF v_session.status <> 'ringing' THEN
+        IF v_session.status = 'accepted' THEN RETURN jsonb_build_object('call_id', p_call_id, 'status', 'accepted', 'idempotent', true); END IF;
+        RAISE EXCEPTION 'invalid_transition: %', v_session.status;
+      END IF;
+      UPDATE call_sessions SET status='accepted', answer=CASE WHEN p_answer IS NOT NULL THEN p_answer::TEXT ELSE answer END, expires_at=NOW()+INTERVAL '30 minutes', updated_at=NOW(), version=version+1 WHERE call_id=p_call_id AND version=v_session.version;
+      IF NOT FOUND THEN RAISE EXCEPTION 'concurrent_modification'; END IF;
+      INSERT INTO call_events (call_id, user_id, event) VALUES (p_call_id, p_callee_id, 'accepted');
+      RETURN jsonb_build_object('call_id', p_call_id, 'status', 'accepted', 'idempotent', false);
+    END; $$;
+  `;
+
+  const rpcReject = `
+    CREATE OR REPLACE FUNCTION reject_call(p_call_id TEXT, p_callee_id UUID)
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_session call_sessions%ROWTYPE;
+    BEGIN
+      SELECT * INTO v_session FROM call_sessions WHERE call_id=p_call_id FOR UPDATE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'call_not_found'; END IF;
+      IF v_session.target_user_id <> p_callee_id::TEXT THEN RAISE EXCEPTION 'not_authorized'; END IF;
+      IF v_session.status IN ('rejected','ended','missed','failed') THEN RETURN jsonb_build_object('call_id',p_call_id,'status',v_session.status,'idempotent',true); END IF;
+      IF v_session.status NOT IN ('ringing') THEN RAISE EXCEPTION 'invalid_transition: %', v_session.status; END IF;
+      UPDATE call_sessions SET status='rejected',ended=TRUE,ended_at=NOW(),updated_at=NOW(),version=version+1 WHERE call_id=p_call_id AND version=v_session.version;
+      INSERT INTO call_events (call_id, user_id, event) VALUES (p_call_id, p_callee_id, 'rejected');
+      RETURN jsonb_build_object('call_id',p_call_id,'status','rejected');
+    END; $$;
+  `;
+
+  const rpcCancel = `
+    CREATE OR REPLACE FUNCTION cancel_call(p_call_id TEXT, p_caller_id UUID)
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_session call_sessions%ROWTYPE;
+    BEGIN
+      SELECT * INTO v_session FROM call_sessions WHERE call_id=p_call_id FOR UPDATE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'call_not_found'; END IF;
+      IF v_session.caller_id <> p_caller_id::TEXT THEN RAISE EXCEPTION 'not_authorized'; END IF;
+      IF v_session.status IN ('ended','rejected','missed','failed') THEN RETURN jsonb_build_object('call_id',p_call_id,'status',v_session.status,'idempotent',true); END IF;
+      UPDATE call_sessions SET status='ended',ended=TRUE,ended_at=NOW(),end_reason='cancelled_by_caller',updated_at=NOW(),version=version+1 WHERE call_id=p_call_id AND version=v_session.version;
+      INSERT INTO call_events (call_id, user_id, event, metadata) VALUES (p_call_id, p_caller_id, 'ended', '{"reason":"cancelled_by_caller"}');
+      RETURN jsonb_build_object('call_id',p_call_id,'status','ended');
+    END; $$;
+  `;
+
+  const rpcMarkConnected = `
+    CREATE OR REPLACE FUNCTION mark_call_connected(p_call_id TEXT, p_user_id UUID)
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_session call_sessions%ROWTYPE;
+    BEGIN
+      SELECT * INTO v_session FROM call_sessions WHERE call_id=p_call_id FOR UPDATE;
+      IF NOT FOUND THEN RAISE EXCEPTION 'call_not_found'; END IF;
+      IF v_session.caller_id <> p_user_id::TEXT AND v_session.target_user_id <> p_user_id::TEXT THEN RAISE EXCEPTION 'not_authorized'; END IF;
+      IF v_session.status = 'connected' THEN RETURN jsonb_build_object('call_id',p_call_id,'status','connected','idempotent',true); END IF;
+      IF v_session.status NOT IN ('accepted','connecting','reconnecting') THEN RAISE EXCEPTION 'invalid_transition: %', v_session.status; END IF;
+      UPDATE call_sessions SET status='connected',connected_at=COALESCE(connected_at,NOW()),updated_at=NOW(),version=version+1 WHERE call_id=p_call_id AND version=v_session.version;
+      INSERT INTO call_events (call_id, user_id, event) VALUES (p_call_id, p_user_id, 'connected');
+      RETURN jsonb_build_object('call_id',p_call_id,'status','connected');
+    END; $$;
+  `;
+
+  const rpcEnd = `
+    CREATE OR REPLACE FUNCTION end_call(p_call_id TEXT, p_user_id UUID, p_reason TEXT DEFAULT 'normal')
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_session call_sessions%ROWTYPE; v_duration INTEGER := 0; v_final_status TEXT;
+    BEGIN
+      SELECT * INTO v_session FROM call_sessions WHERE call_id=p_call_id FOR UPDATE;
+      IF NOT FOUND THEN RETURN jsonb_build_object('call_id',p_call_id,'status','ended','idempotent',true); END IF;
+      IF v_session.caller_id <> p_user_id::TEXT AND v_session.target_user_id <> p_user_id::TEXT THEN RAISE EXCEPTION 'not_authorized'; END IF;
+      IF v_session.status IN ('ended','rejected','missed','failed') THEN RETURN jsonb_build_object('call_id',p_call_id,'status',v_session.status,'idempotent',true); END IF;
+      v_final_status := CASE WHEN p_reason='ice_failed' THEN 'failed' WHEN p_reason='missed' THEN 'missed' ELSE 'ended' END;
+      IF v_session.connected_at IS NOT NULL THEN v_duration := EXTRACT(EPOCH FROM (NOW()-v_session.connected_at))::INTEGER; END IF;
+      UPDATE call_sessions SET status=v_final_status,ended=TRUE,ended_at=NOW(),end_reason=p_reason,duration_seconds=CASE WHEN v_duration>0 THEN v_duration ELSE NULL END,updated_at=NOW(),version=version+1 WHERE call_id=p_call_id AND version=v_session.version;
+      INSERT INTO call_events (call_id, user_id, event, metadata) VALUES (p_call_id, p_user_id, CASE WHEN v_final_status='failed' THEN 'failed' WHEN v_final_status='missed' THEN 'missed' ELSE 'ended' END, jsonb_build_object('reason',p_reason,'duration_seconds',v_duration));
+      RETURN jsonb_build_object('call_id',p_call_id,'status',v_final_status,'duration_seconds',v_duration);
+    END; $$;
+  `;
+
+  const rpcExpire = `
+    CREATE OR REPLACE FUNCTION expire_stale_calls()
+    RETURNS INTEGER LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_count INTEGER;
+    BEGIN
+      WITH expired AS (UPDATE call_sessions SET status='missed',ended=TRUE,ended_at=NOW(),end_reason='timeout',updated_at=NOW() WHERE status NOT IN ('ended','rejected','missed','failed') AND expires_at < NOW() RETURNING call_id, caller_id)
+      INSERT INTO call_events (call_id, user_id, event, metadata) SELECT call_id, caller_id::UUID, 'expired', '{"reason":"timeout"}' FROM expired;
+      GET DIAGNOSTICS v_count = ROW_COUNT;
+      RETURN v_count;
+    END; $$;
+  `;
+
+  const rpcGetState = `
+    CREATE OR REPLACE FUNCTION get_call_state(p_call_id TEXT, p_user_id UUID)
+    RETURNS JSONB LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
+    DECLARE v_session call_sessions%ROWTYPE;
+    BEGIN
+      SELECT * INTO v_session FROM call_sessions WHERE call_id=p_call_id;
+      IF NOT FOUND THEN RETURN jsonb_build_object('found',false); END IF;
+      IF v_session.caller_id <> p_user_id::TEXT AND v_session.target_user_id <> p_user_id::TEXT THEN RAISE EXCEPTION 'not_authorized'; END IF;
+      RETURN jsonb_build_object('found',true,'call_id',v_session.call_id,'status',v_session.status,'ended',v_session.ended,'type',v_session.type,'caller_id',v_session.caller_id,'target_user_id',v_session.target_user_id,'offer',CASE WHEN v_session.offer IS NOT NULL THEN v_session.offer::JSONB ELSE NULL END,'answer',CASE WHEN v_session.answer IS NOT NULL THEN v_session.answer::JSONB ELSE NULL END,'caller_candidates',v_session.caller_candidates::JSONB,'callee_candidates',v_session.callee_candidates::JSONB,'expires_at',v_session.expires_at,'connected_at',v_session.connected_at,'version',v_session.version);
+    END; $$;
+  `;
+
+  const stepsToRun = migration === 'tokens' ? [] : [
+    ['create tables', callsMigration],
+    ['rpc initiate_call', rpcInitiate],
+    ['rpc accept_call', rpcAccept],
+    ['rpc reject_call', rpcReject],
+    ['rpc cancel_call', rpcCancel],
+    ['rpc mark_call_connected', rpcMarkConnected],
+    ['rpc end_call', rpcEnd],
+    ['rpc expire_stale_calls', rpcExpire],
+    ['rpc get_call_state', rpcGetState],
+  ];
+
+  for (const [label, sql] of stepsToRun) {
+    try {
+      const { error } = await supabase.rpc('exec_sql', { sql }).catch(() => ({ error: { message: 'exec_sql not available' } }));
+      if (error && error.message !== 'exec_sql not available') {
+        // Try direct query if RPC not available
+        const { error: e2 } = await supabase.from('_sql').select('*').limit(0).catch(() => ({ error: null }));
+        results.push({ step: label, ok: false, error: error.message });
+      } else if (error && error.message === 'exec_sql not available') {
+        // Intentar con postgrest raw query
+        results.push({ step: label, ok: 'pending', note: 'exec_sql no disponible — ejecutar manualmente' });
+      } else {
+        results.push({ step: label, ok: true });
+      }
+    } catch(e) {
+      results.push({ step: label, ok: false, error: e.message });
+    }
+  }
+
+  // Migración de tokens de dispositivo (más simple)
+  if (!migration || migration === 'tokens') {
+    const tokenMigration = `
+      DO $$ BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='expo_push_tokens' AND column_name='token_type') THEN
+          ALTER TABLE expo_push_tokens ADD COLUMN token_type TEXT NOT NULL DEFAULT 'expo' CHECK (token_type IN ('expo','fcm','apns','voip'));
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='expo_push_tokens' AND column_name='is_active') THEN
+          ALTER TABLE expo_push_tokens ADD COLUMN is_active BOOLEAN NOT NULL DEFAULT TRUE;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='expo_push_tokens' AND column_name='failure_count') THEN
+          ALTER TABLE expo_push_tokens ADD COLUMN failure_count INTEGER NOT NULL DEFAULT 0;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='expo_push_tokens' AND column_name='device_id') THEN
+          ALTER TABLE expo_push_tokens ADD COLUMN device_id TEXT;
+        END IF;
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='expo_push_tokens' AND column_name='last_used_at') THEN
+          ALTER TABLE expo_push_tokens ADD COLUMN last_used_at TIMESTAMPTZ DEFAULT NOW();
+        END IF;
+      END $$;
+      CREATE INDEX IF NOT EXISTS idx_expo_push_tokens_active ON expo_push_tokens(user_id, is_active, token_type) WHERE is_active = TRUE;
+    `;
+    try {
+      const { error } = await supabase.rpc('exec_sql', { sql: tokenMigration }).catch(() => ({ error: { message: 'exec_sql not available' } }));
+      results.push({ step: 'token_migration', ok: !error || error.message === 'exec_sql not available', note: error?.message });
+    } catch(e) {
+      results.push({ step: 'token_migration', ok: false, error: e.message });
+    }
+  }
+
+  res.json({ results, message: 'Migración ejecutada. Verificar resultados.' });
+});
 
 // ─────────────────────────────────────────────────────────────────────────────
 // WEB PUSH — VAPID
@@ -5070,21 +5485,163 @@ const sendPushToUser = async (userId, payload) => {
 };
 
 // ── Registrar token Expo Push (app movil nativa) ──────────────────────────
+// ── Registrar token push (Expo, FCM, APNs, VoIP) ──────────────────────────
+// Punto de entrada unificado para todos los tipos de token.
+// Delega a la Supabase Edge Function register-device-token.
 app.post('/api/push/register-expo-token', auth, async (req, res) => {
   try {
-    const { expoPushToken, platform } = req.body;
-    if (!expoPushToken || !expoPushToken.startsWith('ExponentPushToken[')) {
-      return res.status(400).json({ message: 'Token Expo invalido' });
+    const { expoPushToken, platform, tokenType } = req.body;
+    const token = expoPushToken || req.body.token;
+
+    if (!token || token.length < 10) {
+      return res.status(400).json({ message: 'Token inválido' });
     }
+
+    // Determinar tipo de token automáticamente si no se especifica
+    const type = tokenType ||
+      (token.startsWith('ExponentPushToken') ? 'expo' : 'fcm');
+
+    // Intentar via Edge Function primero (tiene soporte completo de tipos)
+    const edgeFnUrl = process.env.SUPABASE_URL
+      ? `${process.env.SUPABASE_URL}/functions/v1/register-device-token`
+      : null;
+
+    if (edgeFnUrl) {
+      try {
+        const edgeRes = await fetch(edgeFnUrl, {
+          method: 'POST',
+          headers: {
+            'Content-Type':  'application/json',
+            'Authorization': `Bearer ${req.headers.authorization?.replace('Bearer ', '')}`,
+          },
+          body: JSON.stringify({
+            token,
+            tokenType:  type,
+            platform:   platform || 'android',
+            deviceId:   req.body.deviceId || null,
+          }),
+        });
+        if (edgeRes.ok) {
+          return res.json({ message: 'Token registrado', tokenType: type });
+        }
+      } catch (edgeErr) {
+        console.warn('[push/register] Edge Function falló, usando fallback:', edgeErr.message);
+      }
+    }
+
+    // Fallback: upsert directo en Supabase (compatibilidad hacia atrás)
     await supabase.from('expo_push_tokens').upsert({
-      user_id: req.user.id,
-      token: expoPushToken,
-      platform: platform || 'android',
+      user_id:    req.user.id,
+      token,
+      token_type: type,
+      platform:   platform || 'android',
+      is_active:  true,
       updated_at: new Date().toISOString(),
     }, { onConflict: 'token' });
-    res.json({ message: 'Token registrado' });
+
+    res.json({ message: 'Token registrado', tokenType: type });
   } catch (e) {
-    console.error('Expo token register error:', e.message);
+    console.error('Token register error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Registrar token VoIP (iOS PushKit) ────────────────────────────────────
+app.post('/api/push/register-voip-token', auth, async (req, res) => {
+  try {
+    const { voipToken } = req.body;
+    if (!voipToken || voipToken.length < 32) {
+      return res.status(400).json({ message: 'Token VoIP inválido' });
+    }
+    await supabase.from('expo_push_tokens').upsert({
+      user_id:    req.user.id,
+      token:      voipToken,
+      token_type: 'voip',
+      platform:   'ios',
+      is_active:  true,
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'token' });
+    res.json({ message: 'Token VoIP registrado' });
+  } catch (e) {
+    console.error('VoIP token register error:', e.message);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// ── Entregar llamada entrante via push ────────────────────────────────────
+// Punto de entrada que el cliente llama al iniciar una llamada.
+// Delega a la Edge Function deliver-call-push para el envío real.
+app.post('/api/push/voip-call', auth, async (req, res) => {
+  try {
+    const { targetUserId, callId, callType, offer, callerName: bodyCallerName } = req.body;
+
+    if (!targetUserId || !callId) {
+      return res.status(400).json({ message: 'targetUserId y callId son requeridos' });
+    }
+
+    // Obtener nombre del caller si no viene en el body
+    let callerName = bodyCallerName;
+    if (!callerName) {
+      const { data: caller } = await supabase
+        .from('users')
+        .select('full_name, avatar_url')
+        .eq('id', req.user.id)
+        .single();
+      callerName = caller?.full_name || 'EGChat';
+    }
+
+    const edgeFnUrl = process.env.SUPABASE_URL
+      ? `${process.env.SUPABASE_URL}/functions/v1/deliver-call-push`
+      : null;
+
+    if (!edgeFnUrl || !process.env.SERVICE_TOKEN) {
+      console.warn('[voip-call] Edge Function no configurada — usando fallback Expo Push');
+      // Fallback: usar sendPushToUser existente (Expo Push estándar)
+      await sendPushToUser(targetUserId, {
+        title: callType === 'video'
+          ? `📹 Videollamada de ${callerName}`
+          : `📞 Llamada de ${callerName}`,
+        body: 'Toca para responder',
+        notificationType: 'incoming_call',
+        callId,
+        callerName,
+        callType: callType || 'audio',
+        offer: offer || null,
+      });
+      return res.json({ voipPushSent: false, expoPushSent: true, fallback: true });
+    }
+
+    const edgeRes = await fetch(edgeFnUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type':    'application/json',
+        'x-service-token': process.env.SERVICE_TOKEN,
+      },
+      body: JSON.stringify({
+        callId,
+        callerId:     req.user.id,
+        callerName,
+        calleeId:     targetUserId,
+        callType:     callType || 'audio',
+        offer:        offer || null,
+      }),
+    });
+
+    if (!edgeRes.ok) {
+      const err = await edgeRes.json().catch(() => ({}));
+      console.error('[voip-call] Edge Function error:', err);
+      return res.status(500).json({ message: 'Error en entrega de llamada' });
+    }
+
+    const result = await edgeRes.json();
+    res.json({
+      voipPushSent:  result.results_summary?.voip_sent > 0,
+      expoPushSent:  result.results_summary?.expo_sent > 0,
+      fcmSent:       result.results_summary?.fcm_sent  > 0,
+      delivered:     result.delivered,
+    });
+  } catch (e) {
+    console.error('/api/push/voip-call error:', e.message);
     res.status(500).json({ message: e.message });
   }
 });
