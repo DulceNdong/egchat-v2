@@ -2064,6 +2064,7 @@ export default function ChatScreen() {
 
   // Acepta una transferencia pendiente — se resuelve el transferId del texto del mensaje
   // o buscando en el servidor como fallback para mensajes antiguos.
+  // Tras completar, actualiza el texto del mensaje para quitar los botones definitivamente.
   const handleTransferAccept = useCallback(async (transferId: string) => {
     let resolvedId = transferId;
     if (!resolvedId) {
@@ -2076,6 +2077,14 @@ export default function ChatScreen() {
       resolvedId = incoming.id;
     }
     await walletAPI.acceptTransfer(resolvedId);
+    // Reemplazar "⏳ Pendiente de aceptación" → "✅ Transferencia recibida"
+    // para que al recargar el mensaje ya no muestre los botones
+    setMessages(prev => prev.map(m => {
+      if (m.text?.includes('⏳ Pendiente') && m.text?.includes(resolvedId)) {
+        return { ...m, text: m.text.replace('⏳ Pendiente de aceptación', '✅ Transferencia recibida') };
+      }
+      return m;
+    }));
   }, []);
 
   const handleTransferCancel = useCallback(async (transferId: string) => {
@@ -2089,6 +2098,14 @@ export default function ChatScreen() {
       resolvedId = incoming.id;
     }
     await walletAPI.cancelTransfer(resolvedId);
+    // Reemplazar "⏳ Pendiente de aceptación" → "❌ Transferencia rechazada"
+    // para que al recargar el mensaje ya no muestre los botones
+    setMessages(prev => prev.map(m => {
+      if (m.text?.includes('⏳ Pendiente') && m.text?.includes(resolvedId)) {
+        return { ...m, text: m.text.replace('⏳ Pendiente de aceptación', '❌ Transferencia rechazada') };
+      }
+      return m;
+    }));
   }, []);
 
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
