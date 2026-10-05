@@ -36,6 +36,8 @@ interface Props {
   onAddContact?: () => void;
   groupMembers?: any[];
   currentUserId?: string;
+  /** user_id real del otro participante — necesario para bloquear/reportar en backend */
+  targetUserId?: string;
   onRemoveGroupMember?: (userId: string) => void;
   onLeaveGroup?: () => void;
   onDeleteGroup?: () => void;
