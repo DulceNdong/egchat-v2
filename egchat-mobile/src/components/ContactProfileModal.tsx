@@ -926,6 +926,15 @@ const styles = StyleSheet.create({
   },
   photoPlaceholderLetter: { fontSize: 80, color: '#fff', fontWeight: '800' },
   photoName: { fontSize: 20, color: '#fff', fontWeight: '700', marginTop: 20 },
+
+  // Loading overlay en sección de acciones
+  loadingOverlay: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 10,
+    backgroundColor: '#FEF2F2',
+    borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: '#FECACA',
+  },
+  loadingText: { fontSize: 13, color: '#EF4444', fontWeight: '600' },
 });
 
 export default ContactProfileModal;
