@@ -184,6 +184,11 @@ class CallForegroundService : Service() {
     private fun requestAudioFocus() {
         val am = audioManager ?: return
 
+        // M2 fix: MODE_IN_COMMUNICATION garantiza que el audio se enruta
+        // correctamente en OEM Android (Xiaomi, Samsung, etc.) que ignoran
+        // playThroughEarpieceAndroid de Expo AV.
+        am.mode = AudioManager.MODE_IN_COMMUNICATION
+
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             val attrs = AudioAttributes.Builder()
                 .setUsage(AudioAttributes.USAGE_VOICE_COMMUNICATION)
@@ -193,7 +198,7 @@ class CallForegroundService : Service() {
             val request = AudioFocusRequest.Builder(AudioManager.AUDIOFOCUS_GAIN)
                 .setAudioAttributes(attrs)
                 .setAcceptsDelayedFocusGain(false)
-                .setOnAudioFocusChangeListener(audioFocusListener)  // ← listener real
+                .setOnAudioFocusChangeListener(audioFocusListener)
                 .build()
 
             audioFocusRequest = request
