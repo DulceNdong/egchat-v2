@@ -254,7 +254,7 @@ export default function PerfilNegocioScreen() {
             <TouchableOpacity
               key={perfil.id}
               style={styles.card}
-              onPress={() => setSelectedPerfil(isExpanded ? null : perfil)}
+              onPress={() => handleOpenPerfil(perfil)}
               activeOpacity={0.85}
             >
               {/* Cabecera */}
