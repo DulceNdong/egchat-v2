@@ -848,6 +848,8 @@ export default function ChatScreen() {
 
   useEffect(() => {
     if (messages.length === 0) return;
+    // No saltar al fondo cuando se están cargando mensajes históricos (scroll hacia arriba)
+    if (isLoadingMoreRef.current) return;
     const frame = requestAnimationFrame(() => scrollToBottom(false));
     return () => cancelAnimationFrame(frame);
   }, [messages.length, messagesBottomInset, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
