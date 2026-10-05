@@ -1722,8 +1722,15 @@ export class CallManager {
     this._isBluetoothOn        = false;
     this._isFrontCamera        = true;
     this._reconnectCount       = 0;
-    this._videoTrackRef        = null;   // FIX 1/2/4
-    this._videoPausedBySystem  = false;  // FIX 4
+    this._videoTrackRef        = null;
+    this._videoPausedBySystem  = false;
+    // FIX A+C+B+H — resetear flags y offsets de reconexión
+    this._iceRestartPending    = false;
+    this._iceOffsetCaller      = 0;
+    this._iceOffsetCallee      = 0;
+    this._answerApplied        = false;
+    this._appliedOfferVersion  = 0;
+    this._lastNetConnected     = null;
 
     this._notify();
   }
