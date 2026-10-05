@@ -104,7 +104,7 @@ const TURN_FALLBACK = (() => {
   const cred    = process.env.EXPO_PUBLIC_TURN_CREDENTIAL || 'openrelayproject';
   const rawUrls = process.env.EXPO_PUBLIC_TURN_URLS;
   if (rawUrls) {
-    return rawUrls.split(',').map(u => ({ urls: u.trim(), username: user, credential: cred }));
+    return rawUrls.split(',').map((u: string) => ({ urls: u.trim(), username: user, credential: cred }));
   }
   // Metered.ca free tier — SLA superior a OpenRelay para producción
   return [
