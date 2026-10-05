@@ -177,7 +177,7 @@ export default function BarcosScreen() {
         <Text style={styles.sectionTitle}>📊 Desglose por Ruta</Text>
         <View style={{ marginHorizontal: 16 }}>
           <RevenueTable
-            rows={BARCOS_DEMO.filter(b => b.activo).map(b => ({
+            rows={fuenteBarcos.filter(b => b.activo).map(b => ({
               label: b.ruta,
               subLabel: `${b.billetes_mes} billetes`,
               value: fmt(b.recaudacion_mes * COMISION_PCT / 100),
