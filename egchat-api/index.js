@@ -11,8 +11,8 @@ const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'EGchat2025!xK9mP3nQ7rL2vW8tY4uJ6hF1bN5cA0dE_prod_secret';
-const JWT_SECRET_FALLBACK = 'EGchat2025!xK9mP3nQ7rL2vW8tY4uJ6hF1bN5cA0dE_prod_secret';
+const JWT_SECRET = process.env.JWT_SECRET || 'egchat_super_secret_key_2026_production';
+const JWT_SECRET_FALLBACK = 'egchat_super_secret_key_2026_production';
 console.log('JWT_SECRET source:', process.env.JWT_SECRET ? 'environment' : 'fallback');
 
 // Verificar token con múltiples secrets para compatibilidad
