@@ -961,13 +961,15 @@ export class CallManager {
   }
 
   private async _fetchOfferWithRetry(callId: string): Promise<any> {
-    for (let i = 0; i < 20; i++) {
+    // B4 fix: reducido de 20×3s (60s) a 6×3s (18s) con log en último intento.
+    for (let i = 0; i < 6; i++) {
       if (i > 0) await new Promise(r => setTimeout(r, 3000));
       try {
         const s = await callAPI.get(callId);
         if (this._isValidSdp(s?.offer)) return s.offer;
-      } catch { /* */ }
+      } catch { /* reintento */ }
     }
+    console.warn('[CallManager] _fetchOfferWithRetry: offer no disponible tras 18s — abortando');
     return null;
   }
 
@@ -1124,7 +1126,6 @@ export class CallManager {
   //   intento 1: ~2s  (2000 × 1 × [0.8–1.2])
   //   intento 2: ~4s  (2000 × 2 × [0.8–1.2])
   //   intento 3: ~8s  (2000 × 4 × [0.8–1.2])
-  //   intento 4: ~16s (2000 × 8 × [0.8–1.2])
   private _iceRestartPending = false;
 
   private _scheduleIceRestart(): void {
