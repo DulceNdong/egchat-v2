@@ -112,7 +112,7 @@ export default function BarcosScreen() {
 
         {/* Lista barcos */}
         <Text style={styles.sectionTitle}>⛵ Operadores Registrados</Text>
-        {BARCOS_DEMO.map(barco => {
+        {fuenteBarcos.map(barco => {
           const comision = barco.recaudacion_mes * COMISION_PCT / 100;
           const ocupacion = barco.billetes_mes > 0
             ? Math.round((barco.billetes_mes / (barco.capacidad * 0.8)) * 100)
