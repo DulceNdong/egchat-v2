@@ -1,13 +1,15 @@
 import React, { useState, useCallback } from 'react';
 import {
   View, Text, ScrollView, StyleSheet,
-  TouchableOpacity, RefreshControl, StatusBar,
+  TouchableOpacity, RefreshControl, StatusBar, ActivityIndicator,
 } from 'react-native';
 import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/BarChart';
 import { RevenueTable, RevenueRow } from '../../src/components/monetizacion/RevenueTable';
+import { useResumenDashboard } from '../../src/hooks/useMonetizacion';
+import type { ResumenMensualAgrupado } from '../../src/types/monetizacion';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 interface ResumenMes {
@@ -18,8 +20,8 @@ interface ResumenMes {
   wallet: number;
 }
 
-// ── Datos demo ─────────────────────────────────────────────────────────────
-const RESUMEN_HISTORICO: ResumenMes[] = [
+// ── Datos demo (fallback) ──────────────────────────────────────────────────
+const RESUMEN_HISTORICO_DEMO: ResumenMes[] = [
   { mes: 'Abr', empresas: 1320000, taxis: 295000, barcos: 112000, wallet: 58000 },
   { mes: 'May', empresas: 1360000, taxis: 310000, barcos: 120000, wallet: 62000 },
   { mes: 'Jun', empresas: 1390000, taxis: 328000, barcos: 128000, wallet: 67000 },
@@ -28,14 +30,7 @@ const RESUMEN_HISTORICO: ResumenMes[] = [
   { mes: 'Sep', empresas: 1445000, taxis: 387000, barcos: 156000, wallet: 78500 },
 ];
 
-const MES_ACTUAL = RESUMEN_HISTORICO[RESUMEN_HISTORICO.length - 1];
-const MES_ANTERIOR = RESUMEN_HISTORICO[RESUMEN_HISTORICO.length - 2];
-
-const totalMesActual =
-  MES_ACTUAL.empresas + MES_ACTUAL.taxis + MES_ACTUAL.barcos + MES_ACTUAL.wallet;
-const totalMesAnterior =
-  MES_ANTERIOR.empresas + MES_ANTERIOR.taxis + MES_ANTERIOR.barcos + MES_ANTERIOR.wallet;
-const trendTotal = ((totalMesActual - totalMesAnterior) / totalMesAnterior) * 100;
+const MONTH_NAMES = ['Ene', 'Feb', 'Mar', 'Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep', 'Oct', 'Nov', 'Dic'];
 
 const fmt = (n: number) => {
   if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M XAF`;
@@ -44,52 +39,7 @@ const fmt = (n: number) => {
 };
 
 const trendOf = (curr: number, prev: number) =>
-  Math.round(((curr - prev) / prev) * 100 * 10) / 10;
-
-// Datos para el gráfico total mensual
-const CHART_DATA: BarChartDataPoint[] = RESUMEN_HISTORICO.map(m => ({
-  label: m.mes,
-  value: m.empresas + m.taxis + m.barcos + m.wallet,
-}));
-
-// Tabla top fuentes
-const TOP_FUENTES: RevenueRow[] = [
-  {
-    label: 'Cuotas Empresas',
-    subLabel: '7 empresas activas',
-    value: fmt(1_200_000),
-    color: '#00D4FF',
-    percentage: Math.round((1_200_000 / totalMesActual) * 100),
-  },
-  {
-    label: 'Comisiones Taxis (5%)',
-    subLabel: '1.240 viajes este mes',
-    value: fmt(387_000),
-    color: '#FFD700',
-    percentage: Math.round((387_000 / totalMesActual) * 100),
-  },
-  {
-    label: 'Comisiones Empresas (1.5%)',
-    subLabel: 'Ventas en plataforma',
-    value: fmt(245_000),
-    color: '#00FF88',
-    percentage: Math.round((245_000 / totalMesActual) * 100),
-  },
-  {
-    label: 'Comisiones Barcos (1%)',
-    subLabel: '89 billetes vendidos',
-    value: fmt(156_000),
-    color: '#FF8800',
-    percentage: Math.round((156_000 / totalMesActual) * 100),
-  },
-  {
-    label: 'Comisiones Monedero (0.5%)',
-    subLabel: '2.100 movimientos',
-    value: fmt(78_500),
-    color: '#CC88FF',
-    percentage: Math.round((78_500 / totalMesActual) * 100),
-  },
-];
+  prev > 0 ? Math.round(((curr - prev) / prev) * 100 * 10) / 10 : 0;
 
 // ── Módulos de navegación ──────────────────────────────────────────────────
 interface ModuleItem {
@@ -101,23 +51,83 @@ interface ModuleItem {
   revenue: string;
 }
 
-const MODULES: ModuleItem[] = [
-  { icon: '🏢', label: 'Empresas', sub: '7 activas', route: '/monetizacion/empresas', color: '#00D4FF', revenue: fmt(1_445_000) },
-  { icon: '🚖', label: 'Taxis', sub: '23 taxistas', route: '/monetizacion/taxis', color: '#FFD700', revenue: fmt(387_000) },
-  { icon: '⛵', label: 'Barcos', sub: '4 rutas', route: '/monetizacion/barcos', color: '#FF8800', revenue: fmt(156_000) },
-  { icon: '💳', label: 'Monedero', sub: '2.1K movimientos', route: '/monetizacion/monedero', color: '#CC88FF', revenue: fmt(78_500) },
-  { icon: '👤', label: 'Perfiles', sub: 'Usuarios', route: '/monetizacion/perfil-financiero', color: '#00FF88', revenue: 'Historial' },
-  { icon: '🏪', label: 'Negocios', sub: 'Empresas', route: '/monetizacion/perfil-negocio', color: '#FF4488', revenue: 'Informes' },
-];
-
 // ── Componente principal ───────────────────────────────────────────────────
 export default function MonetizacionDashboard() {
+  const { historico, stats, loading, error, refresh } = useResumenDashboard();
   const [refreshing, setRefreshing] = useState(false);
 
   const onRefresh = useCallback(() => {
     setRefreshing(true);
+    refresh();
     setTimeout(() => setRefreshing(false), 1200);
-  }, []);
+  }, [refresh]);
+
+  // Build display data: prefer real data, fall back to demo
+  const displayHistorico: ResumenMes[] = historico.length > 0
+    ? historico.map((h: ResumenMensualAgrupado) => ({
+        mes: MONTH_NAMES[(h.mes - 1)] ?? `${h.mes}`,
+        empresas: h.ingresos_empresas,
+        taxis: h.ingresos_taxis,
+        barcos: h.ingresos_barcos,
+        wallet: h.ingresos_wallet,
+      }))
+    : RESUMEN_HISTORICO_DEMO;
+
+  const MES_ACTUAL = displayHistorico[displayHistorico.length - 1] ?? RESUMEN_HISTORICO_DEMO[5];
+  const MES_ANTERIOR = displayHistorico[displayHistorico.length - 2] ?? RESUMEN_HISTORICO_DEMO[4];
+
+  const totalMesActual = MES_ACTUAL.empresas + MES_ACTUAL.taxis + MES_ACTUAL.barcos + MES_ACTUAL.wallet;
+  const totalMesAnterior = MES_ANTERIOR.empresas + MES_ANTERIOR.taxis + MES_ANTERIOR.barcos + MES_ANTERIOR.wallet;
+  const trendTotal = trendOf(totalMesActual, totalMesAnterior);
+
+  const CHART_DATA: BarChartDataPoint[] = displayHistorico.map(m => ({
+    label: m.mes,
+    value: m.empresas + m.taxis + m.barcos + m.wallet,
+  }));
+
+  const TOP_FUENTES: RevenueRow[] = [
+    {
+      label: 'Cuotas Empresas',
+      subLabel: 'Empresas activas',
+      value: fmt(MES_ACTUAL.empresas),
+      color: '#00D4FF',
+      percentage: totalMesActual > 0 ? Math.round((MES_ACTUAL.empresas / totalMesActual) * 100) : 0,
+    },
+    {
+      label: 'Comisiones Taxis (5%)',
+      subLabel: 'Viajes este mes',
+      value: fmt(MES_ACTUAL.taxis),
+      color: '#FFD700',
+      percentage: totalMesActual > 0 ? Math.round((MES_ACTUAL.taxis / totalMesActual) * 100) : 0,
+    },
+    {
+      label: 'Comisiones Barcos (1%)',
+      subLabel: 'Billetes vendidos',
+      value: fmt(MES_ACTUAL.barcos),
+      color: '#FF8800',
+      percentage: totalMesActual > 0 ? Math.round((MES_ACTUAL.barcos / totalMesActual) * 100) : 0,
+    },
+    {
+      label: 'Comisiones Monedero (0.5%)',
+      subLabel: 'Movimientos',
+      value: fmt(MES_ACTUAL.wallet),
+      color: '#CC88FF',
+      percentage: totalMesActual > 0 ? Math.round((MES_ACTUAL.wallet / totalMesActual) * 100) : 0,
+    },
+  ];
+
+  // Current month label
+  const now = new Date();
+  const mesLabel = `${MONTH_NAMES[now.getMonth()]} ${now.getFullYear()}`;
+
+  const MODULES: ModuleItem[] = [
+    { icon: '🏢', label: 'Empresas', sub: 'Activas', route: '/monetizacion/empresas', color: '#00D4FF', revenue: fmt(MES_ACTUAL.empresas) },
+    { icon: '🚖', label: 'Taxis', sub: 'Taxistas', route: '/monetizacion/taxis', color: '#FFD700', revenue: fmt(MES_ACTUAL.taxis) },
+    { icon: '⛵', label: 'Barcos', sub: 'Rutas', route: '/monetizacion/barcos', color: '#FF8800', revenue: fmt(MES_ACTUAL.barcos) },
+    { icon: '💳', label: 'Monedero', sub: 'Movimientos', route: '/monetizacion/monedero', color: '#CC88FF', revenue: fmt(MES_ACTUAL.wallet) },
+    { icon: '👤', label: 'Perfiles', sub: 'Usuarios', route: '/monetizacion/perfil-financiero', color: '#00FF88', revenue: 'Historial' },
+    { icon: '🏪', label: 'Negocios', sub: 'Empresas', route: '/monetizacion/perfil-negocio', color: '#FF4488', revenue: 'Informes' },
+  ];
 
   return (
     <View style={styles.root}>
@@ -135,6 +145,21 @@ export default function MonetizacionDashboard() {
           />
         }
       >
+        {/* Loading indicator */}
+        {loading && (
+          <View style={styles.loadingBar}>
+            <ActivityIndicator size="small" color="#00D4FF" />
+            <Text style={styles.loadingText}>Cargando datos...</Text>
+          </View>
+        )}
+
+        {/* Error message */}
+        {error && !loading && (
+          <View style={styles.errorBar}>
+            <Text style={styles.errorText}>⚠ {error} — mostrando datos de ejemplo</Text>
+          </View>
+        )}
+
         {/* Hero header */}
         <LinearGradient
           colors={['#0D0D2B', '#0A0A0A']}
@@ -151,7 +176,7 @@ export default function MonetizacionDashboard() {
               </View>
             </View>
             <View style={styles.heroBadge}>
-              <Text style={styles.heroBadgeText}>Sep 2026</Text>
+              <Text style={styles.heroBadgeText}>{mesLabel}</Text>
             </View>
           </View>
 
@@ -262,18 +287,28 @@ export default function MonetizacionDashboard() {
         {/* Alertas */}
         <View style={styles.alertCard}>
           <Text style={styles.alertTitle}>⚠️ Alertas Pendientes</Text>
-          <View style={styles.alertItem}>
-            <View style={[styles.alertDot, { backgroundColor: '#FF4444' }]} />
-            <Text style={styles.alertText}>1 empresa con pago vencido: Clínica San Carlos</Text>
-          </View>
-          <View style={styles.alertItem}>
-            <View style={[styles.alertDot, { backgroundColor: '#FFD700' }]} />
-            <Text style={styles.alertText}>2 taxistas con documentación próxima a vencer</Text>
-          </View>
-          <View style={styles.alertItem}>
-            <View style={[styles.alertDot, { backgroundColor: '#FFD700' }]} />
-            <Text style={styles.alertText}>2 empresas con pago pendiente este mes</Text>
-          </View>
+          {stats.empresas_vencidas > 0 && (
+            <View style={styles.alertItem}>
+              <View style={[styles.alertDot, { backgroundColor: '#FF4444' }]} />
+              <Text style={styles.alertText}>
+                {stats.empresas_vencidas} empresa{stats.empresas_vencidas !== 1 ? 's' : ''} con pago vencido
+              </Text>
+            </View>
+          )}
+          {stats.taxistas_alerta_docs > 0 && (
+            <View style={styles.alertItem}>
+              <View style={[styles.alertDot, { backgroundColor: '#FFD700' }]} />
+              <Text style={styles.alertText}>
+                {stats.taxistas_alerta_docs} taxista{stats.taxistas_alerta_docs !== 1 ? 's' : ''} con documentación próxima a vencer o vencida
+              </Text>
+            </View>
+          )}
+          {stats.empresas_vencidas === 0 && stats.taxistas_alerta_docs === 0 && !loading && (
+            <View style={styles.alertItem}>
+              <View style={[styles.alertDot, { backgroundColor: '#00FF88' }]} />
+              <Text style={styles.alertText}>Sin alertas pendientes</Text>
+            </View>
+          )}
         </View>
 
         <View style={{ height: 32 }} />
@@ -286,6 +321,17 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#0A0A0A' },
   scroll: { flex: 1 },
   content: { paddingBottom: 20 },
+
+  loadingBar: {
+    flexDirection: 'row', alignItems: 'center', gap: 8,
+    paddingHorizontal: 16, paddingVertical: 8,
+  },
+  loadingText: { fontSize: 12, color: '#8888AA' },
+  errorBar: {
+    marginHorizontal: 16, marginTop: 8, padding: 10,
+    backgroundColor: '#FF440011', borderRadius: 8, borderWidth: 1, borderColor: '#FF444433',
+  },
+  errorText: { fontSize: 12, color: '#FF8888' },
 
   // Hero
   hero: {
@@ -341,9 +387,6 @@ const styles = StyleSheet.create({
     borderWidth: 1, borderColor: '#2A2A4A',
     overflow: 'hidden',
   },
-
-  // Top fuentes tabla
-  // (usa el componente, solo márgenes)
 
   // Módulos
   modulesGrid: {
