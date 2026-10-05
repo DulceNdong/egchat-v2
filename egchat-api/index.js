@@ -4827,7 +4827,6 @@ app.post('/api/call/offer', auth, async (req, res) => {
         const isVideo    = (type || 'audio') === 'video';
         await sendPushToUser(targetUserId, {
           title: isVideo ? `📹 Videollamada de ${callerName}` : `📞 Llamada de ${callerName}`,
-<<<<<<< Updated upstream
           body:  isVideo ? 'Toca para responder la videollamada' : 'Toca para responder la llamada',
           tag: `call-${callId}`, requireInteraction: true,
           callId, callerId: req.user.id, callerName,
