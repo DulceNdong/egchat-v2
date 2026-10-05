@@ -127,9 +127,9 @@ export default function BarcosScreen() {
             >
               <View style={styles.cardHeader}>
                 <View style={styles.routeBadge}>
-                  <Text style={styles.routeOrigen}>{barco.origen}</Text>
+                  <Text style={styles.routeOrigen}>{barco.origen ?? ''}</Text>
                   <Text style={styles.routeArrow}>→</Text>
-                  <Text style={styles.routeDestino}>{barco.destino}</Text>
+                  <Text style={styles.routeDestino}>{barco.destino ?? ''}</Text>
                 </View>
                 <StatusBadge status={barco.activo ? 'activo' : 'inactivo'} size="sm" />
               </View>
