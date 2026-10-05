@@ -346,6 +346,7 @@ export default function ChatScreen() {
         }))
     : [];
   const flatListRef = useRef<FlatList>(null);
+  const isLoadingMoreRef = useRef(false); // true mientras se cargan mensajes históricos (evita auto-scroll al fondo)
   const inputRef = useRef<TextInput>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const typingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
