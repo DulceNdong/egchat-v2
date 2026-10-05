@@ -95,7 +95,10 @@ BEGIN
     WHERE
       (cs.caller_id::TEXT = p_user_id::TEXT
        OR cs.target_user_id::TEXT = p_user_id::TEXT)
-      AND cs.status IN ('ended', 'rejected', 'missed', 'failed')
+      AND (
+        cs.status IN ('ended', 'rejected', 'missed', 'failed')
+        OR cs.ended = TRUE
+      )
     ORDER BY cs.created_at DESC
     LIMIT p_limit
     OFFSET p_offset;
