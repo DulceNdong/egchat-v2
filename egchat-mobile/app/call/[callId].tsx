@@ -728,6 +728,21 @@ export default function CallScreen() {
                     text: isVideo ? 'Filtros AR' : 'Compartir pantalla',
                     onPress: isVideo ? () => setShowFilters(v => !v) : toggleScreenShare,
                   },
+                  {
+                    // M1 fix: en iOS el routing BT es del sistema, no controlable desde JS
+                    text: Platform.OS === 'ios' ? 'Bluetooth (info)' : 'Bluetooth',
+                    onPress: () => {
+                      if (Platform.OS === 'ios') {
+                        Alert.alert(
+                          'Bluetooth en iOS',
+                          'El audio Bluetooth es gestionado automáticamente por iOS. Conecta tus auriculares BT y el sistema los usará.',
+                          [{ text: 'Entendido' }]
+                        );
+                      } else {
+                        callManager.toggleBluetooth();
+                      }
+                    },
+                  },
                   { text: 'Cancelar', style: 'cancel' },
                 ]);
               }}
