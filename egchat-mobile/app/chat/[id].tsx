@@ -1988,17 +1988,23 @@ export default function ChatScreen() {
   }, []);
 
   const handleDeleteSelected = useCallback(() => {
+    // Capturar los IDs ahora, antes de que Alert abra y el Set pueda cambiar
+    const idsSnapshot = Array.from(selectedIds);
+    const idsSet = new Set(idsSnapshot);
+    if (idsSnapshot.length === 0) return;
+
     Alert.alert(
       'Eliminar mensajes',
-      `¿Eliminar ${selectedIds.size} mensaje${selectedIds.size > 1 ? 's' : ''}?`,
+      `¿Eliminar ${idsSnapshot.length} mensaje${idsSnapshot.length > 1 ? 's' : ''}?`,
       [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: 'Eliminar', style: 'destructive',
           onPress: async () => {
-            const ids = Array.from(selectedIds);
-            await Promise.allSettled(ids.map(id => chatAPI.deleteMessage(id)));
-            setMessages(prev => prev.filter(m => !selectedIds.has(m.id)));
+            // Eliminar en servidor (para todos)
+            await Promise.allSettled(idsSnapshot.map(id => chatAPI.deleteMessage(id)));
+            // Eliminar del estado local usando el snapshot capturado
+            setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
             exitSelectMode();
           },
         },
