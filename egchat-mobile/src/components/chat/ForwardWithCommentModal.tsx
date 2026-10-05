@@ -96,9 +96,20 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={[s.title, { color: textColor }]}>➡️ Reenviar mensaje</Text>
+          <Text style={[s.title, { color: textColor }]}>
+            {(messages && messages.length > 1)
+              ? `➡️ Reenviar ${messages.length} mensajes`
+              : '➡️ Reenviar mensaje'}
+          </Text>
 
-          {message && (
+          {(messages && messages.length > 1) ? (
+            <View style={[s.preview, { backgroundColor: previewBg }]}>
+              <Text style={[s.previewLabel]}>Mensajes seleccionados:</Text>
+              <Text style={[s.previewText, { color: textColor }]}>
+                {messages.length} mensajes seleccionados
+              </Text>
+            </View>
+          ) : message ? (
             <View style={[s.preview, { backgroundColor: previewBg }]}>
               <Text style={[s.previewLabel]}>Mensaje original:</Text>
               <Text style={[s.previewText, { color: textColor }]} numberOfLines={3}>
@@ -109,7 +120,7 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
                   : message.text || '(sin texto)'}
               </Text>
             </View>
-          )}
+          ) : null}
 
           <Text style={[s.sectionLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Enviar a:</Text>
           {loading ? (
