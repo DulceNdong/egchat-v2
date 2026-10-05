@@ -1919,7 +1919,27 @@ export default function ChatScreen() {
       icon: <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={1.8}><Path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z" strokeLinecap="round"/><Line x1="12" y1="9" x2="12" y2="13" strokeLinecap="round"/><Line x1="12" y1="17" x2="12.01" y2="17" strokeLinecap="round"/></Svg>,
       label: 'Reportar',
       color: '#EF4444',
-      onPress: () => Alert.alert('Reportar', `"${chatName}" reportado.`),
+      onPress: () =>
+        Alert.alert(
+          '🚩 Reportar',
+          `¿Reportar a "${chatName}" por comportamiento inapropiado?\n\n⚠️ Esta acción es irreversible. El contacto no sabrá que lo reportaste.`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Reportar',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const uid = otherParticipant?.user_id;
+                  if (uid) await reportAPI.reportUser(String(uid), 'comportamiento_inapropiado');
+                  Alert.alert('Reporte enviado', 'Gracias. Revisaremos tu reporte pronto.');
+                } catch {
+                  Alert.alert('Error', 'No se pudo enviar el reporte.');
+                }
+              },
+            },
+          ]
+        ),
     },
     {
       section: 'danger',
@@ -1927,10 +1947,26 @@ export default function ChatScreen() {
       label: 'Bloquear',
       color: '#EF4444',
       onPress: () =>
-        Alert.alert('Bloquear', `¿Bloquear a ${chatName}?`, [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Bloquear', style: 'destructive', onPress: () => router.back() },
-        ]),
+        Alert.alert(
+          '🚫 Bloquear',
+          `¿Bloquear a ${chatName}?\n\nYa no podrá enviarte mensajes ni llamarte. Puedes desbloquear en Ajustes > Privacidad.`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Bloquear',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const uid = otherParticipant?.user_id;
+                  if (uid) await blockAPI.block(String(uid));
+                  router.back();
+                } catch {
+                  Alert.alert('Error', 'No se pudo bloquear. Verifica tu conexión.');
+                }
+              },
+            },
+          ]
+        ),
     },
     {
       section: 'danger',
@@ -1938,10 +1974,28 @@ export default function ChatScreen() {
       label: 'Eliminar contacto',
       color: '#EF4444',
       onPress: () =>
-        Alert.alert('Eliminar contacto', `¿Eliminar a ${chatName}?`, [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Eliminar', style: 'destructive', onPress: () => router.back() },
-        ]),
+        Alert.alert(
+          '🗑️ Eliminar contacto',
+          `¿Eliminar a ${chatName} de tus contactos?\n\n⚠️ Esta acción es irreversible. Los mensajes anteriores no se borrarán.`,
+          [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Eliminar permanentemente',
+              style: 'destructive',
+              onPress: async () => {
+                try {
+                  const uid = otherParticipant?.user_id;
+                  if (uid) {
+                    await contactsAPI.removeByUserId(String(uid));
+                  }
+                  router.back();
+                } catch {
+                  Alert.alert('Error', 'No se pudo eliminar el contacto.');
+                }
+              },
+            },
+          ]
+        ),
     },
   ];
 
