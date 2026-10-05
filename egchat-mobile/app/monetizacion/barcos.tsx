@@ -122,7 +122,7 @@ export default function BarcosScreen() {
             <TouchableOpacity
               key={barco.id}
               style={[styles.card, !barco.activo && styles.cardInactive]}
-              onPress={() => setDetailBarco(barco)}
+              onPress={() => setDetailBarco(barco as unknown as BarcoConStats)}
               activeOpacity={0.8}
             >
               <View style={styles.cardHeader}>
