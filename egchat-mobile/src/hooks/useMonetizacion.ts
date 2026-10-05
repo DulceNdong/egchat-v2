@@ -611,7 +611,7 @@ export function usePerfilNegocio(): PerfilNegocioHook {
       if (err) throw err;
       setPerfiles(
         (data ?? []).map((p: Record<string, unknown>) => ({
-          ...(p as PerfilNegocioConHistorial),
+          ...(p as unknown as PerfilNegocioConHistorial),
           historial: [],
         })),
       );
