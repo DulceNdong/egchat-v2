@@ -221,7 +221,7 @@ export function useTaxistas(): TaxistasHook {
 
       const enriquecidos: TaxistaConIngresos[] = (taxRes.data ?? []).map(
         (t: Record<string, unknown>) => ({
-          ...(t as TaxistaConIngresos),
+          ...(t as unknown as TaxistaConIngresos),
           ingresos_viajes_mes: ingresoMap[t.id as string] ?? 0,
           // alias used by the UI
           fecha_venc_revision: (t.fecha_venc_revision_tecnica as string | null) ?? null,
