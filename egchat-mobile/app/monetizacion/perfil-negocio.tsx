@@ -239,7 +239,6 @@ export default function PerfilNegocioScreen() {
           ))}
         </View>
 
-        {/* Lista perfiles negocio */}
         {perfilesFiltrados.map(perfil => {
           const sc = perfil.scoreFinanciero;
           const sc_color = scoreColor(sc);
