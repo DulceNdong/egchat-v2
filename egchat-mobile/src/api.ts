@@ -597,6 +597,9 @@ export const callAPI = {
     callType: 'audio' | 'video';
     offer?: object;
   }) => post<{ voipPushSent: boolean; expoPushSent: boolean }>('/api/push/voip-call', data),
+  /** Reclamar llamada de forma atómica — evita doble-aceptación entre dispositivos */
+  claimCall: (callId: string) =>
+    post<{ alreadyAccepted?: boolean }>('/api/calls/claim', { callId }),
 };
 
 // ══════════════════════════════════════════════════════════════════
