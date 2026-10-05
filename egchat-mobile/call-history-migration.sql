@@ -6,6 +6,29 @@
 
 BEGIN;
 
+-- ── Asegurar columnas en call_sessions (por si no se ejecutó la migración base) ──
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='status') THEN
+    ALTER TABLE call_sessions ADD COLUMN status TEXT NOT NULL DEFAULT 'ringing'
+      CHECK (status IN ('ringing','accepted','connecting','connected','reconnecting','rejected','missed','ended','failed'));
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='duration_seconds') THEN
+    ALTER TABLE call_sessions ADD COLUMN duration_seconds INTEGER;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='end_reason') THEN
+    ALTER TABLE call_sessions ADD COLUMN end_reason TEXT;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='connected_at') THEN
+    ALTER TABLE call_sessions ADD COLUMN connected_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='ended_at') THEN
+    ALTER TABLE call_sessions ADD COLUMN ended_at TIMESTAMPTZ;
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='call_sessions' AND column_name='chat_id') THEN
+    ALTER TABLE call_sessions ADD COLUMN chat_id UUID;
+  END IF;
+END $$;
+
 -- ── Columna metadata en messages (si no existe) ──────────────────
 DO $$ BEGIN
   IF NOT EXISTS (
