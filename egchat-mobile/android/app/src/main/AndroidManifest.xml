@@ -8,7 +8,6 @@
   <uses-permission android:name="android.permission.MANAGE_OWN_CALLS"/>
   <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS"/>
   <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
-  <!-- BLUETOOTH_CONNECT requerido en Android 12+ (API 31) para cambiar ruta a auriculares BT -->
   <uses-permission android:name="android.permission.BLUETOOTH_CONNECT"/>
   <uses-permission android:name="android.permission.READ_CONTACTS"/>
   <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
@@ -72,27 +71,18 @@
         <action android:name="com.egchat.app.CALL_END"/>
       </intent-filter>
     </receiver>
-
-    <!-- FirebaseMessagingService: recibe FCM cuando JS no está disponible -->
-    <service
-      android:name=".services.EGChatFirebaseMessagingService"
-      android:exported="false">
-      <intent-filter>
-        <action android:name="com.google.firebase.MESSAGING_EVENT"/>
-      </intent-filter>
-    </service>
-
-    <!-- CallForegroundService: mantiene el proceso vivo durante llamadas activas -->
-    <service
-      android:name=".services.CallForegroundService"
-      android:foregroundServiceType="phoneCall"
-      android:exported="false"/>
     <receiver android:name=".modules.EGChatWidgetProvider" android:exported="true">
       <intent-filter>
         <action android:name="android.appwidget.action.APPWIDGET_UPDATE"/>
       </intent-filter>
       <meta-data android:name="android.appwidget.provider" android:resource="@xml/widget_egchat_info"/>
     </receiver>
+    <service android:name=".services.EGChatFirebaseMessagingService" android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+      </intent-filter>
+    </service>
+    <service android:name=".services.CallForegroundService" android:foregroundServiceType="phoneCall" android:exported="false"/>
     <uses-library android:name="org.apache.http.legacy" android:required="false"/>
   </application>
 </manifest>
