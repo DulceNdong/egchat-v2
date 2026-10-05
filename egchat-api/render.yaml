@@ -21,5 +21,7 @@ services:
         value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZnh0am5maHZwZ2dzc2J5bWRuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTg0MzgyMCwiZXhwIjoyMTAxNDE5ODIwfQ.ulwcC4WW-00pgjKzzs9CclyMGad1y4dqjS7P-c2O-CM
       - key: JWT_SECRET
         value: egchat_super_secret_key_2026_production
+      - key: SERVICE_TOKEN
+        value: 6008c2d16280cdfbecf4d4416b9ec39c5da7c552a6e382d5df91b1f61dc4a6a0
       - key: LOCAL_AUTH_FALLBACK
         value: "false"
