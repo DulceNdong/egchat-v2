@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  StatusBar, RefreshControl, TextInput,
+  StatusBar, RefreshControl, TextInput, ActivityIndicator,
 } from 'react-native';
 import { InformeModal, InformeData } from '../../src/components/monetizacion/InformeModal';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
+import { usePerfilFinanciero } from '../../src/hooks/useMonetizacion';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 interface PerfilUsuario {
