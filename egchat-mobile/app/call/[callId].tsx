@@ -446,9 +446,13 @@ export default function CallScreen() {
       const isVid = callType === 'video';
       const emoji = isVid ? '📹' : '📞';
       let text: string;
-      if (connected && secs > 0) {
-        const mm = Math.floor(secs / 60).toString().padStart(2, '0');
-        const ss = (secs % 60).toString().padStart(2, '0');
+      // B3 fix: si secs==0 pero había startedAt, recalcular duración real
+      const realSecs = (connected && secs === 0 && callManager.session?.startedAt)
+        ? Math.floor((Date.now() - callManager.session.startedAt) / 1000)
+        : secs;
+      if (connected && realSecs > 0) {
+        const mm = Math.floor(realSecs / 60).toString().padStart(2, '0');
+        const ss = (realSecs % 60).toString().padStart(2, '0');
         text = `${emoji} ${isVid ? 'Videollamada' : 'Llamada'} (${mm}:${ss})`;
       } else {
         text = `${emoji} ${isVid ? 'Videollamada' : 'Llamada'} perdida`;
