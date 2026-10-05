@@ -563,6 +563,29 @@ export const contactsAPI = {
 };
 
 // ══════════════════════════════════════════════════════════════════
+// BLOQUEOS DE USUARIO
+// ══════════════════════════════════════════════════════════════════
+export const blockAPI = {
+  /** Bloquear a un usuario por su user_id */
+  block: (blockedUserId: string) =>
+    post<{ ok: boolean }>('/api/users/block', { blocked_user_id: blockedUserId }),
+  /** Desbloquear a un usuario por su user_id */
+  unblock: (blockedUserId: string) =>
+    del<{ ok: boolean }>(`/api/users/block/${blockedUserId}`),
+  /** Listar usuarios bloqueados por el usuario actual */
+  list: () => get<{ blocked_user_id: string }[]>('/api/users/blocked'),
+};
+
+// ══════════════════════════════════════════════════════════════════
+// REPORTES
+// ══════════════════════════════════════════════════════════════════
+export const reportAPI = {
+  /** Reportar a un usuario */
+  reportUser: (reportedUserId: string, reason: string) =>
+    post<{ ok: boolean }>('/api/reports', { reported_user_id: reportedUserId, reason }),
+};
+
+// ══════════════════════════════════════════════════════════════════
 // LLAMADAS (señalización WebRTC)
 // ══════════════════════════════════════════════════════════════════
 export const callAPI = {
