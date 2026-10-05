@@ -43,8 +43,8 @@ function scoreColor(s: number) {
   return '#FF4444';
 }
 
-// ── Datos demo ─────────────────────────────────────────────────────────────
-const PERFILES_DEMO: PerfilUsuario[] = [
+// ── Datos demo (fallback) ──────────────────────────────────────────────────
+const PERFILES_DEMO_FIN: PerfilUsuario[] = [
   {
     id: '1', nombre: 'Inés Esono Abaga', telefono: '+240 222 555 001',
     mesesActivo: 14, totalMovido: 18500000, numTransacciones: 142,
