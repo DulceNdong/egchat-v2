@@ -2376,7 +2376,7 @@ export default function ChatScreen() {
             initialNumToRender={Platform.OS === 'android' ? 12 : 15}
             maxToRenderPerBatch={Platform.OS === 'android' ? 4 : 10}
             updateCellsBatchingPeriod={Platform.OS === 'android' ? 120 : 80}
-            windowSize={Platform.OS === 'android' ? 4 : 7}
+            windowSize={Platform.OS === 'android' ? 10 : 15}
             removeClippedSubviews={Platform.OS === 'android'}
             getItemLayout={undefined}
             // ────────────────────────────────────────────────────────
