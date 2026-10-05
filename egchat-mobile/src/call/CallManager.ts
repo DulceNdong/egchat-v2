@@ -407,6 +407,20 @@ export class CallManager {
       return;
     }
 
+    // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
+    // Intentar reclamar la llamada de forma atómica en el servidor.
+    // Si ya fue aceptada por otro dispositivo, el servidor devuelve alreadyAccepted.
+    try {
+      const result = await callAPI.claimCall?.(this._session.callId);
+      if (result?.alreadyAccepted) {
+        this._stopRingOnce();
+        this._setCommState('ended');
+        this._finalCleanup();
+        setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+        return;
+      }
+    } catch { /* endpoint opcional — no bloquear si no existe */ }
+
     this._setCommState('accepted');
     this._stopRingOnce();
 
