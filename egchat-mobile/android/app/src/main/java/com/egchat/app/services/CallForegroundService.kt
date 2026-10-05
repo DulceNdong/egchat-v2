@@ -222,6 +222,8 @@ class CallForegroundService : Service() {
             am.abandonAudioFocus(audioFocusListener)
         }
         audioFocusRequest = null
+        // M2 fix: restaurar modo de audio normal al finalizar la llamada
+        am.mode = AudioManager.MODE_NORMAL
     }
 
     // ── Canal de notificación ──────────────────────────────────────
