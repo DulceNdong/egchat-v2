@@ -621,12 +621,18 @@ export const ContactProfileModal: React.FC<Props> = ({
 
                 {/* Acciones peligrosas */}
                 <View style={[styles.section, { marginBottom: 32 }]}>
+                  {actionLoading && (
+                    <View style={styles.loadingOverlay}>
+                      <ActivityIndicator size="small" color="#EF4444" />
+                      <Text style={styles.loadingText}>Procesando...</Text>
+                    </View>
+                  )}
                   <Row
                     iconNode={<IcoBlock />}
                     label={isBlocked ? 'Desbloquear contacto' : 'Bloquear contacto'}
-                    sub="No recibirás más mensajes"
+                    sub={isBlocked ? 'Permitir mensajes de nuevo' : 'No recibirás más mensajes'}
                     danger
-                    onPress={() => onBlockToggle?.(cpId)}
+                    onPress={handleBlock}
                   />
                   <Divider />
                   <Row
@@ -634,12 +640,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                     label="Reportar contacto"
                     sub="Reportar comportamiento inapropiado"
                     danger
-                    onPress={() =>
-                      Alert.alert('Reportar contacto', '¿Deseas reportar este contacto?', [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Reportar', style: 'destructive' },
-                      ])
-                    }
+                    onPress={handleReport}
                   />
                   {!isGroup && (
                     <>
@@ -647,14 +648,9 @@ export const ContactProfileModal: React.FC<Props> = ({
                       <Row
                         iconNode={<IcoUserX />}
                         label="Eliminar contacto"
-                        sub="Eliminar de tu lista de contactos"
+                        sub="Eliminar permanentemente de tus contactos"
                         danger
-                        onPress={() =>
-                          Alert.alert('Eliminar contacto', '¿Estás seguro?', [
-                            { text: 'Cancelar', style: 'cancel' },
-                            { text: 'Eliminar', style: 'destructive', onPress: () => { onDeleteContact?.(cpId); onClose(); } },
-                          ])
-                        }
+                        onPress={handleDeleteContact}
                       />
                     </>
                   )}
