@@ -11,7 +11,7 @@ import * as ImagePicker from 'expo-image-picker';
 import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
-import { chatAPI, authAPI, getToken, contactsAPI } from '../../src/api';
+import { chatAPI, authAPI, getToken, contactsAPI, blockAPI, reportAPI } from '../../src/api';
 import { walletAPI } from '../../src/api';
 import { IncomingTransferModal } from '../../src/components/wallet/IncomingTransferModal';
 import { ChatAttachPanel, AttachAction } from '../../src/components/chat/ChatAttachPanel';
