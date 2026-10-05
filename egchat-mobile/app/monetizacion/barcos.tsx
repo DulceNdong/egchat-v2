@@ -81,7 +81,7 @@ export default function BarcosScreen() {
         contentContainerStyle={{ paddingBottom: 40 }}
         showsVerticalScrollIndicator={false}
         refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); setTimeout(() => setRefreshing(false), 800); }} tintColor="#FF8800" />
+          <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FF8800" />
         }
       >
         {/* Métricas */}
