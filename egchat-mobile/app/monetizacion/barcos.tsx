@@ -84,6 +84,10 @@ export default function BarcosScreen() {
           <RefreshControl refreshing={loading} onRefresh={refresh} tintColor="#FF8800" />
         }
       >
+        {/* Indicadores de carga / error */}
+        {loading && barcos.length === 0 && <ActivityIndicator color="#FF8800" style={{ marginTop: 40 }} />}
+        {error && barcos.length === 0 && !loading && <Text style={{ color: '#FF4444', textAlign: 'center', marginTop: 40, paddingHorizontal: 20 }}>{error}</Text>}
+
         {/* Métricas */}
         <View style={styles.metricsRow}>
           <MetricCard label="Billetes Mes" value={`${totalBilletes}`} icon="🎫" accentColor="#FF8800" trend={-7.5} subValue="Todos los barcos" />
