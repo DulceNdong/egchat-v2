@@ -55,20 +55,31 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
   }, [visible]);
 
   const handleSend = async () => {
-    if (!selectedChat || !message) return;
+    if (!selectedChat) return;
+
+    // Determinar qué mensajes enviar
+    const msgsToForward: ChatMessage[] = (messages && messages.length > 0)
+      ? messages
+      : (message ? [message] : []);
+
+    if (msgsToForward.length === 0) return;
+
     setSending(true);
     try {
-      await chatAPI.sendMessage(selectedChat.id, {
-        text: message.text || '',
-        type: message.type || 'text',
-        file_url: message.file_url,
-        album_urls: (message as any).album_urls,
-        forwarded_from: message.id,
-      });
+      await Promise.allSettled(
+        msgsToForward.map(msg =>
+          chatAPI.sendMessage(selectedChat.id, {
+            text: msg.text || '',
+            type: msg.type || 'text',
+            file_url: msg.file_url,
+            album_urls: (msg as any).album_urls,
+            forwarded_from: msg.id,
+          })
+        )
+      );
       if (comment.trim()) {
         await chatAPI.sendMessage(selectedChat.id, { text: comment.trim(), type: 'text' });
       }
-      // Mensaje reenviado silenciosamente
       onForwarded?.();
       onClose();
     } catch {
