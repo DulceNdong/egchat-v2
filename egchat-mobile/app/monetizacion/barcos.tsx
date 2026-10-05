@@ -211,7 +211,7 @@ export default function BarcosScreen() {
                     showBars={false}
                     rows={[
                       { label: 'Operador', value: detailBarco.nombre_operador },
-                      { label: 'Matrícula', value: detailBarco.matricula },
+                      { label: 'Matrícula', value: detailBarco.matricula ?? '—' },
                       { label: 'Ruta', value: detailBarco.ruta },
                       { label: 'Capacidad', value: `${detailBarco.capacidad} pasajeros` },
                       { label: 'Precio base billete', value: fmt(detailBarco.precio_base) },
