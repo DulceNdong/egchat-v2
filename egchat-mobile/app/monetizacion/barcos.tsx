@@ -59,11 +59,17 @@ const VENTAS_HISTORICO: VentaMensual[] = [
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function BarcosScreen() {
-  const [refreshing, setRefreshing] = useState(false);
-  const [detailBarco, setDetailBarco] = useState<Barco | null>(null);
+  const { barcos, historico, loading, error, refresh } = useBarcos();
+  const [detailBarco, setDetailBarco] = useState<BarcoConStats | null>(null);
 
-  const totalBilletes = BARCOS_DEMO.reduce((s, b) => s + b.billetes_mes, 0);
-  const totalRecaudacion = BARCOS_DEMO.reduce((s, b) => s + b.recaudacion_mes, 0);
+  // Fallback a demo si Supabase aún no tiene datos
+  const fuenteBarcos = barcos.length > 0 ? barcos : BARCOS_DEMO;
+  const fuenteHistorico: BarChartDataPoint[] = historico.length > 0
+    ? historico.map(h => ({ label: h.label, value: h.value }))
+    : VENTAS_HISTORICO.map(v => ({ label: v.mes, value: v.recaudacion }));
+
+  const totalBilletes = fuenteBarcos.reduce((s, b) => s + b.billetes_mes, 0);
+  const totalRecaudacion = fuenteBarcos.reduce((s, b) => s + b.recaudacion_mes, 0);
   const totalComisiones = totalRecaudacion * COMISION_PCT / 100;
 
   return (
