@@ -107,9 +107,9 @@ const PERFILES_DEMO_FIN: PerfilUsuario[] = [
   },
 ];
 
-const totalUsuarios = PERFILES_DEMO.length;
-const scorePromedio = Math.round(PERFILES_DEMO.reduce((s, p) => s + p.scoreFinanciero, 0) / totalUsuarios);
-const totalMovido = PERFILES_DEMO.reduce((s, p) => s + p.totalMovido, 0);
+const totalUsuarios = PERFILES_DEMO_FIN.length;
+const scorePromedio = Math.round(PERFILES_DEMO_FIN.reduce((s, p) => s + p.scoreFinanciero, 0) / totalUsuarios);
+const totalMovido = PERFILES_DEMO_FIN.reduce((s, p) => s + p.totalMovido, 0);
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function PerfilFinancieroScreen() {
