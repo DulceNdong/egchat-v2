@@ -56,10 +56,6 @@ const VENTAS_HISTORICO: VentaMensual[] = [
   { mes: 'Sep', recaudacion: 4185000, billetes: 86 },
 ];
 
-const chartData: BarChartDataPoint[] = VENTAS_HISTORICO.map(v => ({
-  label: v.mes,
-  value: v.recaudacion,
-}));
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function BarcosScreen() {
