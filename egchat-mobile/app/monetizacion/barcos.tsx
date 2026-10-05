@@ -101,7 +101,7 @@ export default function BarcosScreen() {
         <Text style={styles.sectionTitle}>📈 Evolución Ventas</Text>
         <View style={styles.chartCard}>
           <BarChart
-            data={chartData}
+            data={fuenteHistorico}
             height={180}
             barColor="#FF8800"
             barColorSecondary="#884400"
