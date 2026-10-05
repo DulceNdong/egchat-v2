@@ -160,7 +160,7 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
               <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Cancelar</Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={[s.sendBtn, (!selectedChat || sending) && s.sendBtnDisabled]}
+              style={[s.sendBtn, (!selectedChat || sending || ((!message) && (!messages || messages.length === 0))) && s.sendBtnDisabled]}
               onPress={handleSend}
               disabled={!selectedChat || sending || ((!message) && (!messages || messages.length === 0))}
               activeOpacity={0.8}
