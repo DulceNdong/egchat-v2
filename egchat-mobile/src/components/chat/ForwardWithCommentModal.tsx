@@ -28,7 +28,7 @@ interface Props {
   onForwarded?: () => void;
 }
 
-export function ForwardWithCommentModal({ visible, message, currentUserId, onClose, onForwarded }: Props) {
+export function ForwardWithCommentModal({ visible, message, messages, currentUserId, onClose, onForwarded }: Props) {
   const isDark = useColorScheme() === 'dark';
   const sheetBg = isDark ? '#1c1c1e' : '#fff';
   const textColor = isDark ? '#f9fafb' : '#111827';
