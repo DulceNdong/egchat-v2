@@ -89,14 +89,51 @@ const facturacionTotal = PERFILES_DEMO.reduce(
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function PerfilNegocioScreen() {
-  const [refreshing, setRefreshing] = useState(false);
   const [search, setSearch] = useState('');
   const [selectedPerfil, setSelectedPerfil] = useState<PerfilNegocio | null>(null);
   const [informeVisible, setInformeVisible] = useState(false);
   const [informeData, setInformeData] = useState<InformeData | null>(null);
   const [filtroScore, setFiltroScore] = useState<'todos' | 'alto' | 'medio' | 'bajo'>('todos');
+  const [facturacionCache, setFacturacionCache] = useState<{ [id: string]: number[] }>({});
 
-  const perfilesFiltrados = PERFILES_DEMO
+  const { perfiles, loading, error, refresh, fetchHistorial, fetchFacturacionMensual } = usePerfilNegocio();
+
+  // Mapear datos del hook a la interfaz local PerfilNegocio
+  const perfilesMapeados: PerfilNegocio[] = perfiles.map(p => ({
+    id: p.empresa_id,
+    razonSocial: p.empresa?.nombre ?? p.razon_social ?? 'Sin nombre',
+    nif: p.nif ?? '',
+    responsable: p.empresa?.responsable ?? '',
+    sector: p.sector ?? '',
+    mesesOperacion: p.meses_operacion ?? 0,
+    facturacionMensual: facturacionCache[p.empresa_id] ?? [0, 0, 0, 0, 0, p.facturacion_mensual_promedio ?? 0],
+    numTransacciones: p.num_transacciones_total ?? 0,
+    scoreFinanciero: p.score_financiero ?? 0,
+    serviciosActivos: p.servicios_activos ?? [],
+    tendencia: 0,
+  }));
+
+  const fuente: PerfilNegocio[] = perfilesMapeados.length > 0 ? perfilesMapeados : PERFILES_DEMO;
+
+  const totalNegocios = fuente.length;
+  const scorePromedioVal = totalNegocios > 0
+    ? Math.round(fuente.reduce((s, p) => s + p.scoreFinanciero, 0) / totalNegocios)
+    : 0;
+  const facturacionTotalVal = fuente.reduce(
+    (s, p) => s + (p.facturacionMensual[p.facturacionMensual.length - 1] ?? 0), 0,
+  );
+
+  const handleOpenPerfil = async (perfil: PerfilNegocio) => {
+    const isExpanded = selectedPerfil?.id === perfil.id;
+    setSelectedPerfil(isExpanded ? null : perfil);
+    if (!isExpanded && !facturacionCache[perfil.id]) {
+      try {
+        const fact = await fetchFacturacionMensual(perfil.id);
+        setFacturacionCache(prev => ({ ...prev, [perfil.id]: fact }));
+        setSelectedPerfil(prev => prev ? { ...prev, facturacionMensual: fact } : null);
+      } catch { /* usar datos actuales */ }
+    }
+  };
     .filter(p => p.razonSocial.toLowerCase().includes(search.toLowerCase()))
     .filter(p => {
       if (filtroScore === 'alto') return p.scoreFinanciero >= 70;
