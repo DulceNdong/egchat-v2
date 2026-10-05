@@ -248,6 +248,7 @@ export const ContactProfileModal: React.FC<Props> = ({
   onDeleteContact, onSendMoney, onStartCall, onFavoriteToggle,
   isInContacts = true, onAddContact,
   groupMembers = [], currentUserId,
+  targetUserId,
   onRemoveGroupMember, onLeaveGroup, onDeleteGroup,
 }) => {
   const [tab, setTab] = useState<'info' | 'media' | 'grupos'>('info');
