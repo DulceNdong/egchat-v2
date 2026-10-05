@@ -162,7 +162,7 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
             <TouchableOpacity
               style={[s.sendBtn, (!selectedChat || sending) && s.sendBtnDisabled]}
               onPress={handleSend}
-              disabled={!selectedChat || sending}
+              disabled={!selectedChat || sending || ((!message) && (!messages || messages.length === 0))}
               activeOpacity={0.8}
             >
               {sending ? <ActivityIndicator color="#fff" size="small" /> : <Text style={s.sendTxt}>Reenviar</Text>}
