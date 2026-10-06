@@ -7,6 +7,7 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
 
   private var voipRegistry: PKPushRegistry?
 
+  // ── Singleton accesible desde AppDelegate ────────────────────────
   @objc static let shared = EGChatPushKitModule()
 
   // ── Llamado desde AppDelegate cuando llega token VoIP ────────────
@@ -19,6 +20,7 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
     shared.sendEvent(withName: "voipPushReceived", body: payload)
   }
 
+  // ── Inicializar PushKit registry ─────────────────────────────────
   @objc func registerVoIP() {
     DispatchQueue.main.async { [weak self] in
       guard let self = self else { return }
@@ -30,15 +32,7 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
     }
   }
 
-  // ── Llamado desde AppDelegate cuando llega token VoIP ────────────
-  @objc static func emitTokenUpdated(_ token: String) {
-    shared.sendEvent(withName: "voipTokenUpdated", body: ["token": token])
-  }
-
-  // ── Llamado desde AppDelegate cuando llega llamada entrante ──────
-  @objc static func emitIncomingCall(_ payload: [String: Any]) {
-    shared.sendEvent(withName: "voipPushReceived", body: payload)
-  }
+  // ── PKPushRegistryDelegate ───────────────────────────────────────
 
   func pushRegistry(
     _ registry: PKPushRegistry,
@@ -75,6 +69,8 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
     EGChatPushKitModule.emitIncomingCall(dict)
     completion()
   }
+
+  // ── RCTEventEmitter ─────────────────────────────────────────────
 
   override func supportedEvents() -> [String] {
     return ["voipTokenUpdated", "voipPushReceived"]
