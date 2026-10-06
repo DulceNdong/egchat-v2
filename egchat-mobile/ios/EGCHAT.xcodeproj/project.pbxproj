@@ -379,6 +379,8 @@
 				3CA81062761F8847AED03DA2 /* ExpoModulesProvider.swift in Sources */,
 				6264DB1B3075278B00497F71 /* EGChatPushKitModule.swift in Sources */,
 				6264DB1C3075278B00497F71 /* EGChatPushKitModule.m in Sources */,
+				EC01AB001A68108700A75B9A /* EGChatCallModule.swift in Sources */,
+				EC01AB021A68108700A75B9A /* EGChatCallModule.m in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
