@@ -117,39 +117,36 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
         callerName: String,
         isVideo: Boolean
     ) {
-        val ctx: Context = this
+        val ctx: Context = applicationContext
         createNotificationChannel()
 
         // Intent: abrir MainActivity con los datos de la llamada
-        val openIntent = Intent(ctx, MainActivity::class.java).also {
-            it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP
-            it.putExtra("callId",      callId)
-            it.putExtra("callerName",  callerName)
-            it.putExtra("isVideo",     isVideo)
-            it.putExtra("action",      "incoming_call")
-        }
+        val openIntent = Intent(ctx, MainActivity::class.java)
+        openIntent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+        openIntent.putExtra("callId",      callId)
+        openIntent.putExtra("callerName",  callerName)
+        openIntent.putExtra("isVideo",     isVideo)
+        openIntent.putExtra("action",      "incoming_call")
         val openPending = PendingIntent.getActivity(
             ctx, NOTIF_ID_INCOMING, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         // Intent: aceptar desde notificación
-        val answerIntent = Intent(ctx, CallActionReceiver::class.java).also {
-            it.action = EGChatCallModule.ACTION_ANSWER
-            it.putExtra("callId", callId)
-        }
+        val answerIntent = Intent(ctx, CallActionReceiver::class.java)
+        answerIntent.action = EGChatCallModule.ACTION_ANSWER
+        answerIntent.putExtra("callId", callId)
         val answerPending = PendingIntent.getBroadcast(
             ctx, NOTIF_ID_INCOMING + 1, answerIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         // Intent: rechazar desde notificación
-        val rejectIntent = Intent(ctx, CallActionReceiver::class.java).also {
-            it.action = EGChatCallModule.ACTION_REJECT
-            it.putExtra("callId", callId)
-        }
+        val rejectIntent = Intent(ctx, CallActionReceiver::class.java)
+        rejectIntent.action = EGChatCallModule.ACTION_REJECT
+        rejectIntent.putExtra("callId", callId)
         val rejectPending = PendingIntent.getBroadcast(
             ctx, NOTIF_ID_INCOMING + 2, rejectIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
@@ -171,14 +168,8 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
             .addAction(android.R.drawable.ic_menu_call,  "Aceptar",  answerPending)
             .addAction(android.R.drawable.ic_delete,     "Rechazar", rejectPending)
             .setColor(0xFF00C8A0.toInt())
-            .setTimeoutAfter(90_000L)   // auto-dismiss tras 90s (TTL de la llamada)
+            .setTimeoutAfter(90_000L)
             .build()
-
-        // Despertar pantalla en Android 8.1+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O_MR1) {
-            // No podemos llamar setTurnScreenOn desde un Service sin Activity.
-            // En su lugar usamos la notificación full-screen que ya hace eso.
-        }
 
         try {
             NotificationManagerCompat.from(ctx).notify(NOTIF_ID_INCOMING, notification)
