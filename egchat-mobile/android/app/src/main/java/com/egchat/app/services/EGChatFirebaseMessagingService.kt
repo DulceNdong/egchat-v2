@@ -56,10 +56,8 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
     // con el servidor cuando JS esté disponible.
     override fun onNewToken(token: String) {
         super.onNewToken(token)
-        getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putString("fcm_token_pending_sync", token)
-            .apply()
+        val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        prefs.edit().putString("fcm_token_pending_sync", token).apply()
     }
 
     // ── onMessageReceived ─────────────────────────────────────────────
