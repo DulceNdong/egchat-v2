@@ -293,13 +293,7 @@ export default function PrivacidadScreen() {
         <SettingsRow
           label="Eliminar mi cuenta"
           danger
-          onPress={() =>
-            Alert.alert(
-              'Eliminar cuenta',
-              'Esta acción eliminará permanentemente tu cuenta, mensajes y datos. Para proceder, contacta al soporte en support@egchat.gq',
-              [{ text: 'Entendido', style: 'cancel' }],
-            )
-          }
+          onPress={handleDeleteAccount}
         />
       </SettingsCard>
     </SettingsLayout>
