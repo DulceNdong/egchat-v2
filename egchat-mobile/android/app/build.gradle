@@ -192,6 +192,9 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
+    // Firebase Messaging — necesario para EGChatFirebaseMessagingService
+    implementation("com.google.firebase:firebase-messaging:24.0.1")
+
     // ML Kit — detección facial para EGChatFaceFilter
     // Excluir google-webrtc para evitar conflictos con react-native-webrtc
     implementation("com.google.mlkit:face-detection:16.1.7") {
