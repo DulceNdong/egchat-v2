@@ -181,6 +181,47 @@ export default function PrivacidadScreen() {
     }
   };
 
+  const handleDeleteAccount = useCallback(() => {
+    Alert.alert(
+      '⚠️ Eliminar cuenta',
+      'Esta acción es irreversible. Se eliminarán permanentemente tu cuenta, mensajes, contactos y todos tus datos.\n\n¿Estás seguro?',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Confirmar eliminación',
+          style: 'destructive',
+          onPress: () => {
+            Alert.alert(
+              'Última confirmación',
+              '¿Eliminar tu cuenta definitivamente?',
+              [
+                { text: 'Cancelar', style: 'cancel' },
+                {
+                  text: 'Sí, eliminar',
+                  style: 'destructive',
+                  onPress: async () => {
+                    try {
+                      const token = await getToken();
+                      const base = getApiBase();
+                      await fetch(`${base}/api/auth/delete-account`, {
+                        method: 'DELETE',
+                        headers: { Authorization: `Bearer ${token}` },
+                      });
+                    } catch {
+                      // Silencioso — si el servidor falla, igual cerramos sesión
+                    }
+                    await authAPI.logout();
+                    router.replace('/(auth)/login' as any);
+                  },
+                },
+              ]
+            );
+          },
+        },
+      ]
+    );
+  }, []);
+
   return (
     <SettingsLayout title="Mi información">
       <SettingsSection label="Visibilidad" />
