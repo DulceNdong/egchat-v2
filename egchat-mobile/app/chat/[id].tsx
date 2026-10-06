@@ -2056,11 +2056,12 @@ export default function ChatScreen() {
         {
           text: 'Eliminar', style: 'destructive',
           onPress: async () => {
-            // Eliminar en servidor (para todos)
-            await Promise.allSettled(idsSnapshot.map(id => chatAPI.deleteMessage(id)));
-            // Eliminar del estado local usando el snapshot capturado
+            // 1. Update UI immediately with snapshot
             setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
+            // 2. Exit select mode
             exitSelectMode();
+            // 3. Call server in background (fire and forget)
+            Promise.allSettled(idsSnapshot.map(id => chatAPI.deleteMessage(id)));
           },
         },
       ]
