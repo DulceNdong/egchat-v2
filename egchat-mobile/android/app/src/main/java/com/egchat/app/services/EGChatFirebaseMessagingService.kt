@@ -121,46 +121,47 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
         callerName: String,
         isVideo: Boolean
     ) {
+        val ctx: Context = this
         createNotificationChannel()
 
         // Intent: abrir MainActivity con los datos de la llamada
-        val openIntent = Intent(this, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+        val openIntent = Intent(ctx, MainActivity::class.java).also {
+            it.flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                     Intent.FLAG_ACTIVITY_CLEAR_TOP or
                     Intent.FLAG_ACTIVITY_SINGLE_TOP
-            putExtra("callId",      callId)
-            putExtra("callerName",  callerName)
-            putExtra("isVideo",     isVideo)
-            putExtra("action",      "incoming_call")
+            it.putExtra("callId",      callId)
+            it.putExtra("callerName",  callerName)
+            it.putExtra("isVideo",     isVideo)
+            it.putExtra("action",      "incoming_call")
         }
         val openPending = PendingIntent.getActivity(
-            this, NOTIF_ID, openIntent,
+            ctx, NOTIF_ID_INCOMING, openIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         // Intent: aceptar desde notificación
-        val answerIntent = Intent(this, CallActionReceiver::class.java).apply {
-            action = EGChatCallModule.ACTION_ANSWER
-            putExtra("callId", callId)
+        val answerIntent = Intent(ctx, CallActionReceiver::class.java).also {
+            it.action = EGChatCallModule.ACTION_ANSWER
+            it.putExtra("callId", callId)
         }
         val answerPending = PendingIntent.getBroadcast(
-            this, NOTIF_ID + 1, answerIntent,
+            ctx, NOTIF_ID_INCOMING + 1, answerIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         // Intent: rechazar desde notificación
-        val rejectIntent = Intent(this, CallActionReceiver::class.java).apply {
-            action = EGChatCallModule.ACTION_REJECT
-            putExtra("callId", callId)
+        val rejectIntent = Intent(ctx, CallActionReceiver::class.java).also {
+            it.action = EGChatCallModule.ACTION_REJECT
+            it.putExtra("callId", callId)
         }
         val rejectPending = PendingIntent.getBroadcast(
-            this, NOTIF_ID + 2, rejectIntent,
+            ctx, NOTIF_ID_INCOMING + 2, rejectIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
         val callTypeLabel = if (isVideo) "Videollamada" else "Llamada de voz"
 
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
+        val notification = NotificationCompat.Builder(ctx, CHANNEL_ID)
             .setSmallIcon(android.R.drawable.ic_menu_call)
             .setContentTitle("$callTypeLabel entrante")
             .setContentText(callerName)
@@ -184,7 +185,7 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         try {
-            NotificationManagerCompat.from(this).notify(NOTIF_ID_INCOMING, notification)
+            NotificationManagerCompat.from(ctx).notify(NOTIF_ID_INCOMING, notification)
         } catch (e: SecurityException) {
             // POST_NOTIFICATIONS denegado en Android 13+ → no hay nada más que hacer
         }
