@@ -12,6 +12,7 @@ pluginManagement {
   ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"
 
   System.setProperty("NODE_BINARY", nodeExec)
+  System.setProperty("ANDROID_PREFS_ROOT", "")
 
   def localPropsFile = new File(rootDir, "local.properties")
   def props = new Properties()
