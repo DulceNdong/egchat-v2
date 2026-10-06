@@ -64,7 +64,14 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
     completion: @escaping () -> Void
   ) {
     guard type == .voIP else { completion(); return }
-    let dict = payload.dictionaryPayload as? [String: Any] ?? [:]
+    // dictionaryPayload es [AnyHashable: Any] — convertir a [String: Any]
+    let rawDict = payload.dictionaryPayload
+    var dict: [String: Any] = [:]
+    for (key, value) in rawDict {
+      if let strKey = key as? String {
+        dict[strKey] = value
+      }
+    }
     EGChatPushKitModule.emitIncomingCall(dict)
     completion()
   }
