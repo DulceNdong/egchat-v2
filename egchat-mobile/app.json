@@ -4,6 +4,9 @@
     "slug": "egchat",
     "version": "1.0.0",
     "orientation": "portrait",
+    "updates": {
+      "enabled": false
+    },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -46,7 +49,7 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "18"
+      "buildNumber": "19"
     },
     "android": {
       "package": "com.egchat.app",
