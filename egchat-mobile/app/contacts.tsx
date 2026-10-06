@@ -157,12 +157,17 @@ export default function ContactsScreen() {
       {
         text: 'Eliminar', style: 'destructive',
         onPress: async () => {
-          await contactsAPI.remove(id).catch(() => {});
           setContacts(prev => prev.filter(c => c.id !== id));
+          try {
+            await contactsAPI.remove(id);
+          } catch {
+            load();
+            Alert.alert('Error', 'No se pudo eliminar el contacto. Verifica tu conexión.');
+          }
         },
       },
     ]);
-  }, []);
+  }, [load]);
 
   // ── Favorito toggle ──────────────────────────────────────────
   const toggleFav = useCallback(async (contact: any) => {
