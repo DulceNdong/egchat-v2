@@ -53,7 +53,8 @@
       },
       "ios": {
         "resourceClass": "m-medium",
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "autoIncrement": true
       }
     },
     "preview-slim": {
