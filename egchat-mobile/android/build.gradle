@@ -10,12 +10,19 @@ buildscript {
 
     ndkVersion = "27.1.12297006"
   }
+  configurations.all {
+    resolutionStrategy {
+      force "org.jetbrains.kotlin:kotlin-stdlib:${kotlinVersion}"
+      force "org.jetbrains.kotlin:kotlin-compiler-embeddable:${kotlinVersion}"
+      force "org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}"
+    }
+  }
   repositories {
     google()
     mavenCentral()
   }
   dependencies {
-    classpath('com.android.tools.build:gradle:8.13.2')
+    classpath('com.android.tools.build:gradle:8.8.2')
     classpath('com.facebook.react:react-native-gradle-plugin')
     classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:${kotlinVersion}")
     classpath('com.google.gms:google-services:4.4.1')
@@ -23,6 +30,12 @@ buildscript {
 }
 
 allprojects {
+  configurations.all {
+    resolutionStrategy {
+      force "org.jetbrains.kotlin:kotlin-stdlib:${rootProject.ext.kotlinVersion}"
+      force "org.jetbrains.kotlin:kotlin-reflect:${rootProject.ext.kotlinVersion}"
+    }
+  }
   repositories {
     google()
     mavenCentral()

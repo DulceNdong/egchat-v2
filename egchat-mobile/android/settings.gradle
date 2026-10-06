@@ -1,4 +1,11 @@
 pluginManagement {
+  resolutionStrategy {
+    eachPlugin {
+      if (requested.id.namespace == 'org.jetbrains.kotlin') {
+        useVersion('2.0.21')
+      }
+    }
+  }
   def userHome = System.getProperty("user.home") ?: ""
   def nvmDir = new File(userHome, ".nvm/versions/node")
   def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin/node").absolutePath } : []
@@ -12,7 +19,6 @@ pluginManagement {
   ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"
 
   System.setProperty("NODE_BINARY", nodeExec)
-  System.setProperty("ANDROID_PREFS_ROOT", "")
 
   def localPropsFile = new File(rootDir, "local.properties")
   def props = new Properties()

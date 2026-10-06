@@ -152,6 +152,82 @@ export function SettingsToggleRow({
   );
 }
 
+export function VisibilityRow({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { id: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  const { isDark } = useThemeContext();
+  const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const selected = options.find(o => o.id === value);
+
+  return (
+    <View style={visStyles.root}>
+      <Text style={[visStyles.label, { color: C.textPrimary }]}>{label}</Text>
+      <View style={visStyles.pills}>
+        {options.map(opt => {
+          const active = opt.id === value;
+          return (
+            <TouchableOpacity
+              key={opt.id}
+              onPress={() => onChange(opt.id)}
+              activeOpacity={0.75}
+              style={[
+                visStyles.pill,
+                {
+                  backgroundColor: active ? Colors.accent : isDark ? '#21262d' : '#f2f2f7',
+                  borderColor: active ? Colors.accent : isDark ? '#30363d' : '#d1d5db',
+                },
+              ]}
+            >
+              <Text
+                style={[
+                  visStyles.pillText,
+                  { color: active ? '#fff' : isDark ? '#8b949e' : '#6b7280' },
+                ]}
+              >
+                {opt.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
+
+const visStyles = StyleSheet.create({
+  root: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  label: {
+    fontSize: 15,
+    marginBottom: 10,
+  },
+  pills: {
+    flexDirection: 'row',
+    gap: 8,
+    flexWrap: 'wrap',
+  },
+  pill: {
+    paddingHorizontal: 14,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+  },
+  pillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
+});
+
 export function SettingsSearch({
   value,
   onChangeText,
