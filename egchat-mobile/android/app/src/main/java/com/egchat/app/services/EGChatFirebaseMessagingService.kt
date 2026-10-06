@@ -79,27 +79,26 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
         val isVideo    = callType == "video"
 
         // Guard anti-duplicado: ignorar si ya procesamos este callId
-        val prefs = getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+        val prefs = applicationContext.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
         val lastCallId = prefs.getString("last_shown_call_id", null)
         if (callId == lastCallId) return
         prefs.edit().putString("last_shown_call_id", callId).apply()
 
         // Guardar en SharedPreferences para que MainActivity lo consuma
         // cuando la app abra (app terminada o recién iniciada)
-        val payload = JSONObject().apply {
-            put("callId",       callId)
-            put("callerName",   callerName)
-            put("callerAvatar", data["callerAvatar"] ?: "")
-            put("callType",     callType)
-            put("offer",        data["offer"] ?: "")
-        }
+        val payload = JSONObject()
+        payload.put("callId",       callId)
+        payload.put("callerName",   callerName)
+        payload.put("callerAvatar", data["callerAvatar"] ?: "")
+        payload.put("callType",     callType)
+        payload.put("offer",        data["offer"] ?: "")
+
         prefs.edit()
             .putString(KEY_PENDING_CALL,    payload.toString())
             .putLong(KEY_PENDING_CALL_TS,   System.currentTimeMillis())
             .apply()
 
         // Si React Native ya está corriendo, delegar al módulo nativo
-        // (que emite el evento JS y muestra la notificación)
         val rnModule = EGChatCallModule.instance
         if (rnModule != null) {
             rnModule.showIncomingCall(callerName, "", callId, isVideo)
@@ -107,7 +106,6 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
         }
 
         // React Native NO está disponible → mostrar notificación full-screen
-        // directamente desde aquí sin depender de JS.
         showIncomingCallNotification(callId, callerName, isVideo)
     }
 
