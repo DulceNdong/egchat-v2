@@ -16,7 +16,7 @@
         ],
         "aps-environment": "production",
         "com.apple.developer.usernotifications.communication": true,
-        "com.apple.developer.pushkit.unrestricted-development": true
+        "com.apple.developer.pushkit.unrestricted-voip": true
       },
       "infoPlist": {
         "UIBackgroundModes": [
