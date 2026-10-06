@@ -158,14 +158,10 @@ android {
             // Evitar duplicados de librerías WebRTC nativas
             pickFirsts += ['**/libjingle_peerconnection_so.so', '**/libwebrtc.so']
         }
-        // Excluir archivos duplicados de META-INF
-        excludes += [
-            'META-INF/DEPENDENCIES',
-            'META-INF/LICENSE',
-            'META-INF/LICENSE.txt',
-            'META-INF/NOTICE',
-            'META-INF/NOTICE.txt',
-        ]
+        resources {
+            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt']
+        }
+// Excluir archivos duplicados de META-INF
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
