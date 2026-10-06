@@ -194,7 +194,7 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
     // ── createNotificationChannel ─────────────────────────────────────
     private fun createNotificationChannel() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-        val manager = getSystemService(NotificationManager::class.java) ?: return
+        val manager = this.getSystemService(Context.NOTIFICATION_SERVICE) as? NotificationManager ?: return
         if (manager.getNotificationChannel(CHANNEL_ID) != null) return
 
         val channel = NotificationChannel(
