@@ -2,6 +2,22 @@ import Foundation
 import PushKit
 import React
 
+/**
+ * EGChatPushKitModule — Recibe pushes VoIP y despierta la app.
+ *
+ * Flujo con teléfono cerrado/bloqueado:
+ *  1. Servidor envía push VoIP al token del dispositivo
+ *  2. iOS despierta la app en background en <0.5s (incluso si estaba cerrada)
+ *  3. pushRegistry didReceiveIncomingPushWith se ejecuta
+ *  4. INMEDIATAMENTE se llama EGChatCallModule.shared.showIncomingCall()
+ *     → iOS muestra la pantalla nativa de llamada (como WhatsApp/FaceTime)
+ *  5. El payload también se emite a JS para que prepare el WebRTC
+ *
+ * CRÍTICO (Apple policy):
+ *  - En didReceiveIncomingPushWith se DEBE reportar la llamada a CXProvider
+ *    antes de llamar completion(). Si no se hace, iOS puede matar la app
+ *    y eventualmente revocar el permiso de VoIP push.
+ */
 @objc(EGChatPushKitModule)
 class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
 
@@ -41,6 +57,7 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
   ) {
     guard type == .voIP else { return }
     let token = pushCredentials.token.map { String(format: "%02.2hhx", $0) }.joined()
+    print("[EGChatPushKit] VoIP token actualizado: \(token.prefix(12))...")
     EGChatPushKitModule.emitTokenUpdated(token)
   }
 
@@ -48,6 +65,7 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
     _ registry: PKPushRegistry,
     didInvalidatePushTokenFor type: PKPushType
   ) {
+    print("[EGChatPushKit] Token VoIP invalidado")
     EGChatPushKitModule.emitTokenUpdated("")
   }
 
@@ -58,7 +76,8 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
     completion: @escaping () -> Void
   ) {
     guard type == .voIP else { completion(); return }
-    // dictionaryPayload es [AnyHashable: Any] — convertir a [String: Any]
+
+    // Convertir [AnyHashable: Any] → [String: Any]
     let rawDict = payload.dictionaryPayload
     var dict: [String: Any] = [:]
     for (key, value) in rawDict {
@@ -66,7 +85,40 @@ class EGChatPushKitModule: RCTEventEmitter, PKPushRegistryDelegate {
         dict[strKey] = value
       }
     }
-    EGChatPushKitModule.emitIncomingCall(dict)
+
+    // Extraer datos del llamante del payload
+    let aps      = dict["aps"] as? [String: Any] ?? [:]
+    let callId   = aps["callId"]     as? String ?? dict["callId"]     as? String ?? UUID().uuidString
+    let caller   = aps["callerName"] as? String ?? dict["callerName"] as? String ?? "EGCHAT"
+    let avatar   = aps["callerAvatar"] as? String ?? dict["callerAvatar"] as? String ?? ""
+    let rawType  = aps["callType"]   as? String ?? dict["callType"]   as? String ?? "audio"
+    let isVideo  = (rawType == "video")
+
+    print("[EGChatPushKit] Llamada entrante — caller: \(caller), callId: \(callId), video: \(isVideo)")
+
+    // ⚠️ CRÍTICO: Apple exige reportar la llamada a CallKit AQUÍ,
+    //    antes de llamar completion(). No puede ser diferido.
+    EGChatCallModule.shared.showIncomingCall(
+      caller,
+      callerAvatar: avatar,
+      callId: callId,
+      isVideo: isVideo
+    )
+
+    // Construir payload completo para JS
+    var body: [String: Any] = [
+      "callId":     callId,
+      "callerName": caller,
+      "callType":   rawType,
+    ]
+    if let offer = dict["offer"] as? [String: Any] { body["offer"] = offer }
+    if let offerStr = dict["offer"] as? String { body["offer"] = offerStr }
+    if let targetUserId = dict["targetUserId"] as? String { body["targetUserId"] = targetUserId }
+    if let chatId = dict["chatId"] as? String { body["chatId"] = chatId }
+
+    // Emitir a JS para preparar WebRTC
+    EGChatPushKitModule.emitIncomingCall(body)
+
     completion()
   }
 
