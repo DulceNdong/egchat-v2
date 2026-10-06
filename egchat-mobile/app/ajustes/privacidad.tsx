@@ -6,7 +6,8 @@ import {
   SettingsLayout, SettingsSection, SettingsCard, SettingsDivider, SettingsRow, VisibilityRow,
 } from '../../src/components/settings/SettingsUI';
 import { CFG, getCfgString, setCfg } from '../../src/services/settingsPrefs';
-import { getToken, getApiBase } from '../../src/api';
+import { getToken, getApiBase, authAPI } from '../../src/api';
+import { router } from 'expo-router';
 import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
 
