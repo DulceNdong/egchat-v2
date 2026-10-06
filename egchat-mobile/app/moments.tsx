@@ -128,6 +128,15 @@ async function toggleLike(postId: string): Promise<boolean> {
   return true;
 }
 
+async function deleteMoment(postId: string): Promise<void> {
+  const BASE = getApiBase();
+  const token = await getToken();
+  await fetch(`${BASE}/api/moments/${postId}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${token}` },
+  });
+}
+
 async function addComment(postId: string, text: string): Promise<MomentComment | null> {
   try {
     const BASE = getApiBase();
