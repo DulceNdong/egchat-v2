@@ -7,7 +7,7 @@ const { withAppDelegate, withInfoPlist, withEntitlementsPlist } = require('@expo
 // ── 1. Entitlements: PushKit VoIP ────────────────────────────────────────────
 const withPushKitEntitlements = (config) => {
   return withEntitlementsPlist(config, (mod) => {
-    mod.modResults['com.apple.developer.pushkit.unrestricted-development'] = true;
+    mod.modResults['com.apple.developer.pushkit.unrestricted-voip'] = true;
     return mod;
   });
 };
