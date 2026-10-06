@@ -61,6 +61,8 @@
 			children = (
 				6264DB193075278B00497F71 /* EGChatPushKitModule.m */,
 				6264DB1A3075278B00497F71 /* EGChatPushKitModule.swift */,
+				EC01AB031A68108700A75B9A /* EGChatCallModule.m */,
+				EC01AB011A68108700A75B9A /* EGChatCallModule.swift */,
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
 				F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
