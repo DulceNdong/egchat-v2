@@ -2434,7 +2434,7 @@ export default function ChatScreen() {
             ]}
             showsVerticalScrollIndicator={false}
             onScroll={handleScroll}
-            scrollEventThrottle={Platform.OS === 'android' ? 100 : 16}
+            scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
             onScrollBeginDrag={() => dismissPanels()}
             keyboardShouldPersistTaps="always"
             // ── Optimizaciones de rendimiento ──────────────────────
