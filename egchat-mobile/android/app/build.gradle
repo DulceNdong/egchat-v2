@@ -4,50 +4,20 @@ apply plugin: "com.facebook.react"
 
 def projectRoot = rootDir.getAbsoluteFile().getParentFile().getAbsolutePath()
 
-// Detectar node: primero local.properties (NODE_BINARY), luego rutas comunes.
-// Android Studio no hereda el PATH del shell, por eso usamos rutas absolutas.
-def nodeExecutable = {
-    // 1. local.properties → NODE_BINARY (más confiable en Android Studio)
-    def localProps = new Properties()
-    def localPropsFile = rootProject.file("local.properties")
-    if (localPropsFile.exists()) {
-        localPropsFile.withInputStream { localProps.load(it) }
-    }
-    def fromProps = localProps.getProperty("NODE_BINARY")
-    if (fromProps && new File(fromProps).exists()) return fromProps
-
-    // 2. Rutas absolutas conocidas (nvm, homebrew, sistema)
-    def candidates = [
-        "/usr/local/bin/node",
-        "/opt/homebrew/bin/node",
-        System.getProperty("user.home") + "/.nvm/versions/node/v24.16.0/bin/node",
-        System.getProperty("user.home") + "/.nvm/versions/node/v22.0.0/bin/node",
-        "/usr/bin/node",
-        "node"
-    ]
-    for (candidate in candidates) {
-        try {
-            def f = new File(candidate)
-            if (f.exists() && f.canExecute()) return candidate
-        } catch (Exception e) { /* skip */ }
-    }
-    return "node"
-}()
-
 /**
  * This is the configuration block to customize your React Native Android app.
  * By default you don't need to apply any configuration, just uncomment the lines you need.
  */
 react {
-    entryFile = file([nodeExecutable, "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
-    reactNativeDir = new File([nodeExecutable, "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
-    hermesCommand = new File([nodeExecutable, "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
-    codegenDir = new File([nodeExecutable, "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    entryFile = file(["node", "-e", "require('expo/scripts/resolveAppEntry')", projectRoot, "android", "absolute"].execute(null, rootDir).text.trim())
+    reactNativeDir = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
+    hermesCommand = new File(["node", "--print", "require.resolve('react-native/package.json')"].execute(null, rootDir).text.trim()).getParentFile().getAbsolutePath() + "/sdks/hermesc/%OS-BIN%/hermesc"
+    codegenDir = new File(["node", "--print", "require.resolve('@react-native/codegen/package.json', { paths: [require.resolve('react-native/package.json')] })"].execute(null, rootDir).text.trim()).getParentFile().getAbsoluteFile()
 
     enableBundleCompression = (findProperty('android.enableBundleCompression') ?: false).toBoolean()
     // Use Expo CLI to bundle the app, this ensures the Metro config
     // works correctly with Expo projects.
-    cliFile = new File([nodeExecutable, "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
+    cliFile = new File(["node", "--print", "require.resolve('@expo/cli', { paths: [require.resolve('expo/package.json')] })"].execute(null, rootDir).text.trim())
     bundleCommand = "export:embed"
 
     /* Folders */
@@ -66,7 +36,7 @@ react {
 
     /* Bundling */
     //   A list containing the node command and its flags. Default is just 'node'.
-    nodeExecutableAndArgs = [nodeExecutable]
+    // nodeExecutableAndArgs = ["node"]
 
     //
     //   The path to the CLI configuration file. Default is empty.
@@ -155,13 +125,7 @@ android {
         jniLibs {
             def enableLegacyPackaging = findProperty('expo.useLegacyPackaging') ?: 'false'
             useLegacyPackaging enableLegacyPackaging.toBoolean()
-            // Evitar duplicados de librerías WebRTC nativas
-            pickFirsts += ['**/libjingle_peerconnection_so.so', '**/libwebrtc.so']
         }
-        resources {
-            excludes += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt']
-        }
-// Excluir archivos duplicados de META-INF
     }
     androidResources {
         ignoreAssetsPattern '!.svn:!.git:!.ds_store:!*.scc:!CVS:!thumbs.db:!picasa.ini:!*~'
@@ -192,31 +156,21 @@ dependencies {
     // The version of react-native is set by the React Native Gradle Plugin
     implementation("com.facebook.react:react-android")
 
-    // Firebase Messaging — necesario para EGChatFirebaseMessagingService
-    implementation("com.google.firebase:firebase-messaging:24.0.1")
-
-    // ML Kit — detección facial para EGChatFaceFilter
-    // Excluir google-webrtc para evitar conflictos con react-native-webrtc
-    implementation("com.google.mlkit:face-detection:16.1.7") {
-        exclude group: 'org.webrtc', module: 'google-webrtc'
-    }
-
     def isGifEnabled = (findProperty('expo.gif.enabled') ?: "") == "true";
     def isWebpEnabled = (findProperty('expo.webp.enabled') ?: "") == "true";
     def isWebpAnimatedEnabled = (findProperty('expo.webp.animated') ?: "") == "true";
 
-    def frescoVersion = (project.hasProperty('expoLibs')) ? expoLibs.versions.fresco.get() : (findProperty('frescoVersion') ?: '3.2.0')
     if (isGifEnabled) {
         // For animated gif support
-        implementation("com.facebook.fresco:animated-gif:${frescoVersion}")
+        implementation("com.facebook.fresco:animated-gif:${expoLibs.versions.fresco.get()}")
     }
 
     if (isWebpEnabled) {
         // For webp support
-        implementation("com.facebook.fresco:webpsupport:${frescoVersion}")
+        implementation("com.facebook.fresco:webpsupport:${expoLibs.versions.fresco.get()}")
         if (isWebpAnimatedEnabled) {
             // Animated webp support
-            implementation("com.facebook.fresco:animated-webp:${frescoVersion}")
+            implementation("com.facebook.fresco:animated-webp:${expoLibs.versions.fresco.get()}")
         }
     }
 
