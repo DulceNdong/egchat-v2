@@ -4,7 +4,13 @@
   <dict>
     <key>aps-environment</key>
     <string>production</string>
+    <key>com.apple.developer.associated-domains</key>
+    <array>
+      <string>applinks:egchat-app.vercel.app</string>
+    </array>
     <key>com.apple.developer.usernotifications.communication</key>
+    <true/>
+    <key>com.apple.developer.pushkit.unrestricted-voip</key>
     <true/>
   </dict>
 </plist>
