@@ -2357,7 +2357,7 @@ export default function ChatScreen() {
   }
 
   return (
-    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
+    <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={Platform.OS === 'android' ? ['left', 'right', 'bottom'] : ['left', 'right']}>
       <ChatHeader
         chatName={chatName}
         chatAvatar={chatAvatar}
