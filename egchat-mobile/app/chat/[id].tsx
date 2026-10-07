@@ -434,7 +434,11 @@ export default function ChatScreen() {
   const { isOnline } = useNetworkStatus();
   const dockBottomOffset = Platform.OS === 'ios' ? keyboardBottomOffset : 0;
   const effectiveDockOffset = anyPanelOpen && dockBottomOffset === 0 ? PANEL_HEIGHT : dockBottomOffset;
-  const messagesBottomInset = bottomDockHeight + effectiveDockOffset + 12;
+  const ANDROID_INPUT_BAR_FALLBACK = 70; // altura aproximada de ChatInputBar
+  const messagesBottomInset =
+    bottomDockHeight > 0
+      ? bottomDockHeight + effectiveDockOffset + 12
+      : (Platform.OS === 'android' ? ANDROID_INPUT_BAR_FALLBACK + 12 : 12);
 
   useEffect(() => {
     getCfgBool(CFG.readReceipts, true).then(setShowReadReceipts);
