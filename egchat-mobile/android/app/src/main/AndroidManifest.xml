@@ -51,5 +51,31 @@
       </intent-filter>
     </activity>
     <uses-library android:name="org.apache.http.legacy" android:required="false"/>
+
+    <!-- FCM para llamadas entrantes -->
+    <service
+        android:name=".services.EGChatFirebaseMessagingService"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT" />
+      </intent-filter>
+    </service>
+
+    <!-- Foreground service de llamada activa -->
+    <service
+        android:name=".services.CallForegroundService"
+        android:foregroundServiceType="phoneCall"
+        android:exported="false"/>
+
+    <!-- Receiver para botones de notificación de llamada -->
+    <receiver
+        android:name=".modules.CallActionReceiver"
+        android:exported="false">
+      <intent-filter>
+        <action android:name="com.egchat.app.CALL_ANSWER"/>
+        <action android:name="com.egchat.app.CALL_REJECT"/>
+        <action android:name="com.egchat.app.CALL_END"/>
+      </intent-filter>
+    </receiver>
   </application>
 </manifest>
