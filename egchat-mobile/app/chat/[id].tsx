@@ -857,7 +857,7 @@ export default function ChatScreen() {
     if (isLoadingMoreRef.current) return;
     const frame = requestAnimationFrame(() => scrollToBottom(false));
     return () => cancelAnimationFrame(frame);
-  }, [messages.length, messagesBottomInset, inputBarHeight, isTyping, replyTo?.id, scrollToBottom]);
+  }, [messages.length, scrollToBottom]);
 
   // Cargar más mensajes (scroll hacia arriba)
   const loadMore = useCallback(async () => {
