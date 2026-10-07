@@ -1,12 +1,10 @@
 import Expo
-import PushKit
 import React
 import ReactAppDependencyProvider
 
 @UIApplicationMain
-public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
+public class AppDelegate: ExpoAppDelegate {
   var window: UIWindow?
-  private var voipRegistry: PKPushRegistry?
 
   var reactNativeDelegate: ExpoReactNativeFactoryDelegate?
   var reactNativeFactory: RCTReactNativeFactory?
@@ -31,9 +29,8 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
       launchOptions: launchOptions)
 #endif
 
-    voipRegistry = PKPushRegistry(queue: .main)
-    voipRegistry?.delegate = self
-    voipRegistry?.desiredPushTypes = [.voIP]
+    // VoIP PushKit es manejado completamente por EGChatPushKitModule
+    // El módulo registra su propio PKPushRegistry cuando JS llama registerVoIP()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
@@ -54,28 +51,6 @@ public class AppDelegate: ExpoAppDelegate, PKPushRegistryDelegate {
   ) -> Bool {
     let result = RCTLinkingManager.application(application, continue: userActivity, restorationHandler: restorationHandler)
     return super.application(application, continue: userActivity, restorationHandler: restorationHandler) || result
-  }
-
-  // ── VoIP PushKit: token registrado ──────────────────────────────
-  public func pushRegistry(
-    _ registry: PKPushRegistry,
-    didUpdate pushCredentials: PKPushCredentials,
-    for type: PKPushType
-  ) {
-    let token = pushCredentials.token.map { String(format: "%02x", $0) }.joined()
-    EGChatPushKitModule.emitTokenUpdated(token)
-  }
-
-  // ── VoIP PushKit: push entrante ─────────────────────────────────
-  public func pushRegistry(
-    _ registry: PKPushRegistry,
-    didReceiveIncomingPushWith payload: PKPushPayload,
-    for type: PKPushType,
-    completion: @escaping () -> Void
-  ) {
-    let dict = payload.dictionaryPayload as? [String: Any] ?? [:]
-    EGChatPushKitModule.emitIncomingCall(dict)
-    completion()
   }
 }
 
