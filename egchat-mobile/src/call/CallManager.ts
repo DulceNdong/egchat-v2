@@ -359,6 +359,10 @@ export class CallManager {
 
     await callAPI.offer({ callId, offer: pc.localDescription, targetUserId, type: callType });
 
+    // Enviar push DESPUÉS de guardar el offer en DB para que el receptor
+    // encuentre el offer al consultar Supabase (fix race condition).
+    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription }).catch(() => {});
+
     this._setCommState('calling');
     startDialingTone().catch(() => {});
     this._startCallTimeout();
