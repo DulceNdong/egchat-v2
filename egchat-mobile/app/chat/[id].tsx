@@ -2437,11 +2437,6 @@ export default function ChatScreen() {
             scrollEventThrottle={Platform.OS === 'android' ? 100 : 16}
             onScrollBeginDrag={() => dismissPanels()}
             keyboardShouldPersistTaps="always"
-            onContentSizeChange={() => {
-              if (!isLoadingMoreRef.current) {
-                flatListRef.current?.scrollToEnd({ animated: false });
-              }
-            }}
             // ── Optimizaciones de rendimiento ──────────────────────
             initialNumToRender={Platform.OS === 'android' ? 12 : 15}
             maxToRenderPerBatch={Platform.OS === 'android' ? 4 : 10}
