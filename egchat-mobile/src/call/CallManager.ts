@@ -314,8 +314,6 @@ export class CallManager {
     await pc.setLocalDescription(offer);
     this._setPcState('connecting');
 
-    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription }).catch(() => {});
-
     // ── C2: Glare detection ───────────────────────────────────────────
     // Si B también llamó a A justo antes, ambos estarían en 'calling'.
     // Desempate determinístico: el callId lexicográficamente MENOR gana
