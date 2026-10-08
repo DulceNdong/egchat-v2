@@ -479,7 +479,9 @@ export default function RootLayout() {
 
         if (mounted) {
           setChecking(false);
-          if (isAuthRoute || (isRootPath(pathname) && !isWelcomePath(pathname))) {
+          // No redirigir a tabs si el usuario está intencionalmente añadiendo cuenta
+          const addingAccount = await AsyncStorage.getItem('egchat_adding_account').catch(() => null);
+          if ((isAuthRoute && addingAccount !== '1') || (isRootPath(pathname) && !isWelcomePath(pathname))) {
             router.replace('/(tabs)');
           }
         }
