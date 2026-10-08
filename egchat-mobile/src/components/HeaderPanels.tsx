@@ -24,6 +24,27 @@ const colorForType = (type: AppNotification['type']) => {
   return '#6b7280';
 };
 
+/**
+ * Navegación centralizada al tocar una notificación.
+ * - message/payment → chat correspondiente
+ * - call con chatId → chat donde está el historial de llamada
+ * - call sin chatId → historial de llamadas
+ */
+export function handleNotifNavigation(n: AppNotification): void {
+  if (n.type === 'call') {
+    if (n.chatId) {
+      router.push(`/chat/${n.chatId}` as any);
+    } else {
+      router.push('/call-history' as any);
+    }
+    return;
+  }
+  if (n.chatId) {
+    router.push(`/chat/${n.chatId}` as any);
+    return;
+  }
+}
+
 const IconForType = ({ type }: { type: AppNotification['type'] }) => {
   const c = colorForType(type);
   if (type === 'message') return (
