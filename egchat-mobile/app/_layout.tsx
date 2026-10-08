@@ -739,7 +739,7 @@ export default function RootLayout() {
                       callId:       callData.callId,
                       callerName:   callData.callerName,
                       callerAvatar: callData.callerAvatar || '',
-                      callType:     callData.callType || 'audio',
+                      callType:     (callData.callType || 'audio') as 'audio' | 'video',
                       offer:        callData.offer,
                     });
                   },
