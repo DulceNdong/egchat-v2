@@ -3068,6 +3068,75 @@ export default function ChatScreen() {
         onDismiss={() => setChatIncomingTransfer(null)}
       />
 
+      {/* ── Modal: Eliminar para mí / para todos ── */}
+      <Modal
+        visible={!!deleteConfirmIds}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setDeleteConfirmIds(null)}
+      >
+        <Pressable style={mpStyles.overlay} onPress={() => setDeleteConfirmIds(null)}>
+          <Pressable style={mpStyles.sheet} onPress={e => e.stopPropagation()}>
+            {/* Handle */}
+            <TouchableOpacity onPress={() => setDeleteConfirmIds(null)} style={mpStyles.handleWrap} activeOpacity={0.7}>
+              <View style={mpStyles.handle} />
+            </TouchableOpacity>
+
+            <Text style={mpStyles.title}>
+              {`Eliminar ${(deleteConfirmIds?.length ?? 0)} mensaje${(deleteConfirmIds?.length ?? 0) > 1 ? 's' : ''}`}
+            </Text>
+
+            {/* Eliminar para mí */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              onPress={() => deleteConfirmIds && handleDeleteForMeSelected(deleteConfirmIds)}
+              activeOpacity={0.75}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#f0f9ff' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#0ea5e9" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Path d="M17 7l-10 10M7 7h10v10" />
+                </Svg>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={mpStyles.optionLabel}>Eliminar para mí</Text>
+                <Text style={mpStyles.optionSub}>Solo desaparece de tu chat</Text>
+              </View>
+            </TouchableOpacity>
+
+            <View style={mpStyles.divider} />
+
+            {/* Eliminar para todos */}
+            <TouchableOpacity
+              style={mpStyles.option}
+              onPress={() => deleteConfirmIds && handleDeleteForAllSelected(deleteConfirmIds)}
+              activeOpacity={0.75}
+            >
+              <View style={[mpStyles.optionIcon, { backgroundColor: '#fff1f2' }]}>
+                <Svg width={26} height={26} viewBox="0 0 24 24" fill="none" stroke="#ef4444" strokeWidth={1.8} strokeLinecap="round" strokeLinejoin="round">
+                  <Polyline points="3 6 5 6 21 6" />
+                  <Path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6" />
+                  <Path d="M10 11v6M14 11v6" />
+                  <Path d="M9 6V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2" />
+                </Svg>
+              </View>
+              <View style={mpStyles.optionText}>
+                <Text style={[mpStyles.optionLabel, { color: '#ef4444' }]}>Eliminar para todos</Text>
+                <Text style={mpStyles.optionSub}>Se borra también del dispositivo del receptor</Text>
+              </View>
+            </TouchableOpacity>
+
+            {/* Cancelar */}
+            <TouchableOpacity
+              style={mpStyles.cancelBtn}
+              onPress={() => setDeleteConfirmIds(null)}
+              activeOpacity={0.75}
+            >
+              <Text style={mpStyles.cancelText}>Cancelar</Text>
+            </TouchableOpacity>
+          </Pressable>
+        </Pressable>
+      </Modal>
+
       {/* ── Bottom-sheet selector Foto / Video ── */}
       <Modal
         visible={!!mediaPickerMode}
