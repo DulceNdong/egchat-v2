@@ -13,7 +13,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet,
   TextInput, ActivityIndicator, RefreshControl,
   ScrollView, Image, Platform, Alert, Modal, Pressable,
-  FlatList, KeyboardAvoidingView, Animated, Dimensions,
+  FlatList, KeyboardAvoidingView,
 } from 'react-native';
 import { FlashList } from '@shopify/flash-list';
 
