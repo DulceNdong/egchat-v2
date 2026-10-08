@@ -44,6 +44,7 @@ import { EGAvatar } from '../../src/components/ui';
 import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { SpinningLogo } from '../../src/components/SpinningLogo';
+import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import { useNewContentIndicators, type ContentType } from '../../src/hooks/useNewContentIndicators';
 import { AvatarWithRing } from '../../src/components/AvatarWithRing';
 import {
