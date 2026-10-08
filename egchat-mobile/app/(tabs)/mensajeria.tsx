@@ -1152,8 +1152,6 @@ function MensajeriaScreenInner() {
       {/* ══════════════════════════════════════════════════════════
           PANELES DEL HEADER
       ══════════════════════════════════════════════════════════ */}
-      {/* Botón HOME flotante arrastrable */}
-      <DraggableHomeButton />
 
       <NotificationsPanel
         visible={showNotifications}
