@@ -823,11 +823,21 @@ export default function RootLayout() {
   // ── Cuando welcome termina y navega al login, verificar auth ────
   // El init() ya terminó con return en pathname='/', este efecto
   // se dispara cuando el pathname cambia a una ruta de auth.
+  // EXCEPCIÓN: si el path incluye el parámetro mode=add_account,
+  // el usuario está añadiendo una cuenta nueva y NO debemos redirigir.
   useEffect(() => {
     if (!isAuthPath(pathname)) return;
     // Si el usuario ya tiene sesión válida, mandarlo a tabs
+    // pero SOLO si llegamos aquí desde el flujo normal (welcome → login),
+    // no cuando el usuario navega intencionalmente para añadir cuenta.
+    // El flag addingAccount se establece en AccountSwitcher.
     (async () => {
       try {
+        // Verificar si es una navegación intencional (añadir cuenta)
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        const addingAccount = await AsyncStorage.getItem('egchat_adding_account').catch(() => null);
+        if (addingAccount === '1') return; // No redirigir — usuario añadiendo cuenta
+
         const isAuth = await authAPI.isAuthenticated();
         if (isAuth) {
           const me = await authAPI.me().catch(() => null);
