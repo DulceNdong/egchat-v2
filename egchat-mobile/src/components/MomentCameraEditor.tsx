@@ -478,6 +478,14 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
 // SUB-COMPONENTES
 // ══════════════════════════════════════════════════════════════════
 
+function getAnimVal(val: any): number {
+  if (!val) return 0;
+  if (typeof val.__getValue === 'function') return val.__getValue();
+  if (typeof val._value === 'number') return val._value;
+  if (typeof val._offset === 'number') return val._offset;
+  return 0;
+}
+
 function DraggableText({ layer, onTap, onLongPress }: {
   layer: EditorTextLayer;
   onTap: (l: EditorTextLayer) => void;
@@ -486,7 +494,7 @@ function DraggableText({ layer, onTap, onLongPress }: {
   const pan = useRef(new Animated.ValueXY({ x: layer.x, y: layer.y })).current;
   const pr  = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value }),
+    onPanResponderGrant: () => pan.setOffset({ x: getAnimVal(pan.x), y: getAnimVal(pan.y) }),
     onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
     onPanResponderRelease: () => pan.extractOffset(),
   })).current;
@@ -511,7 +519,7 @@ function DraggableSticker({ sticker, onLongPress }: {
   const pan = useRef(new Animated.ValueXY({ x: sticker.x, y: sticker.y })).current;
   const pr  = useRef(PanResponder.create({
     onStartShouldSetPanResponder: () => true,
-    onPanResponderGrant: () => pan.setOffset({ x: (pan.x as any)._value, y: (pan.y as any)._value }),
+    onPanResponderGrant: () => pan.setOffset({ x: getAnimVal(pan.x), y: getAnimVal(pan.y) }),
     onPanResponderMove: Animated.event([null, { dx: pan.x, dy: pan.y }], { useNativeDriver: false }),
     onPanResponderRelease: () => pan.extractOffset(),
   })).current;

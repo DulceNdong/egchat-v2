@@ -241,6 +241,14 @@ function HomeScreenInner() {
   const liaPan = useRef(new Animated.ValueXY({ x: LIA_INIT_X, y: LIA_INIT_Y })).current;
   const liaDragging = useRef(false);
 
+  function getAnimVal(val: any): number {
+    if (!val) return 0;
+    if (typeof val.__getValue === 'function') return val.__getValue();
+    if (typeof val._value === 'number') return val._value;
+    if (typeof val._offset === 'number') return val._offset;
+    return 0;
+  }
+
   function makeDraggable(
     pos: Animated.ValueXY,
     dragging: React.MutableRefObject<boolean>,
@@ -251,7 +259,7 @@ function HomeScreenInner() {
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
         dragging.current = false;
-        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setOffset({ x: getAnimVal(pos.x), y: getAnimVal(pos.y) });
         pos.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (_, g) => {
@@ -261,9 +269,9 @@ function HomeScreenInner() {
       onPanResponderRelease: () => {
         pos.flattenOffset();
         if (!dragging.current) { onTap(); return; }
-        const curX = (pos.x as any)._value;
+        const curX = getAnimVal(pos.x);
         const snapX = curX < SW / 2 ? 12 : SW - BTN_SIZE - 12;
-        const rawY = (pos.y as any)._value;
+        const rawY = getAnimVal(pos.y);
         const snapY = Math.max(60, Math.min(rawY, SH - BTN_SIZE - 80));
         Animated.spring(pos, { toValue: { x: snapX, y: snapY }, useNativeDriver: false, damping: 18, stiffness: 200 }).start();
         dragging.current = false;

@@ -14,6 +14,14 @@ import Svg, { Path, Polyline } from 'react-native-svg';
 const { width: SW, height: SH } = Dimensions.get('window');
 const BTN = 44;
 
+function getAnimVal(val: any): number {
+  if (!val) return 0;
+  if (typeof val.__getValue === 'function') return val.__getValue();
+  if (typeof val._value === 'number') return val._value;
+  if (typeof val._offset === 'number') return val._offset;
+  return 0;
+}
+
 interface Props {
   initialX?: number;
   initialY?: number;
@@ -32,7 +40,7 @@ export function DraggableHomeButton({
       onMoveShouldSetPanResponder: (_, g) => Math.abs(g.dx) > 4 || Math.abs(g.dy) > 4,
       onPanResponderGrant: () => {
         dragging.current = false;
-        pos.setOffset({ x: (pos.x as any)._value, y: (pos.y as any)._value });
+        pos.setOffset({ x: getAnimVal(pos.x), y: getAnimVal(pos.y) });
         pos.setValue({ x: 0, y: 0 });
       },
       onPanResponderMove: (_, g) => {
@@ -45,9 +53,9 @@ export function DraggableHomeButton({
           router.push('/(tabs)' as any);
           return;
         }
-        const curX = (pos.x as any)._value;
+        const curX = getAnimVal(pos.x);
         const snapX = curX < SW / 2 ? 16 : SW - BTN - 16;
-        const rawY = (pos.y as any)._value;
+        const rawY = getAnimVal(pos.y);
         const snapY = Math.max(80, Math.min(rawY, SH - BTN - 90));
         Animated.spring(pos, {
           toValue: { x: snapX, y: snapY },
@@ -80,6 +88,8 @@ export function DraggableHomeButton({
     </Animated.View>
   );
 }
+
+export default DraggableHomeButton;
 
 const s = StyleSheet.create({
   btn: {
