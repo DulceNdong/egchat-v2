@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { authAPI } from '../../src/api';
 import SessionManager from '../../src/sessionManager';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';

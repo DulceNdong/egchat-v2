@@ -13,7 +13,7 @@ import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
 import QRCode from 'react-native-qrcode-svg';
 import { router, useFocusEffect } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
-import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, AppNotification, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { markAllRead } from '../../src/store/appStore';
 import { supabase } from '../../src/supabase';
