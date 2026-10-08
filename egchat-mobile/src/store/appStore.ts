@@ -30,6 +30,10 @@ export interface AppNotification {
   time: string;
   read: boolean;
   chatId?: string;
+  /** Para notificaciones de llamada: navegar al historial o devolver llamada */
+  callId?: string;
+  targetUserId?: string;
+  callType?: 'audio' | 'video';
 }
 
 export interface WeatherState {
