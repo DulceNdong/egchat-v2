@@ -187,10 +187,10 @@ END;
 $$;
 
 -- ══════════════════════════════════════════════════════════════════
--- 5. FUNCIÓN: get_call_delivery_tokens
---    Obtiene los tokens de un usuario para entrega de llamadas.
---    Solo accesible por service_role (backend Render).
---    No expone tokens directamente al cliente.
+-- FIX: get_call_delivery_tokens
+-- Bug anterior: tokens expo/android caían en bucket fcm pero la Edge
+-- Function los descartaba porque no son tokens FCM reales.
+-- Fix: fcm solo incluye token_type='fcm', expo solo 'expo'.
 -- ══════════════════════════════════════════════════════════════════
 CREATE OR REPLACE FUNCTION get_call_delivery_tokens(p_user_id UUID)
 RETURNS JSONB
@@ -203,7 +203,7 @@ DECLARE
   v_fcm_tokens    JSONB;
   v_expo_tokens   JSONB;
 BEGIN
-  -- VoIP tokens (iOS) — máxima prioridad para llamadas
+  -- VoIP tokens (iOS PushKit) — máxima prioridad
   SELECT jsonb_agg(jsonb_build_object(
     'token',      token,
     'device_id',  device_id,
@@ -217,7 +217,7 @@ BEGIN
     AND is_active = TRUE
     AND failure_count < 5;
 
-  -- FCM tokens (Android)
+  -- FCM tokens (Android nativos — token_type='fcm' puro)
   SELECT jsonb_agg(jsonb_build_object(
     'token',      token,
     'device_id',  device_id,
@@ -227,12 +227,11 @@ BEGIN
   INTO v_fcm_tokens
   FROM expo_push_tokens
   WHERE user_id = p_user_id
-    AND token_type IN ('fcm','expo')
-    AND platform = 'android'
+    AND token_type = 'fcm'
     AND is_active = TRUE
     AND failure_count < 5;
 
-  -- Expo tokens (fallback)
+  -- Expo tokens (ExponentPushToken — cualquier plataforma)
   SELECT jsonb_agg(jsonb_build_object(
     'token',      token,
     'device_id',  device_id,
