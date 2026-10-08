@@ -1,8 +1,118 @@
 pluginManagement {
+  try {
+    def nvmDir = new File(System.getProperty("user.home"), ".nvm/versions/node")
+    def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin").absolutePath } : []
+
+    def extraPaths = ([
+      "/usr/local/bin",
+      "/opt/homebrew/bin",
+      System.getenv("NODE_BINARY") ? new File(System.getenv("NODE_BINARY")).parent : null
+    ] + (nvmBinPaths ?: [])).findAll { it && new File(it).exists() }
+
+    if (!extraPaths.isEmpty()) {
+      def pathPrefix = extraPaths.join(File.pathSeparator)
+
+      // 1. Update C environment using Java 21 Foreign Function & Memory API (Panama)
+      try {
+        def linkerClass = Class.forName("java.lang.foreign.Linker")
+        def linker = linkerClass.getMethod("nativeLinker").invoke(null)
+        def defaultLookup = linkerClass.getMethod("defaultLookup").invoke(linker)
+        def symbolOpt = defaultLookup.find("setenv")
+        if (symbolOpt.isPresent()) {
+          def valLayoutClass = Class.forName("java.lang.foreign.ValueLayout")
+          def ADDRESS = valLayoutClass.getField("ADDRESS").get(null)
+          def JAVA_INT = valLayoutClass.getField("JAVA_INT").get(null)
+          
+          def funcDescClass = Class.forName("java.lang.foreign.FunctionDescriptor")
+          def arrayType = java.lang.reflect.Array.newInstance(Class.forName("java.lang.foreign.MemoryLayout"), 0).getClass()
+          def params = java.lang.reflect.Array.newInstance(Class.forName("java.lang.foreign.MemoryLayout"), 3)
+          java.lang.reflect.Array.set(params, 0, ADDRESS)
+          java.lang.reflect.Array.set(params, 1, ADDRESS)
+          java.lang.reflect.Array.set(params, 2, JAVA_INT)
+
+          def desc = funcDescClass.getMethod("of", Class.forName("java.lang.foreign.MemoryLayout"), arrayType)
+            .invoke(null, JAVA_INT, params)
+
+          def handle = linker.downcallHandle(symbolOpt.get(), desc)
+
+          def arenaClass = Class.forName("java.lang.foreign.Arena")
+          def arena = arenaClass.getMethod("ofConfined").invoke(null)
+          def allocUtf8Method = arenaClass.getMethod("allocateUtf8String", String.class)
+
+          def curPath = System.getenv("PATH") ?: ""
+          def newPathStr = pathPrefix + File.pathSeparator + curPath
+
+          def namePtr = allocUtf8Method.invoke(arena, "PATH")
+          def valPtr = allocUtf8Method.invoke(arena, newPathStr)
+
+          handle.invoke(namePtr, valPtr, 1)
+          arenaClass.getMethod("close").invoke(arena)
+        }
+      } catch (Throwable ignored) {}
+
+      // 2. Update Java ProcessEnvironment maps
+      try {
+        def pe = Class.forName("java.lang.ProcessEnvironment")
+        def varClass = Class.forName("java.lang.ProcessEnvironment\$Variable")
+        def valClass = Class.forName("java.lang.ProcessEnvironment\$Value")
+
+        def varValueOf = varClass.getDeclaredMethod("valueOf", String.class)
+        varValueOf.setAccessible(true)
+        def valValueOf = valClass.getDeclaredMethod("valueOf", String.class)
+        valValueOf.setAccessible(true)
+
+        def pathVar = varValueOf.invoke(null, "PATH")
+
+        def fEnv = pe.getDeclaredField("theEnvironment")
+        fEnv.setAccessible(true)
+        def envMap = fEnv.get(null) as Map
+        if (envMap != null) {
+          def cur = envMap.get(pathVar)?.toString() ?: ""
+          if (!cur.startsWith(pathPrefix)) {
+            def newVal = pathPrefix + File.pathSeparator + cur
+            def valObj = valValueOf.invoke(null, newVal)
+            envMap.put(pathVar, valObj)
+          }
+        }
+
+        def fUnmod = pe.getDeclaredField("theUnmodifiableEnvironment")
+        fUnmod.setAccessible(true)
+        def unmodMap = fUnmod.get(null) as Map
+        if (unmodMap != null) {
+          def newMap = new HashMap(unmodMap)
+          def cur = newMap.get("PATH") ?: ""
+          if (!cur.startsWith(pathPrefix)) {
+            newMap.put("PATH", pathPrefix + File.pathSeparator + cur)
+
+            def unsafeClass = Class.forName("sun.misc.Unsafe")
+            def fUnsafe = unsafeClass.getDeclaredField("theUnsafe")
+            fUnsafe.setAccessible(true)
+            def unsafe = fUnsafe.get(null)
+
+            def staticBase = unsafe.staticFieldBase(fUnmod)
+            def staticOffset = unsafe.staticFieldOffset(fUnmod)
+            unsafe.putObject(staticBase, staticOffset, Collections.unmodifiableMap(newMap))
+          }
+        }
+      } catch (Throwable ignored) {}
+    }
+  } catch (Throwable ignored) {}
+
+  def nvmDir = new File(System.getProperty("user.home"), ".nvm/versions/node")
+  def nvmBinPaths = (nvmDir.exists() && nvmDir.isDirectory()) ? nvmDir.listFiles()?.collect { new File(it, "bin/node").absolutePath } : []
+
+  def nodeExec = ([
+    System.getenv("NODE_BINARY"),
+    "/usr/local/bin/node",
+    "/opt/homebrew/bin/node"
+  ] + (nvmBinPaths ?: [])).find { it && new File(it).exists() } ?: "node"
+
+  System.setProperty("NODE_BINARY", nodeExec)
+
   def reactNativeGradlePlugin = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
+      commandLine(nodeExec, "--print", "require.resolve('@react-native/gradle-plugin/package.json', { paths: [require.resolve('react-native/package.json')] })")
     }.standardOutput.asText.get().trim()
   ).getParentFile().absolutePath
   includeBuild(reactNativeGradlePlugin)
@@ -10,7 +120,7 @@ pluginManagement {
   def expoPluginsPath = new File(
     providers.exec {
       workingDir(rootDir)
-      commandLine("node", "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
+      commandLine(nodeExec, "--print", "require.resolve('expo-modules-autolinking/package.json', { paths: [require.resolve('expo/package.json')] })")
     }.standardOutput.asText.get().trim(),
     "../android/expo-gradle-plugin"
   ).absolutePath
