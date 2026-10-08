@@ -61,6 +61,11 @@ export const useAuth = () => {
           console.warn('[Login push bootstrap skipped]', pushErr);
         });
       }
+      // Limpiar flag de añadir cuenta (se establece cuando se navega intencionalmente al login)
+      try {
+        const AsyncStorage = (await import('@react-native-async-storage/async-storage')).default;
+        await AsyncStorage.removeItem('egchat_adding_account').catch(() => {});
+      } catch {}
       router.replace('/(tabs)');
       return true;
     } catch (e: any) {
