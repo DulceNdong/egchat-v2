@@ -1544,21 +1544,6 @@ const st = StyleSheet.create({
   modalBtn: { flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center' },
 
   // ── FAB Refresh ──────────────────────────────────────────────────
-  fabRefresh: {
-    position: 'absolute',
-    bottom: 88,
-    right: 20,
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    zIndex: 20,
-    ...Shadow.lg,
-  },
-  fabGradient: {
-    width: 52, height: 52, borderRadius: 26,
-    alignItems: 'center', justifyContent: 'center',
-  },
-
   // ── LIA-25 flotante ──────────────────────────────────────────────
   liaBtn: {
     position: 'absolute',
