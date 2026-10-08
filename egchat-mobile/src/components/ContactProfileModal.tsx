@@ -368,7 +368,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                 // intentar por id de fila directo
                 await contactsAPI.remove(cpId);
               }
-              onDeleteContact?.(cpId);
+              await onDeleteContact?.(cpId);
               onClose();
             } catch {
               Alert.alert('Error', 'No se pudo eliminar el contacto. Verifica tu conexión.');
