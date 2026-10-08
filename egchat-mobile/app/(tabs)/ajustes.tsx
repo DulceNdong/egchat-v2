@@ -367,8 +367,10 @@ function AjustesScreenInner() {
         currentAccountId={user?.id || ''}
         onClose={() => setShowAccountSwitcher(false)}
         onSwitch={(id) => { setShowAccountSwitcher(false); authAPI.me().then(setUser); }}
-        onAddAccount={() => {
+        onAddAccount={async () => {
           setShowAccountSwitcher(false);
+          // Establecer flag para evitar que _layout.tsx haga redirect automático
+          await AsyncStorage.setItem('egchat_adding_account', '1').catch(() => {});
           setTimeout(() => router.push('/(auth)/login' as any), 300);
         }}
       />
