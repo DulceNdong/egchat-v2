@@ -1241,6 +1241,9 @@ function MensajeriaScreenInner() {
         </KeyboardAvoidingView>
       </Modal>
 
+      {/* Botón HOME flotante arrastrable */}
+      <DraggableHomeButton />
+
     </SafeAreaView>
   );
 }
