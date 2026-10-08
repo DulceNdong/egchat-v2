@@ -495,6 +495,8 @@ function MensajeriaScreenInner() {
     }
     finally { setLoading(false); setRefreshing(false); }
   }, [readCache, saveCache, currentUserId]);
+  // Actualizar ref para que debouncedLoadChats siempre tenga la versión más reciente
+  loadChatsRef.current = loadChats;
 
   useEffect(() => {
     const init = async () => {
