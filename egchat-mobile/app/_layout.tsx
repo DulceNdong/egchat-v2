@@ -445,7 +445,9 @@ export default function RootLayout() {
         const cachedUser = await loadCachedSessionUser();
         if (cachedUser?.id && mounted) {
           setChecking(false);
-          if (isAuthRoute) {
+          // No redirigir a tabs si el usuario está intencionalmente añadiendo cuenta
+          const addingAccount = await AsyncStorage.getItem('egchat_adding_account').catch(() => null);
+          if (isAuthRoute && addingAccount !== '1') {
             router.replace('/(tabs)');
           }
         }
