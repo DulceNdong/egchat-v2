@@ -352,10 +352,48 @@ export const playCallEnded = async () => {
   } catch {}
 };
 
+// ── Tono de marcación (caller esperando respuesta) ────────────────
+// Usa classic.wav en loop mientras el caller espera que contesten.
+let dialingSound: Audio.Sound | null = null;
+let dialingSessionToken = 0;
+
 export const startDialingTone = async () => {
-  try { await Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); } catch {}
+  await stopDialingTone();
+  if (Platform.OS === 'web') return;
+  const myToken = ++dialingSessionToken;
+  try {
+    await Audio.setAudioModeAsync({
+      allowsRecordingIOS: false,
+      playsInSilentModeIOS: true,
+      shouldDuckAndroid: true,
+      playThroughEarpieceAndroid: false,
+    });
+    const { sound } = await Audio.Sound.createAsync(
+      require('../../assets/classic.wav'),
+      { shouldPlay: true, volume: 0.6, isLooping: true },
+    );
+    if (dialingSessionToken !== myToken) {
+      // stopDialingTone fue llamado mientras createAsync estaba en vuelo
+      await sound.stopAsync().catch(() => {});
+      await sound.unloadAsync().catch(() => {});
+      return;
+    }
+    dialingSound = sound;
+  } catch (e) {
+    if (__DEV__) console.warn('[useSounds] startDialingTone error:', e);
+  }
 };
-export const stopDialingTone = () => {};
+
+export const stopDialingTone = async () => {
+  dialingSessionToken++;
+  try {
+    if (dialingSound) {
+      await dialingSound.stopAsync().catch(() => {});
+      await dialingSound.unloadAsync().catch(() => {});
+      dialingSound = null;
+    }
+  } catch {}
+};
 
 // ── Feedback de UI ────────────────────────────────────────────────
 export const playError = async () => {
