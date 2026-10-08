@@ -3254,6 +3254,11 @@ export default function ChatScreen() {
           // Eliminar el chat también para que no aparezca en la lista
           try {
             await chatAPI.deleteChat(chatId);
+            // Limpiar caché local para que mensajería no lo muestre en stale
+            const cachedList = await readCache<any[]>('chat_list').catch(() => null);
+            if (cachedList) {
+              await saveCache('chat_list', cachedList.filter((c: any) => c.id !== chatId));
+            }
           } catch {}
           setShowProfile(false);
           router.replace('/(tabs)/mensajeria' as any);
