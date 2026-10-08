@@ -11,11 +11,13 @@ import { SpinningLogo } from './SpinningLogo';
 import { NeonBrandText } from './NeonBrandText';
 import { useAppStore } from '../store/useAppStore';
 import { unreadCount as storeUnreadCount } from '../store/appStore';
+import type { WeatherCondition } from '../store/appStore';
 
 const BTN_BG = 'rgba(8,18,36,0.88)';
 const BTN_BORDER = 'rgba(255,255,255,0.13)';
 
-export type WeatherCondition = 'sunny' | 'cloudy' | 'rain';
+// Re-exportar para compatibilidad con otros módulos que importen WeatherCondition desde aquí
+export type { WeatherCondition };
 
 export interface EGChatHeaderProps {
   onWeatherPress: () => void;
