@@ -405,6 +405,8 @@ export default function LoginScreen() {
 
             {/* Volver */}
             <TouchableOpacity onPress={() => {
+              // Limpiar flag de añadir cuenta al salir del login
+              AsyncStorage.removeItem('egchat_adding_account').catch(() => {});
               if (router.canGoBack()) {
                 router.back();
               } else {
