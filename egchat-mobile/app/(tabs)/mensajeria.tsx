@@ -1563,7 +1563,7 @@ const st = StyleSheet.create({
   // ── FAB Refresh ──────────────────────────────────────────────────
   fabRefresh: {
     position: 'absolute',
-    bottom: 20,
+    bottom: 88,
     right: 20,
     width: 52,
     height: 52,
