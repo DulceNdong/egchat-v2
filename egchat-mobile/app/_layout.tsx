@@ -943,6 +943,10 @@ export default function RootLayout() {
             <IncomingTransferModal
               transfer={incomingTransfer}
               onAccepted={(newBalance) => {
+                // Notificar al chat para que actualice el texto del mensaje pendiente
+                if (incomingTransfer?.transferId) {
+                  emitTransferResolved(incomingTransfer.transferId, 'accepted');
+                }
                 setGlobalWalletBalance(newBalance);
                 setIncomingTransfer(null);
                 addNotification({
@@ -952,7 +956,13 @@ export default function RootLayout() {
                   chatId: undefined,
                 });
               }}
-              onCancelled={() => setIncomingTransfer(null)}
+              onCancelled={() => {
+                // Notificar al chat para que actualice el texto del mensaje pendiente
+                if (incomingTransfer?.transferId) {
+                  emitTransferResolved(incomingTransfer.transferId, 'cancelled');
+                }
+                setIncomingTransfer(null);
+              }}
               onDismiss={() => setIncomingTransfer(null)}
             />
             </LocalizedAppContent>
