@@ -46,6 +46,7 @@ import {
 } from '../../src/services/ephemeralMessages';
 import { editMessage, applyEditLocally } from '../../src/services/editMessage';
 import { startLiveLocation, stopLiveLocation, isLiveLocationActive } from '../../src/services/liveLocation';
+import { onTransferResolved } from '../../src/utils/transferEvents';
 import { MentionSuggestions, detectMentionQuery, applyMention, type MentionUser } from '../../src/components/chat/MentionSuggestions';
 import { GroupPaymentModal } from '../../src/components/chat/GroupPaymentModal';
 import { ChatToneModal } from '../../src/components/chat/ChatToneModal';
