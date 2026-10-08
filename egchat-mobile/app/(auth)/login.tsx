@@ -404,7 +404,13 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Volver */}
-            <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
+            <TouchableOpacity onPress={() => {
+              if (router.canGoBack()) {
+                router.back();
+              } else {
+                router.replace('/(tabs)' as any);
+              }
+            }} style={s.backBtn}>
               <Text style={[s.backText, { color: isDark ? '#3a5060' : '#94a3b8' }]}>← Volver al inicio</Text>
             </TouchableOpacity>
 
