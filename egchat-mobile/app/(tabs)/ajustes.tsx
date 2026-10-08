@@ -13,7 +13,7 @@ import { authAPI, clearToken } from '../../src/api';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import SessionManager from '../../src/sessionManager';
 import { AccountSwitcher } from '../../src/components/AccountSwitcher';
-import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import { EGChatHeader } from '../../src/components/EGChatHeader';
 import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
