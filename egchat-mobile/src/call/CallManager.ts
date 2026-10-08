@@ -361,7 +361,18 @@ export class CallManager {
 
     // Enviar push DESPUÉS de guardar el offer en DB para que el receptor
     // encuentre el offer al consultar Supabase (fix race condition).
-    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription }).catch(() => {});
+    callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription })
+      .then(res => {
+        if (__DEV__) console.log('[CallManager] VoIP push enviado:', res);
+      })
+      .catch(err => {
+        console.warn('[CallManager] sendVoipPush falló (reintentando en 3s):', err?.message ?? err);
+        // Reintento único — cubre cold start de Render
+        setTimeout(() => {
+          callAPI.sendVoipPush({ targetUserId, callId, callType, offer: pc.localDescription })
+            .catch(e => console.warn('[CallManager] sendVoipPush reintento falló:', e?.message ?? e));
+        }, 3_000);
+      });
 
     this._setCommState('calling');
     startDialingTone().catch(() => {});
