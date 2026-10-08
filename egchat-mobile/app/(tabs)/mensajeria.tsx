@@ -1131,26 +1131,10 @@ function MensajeriaScreenInner() {
       </View>
 
       {/* ══════════════════════════════════════════════════════════
-          FAB REFRESH — botón circular verde abajo derecha
-      ══════════════════════════════════════════════════════════ */}
-      <TouchableOpacity
-        style={st.fabRefresh}
-        onPress={onRefresh}
-        activeOpacity={0.85}
-      >
-        <LinearGradient
-          colors={['#00C8A0', '#00B4E6']}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
-          style={st.fabGradient}
-        >
-          <IconRefresh />
-        </LinearGradient>
-      </TouchableOpacity>
-
-      {/* ══════════════════════════════════════════════════════════
           PANELES DEL HEADER
       ══════════════════════════════════════════════════════════ */}
+      {/* Botón HOME flotante arrastrable */}
+      <DraggableHomeButton />
 
       <NotificationsPanel
         visible={showNotifications}
