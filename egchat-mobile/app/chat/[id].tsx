@@ -2212,6 +2212,23 @@ export default function ChatScreen() {
     }));
   }, []);
 
+  // ── Escuchar evento global de transferencia resuelta (desde _layout.tsx) ──
+  // Cuando el IncomingTransferModal acepta/rechaza, actualiza el mensaje del chat
+  useEffect(() => {
+    const unsub = onTransferResolved(({ transferId, status }) => {
+      const newStatus = status === 'accepted' ? '✅ Transferencia recibida' : '❌ Transferencia rechazada';
+      setMessages(prev => prev.map(m => {
+        if (m.text?.includes('⏳ Pendiente') && m.text?.includes(transferId)) {
+          const newText = m.text.replace('⏳ Pendiente de aceptación', newStatus);
+          editMessage(m.id, newText).catch(() => {});
+          return { ...m, text: newText };
+        }
+        return m;
+      }));
+    });
+    return unsub;
+  }, []);
+
   const renderItem = useCallback(({ item, index }: { item: Message; index: number }) => {
     const isOwn = item.sender_id === currentUserId;
     const prevMsg = index > 0 ? displayMessagesRef.current[index - 1] : null;
