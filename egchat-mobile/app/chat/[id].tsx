@@ -1236,11 +1236,14 @@ export default function ChatScreen() {
             } else {
               toast.info(`${targetName} no estaba en tus contactos`);
             }
+            // Eliminar también el chat para que no aparezca en la lista
+            try { await chatAPI.deleteChat(chatId); } catch {}
+            router.replace('/(tabs)/mensajeria' as any);
           },
         },
       ]
     );
-  }, [chat, currentUserId]);
+  }, [chat, currentUserId, chatId]);
 
   // ── Descargar imagen / video / archivo ────────────────────────
   const handleDownloadMedia = useCallback(async () => {
