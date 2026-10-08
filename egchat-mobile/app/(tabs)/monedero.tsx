@@ -1896,7 +1896,7 @@ function MonederoScreenInner() {
         onNotifPress={(n) => {
           setNotifications(prev => prev.filter(x => x.id !== n.id));
           setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+          handleNotifNavigation(n);
         }}
       />
       <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
