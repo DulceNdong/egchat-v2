@@ -3248,8 +3248,12 @@ export default function ChatScreen() {
           setIsMuted(next);
         }}
         onDeleteContact={async () => {
-          // ya se maneja dentro del modal, solo cerrar
+          // Eliminar el chat también para que no aparezca en la lista
+          try {
+            await chatAPI.deleteChat(chatId);
+          } catch {}
           setShowProfile(false);
+          router.replace('/(tabs)/mensajeria' as any);
         }}
         onStartCall={(type) => {
           setShowProfile(false);
