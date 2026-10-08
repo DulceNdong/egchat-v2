@@ -1237,7 +1237,14 @@ export default function ChatScreen() {
               toast.info(`${targetName} no estaba en tus contactos`);
             }
             // Eliminar también el chat para que no aparezca en la lista
-            try { await chatAPI.deleteChat(chatId); } catch {}
+            try {
+              await chatAPI.deleteChat(chatId);
+              // Limpiar caché local
+              const cachedList = await readCache<any[]>('chat_list').catch(() => null);
+              if (cachedList) {
+                await saveCache('chat_list', cachedList.filter((c: any) => c.id !== chatId));
+              }
+            } catch {}
             router.replace('/(tabs)/mensajeria' as any);
           },
         },
