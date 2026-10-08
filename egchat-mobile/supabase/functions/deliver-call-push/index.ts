@@ -209,15 +209,13 @@ Deno.serve(async (req: Request) => {
     }
   }
 
-  // ── 6c. Expo Push — fallback para tokens no migrados ─────────────
-  // Solo enviar si NO hay voip/fcm con éxito (para no duplicar en iOS/Android)
-  const iosDelivered     = results.some(r => r.channel === 'voip'  && r.success);
-  const androidDelivered = results.some(r => r.channel === 'fcm'   && r.success);
-
+  // ── 6c. Expo Push — para todos los tokens expo (iOS y Android) ──────
+  // Los tokens expo funcionan en ambas plataformas via Expo Push Service.
+  // Solo omitir si ya se entregó por canal nativo (voip para iOS, fcm para Android).
   const expoToSend = expoTokens.filter(({ token }) => {
-    const isIosExpo     = token.startsWith('ExponentPushToken') && !iosDelivered;
-    const isAndroidExpo = token.startsWith('ExponentPushToken') && !androidDelivered;
-    return isIosExpo || isAndroidExpo;
+    // Si se entregó por VoIP (iOS nativo), no duplicar en iOS
+    // Pero enviar igualmente a Android via Expo
+    return true; // Expo maneja la deduplicación por plataforma internamente
   });
 
   if (expoToSend.length > 0) {
