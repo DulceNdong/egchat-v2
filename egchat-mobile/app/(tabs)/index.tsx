@@ -29,7 +29,7 @@ import { router } from 'expo-router';
 import { walletAPI, authAPI } from '../../src/api';
 import { useLanguage } from '../../src/context/LanguageContext';
 import { t } from '../../src/translations';
-import { NotificationsPanel, HamburgerMenu, WeatherModal } from '../../src/components/HeaderPanels';
+import { NotificationsPanel, HamburgerMenu, WeatherModal, handleNotifNavigation } from '../../src/components/HeaderPanels';
 import type { AppNotification } from '../../src/store/appStore';
 import { EGChatHeader, WeatherCondition } from '../../src/components/EGChatHeader';
 import { HomeNoticiasModal, HomeIdDigitalModal } from '../../src/components/home/HomeModals';
