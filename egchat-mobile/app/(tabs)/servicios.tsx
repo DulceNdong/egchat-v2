@@ -470,7 +470,7 @@ function ServiciosScreenInner() {
         onNotifPress={(n) => {
           markNotificationRead(n.id);
           setShowNotifications(false);
-          if (n.chatId) router.push(`/chat/${n.chatId}` as any);
+          handleNotifNavigation(n);
         }}
       />
       <HamburgerMenu visible={showMenu} onClose={() => setShowMenu(false)} user={user} />
