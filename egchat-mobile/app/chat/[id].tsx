@@ -324,6 +324,8 @@ export default function ChatScreen() {
   // ── #12 Selección múltiple de mensajes ─────────────────────────
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  // ── #13 Modal confirmar eliminación ────────────────────────────
+  const [deleteConfirmIds, setDeleteConfirmIds] = useState<string[] | null>(null);
   // ── A2 Mensajes programados ────────────────────────────────────
   const [showScheduleModal, setShowScheduleModal] = useState(false);
   // ── A3 Historial de ediciones ──────────────────────────────────
