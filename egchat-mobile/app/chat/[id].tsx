@@ -676,13 +676,41 @@ export default function ChatScreen() {
         if (current) setChat(current);
       }).catch(() => {});
 
-      void chatAPI.getMessages(chatId, 1, 50).then(msgs => {
+      void chatAPI.getMessages(chatId, 1, 50).then(async msgs => {
         if (!active || !Array.isArray(msgs) || msgs.length === 0) return;
 
         const msgList = normalizeMessages(msgs);
         setMessages(msgList);
         void saveCache(`chat_messages_${chatId}`, msgList);
         setHasMore(msgList.length === 50);
+
+        // ── Auto-limpiar mensajes de transferencia cuyo estado ya no es pendiente ──
+        // Si un mensaje tiene "⏳ Pendiente" pero la transferencia ya fue resuelta
+        // (aceptada o rechazada), actualizar el texto para quitar los botones.
+        const pendingMsgs = msgList.filter(m => m.text?.includes('⏳ Pendiente'));
+        if (pendingMsgs.length > 0) {
+          walletAPI.getPendingTransfers().then(res => {
+            const activePendingIds = new Set(
+              (res.transfers || [])
+                .filter((t: any) => t.direction === 'incoming' && !t.isExpired)
+                .map((t: any) => t.id)
+            );
+            pendingMsgs.forEach(m => {
+              const idLine = m.text?.split('\n').find((l: string) => l.startsWith('🆔 '));
+              const tId = idLine?.replace(/^🆔\s*/, '').trim();
+              if (tId && !activePendingIds.has(tId)) {
+                // La transferencia ya no está pendiente — asumir recibida si no está cancelada
+                const newText = (m.text || '').replace('⏳ Pendiente de aceptación', '✅ Transferencia recibida');
+                editMessage(m.id, newText).catch(() => {});
+                if (active) {
+                  setMessages(prev => prev.map(msg =>
+                    msg.id === m.id ? { ...msg, text: newText } : msg
+                  ));
+                }
+              }
+            });
+          }).catch(() => {});
+        }
 
         const meId = resolvedUserId;
         const firstUnread = msgList.find(message => message.sender_id !== meId && message.status !== 'read');
