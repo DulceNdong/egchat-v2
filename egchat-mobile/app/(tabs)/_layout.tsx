@@ -82,7 +82,7 @@ export default function TabsLayout() {
   const insets = useSafeAreaInsets();
 
   // La tab bar debe cubrir el home indicator (insets.bottom) + padding visual
-  const TAB_CONTENT_HEIGHT = 56;
+  const TAB_CONTENT_HEIGHT = 68;
   const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
 
   return (
