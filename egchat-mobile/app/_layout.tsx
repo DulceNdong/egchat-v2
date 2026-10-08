@@ -226,7 +226,10 @@ export default function RootLayout() {
       type: 'call',
       title: `📞 Llamada de ${payload.callerName}`,
       body: payload.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
-      chatId: undefined,
+      chatId:       payload.chatId,
+      callId:       payload.callId,
+      targetUserId: payload.targetUserId,
+      callType:     payload.callType as 'audio' | 'video',
     });
 
     // Mostrar overlay (el overlay navega cuando el usuario acepta)
