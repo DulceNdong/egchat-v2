@@ -2049,30 +2049,29 @@ export default function ChatScreen() {
   }, []);
 
   const handleDeleteSelected = useCallback(() => {
-    // Capturar los IDs ahora, antes de que Alert abra y el Set pueda cambiar
     const idsSnapshot = Array.from(selectedIds);
-    const idsSet = new Set(idsSnapshot);
     if (idsSnapshot.length === 0) return;
+    // Abrir modal de confirmación con las dos opciones
+    setDeleteConfirmIds(idsSnapshot);
+  }, [selectedIds]);
 
-    Alert.alert(
-      'Eliminar mensajes',
-      `¿Eliminar ${idsSnapshot.length} mensaje${idsSnapshot.length > 1 ? 's' : ''}?`,
-      [
-        { text: 'Cancelar', style: 'cancel' },
-        {
-          text: 'Eliminar', style: 'destructive',
-          onPress: async () => {
-            // 1. Update UI immediately with snapshot
-            setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
-            // 2. Exit select mode
-            exitSelectMode();
-            // 3. Call server in background (fire and forget)
-            Promise.allSettled(idsSnapshot.map(id => chatAPI.deleteMessage(id)));
-          },
-        },
-      ]
-    );
-  }, [selectedIds, exitSelectMode]);
+  // ── Eliminar para mí (solo localmente + endpoint for-me) ────────
+  const handleDeleteForMeSelected = useCallback(async (ids: string[]) => {
+    const idsSet = new Set(ids);
+    setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
+    exitSelectMode();
+    setDeleteConfirmIds(null);
+    Promise.allSettled(ids.map(id => chatAPI.deleteMessageForMe(id)));
+  }, [exitSelectMode]);
+
+  // ── Eliminar para todos (borra en el receptor también) ──────────
+  const handleDeleteForAllSelected = useCallback(async (ids: string[]) => {
+    const idsSet = new Set(ids);
+    setMessages(prev => prev.filter(m => !idsSet.has(m.id)));
+    exitSelectMode();
+    setDeleteConfirmIds(null);
+    Promise.allSettled(ids.map(id => chatAPI.deleteMessage(id)));
+  }, [exitSelectMode]);
 
   const handleForwardSelected = useCallback(() => {
     const msgs = messages.filter(m => selectedIds.has(m.id));
