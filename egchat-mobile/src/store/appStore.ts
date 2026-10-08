@@ -6,8 +6,10 @@
  *
  * Patrón: módulo singleton con listeners → cero dependencias externas.
  */
-import type { WeatherCondition } from '../components/EGChatHeader';
 import { Platform } from 'react-native';
+
+// Tipo definido aquí para evitar ciclo de importación con EGChatHeader
+export type WeatherCondition = 'sunny' | 'cloudy' | 'rain';
 
 // Importar expo-location solo para plataformas nativas
 let Location: any = null;
