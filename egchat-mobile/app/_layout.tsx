@@ -502,6 +502,19 @@ export default function RootLayout() {
               const enableVoip = process.env.EXPO_PUBLIC_ENABLE_VOIP !== '0';
               if (enableVoip) {
                 PushKit.register();
+                // FIX: registrar onTokenUpdated AQUÍ junto al register(),
+                // no en el bloque tardío de callListenerTimer. Si el token llega
+                // antes de que ese timer se ejecute, se perdía y el servidor no
+                // tenía el token VoIP → nunca enviaba VoIP push → no había CallKit UI.
+                pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
+                  try {
+                    const { syncVoIPTokenWithServer } = await import('../src/notifications');
+                    await syncVoIPTokenWithServer(voipToken);
+                    if (__DEV__) console.log('[PushKit] Token VoIP sincronizado con servidor:', voipToken.slice(-8));
+                  } catch (e) {
+                    console.warn('[PushKit] Error sincronizando token VoIP:', e);
+                  }
+                });
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
                   // Punto de entrada único — no duplicar con router.push aquí
                   handleIncomingCall({
