@@ -107,8 +107,8 @@ async function createChannels() {
     });
   }
 
-  if (!existingIds.has('egchat-calls')) {
-    await Notifications.setNotificationChannelAsync('egchat-calls', {
+  if (!existingIds.has('egchat-calls-v2')) {
+    await Notifications.setNotificationChannelAsync('egchat-calls-v2', {
       name: 'Llamadas',
       importance: Notifications.AndroidImportance.MAX,
       vibrationPattern: soundSettings.vibrationEnabled ? [0, 500, 200, 500, 200, 500] : undefined,
