@@ -141,7 +141,7 @@ export async function refreshAndroidChannels(): Promise<void> {
 
   // Borrar y recrear para que el nuevo sonido aplique
   await Notifications.deleteNotificationChannelAsync('egchat-messages').catch(() => {});
-  await Notifications.deleteNotificationChannelAsync('egchat-calls').catch(() => {});
+  await Notifications.deleteNotificationChannelAsync('egchat-calls-v2').catch(() => {});
 
   await Notifications.setNotificationChannelAsync('egchat-messages', {
     name: 'Mensajes',
