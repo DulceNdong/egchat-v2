@@ -75,8 +75,8 @@ export async function runPushDiagnostic(): Promise<string> {
     const channels = await Notifications.getNotificationChannelsAsync();
     const channelNames = channels.map(c => c.id).join(', ');
     lines.push(`📢 Canales Android: ${channelNames || 'ninguno'}`);
-    const hasCallChannel = channels.some(c => c.id === 'egchat-calls');
-    lines.push(`📞 Canal llamadas: ${hasCallChannel ? '✅' : '❌ falta egchat-calls'}`);
+    const hasCallChannel = channels.some(c => c.id === 'egchat-calls-v2');
+    lines.push(`📞 Canal llamadas: ${hasCallChannel ? '✅' : '❌ falta egchat-calls-v2'}`);
   }
 
   const result = lines.join('\n');
