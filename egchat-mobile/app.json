@@ -18,8 +18,7 @@
           "applinks:egchat-app.vercel.app"
         ],
         "aps-environment": "production",
-        "com.apple.developer.usernotifications.communication": true,
-        "com.apple.developer.pushkit.unrestricted-voip": true
+        "com.apple.developer.usernotifications.communication": true
       },
       "infoPlist": {
         "UIBackgroundModes": [
@@ -49,7 +48,7 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "39"
+      "buildNumber": "40"
     },
     "android": {
       "package": "com.egchat.app",
