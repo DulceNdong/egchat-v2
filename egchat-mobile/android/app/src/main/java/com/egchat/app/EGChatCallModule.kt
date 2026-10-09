@@ -30,7 +30,7 @@ import com.google.firebase.messaging.FirebaseMessagingService
 import com.google.firebase.messaging.RemoteMessage
 import org.json.JSONObject
 
-private const val CALL_CHANNEL = "egchat-calls"
+private const val CALL_CHANNEL = "egchat-calls-v2"
 private const val MESSAGE_CHANNEL = "egchat-messages"
 private const val PENDING_CALL = "egchat_pending_call_native"
 private const val PENDING_ACTION = "egchat_pending_call_action_native"
