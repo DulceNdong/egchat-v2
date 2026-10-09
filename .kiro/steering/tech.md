@@ -27,8 +27,8 @@ Hay 3 versiones. **Solo trabajamos en la nativa:**
 - Navegación: Expo Router
 - Estilos: StyleSheet nativo
 - Repo: `github.com/DulceNdong/egchat-v2` rama `mobile`
-- EAS Project ID: `6200ec00-54d7-4ef4-a348-56e80a1452f6`
-- EAS Owner: `reddington120`
+- EAS Project ID: `7e370dde-6a3b-4cc9-8d80-9dcf8692dc9c`
+- EAS Owner: `dulce120`
 
 ## Reglas
 
