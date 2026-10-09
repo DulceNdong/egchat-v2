@@ -50,6 +50,23 @@
         <data android:scheme="exp+egchat"/>
       </intent-filter>
     </activity>
+    <activity
+      android:name=".EGChatIncomingCallActivity"
+      android:exported="false"
+      android:launchMode="singleInstance"
+      android:showWhenLocked="true"
+      android:turnScreenOn="true"
+      android:theme="@style/AppTheme"/>
+    <receiver
+      android:name=".EGChatCallActionReceiver"
+      android:exported="false"/>
+    <service
+      android:name=".EGChatFirebaseMessagingService"
+      android:exported="false">
+      <intent-filter>
+        <action android:name="com.google.firebase.MESSAGING_EVENT"/>
+      </intent-filter>
+    </service>
     <uses-library android:name="org.apache.http.legacy" android:required="false"/>
   </application>
 </manifest>
