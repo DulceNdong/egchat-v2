@@ -8,11 +8,15 @@ ios/
 android/build/
 android/.gradle/
 android/app/build/
+android/app/.cxx/
+android/app/.externalNativeBuild/
 android/gradlew-*.log
 android/hs_err_pid*.log
 android/replay_pid*.log
 android/gradle_clang_matches.txt
 android/local.properties
+android/.kotlin/
+android/.idea/
 
 # ── Carpetas enormes — nunca necesarias en el build ───────────────
 egchat-v2/

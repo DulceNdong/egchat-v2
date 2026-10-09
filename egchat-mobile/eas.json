@@ -107,7 +107,8 @@
       "ios": {
         "autoIncrement": true,
         "resourceClass": "m-medium",
-        "buildConfiguration": "Release"
+        "buildConfiguration": "Release",
+        "image": "latest"
       }
     }
   },
