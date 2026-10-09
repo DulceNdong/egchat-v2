@@ -208,6 +208,8 @@ export default function RootLayout() {
   const lastHandledCallId = useRef<string | null>(null);
   const lastHandledCallTs = useRef<number>(0);
   const CALL_DEDUP_MS = 8000;
+  // Anti-duplicado para consumePendingCall en AppState (background → foreground)
+  const isProcessingCallRef = useRef<boolean>(false);
 
   /** Punto de entrada único para cualquier llamada entrante */
   const handleIncomingCall = useCallback((payload: IncomingCallPayload) => {
