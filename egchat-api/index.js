@@ -5427,7 +5427,7 @@ const sendPushToUser = async (userId, payload) => {
         body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje'),
         sound: isCall ? 'default' : 'default',
         badge: isCall ? 0 : 1,
-        channelId: isCall ? 'egchat-calls' : 'egchat-messages',
+        channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
         data: {
           ...payload,
