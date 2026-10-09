@@ -31,7 +31,7 @@ Notifications.setNotificationHandler({
       // Para mensajes en primer plano: NO reproducir sonido del sistema
       // porque RichNotifications.show() ya da el feedback visual/auditivo
       // Para llamadas: tampoco — el ringtone lo maneja startRingtone()
-      shouldPlaySound: false,
+      shouldPlaySound: !isCall,
       shouldSetBadge: !isCall,
       priority: isCall
         ? Notifications.AndroidNotificationPriority.MAX
