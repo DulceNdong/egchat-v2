@@ -261,6 +261,96 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
+  // ── Llamadas pendientes cuando la app vuelve del background (Android) ──
+  // Cuando el usuario acepta desde la notificación con la app en background
+  // (no cerrada), consumePendingCall() ya corrió en el init inicial y no se
+  // vuelve a llamar. Este efecto lo llama cada vez que la app vuelve al foreground.
+  useEffect(() => {
+    if (Platform.OS !== 'android') return;
+
+    const sub = AppState.addEventListener('change', async (state) => {
+      if (state !== 'active') return;
+
+      // Anti-duplicado: no procesar si ya estamos en ello
+      if (isProcessingCallRef.current) return;
+      // No hacer nada si el usuario no está autenticado
+      if (!globalUserId) return;
+
+      isProcessingCallRef.current = true;
+
+      try {
+        // Intentar consumir una llamada pendiente guardada por FCM/nativo
+        const pending = await consumePendingCall();
+        if (pending) {
+          callManager.registerIncoming({
+            callId:       pending.callId,
+            callerName:   pending.callerName,
+            callerAvatar: pending.callerAvatar || '',
+            callType:     pending.callType || 'audio',
+            offer:        pending.offer ?? undefined,
+          });
+          addNotification({
+            type: 'call',
+            title: `📞 Llamada entrante de ${pending.callerName}`,
+            body: pending.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+            chatId: undefined,
+          });
+          router.push({ pathname: '/call/[callId]', params: {
+            callId:       pending.callId,
+            targetName:   pending.callerName,
+            targetAvatar: pending.callerAvatar || '',
+            callType:     pending.callType || 'audio',
+            role:         'callee',
+            offer:        pending.offer ? JSON.stringify(pending.offer) : undefined,
+            autoAccept:   '1',
+          }} as any);
+        } else {
+          // No había pending call — comprobar si hay una acción pendiente del
+          // botón de notificación (el usuario pulsó "Aceptar" con la app en background)
+          const raw = await NativeCallKit.getAndClearPendingCallAction();
+          if (raw) {
+            try {
+              const { action } = JSON.parse(raw) as { action: string; callId: string };
+              if (action === 'answer') {
+                // Reintentar consumePendingCall — puede que llegara justo ahora
+                const stillPending = await consumePendingCall();
+                if (stillPending) {
+                  callManager.registerIncoming({
+                    callId:       stillPending.callId,
+                    callerName:   stillPending.callerName,
+                    callerAvatar: stillPending.callerAvatar || '',
+                    callType:     stillPending.callType || 'audio',
+                    offer:        stillPending.offer ?? undefined,
+                  });
+                  addNotification({
+                    type: 'call',
+                    title: `📞 Llamada entrante de ${stillPending.callerName}`,
+                    body: stillPending.callType === 'video' ? 'Videollamada entrante' : 'Llamada de voz entrante',
+                    chatId: undefined,
+                  });
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId:       stillPending.callId,
+                    targetName:   stillPending.callerName,
+                    targetAvatar: stillPending.callerAvatar || '',
+                    callType:     stillPending.callType || 'audio',
+                    role:         'callee',
+                    offer:        stillPending.offer ? JSON.stringify(stillPending.offer) : undefined,
+                    autoAccept:   '1',
+                  }} as any);
+                }
+              }
+            } catch { /* JSON inválido — ignorar */ }
+          }
+        }
+      } catch { /* silencioso */ } finally {
+        // Pequeño delay antes de liberar el lock para evitar doble disparo
+        setTimeout(() => { isProcessingCallRef.current = false; }, 300);
+      }
+    });
+
+    return () => sub.remove();
+  }, [globalUserId]);
+
   useEffect(() => {
     setUnauthorizedHandler(async () => {
       // Evitar múltiples disparos en cascada (por ejemplo, varias peticiones
