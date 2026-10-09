@@ -194,6 +194,8 @@ class EGChatCallActionReceiver : BroadcastReceiver() {
     if (action == "answer") {
       context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { launchIntent ->
         launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP)
+        launchIntent.putExtra("callId", callId)
+        launchIntent.putExtra("callAction", "answer")
         context.startActivity(launchIntent)
       }
     }
