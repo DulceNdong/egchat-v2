@@ -141,6 +141,7 @@ internal object EGChatCallNotifier {
       lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
       enableVibration(true)
       vibrationPattern = longArrayOf(0, 500, 200, 500)
+      setBypassDnd(true)
     }
     context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
   }
