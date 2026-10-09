@@ -29,8 +29,9 @@ public class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions)
 #endif
 
-    // VoIP PushKit es manejado completamente por EGChatPushKitModule
-    // El módulo registra su propio PKPushRegistry cuando JS llama registerVoIP()
+    // PushKit debe arrancar antes de React Native: una llamada VoIP puede
+    // despertar el proceso cuando la interfaz JavaScript aún no existe.
+    EGChatPushKitCoordinator.shared.start()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 

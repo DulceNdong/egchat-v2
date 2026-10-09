@@ -1,283 +1,185 @@
 import Foundation
 import CallKit
 import AVFoundation
+import UIKit
 import React
 
-/**
- * EGChatCallModule — CallKit iOS
- *
- * Responsabilidades:
- *  1. Mostrar la pantalla nativa de llamada entrante (teléfono cerrado/bloqueado)
- *  2. Gestionar respuesta/rechazo/fin desde la UI nativa de iOS
- *  3. Gestionar AVAudioSession para audio WebRTC
- *  4. Emitir eventos a React Native: callAnswered, callRejected, callEnded,
- *     audioInterrupted, audioRouteChanged
- *
- * Flujo con teléfono cerrado (como WhatsApp):
- *  PushKit push → EGChatPushKitModule → EGChatCallModule.showIncomingCall()
- *  → CXProvider reportNewIncomingCall() → iOS muestra UI nativa de llamada
- *  → Usuario acepta → callAnswered emitido → JS navega a /call/[callId]
- */
-@objc(EGChatCallModule)
-class EGChatCallModule: RCTEventEmitter {
+/** CallKit puede despertar la app antes de que React Native esté listo. */
+final class EGChatCallCoordinator: NSObject, CXProviderDelegate {
+  static let shared = EGChatCallCoordinator()
 
-  // ── Singleton ────────────────────────────────────────────────────
-  @objc static let shared = EGChatCallModule()
-
-  // ── CallKit ──────────────────────────────────────────────────────
   private lazy var provider: CXProvider = {
-    let config = CXProviderConfiguration()
-    config.supportsVideo              = true
-    config.maximumCallsPerCallGroup   = 1
-    config.maximumCallGroups          = 1
-    config.supportedHandleTypes       = [.generic]
-    config.includesCallsInRecents     = true
-    config.iconTemplateImageData      = UIImage(named: "CallKitIcon")?.pngData()
-    let p = CXProvider(configuration: config)
-    p.setDelegate(self, queue: .main)
-    return p
+    let configuration = CXProviderConfiguration()
+    configuration.supportsVideo = true
+    configuration.maximumCallsPerCallGroup = 1
+    configuration.maximumCallGroups = 1
+    configuration.supportedHandleTypes = [.generic]
+    configuration.includesCallsInRecents = true
+    configuration.iconTemplateImageData = UIImage(named: "CallKitIcon")?.pngData()
+    let provider = CXProvider(configuration: configuration)
+    provider.setDelegate(self, queue: .main)
+    return provider
   }()
 
   private let callController = CXCallController()
-
-  // ── Estado activo ────────────────────────────────────────────────
   private var activeCallUUID: UUID?
-  private var activeCallId:   String?
-  private var isCallActive    = false
+  private var activeCallId: String?
+  private var isCallActive = false
+  private var audioObserversRegistered = false
+  private var pendingEvents: [(String, Any)] = []
 
-  // ── RCTEventEmitter ─────────────────────────────────────────────
-  override func supportedEvents() -> [String] {
-    return [
-      "callAnswered",
-      "callRejected",
-      "callEnded",
-      "audioInterrupted",
-      "audioRouteChanged",
-    ]
-  }
-
-  override static func requiresMainQueueSetup() -> Bool { return true }
-
-  // ════════════════════════════════════════════════════════════════
-  // MARK: — API pública (llamada desde JS y desde PushKitModule)
-  // ════════════════════════════════════════════════════════════════
-
-  /**
-   * Muestra la pantalla nativa de llamada entrante.
-   * DEBE llamarse desde didReceiveIncomingPushWith (Apple lo exige).
-   */
-  @objc func showIncomingCall(
-    _ callerName: String,
-    callerAvatar: String,
-    callId: String,
-    isVideo: Bool
-  ) {
+  func reportIncomingCall(callerName: String, callerAvatar: String, callId: String, isVideo: Bool) {
     let uuid = UUID()
     activeCallUUID = uuid
-    activeCallId   = callId
+    activeCallId = callId
 
     let update = CXCallUpdate()
-    update.remoteHandle        = CXHandle(type: .generic, value: callerName)
+    update.remoteHandle = CXHandle(type: .generic, value: callerName)
     update.localizedCallerName = callerName
-    update.hasVideo            = isVideo
-    update.supportsGrouping    = false
-    update.supportsUngrouping  = false
-    update.supportsHolding     = false
-    update.supportsDTMF        = false
+    update.hasVideo = isVideo
+    update.supportsGrouping = false
+    update.supportsUngrouping = false
+    update.supportsHolding = false
+    update.supportsDTMF = false
 
     provider.reportNewIncomingCall(with: uuid, update: update) { error in
-      if let err = error {
-        print("[CallKit] reportNewIncomingCall error: \(err.localizedDescription)")
-      }
+      if let error { print("[CallKit] reportNewIncomingCall error: \(error.localizedDescription)") }
     }
-
-    // Observar interrupciones y cambios de ruta de audio
     registerAudioObservers()
   }
 
-  /** Cierra la UI de llamada entrante (si el usuario rechazó desde la app) */
-  @objc func dismissIncomingCall() {
+  func dismissIncomingCall() {
     guard let uuid = activeCallUUID else { return }
     provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
     cleanup()
   }
 
-  /** Notifica a CallKit que el usuario contestó desde dentro de la app */
-  @objc func answerCall(_ callId: String) {
+  func answerCall() {
     guard let uuid = activeCallUUID else { return }
-    let action = CXAnswerCallAction(call: uuid)
-    let transaction = CXTransaction(action: action)
-    callController.request(transaction) { error in
-      if let err = error {
-        print("[CallKit] answerCall error: \(err.localizedDescription)")
-      }
+    callController.request(CXTransaction(action: CXAnswerCallAction(call: uuid))) { error in
+      if let error { print("[CallKit] answerCall error: \(error.localizedDescription)") }
     }
   }
 
-  /** Notifica a CallKit que el usuario rechazó desde dentro de la app */
-  @objc func rejectCall(_ callId: String) {
+  func rejectCall() {
     guard let uuid = activeCallUUID else { return }
-    let action = CXEndCallAction(call: uuid)
-    let transaction = CXTransaction(action: action)
-    callController.request(transaction) { _ in }
-    cleanup()
+    callController.request(CXTransaction(action: CXEndCallAction(call: uuid))) { _ in }
   }
 
-  /** Notifica a CallKit que la llamada terminó */
-  @objc func endCall(_ callId: String) {
+  func endCall() {
     guard let uuid = activeCallUUID else { return }
     provider.reportCall(with: uuid, endedAt: Date(), reason: .remoteEnded)
     cleanup()
   }
 
-  // ════════════════════════════════════════════════════════════════
-  // MARK: — Audio Session
-  // ════════════════════════════════════════════════════════════════
+  func emit(_ name: String, body: Any) {
+    if let module = EGChatCallModule.eventSink {
+      module.sendEvent(withName: name, body: body)
+    } else {
+      pendingEvents.append((name, body))
+    }
+  }
+
+  func flushPendingEvents() {
+    guard let module = EGChatCallModule.eventSink else { return }
+    let events = pendingEvents
+    pendingEvents.removeAll()
+    events.forEach { module.sendEvent(withName: $0.0, body: $0.1) }
+  }
 
   private func configureAudioSession() {
-    let session = AVAudioSession.sharedInstance()
     do {
-      try session.setCategory(
-        .playAndRecord,
-        mode: .voiceChat,
-        options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker]
-      )
+      let session = AVAudioSession.sharedInstance()
+      try session.setCategory(.playAndRecord, mode: .voiceChat, options: [.allowBluetooth, .allowBluetoothA2DP, .defaultToSpeaker])
       try session.setActive(true, options: .notifyOthersOnDeactivation)
-    } catch {
-      print("[CallKit] AVAudioSession error: \(error.localizedDescription)")
-    }
+    } catch { print("[CallKit] AVAudioSession error: \(error.localizedDescription)") }
   }
 
   private func deactivateAudioSession() {
-    do {
-      try AVAudioSession.sharedInstance().setActive(
-        false,
-        options: .notifyOthersOnDeactivation
-      )
-    } catch {
-      print("[CallKit] deactivateAudioSession error: \(error.localizedDescription)")
-    }
+    do { try AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation) }
+    catch { print("[CallKit] deactivateAudioSession error: \(error.localizedDescription)") }
   }
-
-  // ════════════════════════════════════════════════════════════════
-  // MARK: — Observers de audio
-  // ════════════════════════════════════════════════════════════════
-
-  private var audioObserversRegistered = false
 
   private func registerAudioObservers() {
     guard !audioObserversRegistered else { return }
     audioObserversRegistered = true
-
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(handleAudioInterruption(_:)),
-      name: AVAudioSession.interruptionNotification,
-      object: nil
-    )
-    NotificationCenter.default.addObserver(
-      self,
-      selector: #selector(handleRouteChange(_:)),
-      name: AVAudioSession.routeChangeNotification,
-      object: nil
-    )
+    NotificationCenter.default.addObserver(self, selector: #selector(handleAudioInterruption(_:)), name: AVAudioSession.interruptionNotification, object: nil)
+    NotificationCenter.default.addObserver(self, selector: #selector(handleRouteChange(_:)), name: AVAudioSession.routeChangeNotification, object: nil)
   }
 
   private func removeAudioObservers() {
     guard audioObserversRegistered else { return }
     audioObserversRegistered = false
-    NotificationCenter.default.removeObserver(
-      self,
-      name: AVAudioSession.interruptionNotification,
-      object: nil
-    )
-    NotificationCenter.default.removeObserver(
-      self,
-      name: AVAudioSession.routeChangeNotification,
-      object: nil
-    )
+    NotificationCenter.default.removeObserver(self, name: AVAudioSession.interruptionNotification, object: nil)
+    NotificationCenter.default.removeObserver(self, name: AVAudioSession.routeChangeNotification, object: nil)
   }
 
   @objc private func handleAudioInterruption(_ notification: Notification) {
-    guard
-      let info = notification.userInfo,
-      let typeVal = info[AVAudioSessionInterruptionTypeKey] as? UInt,
-      let type = AVAudioSession.InterruptionType(rawValue: typeVal)
-    else { return }
-
-    let interrupted = (type == .began)
-    sendEvent(withName: "audioInterrupted", body: [
-      "interrupted": interrupted,
-      "callId": activeCallId ?? "",
-    ])
+    guard let value = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt,
+          let type = AVAudioSession.InterruptionType(rawValue: value) else { return }
+    emit("audioInterrupted", body: ["interrupted": type == .began, "callId": activeCallId ?? ""])
   }
 
   @objc private func handleRouteChange(_ notification: Notification) {
-    let output = AVAudioSession.sharedInstance()
-      .currentRoute.outputs.first?.portName ?? "unknown"
-    sendEvent(withName: "audioRouteChanged", body: [
-      "route": output,
-      "callId": activeCallId ?? "",
-    ])
+    let route = AVAudioSession.sharedInstance().currentRoute.outputs.first?.portName ?? "unknown"
+    emit("audioRouteChanged", body: ["route": route, "callId": activeCallId ?? ""])
   }
-
-  // ════════════════════════════════════════════════════════════════
-  // MARK: — Limpieza interna
-  // ════════════════════════════════════════════════════════════════
 
   private func cleanup() {
     activeCallUUID = nil
-    activeCallId   = nil
-    isCallActive   = false
+    activeCallId = nil
+    isCallActive = false
     removeAudioObservers()
     deactivateAudioSession()
   }
-}
 
-// ════════════════════════════════════════════════════════════════
-// MARK: — CXProviderDelegate
-// ════════════════════════════════════════════════════════════════
-extension EGChatCallModule: CXProviderDelegate {
+  func providerDidReset(_ provider: CXProvider) { cleanup() }
 
-  // CallKit listo — configurar audio
-  func providerDidReset(_ provider: CXProvider) {
-    cleanup()
-  }
-
-  // Usuario pulsó "Aceptar" en la pantalla nativa de iOS
   func provider(_ provider: CXProvider, perform action: CXAnswerCallAction) {
     configureAudioSession()
     isCallActive = true
     action.fulfill()
-    sendEvent(withName: "callAnswered", body: activeCallId ?? "")
+    emit("callAnswered", body: activeCallId ?? "")
   }
 
-  // Usuario pulsó "Rechazar" en la pantalla nativa de iOS
   func provider(_ provider: CXProvider, perform action: CXEndCallAction) {
+    let callId = activeCallId ?? ""
+    let wasActive = isCallActive
     action.fulfill()
-    if isCallActive {
-      sendEvent(withName: "callEnded", body: activeCallId ?? "")
-    } else {
-      sendEvent(withName: "callRejected", body: activeCallId ?? "")
-    }
+    emit(wasActive ? "callEnded" : "callRejected", body: callId)
     cleanup()
   }
 
-  // CallKit activa el audio (después de que el usuario acepta)
-  func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) {
-    do {
-      try audioSession.setActive(true)
-    } catch {
-      print("[CallKit] didActivate error: \(error.localizedDescription)")
-    }
+  func provider(_ provider: CXProvider, didActivate audioSession: AVAudioSession) { configureAudioSession() }
+  func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) { deactivateAudioSession() }
+}
+
+@objc(EGChatCallModule)
+class EGChatCallModule: RCTEventEmitter {
+  static weak var eventSink: EGChatCallModule?
+
+  override init() {
+    super.init()
+    Self.eventSink = self
   }
 
-  // CallKit desactiva el audio
-  func provider(_ provider: CXProvider, didDeactivate audioSession: AVAudioSession) {
-    do {
-      try audioSession.setActive(false, options: .notifyOthersOnDeactivation)
-    } catch {
-      print("[CallKit] didDeactivate error: \(error.localizedDescription)")
-    }
+  override func startObserving() {
+    Self.eventSink = self
+    EGChatCallCoordinator.shared.flushPendingEvents()
   }
+
+  override func supportedEvents() -> [String] {
+    ["callAnswered", "callRejected", "callEnded", "audioInterrupted", "audioRouteChanged"]
+  }
+
+  override static func requiresMainQueueSetup() -> Bool { true }
+
+  @objc func showIncomingCall(_ callerName: String, callerAvatar: String, callId: String, isVideo: Bool) {
+    EGChatCallCoordinator.shared.reportIncomingCall(callerName: callerName, callerAvatar: callerAvatar, callId: callId, isVideo: isVideo)
+  }
+
+  @objc func dismissIncomingCall() { EGChatCallCoordinator.shared.dismissIncomingCall() }
+  @objc func answerCall(_ callId: String) { EGChatCallCoordinator.shared.answerCall() }
+  @objc func rejectCall(_ callId: String) { EGChatCallCoordinator.shared.rejectCall() }
+  @objc func endCall(_ callId: String) { EGChatCallCoordinator.shared.endCall() }
 }

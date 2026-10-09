@@ -226,17 +226,34 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
   }
 
-  if (!expoPushToken) {
+  // Android registra además el token FCM directo. Las llamadas urgentes se
+  // entregan como data-only para que el receptor nativo funcione con la app
+  // cerrada, sin depender de que el proceso JavaScript se inicie a tiempo.
+  let fcmToken: string | null = null;
+  if (Platform.OS === 'android') {
+    try {
+      const { NativeCallKit } = await import('./native/CallKit');
+      fcmToken = await NativeCallKit.getFcmToken();
+    } catch (error) {
+      console.warn('[Push] No se pudo obtener token FCM directo:', error);
+    }
+  }
+
+  if (!expoPushToken && !fcmToken) {
     console.warn('Sin token push — las notificaciones no funcionarán en background');
     return null;
   }
 
-  await AsyncStorage.setItem('expoPushToken', expoPushToken);
+  if (expoPushToken) {
+    await AsyncStorage.setItem('expoPushToken', expoPushToken);
+    await syncTokenWithServer(expoPushToken);
+  }
 
-  // Registrar en el servidor
-  await syncTokenWithServer(expoPushToken);
+  if (fcmToken && fcmToken !== expoPushToken) {
+    await syncTokenWithServer(fcmToken);
+  }
 
-  return expoPushToken;
+  return expoPushToken || fcmToken;
 }
 
 // ── Enviar token al servidor ────────────────────────────────────────────────

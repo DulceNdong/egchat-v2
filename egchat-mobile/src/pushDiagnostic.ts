@@ -6,9 +6,7 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { getToken } from './api';
-
-const API_BASE = 'https://egchat-api-1.onrender.com';
+import { getApiBase, getToken } from './api';
 
 export async function runPushDiagnostic(): Promise<string> {
   const lines: string[] = [];
@@ -48,7 +46,7 @@ export async function runPushDiagnostic(): Promise<string> {
       lines.push('⚠️ No hay sesión activa — token no enviado al servidor');
     } else {
       try {
-        const res = await fetch(`${API_BASE}/api/push/register-expo-token`, {
+        const res = await fetch(`${getApiBase()}/api/push/register-expo-token`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',

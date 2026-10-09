@@ -72,6 +72,12 @@ export const NativeCallKit = {
     return EGChatCallModule.getAndClearPendingCallAction();
   },
 
+  /** [Android] Token FCM directo para llamadas de alta prioridad. */
+  getFcmToken(): Promise<string | null> {
+    if (!isAvailable || Platform.OS !== 'android') return Promise.resolve(null);
+    return EGChatCallModule.getFcmToken();
+  },
+
   /** [Android] Inicia el ForegroundService para mantener la llamada activa en background */
   startCallForegroundService(callId: string, callerName: string, isVideo: boolean) {
     if (!isAvailable || Platform.OS !== 'android') return;
