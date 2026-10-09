@@ -224,7 +224,7 @@ Deno.serve(async (req: Request) => {
       title:     callType === 'video' ? `📹 Videollamada de ${callerName}` : `📞 Llamada de ${callerName}`,
       body:      callType === 'video' ? 'Toca para responder la videollamada' : 'Toca para responder',
       sound:     'default',
-      channelId: 'egchat-calls',
+      channelId: 'egchat-calls-v2',
       priority:  'high',
       ttl:       90,
       data: {
