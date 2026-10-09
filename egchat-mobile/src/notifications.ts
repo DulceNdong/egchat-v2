@@ -152,7 +152,7 @@ export async function refreshAndroidChannels(): Promise<void> {
     showBadge: true,
   });
 
-  await Notifications.setNotificationChannelAsync('egchat-calls', {
+  await Notifications.setNotificationChannelAsync('egchat-calls-v2', {
     name: 'Llamadas',
     importance: Notifications.AndroidImportance.MAX,
     vibrationPattern: soundSettings.vibrationEnabled ? [0, 500, 200, 500, 200, 500] : undefined,
