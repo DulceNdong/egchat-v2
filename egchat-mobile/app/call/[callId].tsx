@@ -181,7 +181,7 @@ export default function CallScreen() {
   type CallParams = {
     callId: string; targetName: string; targetAvatar: string;
     callType: 'audio' | 'video'; role: 'caller' | 'callee';
-    targetUserId?: string; offer?: string; chatId?: string;
+    targetUserId?: string; offer?: string; chatId?: string; autoAccept?: string;
   };
   const {
     callId, targetName, targetAvatar, callType, role,

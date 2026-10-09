@@ -34,6 +34,12 @@ export const PushKit = {
     EGChatPushKitModule.registerVoIP();
   },
 
+  /** Lee el token ya emitido por iOS antes de que JavaScript estuviera listo. */
+  getCurrentVoIPToken(): Promise<string | null> {
+    if (!isAvailable) return Promise.resolve(null);
+    return EGChatPushKitModule.getCurrentVoIPToken();
+  },
+
   /** Escucha el token VoIP para subirlo al servidor */
   onTokenUpdated(callback: (token: string) => void) {
     if (!emitter) return () => {};

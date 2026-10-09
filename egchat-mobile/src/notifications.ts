@@ -207,6 +207,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // projectId debe ser el EAS Project ID (UUID de expo.dev/accounts/<user>/projects/<slug>)
   // Si no tienes EAS configurado, corre: npx eas init
   let expoPushToken: string | null = null;
+  let nativeDeviceToken: string | null = null;
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync({
       projectId: Constants.expoConfig?.extra?.eas?.projectId
@@ -226,6 +227,18 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
   }
 
+  // iOS: guardar siempre el token APNs directo, incluso si Expo también
+  // entregó su token. El backend lo usa como ruta de respaldo cuando la app
+  // está cerrada, sin depender de la infraestructura Expo.
+  if (Platform.OS === 'ios') {
+    try {
+      const nativeToken = await Notifications.getDevicePushTokenAsync();
+      nativeDeviceToken = nativeToken.data as string;
+    } catch (error) {
+      console.warn('[Push] No se pudo obtener token APNs directo:', error);
+    }
+  }
+
   // Android registra además el token FCM directo. Las llamadas urgentes se
   // entregan como data-only para que el receptor nativo funcione con la app
   // cerrada, sin depender de que el proceso JavaScript se inicie a tiempo.
@@ -239,7 +252,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
   }
 
-  if (!expoPushToken && !fcmToken) {
+  if (!expoPushToken && !fcmToken && !nativeDeviceToken) {
     console.warn('Sin token push — las notificaciones no funcionarán en background');
     return null;
   }
@@ -253,7 +266,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
     await syncTokenWithServer(fcmToken);
   }
 
-  return expoPushToken || fcmToken;
+  if (nativeDeviceToken && nativeDeviceToken !== expoPushToken) {
+    await syncTokenWithServer(nativeDeviceToken);
+  }
+
+  return expoPushToken || fcmToken || nativeDeviceToken;
 }
 
 // ── Enviar token al servidor ────────────────────────────────────────────────

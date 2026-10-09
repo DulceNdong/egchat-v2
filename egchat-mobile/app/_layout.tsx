@@ -504,7 +504,6 @@ export default function RootLayout() {
             try {
               const enableVoip = process.env.EXPO_PUBLIC_ENABLE_VOIP !== '0';
               if (enableVoip) {
-                PushKit.register();
                 // FIX: registrar onTokenUpdated AQUÍ junto al register(),
                 // no en el bloque tardío de callListenerTimer. Si el token llega
                 // antes de que ese timer se ejecute, se perdía y el servidor no
@@ -518,6 +517,15 @@ export default function RootLayout() {
                     console.warn('[PushKit] Error sincronizando token VoIP:', e);
                   }
                 });
+                PushKit.register();
+                // El token puede haberse generado durante el arranque nativo,
+                // antes de que el listener JS existiera. Sincronizarlo también
+                // por lectura directa para no perder llamadas en background.
+                const cachedVoipToken = await PushKit.getCurrentVoIPToken();
+                if (cachedVoipToken) {
+                  const { syncVoIPTokenWithServer } = await import('../src/notifications');
+                  await syncVoIPTokenWithServer(cachedVoipToken);
+                }
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
                   // Punto de entrada único — no duplicar con router.push aquí
                   handleIncomingCall({
@@ -691,14 +699,11 @@ export default function RootLayout() {
 
                 if (enableVoip) {
                   try {
-                    // iOS: PushKit ya fue registrado inmediatamente al autenticarse
-                    // (ver bloque "iOS VoIP PushKit — registrar listener INMEDIATAMENTE" arriba).
-                    // Aquí solo registramos el token updater, que no es crítico para recibir llamadas.
+                    // iOS: PushKit y su listener ya están activos inmediatamente
+                    // al autenticarse. No volver a asignarlo aquí: reemplazarlo
+                    // haría posible perder el token que llega durante el arranque.
                     if (Platform.OS === 'ios') {
-                      pushTokenCleanup.current = PushKit.onTokenUpdated(async (voipToken) => {
-                        const { syncVoIPTokenWithServer } = await import('../src/notifications');
-                        await syncVoIPTokenWithServer(voipToken);
-                      });
+                      // El registro temprano mantiene el listener de iOS.
                     } else {
                       // Android / otras plataformas: registrar todo aquí
                       PushKit.register();

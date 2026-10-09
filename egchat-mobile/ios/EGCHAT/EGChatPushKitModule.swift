@@ -8,6 +8,7 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
 
   private var registry: PKPushRegistry?
   private var pendingToken: String?
+  private var currentVoipToken: String?
   private var pendingCalls: [[String: Any]] = []
 
   func start() {
@@ -19,6 +20,8 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
       self.registry = registry
     }
   }
+
+  func currentToken() -> String? { currentVoipToken }
 
   func attach(_ module: EGChatPushKitModule) {
     EGChatPushKitModule.eventSink = module
@@ -52,10 +55,14 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     guard type == .voIP else { return }
     let token = pushCredentials.token.map { String(format: "%02.2hhx", $0) }.joined()
     print("[EGChatPushKit] VoIP token actualizado")
+    currentVoipToken = token
     emitToken(token)
   }
 
-  func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) { emitToken("") }
+  func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
+    currentVoipToken = nil
+    emitToken("")
+  }
 
   func pushRegistry(_ registry: PKPushRegistry, didReceiveIncomingPushWith payload: PKPushPayload, for type: PKPushType, completion: @escaping () -> Void) {
     guard type == .voIP else { completion(); return }
@@ -92,5 +99,9 @@ class EGChatPushKitModule: RCTEventEmitter {
   @objc func registerVoIP() {
     EGChatPushKitCoordinator.shared.start()
     EGChatPushKitCoordinator.shared.attach(self)
+  }
+
+  @objc func getCurrentVoIPToken(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
+    resolve(EGChatPushKitCoordinator.shared.currentToken())
   }
 }
