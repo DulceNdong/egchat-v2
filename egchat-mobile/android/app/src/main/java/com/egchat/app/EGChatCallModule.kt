@@ -136,7 +136,7 @@ internal object EGChatCallNotifier {
 
   private fun createChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
-    val channel = NotificationChannel(CALL_CHANNEL, "Llamadas", NotificationManager.IMPORTANCE_HIGH).apply {
+    val channel = NotificationChannel(CALL_CHANNEL, "Llamadas", NotificationManager.IMPORTANCE_MAX).apply {
       description = "Llamadas entrantes de EGCHAT"
       lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
       enableVibration(true)
