@@ -185,7 +185,7 @@ export default function CallScreen() {
   };
   const {
     callId, targetName, targetAvatar, callType, role,
-    targetUserId, offer: offerParam, chatId,
+    targetUserId, offer: offerParam, chatId, autoAccept,
   } = useLocalSearchParams() as CallParams;
 
   // ── CallManager via hook fachada ──────────────────────────────
@@ -408,6 +408,15 @@ export default function CallScreen() {
       Alert.alert('No se pudo recibir la llamada', err?.message || 'Verifica tu conexión.');
     }
   }, [callId, offerParam, callType, name, targetAvatar, chatId, isAccepting]);
+
+  // Android puede abrir la app desde el botón nativo "Contestar". En ese
+  // caso la intención explícita del usuario debe continuar la llamada sin
+  // exigir un segundo toque en la pantalla React Native.
+  useEffect(() => {
+    if (role !== 'callee' || autoAccept !== '1') return;
+    const timer = setTimeout(() => { accept().catch(() => {}); }, 120);
+    return () => clearTimeout(timer);
+  }, [role, autoAccept, accept]);
 
   // ── Aceptar desde botón nativo CallKit ────────────────────────
   const acceptFromCallKit = useCallback(() => {

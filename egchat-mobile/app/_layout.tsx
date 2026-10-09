@@ -564,6 +564,7 @@ export default function RootLayout() {
                     callType:    pending.callType || 'audio',
                     role:        'callee',
                     offer:       pending.offer ? JSON.stringify(pending.offer) : undefined,
+                    autoAccept:  pending.action === 'answer' ? '1' : undefined,
                   }} as any);
                   return;
                 } catch {
@@ -613,6 +614,7 @@ export default function RootLayout() {
                       callType:     stillPending.callType || 'audio',
                       role:         'callee',
                       offer:        stillPending.offer ? JSON.stringify(stillPending.offer) : undefined,
+                      autoAccept:   '1',
                     }} as any);
                   }
                   // Si ya expiró, no hacer nada — la llamada terminó

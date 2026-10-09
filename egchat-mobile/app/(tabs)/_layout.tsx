@@ -81,8 +81,9 @@ export default function TabsLayout() {
   const { language } = useLanguage();
   const insets = useSafeAreaInsets();
 
-  // La tab bar debe cubrir el home indicator (insets.bottom) + padding visual
-  const TAB_CONTENT_HEIGHT = 68;
+  // Altura visual alineada con las barras inferiores nativas de iOS.
+  // El área segura se suma aparte para no invadir el indicador de inicio.
+  const TAB_CONTENT_HEIGHT = 60;
   const tabBarHeight = TAB_CONTENT_HEIGHT + insets.bottom;
 
   return (
@@ -113,7 +114,7 @@ export default function TabsLayout() {
           backgroundColor: 'transparent',
           overflow: 'hidden',
           paddingBottom: insets.bottom,
-          paddingTop: Platform.OS === 'android' ? 4 : 0,
+          paddingTop: Platform.OS === 'android' ? 4 : 3,
         },
         tabBarBackground: () => (
           <LinearGradient

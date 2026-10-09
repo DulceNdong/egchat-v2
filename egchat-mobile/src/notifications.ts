@@ -511,6 +511,7 @@ export interface PendingCall {
   callerAvatar: string;
   callType: 'audio' | 'video';
   offer: object | null;
+  action?: 'answer' | 'reject' | 'end';
   timestamp: number;
 }
 
@@ -536,6 +537,7 @@ export async function consumePendingCall(): Promise<PendingCall | null> {
               callerAvatar: parsed.callerAvatar || '',
               callType:    (parsed.callType   || 'audio') as 'audio' | 'video',
               offer:       parsed.offer ? JSON.parse(parsed.offer) : null,
+              action:      parsed.action,
               timestamp:   Date.now(),
             };
           }

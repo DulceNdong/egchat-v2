@@ -31,6 +31,7 @@ import com.google.firebase.messaging.RemoteMessage
 import org.json.JSONObject
 
 private const val CALL_CHANNEL = "egchat-calls"
+private const val MESSAGE_CHANNEL = "egchat-messages"
 private const val PENDING_CALL = "egchat_pending_call_native"
 private const val PENDING_ACTION = "egchat_pending_call_action_native"
 private const val ACTION_CALL = "com.egchat.app.CALL_ACTION"
@@ -92,6 +93,47 @@ internal object EGChatCallNotifier {
     NotificationManagerCompat.from(context).cancel(callId.hashCode())
   }
 
+  fun recordCallAction(context: Context, callId: String, action: String) {
+    val preferences = context.getSharedPreferences("egchat_calls", Context.MODE_PRIVATE)
+    val pendingCall = preferences.getString(PENDING_CALL, null)
+    if (pendingCall != null) {
+      runCatching { JSONObject(pendingCall) }
+        .getOrNull()
+        ?.put("action", action)
+        ?.put("actionTimestamp", System.currentTimeMillis())
+        ?.let { preferences.edit().putString(PENDING_CALL, it.toString()).apply() }
+    }
+  }
+
+  fun showMessageNotification(context: Context, data: Map<String, String>, title: String?, body: String?) {
+    createMessageChannel(context)
+    val safeTitle = title?.takeIf { it.isNotBlank() } ?: data["senderName"] ?: "EGCHAT"
+    val safeBody = body?.takeIf { it.isNotBlank() } ?: data["body"] ?: "Nuevo mensaje"
+    val chatId = data["chatId"]
+    val openIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
+      putExtra("chatId", chatId)
+      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+    }
+    val contentIntent = openIntent?.let {
+      PendingIntent.getActivity(context, (chatId ?: safeBody).hashCode(), it, pendingIntentFlags())
+    }
+    val notification = NotificationCompat.Builder(context, MESSAGE_CHANNEL)
+      .setSmallIcon(com.egchat.app.R.drawable.notification_icon)
+      .setContentTitle(safeTitle)
+      .setContentText(safeBody)
+      .setStyle(NotificationCompat.BigTextStyle().bigText(safeBody))
+      .setCategory(NotificationCompat.CATEGORY_MESSAGE)
+      .setPriority(NotificationCompat.PRIORITY_HIGH)
+      .setAutoCancel(true)
+      .setContentIntent(contentIntent)
+      .build()
+
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+      context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
+      NotificationManagerCompat.from(context).notify((chatId ?: safeBody).hashCode(), notification)
+    }
+  }
+
   private fun createChannel(context: Context) {
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
     val channel = NotificationChannel(CALL_CHANNEL, "Llamadas", NotificationManager.IMPORTANCE_HIGH).apply {
@@ -99,6 +141,15 @@ internal object EGChatCallNotifier {
       lockscreenVisibility = android.app.Notification.VISIBILITY_PUBLIC
       enableVibration(true)
       vibrationPattern = longArrayOf(0, 500, 200, 500)
+    }
+    context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
+  }
+
+  private fun createMessageChannel(context: Context) {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+    val channel = NotificationChannel(MESSAGE_CHANNEL, "Mensajes", NotificationManager.IMPORTANCE_HIGH).apply {
+      description = "Mensajes nuevos de EGCHAT"
+      lockscreenVisibility = android.app.Notification.VISIBILITY_PRIVATE
     }
     context.getSystemService(NotificationManager::class.java).createNotificationChannel(channel)
   }
@@ -121,6 +172,8 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
     val data = message.data
     if (data["notificationType"] == "incoming_call" && !data["callId"].isNullOrBlank()) {
       EGChatCallNotifier.showIncomingCall(this, data)
+    } else {
+      EGChatCallNotifier.showMessageNotification(this, data, message.notification?.title, message.notification?.body)
     }
   }
 
@@ -135,6 +188,7 @@ class EGChatCallActionReceiver : BroadcastReceiver() {
     val action = intent.getStringExtra("action") ?: return
     val payload = JSONObject().put("callId", callId).put("action", action).put("timestamp", System.currentTimeMillis()).toString()
     context.getSharedPreferences("egchat_calls", Context.MODE_PRIVATE).edit().putString(PENDING_ACTION, payload).apply()
+    EGChatCallNotifier.recordCallAction(context, callId, action)
     EGChatCallNotifier.clear(context, callId)
     if (action == "answer") {
       context.packageManager.getLaunchIntentForPackage(context.packageName)?.let { launchIntent ->
