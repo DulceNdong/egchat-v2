@@ -352,7 +352,7 @@ export default function RootLayout() {
     });
 
     return () => sub.remove();
-  }, [globalUserId]);
+  }, []); // sin dependencias — usa userIdRef que es un ref, no estado reactivo
 
   useEffect(() => {
     setUnauthorizedHandler(async () => {
