@@ -278,11 +278,15 @@ export async function registerForPushNotifications(): Promise<string | null> {
 // ── Enviar token al servidor ────────────────────────────────────────────────
 export async function syncTokenWithServer(expoPushToken: string) {
   const authToken = await getToken();
-  if (!authToken) return;
+  if (!authToken) {
+    console.warn('[Push] syncTokenWithServer: sin authToken, abortando');
+    return;
+  }
 
   const isExpoToken  = expoPushToken.startsWith('ExponentPushToken');
   const tokenType    = isExpoToken ? 'expo' : (Platform.OS === 'ios' ? 'apns' : 'fcm');
 
+  console.log(`[Push] Enviando token al servidor (${tokenType}/${Platform.OS}): ...${expoPushToken.slice(-8)}`);
   try {
     const res = await fetch(`${API_BASE}/api/push/register-expo-token`, {
       method: 'POST',
@@ -300,8 +304,9 @@ export async function syncTokenWithServer(expoPushToken: string) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
       throw new Error(err.message || `HTTP ${res.status}`);
     }
-  } catch (e) {
-    console.warn('No se pudo registrar token push:', e);
+    console.log(`[Push] ✅ Token registrado en servidor correctamente`);
+  } catch (e: any) {
+    console.warn('[Push] ❌ No se pudo registrar token push:', e?.message || e);
   }
 }
 
