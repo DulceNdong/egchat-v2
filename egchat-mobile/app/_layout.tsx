@@ -640,7 +640,7 @@ export default function RootLayout() {
           // ── Llamada pendiente (app estaba cerrada cuando llegó la llamada) ──
           // Se comprueba con pequeño retry para asegurar que el router ya está montado.
           if (Platform.OS === 'android') {
-            const navigatePendingCall = async (retries = 5) => {
+            const navigatePendingCall = async (retries = 8) => {
               for (let i = 0; i < retries; i++) {
                 try {
                   const pending = await consumePendingCall();
