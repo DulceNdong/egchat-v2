@@ -241,6 +241,9 @@ export default function RootLayout() {
   const pushTokenCleanup = useRef<(() => void) | null>(null);
   const pushCallCleanup  = useRef<(() => void) | null>(null);
   const presenceCleanup = useRef<(() => void) | null>(null);
+  // Ref que se establece inmediatamente al autenticar (sin el delay de 15s)
+  // para que el AppState listener pueda procesar llamadas pendientes al instante
+  const userIdRef = useRef<string | null>(null);
   const pathname = usePathname();
   const sessionManager = SessionManager.getInstance();
 
