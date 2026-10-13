@@ -276,8 +276,8 @@ export default function RootLayout() {
 
       // Anti-duplicado: no procesar si ya estamos en ello
       if (isProcessingCallRef.current) return;
-      // No hacer nada si el usuario no está autenticado
-      if (!globalUserId) return;
+      // Usar userIdRef (se establece inmediatamente al autenticar, sin el delay de 15s)
+      if (!userIdRef.current) return;
 
       isProcessingCallRef.current = true;
 
