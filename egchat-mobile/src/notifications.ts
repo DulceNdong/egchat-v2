@@ -253,9 +253,11 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   if (!expoPushToken && !fcmToken && !nativeDeviceToken) {
-    console.warn('Sin token push — las notificaciones no funcionarán en background');
+    console.warn('[Push] ❌ Sin ningún token push — las notificaciones no funcionarán en background');
     return null;
   }
+
+  console.log(`[Push] Tokens obtenidos — expo: ${!!expoPushToken}, fcm: ${!!fcmToken}, apns: ${!!nativeDeviceToken}`);
 
   if (expoPushToken) {
     await AsyncStorage.setItem('expoPushToken', expoPushToken);
