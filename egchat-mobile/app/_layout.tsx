@@ -733,6 +733,9 @@ export default function RootLayout() {
           // lista con la sesión/cache local, así que estos servicios se inician
           // después de que el usuario pueda navegar con fluidez.
           const androidBackgroundDelay = Platform.OS === 'android' ? 15000 : 0;
+          // Establecer userIdRef INMEDIATAMENTE para que el AppState listener
+          // procese llamadas pendientes sin esperar el delay de 15s
+          userIdRef.current = String(me.id);
           const realtimeStartTimer = setTimeout(() => {
             if (mounted) setGlobalUserId(String(me.id));
           }, androidBackgroundDelay);
