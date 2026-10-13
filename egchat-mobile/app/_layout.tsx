@@ -671,8 +671,8 @@ export default function RootLayout() {
                   }} as any);
                   return;
                 } catch {
-                  // router no listo aún — esperar 400ms y reintentar
-                  await new Promise(r => setTimeout(r, 400));
+                  // router no listo aún — esperar 600ms y reintentar (dispositivos lentos)
+                  await new Promise(r => setTimeout(r, 600));
                 }
               }
             };
