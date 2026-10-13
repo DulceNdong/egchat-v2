@@ -208,34 +208,34 @@ export async function registerForPushNotifications(): Promise<string | null> {
   // Si no tienes EAS configurado, corre: npx eas init
   let expoPushToken: string | null = null;
   let nativeDeviceToken: string | null = null;
+  const projectId = Constants.expoConfig?.extra?.eas?.projectId
+    ?? Constants.easConfig?.projectId
+    ?? undefined;
+  console.log(`[Push] Iniciando registro. Platform: ${Platform.OS}, projectId: ${projectId}`);
   try {
-    const tokenData = await Notifications.getExpoPushTokenAsync({
-      projectId: Constants.expoConfig?.extra?.eas?.projectId
-        ?? Constants.easConfig?.projectId
-        ?? undefined,
-    });
+    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
     expoPushToken = tokenData.data;
-  } catch (e) {
-    // Expo push token requires EAS registration. Falls back to native device token.
-    // This covers Xcode direct builds (iOS) and non-EAS Android builds.
+    console.log(`[Push] ExponentPushToken obtenido: ...${expoPushToken.slice(-12)}`);
+  } catch (e: any) {
+    console.warn('[Push] getExpoPushTokenAsync falló:', e?.message || e);
+    // Fallback al token nativo APNs/FCM
     try {
       const nativeToken = await Notifications.getDevicePushTokenAsync();
       expoPushToken = nativeToken.data as string;
-      console.log(`[Push] Usando token nativo (${Platform.OS}):`, String(expoPushToken).slice(-12));
-    } catch (e2) {
-      console.warn('[Push] No se pudo obtener token nativo:', e2);
+      console.log(`[Push] Token nativo (${Platform.OS}) obtenido: ...${String(expoPushToken).slice(-12)}`);
+    } catch (e2: any) {
+      console.warn('[Push] getDevicePushTokenAsync también falló:', e2?.message || e2);
     }
   }
 
-  // iOS: guardar siempre el token APNs directo, incluso si Expo también
-  // entregó su token. El backend lo usa como ruta de respaldo cuando la app
-  // está cerrada, sin depender de la infraestructura Expo.
+  // iOS: guardar siempre el token APNs directo como respaldo
   if (Platform.OS === 'ios') {
     try {
       const nativeToken = await Notifications.getDevicePushTokenAsync();
       nativeDeviceToken = nativeToken.data as string;
-    } catch (error) {
-      console.warn('[Push] No se pudo obtener token APNs directo:', error);
+      console.log(`[Push] Token APNs nativo: ...${String(nativeDeviceToken).slice(-12)}`);
+    } catch (error: any) {
+      console.warn('[Push] No se pudo obtener token APNs directo:', error?.message || error);
     }
   }
 
