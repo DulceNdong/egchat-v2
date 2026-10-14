@@ -59,12 +59,13 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
   func pushRegistry(_ registry: PKPushRegistry, didUpdate pushCredentials: PKPushCredentials, for type: PKPushType) {
     guard type == .voIP else { return }
     let token = pushCredentials.token.map { String(format: "%02.2hhx", $0) }.joined()
-    print("[EGChatPushKit] VoIP token actualizado")
+    print("[EGChatPushKit] ✅ Token VoIP recibido: \(token.suffix(8))")
     currentVoipToken = token
     emitToken(token)
   }
 
   func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
+    print("[EGChatPushKit] ⚠️ Token VoIP invalidado")
     currentVoipToken = nil
     emitToken("")
   }
