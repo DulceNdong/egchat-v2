@@ -616,11 +616,21 @@ export default function RootLayout() {
                 // El token puede haberse generado durante el arranque nativo,
                 // antes de que el listener JS existiera. Sincronizarlo también
                 // por lectura directa para no perder llamadas en background.
-                const cachedVoipToken = await PushKit.getCurrentVoIPToken();
-                if (cachedVoipToken) {
-                  const { syncVoIPTokenWithServer } = await import('../src/notifications');
-                  await syncVoIPTokenWithServer(cachedVoipToken);
-                }
+                // Intentar inmediatamente y también con delay por si el token tarda.
+                const syncCachedVoipToken = async () => {
+                  const cachedVoipToken = await PushKit.getCurrentVoIPToken();
+                  if (cachedVoipToken) {
+                    const { syncVoIPTokenWithServer } = await import('../src/notifications');
+                    await syncVoIPTokenWithServer(cachedVoipToken);
+                    console.log('[PushKit] Token VoIP cacheado sincronizado:', cachedVoipToken.slice(-8));
+                  } else {
+                    console.log('[PushKit] No hay token VoIP cacheado aún');
+                  }
+                };
+                syncCachedVoipToken().catch(() => {});
+                // Reintentar a los 3s y 8s por si el token tarda en generarse
+                setTimeout(() => syncCachedVoipToken().catch(() => {}), 3000);
+                setTimeout(() => syncCachedVoipToken().catch(() => {}), 8000);
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
                   // Punto de entrada único — no duplicar con router.push aquí
                   handleIncomingCall({
