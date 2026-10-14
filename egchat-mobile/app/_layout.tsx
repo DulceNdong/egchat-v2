@@ -861,9 +861,9 @@ export default function RootLayout() {
                   ?? await Notifications.getLastNotificationResponseAsync().catch(() => null);
                 if (lastResp) {
                   const data = lastResp.notification.request.content.data as any;
-                  setTimeout(() => {
+                  // Esperar a que el router esté completamente montado
+                  const navigateFromNotif = () => {
                     if (data?.notificationType === 'incoming_call' && data?.callId) {
-                      // Tap en notificación de llamada → usar punto de entrada único
                       handleIncomingCall({
                         callId:       data.callId,
                         callerName:   data.callerName || 'Usuario',
@@ -878,7 +878,10 @@ export default function RootLayout() {
                     } else if (data?.type === 'reaction' && data?.chatId) {
                       router.push(`/chat/${data.chatId}` as any);
                     }
-                  }, 500);
+                  };
+                  // Intentar varias veces para asegurar que el router esté listo
+                  setTimeout(navigateFromNotif, 800);
+                  setTimeout(navigateFromNotif, 1500);
                 }
               } catch (e) {
                 console.warn('[Notifications init error]', e);
