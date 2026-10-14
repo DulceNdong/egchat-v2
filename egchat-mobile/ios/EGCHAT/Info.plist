@@ -101,6 +101,7 @@
       <string>location</string>
       <string>push-to-talk</string>
       <string>remote-notification</string>
+      <string>voip</string>
       <string>nearby-interaction</string>
     </array>
     <key>UILaunchStoryboardName</key>
