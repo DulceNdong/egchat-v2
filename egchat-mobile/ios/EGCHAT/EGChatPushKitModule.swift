@@ -5,6 +5,7 @@ import React
 /** PushKit vive a nivel de aplicación, no a nivel del ciclo de JavaScript. */
 final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
   static let shared = EGChatPushKitCoordinator()
+  private let voipTokenDefaultsKey = "egchat.voipPushToken"
 
   private var registry: PKPushRegistry?
   private var pendingToken: String?
@@ -26,11 +27,19 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     }
   }
 
-  func currentToken() -> String? { currentVoipToken }
+  func currentToken() -> String? {
+    currentVoipToken ?? UserDefaults.standard.string(forKey: voipTokenDefaultsKey)
+  }
 
   func attach(_ module: EGChatPushKitModule) {
     EGChatPushKitModule.eventSink = module
     flushPendingEvents()
+  }
+
+  func replayCurrentToken(to module: EGChatPushKitModule) {
+    guard let token = currentToken(), !token.isEmpty else { return }
+    print("[EGChatPushKit] Reenviando token VoIP al listener activo")
+    module.sendEvent(withName: "voipTokenUpdated", body: ["token": token])
   }
 
   private func emitToken(_ token: String) {
@@ -61,12 +70,14 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     let token = pushCredentials.token.map { String(format: "%02.2hhx", $0) }.joined()
     print("[EGChatPushKit] ✅ Token VoIP recibido: \(token.suffix(8))")
     currentVoipToken = token
+    UserDefaults.standard.set(token, forKey: voipTokenDefaultsKey)
     emitToken(token)
   }
 
   func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
     print("[EGChatPushKit] ⚠️ Token VoIP invalidado")
     currentVoipToken = nil
+    UserDefaults.standard.removeObject(forKey: voipTokenDefaultsKey)
     emitToken("")
   }
 
@@ -98,7 +109,12 @@ class EGChatPushKitModule: RCTEventEmitter {
     EGChatPushKitCoordinator.shared.attach(self)
   }
 
-  override func startObserving() { EGChatPushKitCoordinator.shared.attach(self) }
+  override func startObserving() {
+    EGChatPushKitCoordinator.shared.attach(self)
+    // RCTEventEmitter no conserva eventos enviados antes de que JS se suscriba.
+    // Reemitir el token persistido elimina esa carrera durante el arranque.
+    EGChatPushKitCoordinator.shared.replayCurrentToken(to: self)
+  }
   override func supportedEvents() -> [String] { ["voipTokenUpdated", "voipPushReceived"] }
   override static func requiresMainQueueSetup() -> Bool { true }
 
