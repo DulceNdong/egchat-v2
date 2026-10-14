@@ -103,6 +103,7 @@ class EGChatPushKitModule: RCTEventEmitter {
   override static func requiresMainQueueSetup() -> Bool { true }
 
   @objc func registerVoIP() {
+    print("[EGChatPushKit] registerVoIP() llamado desde JS")
     EGChatPushKitCoordinator.shared.start()
     EGChatPushKitCoordinator.shared.attach(self)
   }
