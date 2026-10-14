@@ -14,8 +14,13 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
 
   func start() {
     DispatchQueue.main.async {
-      guard self.registry == nil else {
-        print("[EGChatPushKit] start() llamado pero registry ya existe")
+      if let registry = self.registry {
+        // Al volver desde el arranque nativo, renovar la solicitud obliga a
+        // PushKit a entregar el token cuando el proceso ya está completamente
+        // activo. No basta con ignorar la segunda llamada de JavaScript.
+        registry.delegate = self
+        registry.desiredPushTypes = [.voIP]
+        print("[EGChatPushKit] PKPushRegistry reactivado; solicitando token")
         return
       }
       print("[EGChatPushKit] Iniciando PKPushRegistry...")
