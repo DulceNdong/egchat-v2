@@ -13,11 +13,16 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
 
   func start() {
     DispatchQueue.main.async {
-      guard self.registry == nil else { return }
+      guard self.registry == nil else {
+        print("[EGChatPushKit] start() llamado pero registry ya existe")
+        return
+      }
+      print("[EGChatPushKit] Iniciando PKPushRegistry...")
       let registry = PKPushRegistry(queue: .main)
       registry.delegate = self
       registry.desiredPushTypes = [.voIP]
       self.registry = registry
+      print("[EGChatPushKit] PKPushRegistry creado, esperando token...")
     }
   }
 
