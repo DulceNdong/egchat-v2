@@ -155,6 +155,13 @@ class EGChatPushKitModule: RCTEventEmitter {
     EGChatPushKitCoordinator.shared.attach(self)
   }
 
+  @objc func setAuthToken(_ token: String) {
+    UserDefaults.standard.set(token, forKey: "egchat.authToken")
+    print("[EGChatPushKit] authToken guardado en UserDefaults")
+    // Si ya tenemos el token VoIP, registrarlo ahora que tenemos el authToken
+    EGChatPushKitCoordinator.shared.retryServerRegistration()
+  }
+
   @objc func getCurrentVoIPToken(_ resolve: RCTPromiseResolveBlock, rejecter reject: RCTPromiseRejectBlock) {
     resolve(EGChatPushKitCoordinator.shared.currentToken())
   }
