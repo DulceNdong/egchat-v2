@@ -172,11 +172,19 @@ class EGChatFirebaseMessagingService : FirebaseMessagingService() {
   override fun onMessageReceived(message: RemoteMessage) {
     val data = message.data
     if (data["notificationType"] == "incoming_call" && !data["callId"].isNullOrBlank()) {
-      // Si la app está en foreground, guardar la llamada pendiente para que JS la procese
-      // El overlay de React Native se mostrará automáticamente via consumePendingCall()
+      // Guardar la llamada pendiente siempre para que JS la consuma
       EGChatCallNotifier.storePendingCall(this, data)
-      // Siempre mostrar la notificación fullscreen para que funcione con pantalla cerrada
+      // Mostrar notificación fullscreen (funciona con pantalla cerrada y en background)
       EGChatCallNotifier.showIncomingCall(this, data)
+      // Notificar al JS si la app está activa via broadcast
+      sendBroadcast(Intent("com.egchat.app.INCOMING_CALL").apply {
+        putExtra("callId", data["callId"])
+        putExtra("callerName", data["callerName"] ?: "EGCHAT")
+        putExtra("callerAvatar", data["callerAvatar"] ?: "")
+        putExtra("callType", data["callType"] ?: "audio")
+        putExtra("offer", data["offer"] ?: "")
+        setPackage(packageName)
+      })
     } else {
       EGChatCallNotifier.showMessageNotification(this, data, message.notification?.title, message.notification?.body)
     }
