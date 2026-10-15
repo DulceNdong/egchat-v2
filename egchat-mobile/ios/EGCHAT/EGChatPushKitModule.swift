@@ -77,6 +77,32 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     currentVoipToken = token
     UserDefaults.standard.set(token, forKey: voipTokenDefaultsKey)
     emitToken(token)
+    // Registrar el token directamente en el servidor desde Swift
+    // como respaldo por si JS no está listo cuando llega el token
+    registerVoIPTokenOnServer(token)
+  }
+
+  private func registerVoIPTokenOnServer(_ token: String) {
+    guard let authToken = UserDefaults.standard.string(forKey: "egchat.authToken"),
+          !authToken.isEmpty else {
+      print("[EGChatPushKit] Sin authToken guardado, no se puede registrar token VoIP en servidor")
+      return
+    }
+    let apiBase = "https://egchat-api-xlxj.onrender.com"
+    guard let url = URL(string: "\(apiBase)/api/push/register-voip-token") else { return }
+    var request = URLRequest(url: url)
+    request.httpMethod = "POST"
+    request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+    request.setValue("Bearer \(authToken)", forHTTPHeaderField: "Authorization")
+    let body = ["voipToken": token]
+    request.httpBody = try? JSONSerialization.data(withJSONObject: body)
+    URLSession.shared.dataTask(with: request) { _, response, error in
+      if let error = error {
+        print("[EGChatPushKit] Error registrando token en servidor: \(error.localizedDescription)")
+      } else if let http = response as? HTTPURLResponse {
+        print("[EGChatPushKit] Token VoIP registrado en servidor: HTTP \(http.statusCode)")
+      }
+    }.resume()
   }
 
   func pushRegistry(_ registry: PKPushRegistry, didInvalidatePushTokenFor type: PKPushType) {
