@@ -28,6 +28,12 @@ export interface VoIPCallData {
 }
 
 export const PushKit = {
+  /** Guarda el authToken en UserDefaults para que Swift pueda usarlo */
+  setAuthToken(token: string) {
+    if (!isAvailable) return;
+    EGChatPushKitModule.setAuthToken(token);
+  },
+
   /** Registra el dispositivo para recibir VoIP push */
   register() {
     if (!isAvailable) return;
