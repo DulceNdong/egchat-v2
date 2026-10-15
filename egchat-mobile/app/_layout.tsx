@@ -841,12 +841,17 @@ export default function RootLayout() {
 
                       pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
                         // Punto de entrada único — sin router.push
+                        const rawOffer2 = (callData as any).offer;
+                        let parsedOffer2 = rawOffer2;
+                        if (typeof rawOffer2 === 'string') {
+                          try { parsedOffer2 = JSON.parse(rawOffer2); } catch { parsedOffer2 = undefined; }
+                        }
                         handleIncomingCall({
                           callId:       callData.callId,
                           callerName:   callData.callerName,
                           callerAvatar: (callData as any).callerAvatar || '',
                           callType:     callData.callType || 'audio',
-                          offer:        callData.offer,
+                          offer:        parsedOffer2,
                         });
                       });
                     }
