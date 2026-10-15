@@ -1761,10 +1761,11 @@ export class CallManager {
 
   private _reset(): void {
     this._finalCleanup();
-    this._session        = null;
-    this._isEnding       = false;
-    this._ringStopped    = false;
-    this._isSignalingOnly = !HAS_NATIVE_MEDIA;
+    this._session          = null;
+    this._isEnding         = false;
+    this._ringStopped      = false;
+    this._isAcceptingLocally = false;
+    this._isSignalingOnly  = !HAS_NATIVE_MEDIA;
     this._setPcState('none');
     this._setUIState('hidden');
   }
