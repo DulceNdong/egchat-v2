@@ -408,6 +408,7 @@ export class CallManager {
       console.warn('[CallManager] acceptCall: estado incorrecto', this._commState);
       return;
     }
+    this._isAcceptingLocally = true;
 
     // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
     // Intentar reclamar la llamada de forma atómica en el servidor.
