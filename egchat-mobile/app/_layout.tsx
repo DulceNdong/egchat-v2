@@ -485,6 +485,15 @@ export default function RootLayout() {
           [{ text: 'OK', onPress: () => router.replace('/welcome') }]),
       );
     }
+    // Llamada aceptada por el receptor — notificar al caller inmediatamente
+    // sin esperar el siguiente ciclo de polling
+    if (event.type === 'call_answered' && event.callId) {
+      callManager.onCallAnsweredSSE(event.callId);
+    }
+    // Llamada terminada/rechazada por la otra parte
+    if (event.type === 'call_ended' && event.callId) {
+      callManager.onCallEndedSSE(event.callId);
+    }
   }, [globalUserId]));
 
   useEffect(() => {
