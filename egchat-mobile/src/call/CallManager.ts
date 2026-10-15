@@ -1590,7 +1590,8 @@ export class CallManager {
             // Otro dispositivo del callee aceptó → si somos callee y estamos
             // en ringing, cancelar localmente sin llamar al servidor de nuevo
             if (this._session.role === 'callee' &&
-                (this._commState === 'ringing' || this._commState === 'accepted')) {
+                (this._commState === 'ringing' || this._commState === 'accepted') &&
+                !this._isAcceptingLocally) {   // guard: no interrumpir nuestra propia aceptación
               this._stopRingOnce();
               this._setCommState('ended');
               this._finalCleanup();
