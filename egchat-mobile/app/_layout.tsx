@@ -642,12 +642,17 @@ export default function RootLayout() {
                 setTimeout(() => syncCachedVoipToken().catch(() => {}), 8000);
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
                   // Punto de entrada único — no duplicar con router.push aquí
+                  const rawOffer = (callData as any).offer;
+                  let parsedOffer = rawOffer;
+                  if (typeof rawOffer === 'string') {
+                    try { parsedOffer = JSON.parse(rawOffer); } catch { parsedOffer = undefined; }
+                  }
                   handleIncomingCall({
                     callId:       callData.callId,
                     callerName:   callData.callerName,
                     callerAvatar: (callData as any).callerAvatar || '',
                     callType:     callData.callType || 'audio',
-                    offer:        callData.offer,
+                    offer:        parsedOffer,
                   });
                 });
               }
