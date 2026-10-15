@@ -599,6 +599,37 @@ export default function RootLayout() {
         try {
           if (!me?.id || !mounted) return;
 
+          // ── Android: escuchar llamadas entrantes via broadcast FCM ────────
+          // Cuando el FCM llega con la app abierta, el FirebaseMessagingService
+          // nativo emite un broadcast que capturamos aquí para mostrar el overlay.
+          if (Platform.OS === 'android') {
+            try {
+              const { NativeModules, NativeEventEmitter } = require('react-native');
+              if (NativeModules.EGChatCallModule) {
+                const callEmitter = new NativeEventEmitter(NativeModules.EGChatCallModule);
+                const callSub = callEmitter.addListener('EGChatIncomingCall', (callData: any) => {
+                  const rawOffer = callData?.offer;
+                  let parsedOffer = rawOffer;
+                  if (typeof rawOffer === 'string' && rawOffer.length > 0) {
+                    try { parsedOffer = JSON.parse(rawOffer); } catch { parsedOffer = undefined; }
+                  }
+                  handleIncomingCall({
+                    callId:       callData.callId,
+                    callerName:   callData.callerName || 'EGCHAT',
+                    callerAvatar: callData.callerAvatar || '',
+                    callType:     callData.callType || 'audio',
+                    offer:        parsedOffer,
+                  });
+                });
+                // Guardar cleanup
+                const prevCleanup = presenceCleanup.current;
+                presenceCleanup.current = () => { prevCleanup?.(); callSub.remove(); };
+              }
+            } catch (e) {
+              console.warn('[Android] Error registrando listener de llamadas:', e);
+            }
+          }
+
           // ── iOS VoIP PushKit — registrar listener INMEDIATAMENTE ──────────
           // PushKit despierta la app en background antes de que el JS esté listo.
           // El módulo nativo encola el evento y lo entrega en cuanto hay un listener.
