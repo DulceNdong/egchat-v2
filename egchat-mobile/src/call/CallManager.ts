@@ -984,7 +984,7 @@ export class CallManager {
   private async _fetchOfferWithRetry(callId: string): Promise<any> {
     // B4 fix: reducido de 20×3s (60s) a 6×3s (18s) con log en último intento.
     for (let i = 0; i < 6; i++) {
-      if (i > 0) await new Promise(r => setTimeout(r, 3000));
+      if (i > 0) await new Promise(r => setTimeout(r, 1500));
       try {
         const s = await callAPI.get(callId);
         if (this._isValidSdp(s?.offer)) return s.offer;
