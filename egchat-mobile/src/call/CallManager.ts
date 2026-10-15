@@ -439,6 +439,7 @@ export class CallManager {
     }
 
     if (!await this._ensurePermissions(callType)) {
+      this._isAcceptingLocally = false;
       await this.endCall();
       throw new Error('Permisos denegados. Actívalos en Ajustes.');
     }
