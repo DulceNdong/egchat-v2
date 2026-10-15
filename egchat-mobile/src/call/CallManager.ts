@@ -1754,6 +1754,7 @@ export class CallManager {
     this._answerApplied        = false;
     this._appliedOfferVersion  = 0;
     this._lastNetConnected     = null;
+    this._isAcceptingLocally   = false;
 
     this._notify();
   }
