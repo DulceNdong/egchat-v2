@@ -7,8 +7,8 @@
  */
 @interface RCT_EXTERN_MODULE(EGChatPushKitModule, RCTEventEmitter)
 
-/// Registra el dispositivo para recibir notificaciones VoIP push
 RCT_EXTERN_METHOD(registerVoIP)
+RCT_EXTERN_METHOD(setAuthToken:(NSString *)token)
 RCT_EXTERN_METHOD(getCurrentVoIPToken:(RCTPromiseResolveBlock)resolve
                   rejecter:(RCTPromiseRejectBlock)reject)
 
