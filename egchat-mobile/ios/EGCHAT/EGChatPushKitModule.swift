@@ -41,6 +41,12 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
     flushPendingEvents()
   }
 
+  func retryServerRegistration() {
+    guard let token = currentToken(), !token.isEmpty else { return }
+    print("[EGChatPushKit] Reintentando registro de token VoIP en servidor")
+    registerVoIPTokenOnServer(token)
+  }
+
   func replayCurrentToken(to module: EGChatPushKitModule) {
     guard let token = currentToken(), !token.isEmpty else { return }
     print("[EGChatPushKit] Reenviando token VoIP al listener activo")
