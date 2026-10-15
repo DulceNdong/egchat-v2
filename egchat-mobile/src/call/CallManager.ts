@@ -718,14 +718,14 @@ export class CallManager {
   }
 
   private _forcePoll(): void {
-    if (!this._session) return;
+    if (!this._session || !NativeRTC) return;
     const role = this._session.role;
     callAPI.get(this._session.callId).then(async (s) => {
       if (!s || s.ended) { this.endCall(); return; }
       if (role === 'caller' && !this._answerApplied && s.answer &&
           this._pc?.signalingState === 'have-local-offer') {
         await this._pc.setRemoteDescription(
-          new (require('react-native-webrtc').RTCSessionDescription)(s.answer)
+          new NativeRTC!.RTCSessionDescription(s.answer)
         );
         this._remoteDescSet  = true;
         this._answerApplied  = true;
