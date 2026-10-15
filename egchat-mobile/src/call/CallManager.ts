@@ -416,6 +416,7 @@ export class CallManager {
     try {
       const result = await callAPI.claimCall?.(this._session.callId);
       if (result?.alreadyAccepted) {
+        this._isAcceptingLocally = false;
         this._stopRingOnce();
         this._setCommState('ended');
         this._finalCleanup();
