@@ -294,8 +294,11 @@ class EGChatCallModule(private val context: ReactApplicationContext) : ReactCont
 
   @ReactMethod fun addListener(eventName: String) {
     if (!receiverRegistered) {
-      context.registerReceiver(callReceiver, android.content.IntentFilter("com.egchat.app.INCOMING_CALL"),
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Context.RECEIVER_NOT_EXPORTED else 0)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+        context.registerReceiver(callReceiver, android.content.IntentFilter("com.egchat.app.INCOMING_CALL"), Context.RECEIVER_NOT_EXPORTED)
+      } else {
+        context.registerReceiver(callReceiver, android.content.IntentFilter("com.egchat.app.INCOMING_CALL"))
+      }
       receiverRegistered = true
     }
   }
