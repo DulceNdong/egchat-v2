@@ -269,7 +269,36 @@ class EGChatIncomingCallActivity : Activity() {
 class EGChatCallModule(private val context: ReactApplicationContext) : ReactContextBaseJavaModule(context) {
   override fun getName() = "EGChatCallModule"
 
-  @ReactMethod fun addListener(eventName: String) { }
+  private val callReceiver = object : BroadcastReceiver() {
+    override fun onReceive(ctx: Context, intent: Intent) {
+      if (intent.action != "com.egchat.app.INCOMING_CALL") return
+      val callId = intent.getStringExtra("callId") ?: return
+      val callerName = intent.getStringExtra("callerName") ?: "EGCHAT"
+      val callerAvatar = intent.getStringExtra("callerAvatar") ?: ""
+      val callType = intent.getStringExtra("callType") ?: "audio"
+      val offer = intent.getStringExtra("offer") ?: ""
+
+      // Emitir evento al JS
+      context.getJSModule(com.facebook.react.modules.core.DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
+        ?.emit("EGChatIncomingCall", com.facebook.react.bridge.Arguments.createMap().apply {
+          putString("callId", callId)
+          putString("callerName", callerName)
+          putString("callerAvatar", callerAvatar)
+          putString("callType", callType)
+          putString("offer", offer)
+        })
+    }
+  }
+
+  private var receiverRegistered = false
+
+  @ReactMethod fun addListener(eventName: String) {
+    if (!receiverRegistered) {
+      context.registerReceiver(callReceiver, android.content.IntentFilter("com.egchat.app.INCOMING_CALL"),
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) Context.RECEIVER_NOT_EXPORTED else 0)
+      receiverRegistered = true
+    }
+  }
   @ReactMethod fun removeListeners(count: Int) { }
 
   @ReactMethod fun showIncomingCall(callerName: String, callerAvatar: String, callId: String, isVideo: Boolean) {
