@@ -489,6 +489,7 @@ export class CallManager {
     this._startPoll('callee', 'fast');
     this._subscribeAppState();
     this._subscribeRealtime();
+    this._isAcceptingLocally = false;
   }
 
   // ══════════════════════════════════════════════════════════════
