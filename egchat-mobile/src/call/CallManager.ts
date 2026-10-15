@@ -446,7 +446,7 @@ export class CallManager {
 
     let offer: any = rawOffer;
     if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
-    if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
+    if (!this._isValidSdp(offer)) { this._isAcceptingLocally = false; await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
 
     const iceServers = await this._getIceServers();
 
