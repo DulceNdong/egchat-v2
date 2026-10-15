@@ -155,6 +155,7 @@ export class CallManager {
   private _videoTrackRef: any | null = null;
   // FIX 4: flag para distinguir pausa de sistema (background iOS) vs. usuario
   private _videoPausedBySystem = false;
+  private _isAcceptingLocally = false;
 
   // ── Estado de la PeerConnection (espejo) ──────────────────────
   private _pcState: PCState = 'none';
