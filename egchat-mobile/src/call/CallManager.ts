@@ -701,6 +701,41 @@ export class CallManager {
 
   setUIState(state: CallUIState): void { this._setUIState(state); }
 
+  /** SSE: el callee aceptó la llamada — forzar poll inmediato para aplicar el answer */
+  onCallAnsweredSSE(callId: string): void {
+    if (!this._session || this._session.callId !== callId) return;
+    if (this._answerApplied) return;
+    console.log('[CallManager] SSE call_answered — forzando poll inmediato');
+    // Disparar un poll inmediato sin esperar el timer
+    this._forcePoll();
+  }
+
+  /** SSE: la otra parte terminó/rechazó la llamada */
+  onCallEndedSSE(callId: string): void {
+    if (!this._session || this._session.callId !== callId) return;
+    console.log('[CallManager] SSE call_ended — terminando llamada');
+    this.endCall();
+  }
+
+  private _forcePoll(): void {
+    if (!this._session) return;
+    const role = this._session.role;
+    callAPI.get(this._session.callId).then(async (s) => {
+      if (!s || s.ended) { this.endCall(); return; }
+      if (role === 'caller' && !this._answerApplied && s.answer &&
+          this._pc?.signalingState === 'have-local-offer') {
+        await this._pc.setRemoteDescription(
+          new (require('react-native-webrtc').RTCSessionDescription)(s.answer)
+        );
+        this._remoteDescSet  = true;
+        this._answerApplied  = true;
+        this._setCommState('connecting');
+        this._stopCallTimeout();
+        await this._drainIceQueue();
+      }
+    }).catch(() => {});
+  }
+
   // ══════════════════════════════════════════════════════════════
   // PRIVADOS — PeerConnection
   // ══════════════════════════════════════════════════════════════
