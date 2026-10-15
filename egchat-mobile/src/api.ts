@@ -30,6 +30,18 @@ export const setToken = async (t: string): Promise<void> => {
     try { localStorage.setItem(TOKEN_KEY, t); return; } catch {}
   }
   try { await SecureStore.setItemAsync(TOKEN_KEY, t); } catch {}
+  // Guardar también en UserDefaults nativo para que Swift (PushKit) pueda accederlo
+  if (Platform.OS === 'ios') {
+    try {
+      const { NativeModules } = require('react-native');
+      NativeModules.RNCAsyncStorage?.multiSet?.([['egchat.authToken', t]]);
+    } catch {}
+    // Fallback: guardar en AsyncStorage con clave conocida por Swift
+    try {
+      const AsyncStorageModule = require('@react-native-async-storage/async-storage').default;
+      await AsyncStorageModule.setItem('egchat.authToken', t);
+    } catch {}
+  }
 };
 
 export const clearToken = async (): Promise<void> => {
