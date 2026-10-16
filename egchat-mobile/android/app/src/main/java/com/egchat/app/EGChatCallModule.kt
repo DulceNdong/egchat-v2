@@ -313,6 +313,9 @@ class EGChatCallModule(private val context: ReactApplicationContext) : ReactCont
 }
 
 class EGChatCallPackage : ReactPackage {
-  override fun createNativeModules(reactContext: ReactApplicationContext) = listOf(EGChatCallModule(reactContext))
+  override fun createNativeModules(reactContext: ReactApplicationContext) = listOf(
+    EGChatCallModule(reactContext),
+    EGChatRichNotification(reactContext),
+  )
   override fun createViewManagers(reactContext: ReactApplicationContext): List<ViewManager<*, *>> = emptyList()
 }
