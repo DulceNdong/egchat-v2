@@ -17,8 +17,8 @@ const { withEntitlementsPlist, withInfoPlist, withAppDelegate } = require('@expo
 const withAppGroup = (config) => {
   return withEntitlementsPlist(config, (mod) => {
     const groups = mod.modResults['com.apple.security.application-groups'] || [];
-    if (!groups.includes('group.com.egchat.app')) {
-      groups.push('group.com.egchat.app');
+    if (!groups.includes('group.com.jallzstores.egchat')) {
+      groups.push('group.com.jallzstores.egchat');
     }
     mod.modResults['com.apple.security.application-groups'] = groups;
     return mod;
