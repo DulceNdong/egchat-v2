@@ -111,7 +111,8 @@
         "autoIncrement": true,
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
-        "image": "latest",
+        "image": "macos-sequoia-15.3-xcode-16.2",
+        "cocoapods": "1.17.0",
         "prebuildCommand": "echo 'Using existing native project'"
       }
     }
