@@ -487,7 +487,9 @@ export default function ChatScreen() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chatId]);
 
-
+  useEffect(() => {
+    const handleShow = (event: any) => {
+      const h = event.endCoordinates?.height ?? 0;
       if (h > 0) {
         try {
           Keyboard.scheduleLayoutAnimation(event);
