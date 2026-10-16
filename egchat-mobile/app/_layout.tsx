@@ -640,6 +640,45 @@ export default function RootLayout() {
           }
 
           // ── iOS VoIP PushKit — registrar listener INMEDIATAMENTE ──────────
+          if (Platform.OS === 'ios') {
+            try {
+              // Escuchar cuando el usuario acepta desde la pantalla nativa de CallKit
+              // Esto ocurre cuando la app estaba cerrada y CallKit muestra la UI del sistema
+              const unsubCallKitAnswer = NativeCallKit.onAnswer((_callId) => {
+                const session = callManager.session;
+                if (!session) return;
+                // Si la pantalla de llamada no está montada, navegar a ella
+                const currentPath = router.canGoBack?.() ? null : pathname;
+                if (!currentPath?.startsWith('/call/')) {
+                  router.push({ pathname: '/call/[callId]', params: {
+                    callId:       session.callId,
+                    targetName:   session.targetName || '',
+                    targetAvatar: session.targetAvatar || '',
+                    callType:     session.callType || 'audio',
+                    role:         'callee',
+                    offer:        session.offer ? JSON.stringify(session.offer) : undefined,
+                    autoAccept:   '1',
+                  }} as any);
+                }
+              });
+              const unsubCallKitReject = NativeCallKit.onReject((_callId) => {
+                callManager.rejectCall().catch(() => {});
+              });
+              const unsubCallKitEnd = NativeCallKit.onEnd((_callId) => {
+                if (callManager.session) callManager.endCall().catch(() => {});
+              });
+              // Guardar cleanup
+              const prevCleanupVoip = presenceCleanup.current;
+              presenceCleanup.current = () => {
+                prevCleanupVoip?.();
+                unsubCallKitAnswer();
+                unsubCallKitReject();
+                unsubCallKitEnd();
+              };
+            } catch (e) {
+              console.warn('[iOS] Error registrando listeners CallKit:', e);
+            }
+          }
           // PushKit despierta la app en background antes de que el JS esté listo.
           // El módulo nativo encola el evento y lo entrega en cuanto hay un listener.
           // DEBE registrarse aquí, sin ningún delay, para no perder llamadas con
