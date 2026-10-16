@@ -106,32 +106,8 @@ internal object EGChatCallNotifier {
   }
 
   fun showMessageNotification(context: Context, data: Map<String, String>, title: String?, body: String?) {
-    createMessageChannel(context)
-    val safeTitle = title?.takeIf { it.isNotBlank() } ?: data["senderName"] ?: "EGCHAT"
-    val safeBody = body?.takeIf { it.isNotBlank() } ?: data["body"] ?: "Nuevo mensaje"
-    val chatId = data["chatId"]
-    val openIntent = context.packageManager.getLaunchIntentForPackage(context.packageName)?.apply {
-      putExtra("chatId", chatId)
-      flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
-    }
-    val contentIntent = openIntent?.let {
-      PendingIntent.getActivity(context, (chatId ?: safeBody).hashCode(), it, pendingIntentFlags())
-    }
-    val notification = NotificationCompat.Builder(context, MESSAGE_CHANNEL)
-      .setSmallIcon(com.egchat.app.R.drawable.notification_icon)
-      .setContentTitle(safeTitle)
-      .setContentText(safeBody)
-      .setStyle(NotificationCompat.BigTextStyle().bigText(safeBody))
-      .setCategory(NotificationCompat.CATEGORY_MESSAGE)
-      .setPriority(NotificationCompat.PRIORITY_HIGH)
-      .setAutoCancel(true)
-      .setContentIntent(contentIntent)
-      .build()
-
-    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
-      context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED) {
-      NotificationManagerCompat.from(context).notify((chatId ?: safeBody).hashCode(), notification)
-    }
+    // Delegar a EGChatRichNotification para MessagingStyle con avatar circular
+    EGChatRichNotification.showFromBackground(context, data, title, body)
   }
 
   private fun createChannel(context: Context) {
