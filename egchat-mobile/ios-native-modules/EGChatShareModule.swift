@@ -19,7 +19,7 @@ import UIKit
 @objc(EGChatShareModule)
 class EGChatShareModule: RCTEventEmitter {
 
-  private static let appGroupId = "group.com.egchat.app"
+  private static let appGroupId = "group.com.jallzstores.egchat"
   private static let sharedKey  = "egchat_shared_content"
 
   // ── API para React Native ────────────────────────────────────────
