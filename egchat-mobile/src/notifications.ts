@@ -228,12 +228,15 @@ export async function registerForPushNotifications(): Promise<string | null> {
     }
   }
 
-  // iOS: guardar siempre el token APNs directo como respaldo
-  if (Platform.OS === 'ios') {
+  // iOS: NO registrar el token APNs nativo directamente — causa BadEnvironmentKeyInToken
+  // porque el token nativo puede ser de sandbox mientras el servidor usa producción APNs.
+  // El ExponentPushToken (Expo SDK) maneja correctamente el entorno de producción/sandbox.
+  // Solo usar APNs nativo si Expo no pudo obtener su token.
+  if (Platform.OS === 'ios' && !expoPushToken) {
     try {
       const nativeToken = await Notifications.getDevicePushTokenAsync();
       nativeDeviceToken = nativeToken.data as string;
-      console.log(`[Push] Token APNs nativo: ...${String(nativeDeviceToken).slice(-12)}`);
+      console.log(`[Push] Token APNs nativo (fallback): ...${String(nativeDeviceToken).slice(-12)}`);
     } catch (error: any) {
       console.warn('[Push] No se pudo obtener token APNs directo:', error?.message || error);
     }
