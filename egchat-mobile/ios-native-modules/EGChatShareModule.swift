@@ -43,6 +43,11 @@ class EGChatShareModule: RCTEventEmitter {
     UserDefaults(suiteName: Self.appGroupId)?.removeObject(forKey: Self.sharedKey)
   }
 
+  @objc func saveRecentChats(_ chatsJson: String) {
+    UserDefaults(suiteName: Self.appGroupId)?.set(chatsJson, forKey: "egchat_recent_chats")
+    UserDefaults(suiteName: Self.appGroupId)?.synchronize()
+  }
+
   // Llamar desde AppDelegate cuando la app se abre desde una URL
   static func handleOpenURL(_ url: URL) {
     guard url.scheme == "egchat-share" else { return }
