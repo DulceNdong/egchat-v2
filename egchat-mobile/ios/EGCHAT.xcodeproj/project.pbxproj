@@ -14,6 +14,7 @@
 		6264DB1B3075278B00497F71 /* EGChatPushKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6264DB1A3075278B00497F71 /* EGChatPushKitModule.swift */; };
 		6264DB1C3075278B00497F71 /* EGChatPushKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6264DB193075278B00497F71 /* EGChatPushKitModule.m */; };
 		62CD508730825F4F00AC8E90 /* EGChatShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 62CD507D30825F4F00AC8E90 /* EGChatShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		62CD50993082B85E00AC8E90 /* EGChatNotifService.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 62CD50923082B85D00AC8E90 /* EGChatNotifService.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		9FD1966679DB20177278BEA9 /* libPods-EGCHAT.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 971967E77ED8DC615EEA6D3A /* libPods-EGCHAT.a */; };
 		B3A7A667B064107E7866D892 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 1874F14B90C8631F787956E0 /* PrivacyInfo.xcprivacy */; };
 		BB2F792D24A3F905000567C9 /* Expo.plist in Resources */ = {isa = PBXBuildFile; fileRef = BB2F792C24A3F905000567C9 /* Expo.plist */; };
@@ -31,6 +32,13 @@
 			remoteGlobalIDString = 62CD507C30825F4F00AC8E90;
 			remoteInfo = EGChatShare;
 		};
+		62CD50973082B85E00AC8E90 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83CBB9F71A601CBA00E9B192 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 62CD50913082B85D00AC8E90;
+			remoteInfo = EGChatNotifService;
+		};
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -41,6 +49,7 @@
 			dstSubfolderSpec = 13;
 			files = (
 				62CD508730825F4F00AC8E90 /* EGChatShare.appex in Embed Foundation Extensions */,
+				62CD50993082B85E00AC8E90 /* EGChatNotifService.appex in Embed Foundation Extensions */,
 			);
 			name = "Embed Foundation Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -57,6 +66,7 @@
 		6264DB193075278B00497F71 /* EGChatPushKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatPushKitModule.m; path = EGCHAT/EGChatPushKitModule.m; sourceTree = "<group>"; };
 		6264DB1A3075278B00497F71 /* EGChatPushKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatPushKitModule.swift; path = EGCHAT/EGChatPushKitModule.swift; sourceTree = "<group>"; };
 		62CD507D30825F4F00AC8E90 /* EGChatShare.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EGChatShare.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		62CD50923082B85D00AC8E90 /* EGChatNotifService.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = EGChatNotifService.appex; sourceTree = BUILT_PRODUCTS_DIR; };
 		937F902567734C7CB637FE35 /* GoogleService-Info.plist */ = {isa = PBXFileReference; explicitFileType = undefined; fileEncoding = 4; includeInIndex = 0; lastKnownFileType = text.plist.xml; name = "GoogleService-Info.plist"; path = "EGCHAT/GoogleService-Info.plist"; sourceTree = "<group>"; };
 		971967E77ED8DC615EEA6D3A /* libPods-EGCHAT.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libPods-EGCHAT.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = file.storyboard; name = SplashScreen.storyboard; path = EGCHAT/SplashScreen.storyboard; sourceTree = "<group>"; };
@@ -79,10 +89,18 @@
 			);
 			target = 62CD507C30825F4F00AC8E90 /* EGChatShare */;
 		};
+		62CD509A3082B85E00AC8E90 /* PBXFileSystemSynchronizedBuildFileExceptionSet */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 62CD50913082B85D00AC8E90 /* EGChatNotifService */;
+		};
 /* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		62CD507E30825F4F00AC8E90 /* EGChatShare */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (62CD508B30825F4F00AC8E90 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = EGChatShare; sourceTree = "<group>"; };
+		62CD50933082B85E00AC8E90 /* EGChatNotifService */ = {isa = PBXFileSystemSynchronizedRootGroup; exceptions = (62CD509A3082B85E00AC8E90 /* PBXFileSystemSynchronizedBuildFileExceptionSet */, ); explicitFileTypes = {}; explicitFolders = (); path = EGChatNotifService; sourceTree = "<group>"; };
 /* End PBXFileSystemSynchronizedRootGroup section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -95,6 +113,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		62CD507A30825F4F00AC8E90 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		62CD508F3082B85D00AC8E90 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -163,6 +188,7 @@
 				13B07FAE1A68108700A75B9A /* EGCHAT */,
 				832341AE1AAA6A7D00B99B32 /* Libraries */,
 				62CD507E30825F4F00AC8E90 /* EGChatShare */,
+				62CD50933082B85E00AC8E90 /* EGChatNotifService */,
 				83CBBA001A601CBA00E9B192 /* Products */,
 				2D16E6871FA4F8E400B85C8A /* Frameworks */,
 				BAA0030AB3D919A310DD1EE5 /* Pods */,
@@ -178,6 +204,7 @@
 			children = (
 				13B07F961A680F5B00A75B9A /* EGCHAT.app */,
 				62CD507D30825F4F00AC8E90 /* EGChatShare.appex */,
+				62CD50923082B85D00AC8E90 /* EGChatNotifService.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -222,6 +249,7 @@
 			);
 			dependencies = (
 				62CD508630825F4F00AC8E90 /* PBXTargetDependency */,
+				62CD50983082B85E00AC8E90 /* PBXTargetDependency */,
 			);
 			name = EGCHAT;
 			productName = EGCHAT;
@@ -250,6 +278,28 @@
 			productReference = 62CD507D30825F4F00AC8E90 /* EGChatShare.appex */;
 			productType = "com.apple.product-type.app-extension";
 		};
+		62CD50913082B85D00AC8E90 /* EGChatNotifService */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 62CD509B3082B85E00AC8E90 /* Build configuration list for PBXNativeTarget "EGChatNotifService" */;
+			buildPhases = (
+				62CD508E3082B85D00AC8E90 /* Sources */,
+				62CD508F3082B85D00AC8E90 /* Frameworks */,
+				62CD50903082B85D00AC8E90 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				62CD50933082B85E00AC8E90 /* EGChatNotifService */,
+			);
+			name = EGChatNotifService;
+			packageProductDependencies = (
+			);
+			productName = EGChatNotifService;
+			productReference = 62CD50923082B85D00AC8E90 /* EGChatNotifService.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -263,6 +313,9 @@
 						LastSwiftMigration = 1250;
 					};
 					62CD507C30825F4F00AC8E90 = {
+						CreatedOnToolsVersion = 16.2;
+					};
+					62CD50913082B85D00AC8E90 = {
 						CreatedOnToolsVersion = 16.2;
 					};
 				};
@@ -282,6 +335,7 @@
 			targets = (
 				13B07F861A680F5B00A75B9A /* EGCHAT */,
 				62CD507C30825F4F00AC8E90 /* EGChatShare */,
+				62CD50913082B85D00AC8E90 /* EGChatNotifService */,
 			);
 		};
 /* End PBXProject section */
@@ -301,6 +355,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		62CD507B30825F4F00AC8E90 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		62CD50903082B85D00AC8E90 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -478,6 +539,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		62CD508E3082B85D00AC8E90 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -485,6 +553,11 @@
 			isa = PBXTargetDependency;
 			target = 62CD507C30825F4F00AC8E90 /* EGChatShare */;
 			targetProxy = 62CD508530825F4F00AC8E90 /* PBXContainerItemProxy */;
+		};
+		62CD50983082B85E00AC8E90 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 62CD50913082B85D00AC8E90 /* EGChatNotifService */;
+			targetProxy = 62CD50973082B85E00AC8E90 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -645,6 +718,90 @@
 			};
 			name = Release;
 		};
+		62CD509C3082B85E00AC8E90 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EGChatNotifService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EGChatNotifService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jallzstores.egchat.EGChatNotifService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
+		62CD509D3082B85E00AC8E90 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COPY_PHASE_STRIP = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = XU6YD7ZJ2K;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = EGChatNotifService/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = EGChatNotifService;
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				IPHONEOS_DEPLOYMENT_TARGET = 18.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MARKETING_VERSION = 1.0;
+				MTL_FAST_MATH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.jallzstores.egchat.EGChatNotifService;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SKIP_INSTALL = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 		83CBBA201A601CBA00E9B192 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -780,6 +937,15 @@
 			buildConfigurations = (
 				62CD508930825F4F00AC8E90 /* Debug */,
 				62CD508A30825F4F00AC8E90 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		62CD509B3082B85E00AC8E90 /* Build configuration list for PBXNativeTarget "EGChatNotifService" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				62CD509C3082B85E00AC8E90 /* Debug */,
+				62CD509D3082B85E00AC8E90 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
