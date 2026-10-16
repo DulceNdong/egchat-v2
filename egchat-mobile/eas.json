@@ -54,7 +54,8 @@
       "ios": {
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
-        "autoIncrement": true
+        "autoIncrement": true,
+        "prebuildCommand": "echo 'Using existing native project'"
       }
     },
     "preview-slim": {
