@@ -109,7 +109,8 @@
         "autoIncrement": true,
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
-        "image": "latest"
+        "image": "latest",
+        "prebuildCommand": "echo 'Using existing native project'"
       }
     }
   },
