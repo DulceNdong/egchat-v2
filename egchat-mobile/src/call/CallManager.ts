@@ -725,18 +725,29 @@ export class CallManager {
     const role = this._session.role;
     callAPI.get(this._session.callId).then(async (s) => {
       if (!s || s.ended) { this.endCall(); return; }
-      if (role === 'caller' && !this._answerApplied && s.answer &&
-          this._pc?.signalingState === 'have-local-offer') {
-        await this._pc.setRemoteDescription(
-          new NativeRTC!.RTCSessionDescription(s.answer)
-        );
-        this._remoteDescSet  = true;
-        this._answerApplied  = true;
-        this._setCommState('connecting');
-        this._stopCallTimeout();
-        await this._drainIceQueue();
+      if (role === 'caller' && !this._answerApplied && s.answer) {
+        const sigState = this._pc?.signalingState;
+        if (sigState === 'have-local-offer') {
+          try {
+            await this._pc.setRemoteDescription(
+              new NativeRTC!.RTCSessionDescription(s.answer)
+            );
+            this._remoteDescSet  = true;
+            this._answerApplied  = true;
+            this._setCommState('connecting');
+            this._stopCallTimeout();
+            await this._drainIceQueue();
+            console.log('[CallManager] _forcePoll: answer aplicado correctamente');
+          } catch (e) {
+            console.warn('[CallManager] _forcePoll: error aplicando answer:', e);
+          }
+        } else {
+          console.log(`[CallManager] _forcePoll: signalingState=${sigState}, no se puede aplicar answer ahora`);
+        }
       }
-    }).catch(() => {});
+    }).catch((e) => {
+      console.warn('[CallManager] _forcePoll error:', e);
+    });
   }
 
   // ══════════════════════════════════════════════════════════════
