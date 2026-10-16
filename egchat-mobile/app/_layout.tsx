@@ -645,11 +645,13 @@ export default function RootLayout() {
               // Escuchar cuando el usuario acepta desde la pantalla nativa de CallKit
               // Esto ocurre cuando la app estaba cerrada y CallKit muestra la UI del sistema
               const unsubCallKitAnswer = NativeCallKit.onAnswer((_callId) => {
-                const session = callManager.session;
-                if (!session) return;
-                // Si la pantalla de llamada no está montada, navegar a ella
-                const currentPath = router.canGoBack?.() ? null : pathname;
-                if (!currentPath?.startsWith('/call/')) {
+                // Reintentar hasta que la sesión esté disponible (puede tardar si la app acaba de abrir)
+                const tryNavigate = (retries = 8) => {
+                  const session = callManager.session;
+                  if (!session) {
+                    if (retries > 0) setTimeout(() => tryNavigate(retries - 1), 300);
+                    return;
+                  }
                   router.push({ pathname: '/call/[callId]', params: {
                     callId:       session.callId,
                     targetName:   session.targetName || '',
@@ -659,7 +661,8 @@ export default function RootLayout() {
                     offer:        session.offer ? JSON.stringify(session.offer) : undefined,
                     autoAccept:   '1',
                   }} as any);
-                }
+                };
+                tryNavigate();
               });
               const unsubCallKitReject = NativeCallKit.onReject((_callId) => {
                 callManager.rejectCall().catch(() => {});
