@@ -152,33 +152,15 @@ class ShareViewController: UIViewController {
     }
 
     @objc private func openEGChat() {
-        // Abrir EGCHAT via URL scheme usando responder chain
         guard let url = URL(string: "egchat-share://open") else {
             extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
             return
         }
-        // En iOS 16+ podemos usar open(_:options:completionHandler:) via responder chain
-        var responder: UIResponder? = self
-        while let r = responder {
-            if let app = r as? UIApplication {
-                app.open(url, options: [:], completionHandler: nil)
-                break
-            }
-            responder = r.next
-        }
-        // Fallback: usar openURL selector
-        let sel = sel_registerName("openURL:")
-        var found = false
-        var resp: UIResponder? = self
-        while let r = resp {
-            if r.responds(to: Selector(("openURL:"))) {
-                r.perform(Selector(("openURL:")), with: url)
-                found = true
-                break
-            }
-            resp = r.next
-        }
-        extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+        // extensionContext?.open() es el único método permitido en Share Extensions.
+        // UIApplication.shared no está disponible en extensiones de iOS.
+        extensionContext?.open(url, completionHandler: { [weak self] _ in
+            self?.extensionContext?.completeRequest(returningItems: [], completionHandler: nil)
+        })
     }
 
     @objc private func cancelShare() {
