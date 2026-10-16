@@ -458,6 +458,29 @@ function MensajeriaScreenInner() {
       setChats(sortedChats);
       void saveCache('chat_list', sortedChats);
 
+      // Guardar chats en App Group para que la Share Extension los pueda mostrar
+      try {
+        const { NativeModules } = await import('react-native');
+        const appGroupId = 'group.com.jallzstores.egchat';
+        const chatsForShare = sortedChats.slice(0, 30).map((c: Chat) => {
+          const other = c.participants?.find((p: any) => String(p.user_id) !== String(uid));
+          const name = c.type === 'private'
+            ? (other?.full_name || other?.users?.full_name || 'Usuario')
+            : (c.name || 'Grupo');
+          const avatar = c.type === 'private'
+            ? (other?.avatar_url || other?.users?.avatar_url || '')
+            : (c.avatar_url || '');
+          return { id: c.id, name, avatar };
+        });
+        const raw = JSON.stringify(chatsForShare);
+        // Usar AsyncStorage como puente (la Share Extension lee del App Group via UserDefaults)
+        // El módulo nativo EGChatShareModule.swift lee de UserDefaults(suiteName: appGroupId)
+        const { EGChatShareModule } = NativeModules;
+        if (EGChatShareModule?.saveRecentChats) {
+          EGChatShareModule.saveRecentChats(raw);
+        }
+      } catch { /* silencioso */ }
+
       void Promise.all([
         contactsAPI.getFavorites().catch(() => []),
         getFavoriteGroupIds(),
