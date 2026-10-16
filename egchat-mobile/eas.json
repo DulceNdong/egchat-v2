@@ -55,7 +55,8 @@
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
         "autoIncrement": true,
-        "prebuildCommand": "echo 'Using existing native project'"
+        "prebuildCommand": "echo 'Using existing native project'",
+        "image": "macos-sequoia-15.2-xcode-16.2"
       }
     },
     "preview-slim": {
