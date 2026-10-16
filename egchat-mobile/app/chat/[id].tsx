@@ -458,7 +458,7 @@ export default function ChatScreen() {
 
   // ── Contenido compartido desde otra app (Share Extension) ───────────────
   // Cuando el usuario llega desde share-picker, lee el pendiente y lo
-  // pre-carga en el input (texto) o lo envía directamente (imagen/video).
+  // pre-carga en el input (texto) o abre el editor de imagen/video.
   useEffect(() => {
     AsyncStorage.getItem('egchat_pending_share').then(async (raw) => {
       if (!raw) return;
@@ -466,21 +466,11 @@ export default function ChatScreen() {
       try {
         const shared = JSON.parse(raw);
         if (shared.type === 'text' && shared.text) {
+          // Pre-cargar texto en el input
           setText(shared.text);
-        } else if (shared.type === 'image' && shared.uri) {
-          // Enviar imagen directamente (igual que al seleccionar desde galería)
-          const { sendMedia } = await import('../../src/services/mediaUpload').catch(() => ({ sendMedia: null }));
-          if (sendMedia) {
-            sendMedia({ uri: shared.uri, type: 'image', chatId: chatId as string }).catch(() => {});
-          } else {
-            // Fallback: pre-cargar en el input de foto si sendMedia no existe
-            setText(shared.uri);
-          }
-        } else if (shared.type === 'video' && shared.uri) {
-          const { sendMedia } = await import('../../src/services/mediaUpload').catch(() => ({ sendMedia: null }));
-          if (sendMedia) {
-            sendMedia({ uri: shared.uri, type: 'video', chatId: chatId as string }).catch(() => {});
-          }
+        } else if ((shared.type === 'image' || shared.type === 'video') && shared.uri) {
+          // Abrir el editor de foto/video (igual que si lo hubiera seleccionado de galería)
+          setPhotoEditUri(shared.uri);
         }
       } catch { /* silencioso */ }
     });
