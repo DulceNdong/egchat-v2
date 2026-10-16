@@ -69,6 +69,15 @@ function handleDeepLink(url: string | null) {
   if (!url) return;
   try {
     const parsed = Linking.parse(url);
+
+    // Share Extension: egchat-share://open → abrir selector de chat con contenido pendiente
+    if (parsed.scheme === 'egchat-share') {
+      // El contenido ya fue guardado en App Group por la Share Extension.
+      // Navegar al selector de chat — ShareExtension.getSharedContent() lo leerá allí.
+      setTimeout(() => router.push('/share-picker' as any), 400);
+      return;
+    }
+
     const path = parsed.path || '';
     if (path.startsWith('qr-login/')) {
       const sessionId = path.replace('qr-login/', '');
