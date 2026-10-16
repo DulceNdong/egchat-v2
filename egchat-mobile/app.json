@@ -5,7 +5,8 @@
     "version": "1.0.0",
     "orientation": "portrait",
     "updates": {
-      "enabled": false
+      "enabled": true,
+      "url": "https://u.expo.dev/78e7aa13-29f3-4846-8d63-be8803602608"
     },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -48,7 +49,7 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "66"
+      "buildNumber": "67"
     },
     "android": {
       "package": "com.egchat.app",
