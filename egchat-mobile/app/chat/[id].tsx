@@ -456,9 +456,38 @@ export default function ChatScreen() {
     return () => clearAllMessageStatusTimers();
   }, []);
 
+  // ── Contenido compartido desde otra app (Share Extension) ───────────────
+  // Cuando el usuario llega desde share-picker, lee el pendiente y lo
+  // pre-carga en el input (texto) o lo envía directamente (imagen/video).
   useEffect(() => {
-    const handleShow = (event: any) => {
-      const h = event.endCoordinates?.height ?? 0;
+    AsyncStorage.getItem('egchat_pending_share').then(async (raw) => {
+      if (!raw) return;
+      await AsyncStorage.removeItem('egchat_pending_share');
+      try {
+        const shared = JSON.parse(raw);
+        if (shared.type === 'text' && shared.text) {
+          setText(shared.text);
+        } else if (shared.type === 'image' && shared.uri) {
+          // Enviar imagen directamente (igual que al seleccionar desde galería)
+          const { sendMedia } = await import('../../src/services/mediaUpload').catch(() => ({ sendMedia: null }));
+          if (sendMedia) {
+            sendMedia({ uri: shared.uri, type: 'image', chatId: chatId as string }).catch(() => {});
+          } else {
+            // Fallback: pre-cargar en el input de foto si sendMedia no existe
+            setText(shared.uri);
+          }
+        } else if (shared.type === 'video' && shared.uri) {
+          const { sendMedia } = await import('../../src/services/mediaUpload').catch(() => ({ sendMedia: null }));
+          if (sendMedia) {
+            sendMedia({ uri: shared.uri, type: 'video', chatId: chatId as string }).catch(() => {});
+          }
+        }
+      } catch { /* silencioso */ }
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [chatId]);
+
+
       if (h > 0) {
         try {
           Keyboard.scheduleLayoutAnimation(event);
