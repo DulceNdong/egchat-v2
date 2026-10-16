@@ -706,6 +706,9 @@ export class CallManager {
     if (!this._session || this._session.callId !== callId) return;
     if (this._answerApplied) return;
     console.log('[CallManager] SSE call_answered — forzando poll inmediato');
+    // Parar el tono de llamada inmediatamente — el callee ya aceptó
+    stopDialingTone();
+    this._stopCallTimeout();
     // Disparar un poll inmediato sin esperar el timer
     this._forcePoll();
   }
