@@ -138,9 +138,8 @@
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "e7d4b38f-3660-4da0-a94f-5ff216a265e7"
-      }
+      "eas": {}
+      
     },
     "owner": "red120"
   }
