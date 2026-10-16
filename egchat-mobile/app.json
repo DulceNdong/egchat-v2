@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "EGCHAT",
-    "slug": "egchat",
+    "slug": "egchat-frontend",
     "version": "1.0.0",
     "orientation": "portrait",
     "updates": {
@@ -73,7 +73,10 @@
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.READ_MEDIA_IMAGES",
         "android.permission.READ_MEDIA_VIDEO",
-        "android.permission.READ_MEDIA_AUDIO"
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION"
       ],
       "googleServicesFile": "./google-services.json",
       "config": {
@@ -138,9 +141,7 @@
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "fbed710e-d18c-417b-ab31-0dc18bc13338"
-      }
+      "eas": {}
       
     },
     "owner": "reddington120"
