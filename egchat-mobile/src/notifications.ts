@@ -422,8 +422,14 @@ export function setupNotificationListeners(
       const chatId = data?.chatId;
       if (chatId) {
         try {
-          const { chatAPI } = await import('./api');
-          await chatAPI.markAsRead(chatId).catch(() => {});
+          const { getToken } = await import('./api');
+          const token = await getToken();
+          if (token) {
+            await fetch(`${process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com'}/api/chats/${chatId}/read-all`, {
+              method: 'POST',
+              headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+            }).catch(() => {});
+          }
           await clearBadge();
         } catch (e) {
           console.warn('[Notif] Error marcando como leído:', e);
