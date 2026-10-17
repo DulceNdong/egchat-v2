@@ -48,6 +48,11 @@ class EGChatShareModule: RCTEventEmitter {
     UserDefaults(suiteName: Self.appGroupId)?.synchronize()
   }
 
+  @objc func saveAuthToken(_ token: String) {
+    UserDefaults(suiteName: Self.appGroupId)?.set(token, forKey: "egchat_auth_token")
+    UserDefaults(suiteName: Self.appGroupId)?.synchronize()
+  }
+
   // Llamar desde AppDelegate cuando la app se abre desde una URL
   static func handleOpenURL(_ url: URL) {
     guard url.scheme == "egchat-share" else { return }
