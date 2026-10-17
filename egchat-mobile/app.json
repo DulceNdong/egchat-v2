@@ -174,9 +174,8 @@
       "router": {
         "origin": false
       },
-      "eas": {
-        "projectId": "78e7aa13-29f3-4846-8d63-be8803602608"
-      }
+      "eas": {}
+      
     },
     "owner": "reddington12000",
     "runtimeVersion": "1.0.0"
