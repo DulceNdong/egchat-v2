@@ -57,7 +57,7 @@
         ],
         "ITSAppUsesNonExemptEncryption": false
       },
-      "buildNumber": "74"
+      "buildNumber": "75"
     },
     "android": {
       "package": "com.egchat.app",
