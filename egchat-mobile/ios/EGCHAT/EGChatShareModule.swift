@@ -16,16 +16,19 @@ final class EGChatShareModule: NSObject {
     UserDefaults(suiteName: appGroupId)
   }
 
+  // Guardar lista de chats recientes para la Share Extension
   @objc func saveRecentChats(_ chatsJson: String) {
     defaults?.set(chatsJson, forKey: "egchat_recent_chats")
     defaults?.synchronize()
   }
 
+  // Guardar token de autenticación para la Share Extension
   @objc func saveAuthToken(_ token: String) {
     defaults?.set(token, forKey: "egchat_auth_token")
     defaults?.synchronize()
   }
 
+  // Leer contenido compartido por la Share Extension
   @objc func getSharedContent(
     _ resolve: @escaping RCTPromiseResolveBlock,
     rejecter reject: @escaping RCTPromiseRejectBlock
@@ -42,6 +45,7 @@ final class EGChatShareModule: NSObject {
     resolve(json)
   }
 
+  // Limpiar contenido pendiente
   @objc func clearSharedContent() {
     defaults?.removeObject(forKey: "egchat_shared_content")
     defaults?.synchronize()
