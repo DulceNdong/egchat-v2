@@ -129,35 +129,42 @@ class NotificationService: UNNotificationServiceExtension {
         }
     }
 
-    // ── 2. Icono visual por tipo de mensaje ──────────────────────────────────
+    // ── 2. Icono visual por tipo de mensaje con SF Symbols ──────────────────
 
     private func makeMessageTypeIcon(messageType: String) -> UIImage? {
-        // Solo generar ícono para tipos no-texto cuando no hay imagen real
-        let emoji: String
+        // SF Symbols — iconos nativos de Apple, monocromáticos y profesionales
+        let symbolName: String
         switch messageType {
-        case "audio":    emoji = "🎤"
-        case "video":    emoji = "🎥"
-        case "file":     emoji = "📄"
-        case "location": emoji = "📍"
-        case "contact":  emoji = "👤"
-        case "sticker":  emoji = "😊"
-        case "gif":      emoji = "GIF"
-        default: return nil  // texto: no añadir ícono extra
+        case "audio":    symbolName = "waveform"
+        case "video":    symbolName = "video.fill"
+        case "file":     symbolName = "doc.fill"
+        case "location": symbolName = "location.fill"
+        case "contact":  symbolName = "person.crop.circle.fill"
+        case "sticker":  symbolName = "face.smiling.fill"
+        case "gif":      symbolName = "play.rectangle.fill"
+        default: return nil
         }
 
-        let size: CGFloat = 80
-        let renderer = UIGraphicsImageRenderer(size: CGSize(width: size, height: size))
-        return renderer.image { ctx in
-            // Fondo verde EGCHAT
-            egchatGreen.setFill()
-            UIBezierPath(roundedRect: CGRect(x: 0, y: 0, width: size, height: size), cornerRadius: 16).fill()
+        let config = UIImage.SymbolConfiguration(pointSize: 44, weight: .medium, scale: .large)
+        guard let symbol = UIImage(systemName: symbolName, withConfiguration: config) else {
+            return nil
+        }
 
-            // Emoji centrado
-            let attrs: [NSAttributedString.Key: Any] = [.font: UIFont.systemFont(ofSize: 40)]
-            let str = emoji as NSString
-            let strSize = str.size(withAttributes: attrs)
-            let origin = CGPoint(x: (size - strSize.width) / 2, y: (size - strSize.height) / 2)
-            str.draw(at: origin, withAttributes: attrs)
+        // Renderizar en blanco sobre fondo transparente — se adapta al tema del sistema
+        let size = CGSize(width: 80, height: 80)
+        let renderer = UIGraphicsImageRenderer(size: size)
+        return renderer.image { ctx in
+            // Fondo completamente transparente
+            ctx.cgContext.clear(CGRect(origin: .zero, size: size))
+
+            // Icono centrado en blanco (iOS lo colorea según el contexto de la notificación)
+            UIColor.white.setFill()
+            let origin = CGPoint(
+                x: (size.width  - symbol.size.width)  / 2,
+                y: (size.height - symbol.size.height) / 2
+            )
+            symbol.withTintColor(.white, renderingMode: .alwaysOriginal)
+                  .draw(at: origin)
         }
     }
 
