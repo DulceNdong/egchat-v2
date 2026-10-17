@@ -16,6 +16,7 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.associated-domains": [
+          "applinks:egchat-app.vercel.app",
           "applinks:egchat-app.vercel.app"
         ],
         "aps-environment": "production",
@@ -27,9 +28,15 @@
           "fetch",
           "remote-notification",
           "voip",
+          "processing",
+          "audio",
+          "fetch",
+          "remote-notification",
+          "voip",
           "processing"
         ],
         "BGTaskSchedulerPermittedIdentifiers": [
+          "com.jallzstores.egchat.refresh",
           "com.jallzstores.egchat.refresh"
         ],
         "NSSupportsLiveActivities": true,
@@ -45,6 +52,7 @@
         "NSLocalNetworkUsageDescription": "EGCHAT necesita acceder a la red local para conectar con el servidor de desarrollo en tu Mac.",
         "NSFaceIDUsageDescription": "EGCHAT usa Face ID para verificar tu identidad al acceder a datos protegidos.",
         "NSBonjourServices": [
+          "_expo._tcp",
           "_expo._tcp"
         ],
         "ITSAppUsesNonExemptEncryption": false
@@ -54,6 +62,30 @@
     "android": {
       "package": "com.egchat.app",
       "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO",
+        "ACCESS_FINE_LOCATION",
+        "RECEIVE_BOOT_COMPLETED",
+        "VIBRATE",
+        "USE_FULL_SCREEN_INTENT",
+        "POST_NOTIFICATIONS",
+        "READ_CONTACTS",
+        "READ_EXTERNAL_STORAGE",
+        "READ_MEDIA_IMAGES",
+        "READ_MEDIA_VIDEO",
+        "READ_MEDIA_AUDIO",
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION",
+        "android.permission.READ_CONTACTS",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO",
+        "android.permission.READ_MEDIA_AUDIO",
+        "android.permission.ACCESS_BACKGROUND_LOCATION",
+        "android.permission.FOREGROUND_SERVICE",
+        "android.permission.FOREGROUND_SERVICE_LOCATION",
         "CAMERA",
         "RECORD_AUDIO",
         "ACCESS_FINE_LOCATION",
@@ -146,6 +178,7 @@
         "projectId": "78e7aa13-29f3-4846-8d63-be8803602608"
       }
     },
-    "owner": "dutti98s-team"
+    "owner": "dutti98s-team",
+    "runtimeVersion": "1.0.0"
   }
 }
