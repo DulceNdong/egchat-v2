@@ -393,20 +393,46 @@ export function setupNotificationListeners(
     }
   });
 
-  // Usuario tocó la notificación
-  const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
+  // Usuario tocó la notificación o usó acción rápida
+  const responseSub = Notifications.addNotificationResponseReceivedListener(async (response) => {
     const data = response.notification.request.content.data as any;
     const action = response.actionIdentifier;
 
     if (data?.notificationType === 'incoming_call') {
-      if (action === 'REJECT') return; // ignorar
-      // Usar el mismo guard — si receivedSub ya navegó a esta llamada, este tap
-      // no dispara una segunda navegación.
+      if (action === 'REJECT') return;
       handleIncomingCall(data);
+
+    } else if (action === 'REPLY_ACTION') {
+      // ── Acción rápida: Responder desde el banner sin abrir la app ──────
+      const replyText = (response as any).userText as string;
+      const chatId = data?.chatId;
+      if (replyText?.trim() && chatId) {
+        try {
+          const { chatAPI } = await import('./api');
+          await chatAPI.sendMessage(chatId, replyText.trim());
+          // Limpiar badge del chat respondido
+          await clearBadge();
+        } catch (e) {
+          console.warn('[Notif] Error en respuesta rápida:', e);
+        }
+      }
+
+    } else if (action === 'MARK_READ_ACTION') {
+      // ── Acción rápida: Marcar como leído sin abrir la app ──────────────
+      const chatId = data?.chatId;
+      if (chatId) {
+        try {
+          const { chatAPI } = await import('./api');
+          await chatAPI.markAsRead(chatId).catch(() => {});
+          await clearBadge();
+        } catch (e) {
+          console.warn('[Notif] Error marcando como leído:', e);
+        }
+      }
+
     } else if (data?.chatId) {
       onMessage(data.chatId);
     } else if (data?.type === 'djangue_notification' && data?.groupId) {
-      // D4 — Deep link a djangue desde notificación push
       onMessage(`__djangue__${data.groupId}`);
     }
   });
