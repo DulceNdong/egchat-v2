@@ -43,6 +43,8 @@ export const setToken = async (t: string): Promise<void> => {
         EGChatShareModule.saveAuthToken(t);
       }
     } catch {}
+  }
+};
 
 export const clearToken = async (): Promise<void> => {
   // Limpiar en todos los storages posibles
