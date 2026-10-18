@@ -13,10 +13,17 @@ import { NativeModules, NativeEventEmitter, Platform } from 'react-native';
 import { useEffect } from 'react';
 
 const { EGChatShareModule } = NativeModules;
-const isAvailable = !!EGChatShareModule && Platform.OS !== 'web';
+// Solo disponible si el módulo nativo está registrado en el build
+const isAvailable = !!EGChatShareModule && Platform.OS !== 'web' && Platform.OS !== 'android';
 
 let emitter: NativeEventEmitter | null = null;
-if (isAvailable) emitter = new NativeEventEmitter(EGChatShareModule);
+// Solo crear el emitter si el módulo existe Y tiene los métodos esperados
+// para evitar crashes si el módulo no está registrado correctamente
+if (isAvailable && typeof EGChatShareModule.getSharedContent === 'function') {
+  try {
+    emitter = new NativeEventEmitter(EGChatShareModule);
+  } catch { /* silencioso si el módulo no soporta eventos */ }
+}
 
 export interface SharedContent {
   type: 'image' | 'video' | 'audio' | 'file' | 'text' | 'multiple';
