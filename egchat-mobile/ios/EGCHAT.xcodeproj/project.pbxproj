@@ -11,8 +11,6 @@
 		2C093163975C487FA9FDEE95 /* notification.wav in Resources */ = {isa = PBXBuildFile; fileRef = D20B6BCBEA114AB6A4173EA6 /* notification.wav */; };
 		3CA81062761F8847AED03DA2 /* ExpoModulesProvider.swift in Sources */ = {isa = PBXBuildFile; fileRef = FEAB0075968E56A4DBCF047E /* ExpoModulesProvider.swift */; };
 		3E461D99554A48A4959DE609 /* SplashScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = AA286B85B6C04FC6940260E9 /* SplashScreen.storyboard */; };
-		625EEEAD3083EFC80034745E /* EGChatShareModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 625EEEAB3083EFC80034745E /* EGChatShareModule.m */; };
-		625EEEAE3083EFC80034745E /* EGChatShareModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 625EEEAC3083EFC80034745E /* EGChatShareModule.swift */; };
 		6264DB1B3075278B00497F71 /* EGChatPushKitModule.swift in Sources */ = {isa = PBXBuildFile; fileRef = 6264DB1A3075278B00497F71 /* EGChatPushKitModule.swift */; };
 		6264DB1C3075278B00497F71 /* EGChatPushKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 6264DB193075278B00497F71 /* EGChatPushKitModule.m */; };
 		62CD508730825F4F00AC8E90 /* EGChatShare.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 62CD507D30825F4F00AC8E90 /* EGChatShare.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
