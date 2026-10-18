@@ -37,12 +37,11 @@ export const setToken = async (t: string): Promise<void> => {
       PushKit.setAuthToken(t);
     } catch {}
     // Guardar en App Group para que la Share Extension pueda cargar los chats
-    try {
-      const { EGChatShareModule } = require('react-native').NativeModules;
-      if (EGChatShareModule?.saveAuthToken) {
-        EGChatShareModule.saveAuthToken(t);
-      }
-    } catch {}
+    // (EGChatShareModule se habilitará en un build futuro)
+    // try {
+    //   const { EGChatShareModule } = require('react-native').NativeModules;
+    //   if (EGChatShareModule?.saveAuthToken) EGChatShareModule.saveAuthToken(t);
+    // } catch {}
   }
 };
 
