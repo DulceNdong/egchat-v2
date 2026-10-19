@@ -118,7 +118,7 @@ class EGChatRichNotification(private val reactContext: ReactApplicationContext) 
             }
 
             val style = NotificationCompat.MessagingStyle(sender)
-                .addMessage(displayText, System.currentTimeMillis(), sender)
+            style.addMessage(displayText, System.currentTimeMillis(), sender)
 
             val openIntent = context.packageManager
                 .getLaunchIntentForPackage(context.packageName)?.apply {
