@@ -248,9 +248,10 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
 
   const avatarOnPress = useMemo(() => {
     if (chat.type !== 'private' || !other || !contentTypes || contentTypes.length === 0) return undefined;
-    if (contentTypes.includes('live'))   return () => router.push('/stories' as any);
-    if (contentTypes.includes('story'))  return () => router.push('/stories' as any);
-    if (contentTypes.includes('moment')) return () => router.push('/moments' as any);
+    const participantId = other.user_id;
+    if (contentTypes.includes('live'))   return () => router.push(`/stories?userId=${participantId}` as any);
+    if (contentTypes.includes('story'))  return () => router.push(`/stories?userId=${participantId}` as any);
+    if (contentTypes.includes('moment')) return () => router.push(`/moments?userId=${participantId}` as any);
     return undefined;
   }, [chat.type, other, contentTypes]);
   const msgInfo = getLastMessageInfo(chat.last_message);
