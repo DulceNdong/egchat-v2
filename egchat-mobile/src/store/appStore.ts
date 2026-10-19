@@ -24,7 +24,7 @@ if (Platform.OS !== 'web') {
 // ── Tipos ─────────────────────────────────────────────────────────
 export interface AppNotification {
   id: string;
-  type: 'message' | 'call' | 'system' | 'payment';
+  type: 'message' | 'call' | 'system' | 'payment' | 'story' | 'moment' | 'live';
   title: string;
   body: string;
   time: string;
@@ -34,6 +34,9 @@ export interface AppNotification {
   callId?: string;
   targetUserId?: string;
   callType?: 'audio' | 'video';
+  liveId?: string;
+  storyId?: string;
+  momentId?: string;
 }
 
 export interface WeatherState {
