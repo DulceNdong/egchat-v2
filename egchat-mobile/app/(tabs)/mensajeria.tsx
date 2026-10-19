@@ -268,6 +268,7 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
           name={chatName}
           size={Platform.OS === 'ios' ? 50 : 44}
           contentTypes={contentTypes}
+          onPress={avatarOnPress}
         />
         {chat.type === 'group' && (
           <View style={[st.groupBadge, isDjangue && st.groupBadgeDjangue]}>
