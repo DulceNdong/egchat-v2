@@ -7,7 +7,7 @@
 //   🔴 Rojo    → live activo (parpadeante)
 // ══════════════════════════════════════════════════════════════════
 import React, { useEffect, useRef } from 'react';
-import { View, Animated, StyleSheet } from 'react-native';
+import { View, Animated, StyleSheet, TouchableOpacity } from 'react-native';
 import { EGAvatar } from './ui';
 import type { ContentType } from '../hooks/useNewContentIndicators';
 
