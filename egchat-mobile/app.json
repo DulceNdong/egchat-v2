@@ -16,9 +16,6 @@
       "googleServicesFile": "./GoogleService-Info.plist",
       "entitlements": {
         "com.apple.developer.associated-domains": [
-          "applinks:egchat-app.vercel.app",
-          "applinks:egchat-app.vercel.app",
-          "applinks:egchat-app.vercel.app",
           "applinks:egchat-app.vercel.app"
         ],
         "aps-environment": "production",
