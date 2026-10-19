@@ -358,10 +358,15 @@ export const addNotification = (n: Omit<AppNotification, 'id' | 'time' | 'read'>
     time: 'Ahora',
     read: false,
   };
-  // Evitar duplicados por chatId+mensaje reciente (ventana 5s)
-  const dup = state.notifications.find(
-    x => x.chatId === notif.chatId && Date.now() - parseInt(x.id.split('-')[0] || '0') < 5000,
-  );
+  // Evitar duplicados: por chatId (ventana 5s) para mensajes; por targetUserId+type (ventana 60s) para story/moment/live
+  const dup = notif.chatId != null
+    ? state.notifications.find(
+        x => x.chatId === notif.chatId && Date.now() - parseInt(x.id.split('-')[0] || '0') < 5000,
+      )
+    : state.notifications.find(
+        x => x.targetUserId === notif.targetUserId && x.type === notif.type &&
+             Date.now() - parseInt(x.id.split('-')[0] || '0') < 60000,
+      );
   if (dup) return;
 
   state.notifications = [notif, ...state.notifications].slice(0, 50); // máx 50
