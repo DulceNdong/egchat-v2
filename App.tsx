@@ -2788,11 +2788,22 @@ const App: React.FC = () => {
   // Iniciar llamada con acceso a camara/microfono
 
   const startCall = async (type: 'audio' | 'video', contact: any) => {
-    // Buscar el user_id real del contacto ? puede estar en distintos campos
-    const targetUserId = contact?.user_id?.toString()
+    // Buscar el user_id real del contacto — puede estar en distintos campos
+    // Si el contacto es un chat, extraer el user_id del otro participante
+    let targetUserId = contact?.user_id?.toString()
       || contact?.participant_id?.toString()
-      || contact?.id?.toString()
       || '';
+
+    // Si no hay user_id directo pero hay participantes (es un chat), extraer el otro participante
+    if (!targetUserId && contact?.participants) {
+      const other = contact.participants.find(
+        (p: any) => p.user_id?.toString() !== currentUserId.current?.toString()
+      );
+      targetUserId = other?.user_id?.toString() || '';
+    }
+
+    // Fallback al id si no hay otra opción
+    if (!targetUserId) targetUserId = contact?.id?.toString() || '';
 
     // Validar que es un UUID real (no un ID de chat demo)
     const isRealUser = targetUserId && targetUserId.includes('-') && targetUserId.length > 20;
