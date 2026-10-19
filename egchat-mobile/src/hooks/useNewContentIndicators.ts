@@ -78,6 +78,11 @@ export function useNewContentIndicators(currentUserId: string) {
         for (const s of stories) {
           if (s.user_id !== currentUserId && !seenStories.has(s.id)) {
             addIndicator(s.user_id, 'story');
+            if (!notifiedStoryIds.has(s.id)) {
+              notifiedStoryIds.add(s.id);
+              const userName = (s as any).user_name || (s as any).author_name || (s as any).full_name || 'Un contacto';
+              addNotification({ type: 'story', title: `${userName} publicó un estado`, body: 'Toca para verlo', targetUserId: s.user_id, storyId: s.id });
+            }
           }
         }
       }
@@ -88,6 +93,11 @@ export function useNewContentIndicators(currentUserId: string) {
         for (const m of moments) {
           if (m.user_id !== currentUserId && !seenMoments.has(m.id)) {
             addIndicator(m.user_id, 'moment');
+            if (!notifiedMomentIds.has(m.id)) {
+              notifiedMomentIds.add(m.id);
+              const userName = (m as any).user_name || (m as any).author_name || (m as any).full_name || 'Un contacto';
+              addNotification({ type: 'moment', title: `${userName} publicó un Moment`, body: 'Toca para verlo', targetUserId: m.user_id, momentId: m.id });
+            }
           }
         }
       }
@@ -98,6 +108,11 @@ export function useNewContentIndicators(currentUserId: string) {
         for (const l of lives) {
           if (l.host_id !== currentUserId) {
             addIndicator(l.host_id, 'live');
+            if (!notifiedLiveIds.has(l.live_id)) {
+              notifiedLiveIds.add(l.live_id);
+              const userName = (l as any).user_name || (l as any).host_name || (l as any).full_name || 'Un contacto';
+              addNotification({ type: 'live', title: `${userName} está en directo`, body: 'Toca para unirte', targetUserId: l.host_id, liveId: l.live_id });
+            }
           }
         }
       }
