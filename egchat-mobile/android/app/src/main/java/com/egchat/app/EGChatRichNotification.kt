@@ -196,11 +196,10 @@ class EGChatRichNotification(private val reactContext: ReactApplicationContext) 
                 val sender = personBuilder.build()
 
                 // MessagingStyle: aparece como burbuja de conversación
-                val style = NotificationCompat.MessagingStyle(sender).apply {
-                    if (isGroup && groupName.isNotEmpty()) {
-                        conversationTitle = groupName
-                        isGroupConversation = true
-                    }
+                val style = NotificationCompat.MessagingStyle(sender)
+                if (isGroup && groupName.isNotEmpty()) {
+                    style.conversationTitle = groupName
+                    style.isGroupConversation = true
                 }
 
                 val displayText = when (msgType) {
@@ -210,7 +209,11 @@ class EGChatRichNotification(private val reactContext: ReactApplicationContext) 
                     "file"   -> "📄 Archivo"
                     else     -> text
                 }
-                style.addMessage(displayText, System.currentTimeMillis(), sender)
+                style.addMessage(
+                    NotificationCompat.MessagingStyle.Message(
+                        displayText, System.currentTimeMillis(), sender
+                    )
+                )
 
                 // Intent: al tocar va directo al chat
                 val openIntent = Intent(reactContext, MainActivity::class.java).apply {
