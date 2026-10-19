@@ -42,6 +42,22 @@ export function handleNotifNavigation(n: AppNotification): void {
     }
     return;
   }
+  if (n.type === 'story') {
+    if (n.targetUserId) router.push(`/stories?userId=${n.targetUserId}` as any);
+    else router.push('/stories' as any);
+    return;
+  }
+  if (n.type === 'moment') {
+    if (n.targetUserId) router.push(`/moments?userId=${n.targetUserId}` as any);
+    else router.push('/moments' as any);
+    return;
+  }
+  if (n.type === 'live') {
+    // broadcast.tsx is a message composer — live viewer is inside stories.tsx
+    if (n.targetUserId) router.push(`/stories?userId=${n.targetUserId}` as any);
+    else router.push('/stories' as any);
+    return;
+  }
   if (n.chatId) {
     router.push(`/chat/${n.chatId}` as any);
     return;
