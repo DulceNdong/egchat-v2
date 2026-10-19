@@ -245,6 +245,15 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
   const isDjangue = chat.type === 'group' && chat.name?.startsWith('💰');
   const chatName = isDjangue ? rawChatName.replace(/^💰\s*/, '') : rawChatName;
   const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
+
+  const avatarOnPress = useMemo(() => {
+    if (chat.type !== 'private' || !other || !contentTypes || contentTypes.length === 0) return undefined;
+    const participantId = other.user_id;
+    if (contentTypes.includes('live'))   return () => router.push('/stories' as any);
+    if (contentTypes.includes('story'))  return () => router.push('/stories' as any);
+    if (contentTypes.includes('moment')) return () => router.push('/moments' as any);
+    return undefined;
+  }, [chat.type, other, contentTypes]);
   const msgInfo = getLastMessageInfo(chat.last_message);
   const time = formatTime(chat.updated_at);
   const hasUnread = chat.unread_count > 0;
