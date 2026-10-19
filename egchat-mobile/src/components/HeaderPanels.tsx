@@ -66,6 +66,9 @@ export function handleNotifNavigation(n: AppNotification): void {
 
 const IconForType = ({ type }: { type: AppNotification['type'] }) => {
   const c = colorForType(type);
+  if (type === 'story')  return <Text style={{ fontSize: 14 }}>📷</Text>;
+  if (type === 'moment') return <Text style={{ fontSize: 14 }}>✨</Text>;
+  if (type === 'live')   return <Text style={{ fontSize: 14 }}>🔴</Text>;
   if (type === 'message') return (
     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={2} strokeLinecap="round">
       <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
