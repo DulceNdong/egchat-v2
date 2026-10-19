@@ -10,6 +10,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getApiBase } from '../api';
 import { supabase } from '../supabase';
+import { addNotification } from '../store/appStore';
 
 export type ContentType = 'story' | 'moment' | 'live';
 
@@ -20,6 +21,11 @@ export interface NewContentMap {
 const SEEN_STORIES_KEY  = 'egchat_seen_stories_v1';
 const SEEN_MOMENTS_KEY  = 'egchat_seen_moments_v1';
 const POLL_INTERVAL_MS  = 30_000;
+
+// Module-level sets to track which IDs have already triggered a notification this session
+const notifiedStoryIds  = new Set<string>();
+const notifiedMomentIds = new Set<string>();
+const notifiedLiveIds   = new Set<string>();
 
 // Lee los IDs ya vistos de AsyncStorage
 async function readSeen(key: string): Promise<Set<string>> {
