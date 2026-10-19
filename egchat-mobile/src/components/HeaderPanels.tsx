@@ -21,6 +21,9 @@ const colorForType = (type: AppNotification['type']) => {
   if (type === 'message')  return '#00b4e6';
   if (type === 'payment')  return '#00c8a0';
   if (type === 'call')     return '#f59e0b';
+  if (type === 'story')    return '#00C8A0';
+  if (type === 'moment')   return '#af52de';
+  if (type === 'live')     return '#ff3b30';
   return '#6b7280';
 };
 
