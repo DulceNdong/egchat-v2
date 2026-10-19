@@ -95,6 +95,7 @@ export function AvatarWithRing({ src, name, size, contentTypes = [], onPress }: 
         </View>
       )}
     </View>
+    </TouchableOpacity>
   );
 }
 
