@@ -36,7 +36,7 @@ function getRingLabel(types: ContentType[]): string | null {
   return null;
 }
 
-export function AvatarWithRing({ src, name, size, contentTypes = [] }: Props) {
+export function AvatarWithRing({ src, name, size, contentTypes = [], onPress }: Props) {
   const ringColor = getRingColor(contentTypes);
   const isLive    = contentTypes.includes('live');
 
