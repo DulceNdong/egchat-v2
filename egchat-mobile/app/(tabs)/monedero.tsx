@@ -1406,9 +1406,9 @@ function MonederoScreenInner() {
 
   // ── KYC: Pantalla de bloqueo si el monedero no está verificado ─
   // Muestra overlay distinto según el estado KYC del usuario.
-  // approved → acceso normal; pending/none/rejected/suspended → bloqueo
   // TEMPORAL: monedero desbloqueado para pruebas — reactivar cuando el banco lo requiera
   // if (!kycLoading && kycStatus !== 'approved') {
+  if (false && !kycLoading && kycStatus !== 'approved') {
     const isNone     = kycStatus === 'none';
     const isPending  = kycStatus === 'pending';
     const isRejected = kycStatus === 'rejected';
