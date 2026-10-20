@@ -28,14 +28,36 @@ import { useTranslation } from '../../src/context/LanguageContext';
 
 const { width } = Dimensions.get('window');
 
-// ── Países CEMAC — solo GQ activo ───────────────────────────────────
+// ── Países disponibles — todos activos ───────────────────────────────────
 const COUNTRIES = [
-  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240', active: true  },
-  { code: 'CM', name: 'Cameroun',           phone: '+237', active: false },
-  { code: 'GA', name: 'Gabon',              phone: '+241', active: false },
-  { code: 'CG', name: 'Congo',              phone: '+242', active: false },
-  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236', active: false },
-  { code: 'TD', name: 'Tchad',              phone: '+235', active: false },
+  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240', active: true },
+  { code: 'CM', name: 'Cameroun',           phone: '+237', active: true },
+  { code: 'GA', name: 'Gabon',              phone: '+241', active: true },
+  { code: 'CG', name: 'Congo',              phone: '+242', active: true },
+  { code: 'CF', name: 'Rép. Centrafricaine',phone: '+236', active: true },
+  { code: 'TD', name: 'Tchad',              phone: '+235', active: true },
+  { code: 'NG', name: 'Nigeria',            phone: '+234', active: true },
+  { code: 'ES', name: 'España',             phone: '+34',  active: true },
+  { code: 'FR', name: 'France',             phone: '+33',  active: true },
+  { code: 'GB', name: 'United Kingdom',     phone: '+44',  active: true },
+  { code: 'US', name: 'United States',      phone: '+1',   active: true },
+  { code: 'DE', name: 'Deutschland',        phone: '+49',  active: true },
+  { code: 'IT', name: 'Italia',             phone: '+39',  active: true },
+  { code: 'PT', name: 'Portugal',           phone: '+351', active: true },
+  { code: 'SN', name: 'Sénégal',            phone: '+221', active: true },
+  { code: 'CI', name: "Côte d'Ivoire",      phone: '+225', active: true },
+  { code: 'MA', name: 'Maroc',              phone: '+212', active: true },
+  { code: 'BR', name: 'Brasil',             phone: '+55',  active: true },
+  { code: 'MX', name: 'México',             phone: '+52',  active: true },
+  { code: 'CO', name: 'Colombia',           phone: '+57',  active: true },
+  { code: 'AR', name: 'Argentina',          phone: '+54',  active: true },
+  { code: 'VE', name: 'Venezuela',          phone: '+58',  active: true },
+  { code: 'CN', name: 'China',              phone: '+86',  active: true },
+  { code: 'AO', name: 'Angola',             phone: '+244', active: true },
+  { code: 'CD', name: 'Congo RDC',          phone: '+243', active: true },
+  { code: 'KE', name: 'Kenya',              phone: '+254', active: true },
+  { code: 'GH', name: 'Ghana',              phone: '+233', active: true },
+  { code: 'ZA', name: 'South Africa',       phone: '+27',  active: true },
 ];
 
 const COMING_SOON: Record<string, { lang: string; title: string; body: string; cta: string }> = {
