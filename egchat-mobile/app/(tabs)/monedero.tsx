@@ -1620,8 +1620,8 @@ function MonederoScreenInner() {
         </ScrollView>
         <DraggableHomeButton />
       </SafeAreaView>
-    );
-  }
+    // );
+  // } // FIN bloque KYC gate — comentado temporalmente para pruebas
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: '#EEF2F7' }]} edges={['left', 'right', 'bottom']}>
