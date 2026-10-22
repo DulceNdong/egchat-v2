@@ -155,10 +155,18 @@ export const NotificationsPanel = ({
                 onPress={() => onNotifPress(n)}
                 activeOpacity={0.7}
               >
-                {/* Icono tipo */}
-                <View style={np.iconWrap}>
-                  <IconForType type={n.type} />
-                </View>
+                {/* Icono tipo — miniatura del media subido si existe, si no el icono */}
+                {n.imageUrl ? (
+                  <Image
+                    source={{ uri: n.imageUrl }}
+                    style={{ width: 40, height: 40, borderRadius: 8 }}
+                    resizeMode="cover"
+                  />
+                ) : (
+                  <View style={np.iconWrap}>
+                    <IconForType type={n.type} />
+                  </View>
+                )}
                 {/* Texto */}
                 <View style={np.itemText}>
                   <Text style={[np.itemTitle, !n.read && np.itemTitleUnread]} numberOfLines={1}>{n.title}</Text>
