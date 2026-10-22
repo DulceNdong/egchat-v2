@@ -3,7 +3,17 @@ import { Stack, router, usePathname } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, ActivityIndicator, StyleSheet, Alert, Platform, Text, TouchableOpacity, AppState, Modal, Animated } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Alert, Platform, Text, TextInput, TouchableOpacity, AppState, Modal, Animated } from 'react-native';
+
+// ── Bloquear font scaling del sistema en toda la app ─────────────
+// El usuario puede ajustar el tamaño dentro de la app, pero el
+// tamaño de fuente del sistema operativo no debe afectar la UI.
+// Esto evita que en iPhones/Androids con fuente "Grande" la app
+// se vea distorsionada o desbordada.
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.allowFontScaling = false;
+if ((TextInput as any).defaultProps == null) (TextInput as any).defaultProps = {};
+(TextInput as any).defaultProps.allowFontScaling = false;
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as NavigationBar from 'expo-navigation-bar';
 import { Audio } from 'expo-av';
