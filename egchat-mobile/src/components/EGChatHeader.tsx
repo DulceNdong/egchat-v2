@@ -190,6 +190,9 @@ const s = StyleSheet.create({
     borderRadius: 50,
     borderWidth: 1,
     borderColor: BTN_BORDER,
+    // Crece lo necesario pero no aplasta el logo ni los botones
+    flexShrink: 1,
+    maxWidth: 160,
     ...Platform.select({
       web: { boxShadow: '0px 2px 6px rgba(0,0,0,0.35)' },
       ios: {
@@ -205,11 +208,13 @@ const s = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     color: '#ffffff',
+    flexShrink: 0,
   },
   cityText: {
     fontSize: 11,
     color: 'rgba(255,255,255,0.85)',
-    maxWidth: 72,
+    flexShrink: 1,
+    flexWrap: 'nowrap',
   },
   iconPill: {
     paddingVertical: 5,
