@@ -123,13 +123,29 @@ export function useNewContentIndicators(currentUserId: string) {
       // Moments nuevos (últimas 24h)
       if (momentsRes.status === 'fulfilled' && momentsRes.value.ok) {
         const moments: Array<{ user_id: string; id: string }> = await momentsRes.value.json();
+        const newMoments = moments.filter(
+          m => m.user_id !== currentUserId && !seenMoments.has(m.id) && !notifiedMomentIds.has(m.id),
+        );
+        const momentThumb = new Map<string, string>();
+        if (newMoments.length > 0) {
+          try {
+            const fullRes = await fetch(`${BASE}/api/moments`, { headers: { Authorization: `Bearer ${token}` } });
+            if (fullRes.ok) {
+              const full: Array<{ id: string; images?: any }> = await fullRes.json();
+              for (const fm of full) {
+                const u = firstImageUrl(fm.images);
+                if (u) momentThumb.set(fm.id, u);
+              }
+            }
+          } catch { /* mapa vacío → fallback a icono */ }
+        }
         for (const m of moments) {
           if (m.user_id !== currentUserId && !seenMoments.has(m.id)) {
             addIndicator(m.user_id, 'moment');
             if (!notifiedMomentIds.has(m.id)) {
               notifiedMomentIds.add(m.id);
               const userName = (m as any).user_name || (m as any).author_name || (m as any).full_name || 'Un contacto';
-              addNotification({ type: 'moment', title: `${userName} publicó un Moment`, body: 'Toca para verlo', targetUserId: m.user_id, momentId: m.id });
+              addNotification({ type: 'moment', title: `${userName} publicó un Moment`, body: 'Toca para verlo', targetUserId: m.user_id, momentId: m.id, imageUrl: momentThumb.get(m.id) });
             }
           }
         }
