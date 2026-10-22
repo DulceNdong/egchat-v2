@@ -37,6 +37,8 @@ export interface AppNotification {
   liveId?: string;
   storyId?: string;
   momentId?: string;
+  /** Miniatura del media subido (story/moment) — si existe se muestra en vez del icono */
+  imageUrl?: string;
 }
 
 export interface WeatherState {
