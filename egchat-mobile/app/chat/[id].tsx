@@ -3570,7 +3570,7 @@ const styles = StyleSheet.create({
   scrollBottomBtn: {
     position: 'absolute',
     right: 16,
-    bottom: 16,
+    // bottom se aplica inline, dinámico según el dock
     width: 40,
     height: 40,
     borderRadius: 20,
