@@ -2718,6 +2718,8 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         const token = await getToken();
         await fetch(`${getApiBase()}/api/live/${liveId}/end`, { method: 'POST', headers: { Authorization: `Bearer ${token}` } });
       } catch {}
+      // Marcar como inactivo en Supabase
+      supabase.from('live_streams').update({ is_active: false, ended_at: new Date().toISOString() }).eq('id', liveId).catch(() => {});
     }
     setIsLive(false); setLiveId(null); setViewers([]); setReactions([]); setComments([]); setDuration(0);
   }, [liveId]);
