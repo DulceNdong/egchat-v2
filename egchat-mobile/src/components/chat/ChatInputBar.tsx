@@ -101,7 +101,6 @@ export function ChatInputBar({
 
   return (
     <>
-    <TextFormatBar visible={hasText} onFormat={handleFormat} />
     <View style={[s.bar, { paddingBottom: bottomPadding }]}>
       <TouchableOpacity
         style={s.plusBtn}
