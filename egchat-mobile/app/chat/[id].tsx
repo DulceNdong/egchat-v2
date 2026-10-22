@@ -703,7 +703,7 @@ export default function ChatScreen() {
         const msgList = normalizeMessages(msgs);
         setMessages(msgList);
         void saveCache(`chat_messages_${chatId}`, msgList);
-        setHasMore(msgList.length === 50);
+        setHasMore(msgList.length >= 20); // Si hay 20+ mensajes, probablemente hay más
 
         // ── Auto-limpiar mensajes de transferencia cuyo estado ya no es pendiente ──
         // Si un mensaje tiene "⏳ Pendiente" pero la transferencia ya fue resuelta
