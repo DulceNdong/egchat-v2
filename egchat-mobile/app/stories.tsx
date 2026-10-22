@@ -1557,6 +1557,7 @@ export default function StoriesScreen() {
               onPress={() => {
                 setActiveSubTab(t.id);
                 if (t.id === 'sub_momentos' && momentPosts.length === 0) loadMoments();
+                if (t.id === 'sub_vivos') loadLiveStreams();
               }}
               activeOpacity={0.8}
               accessibilityRole="tab"
