@@ -1867,6 +1867,18 @@ export default function StoriesScreen() {
         isDark={isDark}
       />
 
+      {/* MODAL EDITAR MOMENTO */}
+      {editingMoment && (
+        <MomentEditModal
+          visible={!!editingMoment}
+          post={editingMoment}
+          onClose={() => setEditingMoment(null)}
+          onSaved={handleEditMomentSave}
+          C={C}
+          isDark={isDark}
+        />
+      )}
+
       {/* MODAL ANADIR ESTADO */}
       <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
         <Pressable style={stAdd.backdrop} onPress={() => setShowAddModal(false)}>
