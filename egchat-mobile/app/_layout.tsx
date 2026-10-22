@@ -534,7 +534,7 @@ export default function RootLayout() {
         const callId = call.callId || call.call_id;
         if (!callId || callId === lastCallId) return;
         // Evitar duplicados con VoIP push
-        if (callManager.state.callId === callId) return;
+        if (callManager.session?.callId === callId) return;
         if (callManager.isActive) return;
         lastCallId = callId;
         const rawOffer = call.offer;
