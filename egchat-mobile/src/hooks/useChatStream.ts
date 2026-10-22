@@ -16,6 +16,8 @@ type StreamEvent = {
        | 'group_call_offer' | 'group_call_answer' | 'group_call_ice'
        | 'call_answered' | 'call_ended';
   chatId?: string;
+  callId?: string;
+  reason?: string;
   message?: any;
   online?: boolean;
   userId?: string;
