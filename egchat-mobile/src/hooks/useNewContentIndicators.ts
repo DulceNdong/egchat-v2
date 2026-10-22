@@ -27,6 +27,21 @@ const notifiedStoryIds  = new Set<string>();
 const notifiedMomentIds = new Set<string>();
 const notifiedLiveIds   = new Set<string>();
 
+// /api/stories `media` → primera URL de slide (elemento {url,type,caption} o string)
+const firstMediaUrl = (media: any): string | undefined => {
+  if (!Array.isArray(media) || media.length === 0) return undefined;
+  const f = media[0];
+  return typeof f === 'string' ? f : f?.url;
+};
+// /api/moments `images` → primera URL de imagen (string[] o string JSON)
+const firstImageUrl = (images: any): string | undefined => {
+  let arr = images;
+  if (typeof arr === 'string') { try { arr = JSON.parse(arr); } catch { return undefined; } }
+  if (!Array.isArray(arr) || arr.length === 0) return undefined;
+  const f = arr[0];
+  return typeof f === 'string' ? f : f?.url;
+};
+
 // Lee los IDs ya vistos de AsyncStorage
 async function readSeen(key: string): Promise<Set<string>> {
   try {
