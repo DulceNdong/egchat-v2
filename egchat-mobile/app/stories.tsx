@@ -731,10 +731,15 @@ export default function StoriesScreen() {
   const [commentText,     setCommentText]     = useState('');
   const [showMomentCreate,setShowMomentCreate]= useState(false);
   const [showMomentCamera,setShowMomentCamera]= useState(false);
+  // ── Editar momento ────────────────────────────────────────────
+  const [editingMoment,  setEditingMoment]  = useState<MomentPost | null>(null);
   // ── Visor de imágenes de momentos ─────────────────────────────
   const [momentViewerPost,    setMomentViewerPost]    = useState<MomentViewerPost | null>(null);
   const [momentViewerImgIdx,  setMomentViewerImgIdx]  = useState(0);
   const pendingMediaRef = React.useRef<MomentMedia | null>(null);
+  // ── Live viewer (unirse a un streaming) ──────────────────────
+  const [viewingLiveId,  setViewingLiveId]  = useState<string | null>(null);
+  const [liveStreams,    setLiveStreams]    = useState<Array<{ id: string; hostName: string; hostAvatar?: string; viewerCount: number }>>([]);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const buStyles  = makeBuStyles(C);
