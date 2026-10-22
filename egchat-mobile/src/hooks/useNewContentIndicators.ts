@@ -90,13 +90,31 @@ export function useNewContentIndicators(currentUserId: string) {
       // Stories nuevas
       if (storiesRes.status === 'fulfilled' && storiesRes.value.ok) {
         const stories: Array<{ user_id: string; id: string }> = await storiesRes.value.json();
+        // Solo si hay stories nuevas traemos /api/stories una vez para construir el
+        // mapa de miniaturas (bandwidth-optimal; conserva el filtrado por contactos).
+        const newStories = stories.filter(
+          s => s.user_id !== currentUserId && !seenStories.has(s.id) && !notifiedStoryIds.has(s.id),
+        );
+        const storyThumb = new Map<string, string>();
+        if (newStories.length > 0) {
+          try {
+            const fullRes = await fetch(`${BASE}/api/stories`, { headers: { Authorization: `Bearer ${token}` } });
+            if (fullRes.ok) {
+              const full: Array<{ id: string; media?: any }> = await fullRes.json();
+              for (const fs of full) {
+                const u = firstMediaUrl(fs.media);
+                if (u) storyThumb.set(fs.id, u);
+              }
+            }
+          } catch { /* mapa vacío → fallback a icono */ }
+        }
         for (const s of stories) {
           if (s.user_id !== currentUserId && !seenStories.has(s.id)) {
             addIndicator(s.user_id, 'story');
             if (!notifiedStoryIds.has(s.id)) {
               notifiedStoryIds.add(s.id);
               const userName = (s as any).user_name || (s as any).author_name || (s as any).full_name || 'Un contacto';
-              addNotification({ type: 'story', title: `${userName} publicó un estado`, body: 'Toca para verlo', targetUserId: s.user_id, storyId: s.id });
+              addNotification({ type: 'story', title: `${userName} publicó un estado`, body: 'Toca para verlo', targetUserId: s.user_id, storyId: s.id, imageUrl: storyThumb.get(s.id) });
             }
           }
         }
