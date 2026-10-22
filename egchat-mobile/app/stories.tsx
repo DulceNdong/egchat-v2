@@ -1614,7 +1614,12 @@ export default function StoriesScreen() {
 
       {/* ── TAB: STREAMINGS / VIVOS ───────────────────────────── */}
       {activeTab === 'estados' && activeSubTab === 'sub_vivos' && (
-        <ScrollView style={{ flex: 1, backgroundColor: C.bgPrimary }} contentContainerStyle={{ padding: 20, paddingBottom: 40 }} showsVerticalScrollIndicator={false}>
+        <ScrollView
+          style={{ flex: 1, backgroundColor: C.bgPrimary }}
+          contentContainerStyle={{ padding: 20, paddingBottom: 40 }}
+          showsVerticalScrollIndicator={false}
+          refreshControl={<RefreshControl refreshing={false} onRefresh={loadLiveStreams} colors={[BRAND]} tintColor={BRAND} />}
+        >
           <LinearGradient colors={[BRAND + '22', BRAND2 + '11']} style={st.liveBannerCard}>
             <View style={st.liveDotLarge} />
             <View style={{ flex: 1 }}>
@@ -1623,9 +1628,36 @@ export default function StoriesScreen() {
             </View>
             <MIcon name="live-tv" size={32} color={BRAND} />
           </LinearGradient>
+
+          {/* Streams activos */}
+          {liveStreams.length > 0 && (
+            <View style={{ marginBottom: 24 }}>
+              <Text style={[st.feedLabelText, { color: C.textTertiary, marginBottom: 12 }]}>EN VIVO AHORA</Text>
+              {liveStreams.map(ls => (
+                <TouchableOpacity
+                  key={ls.id}
+                  style={[st.liveBannerCard, { marginBottom: 10, backgroundColor: C.bgSecondary }]}
+                  onPress={() => setViewingLiveId(ls.id)}
+                  activeOpacity={0.85}
+                >
+                  <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }} />
+                  <View style={{ flex: 1, marginLeft: 10 }}>
+                    <Text style={[{ fontSize: 15, fontWeight: '700' }, { color: C.textPrimary }]}>{ls.hostName}</Text>
+                    <Text style={[{ fontSize: 12 }, { color: C.textSecondary }]}>{ls.viewerCount} espectadores</Text>
+                  </View>
+                  <LinearGradient colors={[BRAND, BRAND2]} style={{ borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 }}>
+                    <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Unirse</Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+
           <View style={st.liveEmpty}>
             <MIcon name="videocam" size={64} color={C.border} />
-            <Text style={[st.emptyTitle, { color: C.textSecondary, marginTop: 16 }]}>Sin streams activos</Text>
+            <Text style={[st.emptyTitle, { color: C.textSecondary, marginTop: 16 }]}>
+              {liveStreams.length === 0 ? 'Sin streams activos' : 'Inicia tu propio directo'}
+            </Text>
             <Text style={[st.emptySub, { color: C.textTertiary, textAlign: 'center' }]}>
               Cuando alguien inicie un directo aparecerá aquí en tiempo real
             </Text>
