@@ -903,9 +903,26 @@ export default function StoriesScreen() {
 
   const pickFromGallery = useCallback(async () => {
     try {
-      const asset = await pickImageFromLibrary();
-      if (!asset) return;
-      await uploadStory(asset.uri, asset.mimeType?.includes('video') ? 'video' : 'image');
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') { Alert.alert('Sin permiso para galeria'); return; }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.All,
+        allowsMultipleSelection: true,
+        quality: 0.85,
+        orderedSelection: true,
+      });
+      if (!result.canceled && result.assets.length > 0) {
+        // Si hay más de un asset, subirlos todos
+        setUploading(true);
+        try {
+          for (const asset of result.assets) {
+            const type = asset.mimeType?.includes('video') ? 'video' : 'image';
+            await uploadStory(asset.uri, type);
+          }
+        } finally {
+          setUploading(false);
+        }
+      }
     } catch {
       Alert.alert('Error', 'No se pudo abrir la galería');
     }
