@@ -805,6 +805,40 @@ export default function StoriesScreen() {
     await toggleMomentLike(postId);
   }, []);
 
+  const handleDeleteMoment = useCallback(async (postId: string) => {
+    // Eliminar del estado local inmediatamente (optimista)
+    setMomentPosts(prev => prev.filter(p => p.id !== postId));
+    // Eliminar en el servidor de forma permanente
+    const ok = await deleteMomentPost(postId);
+    if (!ok) {
+      // Si falla, recargar para restaurar el estado real
+      loadMoments();
+    }
+  }, [loadMoments]);
+
+  const handleEditMomentSave = useCallback(async (postId: string, text: string, images: string[], videos: string[]) => {
+    const updated = await updateMomentPost(postId, text, images, videos);
+    if (updated) {
+      setMomentPosts(prev => prev.map(p => p.id === postId ? { ...updated } : p));
+    } else {
+      // Actualizar localmente si la API falla
+      setMomentPosts(prev => prev.map(p => p.id === postId ? { ...p, text, images, videos } : p));
+    }
+    setEditingMoment(null);
+  }, []);
+
+  const loadLiveStreams = useCallback(async () => {
+    try {
+      const BASE  = getApiBase();
+      const token = await getToken();
+      const res   = await fetch(`${BASE}/api/live/active`, { headers: { Authorization: `Bearer ${token}` } });
+      if (res.ok) {
+        const data = await res.json();
+        if (Array.isArray(data)) setLiveStreams(data);
+      }
+    } catch {}
+  }, []);
+
   const handleMomentComment = useCallback(async () => {
     if (!commentingPost || !commentText.trim()) return;
     const text = commentText.trim();
