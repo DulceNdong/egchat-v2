@@ -1972,8 +1972,19 @@ export default function StoriesScreen() {
         hostId={meId}
         hostName={myGroup?.userName || ''}
         hostAvatar={myAvatarUrl}
-        onClose={() => setShowLive(false)}
+        onClose={() => { setShowLive(false); loadLiveStreams(); }}
       />
+
+      {/* ── Live Viewer Modal (unirse a un stream) ────────────── */}
+      {viewingLiveId && (
+        <LiveViewerModal
+          visible={!!viewingLiveId}
+          liveId={viewingLiveId}
+          viewerName={myGroup?.userName || 'Espectador'}
+          viewerAvatar={myAvatarUrl}
+          onClose={() => setViewingLiveId(null)}
+        />
+      )}
 
       {/* ── Moment Camera Editor ──────────────────────────────── */}
       <MomentCameraEditor
