@@ -1123,7 +1123,7 @@ export default function ChatScreen() {
     // Solo actualizar estado si realmente cambia — evita re-renders continuos al hacer scroll
     setShowScrollBottom(prev => prev === shouldShow ? prev : shouldShow);
     // Cargar más mensajes cuando el usuario llega al tope superior (contentOffset.y cerca de 0)
-    if (contentOffset.y < 80 && hasMore && !loadingMore) loadMore();
+    if (contentOffset.y < 150 && hasMore && !loadingMore) loadMore();
   }, [hasMore, loadingMore, loadMore]);
 
   // ── Cerrar teclado/emojis/panels al tocar fuera del input ──────
