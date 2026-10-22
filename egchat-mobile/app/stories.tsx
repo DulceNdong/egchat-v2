@@ -2665,6 +2665,17 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       timerRef2.current = setInterval(() => setDuration(d => d + 1), 1000);
       notifyLiveStarted({ liveId: id, hostName: hostName || 'Tu contacto' }).catch(() => {});
 
+      // Registrar en Supabase para que aparezca en la lista de lives activos
+      supabase.from('live_streams').upsert({
+        id,
+        host_id: hostId,
+        host_name: hostName,
+        host_avatar: hostAvatar,
+        viewer_count: 0,
+        started_at: new Date().toISOString(),
+        is_active: true,
+      }, { onConflict: 'id' }).catch(() => {});
+
       const ch = supabase.channel(`live:${id}`)
         .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
           const r: LiveReaction = { id: `r-${Date.now()}-${Math.random()}`, emoji: payload.emoji, userName: payload.userName };
