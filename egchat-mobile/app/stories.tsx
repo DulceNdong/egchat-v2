@@ -2978,7 +2978,8 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
   );
 }
 
-// ── Estilos LiveStreamModal ───────────────────────────────────────const lv = StyleSheet.create({
+// ── Estilos LiveStreamModal ───────────────────────────────────────
+const lv = StyleSheet.create({
   root:             { flex: 1, backgroundColor: '#000' },
   overlay:          { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.08)' },
 
