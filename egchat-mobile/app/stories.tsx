@@ -1668,8 +1668,14 @@ export default function StoriesScreen() {
                     <Text style={[mps.time, { color: C.textTertiary }]}>{formatRelativeTime(item.created_at)}</Text>
                   </View>
                   {item.user_id === momentCurrentUid && (
-                    <TouchableOpacity onPress={() => Alert.alert('Post', 'Opciones', [
-                      { text: 'Eliminar', style: 'destructive', onPress: () => setMomentPosts(p => p.filter(x => x.id !== item.id)) },
+                    <TouchableOpacity onPress={() => Alert.alert('Opciones', '', [
+                      { text: 'Editar', onPress: () => setEditingMoment(item) },
+                      { text: 'Eliminar', style: 'destructive', onPress: () =>
+                        Alert.alert('Eliminar momento', '¿Eliminar este momento permanentemente?', [
+                          { text: 'Cancelar', style: 'cancel' },
+                          { text: 'Eliminar', style: 'destructive', onPress: () => handleDeleteMoment(item.id) },
+                        ])
+                      },
                       { text: 'Cancelar', style: 'cancel' },
                     ])}>
                       <MIcon name="more-vert" size={18} color={C.textTertiary} />
