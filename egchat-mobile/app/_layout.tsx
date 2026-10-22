@@ -515,6 +515,47 @@ export default function RootLayout() {
     }
   }, [globalUserId]));
 
+  // ── Polling de llamadas entrantes (fallback cuando VoIP push falla) ──────
+  // Cuando el token APNs es de sandbox y el servidor usa producción,
+  // el VoIP push no llega. Este polling detecta llamadas aunque la app esté abierta.
+  useEffect(() => {
+    if (!globalUserId || Platform.OS !== 'ios') return;
+    let lastCallId: string | null = null;
+
+    const checkIncoming = async () => {
+      try {
+        const { callAPI } = await import('../src/api');
+        const calls = await callAPI.incoming(globalUserId);
+        if (!Array.isArray(calls) || calls.length === 0) {
+          lastCallId = null;
+          return;
+        }
+        const call = calls[0];
+        const callId = call.callId || call.call_id;
+        if (!callId || callId === lastCallId) return;
+        // Evitar duplicados con VoIP push
+        if (callManager.state.callId === callId) return;
+        if (callManager.isActive) return;
+        lastCallId = callId;
+        const rawOffer = call.offer;
+        let parsedOffer = rawOffer;
+        if (typeof rawOffer === 'string') {
+          try { parsedOffer = JSON.parse(rawOffer); } catch { parsedOffer = undefined; }
+        }
+        handleIncomingCall({
+          callId,
+          callerName:   call.callerName || call.caller_name || 'Usuario',
+          callerAvatar: call.callerAvatar || call.caller_avatar || '',
+          callType:     call.type || 'audio',
+          offer:        parsedOffer,
+        });
+      } catch { /* silencioso */ }
+    };
+
+    const interval = setInterval(checkIncoming, 2000);
+    return () => clearInterval(interval);
+  }, [globalUserId, handleIncomingCall]);
+
   useEffect(() => {
     let mounted = true;
 
