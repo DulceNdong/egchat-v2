@@ -2691,7 +2691,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         viewer_count: 0,
         started_at: new Date().toISOString(),
         is_active: true,
-      }, { onConflict: 'id' }).catch(() => {});
+      }, { onConflict: 'id' }).then(() => {}).catch(() => {});
 
       const ch = supabase.channel(`live:${id}`)
         .on('broadcast', { event: 'reaction' }, ({ payload }: any) => {
