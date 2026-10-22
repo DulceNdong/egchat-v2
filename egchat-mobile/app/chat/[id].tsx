@@ -2551,7 +2551,7 @@ export default function ChatScreen() {
 
           {showScrollBottom && (
             <TouchableOpacity
-              style={styles.scrollBottomBtn}
+              style={[styles.scrollBottomBtn, { bottom: bottomDockHeight + effectiveDockOffset + 12 }]}
               onPress={() => {
                 flatListRef.current?.scrollToEnd({ animated: true });
                 setUnreadScrollCount(0);
