@@ -829,12 +829,29 @@ export default function StoriesScreen() {
 
   const loadLiveStreams = useCallback(async () => {
     try {
+      // Primero intentar por API
       const BASE  = getApiBase();
       const token = await getToken();
       const res   = await fetch(`${BASE}/api/live/active`, { headers: { Authorization: `Bearer ${token}` } });
       if (res.ok) {
         const data = await res.json();
-        if (Array.isArray(data)) setLiveStreams(data);
+        if (Array.isArray(data)) { setLiveStreams(data); return; }
+      }
+    } catch {}
+    // Fallback: consultar Supabase directamente
+    try {
+      const { data } = await supabase
+        .from('live_streams')
+        .select('id, host_name, host_avatar, viewer_count')
+        .eq('is_active', true)
+        .order('started_at', { ascending: false });
+      if (data) {
+        setLiveStreams(data.map((s: any) => ({
+          id: s.id,
+          hostName: s.host_name || 'En vivo',
+          hostAvatar: s.host_avatar,
+          viewerCount: s.viewer_count || 0,
+        })));
       }
     } catch {}
   }, []);
