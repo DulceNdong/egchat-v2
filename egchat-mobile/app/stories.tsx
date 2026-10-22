@@ -2687,8 +2687,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
           setViewers(prev => prev.filter(v => v.userId !== payload.userId));
         })
         .subscribe();
-      channelRef2.current = ch;
-    } catch {
+      channelRef2.current = ch;    } catch {
       Alert.alert('Error', 'No se pudo iniciar el live');
     }
   }, [camPerm, micPerm, requestCamPerm, requestMicPerm, hostName]);
