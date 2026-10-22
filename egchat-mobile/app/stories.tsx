@@ -652,6 +652,56 @@ async function addMomentComment(postId: string, text: string): Promise<MomentCom
   return { id: `local-${Date.now()}`, user_id: me?.id || 'local', user_name: me?.full_name || 'Yo', text, created_at: new Date().toISOString() };
 }
 
+async function deleteMomentPost(postId: string): Promise<boolean> {
+  try {
+    const BASE = (await import('../src/api')).getApiBase();
+    const token = await (await import('../src/api')).getToken();
+    const res = await fetch(`${BASE}/api/moments/${postId}`, {
+      method: 'DELETE', headers: { Authorization: `Bearer ${token}` },
+    });
+    return res.ok;
+  } catch {}
+  return false;
+}
+
+async function updateMomentPost(postId: string, text: string, images: string[], videos: string[]): Promise<MomentPost | null> {
+  try {
+    const { getApiBase, getToken } = await import('../src/api');
+    const BASE  = getApiBase();
+    const token = await getToken();
+    const me = await authAPI.me().catch(() => null);
+    const userId = me?.id || 'anon';
+
+    // Subir nuevas imágenes locales
+    const uploadedImages: string[] = [];
+    for (const uri of images) {
+      if (uri.startsWith('http://') || uri.startsWith('https://')) {
+        uploadedImages.push(uri);
+      } else {
+        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'image');
+        if (publicUrl) uploadedImages.push(publicUrl);
+      }
+    }
+    const uploadedVideos: string[] = [];
+    for (const uri of videos) {
+      if (uri.startsWith('http://') || uri.startsWith('https://')) {
+        uploadedVideos.push(uri);
+      } else {
+        const publicUrl = await uploadStoryMediaToSupabase(userId, uri, 'video');
+        if (publicUrl) uploadedVideos.push(publicUrl);
+      }
+    }
+
+    const res = await fetch(`${BASE}/api/moments/${postId}`, {
+      method: 'PATCH',
+      headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ text, images: uploadedImages, videos: uploadedVideos }),
+    });
+    if (res.ok) return res.json();
+  } catch {}
+  return null;
+}
+
 // ══════════════════════════════════════════════════════════════════
 // PANTALLA PRINCIPAL
 // ══════════════════════════════════════════════════════════════════
