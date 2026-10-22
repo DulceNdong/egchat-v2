@@ -2694,7 +2694,14 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
 
   const stopLive = useCallback(async () => {
     if (timerRef2.current) { clearInterval(timerRef2.current); timerRef2.current = null; }
-    if (channelRef2.current) { await supabase.removeChannel(channelRef2.current).catch(() => {}); channelRef2.current = null; }
+    // Notificar a los viewers que el live terminó antes de desuscribir
+    if (channelRef2.current) {
+      try {
+        await channelRef2.current.send({ type: 'broadcast', event: 'live_end', payload: {} });
+      } catch {}
+      await supabase.removeChannel(channelRef2.current).catch(() => {});
+      channelRef2.current = null;
+    }
     if (liveId) {
       try {
         const token = await getToken();
