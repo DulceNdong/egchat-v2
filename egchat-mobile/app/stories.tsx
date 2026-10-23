@@ -3727,11 +3727,35 @@ const lv = StyleSheet.create({
   sideBtnActive:    { backgroundColor: 'rgba(0,200,160,0.25)', borderColor: '#00C8A0' },
   sideBtnLabel:     { color: 'rgba(255,255,255,0.8)', fontSize: 9, fontWeight: '700' },
 
-  // Efectos
-  effectsPanel:     { position: 'absolute', left: 0, right: 0, backgroundColor: 'rgba(0,0,0,0.85)', paddingVertical: 16, borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.1)' },
-  effectBtn:        { alignItems: 'center', gap: 4, paddingHorizontal: 4 },
-  effectBtnActive:  { },
-  effectThumb:      { width: 68, height: 68, borderRadius: 16, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: 'transparent' },
+  // Efectos — panel lateral vertical
+  effectsPanel:     {
+    position: 'absolute',
+    right: 70,  // a la izquierda de los botones de control
+    width: 72,
+    backgroundColor: 'rgba(0,0,0,0.75)',
+    borderRadius: 18,
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.1)',
+    overflow: 'hidden',
+  },
+  effectBtn:        {
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 3,
+    paddingVertical: 10,
+    paddingHorizontal: 6,
+    borderRadius: 12,
+  },
+  effectBtnActive:  {
+    backgroundColor: 'rgba(0,200,160,0.15)',
+  },
+  effectLabel:      {
+    color: 'rgba(255,255,255,0.7)',
+    fontSize: 9,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  effectThumb:      { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center' },
 
   // Comentarios
   commentsPanel:    { position: 'absolute', left: 12, right: 74 },
