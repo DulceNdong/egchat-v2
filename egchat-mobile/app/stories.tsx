@@ -3050,9 +3050,14 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       onRequestClose={() => { stopLive(); onClose(); }}>
       <View style={lv.root}>
 
-        {/* Fondo: cámara o gradiente premium */}
+        {/* Fondo: cámara con efectos o gradiente premium */}
         {isLive
-          ? <CameraView ref={cameraRef as any} style={StyleSheet.absoluteFill} facing={facing} flash={flash} />
+          ? <LiveCamera
+              facing={facing}
+              effect={selectedEffect}
+              isActive={isLive}
+              style={StyleSheet.absoluteFill}
+            />
           : <LinearGradient colors={['#0d0d1a', '#1a0533', '#0d1a33']} style={StyleSheet.absoluteFill} />
         }
 
