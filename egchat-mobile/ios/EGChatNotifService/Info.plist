@@ -10,7 +10,7 @@
       <string>$(PRODUCT_MODULE_NAME).NotificationService</string>
     </dict>
     <key>CFBundleVersion</key>
-    <string>97</string>
+    <string>98</string>
     <key>CFBundleShortVersionString</key>
     <string>1.0.0</string>
   </dict>
