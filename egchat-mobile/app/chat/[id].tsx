@@ -2524,7 +2524,7 @@ export default function ChatScreen() {
             scrollEventThrottle={Platform.OS === 'android' ? 32 : 16}
             onScrollBeginDrag={() => dismissPanels()}
             keyboardShouldPersistTaps="always"
-            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 10 }}
+            maintainVisibleContentPosition={{ minIndexForVisible: 0, autoscrollToTopThreshold: 100 }}
             // ── Optimizaciones de rendimiento ──────────────────────
             initialNumToRender={Platform.OS === 'android' ? 20 : 25}
             maxToRenderPerBatch={Platform.OS === 'android' ? 10 : 15}
