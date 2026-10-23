@@ -72,6 +72,11 @@
 			isa = PBXGroup;
 			children = (
 				F11748412D0307B40044C1D9 /* AppDelegate.swift */,
+				49A6E7570079405EA57B2576 /* EGChatPushKitModule.swift */,
+				6D218F7CC8754DCDB1992163 /* EGChatCallModule.swift */,
+				344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */,
+				A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */,
+				70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */,
 				F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
