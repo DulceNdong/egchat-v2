@@ -1947,42 +1947,51 @@ export default function StoriesScreen() {
         />
       )}
 
-      {/* MODAL ANADIR ESTADO */}
-      <Modal visible={showAddModal} transparent animationType="fade" onRequestClose={() => setShowAddModal(false)}>
-        <Pressable style={stAdd.backdrop} onPress={() => setShowAddModal(false)}>
-          <BlurView intensity={60} tint={isDark ? 'dark' : 'light'} style={StyleSheet.absoluteFill} />
-        </Pressable>
-        <View style={stAdd.sheet} pointerEvents="box-none">
-          <View style={[stAdd.card, { backgroundColor: isDark ? 'rgba(18,24,32,0.94)' : 'rgba(255,255,255,0.97)' }]}>
-            <Text style={[stAdd.title, { color: C.textPrimary }]}>Anadir estado</Text>
-            <View style={stAdd.row}>
-              <TouchableOpacity style={stAdd.item} onPress={() => { setShowAddModal(false); createTextStatus().catch(() => {}); }} activeOpacity={0.6}>
-                <MIcon name="edit" size={22} color={C.textSecondary} />
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Texto</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={stAdd.item} onPress={async () => { setShowAddModal(false); const a = await pickImageFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'image'); }} activeOpacity={0.6}>
-                <MIcon name="photo-camera" size={22} color={C.textSecondary} />
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Camara</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={stAdd.item} onPress={() => { setShowAddModal(false); pickFromGallery(); }} activeOpacity={0.6}>
-                <MIcon name="image" size={22} color={C.textSecondary} />
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Galeria</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={stAdd.item} onPress={async () => { setShowAddModal(false); const a = await pickVideo().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }} activeOpacity={0.6}>
-                <MIcon name="videocam" size={22} color={C.textSecondary} />
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Video</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={stAdd.item} onPress={async () => { setShowAddModal(false); const a = await pickVideoFromCamera().catch(() => null); if (a) await uploadStory(a.uri, 'video'); }} activeOpacity={0.6}>
-                <MIcon name="fiber-manual-record" size={22} color={C.textSecondary} />
-                <Text style={[stAdd.label, { color: C.textTertiary }]}>Grabar</Text>
-              </TouchableOpacity>
-            </View>
-            <TouchableOpacity style={stAdd.cancelBtn} onPress={() => setShowAddModal(false)} activeOpacity={0.7}>
-              <Text style={[stAdd.cancelText, { color: C.textTertiary }]}>Cancelar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      {/* MODAL ANADIR ESTADO — creador rico: texto + fotos + videos */}
+      <StoryCreatorModal
+        visible={showStoryCreator}
+        onClose={() => setShowStoryCreator(false)}
+        onPublish={async (caption, images, videos) => {
+          setShowStoryCreator(false);
+          setUploading(true);
+          try {
+            // Subir todos los medios y crear el estado
+            const allMedia: Array<{ url: string; type: 'image' | 'video' }> = [];
+            for (const uri of images) {
+              const url = uri.startsWith('http') ? uri : await uploadStoryMediaToSupabase(meId || 'unknown', uri, 'image');
+              if (url) allMedia.push({ url, type: 'image' });
+            }
+            for (const uri of videos) {
+              const url = uri.startsWith('http') ? uri : await uploadStoryMediaToSupabase(meId || 'unknown', uri, 'video');
+              if (url) allMedia.push({ url, type: 'video' });
+            }
+            // Si no hay medios, crear estado de texto con gradiente
+            if (allMedia.length === 0 && caption.trim()) {
+              await createTextStatus();
+            } else if (allMedia.length > 0) {
+              await storiesAPI.create({ media: allMedia, caption, music: storyMusic ?? undefined } as any);
+              setStoryMusic(null);
+              await loadStories();
+              try {
+                const me = await authAPI.me();
+                const stories = await storiesAPI.getAll();
+                const myLatest = Array.isArray(stories)
+                  ? stories.find((s: any) => s.userId === me?.id || s.user_id === me?.id)
+                  : null;
+                if (myLatest?.id && me?.full_name) {
+                  notifyNewStory({ storyId: myLatest.id, authorName: me.full_name }).catch(() => {});
+                }
+              } catch {}
+            }
+          } catch {
+            Alert.alert('Error', 'No se pudo publicar el estado');
+          } finally {
+            setUploading(false);
+          }
+        }}
+        C={C}
+        isDark={isDark}
+      />
 
       {/* ── Live Stream Modal ──────────────────────────────────── */}
       <LiveStreamModal
