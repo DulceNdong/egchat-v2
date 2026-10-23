@@ -91,9 +91,11 @@ class EGChatAudioRecorder: RCTEventEmitter {
   ) {
     guard let rec = recorder else { resolve(0); return }
     rec.updateMeters()
-    // Convertir dB a valor 0-32768 para compatibilidad con Android
     let db = rec.averagePower(forChannel: 0)
     let normalized = Int(max(0, (db + 60) / 60 * 32768))
     resolve(normalized)
   }
+
+  override func supportedEvents() -> [String] { [] }
+  override static func requiresMainQueueSetup() -> Bool { true }
 }
