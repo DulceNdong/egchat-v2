@@ -915,7 +915,15 @@ export default function ChatScreen() {
     if (messages.length === 0) return;
     // No saltar al fondo cuando se están cargando mensajes históricos (scroll hacia arriba)
     if (isLoadingMoreRef.current) return;
-    const frame = requestAnimationFrame(() => scrollToBottom(false));
+    // Solo auto-scroll al fondo en la carga inicial (page===1) o cuando llega un mensaje nuevo
+    const frame = requestAnimationFrame(() => {
+      // Pequeño delay en Android para evitar el flash de layout
+      if (Platform.OS === 'android') {
+        setTimeout(() => scrollToBottom(false), 80);
+      } else {
+        scrollToBottom(false);
+      }
+    });
     return () => cancelAnimationFrame(frame);
   }, [messages.length, scrollToBottom]);
 
