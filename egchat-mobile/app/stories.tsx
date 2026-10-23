@@ -32,6 +32,7 @@ import { DarkColors } from '../src/theme/darkMode';
 import Svg, { Path, Circle, Rect, G, Line, Polyline } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { CameraView, useCameraPermissions, useMicrophonePermissions, type CameraType } from 'expo-camera';
+import { LiveCamera, useLiveCameraPermissions, type LiveEffectId } from '../src/components/live/LiveCamera';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
 import { MomentImageViewer, type MomentViewerPost } from '../src/components/MomentImageViewer';
