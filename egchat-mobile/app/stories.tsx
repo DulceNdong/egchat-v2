@@ -1837,8 +1837,8 @@ export default function StoriesScreen() {
         <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
           <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={[st.menuCard, { borderColor: C.borderLight }]}>
             {([
-              { icon: 'image'      as const, color: '#a855f7', label: 'Subir foto/video', onPress: () => { addStory(); setMyStoryMenu(false); } },
-              { icon: 'add-circle' as const, color: BRAND,     label: 'Anadir estado',   onPress: () => { addStory(); setMyStoryMenu(false); } },
+              { icon: 'image'      as const, color: '#a855f7', label: 'Subir foto/video', onPress: () => { setShowStoryCreator(true); setMyStoryMenu(false); } },
+              { icon: 'add-circle' as const, color: BRAND,     label: 'Anadir estado',   onPress: () => { setShowStoryCreator(true); setMyStoryMenu(false); } },
               { icon: 'visibility' as const, color: BRAND2,    label: 'Ver mi estado',   onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
             ] as const).map((item, idx, arr) => (
               <TouchableOpacity
