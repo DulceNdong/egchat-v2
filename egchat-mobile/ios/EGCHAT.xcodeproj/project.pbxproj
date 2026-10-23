@@ -380,6 +380,11 @@
 			buildActionMask = 2147483647;
 			files = (
 				F11748422D0307B40044C1D9 /* AppDelegate.swift in Sources */,
+				184FC9CF104D4465AA02FC3F /* EGChatPushKitModule.swift in Sources */,
+				336F7B662AC94E8DA63CD4B8 /* EGChatCallModule.swift in Sources */,
+				BE90B74D73F94F62BEC4285B /* EGChatAudioRecorder.swift in Sources */,
+				736E322A640E45E28BE379C1 /* EGChatCallModule.m in Sources */,
+				20A4592FC88046D398F9618E /* EGChatPushKitModule.m in Sources */,
 				CC2B351A0B6AA91F0EB1A0B3 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
