@@ -953,7 +953,24 @@ export default function StoriesScreen() {
   const deleteStory = useCallback((storyId: string) => {
     Alert.alert('Eliminar estado', '¿Eliminar este estado?', [
       { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => { try { await storiesAPI.delete(storyId); await loadStories(); } catch {} } },
+      {
+        text: 'Eliminar', style: 'destructive', onPress: async () => {
+          // Eliminar optimistamente del estado local
+          setMyGroup(prev => {
+            if (!prev) return null;
+            const filtered = prev.stories.filter(s => s.id !== storyId);
+            return filtered.length === 0 ? null : { ...prev, stories: filtered };
+          });
+          try {
+            await storiesAPI.delete(storyId);
+          } catch (e) {
+            Alert.alert('Error', 'No se pudo eliminar el estado');
+          } finally {
+            // Recargar siempre para sincronizar con el servidor
+            await loadStories();
+          }
+        },
+      },
     ]);
   }, [loadStories]);
 
