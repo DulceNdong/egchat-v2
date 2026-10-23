@@ -2911,7 +2911,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
   const [flash,           setFlash]           = useState<'off' | 'on'>('off');
   const [duration,        setDuration]        = useState(0);
   const [showEffects,     setShowEffects]     = useState(false);
-  const [selectedEffect,  setSelectedEffect]  = useState('none');
+  const [selectedEffect,  setSelectedEffect]  = useState<LiveEffectId>('none');
   const [viewerCountAnim] = useState(new Animated.Value(1));
   const [pulseAnim]       = useState(new Animated.Value(1));
   const [startBtnAnim]    = useState(new Animated.Value(1));
