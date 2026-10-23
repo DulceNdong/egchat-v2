@@ -1,18 +1,14 @@
 import Foundation
 import AVFoundation
+import React
 
 /**
  * EGChat — Grabación de audio iOS (AVAudioRecorder)
  * Codec: AAC 128kbps, 44100Hz, mono
  * AVAudioSession en modo .voiceChat = cancelación de eco + ruido automática
- *
- * Instalación:
- * 1. Copiar a ios/EGChat/
- * 2. Añadir en Xcode al target EGChat
- * 3. Info.plist ya tiene NSMicrophoneUsageDescription
  */
 @objc(EGChatAudioRecorder)
-class EGChatAudioRecorder: NSObject {
+class EGChatAudioRecorder: RCTEventEmitter {
 
   private var recorder: AVAudioRecorder?
   private var outputURL: URL?
