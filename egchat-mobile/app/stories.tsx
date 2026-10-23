@@ -2321,12 +2321,14 @@ function MyStoriesManagerModal({
       {
         text: 'Eliminar', style: 'destructive',
         onPress: async () => {
+          // Eliminar localmente de inmediato
+          setLocalStories(prev => prev.filter(s => s.id !== storyId));
           try {
             await storiesAPI.delete(storyId);
-            setLocalStories(prev => prev.filter(s => s.id !== storyId));
-            onRefresh();
           } catch {
-            Alert.alert('Error', 'No se pudo eliminar el estado');
+            Alert.alert('Error', 'No se pudo eliminar. Intenta de nuevo.');
+          } finally {
+            onRefresh();
           }
         },
       },
