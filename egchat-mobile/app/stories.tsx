@@ -961,7 +961,7 @@ export default function StoriesScreen() {
   const MyBubble = useCallback(() => {
     const hasStory = myStories.length > 0;
     return (
-      <TouchableOpacity onPress={() => hasStory ? setViewingGroup(0) : addStory()} activeOpacity={0.8} style={buStyles.wrap} accessibilityRole="button" accessibilityLabel="Mi estado">
+      <TouchableOpacity onPress={() => hasStory ? setMyStoryMenu(true) : addStory()} activeOpacity={0.8} style={buStyles.wrap} accessibilityRole="button" accessibilityLabel="Mi estado">
         <View style={mbu.outer}>
           {hasStory ? (
             <LinearGradient colors={[BRAND, BRAND2]} style={[mbu.ring, { borderRadius: (BUBBLE_SIZE + 6) / 2 }]}>
