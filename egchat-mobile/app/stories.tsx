@@ -2947,8 +2947,12 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
     if (!camPerm?.granted)  await requestCamPerm();
     if (!micPerm?.granted)  await requestMicPerm();
     if (!camPerm?.granted || !micPerm?.granted) {
-      Alert.alert('Permisos', 'Necesitas cámara y micrófono para el live');
-      return;
+      // También intentar con VisionCamera permissions
+      const ok = await requestLivePerms();
+      if (!ok && !hasCam && !hasMic) {
+        Alert.alert('Permisos', 'Necesitas cámara y micrófono para el live');
+        return;
+      }
     }
     try {
       const BASE  = getApiBase();
