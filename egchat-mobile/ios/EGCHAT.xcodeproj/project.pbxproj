@@ -21,6 +21,7 @@
 		BE90B74D73F94F62BEC4285B /* EGChatAudioRecorder.swift in Sources */ = {isa = PBXBuildFile; fileRef = 344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */; };
 		736E322A640E45E28BE379C1 /* EGChatCallModule.m in Sources */ = {isa = PBXBuildFile; fileRef = A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */; };
 		20A4592FC88046D398F9618E /* EGChatPushKitModule.m in Sources */ = {isa = PBXBuildFile; fileRef = 70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */; };
+		3AC9145E7BFA467696AD2899 /* EGChatAudioRecorder.m in Sources */ = {isa = PBXBuildFile; fileRef = 6C00E7E19E344F2D8B8CA2D2 /* EGChatAudioRecorder.m */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
