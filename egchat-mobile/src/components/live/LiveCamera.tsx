@@ -75,7 +75,6 @@ function EffectOverlay({ effect }: { effect: LiveEffectId }) {
             {
               backgroundColor: config.tint,
               opacity: config.tintOpacity ?? 0.15,
-              mixBlendMode: config.blendMode ?? 'multiply',
             },
           ]}
         />
