@@ -6,8 +6,8 @@
  *
  * Fase 2: componente standalone, no toca expo-camera ni el resto del proyecto.
  */
-import React, { useEffect, useRef, useMemo } from 'react';
-import { StyleSheet, View, Platform } from 'react-native';
+import React from 'react';
+import { StyleSheet, View } from 'react-native';
 import {
   Camera,
   useCameraDevice,
