@@ -2881,9 +2881,11 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       setIsLive(true);
       setDuration(0);
       timerRef2.current = setInterval(() => setDuration(d => d + 1), 1000);
+
+      // Notificar por push a todos los contactos
       notifyLiveStarted({ liveId: id, hostName: hostName || 'Tu contacto' }).catch(() => {});
 
-      // Registrar en Supabase para que aparezca en la lista de lives activos
+      // Registrar en Supabase para que aparezca en tiempo real en la lista de lives
       void supabase.from('live_streams').upsert({
         id,
         host_id: hostId,
