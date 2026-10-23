@@ -44,6 +44,7 @@
 		344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatAudioRecorder.swift; path = EGCHAT/EGChatAudioRecorder.swift; sourceTree = "<group>"; };
 		A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatCallModule.m; path = EGCHAT/EGChatCallModule.m; sourceTree = "<group>"; };
 		70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatPushKitModule.m; path = EGCHAT/EGChatPushKitModule.m; sourceTree = "<group>"; };
+		6C00E7E19E344F2D8B8CA2D2 /* EGChatAudioRecorder.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatAudioRecorder.m; path = EGCHAT/EGChatAudioRecorder.m; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "EGCHAT-Bridging-Header.h"; path = "EGCHAT/EGCHAT-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -78,6 +79,7 @@
 				344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */,
 				A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */,
 				70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */,
+				6C00E7E19E344F2D8B8CA2D2 /* EGChatAudioRecorder.m */,
 				F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */,
 				BB2F792B24A3F905000567C9 /* Supporting */,
 				13B07FB51A68108700A75B9A /* Images.xcassets */,
