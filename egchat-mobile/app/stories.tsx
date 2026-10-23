@@ -2899,6 +2899,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
 
   const [camPerm, requestCamPerm] = useCameraPermissions();
   const [micPerm, requestMicPerm] = useMicrophonePermissions();
+  const { hasCam, hasMic, requestAll: requestLivePerms } = useLiveCameraPermissions();
 
   const [isLive,          setIsLive]          = useState(false);
   const [liveId,          setLiveId]          = useState<string | null>(null);
