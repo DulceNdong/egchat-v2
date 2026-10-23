@@ -947,7 +947,7 @@ export default function StoriesScreen() {
   }, [uploadStory]);
 
   const addStory = useCallback(async () => {
-    setShowAddModal(true);
+    setShowStoryCreator(true);
   }, []);
 
   const deleteStory = useCallback((storyId: string) => {
