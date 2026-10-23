@@ -7,7 +7,7 @@
     "orientation": "portrait",
     "updates": {
       "enabled": true,
-      "url": ""
+      "url": "https://u.expo.dev/1cf45e7c-dc1f-47e7-88bd-72b70fa4c1c5"
     },
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
@@ -53,8 +53,8 @@
         ],
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": true,
-        "NSCameraUsageDescription": "EGCHAT necesita la cámara para fotos, videollamadas y escanear QR.",
-        "NSMicrophoneUsageDescription": "EGCHAT necesita el micrófono para llamadas de voz y video.",
+        "NSCameraUsageDescription": "EGCHAT necesita la cámara para el streaming en vivo.",
+        "NSMicrophoneUsageDescription": "EGCHAT necesita el micrófono para el streaming en vivo.",
         "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos y videos para enviarlos en el chat.",
         "NSPhotoLibraryAddUsageDescription": "EGCHAT necesita permiso para guardar fotos y videos en tu galería.",
         "NSContactsUsageDescription": "EGCHAT necesita acceso a tus contactos para compartirlos y encontrar amigos.",
@@ -173,7 +173,7 @@
         "origin": false
       },
       "eas": {
-        "projectId": ""
+        "projectId": "1cf45e7c-dc1f-47e7-88bd-72b70fa4c1c5"
       }
     },
     "runtimeVersion": "1.0.0"
