@@ -857,6 +857,18 @@ export default function StoriesScreen() {
     } catch {}
   }, []);
 
+  // Suscripción realtime: actualizar lista de lives automáticamente
+  useEffect(() => {
+    if (activeSubTab !== 'sub_vivos') return;
+    const channel = supabase
+      .channel('live_streams_changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'live_streams' }, () => {
+        loadLiveStreams();
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel).catch(() => {}); };
+  }, [activeSubTab, loadLiveStreams]);
+
   const handleMomentComment = useCallback(async () => {
     if (!commentingPost || !commentText.trim()) return;
     const text = commentText.trim();
