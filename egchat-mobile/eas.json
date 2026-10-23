@@ -138,7 +138,7 @@
         "autoIncrement": true,
         "resourceClass": "m-medium",
         "buildConfiguration": "Release",
-        "image": "macos-sequoia-15.6-xcode-16.2",
+        "image": "macos-sequoia-15.6-xcode-16.4",
         "cocoapods": "1.17.0"
       }
     }
