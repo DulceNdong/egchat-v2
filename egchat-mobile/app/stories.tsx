@@ -2814,13 +2814,83 @@ interface LiveStreamModalProps {
 }
 
 const LIVE_EFFECTS = [
-  { id: 'none',    label: 'Normal',   emoji: '🎥' },
-  { id: 'beauty',  label: 'Beauty',   emoji: '✨' },
-  { id: 'vivid',   label: 'Vívido',   emoji: '🌈' },
-  { id: 'dramatic',label: 'Drama',    emoji: '🎭' },
-  { id: 'neon',    label: 'Neón',     emoji: '💜' },
-  { id: 'retro',   label: 'Retro',    emoji: '📷' },
+  { id: 'none',      label: 'Normal',    icon: 'normal'    },
+  { id: 'beauty',    label: 'Beauty',    icon: 'beauty'    },
+  { id: 'vivid',     label: 'Vívido',    icon: 'vivid'     },
+  { id: 'dramatic',  label: 'Drama',     icon: 'dramatic'  },
+  { id: 'neon',      label: 'Neón',      icon: 'neon'      },
+  { id: 'retro',     label: 'Retro',     icon: 'retro'     },
+  { id: 'blur',      label: 'Blur BG',   icon: 'blur'      },
+  { id: 'bw',        label: 'B&W',       icon: 'bw'        },
+  { id: 'warm',      label: 'Warm',      icon: 'warm'      },
+  { id: 'cool',      label: 'Cool',      icon: 'cool'      },
 ];
+
+// Icono SVG para cada efecto
+const EffectIcon = ({ id, active }: { id: string; active: boolean }) => {
+  const c = active ? '#00C8A0' : 'rgba(255,255,255,0.75)';
+  const sw = 1.6;
+  switch (id) {
+    case 'none': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Circle cx="12" cy="12" r="3"/><Path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7z"/>
+      </Svg>
+    );
+    case 'beauty': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/>
+      </Svg>
+    );
+    case 'vivid': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Circle cx="12" cy="12" r="5"/><Line x1="12" y1="1" x2="12" y2="3"/><Line x1="12" y1="21" x2="12" y2="23"/>
+        <Line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><Line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/>
+        <Line x1="1" y1="12" x2="3" y2="12"/><Line x1="21" y1="12" x2="23" y2="12"/>
+      </Svg>
+    );
+    case 'dramatic': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/>
+        <Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+      </Svg>
+    );
+    case 'neon': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Polyline points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+      </Svg>
+    );
+    case 'retro': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Rect x="3" y="3" width="18" height="18" rx="2"/><Circle cx="12" cy="12" r="4"/>
+        <Line x1="16.5" y1="7.5" x2="16.51" y2="7.5"/>
+      </Svg>
+    );
+    case 'blur': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Path d="M12 2v20M2 12h20"/><Circle cx="12" cy="12" r="8" strokeDasharray="3 3"/>
+      </Svg>
+    );
+    case 'bw': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Circle cx="12" cy="12" r="9"/><Path d="M12 3v18" stroke={c} strokeWidth={sw}/>
+        <Path d="M12 3a9 9 0 0 1 0 18z" fill={c} opacity={0.3}/>
+      </Svg>
+    );
+    case 'warm': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Path d="M8 14s1.5 2 4 2 4-2 4-2"/><Circle cx="12" cy="12" r="10"/>
+        <Line x1="9" y1="9" x2="9.01" y2="9"/><Line x1="15" y1="9" x2="15.01" y2="9"/>
+      </Svg>
+    );
+    case 'cool': return (
+      <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke={c} strokeWidth={sw} strokeLinecap="round">
+        <Path d="M12 22V2M5 12H2m20 0h-3M7.76 4.76l1.42 1.42m5.64 9.64 1.42 1.42M4.76 16.24l1.42-1.42m9.64-5.64 1.42-1.42"/>
+        <Circle cx="12" cy="12" r="4"/>
+      </Svg>
+    );
+    default: return null;
+  }
+};
 
 function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: LiveStreamModalProps) {
   const insets = useSafeAreaInsets();
