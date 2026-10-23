@@ -2581,6 +2581,178 @@ const st = StyleSheet.create({
 const TILE_GAP = 10;
 const TILE_SIZE = (W - 48 - TILE_GAP) / 2;
 
+// ══════════════════════════════════════════════════════════════════
+// STORY CREATOR MODAL — texto + múltiples fotos + videos a la vez
+// ══════════════════════════════════════════════════════════════════
+function StoryCreatorModal({
+  visible, onClose, onPublish, C, isDark,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onPublish: (caption: string, images: string[], videos: string[]) => Promise<void>;
+  C: typeof Colors;
+  isDark: boolean;
+}) {
+  const [caption,   setCaption]   = React.useState('');
+  const [images,    setImages]    = React.useState<string[]>([]);
+  const [videos,    setVideos]    = React.useState<string[]>([]);
+  const [publishing, setPublishing] = React.useState(false);
+  const insets = useSafeAreaInsets();
+
+  React.useEffect(() => {
+    if (!visible) { setCaption(''); setImages([]); setVideos([]); }
+  }, [visible]);
+
+  const pickImages = async () => {
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== 'granted') { Alert.alert('Sin permiso para galería'); return; }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.85,
+      orderedSelection: true,
+    });
+    if (!result.canceled) setImages(prev => [...prev, ...result.assets.map(a => a.uri)].slice(0, 9));
+  };
+
+  const pickVideos = async () => {
+    const asset = await pickVideo();
+    if (asset) setVideos(prev => [...prev, asset.uri].slice(0, 3));
+  };
+
+  const takePhoto = async () => {
+    const asset = await pickImageFromCamera();
+    if (asset) setImages(prev => [...prev, asset.uri].slice(0, 9));
+  };
+
+  const handlePublish = async () => {
+    if (!caption.trim() && images.length === 0 && videos.length === 0) {
+      Alert.alert('Añade algo', 'Escribe un texto o añade una foto/video'); return;
+    }
+    setPublishing(true);
+    try { await onPublish(caption.trim(), images, videos); }
+    finally { setPublishing(false); }
+  };
+
+  const hasContent = caption.trim().length > 0 || images.length > 0 || videos.length > 0;
+
+  return (
+    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
+      <KeyboardAvoidingView style={{ flex: 1, backgroundColor: C.bgPrimary }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        {/* Header */}
+        <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+          style={{ flexDirection: 'row', alignItems: 'center', paddingHorizontal: 14, paddingBottom: 14, paddingTop: insets.top + 12, gap: 10 }}>
+          <TouchableOpacity onPress={onClose}
+            style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
+            <MIcon name="close" size={20} color="#fff" />
+          </TouchableOpacity>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Nuevo estado</Text>
+          <TouchableOpacity onPress={handlePublish} disabled={publishing || !hasContent}
+            style={{ paddingHorizontal: 18, paddingVertical: 8, backgroundColor: hasContent ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', borderRadius: 18 }}>
+            {publishing
+              ? <ActivityIndicator color="#fff" size="small" />
+              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, opacity: hasContent ? 1 : 0.5 }}>Publicar</Text>}
+          </TouchableOpacity>
+        </LinearGradient>
+
+        <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }} keyboardShouldPersistTaps="handled">
+
+          {/* Texto / Caption */}
+          <TextInput
+            style={{ fontSize: 16, minHeight: 90, textAlignVertical: 'top', borderRadius: 12, borderWidth: 1, borderColor: C.borderLight, padding: 14, lineHeight: 23, color: C.textPrimary, backgroundColor: C.bgSecondary, marginBottom: 6 }}
+            placeholder="¿Qué quieres compartir?"
+            placeholderTextColor={C.textTertiary}
+            value={caption}
+            onChangeText={setCaption}
+            multiline
+            maxLength={300}
+          />
+          <Text style={{ fontSize: 11, textAlign: 'right', marginBottom: 16, color: C.textTertiary }}>{caption.length}/300</Text>
+
+          {/* Botones de acción rápida */}
+          <View style={{ flexDirection: 'row', gap: 10, marginBottom: 20 }}>
+            <TouchableOpacity onPress={pickImages}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12, backgroundColor: '#a855f711', borderWidth: 1.5, borderColor: '#a855f744' }}>
+              <MIcon name="image" size={20} color="#a855f7" />
+              <Text style={{ color: '#a855f7', fontWeight: '700', fontSize: 13 }}>Fotos</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={takePhoto}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12, backgroundColor: '#00c8a011', borderWidth: 1.5, borderColor: '#00c8a044' }}>
+              <MIcon name="photo-camera" size={20} color={BRAND} />
+              <Text style={{ color: BRAND, fontWeight: '700', fontSize: 13 }}>Cámara</Text>
+            </TouchableOpacity>
+            <TouchableOpacity onPress={pickVideos}
+              style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12, backgroundColor: '#f9731611', borderWidth: 1.5, borderColor: '#f9731644' }}>
+              <MIcon name="videocam" size={20} color="#f97316" />
+              <Text style={{ color: '#f97316', fontWeight: '700', fontSize: 13 }}>Video</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Grid de imágenes */}
+          {images.length > 0 && (
+            <>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: C.textSecondary, marginBottom: 8 }}>Fotos ({images.length}/9)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {images.map((uri, i) => (
+                  <View key={i} style={{ position: 'relative', width: 90, height: 90 }}>
+                    <Image source={{ uri }} style={{ width: 90, height: 90, borderRadius: 10 }} resizeMode="cover" />
+                    <TouchableOpacity
+                      style={{ position: 'absolute', top: -7, right: -7, width: 24, height: 24, borderRadius: 12, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bgPrimary }}
+                      onPress={() => setImages(prev => prev.filter((_, j) => j !== i))}>
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800', lineHeight: 16 }}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {images.length < 9 && (
+                  <TouchableOpacity onPress={pickImages}
+                    style={{ width: 90, height: 90, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.borderLight, alignItems: 'center', justifyContent: 'center' }}>
+                    <MIcon name="add" size={26} color={C.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Videos */}
+          {videos.length > 0 && (
+            <>
+              <Text style={{ fontSize: 13, fontWeight: '700', color: C.textSecondary, marginBottom: 8 }}>Videos ({videos.length}/3)</Text>
+              <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 16 }}>
+                {videos.map((uri, i) => (
+                  <View key={i} style={{ position: 'relative', width: 90, height: 90, backgroundColor: '#000', borderRadius: 10, alignItems: 'center', justifyContent: 'center' }}>
+                    <Text style={{ fontSize: 28, color: '#fff' }}>▶</Text>
+                    <TouchableOpacity
+                      style={{ position: 'absolute', top: -7, right: -7, width: 24, height: 24, borderRadius: 12, backgroundColor: '#ef4444', alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: C.bgPrimary }}
+                      onPress={() => setVideos(prev => prev.filter((_, j) => j !== i))}>
+                      <Text style={{ color: '#fff', fontSize: 13, fontWeight: '800', lineHeight: 16 }}>×</Text>
+                    </TouchableOpacity>
+                  </View>
+                ))}
+                {videos.length < 3 && (
+                  <TouchableOpacity onPress={pickVideos}
+                    style={{ width: 90, height: 90, borderRadius: 10, borderWidth: 1.5, borderStyle: 'dashed', borderColor: C.borderLight, alignItems: 'center', justifyContent: 'center' }}>
+                    <MIcon name="add" size={26} color={C.textTertiary} />
+                  </TouchableOpacity>
+                )}
+              </View>
+            </>
+          )}
+
+          {/* Estado vacío — hint */}
+          {images.length === 0 && videos.length === 0 && (
+            <View style={{ alignItems: 'center', paddingVertical: 24, gap: 8 }}>
+              <MIcon name="auto-awesome" size={40} color={C.border} />
+              <Text style={{ color: C.textTertiary, fontSize: 13, textAlign: 'center' }}>
+                Añade fotos, videos y texto{'\n'}para crear tu estado
+              </Text>
+            </View>
+          )}
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </Modal>
+  );
+}
+
 const stAdd = StyleSheet.create({
   backdrop: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.45)' },
   sheet:    { flex: 1, justifyContent: 'flex-end', paddingBottom: 32, paddingHorizontal: 16 },
