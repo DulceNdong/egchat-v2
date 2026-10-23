@@ -388,6 +388,7 @@
 				BE90B74D73F94F62BEC4285B /* EGChatAudioRecorder.swift in Sources */,
 				736E322A640E45E28BE379C1 /* EGChatCallModule.m in Sources */,
 				20A4592FC88046D398F9618E /* EGChatPushKitModule.m in Sources */,
+				3AC9145E7BFA467696AD2899 /* EGChatAudioRecorder.m in Sources */,
 				CC2B351A0B6AA91F0EB1A0B3 /* ExpoModulesProvider.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
