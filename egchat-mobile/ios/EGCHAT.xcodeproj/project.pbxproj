@@ -38,6 +38,11 @@
 		E05584B8ED7C5C282B705C98 /* Pods-EGCHAT.debug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = "Pods-EGCHAT.debug.xcconfig"; path = "Target Support Files/Pods-EGCHAT/Pods-EGCHAT.debug.xcconfig"; sourceTree = "<group>"; };
 		ED297162215061F000B7C4FE /* JavaScriptCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = JavaScriptCore.framework; path = System/Library/Frameworks/JavaScriptCore.framework; sourceTree = SDKROOT; };
 		F11748412D0307B40044C1D9 /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = AppDelegate.swift; path = EGCHAT/AppDelegate.swift; sourceTree = "<group>"; };
+		49A6E7570079405EA57B2576 /* EGChatPushKitModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatPushKitModule.swift; path = EGCHAT/EGChatPushKitModule.swift; sourceTree = "<group>"; };
+		6D218F7CC8754DCDB1992163 /* EGChatCallModule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatCallModule.swift; path = EGCHAT/EGChatCallModule.swift; sourceTree = "<group>"; };
+		344803E986E6425F87659E64 /* EGChatAudioRecorder.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; name = EGChatAudioRecorder.swift; path = EGCHAT/EGChatAudioRecorder.swift; sourceTree = "<group>"; };
+		A622FE3ACA8E4F2DB0CB7521 /* EGChatCallModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatCallModule.m; path = EGCHAT/EGChatCallModule.m; sourceTree = "<group>"; };
+		70A762600B54447AADF4DE79 /* EGChatPushKitModule.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; name = EGChatPushKitModule.m; path = EGCHAT/EGChatPushKitModule.m; sourceTree = "<group>"; };
 		F11748442D0722820044C1D9 /* EGCHAT-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = "EGCHAT-Bridging-Header.h"; path = "EGCHAT/EGCHAT-Bridging-Header.h"; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
