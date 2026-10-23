@@ -29,16 +29,23 @@ public class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions)
 #endif
 
+    // Iniciar VoIP PushKit
     EGChatPushKitCoordinator.shared.start()
+
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // Linking API
+  // Linking API — maneja deep links y egchat-share://
   public override func application(
     _ app: UIApplication,
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
+    // Share Extension URL scheme
+    if url.scheme == "egchat-share" {
+      NotificationCenter.default.post(name: NSNotification.Name("EGChatShareURL"), object: url)
+      return true
+    }
     return super.application(app, open: url, options: options) || RCTLinkingManager.application(app, open: url, options: options)
   }
 
@@ -57,7 +64,6 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   // Extension point for config-plugins
 
   override func sourceURL(for bridge: RCTBridge) -> URL? {
-    // needed to return the correct URL for expo-dev-client.
     bridge.bundleURL ?? bundleURL()
   }
 
@@ -68,15 +74,4 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
-
-  // EGChat Share Extension: recibir contenido desde otras apps
-  override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
-    if url.scheme == "egchat-share" {
-      // Notificar a la app que hay contenido compartido pendiente via URL scheme
-      NotificationCenter.default.post(name: NSNotification.Name("EGChatShareURL"), object: url)
-      return true
-    }
-    return super.application(app, open: url, options: options)
-  }
-
 }
