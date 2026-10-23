@@ -3177,19 +3177,24 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
           </View>
         )}
 
-        {/* ── PANEL DE EFECTOS ── */}
+        {/* ── PANEL DE EFECTOS — lateral vertical moderno ── */}
         {showEffects && isLive && (
-          <View style={[lv.effectsPanel, { bottom: insets.bottom + 220 }]}>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ gap: 10, paddingHorizontal: 14, paddingVertical: 4 }}>
+          <View style={[lv.effectsPanel, { bottom: insets.bottom + 100, top: insets.top + 70 }]}>
+            <ScrollView
+              showsVerticalScrollIndicator={false}
+              contentContainerStyle={{ gap: 6, paddingVertical: 10, paddingHorizontal: 8 }}
+            >
               {LIVE_EFFECTS.map(ef => (
-                <TouchableOpacity key={ef.id}
+                <TouchableOpacity
+                  key={ef.id}
                   style={[lv.effectBtn, selectedEffect === ef.id && lv.effectBtnActive]}
-                  onPress={() => { setSelectedEffect(ef.id); setShowEffects(false); }}>
-                  <View style={[lv.effectThumb, { backgroundColor: selectedEffect === ef.id ? 'rgba(0,200,160,0.2)' : 'rgba(255,255,255,0.1)' }]}>
-                    <Text style={{ fontSize: 28 }}>{ef.emoji}</Text>
-                  </View>
-                  <Text style={{ color: selectedEffect === ef.id ? '#00C8A0' : '#fff', fontSize: 10, fontWeight: '700', marginTop: 3 }}>{ef.label}</Text>
+                  onPress={() => { setSelectedEffect(ef.id); setShowEffects(false); }}
+                  activeOpacity={0.75}
+                >
+                  <EffectIcon id={ef.id} active={selectedEffect === ef.id} />
+                  <Text style={[lv.effectLabel, selectedEffect === ef.id && { color: '#00C8A0' }]}>
+                    {ef.label}
+                  </Text>
                 </TouchableOpacity>
               ))}
             </ScrollView>
