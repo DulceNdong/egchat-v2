@@ -29,8 +29,6 @@ public class AppDelegate: ExpoAppDelegate {
       launchOptions: launchOptions)
 #endif
 
-    // PushKit debe arrancar antes de React Native: una llamada VoIP puede
-    // despertar el proceso cuando la interfaz JavaScript aún no existe.
     EGChatPushKitCoordinator.shared.start()
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
@@ -70,4 +68,14 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
     return Bundle.main.url(forResource: "main", withExtension: "jsbundle")
 #endif
   }
+
+  // EGChat Share Extension: recibir contenido desde otras apps
+  override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
+    if url.scheme == "egchat-share" {
+      EGChatShareModule.handleOpenURL(url)
+      return true
+    }
+    return super.application(app, open: url, options: options)
+  }
+
 }
