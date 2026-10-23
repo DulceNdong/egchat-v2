@@ -720,6 +720,7 @@ export default function StoriesScreen() {
   const [myAvatarUrl,  setMyAvatarUrl]  = useState<string | undefined>();
   const [myStoryMenu,  setMyStoryMenu]  = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showStoryCreator, setShowStoryCreator] = useState(false); // modal creador rico
   const [showLive,     setShowLive]     = useState(false);
   const [showStoriesManager, setShowStoriesManager] = useState(false);
   // ── Momentos state ────────────────────────────────────────────
