@@ -72,7 +72,8 @@ class ReactNativeDelegate: ExpoReactNativeFactoryDelegate {
   // EGChat Share Extension: recibir contenido desde otras apps
   override func application(_ app: UIApplication, open url: URL, options: [UIApplication.OpenURLOptionsKey: Any] = [:]) -> Bool {
     if url.scheme == "egchat-share" {
-      EGChatShareModule.handleOpenURL(url)
+      // Notificar a la app que hay contenido compartido pendiente via URL scheme
+      NotificationCenter.default.post(name: NSNotification.Name("EGChatShareURL"), object: url)
       return true
     }
     return super.application(app, open: url, options: options)
