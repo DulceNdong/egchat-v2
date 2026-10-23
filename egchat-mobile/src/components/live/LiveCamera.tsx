@@ -104,7 +104,6 @@ interface EffectConfig {
   tintOpacity?: number;
   tint2?: string;
   tint2Opacity?: number;
-  blendMode?: string;
   label: string;
 }
 
