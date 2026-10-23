@@ -437,8 +437,8 @@ export default function QRScannerScreen() {
         <View style={st.overlayBottom} />
       </View>
 
-      {/* Header */}
-      <SafeAreaView edges={['top']} style={st.header}>
+      {/* Header — con safe area para que el X no quede bajo la barra de estado */}
+      <SafeAreaView edges={['top']} style={[st.header, { paddingTop: 8 }]}>
         <TouchableOpacity style={st.backBtn} onPress={() => router.back()}>
           <IcClose />
         </TouchableOpacity>
