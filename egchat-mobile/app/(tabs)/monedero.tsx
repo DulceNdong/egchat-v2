@@ -1407,9 +1407,8 @@ function MonederoScreenInner() {
 
   // ── KYC: Pantalla de bloqueo si el monedero no está verificado ─
   // Muestra overlay distinto según el estado KYC del usuario.
-  // TEMPORAL: monedero desbloqueado para pruebas — reactivar cuando el banco lo requiera
-  // if (!kycLoading && kycStatus !== 'approved') {
-  if (false && !kycLoading && kycStatus !== 'approved') {
+  // Para REACTIVAR: cambiar WALLET_KYC_REQUIRED a true en src/config/walletConfig.ts
+  if (WALLET_KYC_REQUIRED && !kycLoading && kycStatus !== 'approved') {
     const isNone     = kycStatus === 'none';
     const isPending  = kycStatus === 'pending';
     const isRejected = kycStatus === 'rejected';
