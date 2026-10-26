@@ -8,6 +8,7 @@ import { router } from 'expo-router';
 import { authAPI, clearToken, setToken, wakeServer } from '../api';
 import SessionManager from '../sessionManager';
 import { registerForPushNotifications } from '../notifications';
+import { WALLET_KYC_REQUIRED } from '../config/walletConfig';
 
 interface User {
   id: string;
