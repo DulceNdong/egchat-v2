@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS, invalidateKycStatusCache } from '../../src/services/kyc';
 import type { KycStatus } from '../../src/api';
+import { WALLET_KYC_REQUIRED } from '../../src/config/walletConfig';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Line, Polyline, Rect, Circle } from 'react-native-svg';
