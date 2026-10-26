@@ -237,7 +237,16 @@ async function request<T>(
       throw new Error(err.message || `Error ${res.status}`);
     }
 
-    return res.json();
+    // 204 No Content y respuestas vacías (típico en DELETE) — no intentar parsear JSON
+    if (res.status === 204) return {} as T;
+    const text = await res.text();
+    if (!text || text.trim() === '') return {} as T;
+    try {
+      return JSON.parse(text) as T;
+    } catch {
+      // Respuesta no-JSON pero OK (ej. "OK" plano) — devolver vacío
+      return {} as T;
+    }
   } catch (err: any) {
     const isNetwork = err.name === 'AbortError'
       || err.name === 'TypeError'
