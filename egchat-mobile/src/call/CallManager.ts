@@ -729,13 +729,15 @@ export class CallManager {
         const sigState = this._pc?.signalingState;
         if (sigState === 'have-local-offer') {
           try {
+            // Parar tono inmediatamente
+            stopDialingTone();
+            this._stopCallTimeout();
             await this._pc.setRemoteDescription(
               new NativeRTC!.RTCSessionDescription(s.answer)
             );
             this._remoteDescSet  = true;
             this._answerApplied  = true;
             this._setCommState('connecting');
-            this._stopCallTimeout();
             await this._drainIceQueue();
             console.log('[CallManager] _forcePoll: answer aplicado correctamente');
           } catch (e) {
