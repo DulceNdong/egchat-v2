@@ -407,7 +407,7 @@ export default function QRScannerScreen() {
     <View style={st.root}>
       <StatusBar translucent backgroundColor="transparent" barStyle="light-content" />
 
-      {/* Cámara */}
+      {/* Cámara — detrás de todo */}
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
@@ -437,13 +437,15 @@ export default function QRScannerScreen() {
         <View style={st.overlayBottom} />
       </View>
 
-      {/* Header — con safe area para que el X no quede bajo la barra de estado */}
-      <SafeAreaView edges={['top']} style={[st.header, { paddingTop: 8 }]}>
-        <TouchableOpacity style={st.backBtn} onPress={() => router.back()}>
-          <IcClose />
-        </TouchableOpacity>
-        <Text style={st.headerTitle}>Escanear QR de pago</Text>
-        <View style={{ width: 42 }} />
+      {/* Header — posición absoluta con insets manuales para máximo control */}
+      <SafeAreaView edges={['top', 'left', 'right']} style={st.headerSafe}>
+        <View style={st.headerRow}>
+          <TouchableOpacity style={st.backBtn} onPress={() => router.back()}>
+            <IcClose />
+          </TouchableOpacity>
+          <Text style={st.headerTitle}>Escanear QR de pago</Text>
+          <View style={{ width: 42 }} />
+        </View>
       </SafeAreaView>
 
       {/* Instrucción debajo del frame */}
