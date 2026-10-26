@@ -572,7 +572,8 @@ export const contactsAPI = {
     try {
       const contacts = await get<any[]>('/api/contacts');
       const entry = contacts?.find(
-        (c: any) => (c.contact_user_id || c.user?.id || c.id) === targetUserId
+        (c: any) =>
+          String(c.contact_user_id || c.user?.id || c.id) === String(targetUserId)
       );
       if (!entry) return false;
       const rowId = entry.id;
