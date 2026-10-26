@@ -363,11 +363,7 @@ export const ContactProfileModal: React.FC<Props> = ({
             setActionLoading(true);
             try {
               const uid = targetUserId || cpId;
-              const removed = await contactsAPI.removeByUserId(uid);
-              if (!removed) {
-                // intentar por id de fila directo
-                await contactsAPI.remove(cpId);
-              }
+              await contactsAPI.removeByUserId(uid);
               await onDeleteContact?.(cpId);
               onClose();
             } catch {
