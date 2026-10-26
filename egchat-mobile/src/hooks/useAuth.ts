@@ -112,10 +112,11 @@ export const useAuth = () => {
           console.warn('[Register push bootstrap skipped]', pushErr);
         });
       }
-      // ── KYC: tras registro siempre mostrar la pantalla de activación del monedero.
-      // El usuario puede ignorarla y entrar a la app normalmente.
+      // ── KYC: tras registro, si el monedero requiere KYC obligatorio,
+      // mostrar la pantalla de activación. Si no (modo pruebas), ir directo a tabs.
+      // Para reactivar: cambiar WALLET_KYC_REQUIRED a true en src/config/walletConfig.ts
       // En web redirigimos directo a tabs (KYC es solo para la app nativa).
-      if (Platform.OS === 'web') {
+      if (Platform.OS === 'web' || !WALLET_KYC_REQUIRED) {
         router.replace('/(tabs)');
       } else {
         router.replace('/kyc-wallet-prompt' as any);
