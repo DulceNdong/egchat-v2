@@ -246,7 +246,13 @@ export default function MomentsScreen() {
                 text: 'Eliminar', style: 'destructive',
                 onPress: async () => {
                   setPosts(p => p.filter(x => x.id !== item.id)); // optimistic
-                  await deleteMoment(item.id).catch(() => {}); // server
+                  try {
+                    await deleteMoment(item.id);
+                  } catch {
+                    // Si falla el servidor, revertir el post y avisar
+                    setPosts(p => [item, ...p.filter(x => x.id !== item.id)]);
+                    toast.error('No se pudo eliminar. Intenta de nuevo.');
+                  }
                 },
               },
               { text: 'Cancelar', style: 'cancel' },
