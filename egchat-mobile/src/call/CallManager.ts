@@ -1089,6 +1089,9 @@ export class CallManager {
         if (role === 'caller') {
           if (!this._answerApplied && s.answer &&
               this._pc?.signalingState === 'have-local-offer') {
+            // Parar el tono inmediatamente — el callee aceptó
+            stopDialingTone();
+            this._stopCallTimeout();
             await this._pc.setRemoteDescription(
               new NativeRTC!.RTCSessionDescription(s.answer),
             );
@@ -1096,7 +1099,6 @@ export class CallManager {
             this._answerApplied    = true;
             this._iceRestartPending = false; // respuesta recibida — limpiar flag
             this._setCommState('connecting');
-            this._stopCallTimeout();
             await this._drainIceQueue();
           }
           if (this._answerApplied && s.calleeCandidates) {
