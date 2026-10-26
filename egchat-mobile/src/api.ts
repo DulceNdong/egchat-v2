@@ -571,13 +571,15 @@ export const contactsAPI = {
   removeByUserId: async (targetUserId: string): Promise<boolean> => {
     try {
       const contacts = await get<any[]>('/api/contacts');
+      // Buscar por todos los campos posibles donde puede estar el user_id del contacto
       const entry = contacts?.find(
         (c: any) =>
-          String(c.contact_user_id || c.user?.id || c.id) === String(targetUserId)
+          String(c.contact_user_id) === String(targetUserId) ||
+          String(c.user?.id)        === String(targetUserId) ||
+          String(c.user_id)         === String(targetUserId)
       );
       if (!entry) return false;
-      const rowId = entry.id;
-      await del<void>(`/api/contacts/${rowId}`);
+      await del<void>(`/api/contacts/${entry.id}`);
       return true;
     } catch {
       return false;
