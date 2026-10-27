@@ -13,6 +13,7 @@ import { refreshAndroidChannels } from '../../src/notifications';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function SonidosScreen() {
   const [settings, setSettings] = useState<SoundSettings | null>(null);
