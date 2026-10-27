@@ -38,7 +38,7 @@ async function estimateCacheMB(): Promise<number> {
 export default function AlmacenamientoScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const [used, setUsed] = useState(0);
+  const { translate: t } = useLanguage();
   const [cacheSize, setCacheSize] = useState(0);
   const [mediaCacheSize, setMediaCacheSize] = useState(0);
   const [loading, setLoading] = useState(true);
