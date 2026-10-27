@@ -1878,8 +1878,8 @@ function MonederoScreenInner() {
                 <IcoTransfer color="#0E5F8A" />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[s.bankName, { color: C.textPrimary }]}>Ver mis transferencias</Text>
-                <Text style={[s.bankType, { color: C.textSecondary }]}>Consulta tu historial completo</Text>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>{t('viewMyTransfers')}</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>{t('viewFullHistory')}</Text>
               </View>
               <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
             </TouchableOpacity>
