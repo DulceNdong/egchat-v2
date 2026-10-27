@@ -843,7 +843,7 @@ function MensajeriaScreenInner() {
             style={[st.searchText, { color: C.textPrimary }]}
             value={searchQuery}
             onChangeText={setSearchQuery}
-            placeholder="Buscar chat o contacto..."
+            placeholder={t('searchChat')}
             placeholderTextColor={C.textTertiary}
             returnKeyType="search"
           />
