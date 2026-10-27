@@ -347,6 +347,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     manageCards: 'Gestiona tus tarjetas bancarias',
     viewMyTransfers: 'Ver mis transferencias',
     viewFullHistory: 'Consulta tu historial completo',
+    fullHistory: 'Historial Completo',
+    all: 'Todas',
+    received: 'Recibidas',
+    sent: 'Enviadas',
+    deposit: 'Depósitos',
     // Ajustes
     switchAccount: 'Cambiar cuenta',
     logoutConfirm: '¿Cerrar sesión en EGChat?',
