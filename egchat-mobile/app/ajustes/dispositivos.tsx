@@ -135,7 +135,9 @@ export default function DispositivosScreen() {
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const { translate: t } = useLanguage(); = useCallback(async () => {
+  const { translate: t } = useLanguage();
+
+  const loadSessions = useCallback(async () => {
     const data = await getActiveSessions();
     // Ordenar: dispositivo actual primero, luego por último visto
     const sorted = [...data].sort((a, b) => {
