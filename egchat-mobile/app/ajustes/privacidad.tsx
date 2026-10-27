@@ -287,12 +287,12 @@ export default function PrivacidadScreen() {
         )}
       </SettingsCard>
 
-      <SettingsSection label="Datos personales" />
+      <SettingsSection label={t('personalData')} />
       <SettingsCard>
-        <SettingsRow label="Descargar mis datos" onPress={requestDataDownload} />
+        <SettingsRow label={t('downloadMyData')} onPress={requestDataDownload} />
         <SettingsDivider />
         <SettingsRow
-          label="Eliminar mi cuenta"
+          label={t('deleteAccount')}
           danger
           onPress={handleDeleteAccount}
         />
