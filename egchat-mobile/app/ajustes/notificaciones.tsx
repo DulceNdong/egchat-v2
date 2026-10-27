@@ -149,67 +149,63 @@ export default function NotificacionesScreen() {
       </SettingsCard>
 
       {/* ── Mensajes y grupos ───────────────────── */}
-      <SettingsSection label="Mensajes y grupos" />
+      <SettingsSection label={t('messagesGroups')} />
       <SettingsCard>
-        <SettingsToggleRow label="Mensajes privados"    value={msgs}      onValueChange={v => { setMsgs(v);      setCfgBool(CFG.notifMessages, v); }} />
+        <SettingsToggleRow label={t('privateMessages')}   value={msgs}      onValueChange={v => { setMsgs(v);      setCfgBool(CFG.notifMessages, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Grupos"               value={groups}    onValueChange={v => { setGroups(v);    setCfgBool(CFG.notifGroups,   v); }} />
+        <SettingsToggleRow label={t('groups')}            value={groups}    onValueChange={v => { setGroups(v);    setCfgBool(CFG.notifGroups,   v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Reacciones a mensajes" value={reactions} onValueChange={v => { setReactions(v); setCfgBool('notif_reactions', v); }} />
+        <SettingsToggleRow label={t('messageReactions')}  value={reactions} onValueChange={v => { setReactions(v); setCfgBool('notif_reactions', v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Vista previa del mensaje" value={preview} onValueChange={v => { setPreview(v); setCfgBool(CFG.notifPreview, v); }} />
+        <SettingsToggleRow label={t('messagePreview')}    value={preview}   onValueChange={v => { setPreview(v);  setCfgBool(CFG.notifPreview,  v); }} />
       </SettingsCard>
 
-      {/* ── Llamadas y estados ──────────────────── */}
-      <SettingsSection label="Llamadas y estados" />
+      <SettingsSection label={t('callsStories')} />
       <SettingsCard>
-        <SettingsToggleRow label="Llamadas entrantes" value={calls}   onValueChange={v => { setCalls(v);   setCfgBool(CFG.notifCalls,   v); }} />
+        <SettingsToggleRow label={t('incomingCalls')}    value={calls}   onValueChange={v => { setCalls(v);   setCfgBool(CFG.notifCalls,   v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Historias / Estados" value={stories} onValueChange={v => { setStories(v); setCfgBool(CFG.notifStories, v); }} />
+        <SettingsToggleRow label={t('storiesStatus')}   value={stories} onValueChange={v => { setStories(v); setCfgBool(CFG.notifStories, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Moments nuevos"      value={moments} onValueChange={v => { setMoments(v); setCfgBool('notif_moments',  v); }} />
+        <SettingsToggleRow label={t('newMoments')}      value={moments} onValueChange={v => { setMoments(v); setCfgBool('notif_moments',  v); }} />
       </SettingsCard>
 
-      {/* ── Pagos y Djangue ─────────────────────── */}
-      <SettingsSection label="Pagos y Djangue" />
+      <SettingsSection label={t('paymentsDjangue')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Transferencias recibidas"
-          description="Notificación al recibir dinero"
+          label={t('receivedTransfers')}
+          description={t('notifyOnReceive')}
           value={transfers}
           onValueChange={v => { setTransfers(v); setCfgBool('notif_transfers', v); }}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Djangue — recordatorios"
-          description="Cuotas pendientes y pagos del turno"
+          label={t('djangueReminders')}
+          description={t('pendingQuotas')}
           value={djangue}
           onValueChange={v => { setDjangue(v); setCfgBool('notif_djangue', v); }}
         />
       </SettingsCard>
 
-      {/* ── Sonido y vibración ──────────────────── */}
-      <SettingsSection label="Sonido y vibración" />
+      <SettingsSection label={t('soundVibration')} />
       <SettingsCard>
         <SettingsRow
-          label="Volumen y tonos"
+          label={t('volumeTones')}
           value={`${Math.round(volume * 100)}%`}
           onPress={() => router.push('/ajustes/sonidos' as any)}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Vibración"
+          label={t('vibration')}
           value={vibration}
           onValueChange={v => { setVibration(v); saveSoundSettings({ vibrationEnabled: v }); }}
         />
       </SettingsCard>
 
-      {/* ── No molestar ─────────────────────────── */}
-      <SettingsSection label="No molestar" />
+      <SettingsSection label={t('doNotDisturb')} />
       <SettingsCard>
         <SettingsRow
-          label="Programar silencio"
-          value={dndActive ? '🔇 Activo ahora' : dndLabel}
+          label={t('scheduleSilence')}
+          value={dndActive ? `🔇 ${t('activeNow')}` : dndLabel}
           onPress={() => setShowDND(true)}
         />
       </SettingsCard>
