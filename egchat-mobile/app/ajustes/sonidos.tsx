@@ -102,7 +102,7 @@ export default function SonidosScreen() {
           ))}
         </View>
         <View style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }}>
-          <Text style={{ fontSize: 16, color: C.textPrimary }}>Vibración</Text>
+          <Text style={{ fontSize: 16, color: C.textPrimary }}>{t('vibration')}</Text>
           <Switch value={settings.vibrationEnabled} onValueChange={v => update('vibrationEnabled', v)} trackColor={{ false: '#d1d5db', true: Colors.accent }} thumbColor="#fff" />
         </View>
       </View>
