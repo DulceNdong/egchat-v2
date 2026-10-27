@@ -207,8 +207,7 @@ export default function InterfazScreen() {
         ))}
       </SettingsCard>
 
-      {/* ── Fondo del chat ── */}
-      <SettingsSection label="Fondo del chat" />
+      <SettingsSection label={t('chatBackground')} />
       <View style={[styles.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={styles.colorRow}>
           {CHAT_BG_COLORS.map(bg => (
