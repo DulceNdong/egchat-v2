@@ -80,6 +80,7 @@ function SessionCard({
 }) {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const { translate: t } = useLanguage();
   const accent = session.isCurrentDevice ? '#00c8a0' : '#6b7280';
 
   return (
