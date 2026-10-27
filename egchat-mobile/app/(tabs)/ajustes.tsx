@@ -200,7 +200,7 @@ function AjustesScreenInner() {
     };
 
     if (typeof window !== 'undefined') {
-      if (window.confirm('¿Cerrar sesión en EGChat?')) {
+      if (window.confirm(t('logoutConfirm'))) {
         doLogout();
       }
     } else {
