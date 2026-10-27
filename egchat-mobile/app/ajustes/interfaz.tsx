@@ -100,6 +100,7 @@ export default function InterfazScreen() {
   const { isDark, setMode, mode } = useThemeContext();
   const { fontScale, fontFamily, changeFontScale, changeFontFamily } = useFont();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
   const [chatBg, setChatBg] = useState('#e5ddd5');
   const [accentColor, setAccentColor] = useState('#07c160');
 
