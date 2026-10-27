@@ -728,7 +728,7 @@ function MensajeriaScreenInner() {
     const { name } = getChatMeta(chat);
     if (chat.type === 'group') {
       const isFav = favoriteGroupIds.includes(chat.id);
-      Alert.alert(name, isFav ? 'Quitar de grupos favoritos' : 'Añadir a grupos favoritos', [
+      Alert.alert(name, isFav ? t('removeFromFavoriteGroups') : t('addToFavoriteGroups'), [
         { text: 'Cancelar', style: 'cancel' },
         {
           text: isFav ? 'Quitar' : 'Favorito',
