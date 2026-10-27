@@ -1118,7 +1118,7 @@ function MensajeriaScreenInner() {
                 activeOpacity={0.85}
               >
                 <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={st.dineroCtaGrad}>
-                  <Text style={st.dineroCtaText}>Abrir Mi Cartera</Text>
+                  <Text style={st.dineroCtaText}>{t('openWallet')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             )}
