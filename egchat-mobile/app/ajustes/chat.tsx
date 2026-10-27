@@ -53,25 +53,29 @@ export default function ChatSettingsScreen() {
     toast.info(v ? '●● Confirmaciones de lectura activadas' : '●● Confirmaciones de lectura desactivadas');
   }, []);
 
-  const labels: Record<ChatFontSize, string> = { small: 'Pequeña', medium: 'Normal', large: 'Grande' };
+  const labels: Record<ChatFontSize, string> = {
+    small: t('fontSmall'),
+    medium: t('fontNormal'),
+    large: t('fontLarge'),
+  };
 
   return (
-    <SettingsLayout title="Chat">
-      <SettingsSection label="Comportamiento" />
+    <SettingsLayout title={t('chatTitle')}>
+      <SettingsSection label={t('behavior')} />
       <SettingsCard>
-        <SettingsToggleRow label="Enter para enviar" value={enterSend} onValueChange={v => { setEnterSend(v); setCfgBool(CFG.enterSend, v); }} />
+        <SettingsToggleRow label={t('enterToSend')} value={enterSend} onValueChange={v => { setEnterSend(v); setCfgBool(CFG.enterSend, v); }} />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Confirmaciones de lectura (●●)"
-          description={syncingReceipts ? 'Guardando…' : (readReceipts ? 'Activadas' : 'Desactivadas')}
+          label={t('readReceipts')}
+          description={syncingReceipts ? t('saving') : (readReceipts ? t('enabled') : t('disabled'))}
           value={readReceipts}
           onValueChange={handleReadReceiptsChange}
         />
         <SettingsDivider />
-        <SettingsToggleRow label="Guardar fotos automáticamente" value={savePhotos} onValueChange={v => { setSavePhotos(v); setCfgBool(CFG.savePhotos, v); }} />
+        <SettingsToggleRow label={t('savePhotosAuto')} value={savePhotos} onValueChange={v => { setSavePhotos(v); setCfgBool(CFG.savePhotos, v); }} />
       </SettingsCard>
 
-      <SettingsSection label="Tamaño de fuente en chats" />
+      <SettingsSection label={t('chatFontSize')} />
       <SettingsCard>
         {(['small', 'medium', 'large'] as const).map((sz, i, arr) => (
           <React.Fragment key={sz}>
