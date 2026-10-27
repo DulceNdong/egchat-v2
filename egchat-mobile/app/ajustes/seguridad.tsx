@@ -195,7 +195,7 @@ export default function SeguridadCuentaScreen() {
           ))
         )}
         <SettingsDivider/>
-        <SettingsRow label="Ver historial completo" onPress={() => router.push('/ajustes/actividad' as any)}/>
+        <SettingsRow label={t('viewFullHistory')} onPress={() => router.push('/ajustes/actividad' as any)}/>
       </SettingsCard>
     </SettingsLayout>
     <SetupPINModal
