@@ -1064,12 +1064,13 @@ const HistorialModal = ({
   visible, transactions, onClose,
 }: { visible: boolean; transactions: any[]; onClose: () => void }) => {
   const [filter, setFilter] = useState<'all'|'sent'|'received'|'deposit'|'withdraw'>('all');
+  const { translate: t } = useLanguage();
   const FILTERS = [
-    { id: 'all',      label: 'Todas' },
-    { id: 'received', label: 'Recibidas' },
-    { id: 'sent',     label: 'Enviadas' },
-    { id: 'deposit',  label: 'Depósitos' },
-    { id: 'withdraw', label: 'Retiros' },
+    { id: 'all',      label: t('all') },
+    { id: 'received', label: t('received') },
+    { id: 'sent',     label: t('sent') },
+    { id: 'deposit',  label: t('deposit') },
+    { id: 'withdraw', label: t('withdraw') },
   ] as const;
 
   const filtered = transactions.filter(tx => {
