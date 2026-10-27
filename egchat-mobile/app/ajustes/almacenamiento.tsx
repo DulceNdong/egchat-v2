@@ -11,6 +11,7 @@ import { clearMediaCache, getMediaCacheSize } from '../../src/services/autoDownl
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 // Estima el tamaño de los datos de AsyncStorage en MB
 async function estimateAsyncStorageMB(): Promise<number> {
