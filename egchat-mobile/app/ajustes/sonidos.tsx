@@ -19,6 +19,7 @@ export default function SonidosScreen() {
   const [settings, setSettings] = useState<SoundSettings | null>(null);
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getSoundSettings().then(setSettings);
