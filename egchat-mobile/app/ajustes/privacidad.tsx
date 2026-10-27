@@ -255,12 +255,12 @@ export default function PrivacidadScreen() {
         )}
       </SettingsCard>
 
-      <SettingsSection label={`Contactos bloqueados${blocked.length > 0 ? ` (${blocked.length})` : ''}`} />
+      <SettingsSection label={`${t('blockedContacts')}${blocked.length > 0 ? ` (${blocked.length})` : ''}`} />
       <SettingsCard>
         {loadingBlocked ? (
           <ActivityIndicator color={Colors.accent} style={{ padding: 16 }} />
         ) : blocked.length === 0 ? (
-          <SettingsRow label="Sin contactos bloqueados" />
+          <SettingsRow label={t('noBlockedContacts')} />
         ) : (
           blocked.map((contact, i) => (
             <React.Fragment key={contact.id}>
