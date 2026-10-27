@@ -246,7 +246,7 @@ function AjustesScreenInner() {
       <View style={[styles.bar, { backgroundColor: C.bgPrimary }]}>
         <View style={styles.barTitle}>
           <IconGear />
-          <Text style={[styles.barText, { color: C.textPrimary }]}>Configuración</Text>
+          <Text style={[styles.barText, { color: C.textPrimary }]}>{t('configuration')}</Text>
         </View>
         <TouchableOpacity
           style={[styles.closeBtn, { backgroundColor: isDark ? C.bgTertiary : 'rgba(243,244,246,0.85)', borderColor: C.borderLight }]}
