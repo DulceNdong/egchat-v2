@@ -15,6 +15,7 @@ import Svg, { Path, Circle, Line, Rect, Polyline, Polygon } from 'react-native-s
 import { router } from 'expo-router';
 import { authAPI } from '../api';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../theme';
+import { useLanguage } from '../context/LanguageContext';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const colorForType = (type: AppNotification['type']) => {
