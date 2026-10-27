@@ -121,21 +121,21 @@ export default function AlmacenamientoScreen() {
   const pct = Math.min((used / MAX_MB) * 100, 100);
 
   return (
-    <SettingsLayout title="Almacenamiento">
+    <SettingsLayout title={t('storageTitle')}>
       {loading ? (
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
       ) : (
         <>
           <View style={[styles.usagePanel, { backgroundColor: C.bgSecondary }]}>
-            <Text style={styles.usageTitle}>Uso de almacenamiento</Text>
+            <Text style={styles.usageTitle}>{t('storageUsage')}</Text>
             <Text style={styles.usageValue}>{used.toFixed(1)} MB</Text>
             <View style={styles.barBg}>
               <View style={[styles.barFill, { width: `${pct}%` }]} />
             </View>
-            <Text style={styles.barLabel}>{pct.toFixed(1)}% de {MAX_MB} MB estimados</Text>
+            <Text style={styles.barLabel}>{pct.toFixed(1)}% {t('of')} {MAX_MB} MB {t('estimated')}</Text>
           </View>
 
-          <SettingsSection label="Por tipo (estimado)" />
+          <SettingsSection label={t('byType')} />
           <SettingsCard>
             {breakdown.map((r, i) => (
               <React.Fragment key={r.label}>
@@ -149,31 +149,31 @@ export default function AlmacenamientoScreen() {
             ))}
           </SettingsCard>
 
-          <SettingsSection label="Descarga automática" />
+          <SettingsSection label={t('autoDownload')} />
           <SettingsCard>
             <SettingsToggleRow
-              label="Solo con Wi-Fi"
-              description="Fotos y audios"
+              label={t('wifiOnly')}
+              description={t('photosAudios')}
               value={autoWifi}
               onValueChange={v => { setAutoWifi(v); setCfgBool(CFG.autoDlWifi, v); }}
             />
             <SettingsDivider />
             <SettingsToggleRow
-              label="Con datos móviles"
-              description="Puede generar consumo"
+              label={t('mobileData')}
+              description={t('mayUseMobileData')}
               value={autoData}
               onValueChange={v => { setAutoData(v); setCfgBool(CFG.autoDlData, v); }}
             />
           </SettingsCard>
 
-          <SettingsSection label="Gestión" />
+          <SettingsSection label={t('management')} />
           <SettingsCard>
             <SettingsRow
-              label={`Limpiar media descargada${mediaCacheSize > 0 ? ` (${mediaCacheSize.toFixed(1)} MB)` : ''}`}
+              label={`${t('clearDownloadedMedia')}${mediaCacheSize > 0 ? ` (${mediaCacheSize.toFixed(1)} MB)` : ''}`}
               onPress={clearMediaCacheAction}
             />
             <SettingsDivider />
-            <SettingsRow label={`Liberar caché de la app (${cacheSize.toFixed(1)} MB)`} danger onPress={clearCache} />
+            <SettingsRow label={`${t('freeAppCache')} (${cacheSize.toFixed(1)} MB)`} danger onPress={clearCache} />
           </SettingsCard>
         </>
       )}
