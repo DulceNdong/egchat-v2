@@ -54,6 +54,8 @@ export default function PermisosAmigosScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
   const { translate: t } = useLanguage();
+
+  useEffect(() => {
     getCfgString(CFG.permAdd, 'Todos').then(setAddMe);
     getCfgString(CFG.permMsg, 'Todos').then(setMsgMe);
     getCfgString(CFG.permFind, 'Todos').then(setFindMe);
