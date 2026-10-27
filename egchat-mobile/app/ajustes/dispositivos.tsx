@@ -225,7 +225,7 @@ export default function DispositivosScreen() {
         {/* Info */}
         <View style={[st.infoBanner, { backgroundColor: isDark ? '#161b22' : '#f0fdf4' }]}>
           <Text style={[st.infoBannerTxt, { color: isDark ? '#86efac' : '#166534' }]}>
-            📱  Puedes usar EGChat en hasta 4 dispositivos a la vez. Los mensajes se sincronizan en tiempo real entre todos.
+            📱  {t('devicesInfoBanner')}
           </Text>
         </View>
 
