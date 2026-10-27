@@ -601,7 +601,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                     sub={t('deleteAllMessages')}
                     chevron
                     onPress={() =>
-                      Alert.alert('t('clearChat')', t('deleteAllMessagesConfirm'), [
+                      Alert.alert(t('clearChat'), t('deleteAllMessagesConfirm'), [
                         { text: t('cancel'), style: 'cancel' },
                         { text: t('clear'), style: 'destructive', onPress: () => onClearChat?.(cpId) },
                       ])
