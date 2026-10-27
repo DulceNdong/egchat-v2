@@ -95,8 +95,8 @@ export default function LlamadasScreen() {
 
       <SettingsCard style={{ marginTop: 4 }}>
         <SettingsRow
-          label="Ver historial completo"
-          value="Todas las llamadas"
+          label={t('viewFullHistory')}
+          value={t('allCalls')}
           onPress={() => router.push('/call-history' as any)}
         />
       </SettingsCard>
