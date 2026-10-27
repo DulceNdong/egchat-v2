@@ -911,7 +911,7 @@ function MensajeriaScreenInner() {
             })}
           </FavoriteSection>
 
-          <FavoriteSection title="Grupos Favoritos" empty="No tienes grupos favoritos aún" C={C}>
+          <FavoriteSection title={t('favoriteGroups')} empty="No tienes grupos favoritos aún" C={C}>
             {favoriteGroupChats.map(chat => {
               const { name, avatar } = getChatMeta(chat);
               return <FavoriteChip key={chat.id} name={name} avatar={avatar} onPress={() => openChat(chat)} />;
