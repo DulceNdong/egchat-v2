@@ -152,10 +152,16 @@ export function subscribeToCallState(
         filter: `call_id=eq.${callId}`,
       },
       (payload) => {
-        const row = payload.new as { status?: CallStatus; ended?: boolean };
-        if (!row.status) return;
-        onStatusChange(row.status);
-        if (isTerminal(row.status) || row.ended) {
+        const row = payload.new as { status?: CallStatus; ended?: boolean; answer?: string };
+        // Reaccionar si el status cambió O si llegó un answer (callee aceptó)
+        if (!row.status && !row.answer) return;
+        if (row.status) {
+          onStatusChange(row.status);
+        } else if (row.answer) {
+          // El servidor actualizó el answer pero quizás no el status todavía
+          onStatusChange('accepted' as CallStatus);
+        }
+        if (isTerminal(row.status as CallStatus) || row.ended) {
           onEnded();
         }
       },
