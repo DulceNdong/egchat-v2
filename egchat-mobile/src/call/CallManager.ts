@@ -1677,6 +1677,15 @@ export class CallManager {
 
         switch (remoteStatus) {
           case 'accepted':
+            // Caller: el callee aceptó → parar tono y forzar poll para aplicar answer
+            if (this._session.role === 'caller' &&
+                (this._commState === 'calling') &&
+                !this._answerApplied) {
+              console.log('[CallManager] Realtime accepted → caller para tono y fuerza poll');
+              stopDialingTone();
+              this._stopCallTimeout();
+              this._forcePoll();
+            }
             // Otro dispositivo del callee aceptó → si somos callee y estamos
             // en ringing, cancelar localmente sin llamar al servidor de nuevo
             if (this._session.role === 'callee' &&
