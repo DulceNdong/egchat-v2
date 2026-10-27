@@ -546,7 +546,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                     ) : (
                       <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingNote(true)}>
                         <Text style={note ? styles.noteText : styles.notePlaceholder}>
-                          {note || 't('tapToAddNote')'}
+                          {note || t('tapToAddNote')}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -557,11 +557,11 @@ export const ContactProfileModal: React.FC<Props> = ({
                 </View>
 
                 {/* Configuración del chat */}
-                <SectionHeader label="t('chatSettings')" />
+                <SectionHeader label={t('chatSettings')} />
                 <View style={styles.section}>
                   <Row
                     iconNode={<IcoBell />}
-                    label="t('muteNotifications')"
+                    label={t('muteNotifications')}
                     sub={isMuted ? t('muted') : t('active')}
                     isSwitch
                     switchValue={isMuted}
@@ -570,7 +570,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoPin />}
-                    label="t('pinChat')"
+                    label={t('pinChat')}
                     sub={isPinned ? t('pinned') : t('notPinned')}
                     isSwitch
                     switchValue={isPinned}
@@ -579,16 +579,16 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoImage />}
-                    label="t('wallpaper')"
-                    sub="t('customizeWallpaper')"
+                    label={t('wallpaper')}
+                    sub={t('customizeWallpaper')}
                     chevron
                     onPress={() => {/* TODO: wallpaper picker */}}
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoShield color="#00C8A0" />}
-                    label="t('e2eEncryption')"
-                    sub="t('messagesEncrypted')"
+                    label={t('e2eEncryption')}
+                    sub={t('messagesEncrypted')}
                   />
                 </View>
 
@@ -597,8 +597,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                 <View style={styles.section}>
                   <Row
                     iconNode={<IcoTrash />}
-                    label="t('clearChat')"
-                    sub="t('deleteAllMessages')"
+                    label={t('clearChat')}
+                    sub={t('deleteAllMessages')}
                     chevron
                     onPress={() =>
                       Alert.alert('t('clearChat')', t('deleteAllMessagesConfirm'), [
@@ -610,8 +610,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoShare />}
-                    label="t('shareContact')"
-                    sub="t('sendToAnotherChat')"
+                    label={t('shareContact')}
+                    sub={t('sendToAnotherChat')}
                     chevron
                     onPress={() => {/* TODO: share contact */}}
                   />
@@ -635,8 +635,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoFlag />}
-                    label="t('reportContact')"
-                    sub="t('reportInappropriate')"
+                    label={t('reportContact')}
+                    sub={t('reportInappropriate')}
                     danger
                     onPress={handleReport}
                   />
@@ -645,8 +645,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                       <Divider />
                       <Row
                         iconNode={<IcoUserX />}
-                        label="t('deleteContact')"
-                        sub="t('deletePermanently')"
+                        label={t('deleteContact')}
+                        sub={t('deletePermanently')}
                         danger
                         onPress={handleDeleteContact}
                       />
@@ -657,8 +657,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                       <Divider />
                       <Row
                         iconNode={<IcoUserX />}
-                        label="t('leaveGroup')"
-                        sub="t('stopReceivingMessages')"
+                        label={t('leaveGroup')}
+                        sub={t('stopReceivingMessages')}
                         danger
                         onPress={() =>
                           Alert.alert('t('leaveGroup')', '¿Salir de este grupo?', [
