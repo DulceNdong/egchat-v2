@@ -31,70 +31,81 @@ import { DarkColors } from '../../src/theme/darkMode';
 import { useLanguage } from '../../src/context/LanguageContext';
 
 // ── Secciones de servicios — iconos y colores idénticos a la web ──
-const SERVICE_SECTIONS = [
+const SERVICE_SECTIONS_BASE = [
   {
     id: 'basicos',
-    title: 'Básicos',
+    titleKey: 'basicServices',
     services: [
-      { id: 'recarga',      svgIcon: 'recharge',      label: 'Recarga Tel.',  color: '#07C160' },
-      { id: 'internet',     svgIcon: 'world',         label: 'Internet',      color: '#1485EE' },
-      { id: 'tv',           svgIcon: 'services',      label: 'Canales',       color: '#8B5CF6' },
+      { id: 'recarga',      svgIcon: 'recharge',      labelKey: 'rechargeTel',  color: '#07C160' },
+      { id: 'internet',     svgIcon: 'world',         labelKey: 'internet',     color: '#1485EE' },
+      { id: 'tv',           svgIcon: 'services',      labelKey: 'channels',     color: '#8B5CF6' },
     ],
   },
   {
     id: 'financieros',
-    title: 'Servicios Financieros',
+    titleKey: 'financialServices',
     services: [
-      { id: 'bancos',       svgIcon: 'banking',       label: 'Bancos',        color: '#1485EE' },
-      { id: 'seguros',      svgIcon: 'seguros',       label: 'Seguros',       color: '#2E9E6B' },
-      { id: 'facturas',     svgIcon: 'factura',       label: 'Facturas',      color: '#C47D2A' },
-      { id: 'inversion',    svgIcon: 'invest',        label: 'Inversión',     color: '#6B5BD6' },
-      { id: 'tarjetas',     svgIcon: 'tarjeta',       label: 'Tarjetas',      color: '#C0392B' },
-      { id: 'historial',    svgIcon: 'historial',     label: 'Historial',     color: '#5A7090' },
+      { id: 'bancos',       svgIcon: 'banking',       labelKey: 'banks',        color: '#1485EE' },
+      { id: 'seguros',      svgIcon: 'seguros',       labelKey: 'insurance',    color: '#2E9E6B' },
+      { id: 'facturas',     svgIcon: 'factura',       labelKey: 'bills',        color: '#C47D2A' },
+      { id: 'inversion',    svgIcon: 'invest',        labelKey: 'investment',   color: '#6B5BD6' },
+      { id: 'tarjetas',     svgIcon: 'tarjeta',       labelKey: 'cards',        color: '#C0392B' },
+      { id: 'historial',    svgIcon: 'historial',     labelKey: 'history',      color: '#5A7090' },
     ],
   },
   {
     id: 'publicos',
-    title: 'Servicios Públicos',
+    titleKey: 'publicServices',
     services: [
-      { id: 'electricidad', svgIcon: 'electricidad',  label: 'Electricidad',  color: '#C47D2A' },
-      { id: 'agua',         svgIcon: 'rain',          label: 'Agua',          color: '#1485EE' },
-      { id: 'salud',        svgIcon: 'salud',         label: 'Salud',         color: '#C0392B' },
-      { id: 'educacion',    svgIcon: 'edu',           label: 'Educación',     color: '#6B5BD6' },
-      { id: 'correos',      svgIcon: 'mensajes',      label: 'Correos',       color: '#C47D2A' },
-      { id: 'impuestos',    svgIcon: 'gobierno',      label: 'Impuestos',     color: '#C0392B' },
+      { id: 'electricidad', svgIcon: 'electricidad',  labelKey: 'electricity',  color: '#C47D2A' },
+      { id: 'agua',         svgIcon: 'rain',          labelKey: 'water',        color: '#1485EE' },
+      { id: 'salud',        svgIcon: 'salud',         labelKey: 'health',       color: '#C0392B' },
+      { id: 'educacion',    svgIcon: 'edu',           labelKey: 'education',    color: '#6B5BD6' },
+      { id: 'correos',      svgIcon: 'mensajes',      labelKey: 'mail',         color: '#C47D2A' },
+      { id: 'impuestos',    svgIcon: 'gobierno',      labelKey: 'taxes',        color: '#C0392B' },
     ],
   },
   {
     id: 'diarios',
-    title: 'Servicios Diarios',
+    titleKey: 'dailyServices',
     services: [
-      { id: 'mitaxi',       svgIcon: 'taxi',          label: 'MiTaxi',        color: '#F59E0B' },
-      { id: 'supermercado', svgIcon: 'comercio',      label: 'Supermercado',  color: '#2E9E6B' },
-      { id: 'comida',       svgIcon: 'money',         label: 'Comida',        color: '#C0392B' },
-      { id: 'restaurantes', svgIcon: 'restaurante',   label: 'Restaurante',   color: '#C47D2A' },
-      { id: 'hotel',        svgIcon: 'hotel',         label: 'Hotel',         color: '#1485EE' },
-      { id: 'vuelos',       svgIcon: 'vuelos',        label: 'Vuelos',        color: '#6B5BD6' },
-      { id: 'barcos',       svgIcon: 'barco',         label: 'Barcos',        color: '#0EA5E9' },
-      { id: 'gasolineras',  svgIcon: 'gasolinera',    label: 'Gasolinera',    color: '#C47D2A' },
-      { id: 'tienda',       svgIcon: 'tienda',        label: 'Tienda',        color: '#2E9E6B' },
-      { id: 'lavanderia',   svgIcon: 'lavanderia',    label: 'Lavandería',    color: '#1485EE' },
-      { id: 'belleza',      svgIcon: 'belleza',       label: 'Belleza',       color: '#C0392B' },
-      { id: 'noticias',     svgIcon: 'noticias',      label: 'Noticias',      color: '#6B5BD6' },
+      { id: 'mitaxi',       svgIcon: 'taxi',          labelKey: 'taxi',         color: '#F59E0B' },
+      { id: 'supermercado', svgIcon: 'comercio',      labelKey: 'supermarket',  color: '#2E9E6B' },
+      { id: 'comida',       svgIcon: 'money',         labelKey: 'food',         color: '#C0392B' },
+      { id: 'restaurantes', svgIcon: 'restaurante',   labelKey: 'restaurant',   color: '#C47D2A' },
+      { id: 'hotel',        svgIcon: 'hotel',         labelKey: 'hotel',        color: '#1485EE' },
+      { id: 'vuelos',       svgIcon: 'vuelos',        labelKey: 'flights',      color: '#6B5BD6' },
+      { id: 'barcos',       svgIcon: 'barco',         labelKey: 'boats',        color: '#0EA5E9' },
+      { id: 'gasolineras',  svgIcon: 'gasolinera',    labelKey: 'gasStation',   color: '#C47D2A' },
+      { id: 'tienda',       svgIcon: 'tienda',        labelKey: 'store',        color: '#2E9E6B' },
+      { id: 'lavanderia',   svgIcon: 'lavanderia',    labelKey: 'laundry',      color: '#1485EE' },
+      { id: 'belleza',      svgIcon: 'belleza',       labelKey: 'beauty',       color: '#C0392B' },
+      { id: 'noticias',     svgIcon: 'noticias',      labelKey: 'news',         color: '#6B5BD6' },
     ],
   },
   {
     id: 'herramientas',
-    title: 'Herramientas',
+    titleKey: 'tools',
     services: [
-      { id: 'id_digital',   svgIcon: 'id-card',       label: 'ID Digital',    color: '#6B5BD6' },
-      { id: 'lia',          svgIcon: 'ai',            label: 'Lia-25',        color: '#1485EE' },
-      { id: 'actividad',    svgIcon: 'historial',     label: 'Actividad',     color: '#0E7FA8' },
-      { id: 'emergencias',  svgIcon: 'emergencia',    label: 'Emergencia',    color: '#C0392B' },
-      { id: 'ajustes',      svgIcon: 'ajustes',       label: 'Ajustes',       color: '#5A7090' },
+      { id: 'id_digital',   svgIcon: 'id-card',       labelKey: 'digitalId',    color: '#6B5BD6' },
+      { id: 'lia',          svgIcon: 'ai',            labelKey: 'lia',          color: '#1485EE' },
+      { id: 'actividad',    svgIcon: 'historial',     labelKey: 'activity',     color: '#0E7FA8' },
+      { id: 'emergencias',  svgIcon: 'emergencia',    labelKey: 'emergencia',   color: '#C0392B' },
+      { id: 'ajustes',      svgIcon: 'ajustes',       labelKey: 'settings',     color: '#5A7090' },
     ],
   },
 ];
+
+function getServiceSections(t: (k: string) => string) {
+  return SERVICE_SECTIONS_BASE.map(section => ({
+    ...section,
+    title: t(section.titleKey),
+    services: section.services.map(s => ({
+      ...s,
+      label: t(s.labelKey),
+    })),
+  }));
+}
 
 // ── Modal genérico (bottom sheet) ─────────────────────────────────
 const ServiceModal = ({
