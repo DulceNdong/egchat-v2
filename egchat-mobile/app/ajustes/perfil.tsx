@@ -523,7 +523,7 @@ export default function PerfilScreen() {
 
   return (
     <>
-      <SettingsLayout title="Perfil">
+      <SettingsLayout title={t('profileTitle')}>
         {/* Banner + avatar superpuesto */}
         <BannerHeader
           bannerUrl={user?.banner_url}
