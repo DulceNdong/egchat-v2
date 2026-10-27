@@ -77,7 +77,7 @@ const TabIcon = ({ name, color, focused }: { name: string; color: string; focuse
 
 export default function TabsLayout() {
   const { isDark } = useThemeContext();
-  const { language } = useLanguage();
+  const { language, translate: t } = useLanguage();
   const insets = useSafeAreaInsets();
 
   // Altura visual alineada con las barras inferiores nativas de iOS.
