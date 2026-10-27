@@ -81,7 +81,7 @@ export default function ActividadScreen() {
         <TextInput
           style={[st.search, { color: C.textPrimary, borderColor: C.borderLight }]}
           value={search} onChangeText={setSearch}
-          placeholder="Buscar actividad..." placeholderTextColor={C.textTertiary}
+          placeholder={t('searchActivity')} placeholderTextColor={C.textTertiary}
         />
       </View>
 
