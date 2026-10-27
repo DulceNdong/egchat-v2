@@ -99,17 +99,15 @@ export default function AcercaScreen() {
   }, []);
 
   return (
-    <SettingsLayout title="Acerca de EGCHAT">
+    <SettingsLayout title={t('aboutTitle')}>
 
-      {/* ── Hero ──────────────────────────────────── */}
       <View style={[styles.hero, { backgroundColor: C.bgPrimary }]}>
         <SpinningLogo size={90} glow />
         <Text style={[styles.appName, { color: C.textPrimary }]}>EGCHAT</Text>
         <Text style={styles.version}>v{appVersion} (build {buildNumber})</Text>
-        <Text style={styles.channel}>Canal: {updateChan}</Text>
+        <Text style={styles.channel}>{t('channel')}: {updateChan}</Text>
       </View>
 
-      {/* ── Info técnica ──────────────────────────── */}
       <SettingsCard>
         {info.map((r, i) => (
           <React.Fragment key={r.label}>
@@ -122,8 +120,7 @@ export default function AcercaScreen() {
         ))}
       </SettingsCard>
 
-      {/* ── Actualización OTA ─────────────────────── */}
-      <SettingsSection label="Actualizaciones" />
+      <SettingsSection label={t('updates')} />
       <SettingsCard>
         <TouchableOpacity
           style={styles.updateBtn}
@@ -136,17 +133,16 @@ export default function AcercaScreen() {
           }
           <View style={{ flex: 1 }}>
             <Text style={[styles.updateLabel, { color: C.textPrimary }]}>
-              Buscar actualización
+              {t('checkForUpdates')}
             </Text>
             <Text style={[styles.updateSub, { color: C.textSecondary }]}>
-              Actualización en segundo plano (OTA)
+              {t('otaUpdate')}
             </Text>
           </View>
         </TouchableOpacity>
       </SettingsCard>
 
-      {/* ── Diagnóstico push ──────────────────────── */}
-      <SettingsSection label="Diagnóstico" />
+      <SettingsSection label={t('diagnostic')} />
       <SettingsCard>
         <TouchableOpacity
           style={styles.updateBtn}
