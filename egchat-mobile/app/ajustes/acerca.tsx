@@ -18,6 +18,8 @@ export default function AcercaScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const { translate: t } = useLanguage();
+
+  const [checking, setChecking] = useState(false);
   const [runningDiag, setRunningDiag] = useState(false);
 
   // ── Datos de versión ──────────────────────────────────────────
