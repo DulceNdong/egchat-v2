@@ -86,7 +86,7 @@ export default function SonidosScreen() {
 
   return (
     <SettingsLayout title={t('soundsTitle')}>
-      <SettingsSection label="Volumen general" />
+      <SettingsSection label={t('generalVolume')} />
       <View style={{ backgroundColor: isDark ? '#161b22' : '#fff', padding: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
           {[0, 0.25, 0.5, 0.75, 1].map(v => (
