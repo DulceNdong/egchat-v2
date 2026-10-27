@@ -164,20 +164,19 @@ export default function SeguridadCuentaScreen() {
       </SettingsCard>
 
       {/* Sesiones */}
-      <SettingsSection label="Sesiones" />
+      <SettingsSection label={t('sessions')} />
       <SettingsCard>
-        <SettingsRow label="Sesión activa" value="Este dispositivo" onPress={() => Alert.alert('Sesiones', 'Solo hay 1 sesión activa.')} />
+        <SettingsRow label={t('activeSession')} value={t('thisDevice')} onPress={() => Alert.alert(t('sessions'), t('onlyOneSession'))} />
         <SettingsDivider />
-        <SettingsRow label="Login QR desde PC" onPress={() => router.push('/_qr-scanner' as any)} />
+        <SettingsRow label={t('qrLoginFromPC')} onPress={() => router.push('/_qr-scanner' as any)} />
       </SettingsCard>
 
-      {/* Actividad reciente real */}
-      <SettingsSection label="Actividad reciente" />
+      <SettingsSection label={t('recentActivity')} />
       <SettingsCard>
         {loading ? (
           <ActivityIndicator color={Colors.accent} style={{ padding: 20 }}/>
         ) : activity.length === 0 ? (
-          <SettingsRow label="Sin actividad registrada"/>
+          <SettingsRow label={t('noActivityRegistered')}/>
         ) : (
           activity.map((log, i) => (
             <React.Fragment key={log.id}>
