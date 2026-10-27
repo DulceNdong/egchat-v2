@@ -57,6 +57,7 @@ export default function PrivacidadScreen() {
   const [blocked, setBlocked] = useState<BlockedContact[]>([]);
   const [loadingBlocked, setLoadingBlocked] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getCfgString(CFG.lastSeen, 'todos').then(setLastSeen);
