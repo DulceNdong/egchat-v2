@@ -85,7 +85,7 @@ export default function SonidosScreen() {
   );
 
   return (
-    <SettingsLayout title="Sonidos y notificaciones">
+    <SettingsLayout title={t('soundsTitle')}>
       <SettingsSection label="Volumen general" />
       <View style={{ backgroundColor: isDark ? '#161b22' : '#fff', padding: 16 }}>
         <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: 12 }}>
