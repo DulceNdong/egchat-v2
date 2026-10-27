@@ -1014,13 +1014,13 @@ function MensajeriaScreenInner() {
           <View style={[st.listScroll, st.center]}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
               <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
-              <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>{'Introduce tu contraseña para ver chats archivados'}</Text>
+              <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>{t('archivePasswordHint')}</Text>
               <TouchableOpacity
                 style={st.archiveUnlockBtn}
                 onPress={() => (archivePassword ? setShowArchiveUnlock(true) : setShowArchiveSetup(true))}
               >
                 <Text style={st.archiveUnlockBtnText}>
-                  {archivePassword ? 'Desbloquear' : 'Crear contraseña'}
+                  {archivePassword ? t('unlock') : t('createPassword')}
                 </Text>
               </TouchableOpacity>
           </View>
