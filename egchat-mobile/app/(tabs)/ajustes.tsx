@@ -259,7 +259,7 @@ function AjustesScreenInner() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
-        <SettingsSearch value={search} onChangeText={setSearch} placeholder="Buscar" />
+        <SettingsSearch value={search} onChangeText={setSearch} placeholder={t('searchSettings')} />
 
         {filtered ? (
           filtered.length === 0 ? (
