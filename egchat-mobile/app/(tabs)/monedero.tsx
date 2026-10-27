@@ -1679,10 +1679,10 @@ function MonederoScreenInner() {
               {/* 4 botones de acción */}
               <View style={s.actionsRow}>
                 {[
-                  { label: 'Recibir', icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
-                  { label: 'Pagar',   icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
-                  { label: 'Recarga', icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
-                  { label: 'Retiro',  icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
+                  { label: t('receive'), icon: <IcoRecibir />, onPress: () => { setQrType('receive'); setShowQR(true); } },
+                  { label: t('pay'),     icon: <IcoPagar />,   onPress: () => { setQrType('pay');     setShowQR(true); } },
+                  { label: t('topUp'),   icon: <IcoRecarga />, onPress: () => setShowRecarga(true) },
+                  { label: t('withdraw'),icon: <IcoRetiro />,  onPress: () => setShowRetiro(true) },
                 ].map(a => (
                   <TouchableOpacity key={a.label} style={s.actionBtn} onPress={a.onPress} activeOpacity={0.75}>
                     <View style={s.actionIconWrap}>{a.icon}</View>
