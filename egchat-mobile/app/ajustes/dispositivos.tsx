@@ -97,7 +97,7 @@ function SessionCard({
           </Text>
           {session.isCurrentDevice && (
             <View style={sc.currentBadge}>
-              <Text style={sc.currentBadgeTxt}>Este dispositivo</Text>
+              <Text style={sc.currentBadgeTxt}>{t('thisDevice')}</Text>
             </View>
           )}
         </View>
