@@ -346,7 +346,7 @@ function AjustesScreenInner() {
             <View style={{ height: 12 }} />
             <SettingsCard>
               <TouchableOpacity style={styles.actionBtn} onPress={logout}>
-                <Text style={styles.actionRed}>Cerrar sesión</Text>
+                <Text style={styles.actionRed}>{t('logout')}</Text>
               </TouchableOpacity>
             </SettingsCard>
           </>
