@@ -130,18 +130,18 @@ export default function LlamadasScreen() {
 
       <SettingsSection label={t('ringtoneToneSection')} />
       <SettingsCard>
-        {RINGTONES.map((t, i) => (
-          <React.Fragment key={t.id}>
+        {RINGTONES.map((tone, i) => (
+          <React.Fragment key={tone.id}>
             <TouchableOpacity
               style={st.ringtoneRow}
               onPress={async () => {
-                setRingtone(t.id);
-                await saveSoundSettings({ ringtone: t.id });
-                if (t.id !== 'none') await previewRingtone();
+                setRingtone(tone.id);
+                await saveSoundSettings({ ringtone: tone.id });
+                if (tone.id !== 'none') await previewRingtone();
               }}
             >
-              <Text style={[st.ringtoneName, { color: C.textPrimary }]}>{t.name}</Text>
-              {ringtone === t.id && (
+              <Text style={[st.ringtoneName, { color: C.textPrimary }]}>{tone.name}</Text>
+              {ringtone === tone.id && (
                 <Text style={{ color: Colors.accent, fontWeight: '700' }}>✓</Text>
               )}
             </TouchableOpacity>
