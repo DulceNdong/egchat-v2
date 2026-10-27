@@ -121,10 +121,9 @@ export default function InterfazScreen() {
   };
 
   return (
-    <SettingsLayout title="Interfaz y pantalla">
+    <SettingsLayout title={t('interfaceTitle')}>
 
-      {/* ── Tema ── */}
-      <SettingsSection label="Tema de la app" />
+      <SettingsSection label={t('appTheme')} />
       <View style={[styles.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={styles.themeRow}>
           {THEME_OPTIONS.map(th => {
