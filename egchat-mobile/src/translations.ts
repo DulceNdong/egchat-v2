@@ -490,7 +490,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     neverSynced: 'Nunca sincronizado',
     sync: 'Sincronizar',
     // Actividad
-    activityTitle: 'Registro de actividad',
     searchActivity: 'Buscar actividad...',
     // Comentarios
     category: 'Categoría',
@@ -499,7 +498,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     sendComment: 'Enviar comentario',
     directContact: 'Contacto directo',
     // Acerca
-    aboutTitle: 'Acerca de EGCHAT',
     channel: 'Canal',
     updates: 'Actualizaciones',
     checkForUpdates: 'Buscar actualización',
@@ -509,7 +507,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     openSourceLicenses: 'Licencias de código abierto',
     licenses: 'Licencias',
     // Interfaz
-    interfaceTitle: 'Interfaz y pantalla',
     appTheme: 'Tema de la app',
     accentColor: 'Color de acento',
     fontStyle: 'Estilo de letra',
