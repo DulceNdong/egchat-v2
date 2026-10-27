@@ -107,9 +107,9 @@ export default function SonidosScreen() {
         </View>
       </View>
 
-      {toneSection('Tono de mensajes', MESSAGE_TONES, 'messageTone', '#22c55e')}
-      {toneSection('Tono de llamada', RINGTONES, 'ringtone', '#3b82f6')}
-      {toneSection('Tono de notificación', NOTIFICATION_TONES, 'notificationTone', '#a855f7')}
+      {toneSection(t('messageToneSection'), MESSAGE_TONES, 'messageTone', '#22c55e')}
+      {toneSection(t('ringtoneToneSection'), RINGTONES, 'ringtone', '#3b82f6')}
+      {toneSection(t('notificationToneSection'), NOTIFICATION_TONES, 'notificationTone', '#a855f7')}
     </SettingsLayout>
   );
 }
