@@ -5,6 +5,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { Colors } from '../../src/theme';
 import { DarkColors } from '../../src/theme/darkMode';
 import { getToken, getApiBase } from '../../src/api';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 interface ActivityLogItem {
   id: string;
