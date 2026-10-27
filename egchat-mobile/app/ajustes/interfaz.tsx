@@ -188,8 +188,7 @@ export default function InterfazScreen() {
         </View>
       </View>
 
-      {/* ── Estilo de letra ── */}
-      <SettingsSection label="Estilo de letra" />
+      <SettingsSection label={t('fontStyle')} />
       <SettingsCard>
         {FONT_FAMILIES.map((f, i) => (
           <React.Fragment key={f.id}>
