@@ -1704,7 +1704,7 @@ function MonederoScreenInner() {
           {/* ── Mis Cuentas ── */}
           <View style={s.sectionBlock}>
             <View style={s.sectionHeader}>
-              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS CUENTAS</Text>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>{t('myAccounts')}</Text>
               <TouchableOpacity style={s.addBtn} onPress={() => setShowAddBank(true)} activeOpacity={0.7}>
                 <Text style={s.addBtnText}>+</Text>
               </TouchableOpacity>
