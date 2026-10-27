@@ -1753,8 +1753,8 @@ function MonederoScreenInner() {
                 </Svg>
               </LinearGradient>
               <View style={{ flex: 1 }}>
-                <Text style={[s.bankName, { color: C.textPrimary }]}>Tarjetas vinculadas</Text>
-                <Text style={[s.bankType, { color: C.textSecondary }]}>Gestiona tus tarjetas bancarias</Text>
+                <Text style={[s.bankName, { color: C.textPrimary }]}>{t('linkedCards')}</Text>
+                <Text style={[s.bankType, { color: C.textSecondary }]}>{t('manageCards')}</Text>
               </View>
               <Text style={{ color: C.textTertiary, fontSize: 18 }}>›</Text>
             </TouchableOpacity>
