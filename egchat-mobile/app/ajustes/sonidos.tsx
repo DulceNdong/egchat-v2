@@ -32,7 +32,7 @@ export default function SonidosScreen() {
 
   if (!settings) {
     return (
-      <SettingsLayout title="Sonidos y notificaciones" scroll={false}>
+      <SettingsLayout title={t('soundsTitle')} scroll={false}>
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
       </SettingsLayout>
     );
