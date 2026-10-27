@@ -11,6 +11,7 @@ import { getSoundSettings, saveSoundSettings, RINGTONES, previewRingtone } from 
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { chatAPI } from '../../src/api';
 
 interface CallStats {
