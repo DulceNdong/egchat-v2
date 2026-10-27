@@ -212,7 +212,7 @@ export default function DispositivosScreen() {
   const currentSession = sessions.find(s => s.isCurrentDevice);
 
   return (
-    <SettingsLayout title="Dispositivos conectados">
+    <SettingsLayout title={t('connectedDevicesTitle')}>
       <ScrollView
         refreshControl={
           <RefreshControl
