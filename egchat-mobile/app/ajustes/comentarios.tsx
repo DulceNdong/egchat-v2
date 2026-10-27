@@ -6,6 +6,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { getToken, getApiBase } from '../../src/api';
 import { toast } from '../../src/components/Toast';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 const CATEGORIES = ['Sugerencia', 'Error / Bug', 'Problema de pagos', 'Problema de llamadas', 'Otro'];
 
