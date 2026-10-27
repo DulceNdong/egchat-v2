@@ -276,10 +276,10 @@ export const ContactProfileModal: React.FC<Props> = ({
     if (isBlocked) {
       // Desbloquear — no necesita advertencia de irreversibilidad
       Alert.alert(
-        'Desbloquear contacto',
+        't('unblockContact')',
         `¿Quieres volver a recibir mensajes de ${name}?`,
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
             text: 'Desbloquear',
             onPress: async () => {
@@ -299,10 +299,10 @@ export const ContactProfileModal: React.FC<Props> = ({
       );
     } else {
       Alert.alert(
-        '🚫 Bloquear contacto',
+        '🚫 t('blockContact')',
         `¿Bloquear a ${name}?\n\nYa no podrá enviarte mensajes ni llamarte. Esta acción se puede deshacer desde Ajustes > Privacidad > Contactos bloqueados.`,
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
             text: 'Bloquear',
             style: 'destructive',
@@ -327,10 +327,10 @@ export const ContactProfileModal: React.FC<Props> = ({
   const handleReport = () => {
     const name = cp.title || cp.name || 'este contacto';
     Alert.alert(
-      '🚩 Reportar contacto',
+      '🚩 t('reportContact')',
       `¿Reportar a ${name} por comportamiento inapropiado?\n\n⚠️ Esta acción es irreversible. El equipo de EGChat revisará el reporte. El contacto no sabrá que lo reportaste.`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
           text: 'Reportar',
           style: 'destructive',
@@ -354,10 +354,10 @@ export const ContactProfileModal: React.FC<Props> = ({
   const handleDeleteContact = () => {
     const name = cp.title || cp.name || 'este contacto';
     Alert.alert(
-      '🗑️ Eliminar contacto',
+      '🗑️ t('deleteContact')',
       `¿Eliminar a ${name} de tu lista de contactos?\n\n⚠️ Esta acción es irreversible. Se eliminará permanentemente de tus contactos. Los mensajes anteriores no se borrarán.`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
           text: 'Eliminar permanentemente',
           style: 'destructive',
@@ -546,7 +546,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                     ) : (
                       <TouchableOpacity style={{ flex: 1 }} onPress={() => setEditingNote(true)}>
                         <Text style={note ? styles.noteText : styles.notePlaceholder}>
-                          {note || 'Toca para añadir una nota...'}
+                          {note || 't('tapToAddNote')'}
                         </Text>
                       </TouchableOpacity>
                     )}
@@ -557,12 +557,12 @@ export const ContactProfileModal: React.FC<Props> = ({
                 </View>
 
                 {/* Configuración del chat */}
-                <SectionHeader label="CONFIGURACIÓN DEL CHAT" />
+                <SectionHeader label="t('chatSettings')" />
                 <View style={styles.section}>
                   <Row
                     iconNode={<IcoBell />}
-                    label="Silenciar notificaciones"
-                    sub={isMuted ? 'Silenciado' : 'Activo'}
+                    label="t('muteNotifications')"
+                    sub={isMuted ? t('muted') : t('active')}
                     isSwitch
                     switchValue={isMuted}
                     onSwitchChange={() => onMuteToggle?.(cpId)}
@@ -570,8 +570,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoPin />}
-                    label="Fijar chat"
-                    sub={isPinned ? 'Fijado' : 'No fijado'}
+                    label="t('pinChat')"
+                    sub={isPinned ? t('pinned') : t('notPinned')}
                     isSwitch
                     switchValue={isPinned}
                     onSwitchChange={() => onPinToggle?.(cpId)}
@@ -579,39 +579,39 @@ export const ContactProfileModal: React.FC<Props> = ({
                   <Divider />
                   <Row
                     iconNode={<IcoImage />}
-                    label="Fondo de pantalla"
-                    sub="Personalizar fondo del chat"
+                    label="t('wallpaper')"
+                    sub="t('customizeWallpaper')"
                     chevron
                     onPress={() => {/* TODO: wallpaper picker */}}
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoShield color="#00C8A0" />}
-                    label="Cifrado extremo a extremo"
-                    sub="Los mensajes están cifrados"
+                    label="t('e2eEncryption')"
+                    sub="t('messagesEncrypted')"
                   />
                 </View>
 
                 {/* Acciones */}
-                <SectionHeader label="ACCIONES" />
+                <SectionHeader label={t('actions')} />
                 <View style={styles.section}>
                   <Row
                     iconNode={<IcoTrash />}
-                    label="Vaciar chat"
-                    sub="Eliminar todos los mensajes"
+                    label="t('clearChat')"
+                    sub="t('deleteAllMessages')"
                     chevron
                     onPress={() =>
-                      Alert.alert('Vaciar chat', '¿Eliminar todos los mensajes?', [
-                        { text: 'Cancelar', style: 'cancel' },
-                        { text: 'Vaciar', style: 'destructive', onPress: () => onClearChat?.(cpId) },
+                      Alert.alert('t('clearChat')', t('deleteAllMessagesConfirm'), [
+                        { text: t('cancel'), style: 'cancel' },
+                        { text: t('clear'), style: 'destructive', onPress: () => onClearChat?.(cpId) },
                       ])
                     }
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoShare />}
-                    label="Compartir contacto"
-                    sub="Enviar a otro chat"
+                    label="t('shareContact')"
+                    sub="t('sendToAnotherChat')"
                     chevron
                     onPress={() => {/* TODO: share contact */}}
                   />
@@ -622,21 +622,21 @@ export const ContactProfileModal: React.FC<Props> = ({
                   {actionLoading && (
                     <View style={styles.loadingOverlay}>
                       <ActivityIndicator size="small" color="#EF4444" />
-                      <Text style={styles.loadingText}>Procesando...</Text>
+                      <Text style={styles.loadingText}>t('processing')</Text>
                     </View>
                   )}
                   <Row
                     iconNode={<IcoBlock />}
-                    label={isBlocked ? 'Desbloquear contacto' : 'Bloquear contacto'}
-                    sub={isBlocked ? 'Permitir mensajes de nuevo' : 'No recibirás más mensajes'}
+                    label={isBlocked ? 't('unblockContact')' : 't('blockContact')'}
+                    sub={isBlocked ? 't('allowMessagesAgain')' : 't('noMoreMessages')'}
                     danger
                     onPress={handleBlock}
                   />
                   <Divider />
                   <Row
                     iconNode={<IcoFlag />}
-                    label="Reportar contacto"
-                    sub="Reportar comportamiento inapropiado"
+                    label="t('reportContact')"
+                    sub="t('reportInappropriate')"
                     danger
                     onPress={handleReport}
                   />
@@ -645,8 +645,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                       <Divider />
                       <Row
                         iconNode={<IcoUserX />}
-                        label="Eliminar contacto"
-                        sub="Eliminar permanentemente de tus contactos"
+                        label="t('deleteContact')"
+                        sub="t('deletePermanently')"
                         danger
                         onPress={handleDeleteContact}
                       />
@@ -657,12 +657,12 @@ export const ContactProfileModal: React.FC<Props> = ({
                       <Divider />
                       <Row
                         iconNode={<IcoUserX />}
-                        label="Salir del grupo"
-                        sub="Dejarás de recibir mensajes"
+                        label="t('leaveGroup')"
+                        sub="t('stopReceivingMessages')"
                         danger
                         onPress={() =>
-                          Alert.alert('Salir del grupo', '¿Salir de este grupo?', [
-                            { text: 'Cancelar', style: 'cancel' },
+                          Alert.alert('t('leaveGroup')', '¿Salir de este grupo?', [
+                            { text: t('cancel'), style: 'cancel' },
                             { text: 'Salir', style: 'destructive', onPress: () => { onLeaveGroup?.(); onClose(); } },
                           ])
                         }
@@ -708,7 +708,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                         <TouchableOpacity
                           onPress={() =>
                             Alert.alert('Eliminar miembro', `¿Eliminar a ${m.full_name}?`, [
-                              { text: 'Cancelar', style: 'cancel' },
+                              { text: t('cancel'), style: 'cancel' },
                               { text: 'Eliminar', style: 'destructive', onPress: () => onRemoveGroupMember(m.user_id) },
                             ])
                           }
