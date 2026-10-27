@@ -127,7 +127,11 @@ function AjustesScreenInner() {
   const [showAccountSwitcher, setShowAccountSwitcher] = useState(false);
   const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
+  const { language, translate: t } = useLanguage();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+
+  const ALL_ROWS = getAllRows(t);
+  const SECTIONS = getSections(t);
 
   useEffect(() => {
     const loadUser = async () => {
