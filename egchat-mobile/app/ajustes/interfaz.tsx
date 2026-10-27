@@ -165,8 +165,7 @@ export default function InterfazScreen() {
         </View>
       </View>
 
-      {/* ── Tamaño de letra ── */}
-      <SettingsSection label="Tamaño de letra" />
+      <SettingsSection label={t('fontSize')} />
       <View style={[styles.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={[styles.preview, { borderColor: C.borderLight, backgroundColor: isDark ? '#0d1117' : '#f9fafb' }]}>
           <Text style={{ fontSize: 14 * fontScale, color: C.textSecondary }}>
