@@ -118,7 +118,7 @@ function SessionCard({
         >
           {revoking
             ? <ActivityIndicator size="small" color="#ef4444" />
-            : <Text style={sc.closeBtnTxt}>Cerrar</Text>
+            : <Text style={sc.closeBtnTxt}>{t('closeSession')}</Text>
           }
         </TouchableOpacity>
       )}
