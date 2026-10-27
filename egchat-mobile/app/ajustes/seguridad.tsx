@@ -130,7 +130,7 @@ export default function SeguridadCuentaScreen() {
     <>
     <SettingsLayout title={t('securityTitle')}>
       {/* Cambiar contraseña */}
-      <SettingsSection label="Contraseña y acceso" />
+      <SettingsSection label={t('passwordAccess')} />
       <SettingsCard>
         <SettingsRow
           label={t('changePassword')}
