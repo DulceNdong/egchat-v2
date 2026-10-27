@@ -80,7 +80,7 @@ function getSections(t: (k: string) => string): { title: string; items: MenuItem
       ],
     },
     {
-      title: 'Ayuda e información',
+      title: t('helpSection'),
       items: [
         { label: t('activityLog'), route: '/ajustes/actividad' },
         { label: t('comments'), route: '/ajustes/comentarios' },
