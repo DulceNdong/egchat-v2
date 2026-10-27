@@ -258,6 +258,7 @@ export const ContactProfileModal: React.FC<Props> = ({
   const [note, setNote] = useState('');
   const [editingNote, setEditingNote] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const { translate: t } = useLanguage();
 
   if (!cp) return null;
 
