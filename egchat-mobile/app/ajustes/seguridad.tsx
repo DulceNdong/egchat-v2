@@ -128,7 +128,7 @@ export default function SeguridadCuentaScreen() {
 
   return (
     <>
-    <SettingsLayout title="Seguridad de la cuenta">
+    <SettingsLayout title={t('securityTitle')}>
       {/* Cambiar contraseña */}
       <SettingsSection label="Contraseña y acceso" />
       <SettingsCard>
