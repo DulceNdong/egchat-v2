@@ -28,6 +28,7 @@ import {
 } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 // ── Secciones de servicios — iconos y colores idénticos a la web ──
 const SERVICE_SECTIONS = [
