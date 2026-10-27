@@ -1120,8 +1120,8 @@ const HistorialModal = ({
                   {isCredit(tx.type) ? <IcoArrowDown /> : <IcoArrowUp />}
                 </View>
                 <View style={s.txInfo}>
-                  <Text style={s.txLabel}>{getTxLabel(tx)}</Text>
-                  <Text style={s.txDesc}>{getTxDesc(tx)}</Text>
+                  <Text style={s.txLabel}>{getTxLabel(tx, t)}</Text>
+                  <Text style={s.txDesc}>{getTxDesc(tx, t)}</Text>
                   <Text style={s.txDate}>{formatDate(tx.created_at || tx.date || new Date().toISOString())}</Text>
                 </View>
                 <View style={s.txAmountWrap}>
