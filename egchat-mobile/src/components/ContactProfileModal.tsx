@@ -276,12 +276,12 @@ export const ContactProfileModal: React.FC<Props> = ({
     if (isBlocked) {
       // Desbloquear — no necesita advertencia de irreversibilidad
       Alert.alert(
-        't('unblockContact')',
+        t('unblockContact'),
         `¿Quieres volver a recibir mensajes de ${name}?`,
         [
           { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Desbloquear',
+            text: t('unblockContact'),
             onPress: async () => {
               setActionLoading(true);
               try {
