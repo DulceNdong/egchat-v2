@@ -327,12 +327,12 @@ export const ContactProfileModal: React.FC<Props> = ({
   const handleReport = () => {
     const name = cp.title || cp.name || 'este contacto';
     Alert.alert(
-      '🚩 t('reportContact')',
-      `¿Reportar a ${name} por comportamiento inapropiado?\n\n⚠️ Esta acción es irreversible. El equipo de EGChat revisará el reporte. El contacto no sabrá que lo reportaste.`,
+      t('reportContact'),
+      `¿Reportar a ${name} por comportamiento inapropiado?\n\n⚠️ Esta acción es irreversible. El equipo de EGChat revisará el reporte.`,
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Reportar',
+          text: t('reportContact'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
