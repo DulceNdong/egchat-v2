@@ -26,6 +26,7 @@ import { toast } from '../../src/components/Toast';
 import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 const GENDERS = ['Hombre', 'Mujer', 'No especificado'] as const;
 const REGIONS = [
