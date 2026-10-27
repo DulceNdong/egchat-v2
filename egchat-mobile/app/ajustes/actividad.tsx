@@ -29,9 +29,7 @@ export default function ActividadScreen() {
   const [search, setSearch] = useState('');
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
-
-  useEffect(() => {
-    const load = async () => {
+  const { translate: t } = useLanguage();
       setLoading(true);
       try {
         const token = await getToken();
