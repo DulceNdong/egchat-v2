@@ -38,8 +38,8 @@ export default function ComentariosScreen() {
   };
 
   return (
-    <SettingsLayout title="Comentarios">
-      <SettingsSection label="Categoría" />
+    <SettingsLayout title={t('comments')}>
+      <SettingsSection label={t('category')} />
       <View style={[st.catBox, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={st.catRow}>
           {CATEGORIES.map(cat => (
@@ -54,7 +54,7 @@ export default function ComentariosScreen() {
         </View>
       </View>
 
-      <SettingsSection label="Tu opinión" />
+      <SettingsSection label={t('yourOpinion')} />
       <View style={[st.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <TextInput
           style={[st.input, { color: C.textPrimary, borderColor: C.borderLight }]}
@@ -62,17 +62,17 @@ export default function ComentariosScreen() {
           onChangeText={setText}
           multiline
           numberOfLines={5}
-          placeholder="Escribe tu comentario, sugerencia o reporte de error..."
+          placeholder={t('writeCommentHint')}
           placeholderTextColor={C.textTertiary}
         />
         <TouchableOpacity style={st.sendBtn} onPress={send} disabled={sending}>
           {sending
             ? <ActivityIndicator color="#fff"/>
-            : <Text style={st.sendTxt}>Enviar comentario</Text>}
+            : <Text style={st.sendTxt}>{t('sendComment')}</Text>}
         </TouchableOpacity>
       </View>
 
-      <SettingsSection label="Contacto directo" />
+      <SettingsSection label={t('directContact')} />
       <SettingsCard>
         <SettingsRow label="support@egchat.gq" onPress={() => Linking.openURL('mailto:support@egchat.gq').catch(() => {})} />
         <SettingsDivider />
