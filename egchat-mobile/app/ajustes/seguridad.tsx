@@ -16,6 +16,7 @@ import {
 import { SetupPINModal } from '../../src/components/wallet/SetupPINModal';
 
 export default function SeguridadCuentaScreen() {
+  const { translate: t } = useLanguage();
   const [activity, setActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showChangePwd, setShowChangePwd] = useState(false);
