@@ -104,14 +104,14 @@ export default function NotificacionesScreen() {
   const pushStatus = pushGranted ? '✅ Activadas' : '⚠️ Sin configurar';
 
   return (
-    <SettingsLayout title="Notificaciones">
+    <SettingsLayout title={t('notifTitle')}>
 
       {/* ── Permiso del sistema ─────────────────── */}
-      <SettingsSection label="Permiso del sistema" />
+      <SettingsSection label={t('systemPermission')} />
       <SettingsCard>
         <View style={st.pushRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[st.pushLabel, { color: C.textPrimary }]}>Notificaciones push</Text>
+            <Text style={[st.pushLabel, { color: C.textPrimary }]}>{t('pushNotifications')}</Text>
             <Text style={[st.pushStatus, { color: pushGranted ? Colors.accent : '#f59e0b' }]}>
               {pushStatus}
             </Text>
@@ -124,7 +124,7 @@ export default function NotificacionesScreen() {
             >
               {activating
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={st.activateTxt}>Activar</Text>
+                : <Text style={st.activateTxt}>{t('activate')}</Text>
               }
             </TouchableOpacity>
           )}
