@@ -969,7 +969,7 @@ function MensajeriaScreenInner() {
                 },
                 {
                   id: 'normal' as GroupSubFilter,
-                  label: 'Mis grupos',
+                  label: t('myGroups'),
                   Icon: ({ active }: { active: boolean }) => (
                     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
                       stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
