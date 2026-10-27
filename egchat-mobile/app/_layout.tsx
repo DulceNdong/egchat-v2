@@ -774,6 +774,16 @@ export default function RootLayout() {
                 setTimeout(() => syncCachedVoipToken().catch(() => {}), 3000);
                 setTimeout(() => syncCachedVoipToken().catch(() => {}), 8000);
                 pushCallCleanup.current = PushKit.onIncomingCall((callData) => {
+                  // Si es una notificación de "llamada aceptada" (no entrante), procesarla como SSE
+                  const notifType = (callData as any).notificationType;
+                  if (notifType === 'call_answered') {
+                    const callId = callData.callId;
+                    if (callId) {
+                      console.log('[PushKit] VoIP call_answered recibido para callId:', callId);
+                      callManager.onCallAnsweredSSE(callId);
+                    }
+                    return;
+                  }
                   // Punto de entrada único — no duplicar con router.push aquí
                   const rawOffer = (callData as any).offer;
                   let parsedOffer = rawOffer;
