@@ -43,7 +43,6 @@ const VIS_OPTS = [
   { id: 'contactos', label: 'Contactos' },
   { id: 'nadie', label: 'Nadie' },
 ];
-
 interface BlockedContact {
   id: string;
   contact_user_id: string;
