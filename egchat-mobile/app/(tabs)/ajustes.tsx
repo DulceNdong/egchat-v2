@@ -204,9 +204,9 @@ function AjustesScreenInner() {
         doLogout();
       }
     } else {
-      Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Cerrar sesión', style: 'destructive', onPress: doLogout },
+      Alert.alert(t('logout'), t('logoutConfirmQ'), [
+        { text: t('cancel'), style: 'cancel' },
+        { text: t('logout'), style: 'destructive', onPress: doLogout },
       ]);
     }
   }, []);
