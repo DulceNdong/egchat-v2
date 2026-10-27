@@ -12,6 +12,7 @@ import { Colors } from '../../src/theme/colors';
 import { DarkColors } from '../../src/theme/darkMode';
 import { runPushDiagnostic } from '../../src/pushDiagnostic';
 import { toast } from '../../src/components/Toast';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function AcercaScreen() {
   const { isDark } = useThemeContext();
