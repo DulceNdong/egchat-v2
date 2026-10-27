@@ -35,6 +35,7 @@ export default function ChatSettingsScreen() {
   const [savePhotos, setSavePhotos] = useState(false);
   const [fontSz, setFontSz] = useState<ChatFontSize>('medium');
   const [syncingReceipts, setSyncingReceipts] = useState(false);
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getCfgBool(CFG.enterSend, false).then(setEnterSend);
