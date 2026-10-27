@@ -278,7 +278,7 @@ export default function PrivacidadScreen() {
                   style={st.unblockBtn}
                   onPress={() => unblockContact(contact)}
                 >
-                  Desbloquear
+                  {t('unblock')}
                 </Text>
               </View>
               {i < blocked.length - 1 && <SettingsDivider />}
