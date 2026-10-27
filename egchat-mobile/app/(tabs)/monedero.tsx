@@ -1663,7 +1663,7 @@ function MonederoScreenInner() {
                   >
                     <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
                       <Text style={s.balanceHiddenText}>
-                        {balanceRevealing ? 'Abriendo…' : '🔒  Toca para revelar'}
+                        {balanceRevealing ? 'Abriendo…' : `🔒  ${t('tapToReveal')}`}
                       </Text>
                     </TouchableOpacity>
                   </Animated.View>
