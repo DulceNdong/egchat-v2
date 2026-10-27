@@ -88,7 +88,7 @@ export default function ActividadScreen() {
       {loading ? (
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }}/>
       ) : filtered.length === 0 ? (
-        <Text style={{ padding: 24, color: C.textSecondary, textAlign: 'center' }}>Sin actividad registrada</Text>
+        <Text style={{ padding: 24, color: C.textSecondary, textAlign: 'center' }}>{t('noActivityRegistered')}</Text>
       ) : (
         filtered.map(log => (
           <View key={log.id} style={[st.card, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
