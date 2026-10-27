@@ -626,8 +626,8 @@ export default function PerfilScreen() {
         <View style={{ height: 8 }} />
         <SettingsCard>
           <SettingsRow
-            label="PIN de pagos"
-            value={pinConfigured ? '✅ Configurado' : '⚠️ Sin PIN'}
+            label={t('paymentPin')}
+            value={pinConfigured ? `✅ ${t('configured')}` : `⚠️ ${t('noPin')}`}
             onPress={() => setShowSetupPIN(true)}
           />
         </SettingsCard>
