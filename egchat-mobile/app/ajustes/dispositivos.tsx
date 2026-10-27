@@ -105,7 +105,7 @@ function SessionCard({
           {session.platform || deviceTypeLabel(session.deviceType)}
         </Text>
         <Text style={[sc.lastSeen, { color: C.textTertiary }]}>
-          {session.isCurrentDevice ? '🟢 Activo ahora' : `⏱ ${relativeTime(session.lastSeen)}`}
+          {session.isCurrentDevice ? `🟢 ${t('activeNow')}` : `⏱ ${relativeTime(session.lastSeen)}`}
         </Text>
       </View>
 
