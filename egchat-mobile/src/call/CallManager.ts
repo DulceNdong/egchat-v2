@@ -732,11 +732,12 @@ export class CallManager {
       if (!s || s.ended) { this.endCall(); return; }
       if (role === 'caller' && !this._answerApplied && s.answer) {
         const sigState = this._pc?.signalingState;
-        if (sigState === 'have-local-offer') {
+        console.log(`[CallManager] _forcePoll: sigState=${sigState}, hasAnswer=${!!s.answer}`);
+        // Parar el tono siempre que haya answer — independientemente del signalingState
+        stopDialingTone();
+        this._stopCallTimeout();
+        if (sigState === 'have-local-offer' || (sigState === 'stable' && !this._connectedOnce)) {
           try {
-            // Parar tono inmediatamente
-            stopDialingTone();
-            this._stopCallTimeout();
             await this._pc.setRemoteDescription(
               new NativeRTC!.RTCSessionDescription(s.answer)
             );
@@ -745,11 +746,11 @@ export class CallManager {
             this._setCommState('connecting');
             await this._drainIceQueue();
             console.log('[CallManager] _forcePoll: answer aplicado correctamente');
-          } catch (e) {
-            console.warn('[CallManager] _forcePoll: error aplicando answer:', e);
+          } catch (e: any) {
+            console.warn('[CallManager] _forcePoll: error aplicando answer:', e?.message);
           }
         } else {
-          console.log(`[CallManager] _forcePoll: signalingState=${sigState}, no se puede aplicar answer ahora`);
+          console.warn(`[CallManager] _forcePoll: sigState=${sigState}, tono parado pero answer pendiente`);
         }
       }
     }).catch((e) => {
