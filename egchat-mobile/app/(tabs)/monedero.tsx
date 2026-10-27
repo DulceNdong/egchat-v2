@@ -47,22 +47,22 @@ const formatDate = (s: string) =>
 const isCredit = (type: string) =>
   ['deposit', 'recharge', 'transfer_received', 'received', 'salary'].includes(type);
 
-const getTxLabel = (tx: any) => {
+const getTxLabel = (tx: any, t: (k: string) => string) => {
   if (tx.method) return tx.method;
   const map: Record<string, string> = {
-    deposit: 'Depósito recibido', withdraw: 'Pago enviado',
-    transfer_sent: 'Transferencia enviada', transfer_received: 'Transferencia recibida',
-    recharge: 'Código de recarga', sent: 'Enviado', received: 'Recibido',
+    deposit: t('depositReceived'), withdraw: t('paymentSent'),
+    transfer_sent: t('transferSent'), transfer_received: t('transferReceived'),
+    recharge: t('rechargeCode'), sent: t('sentToContact'), received: t('receivedFromContact'),
   };
   return map[tx.type] || tx.type;
 };
 
-const getTxDesc = (tx: any) => {
+const getTxDesc = (tx: any, t: (k: string) => string) => {
   if (tx.description) return tx.description;
   const map: Record<string, string> = {
-    deposit: 'Depósito en monedero', withdraw: 'Pago de servicios',
-    transfer_sent: 'Transferencia enviada', transfer_received: 'Transferencia recibida',
-    recharge: 'Código de recarga', sent: 'Enviado a contacto', received: 'Recibido de contacto',
+    deposit: t('walletDeposit'), withdraw: t('payServices'),
+    transfer_sent: t('transferSent'), transfer_received: t('transferReceived'),
+    recharge: t('rechargeCode'), sent: t('sentToContact'), received: t('receivedFromContact'),
   };
   return map[tx.type] || '';
 };
