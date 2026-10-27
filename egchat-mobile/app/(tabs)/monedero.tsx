@@ -1111,7 +1111,7 @@ const HistorialModal = ({
                   <Line x1="2" y1="10" x2="22" y2="10"/>
                   <Circle cx="7" cy="15" r="1" fill="#d1d5db"/>
                 </Svg>
-                <Text style={s.emptyText}>Sin transacciones</Text>
+                <Text style={s.emptyText}>{t('noTransactions')}</Text>
                 <Text style={s.emptySub}>No hay movimientos en esta categoría</Text>
               </View>
             ) : filtered.map((tx, i) => (
