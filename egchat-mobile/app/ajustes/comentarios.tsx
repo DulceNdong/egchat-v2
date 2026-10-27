@@ -16,6 +16,7 @@ export default function ComentariosScreen() {
   const [sending, setSending] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
 
   const send = async () => {
     if (!text.trim()) { Alert.alert('Error', 'Escribe tu comentario antes de enviar'); return; }
