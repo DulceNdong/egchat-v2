@@ -42,10 +42,10 @@ const FONT_FAMILIES = [
 ];
 
 const FONT_PRESETS = [
-  { label: 'Pequeña', v: 0.85 },
-  { label: 'Normal', v: 1 },
-  { label: 'Grande', v: 1.15 },
-  { label: 'Muy grande', v: 1.35 },
+  { label: 'fontSmall',  v: 0.85 },
+  { label: 'fontNormal', v: 1    },
+  { label: 'fontLarge',  v: 1.15 },
+  { label: 'fontXLarge', v: 1.35 },
 ];
 
 const THEME_OPTIONS = [
