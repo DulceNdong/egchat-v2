@@ -16,6 +16,7 @@ import { DNDSettingsModal } from '../../src/components/settings/DNDSettingsModal
 import { getDNDSettings, isDNDActive, formatTime } from '../../src/services/doNotDisturb';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 export default function NotificacionesScreen() {
   const { isDark } = useThemeContext();
