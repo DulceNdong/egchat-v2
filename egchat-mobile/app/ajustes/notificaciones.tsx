@@ -22,6 +22,8 @@ export default function NotificacionesScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const { translate: t } = useLanguage();
+
+  // ── Permisos y token ─────────────────────────────────────────
   const [pushGranted, setPushGranted] = useState(false);
   const [activating, setActivating]   = useState(false);
   const [diagRunning, setDiagRunning] = useState(false);
