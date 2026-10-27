@@ -376,20 +376,20 @@ export const HamburgerMenu = ({
     ?.split(' ').filter(Boolean).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('') || 'EG';
 
   const items: Array<{ id: string; label: string; sub: string }> = [
-    { id: 'perfil',         label: 'Mi Perfil',           sub: 'Ver y editar tu perfil'    },
-    { id: 'nuevo-contacto', label: 'Nuevo contacto',       sub: 'Añadir a tu lista'         },
-    { id: 'crear-grupo',    label: 'Crear grupo',          sub: 'Nuevo grupo de chat'       },
-    { id: 'escanear-qr',    label: 'Escanear QR',         sub: 'Escanea códigos y contactos'},
-    { id: 'global-search',  label: 'Buscar en chats',     sub: 'Busca mensajes y contactos'},
-    { id: 'business',       label: 'Perfil empresarial',  sub: 'Catálogo y cuenta negocio' },
-    { id: 'broadcast',      label: 'Difusión',            sub: 'Mensaje a múltiples chats' },
-    { id: 'contactos',      label: 'Mis contactos',        sub: 'Ver todos tus contactos'   },
-    { id: 'mensajes-arch',  label: 'Mensajes archivados',  sub: 'Chats archivados'          },
-    { id: 'notificaciones', label: 'Notificaciones',       sub: 'Gestionar alertas'         },
-    { id: 'privacidad',     label: 'Privacidad',           sub: 'Configurar privacidad'     },
-    { id: 'ajustes',        label: 'Ajustes',              sub: 'Configuración de la app'   },
-    { id: 'ayuda',          label: 'Ayuda y soporte',      sub: 'Centro de ayuda'           },
-    { id: 'salir',          label: 'Cerrar sesión',        sub: 'Salir de tu cuenta'        },
+    { id: 'perfil',         label: t('myProfile'),         sub: 'Ver y editar tu perfil'    },
+    { id: 'nuevo-contacto', label: t('newContact'),         sub: 'Añadir a tu lista'         },
+    { id: 'crear-grupo',    label: t('createGroup'),        sub: 'Nuevo grupo de chat'       },
+    { id: 'escanear-qr',    label: t('scanQR'),             sub: 'Escanea códigos y contactos'},
+    { id: 'global-search',  label: t('searchChats'),        sub: 'Busca mensajes y contactos'},
+    { id: 'business',       label: t('businessProfile'),    sub: 'Catálogo y cuenta negocio' },
+    { id: 'broadcast',      label: t('broadcast'),          sub: 'Mensaje a múltiples chats' },
+    { id: 'contactos',      label: t('myContacts'),         sub: 'Ver todos tus contactos'   },
+    { id: 'mensajes-arch',  label: t('archivedMessages'),   sub: 'Chats archivados'          },
+    { id: 'notificaciones', label: t('notifications'),      sub: 'Gestionar alertas'         },
+    { id: 'privacidad',     label: t('privacy'),            sub: 'Configurar privacidad'     },
+    { id: 'ajustes',        label: t('settings'),           sub: 'Configuración de la app'   },
+    { id: 'ayuda',          label: t('helpSupport'),        sub: 'Centro de ayuda'           },
+    { id: 'salir',          label: 'Cerrar sesión',         sub: 'Salir de tu cuenta'        },
   ];
 
   const handlePress = async (id: string) => {
