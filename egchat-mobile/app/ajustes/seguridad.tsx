@@ -6,6 +6,7 @@ import {
 } from '../../src/components/settings/SettingsUI';
 import { Colors } from '../../src/theme';
 import { authAPI, getToken, getApiBase } from '../../src/api';
+import { useLanguage } from '../../src/context/LanguageContext';
 import { toast } from '../../src/components/Toast';
 import {
   isBiometricAvailable, getBiometricType,
