@@ -678,7 +678,7 @@ function MensajeriaScreenInner() {
 
   const deleteChatLocal = useCallback((chatId: string) => {
     Alert.alert(
-      'Eliminar chat',
+      t('deleteChat'),
       'Se eliminará el chat, todos los mensajes y el contacto asociado. Esta acción no se puede deshacer.',
       [
         { text: 'Cancelar', style: 'cancel' },
