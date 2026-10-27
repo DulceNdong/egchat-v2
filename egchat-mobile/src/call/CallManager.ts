@@ -1094,19 +1094,50 @@ export class CallManager {
 
         // ── Caller: Answer inicial + ICE del callee ──────────────
         if (role === 'caller') {
-          if (!this._answerApplied && s.answer &&
-              this._pc?.signalingState === 'have-local-offer') {
-            // Parar el tono inmediatamente — el callee aceptó
-            stopDialingTone();
-            this._stopCallTimeout();
-            await this._pc.setRemoteDescription(
-              new NativeRTC!.RTCSessionDescription(s.answer),
-            );
-            this._remoteDescSet    = true;
-            this._answerApplied    = true;
-            this._iceRestartPending = false; // respuesta recibida — limpiar flag
-            this._setCommState('connecting');
-            await this._drainIceQueue();
+          if (!this._answerApplied && s.answer) {
+            const sigState = this._pc?.signalingState;
+            console.log(`[CallManager] poll caller: sigState=${sigState}, answerApplied=${this._answerApplied}, hasAnswer=${!!s.answer}`);
+            if (sigState === 'have-local-offer') {
+              try {
+                // Parar el tono inmediatamente — el callee aceptó
+                stopDialingTone();
+                this._stopCallTimeout();
+                await this._pc.setRemoteDescription(
+                  new NativeRTC!.RTCSessionDescription(s.answer),
+                );
+                this._remoteDescSet    = true;
+                this._answerApplied    = true;
+                this._iceRestartPending = false;
+                this._setCommState('connecting');
+                await this._drainIceQueue();
+                console.log('[CallManager] poll: answer aplicado correctamente');
+              } catch (e: any) {
+                console.warn('[CallManager] poll: error setRemoteDescription:', e?.message);
+              }
+            } else if (sigState === 'stable' && !this._connectedOnce) {
+              // En algunos dispositivos RN WebRTC el signalingState ya es stable
+              // después de setLocalDescription — intentar aplicar igualmente
+              console.warn('[CallManager] poll: sigState=stable sin connectedOnce, forzando answer');
+              try {
+                stopDialingTone();
+                this._stopCallTimeout();
+                await this._pc.setRemoteDescription(
+                  new NativeRTC!.RTCSessionDescription(s.answer),
+                );
+                this._remoteDescSet = true;
+                this._answerApplied = true;
+                this._setCommState('connecting');
+                await this._drainIceQueue();
+              } catch (e: any) {
+                console.warn('[CallManager] poll stable fallback error:', e?.message);
+              }
+            } else {
+              // Parar el tono aunque no podamos aplicar el answer todavía
+              // — el callee claramente aceptó si hay answer en el servidor
+              stopDialingTone();
+              this._stopCallTimeout();
+              console.warn(`[CallManager] poll: tiene answer pero sigState=${sigState}, no se puede aplicar aún`);
+            }
           }
           if (this._answerApplied && s.calleeCandidates) {
             const newCands = s.calleeCandidates.slice(this._iceOffsetCallee);
