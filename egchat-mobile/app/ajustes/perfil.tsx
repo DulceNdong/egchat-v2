@@ -574,7 +574,7 @@ export default function PerfilScreen() {
           />
           <SettingsDivider />
           <SettingsRow
-            label="Mi código QR"
+            label={t('myQRCode')}
             onPress={() => setShowProfileQR(true)}
             right={
               <View style={styles.rowRight}>
