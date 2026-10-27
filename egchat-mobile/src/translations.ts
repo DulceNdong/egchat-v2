@@ -519,6 +519,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     chatBackground: 'Fondo del chat',
     pushDiagnosticTitle: 'Diagnóstico de notificaciones push',
     pushDiagnosticSub: 'Verifica permisos, token FCM/APNs y registro en servidor',
+    minFourChars: 'Mínimo 4 caracteres',
+    passwordSaved: 'Contraseña guardada',
+    wrongPassword: 'Contraseña incorrecta',
+    change: 'Cambiar',
+    create: 'Crear',
   },
   FR: {
     home: 'Accueil',

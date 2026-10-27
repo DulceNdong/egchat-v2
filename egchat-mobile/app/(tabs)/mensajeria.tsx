@@ -681,7 +681,7 @@ function MensajeriaScreenInner() {
       t('deleteChat'),
       'Se eliminará el chat, todos los mensajes y el contacto asociado. Esta acción no se puede deshacer.',
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
           text: 'Eliminar', style: 'destructive',
           onPress: async () => {
@@ -729,7 +729,7 @@ function MensajeriaScreenInner() {
     if (chat.type === 'group') {
       const isFav = favoriteGroupIds.includes(chat.id);
       Alert.alert(name, isFav ? t('removeFromFavoriteGroups') : t('addToFavoriteGroups'), [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
           text: isFav ? 'Quitar' : 'Favorito',
           onPress: async () => {
@@ -745,7 +745,7 @@ function MensajeriaScreenInner() {
       (c: any) => c.contact_user_id === other?.user_id || c.user?.id === other?.user_id,
     );
     Alert.alert(name, 'Opciones', [
-      { text: 'Cancelar', style: 'cancel' },
+      { text: t('cancel'), style: 'cancel' },
       {
         text: contact ? 'Quitar favorito' : 'Marcar favorito',
         onPress: async () => {
@@ -873,7 +873,7 @@ function MensajeriaScreenInner() {
             Alert.alert('Nueva conversación', '¿Qué quieres crear?', [
               { text: 'Chat privado', onPress: () => router.push('/new-chat' as any) },
               { text: 'Grupo', onPress: () => setShowCreateGroup(true) },
-              { text: 'Cancelar', style: 'cancel' },
+              { text: t('cancel'), style: 'cancel' },
             ]);
           }}
           activeOpacity={0.85}
@@ -1220,13 +1220,13 @@ function MensajeriaScreenInner() {
         <Pressable style={st.modalOverlay} onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); }}>
           <Pressable style={st.modalSheet} onPress={() => {}}>
             <Text style={st.modalTitle}>
-              {showArchiveSetup ? (archivePassword ? 'Cambiar contraseña' : 'Crear contraseña') : 'Desbloquear archivo'}
+              {showArchiveSetup ? (archivePassword ? t('changePassword') : t('createPassword')) : t('unlock')}
             </Text>
             <TextInput
               secureTextEntry
               value={archivePwdInput}
               onChangeText={setArchivePwdInput}
-              placeholder="Contraseña"
+              placeholder={t('password')}
               placeholderTextColor="#9ca3af"
               style={st.modalInput}
             />
@@ -1243,7 +1243,7 @@ function MensajeriaScreenInner() {
                 onPress={async () => {
                   if (showArchiveSetup) {
                     if (archivePwdInput.length < 4) {
-                      setArchivePwdError('Mínimo 4 caracteres');
+                      setArchivePwdError(t('minFourChars'));
                       return;
                     }
                     await setArchivePassword(archivePwdInput);
@@ -1251,10 +1251,10 @@ function MensajeriaScreenInner() {
                     setArchiveUnlocked(true);
                     setShowArchiveSetup(false);
                     setArchivePwdInput('');
-                    toast.success('Contraseña guardada');
+                    toast.success(t('passwordSaved'));
                   } else {
                     if (archivePwdInput !== archivePassword) {
-                      setArchivePwdError('Contraseña incorrecta');
+                      setArchivePwdError(t('wrongPassword'));
                       return;
                     }
                     setArchiveUnlocked(true);
@@ -1264,7 +1264,7 @@ function MensajeriaScreenInner() {
                 }}
               >
                 <Text style={{ fontWeight: '700', color: '#fff' }}>
-                  {showArchiveSetup ? (archivePassword ? 'Cambiar' : 'Crear') : 'Desbloquear'}
+                  {showArchiveSetup ? (archivePassword ? t('change') : t('create')) : t('unlock')}
                 </Text>
               </TouchableOpacity>
             </View>
