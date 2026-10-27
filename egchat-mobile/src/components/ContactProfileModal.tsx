@@ -661,9 +661,9 @@ export const ContactProfileModal: React.FC<Props> = ({
                         sub={t('stopReceivingMessages')}
                         danger
                         onPress={() =>
-                          Alert.alert('t('leaveGroup')', '¿Salir de este grupo?', [
+                          Alert.alert(t('leaveGroup'), '¿Salir de este grupo?', [
                             { text: t('cancel'), style: 'cancel' },
-                            { text: 'Salir', style: 'destructive', onPress: () => { onLeaveGroup?.(); onClose(); } },
+                            { text: t('leaveGroup'), style: 'destructive', onPress: () => { onLeaveGroup?.(); onClose(); } },
                           ])
                         }
                       />
