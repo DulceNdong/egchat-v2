@@ -427,6 +427,11 @@ export class CallManager {
 
     this._setCommState('accepted');
     this._stopRingOnce();
+    // Notificar a CallKit nativo que la llamada fue aceptada — sin esto
+    // iOS sigue mostrando la UI de llamada entrante y el tono continúa
+    try { NativeCallKit.answerCall(callId); } catch { /* */ }
+    // Descartar la notificación de llamada entrante en Android
+    try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
 
     const { callId, callType, offer: rawOffer } = this._session;
 
