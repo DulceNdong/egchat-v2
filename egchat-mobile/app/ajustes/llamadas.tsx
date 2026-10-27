@@ -101,37 +101,34 @@ export default function LlamadasScreen() {
         />
       </SettingsCard>
 
-      {/* ── Calidad ───────────────────────────────── */}
-      <SettingsSection label="Calidad" />
+      <SettingsSection label={t('quality')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Llamadas HD"
-          description="Mayor calidad de audio y video"
+          label={t('hdCalls')}
+          description={t('higherQuality')}
           value={hdCall}
           onValueChange={v => { setHdCall(v); setCfgBool(CFG.hdCall, v); }}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Reducir uso de datos"
-          description="Menor calidad para ahorrar datos móviles"
+          label={t('reduceDataUsage')}
+          description={t('lowerQualityToSave')}
           value={saveData}
           onValueChange={v => { setSaveData(v); setCfgBool(CFG.saveDataCall, v); }}
         />
       </SettingsCard>
 
-      {/* ── Privacidad ────────────────────────────── */}
-      <SettingsSection label="Privacidad" />
+      <SettingsSection label={t('privacyTitle')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Silenciar llamadas de desconocidos"
-          description="Solo suenan llamadas de contactos"
+          label={t('muteUnknownCalls')}
+          description={t('onlyContactsRing')}
           value={muteUnknown}
           onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteCallUnknown, v); }}
         />
       </SettingsCard>
 
-      {/* ── Tono de llamada ───────────────────────── */}
-      <SettingsSection label="Tono de llamada" />
+      <SettingsSection label={t('ringtoneToneSection')} />
       <SettingsCard>
         {RINGTONES.map((t, i) => (
           <React.Fragment key={t.id}>
