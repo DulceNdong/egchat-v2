@@ -273,9 +273,9 @@ export default function DispositivosScreen() {
         {!loading && otherSessions.length === 0 && (
           <View style={st.empty}>
             <Text style={st.emptyIcon}>💻</Text>
-            <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Solo este dispositivo</Text>
+            <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{t('onlyThisDevice')}</Text>
             <Text style={[st.emptySub, { color: C.textSecondary }]}>
-              Escanea el QR en egchat-v2.vercel.app para usar EGChat en tu ordenador
+              {t('scanQRToUseOnPC')}
             </Text>
           </View>
         )}
