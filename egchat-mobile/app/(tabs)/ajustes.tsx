@@ -23,6 +23,7 @@ import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 type MenuItem = { label: string; route: string; value?: string };
 
