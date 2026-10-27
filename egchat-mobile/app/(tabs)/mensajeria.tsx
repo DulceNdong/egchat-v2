@@ -896,7 +896,7 @@ function MensajeriaScreenInner() {
           {/* ══════════════════════════════════════════════════════
               CONTACTOS FAVORITOS
           ══════════════════════════════════════════════════════ */}
-          <FavoriteSection title={t('favoriteContacts')} empty="No tienes contactos favoritos aún" C={C}>
+          <FavoriteSection title={t('favoriteContacts')} empty={t('noFavoriteContacts')} C={C}>
             {favoriteContacts.map((contact: any) => {
               const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
               const avatar = contact.avatar_url || contact.user?.avatar_url;
