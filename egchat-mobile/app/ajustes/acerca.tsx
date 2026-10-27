@@ -155,10 +155,10 @@ export default function AcercaScreen() {
           }
           <View style={{ flex: 1 }}>
             <Text style={[styles.updateLabel, { color: C.textPrimary }]}>
-              Diagnóstico de notificaciones push
+              {t('pushDiagnosticTitle')}
             </Text>
             <Text style={[styles.updateSub, { color: C.textSecondary }]}>
-              Verifica permisos, token FCM/APNs y registro en servidor
+              {t('pushDiagnosticSub')}
             </Text>
           </View>
         </TouchableOpacity>
