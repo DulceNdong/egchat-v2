@@ -237,7 +237,7 @@ export default function DispositivosScreen() {
         {/* Dispositivo actual */}
         {!loading && currentSession && (
           <>
-            <SettingsSection label="Este dispositivo" />
+            <SettingsSection label={t('thisDevice')} />
             <View style={st.cardsWrap}>
               <SessionCard
                 session={currentSession}
