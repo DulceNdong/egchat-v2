@@ -21,8 +21,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 export default function NotificacionesScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-
-  // ── Permisos y token ─────────────────────────────────────────
+  const { translate: t } = useLanguage();
   const [pushGranted, setPushGranted] = useState(false);
   const [activating, setActivating]   = useState(false);
   const [diagRunning, setDiagRunning] = useState(false);
