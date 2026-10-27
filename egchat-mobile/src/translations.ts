@@ -1537,6 +1537,8 @@ export const translations: Record<Lang, Record<string, string>> = {
     accentColor: 'Accent color',
     fontStyle: 'Font style',
     chatBackground: 'Chat background',
+    pushDiagnosticTitle: 'Push notification diagnostic',
+    pushDiagnosticSub: 'Check permissions, FCM/APNs token and server registration',
   },
   PT: {
     home: 'Início',
