@@ -30,6 +30,9 @@ export default function ActividadScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
   const { translate: t } = useLanguage();
+
+  useEffect(() => {
+    const load = async () => {
       setLoading(true);
       try {
         const token = await getToken();
