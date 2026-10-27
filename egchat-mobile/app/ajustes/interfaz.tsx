@@ -146,8 +146,7 @@ export default function InterfazScreen() {
         </View>
       </View>
 
-      {/* ── Color de acento ── */}
-      <SettingsSection label="Color de acento" />
+      <SettingsSection label={t('accentColor')} />
       <View style={[styles.panel, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={styles.accentRow}>
           {ACCENT_COLORS.map(ac => (
