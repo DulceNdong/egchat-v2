@@ -10,6 +10,7 @@ import { getToken, getApiBase, authAPI } from '../../src/api';
 import { router } from 'expo-router';
 import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 // ── Sincroniza configuración de privacidad con el backend ─────────
 async function syncPrivacyToBackend(settings: {
