@@ -7,6 +7,7 @@ import { CFG, getCfgBool, setCfgBool, getCfgString, setCfg } from '../../src/ser
 import { getToken, getApiBase } from '../../src/api';
 import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 type ChatFontSize = 'small' | 'medium' | 'large';
 
