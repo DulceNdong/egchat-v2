@@ -437,7 +437,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     doNotDisturb: 'No molestar',
     scheduleSilence: 'Programar silencio',
     // Almacenamiento
-    storageTitle: 'Almacenamiento',
     storageUsage: 'Uso de almacenamiento',
     of: 'de',
     estimated: 'estimados',
@@ -455,7 +454,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     ringtoneToneSection: 'Tono de llamada',
     notificationToneSection: 'Tono de notificación',
     // Llamadas
-    callsTitle: 'Llamadas de voz y video',
     statistics: 'Estadísticas',
     allCalls: 'Todas las llamadas',
     quality: 'Calidad',
@@ -466,7 +464,6 @@ export const translations: Record<Lang, Record<string, string>> = {
     muteUnknownCalls: 'Silenciar llamadas de desconocidos',
     onlyContactsRing: 'Solo suenan llamadas de contactos',
     // Chat ajustes
-    chatTitle: 'Chat',
     behavior: 'Comportamiento',
     enterToSend: 'Enter para enviar',
     savePhotosAuto: 'Guardar fotos automáticamente',
