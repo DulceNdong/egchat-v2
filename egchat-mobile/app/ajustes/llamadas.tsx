@@ -68,10 +68,10 @@ export default function LlamadasScreen() {
   }, []);
 
   return (
-    <SettingsLayout title="Llamadas de voz y video">
+    <SettingsLayout title={t('callsTitle')}>
 
       {/* ── Estadísticas de llamadas ───────────────── */}
-      <SettingsSection label="Estadísticas" />
+      <SettingsSection label={t('statistics')} />
       {loadingStats ? (
         <ActivityIndicator color={Colors.accent} style={{ marginVertical: 20 }} />
       ) : stats ? (
