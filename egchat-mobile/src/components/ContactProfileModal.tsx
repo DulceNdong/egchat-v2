@@ -622,7 +622,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                   {actionLoading && (
                     <View style={styles.loadingOverlay}>
                       <ActivityIndicator size="small" color="#EF4444" />
-                      <Text style={styles.loadingText}>t('processing')</Text>
+                      <Text style={styles.loadingText}>{t('processing')}</Text>>
                     </View>
                   )}
                   <Row
