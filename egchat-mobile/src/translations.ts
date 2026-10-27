@@ -1073,6 +1073,11 @@ export const translations: Record<Lang, Record<string, string>> = {
     manageCards: 'Manage your bank cards',
     viewMyTransfers: 'View my transfers',
     viewFullHistory: 'View full history',
+    fullHistory: 'Full History',
+    all: 'All',
+    received: 'Received',
+    sent: 'Sent',
+    deposit: 'Deposits',
     // Settings
     switchAccount: 'Switch account',
     logoutConfirm: 'Sign out of EGChat?',
