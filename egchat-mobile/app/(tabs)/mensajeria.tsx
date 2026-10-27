@@ -1049,8 +1049,8 @@ function MensajeriaScreenInner() {
             ListEmptyComponent={
               <View style={st.center}>
                 <Text style={{ fontSize: 32 }}>📦</Text>
-                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{`Sin ${archiveSubFilter === 'group' ? 'grupos' : 'chats'} archivados`}</Text>
-                <Text style={[st.emptySub, { color: C.textSecondary }]}>{'Desliza un chat a la izquierda para archivarlo'}</Text>
+                <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{archiveSubFilter === 'group' ? t('noArchivedGroups') : t('noArchivedChats')}</Text>
+                <Text style={[st.emptySub, { color: C.textSecondary }]}>{t('swipeToArchive')}</Text>
               </View>
             }
             ListFooterComponent={<View style={{ height: Platform.OS === 'android' ? 80 : 100 }} />}
