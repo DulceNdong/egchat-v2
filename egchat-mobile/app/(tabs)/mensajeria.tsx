@@ -1092,15 +1092,15 @@ function MensajeriaScreenInner() {
             )}
             <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
               {filter === 'dinero'
-                ? 'Sin transferencias recientes'
-                : searchQuery ? 'Sin resultados' : 'No tienes chats aún'}
+                ? t('noRecentTransfers')
+                : searchQuery ? t('noResults') : t('noChatsYet')}
             </Text>
             <Text style={[st.emptySub, { color: C.textSecondary }]}>
               {loadError && !searchQuery && filter !== 'dinero'
                 ? loadError
                 : filter === 'dinero'
-                ? 'Los chats con movimientos XAF aparecerán aquí'
-                : searchQuery ? 'Prueba con otro nombre' : 'Toca + para empezar una conversación'}
+                ? t('moneyChatsHint')
+                : searchQuery ? t('tryAnotherName') : t('tapPlusToStart')}
             </Text>
             {loadError && !searchQuery && filter !== 'dinero' && (
               <TouchableOpacity
