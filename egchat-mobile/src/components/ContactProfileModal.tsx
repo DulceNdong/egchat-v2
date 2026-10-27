@@ -552,7 +552,7 @@ export const ContactProfileModal: React.FC<Props> = ({
                     )}
                   </View>
                   <TouchableOpacity onPress={() => setEditingNote(true)} style={styles.editNoteBtn}>
-                    <Text style={styles.editNoteBtnText}>Editar nota</Text>
+                    <Text style={styles.editNoteBtnText}>{t('editNote')}</Text>
                   </TouchableOpacity>
                 </View>
 
