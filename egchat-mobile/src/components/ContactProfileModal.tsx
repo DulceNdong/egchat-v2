@@ -354,12 +354,12 @@ export const ContactProfileModal: React.FC<Props> = ({
   const handleDeleteContact = () => {
     const name = cp.title || cp.name || 'este contacto';
     Alert.alert(
-      '🗑️ t('deleteContact')',
-      `¿Eliminar a ${name} de tu lista de contactos?\n\n⚠️ Esta acción es irreversible. Se eliminará permanentemente de tus contactos. Los mensajes anteriores no se borrarán.`,
+      t('deleteContact'),
+      `¿Eliminar a ${name} de tu lista de contactos?\n\n⚠️ Esta acción es irreversible.`,
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Eliminar permanentemente',
+          text: t('deleteContact'),
           style: 'destructive',
           onPress: async () => {
             setActionLoading(true);
