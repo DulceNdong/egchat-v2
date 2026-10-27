@@ -924,10 +924,10 @@ function MensajeriaScreenInner() {
           <View style={[st.filtersWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
             <View style={st.filtersRow}>
               {([
-                { id: 'individual' as FilterType, label: 'Individual', Icon: IconUser },
-                { id: 'grupos' as FilterType, label: 'Grupos', Icon: IconUsers },
-                { id: 'dinero' as FilterType, label: 'Dinero', Icon: IconMoney },
-                { id: 'archivar' as FilterType, label: 'Archivar', Icon: IconArchive },
+                { id: 'individual' as FilterType, label: t('individual'), Icon: IconUser },
+                { id: 'grupos' as FilterType, label: t('groups'), Icon: IconUsers },
+                { id: 'dinero' as FilterType, label: t('money'), Icon: IconMoney },
+                { id: 'archivar' as FilterType, label: t('archive'), Icon: IconArchive },
               ]).map(f => {
                 const active = filter === f.id;
                 const iconColor = active ? '#fff' : '#374151';
