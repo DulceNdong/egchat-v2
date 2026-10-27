@@ -67,14 +67,14 @@ export default function ActividadScreen() {
   };
 
   return (
-    <SettingsLayout title="Registro de actividad">
+    <SettingsLayout title={t('activityTitle')}>
       <View style={[st.filters, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
         <View style={st.chipRow}>
-          {['all','login','transaction','security','profile','chat'].map(t => (
-            <Chip key={t} id={t} label={
-              t === 'all' ? 'Todo' : t === 'login' ? 'Login' :
-              t === 'transaction' ? 'Transacciones' : t === 'security' ? 'Seguridad' :
-              t === 'profile' ? 'Perfil' : 'Chats'
+          {(['all','login','transaction','security','profile','chat'] as const).map(id => (
+            <Chip key={id} id={id} label={
+              id === 'all' ? t('all') : id === 'login' ? 'Login' :
+              id === 'transaction' ? t('transactions') : id === 'security' ? t('twoFactor').split(' ')[0] :
+              id === 'profile' ? t('profile') : t('chat')
             }/>
           ))}
         </View>
