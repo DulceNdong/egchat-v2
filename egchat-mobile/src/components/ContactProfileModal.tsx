@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { Avatar } from './Avatar';
 import Svg, { Path, Rect, Circle, Line, Polyline, Polygon, G } from 'react-native-svg';
 import { blockAPI, reportAPI, contactsAPI } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 // ─── Tipos ────────────────────────────────────────────────────────────────────
 interface Msg { id: string; from: 'me' | 'them'; text: string; time: string }
