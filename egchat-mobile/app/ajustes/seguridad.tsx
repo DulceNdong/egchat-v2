@@ -133,7 +133,7 @@ export default function SeguridadCuentaScreen() {
       <SettingsSection label="Contraseña y acceso" />
       <SettingsCard>
         <SettingsRow
-          label="Cambiar contraseña"
+          label={t('changePassword')}
           onPress={() => setShowChangePwd(v => !v)}
         />
         {showChangePwd && (
