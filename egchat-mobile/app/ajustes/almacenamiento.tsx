@@ -39,6 +39,7 @@ export default function AlmacenamientoScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const { translate: t } = useLanguage();
+  const [used, setUsed] = useState(0);
   const [cacheSize, setCacheSize] = useState(0);
   const [mediaCacheSize, setMediaCacheSize] = useState(0);
   const [loading, setLoading] = useState(true);
