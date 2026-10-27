@@ -147,9 +147,9 @@ export default function SeguridadCuentaScreen() {
           </View>
         )}
         <SettingsDivider />
-        <SettingsRow label="PIN de pagos" onPress={() => setShowSetupPIN(true)} />
+        <SettingsRow label={t('paymentPin')} onPress={() => setShowSetupPIN(true)} />
         <SettingsDivider />
-        <SettingsRow label="Límites de transacción" onPress={() => router.push('/ajustes/security' as any)} />
+        <SettingsRow label={t('transactionLimits')} onPress={() => router.push('/ajustes/security' as any)} />
         <SettingsDivider />
         {biometricAvailable ? (
           <SettingsToggleRow
