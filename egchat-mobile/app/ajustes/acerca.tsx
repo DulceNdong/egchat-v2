@@ -17,8 +17,7 @@ import { useLanguage } from '../../src/context/LanguageContext';
 export default function AcercaScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-
-  const [checking, setChecking] = useState(false);
+  const { translate: t } = useLanguage();
   const [runningDiag, setRunningDiag] = useState(false);
 
   // ── Datos de versión ──────────────────────────────────────────
