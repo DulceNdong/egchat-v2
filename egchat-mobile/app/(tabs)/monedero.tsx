@@ -1735,7 +1735,7 @@ function MonederoScreenInner() {
           {/* ── Mis Tarjetas ── */}
           <View style={s.sectionBlock}>
             <View style={s.sectionHeader}>
-              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>MIS TARJETAS</Text>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>{t('myCards')}</Text>
               <TouchableOpacity style={s.addBtn} onPress={() => setShowCards(true)} activeOpacity={0.7}>
                 <Text style={s.addBtnText}>+</Text>
               </TouchableOpacity>
