@@ -591,21 +591,21 @@ export default function PerfilScreen() {
         <View style={{ height: 8 }} />
         <SettingsCard>
           <SettingsRow
-            label="Tono de timbre para llamadas entrantes"
+            label={t('ringtoneIncoming')}
             value={ringtoneName}
             onPress={() => router.push('/ajustes/llamadas')}
           />
           <SettingsDivider />
           <SettingsRow
-            label="Mi dirección"
+            label={t('myAddress')}
             value={user?.address || '—'}
             onPress={() => openEdit('address', user?.address || '')}
           />
           <SettingsDivider />
           <SettingsRow
-            label="Mi título de beneficiario de ingreso"
+            label={t('beneficiaryTitle')}
             value={user?.full_name || '—'}
-            onPress={() => toast.info('Configura tu nombre en cobros')}
+            onPress={() => toast.info(t('configurePaymentName'))}
           />
           <SettingsDivider />
           <SettingsRow
