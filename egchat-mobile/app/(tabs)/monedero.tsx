@@ -1867,7 +1867,7 @@ function MonederoScreenInner() {
           {/* ── Historial de Transferencias ── */}
           <View style={s.sectionBlock}>
             <View style={s.sectionHeader}>
-              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>HISTORIAL DE TRANSFERENCIAS</Text>
+              <Text style={[s.sectionTitle, { color: C.textPrimary }]}>{t('transferHistory')}</Text>
             </View>
             <TouchableOpacity
               style={[s.card, { backgroundColor: C.bgSecondary, flexDirection: 'row', alignItems: 'center', gap: 14, padding: 16 }]}
