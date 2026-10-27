@@ -10,6 +10,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { useFont } from '../../src/context/FontContext';
 import { Colors } from '../../src/theme';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 const CHAT_BG_COLORS = [
   { color: '#e5ddd5', label: 'Clásico' },
