@@ -164,23 +164,22 @@ export default function AcercaScreen() {
         </TouchableOpacity>
       </SettingsCard>
 
-      {/* ── Legal ─────────────────────────────────── */}
-      <SettingsSection label="Legal" />
+      <SettingsSection label={t('legal')} />
       <SettingsCard>
         <SettingsRow
-          label="Términos de servicio"
+          label={t('termsOfService')}
           onPress={() => Linking.openURL('https://egchat-v2.vercel.app/terms').catch(() => {})}
         />
         <SettingsDivider />
         <SettingsRow
-          label="Política de privacidad"
+          label={t('privacyPolicy')}
           onPress={() => Linking.openURL('https://egchat-v2.vercel.app/privacy').catch(() => {})}
         />
         <SettingsDivider />
         <SettingsRow
-          label="Licencias de código abierto"
+          label={t('openSourceLicenses')}
           onPress={() => Alert.alert(
-            'Licencias',
+            t('licenses'),
             'React Native (MIT)\nExpo (MIT)\nSupabase (Apache 2.0)\nTweetNaCl (Public Domain)\nFirebase (Apache 2.0)',
           )}
         />
