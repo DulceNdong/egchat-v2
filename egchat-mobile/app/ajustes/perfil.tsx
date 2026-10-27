@@ -541,25 +541,25 @@ export default function PerfilScreen() {
         {/* Card 1 — Identidad */}
         <SettingsCard>
           <SettingsRow
-            label="Nombre"
+            label={t('nameField')}
             value={user?.full_name || '—'}
             onPress={() => openEdit('name', user?.full_name || '')}
           />
           <SettingsDivider />
           <SettingsRow
-            label="Novedades"
-            value={bio || 'Añadir estado'}
+            label={t('newsStatus')}
+            value={bio || t('addStatus')}
             onPress={() => openEdit('bio', bio)}
           />
           <SettingsDivider />
-          <SettingsRow label="Género" value={gender} onPress={() => openEdit('gender', gender)} />
+          <SettingsRow label={t('gender')} value={gender} onPress={() => openEdit('gender', gender)} />
           <SettingsDivider />
-          <SettingsRow label="Región" value={region} onPress={() => openEdit('region', region)} />
+          <SettingsRow label={t('region')} value={region} onPress={() => openEdit('region', region)} />
           <SettingsDivider />
           <SettingsRow
-            label="Teléfono"
+            label={t('phone')}
             value={maskPhone(user?.phone)}
-            onPress={() => toast.info('Contacta soporte para cambiar el teléfono')}
+            onPress={() => toast.info(t('contactSupportForPhone'))}
           />
           <SettingsDivider />
           <SettingsRow
