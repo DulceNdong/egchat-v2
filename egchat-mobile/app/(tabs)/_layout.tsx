@@ -5,7 +5,6 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import Svg, { Circle, Line, Path, Polyline, Rect } from 'react-native-svg';
 import { useLanguage } from '../../src/context/LanguageContext';
-import { t } from '../../src/translations';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 
 // ── Iconos SVG idénticos a la versión web ─────────────────────────
