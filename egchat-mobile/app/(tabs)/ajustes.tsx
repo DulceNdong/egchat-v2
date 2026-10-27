@@ -27,64 +27,68 @@ import { useLanguage } from '../../src/context/LanguageContext';
 
 type MenuItem = { label: string; route: string; value?: string };
 
-const ALL_ROWS: MenuItem[] = [
-  { label: 'Perfil', route: '/ajustes/perfil' },
-  { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
-  { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
-  { label: 'Notificaciones', route: '/ajustes/notificaciones' },
-  { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
-  { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
-  { label: 'Almacenamiento', route: '/ajustes/almacenamiento' },
-  { label: 'Sonidos y notificaciones', route: '/ajustes/sonidos' },
-  { label: 'Chat', route: '/ajustes/chat' },
-  { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
-  { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
-  { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
-  { label: 'Registro de actividad', route: '/ajustes/actividad' },
-  { label: 'Comentarios', route: '/ajustes/comentarios' },
-  { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
-];
+function getAllRows(t: (k: string) => string): MenuItem[] {
+  return [
+    { label: t('profile'), route: '/ajustes/perfil' },
+    { label: t('accountSecurity'), route: '/ajustes/seguridad' },
+    { label: t('myInfo'), route: '/ajustes/privacidad' },
+    { label: t('notifications'), route: '/ajustes/notificaciones' },
+    { label: t('interfaceDisplay'), route: '/ajustes/interfaz' },
+    { label: t('friendPermissions'), route: '/ajustes/permisos-amigos' },
+    { label: t('storage'), route: '/ajustes/almacenamiento' },
+    { label: t('sounds'), route: '/ajustes/sonidos' },
+    { label: t('chat'), route: '/ajustes/chat' },
+    { label: t('calls'), route: '/ajustes/llamadas' },
+    { label: t('chatHistory'), route: '/ajustes/historial-chat' },
+    { label: t('otherFeatures'), route: '/ajustes/otras-funciones' },
+    { label: t('activityLog'), route: '/ajustes/actividad' },
+    { label: t('comments'), route: '/ajustes/comentarios' },
+    { label: t('aboutEGChat'), route: '/ajustes/acerca', value: 'v2.5.5' },
+  ];
+}
 
-const SECTIONS: { title: string; items: MenuItem[] }[] = [
-  {
-    title: 'Cuenta',
-    items: [
-      { label: 'Seguridad de la cuenta', route: '/ajustes/seguridad' },
-      { label: 'Mi información y autorizaciones', route: '/ajustes/privacidad' },
-      { label: 'Actualizar documentos KYC', route: '/kyc/step-2' },
-      { label: 'Dispositivos conectados', route: '/ajustes/dispositivos' },
-    ],
-  },
-  {
-    title: 'General',
-    items: [
-      { label: 'Idioma de la app / Language', route: '/ajustes/idioma' },
-      { label: 'Notificaciones', route: '/ajustes/notificaciones' },
-      { label: 'Interfaz y pantalla', route: '/ajustes/interfaz' },
-      { label: 'Permisos de amigos', route: '/ajustes/permisos-amigos' },
-      { label: 'Almacenamiento', route: '/ajustes/almacenamiento' },
-      { label: 'Sonidos y notificaciones', route: '/ajustes/sonidos' },
-    ],
-  },
-  {
-    title: 'Funciones',
-    items: [
-      { label: 'Chat', route: '/ajustes/chat' },
-      { label: 'Llamadas de voz y video', route: '/ajustes/llamadas' },
-      { label: 'Historial de llamadas', route: '/call-history' },
-      { label: 'Administrar historial de chat', route: '/ajustes/historial-chat' },
-      { label: 'Otras funciones', route: '/ajustes/otras-funciones' },
-    ],
-  },
-  {
-    title: 'Ayuda e información',
-    items: [
-      { label: 'Registro de actividad', route: '/ajustes/actividad' },
-      { label: 'Comentarios', route: '/ajustes/comentarios' },
-      { label: 'Acerca de EGCHAT', route: '/ajustes/acerca', value: 'v2.5.5' },
-    ],
-  },
-];
+function getSections(t: (k: string) => string): { title: string; items: MenuItem[] }[] {
+  return [
+    {
+      title: t('accountSection'),
+      items: [
+        { label: t('accountSecurity'), route: '/ajustes/seguridad' },
+        { label: t('myInfo'), route: '/ajustes/privacidad' },
+        { label: t('updateKYC'), route: '/kyc/step-2' },
+        { label: t('connectedDevices'), route: '/ajustes/dispositivos' },
+      ],
+    },
+    {
+      title: t('generalSection'),
+      items: [
+        { label: t('langTitle'), route: '/ajustes/idioma' },
+        { label: t('notifications'), route: '/ajustes/notificaciones' },
+        { label: t('interfaceDisplay'), route: '/ajustes/interfaz' },
+        { label: t('friendPermissions'), route: '/ajustes/permisos-amigos' },
+        { label: t('storage'), route: '/ajustes/almacenamiento' },
+        { label: t('sounds'), route: '/ajustes/sonidos' },
+      ],
+    },
+    {
+      title: t('featuresSection'),
+      items: [
+        { label: t('chat'), route: '/ajustes/chat' },
+        { label: t('calls'), route: '/ajustes/llamadas' },
+        { label: t('history'), route: '/call-history' },
+        { label: t('chatHistory'), route: '/ajustes/historial-chat' },
+        { label: t('otherFeatures'), route: '/ajustes/otras-funciones' },
+      ],
+    },
+    {
+      title: 'Ayuda e información',
+      items: [
+        { label: t('activityLog'), route: '/ajustes/actividad' },
+        { label: t('comments'), route: '/ajustes/comentarios' },
+        { label: t('aboutEGChat'), route: '/ajustes/acerca', value: 'v2.5.5' },
+      ],
+    },
+  ];
+}
 
 const IconGear = () => (
   <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#0d0d0d" strokeWidth={1.5} strokeLinecap="round">
