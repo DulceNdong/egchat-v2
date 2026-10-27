@@ -356,6 +356,7 @@ export const HamburgerMenu = ({
   headerHeight?: number;
 }) => {
   const insets = useSafeAreaInsets();
+  const { language, translate: t } = useLanguage();
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
