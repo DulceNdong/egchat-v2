@@ -38,6 +38,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SessionManager from '../../src/sessionManager';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 0 });
