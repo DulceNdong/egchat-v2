@@ -1039,7 +1039,7 @@ function MensajeriaScreenInner() {
                       onPress={() => setArchiveSubFilter(sub)}
                     >
                       <Text style={[st.archiveSubTabText, archiveSubFilter === sub && st.archiveSubTabTextActive]}>
-                        {sub === 'individual' ? 'Individuales' : 'Grupos'}
+                        {sub === 'individual' ? t('individual') : t('groups')}
                       </Text>
                     </TouchableOpacity>
                   ))}
