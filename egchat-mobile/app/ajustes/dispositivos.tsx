@@ -251,7 +251,7 @@ export default function DispositivosScreen() {
         {/* Otros dispositivos */}
         {!loading && otherSessions.length > 0 && (
           <>
-            <SettingsSection label={`Otros dispositivos (${otherSessions.length})`} />
+            <SettingsSection label={`${t('otherDevices')} (${otherSessions.length})`} />
             <View style={st.cardsWrap}>
               {otherSessions.map((session, i) => (
                 <React.Fragment key={session.id}>
