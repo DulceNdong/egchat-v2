@@ -181,7 +181,7 @@ export default function InterfazScreen() {
               onPress={() => changeFontScale(opt.v)}
             >
               <Text style={{ fontSize: 11, fontWeight: '600', color: Math.abs(fontScale - opt.v) < 0.03 ? '#00c8a0' : C.textSecondary }}>
-                {opt.label}
+                {t(opt.label)}
               </Text>
             </TouchableOpacity>
           ))}
