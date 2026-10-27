@@ -1649,7 +1649,7 @@ function MonederoScreenInner() {
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={s.balanceCard}
             >
-              <Text style={s.balanceCardLabel}>MONEDERO EGPAY</Text>
+              <Text style={s.balanceCardLabel}>{t('egpayWallet')}</Text>
 
               {/* Saldo con animación de revelado (paridad web) */}
               <View style={s.balanceRevealBtn}>
