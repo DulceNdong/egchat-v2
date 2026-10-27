@@ -93,30 +93,30 @@ export default function PermisosAmigosScreen() {
   }, []);
 
   return (
-    <SettingsLayout title="Permisos de amigos">
-      <SettingsSection label="¿Quién puede..." />
+    <SettingsLayout title={t('friendPermissions')}>
+      <SettingsSection label={t('whoCanSection')} />
       <SettingsCard>
-        <OptionRow label="Añadirme como contacto" value={addMe} options={['Todos', 'Solo mis contactos', 'Nadie']} onChange={v => { setAddMe(v); setCfg(CFG.permAdd, v); }} />
+        <OptionRow label={t('addMeAsContact')} value={addMe} options={[t('everyone'), t('onlyMyContacts'), t('nobody')]} onChange={v => { setAddMe(v); setCfg(CFG.permAdd, v); }} />
         <SettingsDivider />
-        <OptionRow label="Enviarme mensajes" value={msgMe} options={['Todos', 'Solo contactos']} onChange={v => { setMsgMe(v); setCfg(CFG.permMsg, v); }} />
+        <OptionRow label={t('sendMeMessages')} value={msgMe} options={[t('everyone'), t('onlyContacts')]} onChange={v => { setMsgMe(v); setCfg(CFG.permMsg, v); }} />
         <SettingsDivider />
-        <OptionRow label="Encontrarme por búsqueda" value={findMe} options={['Todos', 'Nadie']} onChange={v => { setFindMe(v); setCfg(CFG.permFind, v); }} />
+        <OptionRow label={t('findMeBySearch')} value={findMe} options={[t('everyone'), t('nobody')]} onChange={v => { setFindMe(v); setCfg(CFG.permFind, v); }} />
       </SettingsCard>
 
-      <SettingsSection label="Solicitudes" />
+      <SettingsSection label={t('requests')} />
       <SettingsCard>
-        <SettingsToggleRow label="Aceptar automáticamente" value={autoAccept} onValueChange={v => { setAutoAccept(v); setCfgBool(CFG.autoAccept, v); }} />
+        <SettingsToggleRow label={t('autoAccept')} value={autoAccept} onValueChange={v => { setAutoAccept(v); setCfgBool(CFG.autoAccept, v); }} />
         <SettingsDivider />
-        <SettingsToggleRow label="Silenciar desconocidos" value={muteUnknown} onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteUnknown, v); }} />
+        <SettingsToggleRow label={t('muteUnknown')} value={muteUnknown} onValueChange={v => { setMuteUnknown(v); setCfgBool(CFG.muteUnknown, v); }} />
       </SettingsCard>
 
-      <SettingsSection label="Contactos del teléfono" />
+      <SettingsSection label={t('phoneContacts')} />
       <SettingsCard>
         <View style={styles.syncRow}>
           <View style={{ flex: 1 }}>
-            <Text style={[styles.syncTitle, { color: C.textPrimary }]}>Sincronizar agenda</Text>
+            <Text style={[styles.syncTitle, { color: C.textPrimary }]}>{t('syncContacts')}</Text>
             <Text style={[styles.syncSub, { color: C.textSecondary }]}>
-              {lastSync ? `Última sincronización: ${lastSync}` : 'Nunca sincronizado'}
+              {lastSync ? `${t('lastSync')}: ${lastSync}` : t('neverSynced')}
             </Text>
           </View>
           <TouchableOpacity
@@ -127,7 +127,7 @@ export default function PermisosAmigosScreen() {
           >
             {syncing
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={styles.syncBtnText}>Sincronizar</Text>
+              : <Text style={styles.syncBtnText}>{t('sync')}</Text>
             }
           </TouchableOpacity>
         </View>
