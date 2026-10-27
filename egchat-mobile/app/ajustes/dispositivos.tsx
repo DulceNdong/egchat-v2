@@ -21,6 +21,7 @@ import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 // ── Iconos de dispositivo ─────────────────────────────────────────
 function DeviceIcon({ type, color }: { type: string; color: string }) {
