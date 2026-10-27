@@ -299,12 +299,12 @@ export const ContactProfileModal: React.FC<Props> = ({
       );
     } else {
       Alert.alert(
-        '🚫 t('blockContact')',
-        `¿Bloquear a ${name}?\n\nYa no podrá enviarte mensajes ni llamarte. Esta acción se puede deshacer desde Ajustes > Privacidad > Contactos bloqueados.`,
+        t('blockContact'),
+        `¿Bloquear a ${name}?\n\nYa no podrá enviarte mensajes ni llamarte.`,
         [
           { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Bloquear',
+            text: t('blockContact'),
             style: 'destructive',
             onPress: async () => {
               setActionLoading(true);
