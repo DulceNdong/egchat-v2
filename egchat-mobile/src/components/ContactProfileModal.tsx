@@ -627,8 +627,8 @@ export const ContactProfileModal: React.FC<Props> = ({
                   )}
                   <Row
                     iconNode={<IcoBlock />}
-                    label={isBlocked ? 't('unblockContact')' : 't('blockContact')'}
-                    sub={isBlocked ? 't('allowMessagesAgain')' : 't('noMoreMessages')'}
+                    label={isBlocked ? t('unblockContact') : t('blockContact')}
+                    sub={isBlocked ? t('allowMessagesAgain') : t('noMoreMessages')}
                     danger
                     onPress={handleBlock}
                   />
