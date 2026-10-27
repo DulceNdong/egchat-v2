@@ -340,7 +340,9 @@ function ServiciosScreenInner() {
   const [showWeather, setShowWeather] = useState(false);
   const { weather, notifications } = useAppStore();
   const { isDark } = useThemeContext();
+  const { language, translate: t } = useLanguage();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
+  const SERVICE_SECTIONS = getServiceSections(t);
 
   const loadData = async () => {
     try {
