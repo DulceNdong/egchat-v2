@@ -56,8 +56,7 @@ export default function LlamadasScreen() {
 
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-
-  useEffect(() => {
+  const { translate: t } = useLanguage();
     getCfgBool(CFG.hdCall, true).then(setHdCall);
     getCfgBool(CFG.saveDataCall, false).then(setSaveData);
     getCfgBool(CFG.muteCallUnknown, false).then(setMuteUnknown);
