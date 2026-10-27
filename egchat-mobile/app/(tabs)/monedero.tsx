@@ -1299,6 +1299,7 @@ function MonederoScreenInner() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   const { isDark } = useThemeContext();
+  const { language, translate: t } = useLanguage();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const loadData = useCallback(async () => {
