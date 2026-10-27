@@ -224,25 +224,25 @@ export default function PrivacidadScreen() {
   }, []);
 
   return (
-    <SettingsLayout title="Mi información">
-      <SettingsSection label="Visibilidad" />
+    <SettingsLayout title={t('myInfo')}>
+      <SettingsSection label={t('visibility')} />
       <SettingsCard>
         <VisibilityRow
-          label="Última vez"
+          label={t('lastSeen')}
           value={lastSeen}
           options={VIS_OPTS}
           onChange={v => updatePrivacy('lastSeen', v, CFG.lastSeen, setLastSeen)}
         />
         <SettingsDivider />
         <VisibilityRow
-          label="Foto de perfil"
+          label={t('profilePhoto')}
           value={photoVis}
           options={VIS_OPTS}
           onChange={v => updatePrivacy('photoVis', v, CFG.photoVis, setPhotoVis)}
         />
         <SettingsDivider />
         <VisibilityRow
-          label="Estado / Historia"
+          label={t('statusHistory')}
           value={statusVis}
           options={VIS_OPTS}
           onChange={v => updatePrivacy('statusVis', v, CFG.statusVis, setStatusVis)}
