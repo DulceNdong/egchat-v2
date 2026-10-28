@@ -113,7 +113,7 @@
       }
     },
     "testflight": {
-      "distribution": "internal",
+      "distribution": "store",
       "channel": "testflight",
       "node": "20.18.0",
       "android": {
