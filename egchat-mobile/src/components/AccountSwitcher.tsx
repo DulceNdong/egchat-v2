@@ -30,6 +30,7 @@ export function AccountSwitcher({
 }: Props) {
   const [accounts, setAccounts] = useState<Account[]>([]);
   const [switching, setSwitching] = useState<string | null>(null);
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     if (visible) getAccounts().then(setAccounts);
