@@ -321,7 +321,12 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               {showCountryPicker && (
-                <View style={[s.dropdown, { backgroundColor: isDark ? '#0d1b26' : '#fff', borderColor: fieldBdr }]}>
+                <ScrollView
+                  style={[s.dropdown, { backgroundColor: isDark ? '#0d1b26' : '#fff', borderColor: fieldBdr, maxHeight: 220 }]}
+                  keyboardShouldPersistTaps="handled"
+                  showsVerticalScrollIndicator={true}
+                  nestedScrollEnabled={true}
+                >
                   {COUNTRIES.map(c => (
                     <TouchableOpacity
                       key={c.phone}
@@ -341,7 +346,7 @@ export default function LoginScreen() {
                       {c.phone === countryCode && <Text style={s.ddCheck}>✓</Text>}
                     </TouchableOpacity>
                   ))}
-                </View>
+                </ScrollView>
               )}
             </View>
 
