@@ -58,7 +58,7 @@ export function AccountSwitcher({
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={s.title}>Cambiar cuenta</Text>
+          <Text style={s.title}>{t('switchAccount')}</Text>
 
           {accounts.map(acc => {
             const isActive  = acc.id === currentAccountId;
