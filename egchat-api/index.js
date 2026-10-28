@@ -5524,6 +5524,13 @@ app.post('/api/push/register-expo-token', auth, async (req, res) => {
     const type = tokenType ||
       (token.startsWith('ExponentPushToken') ? 'expo' : 'fcm');
 
+    // BLOQUEAR tokens APNs nativos para evitar BadEnvironmentKeyInToken en TestFlight
+    // Solo aceptar ExponentPushToken o FCM
+    if (type === 'apns') {
+      console.log(`[Push] Token APNs rechazado para user ${req.user.id} (solo Expo/FCM permitidos)`);
+      return res.json({ message: 'Token APNs no soportado. Usa ExponentPushToken.', tokenType: 'rejected' });
+    }
+
     // Intentar via Edge Function primero (tiene soporte completo de tipos)
     const edgeFnUrl = process.env.SUPABASE_URL
       ? `${process.env.SUPABASE_URL}/functions/v1/register-device-token`
