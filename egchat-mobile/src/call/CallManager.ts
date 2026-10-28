@@ -398,6 +398,10 @@ export class CallManager {
     this._setCommState('ringing');
     this._setUIState('full');
     startRingtone().catch(() => {});
+    // Iniciar poll de cancelación: detecta si el caller cuelga antes de que
+    // el callee abra la app o acepte — para el timbre y limpia el estado.
+    this._startPoll('callee', 'fast');
+    this._subscribeRealtime();
   }
 
   // ══════════════════════════════════════════════════════════════
