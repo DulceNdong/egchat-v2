@@ -4876,13 +4876,18 @@ app.post('/api/call/answer', auth, async (req, res) => {
     // FIX: Enviar broadcast instantáneo para parar el tono de llamada inmediatamente
     // Esto es mucho más rápido (< 50ms) que postgres_changes (200-500ms)
     try {
-      await supabase.channel(`call-state:${callId}`)
-        .send({
-          type: 'broadcast',
-          event: 'call_status',
-          payload: { status: 'accepted', callId }
-        });
+      const channel = supabase.channel(`call-state:${callId}`, {
+        config: { broadcast: { self: false } }
+      });
+      await channel.subscribe();
+      await channel.send({
+        type: 'broadcast',
+        event: 'call_status',
+        payload: { status: 'accepted', callId }
+      });
       console.log(`[call/answer] Broadcast sent: accepted for ${callId}`);
+      // Limpiar el canal después de enviar
+      setTimeout(() => supabase.removeChannel(channel), 1000);
     } catch (broadcastErr) {
       console.warn('[call/answer] Broadcast failed:', broadcastErr.message);
     }
