@@ -376,20 +376,14 @@ export const HamburgerMenu = ({
     ?.split(' ').filter(Boolean).map((w: string) => w[0].toUpperCase()).slice(0, 2).join('') || 'EG';
 
   const items: Array<{ id: string; label: string; sub: string }> = [
-    { id: 'perfil',         label: t('myProfile'),         sub: t('viewEditProfile')     },
-    { id: 'nuevo-contacto', label: t('newContact'),         sub: t('addToList')           },
-    { id: 'crear-grupo',    label: t('createGroup'),        sub: t('newGroupChat')        },
-    { id: 'escanear-qr',    label: t('scanQR'),             sub: t('scanCodesContacts')   },
-    { id: 'global-search',  label: t('searchChats'),        sub: t('searchMessagesContacts') },
+    { id: 'perfil',         label: t('myProfile'),         sub: t('viewEditProfile')        },
+    { id: 'nuevo-contacto', label: t('newContact'),         sub: t('addToList')              },
+    { id: 'crear-grupo',    label: t('createGroup'),        sub: t('newGroupChat')           },
+    { id: 'escanear-qr',    label: t('scanQR'),             sub: t('scanCodesContacts')      },
     { id: 'business',       label: t('businessProfile'),    sub: t('catalogBusinessAccount') },
     { id: 'broadcast',      label: t('broadcast'),          sub: t('messageToMultipleChats') },
-    { id: 'contactos',      label: t('myContacts'),         sub: t('viewAllContacts')     },
-    { id: 'mensajes-arch',  label: t('archivedMessages'),   sub: t('archivedChats')       },
-    { id: 'notificaciones', label: t('notifications'),      sub: t('manageAlerts')        },
-    { id: 'privacidad',     label: t('privacy'),            sub: t('configurePrivacy')    },
-    { id: 'ajustes',        label: t('settings'),           sub: t('appConfig')           },
-    { id: 'ayuda',          label: t('helpSupport'),        sub: t('helpCenter')          },
-    { id: 'salir',          label: t('logout'),             sub: t('signOutAccount')      },
+    { id: 'contactos',      label: t('myContacts'),         sub: t('viewAllContacts')        },
+    { id: 'salir',          label: t('logout'),             sub: t('signOutAccount')         },
   ];
 
   const handlePress = async (id: string) => {
