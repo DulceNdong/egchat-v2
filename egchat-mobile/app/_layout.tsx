@@ -75,7 +75,7 @@ export default function RootLayout() {
                           callId: call.callId,
                           targetName: call.callerName || 'Usuario',
                           targetAvatar: call.callerAvatar || '',
-                          callType: call.type || 'audio',
+                          callType: call.callType || call.type || 'audio',
                           role: 'callee',
                           offer: call.offer ? JSON.stringify(call.offer) : undefined,
                         },

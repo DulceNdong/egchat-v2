@@ -6,6 +6,7 @@
 import { useRef, useState, useCallback, useEffect } from 'react';
 import { View } from 'react-native';
 import { getToken } from '../api';
+import { startRingtone, stopRingtone } from './useSounds';
 
 // RTCView stub — se reemplaza por el real en build nativo
 export const RTCView = View;
@@ -38,11 +39,18 @@ export function useWebRTC() {
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const callIdRef = useRef<string>('');
   const endedRef = useRef<boolean>(false);
+  const ringStopped = useRef<boolean>(false);
 
   const [callState, setCallState] = useState<CallState>('idle');
   const [callType, setCallType] = useState<'audio' | 'video'>('audio');
   const [isMuted, setIsMuted] = useState(false);
   const [isCamOff, setIsCamOff] = useState(false);
+
+  const stopRingOnce = useCallback(() => {
+    if (ringStopped.current) return;
+    ringStopped.current = true;
+    stopRingtone().catch(() => {});
+  }, []);
 
   const stopPolling = useCallback(() => {
     if (pollingRef.current) { clearInterval(pollingRef.current); pollingRef.current = null; }
@@ -50,17 +58,20 @@ export function useWebRTC() {
 
   const cleanup = useCallback(() => {
     stopPolling();
+    stopRingOnce();
+    ringStopped.current = false; // reset para próxima llamada
     endedRef.current = false;
     setCallState('idle');
-  }, [stopPolling]);
+  }, [stopPolling, stopRingOnce]);
 
   const endCall = useCallback(async () => {
     endedRef.current = true;
+    stopRingOnce();
     if (callIdRef.current) {
       try { await sigFetch(`/call/${callIdRef.current}`, 'DELETE'); } catch {}
     }
     cleanup();
-  }, [cleanup]);
+  }, [cleanup, stopRingOnce]);
 
   const startCall = useCallback(async (type: 'audio' | 'video', _targetUserId: string) => {
     setCallType(type);
@@ -69,11 +80,29 @@ export function useWebRTC() {
     console.warn('WebRTC no disponible en Expo Go. Usa EAS Build para llamadas reales.');
   }, []);
 
-  const answerCall = useCallback(async (_callId: string, _offer: any, type: 'audio' | 'video') => {
+  const answerCall = useCallback(async (callId: string, _offer: any, type: 'audio' | 'video') => {
+    callIdRef.current = callId;
+    ringStopped.current = false;
     setCallType(type);
     setCallState('ringing');
+    // Iniciar timbre — se para cuando el usuario acepta o rechaza
+    startRingtone().catch(() => {});
+    // Poll para detectar cancelación del caller mientras el callee espera
+    const cancelPoll = setInterval(async () => {
+      if (endedRef.current) { clearInterval(cancelPoll); return; }
+      try {
+        const data = await sigFetch(`/call/${callId}`);
+        // Llamada cancelada/expirada por el caller
+        if (!data || data.ended || data.status === 'cancelled' || data.status === 'ended' || data.status === 'missed') {
+          clearInterval(cancelPoll);
+          stopRingOnce();
+          setCallState('ended');
+        }
+      } catch { /* ignorar errores de red transitorios */ }
+    }, 3000);
+    pollingRef.current = cancelPoll;
     console.warn('WebRTC no disponible en Expo Go. Usa EAS Build para llamadas reales.');
-  }, []);
+  }, [stopRingOnce]);
 
   const toggleMute = useCallback(() => setIsMuted(p => !p), []);
   const toggleCamera = useCallback(() => setIsCamOff(p => !p), []);

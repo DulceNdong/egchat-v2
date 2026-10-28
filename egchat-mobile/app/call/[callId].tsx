@@ -12,6 +12,18 @@ import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/t
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
+import { getToken } from '../../src/api';
+import { stopRingtone } from '../../src/hooks/useSounds';
+
+const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
+async function sigFetch(path: string) {
+  const token = await getToken();
+  const res = await fetch(`${API_BASE}/api${path}`, {
+    headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+  if (!res.ok) throw new Error(`${path} → ${res.status}`);
+  return res.json();
+}
 
 export default function CallScreen() {
   const {
@@ -50,17 +62,25 @@ export default function CallScreen() {
         Alert.alert('Error', err.message || 'No se pudo iniciar la llamada');
         router.back();
       });
-    } else if (role === 'callee' && offerParam) {
-      try {
-        const offer = JSON.parse(offerParam);
+    } else if (role === 'callee') {
+      // Buscar offer del servidor si no llegó en la ruta (videollamada vía push)
+      const initCallee = async () => {
+        let offer: any = null;
+        if (offerParam) {
+          try { offer = JSON.parse(offerParam); } catch {}
+        }
+        if (!offer && callId) {
+          try {
+            const data = await sigFetch(`/call/${callId}`);
+            offer = data?.offer ?? null;
+          } catch {}
+        }
         answerCall(callId, offer, callType as 'audio' | 'video').catch(err => {
           Alert.alert('Error', err.message || 'No se pudo responder la llamada');
           router.back();
         });
-      } catch {
-        Alert.alert('Error', 'Datos de llamada inválidos');
-        router.back();
-      }
+      };
+      initCallee();
     }
   }, []);
 
@@ -104,10 +124,21 @@ export default function CallScreen() {
     router.back();
   }, [endCall]);
 
-  const accept = useCallback(() => {
-    // El callee ya inició answerCall en el useEffect, solo cambia UI
-    // La conexión WebRTC se establece sola
-  }, []);
+  const accept = useCallback(async () => {
+    // Parar timbre y señalar al servidor que la llamada fue aceptada
+    await stopRingtone().catch(() => {});
+    try {
+      const token = await getToken();
+      if (token && callId) {
+        await fetch(`${(process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '')}/api/call/${callId}/accept`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        }).catch(() => {});
+      }
+    } catch {}
+    // La UI muestra "connected" para simular la aceptación
+    // (WebRTC real se maneja en EAS Build con el CallManager)
+  }, [callId]);
 
   const statusLabel = () => {
     if (callState === 'calling') return 'Llamando...';
