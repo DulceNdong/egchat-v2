@@ -136,7 +136,7 @@ export async function getPendingSignals(
  */
 export function subscribeToCallState(
   callId: string,
-  onStatusChange: (status: CallStatus) => void,
+  onStatusChange: (status: CallStatus, answer?: any) => void,
   onEnded: () => void,
 ): () => void {
   const channel: RealtimeChannel = supabase
