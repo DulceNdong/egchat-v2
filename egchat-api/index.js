@@ -4873,8 +4873,8 @@ app.post('/api/call/answer', auth, async (req, res) => {
       }).eq('call_id', callId);
     }
 
-    // FIX: Enviar broadcast instantáneo para parar el tono de llamada inmediatamente
-    // Esto es mucho más rápido (< 50ms) que postgres_changes (200-500ms)
+    // FIX: Enviar broadcast instantáneo CON EL ANSWER para parar el tono y conectar inmediatamente
+    // Esto es mucho más rápido (< 50ms) que postgres_changes (200-500ms) + elimina el fetch extra
     try {
       const channel = supabase.channel(`call-state:${callId}`, {
         config: { broadcast: { self: false } }
@@ -4883,9 +4883,13 @@ app.post('/api/call/answer', auth, async (req, res) => {
       await channel.send({
         type: 'broadcast',
         event: 'call_status',
-        payload: { status: 'accepted', callId }
+        payload: { 
+          status: 'accepted', 
+          callId,
+          answer: answer ? JSON.parse(JSON.stringify(answer)) : null  // Incluir el answer en el broadcast
+        }
       });
-      console.log(`[call/answer] Broadcast sent: accepted for ${callId}`);
+      console.log(`[call/answer] Broadcast sent: accepted with answer for ${callId}`);
       // Limpiar el canal después de enviar
       setTimeout(() => supabase.removeChannel(channel), 1000);
     } catch (broadcastErr) {
