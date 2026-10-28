@@ -143,6 +143,21 @@ export function subscribeToCallState(
     .channel(`call-state:${callId}`, {
       config: { broadcast: { self: false } },
     })
+    // FIX: Broadcast para eventos instantáneos (< 50ms)
+    .on(
+      'broadcast',
+      { event: 'call_status' },
+      (payload) => {
+        const { status, callId: eventCallId } = payload.payload as { status: CallStatus; callId: string };
+        if (eventCallId !== callId) return;
+        console.log(`[callSupabase] Broadcast received: status=${status} for callId=${callId}`);
+        onStatusChange(status);
+        if (isTerminal(status)) {
+          onEnded();
+        }
+      },
+    )
+    // Postgres changes como fallback (200-500ms delay)
     .on(
       'postgres_changes',
       {
