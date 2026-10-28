@@ -1669,7 +1669,7 @@ export class CallManager {
       this._session.callId,
 
       // onStatusChange: sincronizar estado con la fuente de verdad
-      (remoteStatus: CallStatus) => {
+      (remoteStatus: CallStatus, answerFromBroadcast?: any) => {
         if (!this._session) return;
 
         // Si ya estamos en un estado terminal, ignorar
@@ -1677,14 +1677,41 @@ export class CallManager {
 
         switch (remoteStatus) {
           case 'accepted':
-            // Caller: el callee aceptó → parar tono y forzar poll para aplicar answer
+            // Caller: el callee aceptó → parar tono y aplicar answer
             if (this._session.role === 'caller' &&
                 (this._commState === 'calling') &&
                 !this._answerApplied) {
-              console.log('[CallManager] Realtime accepted → caller para tono y fuerza poll');
+              console.log('[CallManager] Realtime accepted → caller para tono', answerFromBroadcast ? 'con answer directo' : 'forzando poll');
               stopDialingTone();
               this._stopCallTimeout();
-              this._forcePoll();
+              
+              // Si el Broadcast incluye el answer, aplicarlo directamente
+              if (answerFromBroadcast && this._pc && NativeRTC) {
+                const sigState = this._pc.signalingState;
+                if (sigState === 'have-local-offer' || (sigState === 'stable' && !this._connectedOnce)) {
+                  console.log('[CallManager] Aplicando answer desde Broadcast');
+                  this._pc.setRemoteDescription(
+                    new NativeRTC.RTCSessionDescription(answerFromBroadcast)
+                  ).then(() => {
+                    this._remoteDescSet  = true;
+                    this._answerApplied  = true;
+                    this._setCommState('connecting');
+                    return this._drainIceQueue();
+                  }).then(() => {
+                    console.log('[CallManager] Answer desde Broadcast aplicado correctamente');
+                  }).catch((e: any) => {
+                    console.warn('[CallManager] Error aplicando answer desde Broadcast:', e?.message);
+                    // Fallback: forzar poll
+                    this._forcePoll();
+                  });
+                } else {
+                  console.warn(`[CallManager] sigState=${sigState}, usando fallback poll`);
+                  this._forcePoll();
+                }
+              } else {
+                // Fallback: polling tradicional
+                this._forcePoll();
+              }
             }
             // Otro dispositivo del callee aceptó → si somos callee y estamos
             // en ringing, cancelar localmente sin llamar al servidor de nuevo
