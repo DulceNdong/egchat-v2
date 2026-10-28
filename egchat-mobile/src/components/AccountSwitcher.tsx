@@ -101,7 +101,7 @@ export function AccountSwitcher({
               <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.addGrad}>
                 <Text style={s.addIcon}>+</Text>
               </LinearGradient>
-              <Text style={s.addText}>Añadir cuenta</Text>
+              <Text style={s.addText}>{t('addAccount')}</Text>
             </TouchableOpacity>
           )}
         </Pressable>
