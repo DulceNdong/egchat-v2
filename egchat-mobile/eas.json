@@ -180,6 +180,14 @@
     }
   },
   "submit": {
+    "testflight": {
+      "ios": {
+        "appleId": "reddington120@icloud.com",
+        "ascAppId": "6810877584",
+        "appleTeamId": "XU6YD7ZJ2K",
+        "sku": "com.jallzstores.egchat"
+      }
+    },
     "production": {
       "android": {
         "serviceAccountKeyPath": "./google-play-key.json",
