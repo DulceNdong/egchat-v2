@@ -6421,10 +6421,10 @@ app.get('/admin/kyc/pending', async (req, res) => {
   try {
     if (!supabase) return res.json({ items:[], total:0, page:1, page_size:20, pages:0 });
 
-    const page      = parseInt(req.query.page as string) || 1;
-    const pageSize  = parseInt(req.query.page_size as string) || 20;
-    const status    = req.query.status as string;
-    const riskLevel = req.query.risk_level as string;
+    const page      = parseInt(req.query.page) || 1;
+    const pageSize  = parseInt(req.query.page_size) || 20;
+    const status    = req.query.status;
+    const riskLevel = req.query.risk_level;
 
     const defaultStatuses = ['submitted','PENDING_REVIEW','under_review','MANUAL_REVIEW'];
     const statuses = status ? [status] : defaultStatuses;
@@ -6444,7 +6444,7 @@ app.get('/admin/kyc/pending', async (req, res) => {
     const { data, count, error } = await query;
     if (error) throw error;
 
-    const items = (data || []).map((a: any) => ({
+    const items = (data || []).map((a) => ({
       application_id:   a.id,
       session_id:       a.session_id,
       status:           a.status,
