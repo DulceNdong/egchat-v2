@@ -148,11 +148,19 @@ export function subscribeToCallState(
       'broadcast',
       { event: 'call_status' },
       (payload) => {
-        const { status, callId: eventCallId } = payload.payload as { status: CallStatus; callId: string };
-        if (eventCallId !== callId) return;
-        console.log(`[callSupabase] Broadcast received: status=${status} for callId=${callId}`);
-        onStatusChange(status);
-        if (isTerminal(status)) {
+        const data = payload.payload as { status: CallStatus; callId: string; answer?: any };
+        if (data.callId !== callId) return;
+        console.log(`[callSupabase] Broadcast received: status=${data.status} for callId=${callId}`, data.answer ? 'with answer' : 'without answer');
+        
+        // Si viene con answer, incluirlo en el callback
+        if (data.answer && data.status === 'accepted') {
+          // Llamar onStatusChange con el answer embebido
+          onStatusChange(data.status, data.answer);
+        } else {
+          onStatusChange(data.status);
+        }
+        
+        if (isTerminal(data.status)) {
           onEnded();
         }
       },
