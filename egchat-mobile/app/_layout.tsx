@@ -546,7 +546,7 @@ export default function RootLayout() {
           callId,
           callerName:   call.callerName || call.caller_name || 'Usuario',
           callerAvatar: call.callerAvatar || call.caller_avatar || '',
-          callType:     call.type || 'audio',
+          callType:     call.type || call.callType || 'audio',
           offer:        parsedOffer,
         });
       } catch { /* silencioso */ }
