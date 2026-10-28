@@ -112,6 +112,42 @@
         "ANDROID_ABI": "arm64-v8a"
       }
     },
+    "testflight": {
+      "distribution": "internal",
+      "channel": "testflight",
+      "node": "20.18.0",
+      "android": {
+        "buildType": "apk",
+        "gradleCommand": ":app:assembleRelease -PreactNativeArchitectures=arm64-v8a",
+        "resourceClass": "medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_API_URL_MOBILE": "https://egchat-api-xlxj.onrender.com",
+        "EXPO_PUBLIC_SUPABASE_URL": "https://fqfxtjnfhvpggssbymdn.supabase.co",
+        "EXPO_PUBLIC_SUPABASE_ANON_KEY": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZnh0am5maHZwZ2dzc2J5bWRuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODU4NDM4MjAsImV4cCI6MjEwMTQxOTgyMH0.jc8uCndFdhKDlJB8_CfBqqeXAzZYTCpWEUf9W0v8fIw",
+        "EXPO_PUBLIC_ENABLE_PUSH": "1",
+        "EXPO_PUBLIC_ENABLE_VOIP": "1",
+        "EXPO_PUBLIC_ENABLE_WEBRTC": "1",
+        "EXPO_PUBLIC_FIREBASE_API_KEY": "AIzaSyB1VKzNGKOOI99QR9r_RIU1qRIo_f_H0Zw",
+        "EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN": "egchat-4efe7.firebaseapp.com",
+        "EXPO_PUBLIC_FIREBASE_DATABASE_URL": "https://egchat-4efe7-default-rtdb.firebaseio.com",
+        "EXPO_PUBLIC_FIREBASE_PROJECT_ID": "egchat-4efe7",
+        "EXPO_PUBLIC_FIREBASE_STORAGE_BUCKET": "egchat-4efe7.appspot.com",
+        "EXPO_PUBLIC_FIREBASE_MESSAGING_SENDER_ID": "745900172350",
+        "EXPO_PUBLIC_FIREBASE_APP_ID": "1:745900172350:android:758256b45294a7db695d6f",
+        "EXPO_PUBLIC_TURN_USERNAME": "da650e4049827172fe68c0ca",
+        "EXPO_PUBLIC_TURN_CREDENTIAL": "j/1W4W30lqysk7rF",
+        "GRADLE_OPTS": "-Dorg.gradle.jvmargs=-Xmx4096m -Dorg.gradle.daemon=false -Dkotlin.incremental=false"
+      },
+      "ios": {
+        "autoIncrement": true,
+        "resourceClass": "m-medium",
+        "buildConfiguration": "Release",
+        "image": "macos-sequoia-15.3-xcode-16.2",
+        "cocoapods": "1.17.0"
+      }
+    },
     "production": {
       "distribution": "store",
       "channel": "production",
