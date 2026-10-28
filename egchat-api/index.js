@@ -6232,9 +6232,9 @@ if (require.main === module) {
     ws.on('error', handleLeave);
   });
 
-  httpServer.listen(PORT, async () => {
-    console.log(`\n😎 EGCHAT API + WebSocket SFU en http://localhost:${PORT}`);
-    console.log(`   SFU WebSocket: ws://localhost:${PORT}/api/call/sfu-ws`);
+  httpServer.listen(PORT, '0.0.0.0', async () => {
+    console.log(`\n😎 EGCHAT API + WebSocket SFU en http://0.0.0.0:${PORT}`);
+    console.log(`   SFU WebSocket: ws://0.0.0.0:${PORT}/api/call/sfu-ws`);
     console.log(`   Max participantes por sala: 9`);
     console.log(`   Supabase: ${process.env.SUPABASE_URL ? '✅ Conectado' : '❌ Sin configurar'}`);
     // Iniciar scheduler de noticias del gobierno
