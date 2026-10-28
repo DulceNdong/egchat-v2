@@ -15,6 +15,7 @@ import {
   type Account,
 } from '../services/multiAccount';
 import { setToken } from '../api';
+import { useLanguage } from '../context/LanguageContext';
 
 interface Props {
   visible: boolean;
