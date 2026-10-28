@@ -4872,6 +4872,21 @@ app.post('/api/call/answer', auth, async (req, res) => {
         answer: JSON.stringify(answer), updated_at: new Date().toISOString(),
       }).eq('call_id', callId);
     }
+
+    // FIX: Enviar broadcast instantáneo para parar el tono de llamada inmediatamente
+    // Esto es mucho más rápido (< 50ms) que postgres_changes (200-500ms)
+    try {
+      await supabase.channel(`call-state:${callId}`)
+        .send({
+          type: 'broadcast',
+          event: 'call_status',
+          payload: { status: 'accepted', callId }
+        });
+      console.log(`[call/answer] Broadcast sent: accepted for ${callId}`);
+    } catch (broadcastErr) {
+      console.warn('[call/answer] Broadcast failed:', broadcastErr.message);
+    }
+
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
     console.error('[call/answer]', e.message);
