@@ -118,6 +118,7 @@ const TURN_FALLBACK = (() => {
 
 // ── Timeouts ──────────────────────────────────────────────────────
 const CALL_TIMEOUT_MS           = 90_000;  // 90s sin respuesta → missed
+const POST_ANSWER_CONNECT_MS    = 30_000;  // 30s con answer aplicado sin ICE conectado → failed
 const ICE_DISCONNECTED_BASE_MS  =  2_000;  // base backoff (×2^intento, jitter ±20%)
 const ICE_RESTART_TIMEOUT_MS    = 20_000;  // 20s para que el restart tenga éxito (cubre 4G lento)
 const RECONNECT_MAX             = 4;       // 4 intentos antes de declarar failed
@@ -177,12 +178,13 @@ export class CallManager {
   private _iceOffsetCaller = 0;
   private _iceOffsetCallee = 0;
   private _answerApplied   = false;
-  private _appliedOfferVersion = 0;   // detectar restart offer del caller (callee)
+  private _appliedOfferSdp: string | null = null;  // SDP del offer ya aplicado
 
   // ── Timers ────────────────────────────────────────────────────
   private _pollingTimer:      ReturnType<typeof setInterval> | null = null;
   private _durationTimer:     ReturnType<typeof setInterval> | null = null;
   private _callTimeoutTimer:  ReturnType<typeof setTimeout>  | null = null;
+  private _connectWatchdog:   ReturnType<typeof setTimeout>  | null = null;
   private _reconnectTimer:    ReturnType<typeof setTimeout>  | null = null;
   private _iceRestartTimer:   ReturnType<typeof setTimeout>  | null = null;
   private _pollPhase:         'fast' | 'slow' = 'fast';
@@ -408,97 +410,113 @@ export class CallManager {
   // ACEPTAR LLAMADA (Callee)
   // ══════════════════════════════════════════════════════════════
   async acceptCall(): Promise<void> {
-    if (this._commState !== 'ringing' || !this._session) {
+    if (!this._session) {
+      console.warn('[CallManager] acceptCall: sin sesión de llamada');
+      return;
+    }
+    if (this._commState !== 'ringing') {
       console.warn('[CallManager] acceptCall: estado incorrecto', this._commState);
+      // La UI puede seguir abierta aunque la llamada ya haya terminado o
+      // se haya aceptado en otro dispositivo: el timbre debe parar igualmente.
+      this._stopRingOnce();
       return;
     }
     this._isAcceptingLocally = true;
 
-    // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
-    // Intentar reclamar la llamada de forma atómica en el servidor.
-    // Si ya fue aceptada por otro dispositivo, el servidor devuelve alreadyAccepted.
     try {
-      const result = await callAPI.claimCall?.(this._session.callId);
-      if (result?.alreadyAccepted) {
-        this._isAcceptingLocally = false;
-        this._stopRingOnce();
-        this._setCommState('ended');
-        this._finalCleanup();
-        setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+      // M3 fix: guard contra doble-aceptación desde dos dispositivos del mismo usuario.
+      // Intentar reclamar la llamada de forma atómica en el servidor.
+      // Si ya fue aceptada por otro dispositivo, el servidor devuelve alreadyAccepted.
+      try {
+        const result = await callAPI.claimCall?.(this._session.callId);
+        if (result?.alreadyAccepted) {
+          this._stopRingOnce();
+          this._setCommState('ended');
+          this._finalCleanup();
+          setTimeout(() => { this._setCommState('idle'); this._session = null; this._notify(); }, 400);
+          return;
+        }
+      } catch { /* endpoint opcional — no bloquear si no existe */ }
+
+      // FIX: la sesión debe leerse ANTES de avisar a CallKit. Antes se usaba
+      // `callId` en la línea de answerCall y el `const` se declaraba después,
+      // provocando un ReferenceError que el catch silenciaba: CallKit nunca
+      // recibía la aceptación y seguía mostrando/timbrando la llamada.
+      const { callId, callType, offer: rawOffer } = this._session;
+
+      this._setCommState('accepted');
+      this._stopRingOnce();
+      // Notificar a CallKit nativo que la llamada fue aceptada — sin esto
+      // iOS sigue mostrando la UI de llamada entrante y el tono continúa
+      try { NativeCallKit.answerCall(callId); } catch { /* */ }
+      // Descartar la notificación de llamada entrante en Android
+      try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
+
+      if (!HAS_NATIVE_MEDIA) {
+        this._isSignalingOnly = true;
+        await callAPI.answer({ callId, answer: { type: 'answer', sdp: 'egchat-expo-go-answer' } });
+        this._setCommState('connected');
+        this._onCallConnected();
         return;
       }
-    } catch { /* endpoint opcional — no bloquear si no existe */ }
 
-    this._setCommState('accepted');
-    this._stopRingOnce();
-    // Notificar a CallKit nativo que la llamada fue aceptada — sin esto
-    // iOS sigue mostrando la UI de llamada entrante y el tono continúa
-    try { NativeCallKit.answerCall(callId); } catch { /* */ }
-    // Descartar la notificación de llamada entrante en Android
-    try { NativeCallKit.dismissIncomingCall(); } catch { /* */ }
-
-    const { callId, callType, offer: rawOffer } = this._session;
-
-    if (!HAS_NATIVE_MEDIA) {
-      this._isSignalingOnly = true;
-      await callAPI.answer({ callId, answer: { type: 'answer', sdp: 'egchat-expo-go-answer' } });
-      this._setCommState('connected');
-      this._onCallConnected();
-      return;
-    }
-
-    if (!await this._ensurePermissions(callType)) {
-      this._isAcceptingLocally = false;
-      await this.endCall();
-      throw new Error('Permisos denegados. Actívalos en Ajustes.');
-    }
-
-    let offer: any = rawOffer;
-    if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
-    if (!this._isValidSdp(offer)) { this._isAcceptingLocally = false; await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
-
-    const iceServers = await this._getIceServers();
-
-    // Guardia contra tracks duplicados: si ya hay un stream con tracks vivos,
-    // reutilizarlo en lugar de crear uno nuevo (protege contra doble-tap en "Aceptar").
-    let stream: any;
-    if (
-      this._localStream &&
-      this._localStream.getTracks?.().some((t: any) => t.readyState === 'live')
-    ) {
-      stream = this._localStream;
-    } else {
-      // Limpiar el stream anterior si sus tracks ya están muertos
-      if (this._localStream) {
-        try {
-          this._localStream.getTracks?.().forEach((t: any) => { t.stop(); t.enabled = false; });
-        } catch { /* */ }
-        this._localStream = null;
+      if (!await this._ensurePermissions(callType)) {
+        await this.endCall();
+        throw new Error('Permisos denegados. Actívalos en Ajustes.');
       }
-      stream = await this._getUserMedia(callType);
+
+      let offer: any = rawOffer;
+      if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
+      if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
+
+      const iceServers = await this._getIceServers();
+
+      // Guardia contra tracks duplicados: si ya hay un stream con tracks vivos,
+      // reutilizarlo en lugar de crear uno nuevo (protege contra doble-tap en "Aceptar").
+      let stream: any;
+      if (
+        this._localStream &&
+        this._localStream.getTracks?.().some((t: any) => t.readyState === 'live')
+      ) {
+        stream = this._localStream;
+      } else {
+        // Limpiar el stream anterior si sus tracks ya están muertos
+        if (this._localStream) {
+          try {
+            this._localStream.getTracks?.().forEach((t: any) => { t.stop(); t.enabled = false; });
+          } catch { /* */ }
+          this._localStream = null;
+        }
+        stream = await this._getUserMedia(callType);
+      }
+      this._localStream = stream;
+      this._notify();
+
+      const pc = await this._createPC(iceServers);
+      this._addTracks(pc, stream);
+      pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'callee');
+
+      // setRemoteDescription → luego vaciar la cola ICE
+      await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
+      this._remoteDescSet = true;
+      this._appliedOfferSdp = this._sdpKey(offer);
+      await this._drainIceQueue();
+
+      const answer = await pc.createAnswer();
+      await pc.setLocalDescription(answer);
+      this._setPcState('connecting');
+      await callAPI.answer({ callId, answer: pc.localDescription });
+
+      this._setCommState('connecting');
+      // El answer ya está en el servidor: si ICE no conecta, cerrar en 30s
+      // en vez de dejar la pantalla en "Conectando..." indefinidamente.
+      this._armConnectWatchdog();
+      this._startPoll('callee', 'fast');
+      this._subscribeAppState();
+      this._subscribeRealtime();
+    } finally {
+      this._isAcceptingLocally = false;
     }
-    this._localStream = stream;
-    this._notify();
-
-    const pc = await this._createPC(iceServers);
-    this._addTracks(pc, stream);
-    pc.onicecandidate = (e: any) => this._onLocalIceCandidate(e, 'callee');
-
-    // setRemoteDescription → luego vaciar la cola ICE
-    await pc.setRemoteDescription(new NativeRTC!.RTCSessionDescription(offer));
-    this._remoteDescSet = true;
-    await this._drainIceQueue();
-
-    const answer = await pc.createAnswer();
-    await pc.setLocalDescription(answer);
-    this._setPcState('connecting');
-    await callAPI.answer({ callId, answer: pc.localDescription });
-
-    this._setCommState('connecting');
-    this._startPoll('callee', 'fast');
-    this._subscribeAppState();
-    this._subscribeRealtime();
-    this._isAcceptingLocally = false;
   }
 
   // ══════════════════════════════════════════════════════════════
@@ -748,12 +766,14 @@ export class CallManager {
             this._remoteDescSet  = true;
             this._answerApplied  = true;
             this._setCommState('connecting');
+            this._armConnectWatchdog();
             await this._drainIceQueue();
             console.log('[CallManager] _forcePoll: answer aplicado correctamente');
           } catch (e: any) {
             console.warn('[CallManager] _forcePoll: error aplicando answer:', e?.message);
           }
         } else {
+          this._armConnectWatchdog();
           console.warn(`[CallManager] _forcePoll: sigState=${sigState}, tono parado pero answer pendiente`);
         }
       }
@@ -1042,6 +1062,14 @@ export class CallManager {
     );
   }
 
+  /** Clave para detectar si el offer del servidor es distinto al ya aplicado. */
+  private _sdpKey(desc: any): string {
+    try {
+      if (!desc) return '';
+      return typeof desc === 'string' ? desc : String(desc.sdp || '');
+    } catch { return ''; }
+  }
+
   private async _fetchOfferWithRetry(callId: string): Promise<any> {
     // B4 fix: reducido de 20×3s (60s) a 6×3s (18s) con log en último intento.
     for (let i = 0; i < 6; i++) {
@@ -1061,20 +1089,21 @@ export class CallManager {
 
   /** Inicia el ciclo de polling.
    *  FIX B+H — Usa propiedades de clase (_iceOffsetCaller, _iceOffsetCallee,
-   *  _answerApplied, _appliedOfferVersion) en vez de variables locales del
+   *  _answerApplied, _appliedOfferSdp) en vez de variables locales del
    *  closure, lo que permite resetearlas desde _scheduleIceRestart() cuando
    *  hay un ICE restart y se necesita procesar candidatos desde 0.
    *
    *  FIX B — El callee detecta un nuevo offer (ICE restart del caller)
-   *  cuando s.offerVersion > _appliedOfferVersion y responde con un nuevo
-   *  answer, completando el handshake simétrico. */
+   *  cuando el SDP del offer cambia y responde con un nuevo answer,
+   *  completando el handshake simétrico. */
   private _startPoll(role: 'caller' | 'callee', phase: 'fast' | 'slow'): void {
     this._stopPolling();
     this._pollPhase = phase;
 
-    // Sincronizar propiedades de clase con el estado actual
-    // (al reiniciar el poll en fase slow, _answerApplied ya es true)
-    if (phase === 'slow' && role === 'caller') this._answerApplied = true;
+    // NO marcar _answerApplied al pasar a fase lenta: si el callee contesta
+    // después de ~31s (cold start de Render, desbloqueo del teléfono, CallKit),
+    // el caller daba el answer por aplicado, dejaba de mirarlo y seguía
+    // timbrando hasta el timeout de 90s.
 
     const INTERVAL = phase === 'fast'
       ? (Platform.OS === 'android' ? POLL_FAST_ANDROID : POLL_FAST_IOS)
@@ -1114,6 +1143,7 @@ export class CallManager {
                 this._answerApplied    = true;
                 this._iceRestartPending = false;
                 this._setCommState('connecting');
+                this._armConnectWatchdog();
                 await this._drainIceQueue();
                 console.log('[CallManager] poll: answer aplicado correctamente');
               } catch (e: any) {
@@ -1132,6 +1162,7 @@ export class CallManager {
                 this._remoteDescSet = true;
                 this._answerApplied = true;
                 this._setCommState('connecting');
+                this._armConnectWatchdog();
                 await this._drainIceQueue();
               } catch (e: any) {
                 console.warn('[CallManager] poll stable fallback error:', e?.message);
@@ -1141,6 +1172,7 @@ export class CallManager {
               // — el callee claramente aceptó si hay answer en el servidor
               stopDialingTone();
               this._stopCallTimeout();
+              this._armConnectWatchdog();
               console.warn(`[CallManager] poll: tiene answer pero sigState=${sigState}, no se puede aplicar aún`);
             }
           }
@@ -1157,24 +1189,26 @@ export class CallManager {
 
         // ── Callee: ICE del caller + detección de restart offer ──
         if (role === 'callee') {
-          // FIX B — Detectar nuevo offer del caller (ICE restart)
-          // s.offerVersion aumenta cada vez que el caller envía un offer nuevo.
-          // Si la versión del servidor supera la aplicada localmente, procesar.
-          const serverOfferVersion: number = s.offerVersion ?? 1;
+          // FIX B — Detectar nuevo offer del caller (ICE restart) comparando
+          // el SDP con el último aplicado. La comparación por `version` fallaba:
+          // el backend expone `version` (no `offerVersion`) y además no la
+          // incrementa al renegociar, así que el callee reaplicaba el offer
+          // inicial en cuanto conectaba, provocando un renegotiation espurio.
+          const incomingOfferSdp = this._sdpKey(s.offer);
           if (
             this._pc &&
             this._isValidSdp(s.offer) &&
-            serverOfferVersion > this._appliedOfferVersion &&
+            incomingOfferSdp !== this._appliedOfferSdp &&
             // Solo procesar si ya establecimos la conexión inicialmente
             this._connectedOnce
           ) {
-            if (__DEV__) console.log(`[CallManager] Callee: nuevo offer v${serverOfferVersion} (restart)`);
+            if (__DEV__) console.log('[CallManager] Callee: nuevo offer (restart)');
             try {
               await this._pc.setRemoteDescription(
                 new NativeRTC!.RTCSessionDescription(s.offer),
               );
               this._remoteDescSet        = true;
-              this._appliedOfferVersion  = serverOfferVersion;
+              this._appliedOfferSdp      = incomingOfferSdp;
               // Resetear offsets para los nuevos candidatos post-restart
               this._iceOffsetCaller      = 0;
               this._iceOffsetCallee      = 0;
@@ -1354,6 +1388,27 @@ export class CallManager {
 
   private _stopCallTimeout(): void {
     if (this._callTimeoutTimer) { clearTimeout(this._callTimeoutTimer); this._callTimeoutTimer = null; }
+  }
+
+  /** Vigila que la llamada conecte de verdad después de aceptar/contestar.
+   *  Sin esto, si el answer llega pero ICE nunca conecta, el caller puede
+   *  quedarse en "Llamando.../Conectando..." hasta el timeout de 90s. */
+  private _armConnectWatchdog(): void {
+    // Idempotente: el poll llama aquí en cada vuelta mientras el answer no se
+    // pueda aplicar; rearmar reiniciaría el contador y el watchdog nunca
+    // llegaría a dispararse.
+    if (this._connectWatchdog) return;
+    this._connectWatchdog = setTimeout(() => {
+      this._connectWatchdog = null;
+      if (!this._session || this._connectedOnce || this._isEnding) return;
+      console.warn('[CallManager] answer aplicado pero ICE sin conectar en 30s — terminando llamada');
+      this._setCommState('failed');
+      this.endCall().catch(() => {});
+    }, POST_ANSWER_CONNECT_MS);
+  }
+
+  private _clearConnectWatchdog(): void {
+    if (this._connectWatchdog) { clearTimeout(this._connectWatchdog); this._connectWatchdog = null; }
   }
 
   private _startDurationTimer(): void {
@@ -1700,6 +1755,7 @@ export class CallManager {
                     this._remoteDescSet  = true;
                     this._answerApplied  = true;
                     this._setCommState('connecting');
+                    this._armConnectWatchdog();
                     return this._drainIceQueue();
                   }).then(() => {
                     console.log('[CallManager] Answer desde Broadcast aplicado correctamente');
@@ -1777,6 +1833,7 @@ export class CallManager {
     stopDialingTone();
     this._stopRingOnce();
     this._stopCallTimeout();
+    this._clearConnectWatchdog();
     this._startDurationTimer();
 
     const session = this._session;
@@ -1813,7 +1870,15 @@ export class CallManager {
 
   /** Limpieza completa de recursos — no deja nada activo */
   private _finalCleanup(): void {
-    // 0. Restaurar AudioSession ANTES de cerrar todo lo demás.
+    // 0. Detener timbre y tono de marcación en TODOS los paths terminales.
+    //    Los handlers de Realtime (rejected/ended/missed) y el resto de
+    //    caminos que llegan aquí sin pasar por endCall dejaban el audio
+    //    sonando indefinidamente aunque la sesión ya estuviera cerrada.
+    void stopDialingTone();
+    this._stopRingOnce();
+    this._clearConnectWatchdog();
+
+    // 0b. Restaurar AudioSession ANTES de cerrar todo lo demás.
     //    Cubre paths que no pasan por endCall: rejectCall, cancelCall,
     //    timeouts, Realtime onEnded y PC connectionstate=closed.
     this._restoreAudioSession().catch(() => {});
@@ -1882,7 +1947,7 @@ export class CallManager {
     this._iceOffsetCaller      = 0;
     this._iceOffsetCallee      = 0;
     this._answerApplied        = false;
-    this._appliedOfferVersion  = 0;
+    this._appliedOfferSdp      = null;
     this._lastNetConnected     = null;
     this._isAcceptingLocally   = false;
 

@@ -696,11 +696,14 @@ export default function RootLayout() {
               // Escuchar cuando el usuario acepta desde la pantalla nativa de CallKit
               // Esto ocurre cuando la app estaba cerrada y CallKit muestra la UI del sistema
               const unsubCallKitAnswer = NativeCallKit.onAnswer((_callId) => {
-                // Reintentar hasta que la sesión esté disponible (puede tardar si la app acaba de abrir)
-                const tryNavigate = (retries = 8) => {
+                // Reintentar hasta que la sesión esté disponible. Con la app
+                // arrancando en frío (PushKit → JS), la sesión puede tardar
+                // varios segundos: 8×300ms (2.4s) no alcanzaba y la llamada
+                // quedaba sonando sin navegar a la pantalla.
+                const tryNavigate = (retries = 16) => {
                   const session = callManager.session;
                   if (!session) {
-                    if (retries > 0) setTimeout(() => tryNavigate(retries - 1), 300);
+                    if (retries > 0) setTimeout(() => tryNavigate(retries - 1), 500);
                     return;
                   }
                   router.push({ pathname: '/call/[callId]', params: {
@@ -1218,8 +1221,10 @@ export default function RootLayout() {
                 onAccept={() => {
                   const c = incomingCall;
                   setIncomingCall(null);
-                  // El CallManager ya tiene la sesión registrada via handleIncomingCall().
-                  // Solo navegamos — [callId].tsx llama a callManager.acceptCall() al montar.
+                  // El usuario ya pulsó "Aceptar" en este overlay: la pantalla
+                  // de llamada debe contestar sola. Sin autoAccept se mostraba
+                  // otra vez el botón de aceptar y el caller seguía timbrando
+                  // mientras el callee creía haber contestado.
                   router.push({ pathname: '/call/[callId]', params: {
                     callId:      c.callId,
                     targetName:  c.callerName,
@@ -1227,6 +1232,7 @@ export default function RootLayout() {
                     callType:    c.callType || 'audio',
                     role:        'callee',
                     offer:       c.offer ? JSON.stringify(c.offer) : undefined,
+                    autoAccept:  '1',
                   }} as any);
                 }}
                 onReject={() => {

@@ -347,8 +347,10 @@ export default function CallScreen() {
 
   // ── CallKit handlers (callee) ─────────────────────────────────
   useEffect(() => {
-    // El CallManager ya llamó showIncomingCall si llegó vía registerIncoming.
-    // Aquí solo escuchamos los eventos de respuesta nativa (botones CallKit).
+    // En primer plano la llamada entrante se muestra con el overlay de la app;
+    // CallKit solo la presenta si llegó por VoIP push. Aquí solo escuchamos los
+    // eventos de respuesta nativa (botones CallKit), que no llegan si no se
+    // presentó la llamada en CallKit.
     const unsubAnswer = NativeCallKit.onAnswer((_cid) => acceptFromCallKit());
     const unsubReject = NativeCallKit.onReject((_cid) => rejectFromCallKit());
     return () => { unsubAnswer(); unsubReject(); };
