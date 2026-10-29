@@ -5482,7 +5482,7 @@ const sendPushToUser = async (userId, payload) => {
       .from('expo_push_tokens')
       .select('token, token_type')
       .eq('user_id', userId)
-      .in('token_type', ['expo', 'fcm'])
+      .in('token_type', ['expo', 'fcm', 'apns'])
       .neq('is_active', false);
 
     if (expoSubs && expoSubs.length > 0) {
@@ -5565,15 +5565,12 @@ app.post('/api/push/register-expo-token', auth, async (req, res) => {
     }
 
     // Determinar tipo de token automáticamente si no se especifica
-    const type = tokenType ||
-      (token.startsWith('ExponentPushToken') ? 'expo' : 'fcm');
-
-    // BLOQUEAR tokens APNs nativos para evitar BadEnvironmentKeyInToken en TestFlight
-    // Solo aceptar ExponentPushToken o FCM
-    if (type === 'apns') {
-      console.log(`[Push] Token APNs rechazado para user ${req.user.id} (solo Expo/FCM permitidos)`);
-      return res.json({ message: 'Token APNs no soportado. Usa ExponentPushToken.', tokenType: 'rejected' });
-    }
+    const isExpoToken = token.startsWith('ExponentPushToken');
+    const isHexAPNs = token.length === 64 && /^[0-9a-f]+$/i.test(token);
+    const type = tokenType || (isExpoToken ? 'expo' : isHexAPNs ? 'apns' : 'fcm');
+    // Tokens APNs nativos: guardar en DB pero no enviar directo a APNs.
+    // El ExponentPushToken iOS usa APNs via Expo internamente (correcto).
+    console.log(`[Push] Registrando token tipo=${type} platform=${platform||'unknown'} user=${req.user.id}`);
 
     // Intentar via Edge Function primero (tiene soporte completo de tipos)
     const edgeFnUrl = process.env.SUPABASE_URL
