@@ -5480,8 +5480,10 @@ const sendPushToUser = async (userId, payload) => {
     // ── Expo Push (app movil nativa — funciona con telefono hibernado) ────
     const { data: expoSubs } = await supabase
       .from('expo_push_tokens')
-      .select('token')
-      .eq('user_id', userId);
+      .select('token, token_type')
+      .eq('user_id', userId)
+      .in('token_type', ['expo', 'fcm'])
+      .neq('is_active', false);
 
     if (expoSubs && expoSubs.length > 0) {
       const expoMessages = expoSubs.map(sub => ({
@@ -5490,7 +5492,7 @@ const sendPushToUser = async (userId, payload) => {
         body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje'),
         sound: isCall ? 'default' : 'default',
         badge: isCall ? 0 : 1,
-        channelId: isCall ? 'egchat-calls' : 'egchat-messages',
+        channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
         data: {
           ...payload,
