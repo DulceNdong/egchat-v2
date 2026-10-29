@@ -1,5 +1,7 @@
 // useSounds.ts — Sistema de sonidos EGCHAT con audio real (expo-av)
 import { Audio, InterruptionModeIOS } from 'expo-av';
+import { Asset } from 'expo-asset';
+import { Directory, File, Paths } from 'expo-file-system';
 import * as Haptics from 'expo-haptics';
 import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -33,6 +35,9 @@ export const saveSoundSettings = async (settings: Partial<SoundSettings>) => {
   try {
     const current = await getSoundSettings();
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify({ ...current, ...settings }));
+    if (settings.messageTone !== undefined && settings.messageTone !== current.messageTone) {
+      await installIosPushSound();
+    }
   } catch {}
 };
 
@@ -66,6 +71,10 @@ const NOTIFICATION_TONE_ASSETS: Record<string, any> = {
 /** Fallback si el ID no está en el mapa */
 const FALLBACK_ASSET = require('../../assets/notification.wav');
 
+// iOS no puede callar un push desde el payload, así que "sin sonido" se
+// materializa como un WAV de silencio con el nombre que el push pide.
+const SILENT_ASSET = require('../../assets/silence.wav');
+
 function getMessageAsset(toneId: string): any {
   return MESSAGE_TONE_ASSETS[toneId] ?? FALLBACK_ASSET;
 }
@@ -77,6 +86,30 @@ function getRingtoneAsset(toneId: string): any {
 function getNotificationAsset(toneId: string): any {
   return NOTIFICATION_TONE_ASSETS[toneId] ?? FALLBACK_ASSET;
 }
+
+// ── Sonido de las notificaciones push en iOS ──────────────────────
+// iOS solo reproduce un sonido personalizado de un push remoto si el archivo
+// está en el bundle de la app o en Library/Sounds del contenedor. Los assets
+// de Metro no están en ninguna de las dos rutas, así que se copia el tono
+// elegido al contenedor con un nombre fijo que el backend pide en `sound`.
+export const IOS_PUSH_SOUND_FILE = 'egchat-message.wav';
+
+export const installIosPushSound = async (): Promise<void> => {
+  if (Platform.OS !== 'ios') return;
+  try {
+    const s = await getSoundSettings();
+    const module = s.messageTone === 'none' ? SILENT_ASSET : getMessageAsset(s.messageTone);
+    const [asset] = await Asset.loadAsync([module]);
+    const sourceUri = asset.localUri ?? asset.uri;
+
+    const soundsDir = new Directory(Paths.cache.parentDirectory, 'Sounds');
+    if (!soundsDir.exists) soundsDir.create({ intermediates: true, idempotent: true });
+
+    const target = new File(soundsDir, IOS_PUSH_SOUND_FILE);
+    if (target.exists) target.delete();
+    new File(sourceUri).copy(target);
+  } catch {}
+};
 
 // ── Audio mode ────────────────────────────────────────────────────
 const setupAudioMode = async () => {

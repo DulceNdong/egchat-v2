@@ -170,6 +170,8 @@ export async function registerForPushNotifications(): Promise<string | null> {
   if (!PUSH_ENABLED) return null;
 
   await createChannels();
+  const { installIosPushSound } = await import('./hooks/useSounds');
+  await installIosPushSound();
 
   // Registrar background task para recibir llamadas con app suspendida (Android)
   if (Platform.OS === 'android') {
