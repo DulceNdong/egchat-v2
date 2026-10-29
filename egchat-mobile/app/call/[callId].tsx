@@ -13,9 +13,9 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
 import { getToken } from '../../src/api';
-import { stopRingtone } from '../../src/hooks/useSounds';
+import { startRingtone, stopRingtone } from '../../src/hooks/useSounds';
 
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '');
+const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com').replace(/\/+$/, '').replace(/\/api$/, '');
 async function sigFetch(path: string) {
   const token = await getToken();
   const res = await fetch(`${API_BASE}/api${path}`, {
@@ -46,11 +46,14 @@ export default function CallScreen() {
   } = useWebRTC();
 
   const [duration, setDuration] = useState(0);
+  const [incomingPending, setIncomingPending] = useState(role === 'callee');
+  const [accepting, setAccepting] = useState(false);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const pulseAnim = useRef(new Animated.Value(1)).current;
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const initiated = useRef(false);
+  const acceptingRef = useRef(false);
 
   // Iniciar o responder llamada al montar
   useEffect(() => {
@@ -63,30 +66,40 @@ export default function CallScreen() {
         router.back();
       });
     } else if (role === 'callee') {
-      // Buscar offer del servidor si no llegó en la ruta (videollamada vía push)
-      const initCallee = async () => {
-        let offer: any = null;
-        if (offerParam) {
-          try { offer = JSON.parse(offerParam); } catch {}
-        }
-        if (!offer && callId) {
-          try {
-            const data = await sigFetch(`/call/${callId}`);
-            offer = data?.offer ?? null;
-          } catch {}
-        }
-        answerCall(callId, offer, callType as 'audio' | 'video').catch(err => {
-          Alert.alert('Error', err.message || 'No se pudo responder la llamada');
-          router.back();
-        });
-      };
-      initCallee();
+      startRingtone().catch(() => {});
     }
   }, []);
 
+  useEffect(() => () => { stopRingtone().catch(() => {}); }, []);
+
+  // Si otro dispositivo contesta, cerrar esta pantalla y parar el timbre.
+  useEffect(() => {
+    if (role !== 'callee' || !incomingPending || !callId) return;
+    let stopped = false;
+    let checking = false;
+    const checkStatus = async () => {
+      if (checking || stopped) return;
+      checking = true;
+      try {
+        const session = await sigFetch(`/call/${callId}`);
+        if ((session?.status && session.status !== 'ringing') || session?.answer) {
+          if ((session.status === 'accepted' || session.answer) && acceptingRef.current) return;
+          stopped = true;
+          await stopRingtone().catch(() => {});
+          setIncomingPending(false);
+          router.back();
+        }
+      } catch {}
+      finally { checking = false; }
+    };
+    checkStatus();
+    const id = setInterval(checkStatus, 1800);
+    return () => { stopped = true; clearInterval(id); };
+  }, [callId, incomingPending, role]);
+
   // Pulso animado mientras suena
   useEffect(() => {
-    if (callState === 'calling' || callState === 'ringing') {
+    if (incomingPending || callState === 'calling' || callState === 'ringing') {
       Animated.loop(
         Animated.sequence([
           Animated.timing(pulseAnim, { toValue: 1.15, duration: 700, useNativeDriver: true }),
@@ -96,7 +109,7 @@ export default function CallScreen() {
     } else {
       pulseAnim.setValue(1);
     }
-  }, [callState]);
+  }, [callState, incomingPending]);
 
   // Contador de duración
   useEffect(() => {
@@ -120,39 +133,57 @@ export default function CallScreen() {
   };
 
   const hangUp = useCallback(async () => {
+    if (role === 'callee' && incomingPending) {
+      const token = await getToken();
+      try {
+        await fetch(`${API_BASE}/api/call/reject`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+          body: JSON.stringify({ callId }),
+        });
+      } catch {}
+      await stopRingtone().catch(() => {});
+      router.back();
+      return;
+    }
     await endCall();
     router.back();
-  }, [endCall]);
+  }, [callId, endCall, incomingPending, role]);
 
   const accept = useCallback(async () => {
-    // Parar timbre y señalar al servidor que la llamada fue aceptada
+    if (accepting) return;
+    setAccepting(true);
+    acceptingRef.current = true;
     await stopRingtone().catch(() => {});
     try {
-      const token = await getToken();
-      if (token && callId) {
-        await fetch(`${(process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/$/, '')}/api/call/${callId}/accept`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
-        }).catch(() => {});
+      let offer: any = null;
+      if (offerParam) { try { offer = JSON.parse(offerParam); } catch {} }
+      if (!offer) offer = (await sigFetch(`/call/${callId}`))?.offer;
+      await answerCall(callId, offer, callType as 'audio' | 'video');
+      setIncomingPending(false);
+    } catch (error: any) {
+      setAccepting(false);
+      acceptingRef.current = false;
+      await startRingtone().catch(() => {});
+      if (String(error?.message || '').includes('(409)')) {
+        await stopRingtone().catch(() => {});
+        router.back();
+        return;
       }
-    } catch {}
-    // La UI muestra "connected" para simular la aceptación
-    // (WebRTC real se maneja en EAS Build con el CallManager)
-  }, [callId]);
+      Alert.alert('No se pudo aceptar', error?.message || 'Comprueba tu conexión y vuelve a intentarlo.');
+    }
+  }, [accepting, answerCall, callId, callType, offerParam]);
 
   const statusLabel = () => {
-    if (callState === 'calling') return 'Llamando...';
-    if (callState === 'ringing') {
-      return role === 'callee'
-        ? `Llamada entrante (${callType === 'video' ? '📹 Video' : '📞 Audio'})`
-        : 'Conectando...';
-    }
+    if (incomingPending) return `Llamada entrante (${callType === 'video' ? '📹 Video' : '📞 Audio'})`;
+    if (callState === 'calling') return role === 'callee' ? 'Conectando...' : 'Llamando...';
+    if (callState === 'ringing') return 'Conectando...';
     if (callState === 'connected') return formatDuration(duration);
     if (callState === 'ended') return 'Llamada finalizada';
     return '...';
   };
 
-  const isRinging = callState === 'calling' || callState === 'ringing';
+  const isRinging = incomingPending || callState === 'calling' || callState === 'ringing';
   const isConnected = callState === 'connected';
 
   return (
@@ -223,7 +254,7 @@ export default function CallScreen() {
         )}
 
         {/* Callee: aceptar / rechazar */}
-        {callState === 'ringing' && role === 'callee' && (
+        {incomingPending && role === 'callee' && (
           <View style={styles.incomingRow}>
             <View style={styles.incomingBtnWrap}>
               <TouchableOpacity style={[styles.callBtn, styles.acceptBtn]} onPress={accept}>

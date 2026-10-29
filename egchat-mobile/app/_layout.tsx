@@ -3,7 +3,7 @@ import { Stack, router, useNavigationContainerRef } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { View, ActivityIndicator, StyleSheet, Alert, Platform } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Platform } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import { authAPI, setUnauthorizedHandler } from '../src/api';
 import { registerForPushNotifications, setupNotificationListeners, clearBadge } from '../src/notifications';
@@ -20,8 +20,24 @@ export default function RootLayout() {
   const [checking, setChecking] = useState(true);
   const notifCleanup = useRef<(() => void) | null>(null);
   const incomingCleanup = useRef<(() => void) | null>(null);
+  const handledCallId = useRef<string | null>(null);
   const { pollIncoming } = useWebRTC();
   const navigationRef = useNavigationContainerRef();
+  const openIncomingCall = (callData: any) => {
+    if (!callData?.callId || handledCallId.current === callData.callId) return;
+    handledCallId.current = callData.callId;
+    router.push({
+      pathname: '/call/[callId]',
+      params: {
+        callId: callData.callId,
+        targetName: callData.callerName || 'Usuario',
+        targetAvatar: callData.callerAvatar || '',
+        callType: callData.callType || 'audio',
+        role: 'callee',
+        offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
+      },
+    } as any);
+  };
 
   setUnauthorizedHandler(() => {
     router.replace('/(auth)/login');
@@ -49,39 +65,18 @@ export default function RootLayout() {
 
               notifCleanup.current = setupNotificationListeners(
                 (chatId) => router.push(`/chat/${chatId}` as any),
-                (callData) => {
-                  router.push({
-                    pathname: '/call/[callId]',
-                    params: {
-                      callId: callData.callId,
-                      targetName: callData.callerName,
-                      callType: callData.callType || 'audio',
-                      role: 'callee',
-                      offer: callData.offer ? JSON.stringify(callData.offer) : undefined,
-                    }
-                  } as any);
-                }
+                openIncomingCall
               );
 
               if (me?.id) {
                 incomingCleanup.current = pollIncoming(me.id, (call) => {
-                  Alert.alert(`📞 Llamada entrante`, `${call.callerName || 'Alguien'} te está llamando`, [
-                    { text: 'Rechazar', style: 'destructive', onPress: () => {} },
-                    {
-                      text: 'Aceptar',
-                      onPress: () => router.push({
-                        pathname: '/call/[callId]',
-                        params: {
-                          callId: call.callId,
-                          targetName: call.callerName || 'Usuario',
-                          targetAvatar: call.callerAvatar || '',
-                          callType: call.callType || call.type || 'audio',
-                          role: 'callee',
-                          offer: call.offer ? JSON.stringify(call.offer) : undefined,
-                        },
-                      } as any),
-                    },
-                  ]);
+                  openIncomingCall({
+                    callId: call.callId,
+                    callerName: call.callerName || 'Usuario',
+                    callerAvatar: call.callerAvatar || '',
+                    callType: call.callType || call.type || 'audio',
+                    offer: call.offer,
+                  });
                 });
               }
 
@@ -91,6 +86,13 @@ export default function RootLayout() {
               if (lastResponse) {
                 const data = lastResponse.notification.request.content.data as any;
                 if (data?.chatId) setTimeout(() => router.push(`/chat/${data.chatId}` as any), 500);
+                if (data?.notificationType === 'incoming_call' && data?.callId) {
+                  setTimeout(() => openIncomingCall({
+                    callId: String(data.callId), callerName: String(data.callerName || 'Usuario'),
+                    callerAvatar: String(data.callerAvatar || data.senderAvatar || ''),
+                    callType: String(data.callType || 'audio'), offer: data.offer,
+                  }), 500);
+                }
               }
             }
           } catch {

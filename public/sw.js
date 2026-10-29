@@ -179,7 +179,7 @@ self.addEventListener('push', e => {
   const options = isCall
     ? {
         body: data.body || 'Llamada entrante',
-        icon: '/favicon.svg',
+        icon: data.callerAvatar || '/favicon.svg',
         badge: '/favicon.svg',
         tag: `call-${data.callId || Date.now()}`,
         renotify: false,
@@ -190,6 +190,7 @@ self.addEventListener('push', e => {
           callId: data.callId,
           callerId: data.callerId,
           callerName: data.callerName,
+          callerAvatar: data.callerAvatar || '',
           callType: data.callType || 'audio',
           notificationType: 'incoming_call',
         },
@@ -212,7 +213,7 @@ self.addEventListener('push', e => {
       }
     : {
         body: data.body || 'Tienes un nuevo mensaje',
-        icon: '/favicon.svg',
+        icon: data.senderAvatar || data.icon || '/favicon.svg',
         badge: '/favicon.svg',
         tag: data.tag || 'egchat-msg',
         renotify: true,
@@ -254,6 +255,7 @@ self.addEventListener('notificationclick', e => {
           callId: notifData.callId,
           callerId: notifData.callerId,
           callerName: notifData.callerName,
+          callerAvatar: notifData.callerAvatar || '',
           callType: notifData.callType,
           autoAccept: action === 'accept',
         };
@@ -266,7 +268,7 @@ self.addEventListener('notificationclick', e => {
           }
         }
 
-        const url = `/?call=${notifData.callId}&caller=${encodeURIComponent(notifData.callerName || '')}&type=${notifData.callType || 'audio'}${action === 'accept' ? '&accept=1' : ''}`;
+        const url = `/?call=${notifData.callId}&caller=${encodeURIComponent(notifData.callerName || '')}&avatar=${encodeURIComponent(notifData.callerAvatar || '')}&type=${notifData.callType || 'audio'}${action === 'accept' ? '&accept=1' : ''}`;
         const newWin = await clients.openWindow(url);
         if (newWin) {
           setTimeout(() => { try { newWin.postMessage(msg); } catch {} }, 2000);

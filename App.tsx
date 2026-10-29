@@ -87,7 +87,7 @@ const App: React.FC = () => {
   // -- WebRTC real -----------------------------------------------
   const webrtc = useWebRTC();
   // -- Llamada entrante ------------------------------------------
-  const [incomingCall, setIncomingCall] = useState<{callId:string; callerId:string; type:'audio'|'video'; offer:any} | null>(null);
+  const [incomingCall, setIncomingCall] = useState<{callId:string; callerId:string; type:'audio'|'video'; offer:any; callerName?:string; callerAvatar?:string} | null>(null);
   const incomingCallIdRef = useRef<string | null>(null); // ref global para el callId entrante actual
   // -- Grabación de voz en chat ----------------------------------
   const chatRecorderRef = useRef<MediaRecorder | null>(null);
@@ -9158,7 +9158,9 @@ const App: React.FC = () => {
         const callId = data.callId;
         const token = localStorage.getItem('egchat_token') || localStorage.getItem('token') || '';
         if (!callId || !token) return;
-        fetch(`${(import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com'}/api/call/${callId}`, {
+        const configuredApi = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+        const apiBase = configuredApi.endsWith('/api') ? configuredApi : `${configuredApi}/api`;
+        fetch(`${apiBase}/call/${callId}`, {
           headers: { Authorization: `Bearer ${token}` }
         }).then(r => r.json()).then(session => {
           if (!session || session.ended || !session.offer) return;
@@ -9168,6 +9170,8 @@ const App: React.FC = () => {
             callerId: session.callerId || data.callerId,
             type: (session.type || data.callType || 'audio') as 'audio' | 'video',
             offer: session.offer,
+            callerName: data.callerName || '',
+            callerAvatar: data.callerAvatar || '',
           });
           startRingtone(); vibrate([500, 200, 500, 200, 500]);
           // Avisar al SW que la llamada ya fue recibida — cancela re-notificaciones
@@ -9392,8 +9396,9 @@ const App: React.FC = () => {
         try {
           const token = localStorage.getItem('egchat_token') || localStorage.getItem('token') || '';
           if (!token) { if (attempt < 10) setTimeout(() => fetchCallSession(attempt + 1), 2000); return; }
-          const apiBase = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
-          const r = await fetch(`${apiBase}/api/call/${callId}`, { headers: { Authorization: `Bearer ${token}` } });
+          const configuredApi = ((import.meta as any).env?.VITE_API_URL || 'https://egchat-api.onrender.com').replace(/\/+$/, '');
+          const apiBase = configuredApi.endsWith('/api') ? configuredApi : `${configuredApi}/api`;
+          const r = await fetch(`${apiBase}/call/${callId}`, { headers: { Authorization: `Bearer ${token}` } });
           if (!r.ok) throw new Error(`HTTP ${r.status}`);
           const session = await r.json();
           if (!session || session.ended || !session.offer) {
@@ -9403,7 +9408,7 @@ const App: React.FC = () => {
           }
           if (incomingCallIdRef.current) return; // ya hay otra llamada activa
           incomingCallIdRef.current = callId;
-          setIncomingCall({ callId, callerId: session.callerId || session.caller_id, type: session.type || callType, offer: session.offer });
+          setIncomingCall({ callId, callerId: session.callerId || session.caller_id, type: session.type || callType, offer: session.offer, callerName: callerNameParam, callerAvatar: new URLSearchParams(window.location.search).get('avatar') || '' });
           startRingtone(); vibrate([500, 200, 500, 200, 500]);
         } catch (err) {
           console.warn(`URL call param error (attempt ${attempt}):`, err);
@@ -10090,8 +10095,8 @@ const App: React.FC = () => {
             // Buscar nombre del llamante: primero en participantes de chats, luego en contactos
             const callerId = incomingCall.callerId?.toString();
             const myId = currentUserId.current?.toString();
-            let callerName = '';
-            let callerAvatar = '';
+            let callerName = incomingCall.callerName || '';
+            let callerAvatar = incomingCall.callerAvatar || '';
 
             // 1. Buscar en participantes de chats reales — excluir al usuario propio
             for (const ch of (realChats as any[])) {
@@ -10101,8 +10106,8 @@ const App: React.FC = () => {
                 p.user_id?.toString() !== myId
               );
               if (p) {
-                callerName = p.users?.full_name || p.full_name || p.name || '';
-                callerAvatar = p.users?.avatar_url || p.avatar_url || '';
+                callerName = p.users?.full_name || p.full_name || p.name || callerName;
+                callerAvatar = p.users?.avatar_url || p.avatar_url || callerAvatar;
                 if (callerName) break;
               }
             }
@@ -10112,7 +10117,7 @@ const App: React.FC = () => {
               const c = (allContacts as any[]).find(c =>
                 c.id?.toString() === callerId || c.user_id?.toString() === callerId
               );
-              if (c) { callerName = c.name || c.title || ''; callerAvatar = c.avatarUrl || ''; }
+              if (c) { callerName = c.name || c.title || callerName; callerAvatar = c.avatarUrl || callerAvatar; }
             }
 
             if (!callerName) callerName = 'Llamada entrante';

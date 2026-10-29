@@ -9,7 +9,7 @@ import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 
-const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com';
+const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com').replace(/\/+$/, '').replace(/\/api$/, '');
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
 
 // ── Configurar cómo se muestran las notificaciones en primer plano ──────────
@@ -146,7 +146,7 @@ export async function syncTokenWithServer(expoPushToken: string) {
 // ── Escuchar notificaciones recibidas (app en primer plano) ─────────────────
 export function setupNotificationListeners(
   onMessage: (chatId: string) => void,
-  onCall: (callData: { callId: string; callerName: string; callType: string }) => void
+  onCall: (callData: { callId: string; callerName: string; callerAvatar?: string; callType: string; offer?: object }) => void
 ) {
   // Notificación recibida con app abierta
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
@@ -155,7 +155,9 @@ export function setupNotificationListeners(
       onCall({
         callId: data.callId,
         callerName: data.callerName,
+        callerAvatar: data.callerAvatar || data.senderAvatar || '',
         callType: data.callType || 'audio',
+        offer: data.offer,
       });
     }
   });
@@ -170,7 +172,9 @@ export function setupNotificationListeners(
       onCall({
         callId: data.callId,
         callerName: data.callerName,
+        callerAvatar: data.callerAvatar || data.senderAvatar || '',
         callType: data.callType || 'audio',
+        offer: data.offer,
       });
     } else if (data?.chatId) {
       onMessage(data.chatId);

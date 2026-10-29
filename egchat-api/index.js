@@ -4830,7 +4830,8 @@ app.post('/api/call/offer', auth, async (req, res) => {
           body:  isVideo ? 'Toca para responder la videollamada' : 'Toca para responder la llamada',
           tag: `call-${callId}`, requireInteraction: true,
           callId, callerId: req.user.id, callerName,
-          callType: type || 'audio', notificationType: 'incoming_call',
+          callType: type || 'audio', callerAvatar: caller?.avatar_url || '', offer,
+          notificationType: 'incoming_call',
         });
       } catch (pushErr) { console.warn('[call/offer] Push failed:', pushErr.message); }
     }
@@ -4861,9 +4862,17 @@ app.post('/api/call/answer', auth, async (req, res) => {
       if (msg.includes('invalid_transition'))    return res.status(409).json({ error: 'Transición inválida: ' + msg });
       if (msg.includes('concurrent_modification')) return res.status(409).json({ error: 'La llamada ya fue respondida en otro dispositivo' });
       // Fallback si la RPC no existe
-      const { data: existing } = await supabase.from('call_sessions').select('call_id').eq('call_id', callId).eq('ended', false).single();
+      const { data: existing } = await supabase.from('call_sessions').select('call_id, target_user_id').eq('call_id', callId).eq('ended', false).single();
       if (!existing) return res.status(404).json({ error: 'Llamada no encontrada' });
-      await supabase.from('call_sessions').update({ answer: JSON.stringify(answer), updated_at: new Date().toISOString() }).eq('call_id', callId);
+      if (String(existing.target_user_id) !== String(req.user.id)) return res.status(403).json({ error: 'No autorizado' });
+      const fallbackUpdate = await supabase.from('call_sessions').update({
+        answer: answer ? JSON.stringify(answer) : null,
+        status: 'accepted',
+        ended: false,
+        expires_at: new Date(Date.now() + 30 * 60 * 1000).toISOString(),
+        updated_at: new Date().toISOString(),
+      }).eq('call_id', callId).eq('target_user_id', String(req.user.id));
+      if (fallbackUpdate.error) throw fallbackUpdate.error;
       return res.json({ ok: true });
     }
 
@@ -4992,7 +5001,19 @@ app.post('/api/call/reject', auth, async (req, res) => {
       if (msg.includes('not_authorized'))    return res.status(403).json({ error: 'No autorizado' });
       if (msg.includes('call_not_found'))    return res.status(404).json({ error: 'No encontrada' });
       if (msg.includes('invalid_transition')) return res.status(409).json({ error: msg });
-      throw error;
+      // Compatibilidad con instalaciones donde aún no existe reject_call.
+      const { data: existing } = await supabase.from('call_sessions')
+        .select('call_id, target_user_id, status, ended').eq('call_id', callId).maybeSingle();
+      if (!existing) return res.status(404).json({ error: 'No encontrada' });
+      if (String(existing.target_user_id) !== String(req.user.id)) return res.status(403).json({ error: 'No autorizado' });
+      if (existing.ended || ['accepted', 'rejected', 'ended', 'missed', 'failed'].includes(existing.status)) {
+        return res.json({ ok: true, idempotent: true });
+      }
+      const fallbackUpdate = await supabase.from('call_sessions').update({
+        status: 'rejected', ended: true, ended_at: new Date().toISOString(), updated_at: new Date().toISOString(),
+      }).eq('call_id', callId).eq('target_user_id', String(req.user.id));
+      if (fallbackUpdate.error) throw fallbackUpdate.error;
+      return res.json({ ok: true, idempotent: false });
     }
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
@@ -5012,7 +5033,19 @@ app.post('/api/call/cancel', auth, async (req, res) => {
       if (msg.includes('not_authorized'))    return res.status(403).json({ error: 'No autorizado' });
       if (msg.includes('call_not_found'))    return res.json({ ok: true, idempotent: true });
       if (msg.includes('invalid_transition')) return res.status(409).json({ error: msg });
-      throw error;
+      // Compatibilidad con instalaciones donde aún no existe cancel_call.
+      const { data: existing } = await supabase.from('call_sessions')
+        .select('call_id, caller_id, status, ended').eq('call_id', callId).maybeSingle();
+      if (!existing) return res.json({ ok: true, idempotent: true });
+      if (String(existing.caller_id) !== String(req.user.id)) return res.status(403).json({ error: 'No autorizado' });
+      if (existing.ended || ['rejected', 'ended', 'missed', 'failed'].includes(existing.status)) {
+        return res.json({ ok: true, idempotent: true });
+      }
+      const fallbackUpdate = await supabase.from('call_sessions').update({
+        status: 'ended', ended: true, ended_at: new Date().toISOString(), end_reason: 'cancelled_by_caller', updated_at: new Date().toISOString(),
+      }).eq('call_id', callId).eq('caller_id', String(req.user.id));
+      if (fallbackUpdate.error) throw fallbackUpdate.error;
+      return res.json({ ok: true, idempotent: false });
     }
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
@@ -5037,6 +5070,7 @@ app.post('/api/call/connected', auth, async (req, res) => {
 // Llamadas entrantes — solo status='ringing' y no expiradas
 app.get('/api/call/incoming/:userId', auth, async (req, res) => {
   try {
+    if (String(req.user.id) !== String(req.params.userId)) return res.status(403).json({ error: 'No autorizado' });
     const { data } = await supabase.from('call_sessions')
       .select('*')
       .eq('target_user_id', req.params.userId)
@@ -5046,9 +5080,14 @@ app.get('/api/call/incoming/:userId', auth, async (req, res) => {
       .order('created_at', { ascending: false })
       .limit(3);
     if (!data || data.length === 0) return res.json([]);
+    const callerIds = [...new Set(data.map(s => s.caller_id).filter(Boolean))];
+    const { data: callers } = await supabase.from('users').select('id, full_name, avatar_url').in('id', callerIds);
+    const callersById = new Map((callers || []).map(user => [String(user.id), user]));
     res.json(data.map(s => ({
       callId: s.call_id, callerId: s.caller_id,
       type: s.type, offer: JSON.parse(s.offer || 'null'), status: s.status,
+      callerName: callersById.get(String(s.caller_id))?.full_name || 'Usuario',
+      callerAvatar: callersById.get(String(s.caller_id))?.avatar_url || '',
     })));
   } catch (e) {
     console.error('[call/incoming]', e.message);
@@ -5451,7 +5490,7 @@ const sendPushToUser = async (userId, payload) => {
         body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje'),
         sound: isCall ? 'default' : 'default',
         badge: isCall ? 0 : 1,
-        channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
+        channelId: isCall ? 'egchat-calls' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
         data: {
           ...payload,
@@ -5474,6 +5513,9 @@ const sendPushToUser = async (userId, payload) => {
             callType: payload.callType || 'audio',
           } : {}),
         },
+        ...((payload.callerAvatar || payload.senderAvatar || payload.imageUrl || (typeof payload.icon === 'string' && /^https?:\/\//.test(payload.icon)))
+          ? { richContent: { image: payload.callerAvatar || payload.senderAvatar || payload.imageUrl || payload.icon } }
+          : {}),
         // Llamadas: TTL de 120s
         ...(isCall ? { ttl: 120, expiration: Math.floor(Date.now() / 1000) + 120 } : {}),
       }));

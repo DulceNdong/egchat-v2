@@ -1,0 +1,88 @@
+# ============================================
+# .easignore - Excluir archivos pesados del upload a EAS
+# ============================================
+
+# Node modules - EAS instala dependencias en la nube
+node_modules/**
+node_modules/
+.npm/
+.yarn/
+.pnp.*
+
+# Expo generado localmente
+.expo/
+.expo-shared/
+web-build/
+
+# iOS local - EAS regenera Pods y builds
+ios/Pods/**
+ios/Pods/
+ios/build/**
+ios/build/
+ios/*.xcworkspace/xcuserdata
+ios/*.xcodeproj/xcuserdata
+ios/DerivedData/
+
+# Android local - EAS regenera builds
+android/.gradle/**
+android/.gradle/
+android/build/**
+android/build/
+android/app/build/**
+android/app/build/
+android/.cxx/
+android/local.properties
+
+# Builds y distribuciones locales
+build/
+dist/
+*.app
+*.ipa
+*.apk
+*.aab
+
+# Backups y carpetas duplicadas (CRÍTICO)
+egchat-v2/**
+egchat-v2/
+ios-backup-*/**
+ios-backup-*/
+*-backup/**
+*-backup/
+*.save
+*.bak
+*.old
+
+# Variables de entorno (secretos)
+.env
+.env.*
+!.env.example
+.secrets/
+
+# Certificados y llaves
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.keystore
+*.orig.*
+
+# Logs y temporales
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+*.swp
+*.swo
+*~
+
+# Tests y coverage
+coverage/
+.nyc_output/
+__tests__/__snapshots__/
+
+# IDEs
+.vscode/
+.idea/
+*.sublime-*

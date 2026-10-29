@@ -1,14 +1,26 @@
 {
   "expo": {
     "name": "EGCHAT",
-    "slug": "egchat",
+    "slug": "egchat-mobile",
     "version": "1.0.0",
+    "privacy": "public",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "bundleIdentifier": "com.egchat.app",
-      "supportsTablet": false
+      "bundleIdentifier": "com.jallzstores.egchat",
+      "supportsTablet": false,
+      "buildNumber": "1",
+      "config": {
+        "usesNonExemptEncryption": false
+      },
+      "infoPlist": {
+        "NSCameraUsageDescription": "EGCHAT necesita acceso a la cámara para fotos de perfil y videollamadas.",
+        "NSMicrophoneUsageDescription": "EGCHAT necesita acceso al micrófono para llamadas de voz y video.",
+        "NSLocationWhenInUseUsageDescription": "EGCHAT necesita tu ubicación para servicios de taxi y mapas.",
+        "NSPhotoLibraryUsageDescription": "EGCHAT necesita acceso a tus fotos para compartir imágenes en chats.",
+        "NSPhotoLibraryAddUsageDescription": "EGCHAT necesita permiso para guardar fotos en tu galería."
+      }
     },
     "android": {
       "package": "com.egchat.app",
@@ -70,10 +82,10 @@
         "origin": false
       },
       "eas": {
-        "projectId": "6200ec00-54d7-4ef4-a348-56e80a1452f6"
+        "projectId": "8fde846d-979b-468a-933d-2768cc5cd39f"
       }
     },
-    "runtimeVersion": "1.0.0",
-    "owner": "reddington120"
+    "owner": "dutti98",
+    "runtimeVersion": "1.0.0"
   }
 }
