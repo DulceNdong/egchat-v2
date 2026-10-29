@@ -15,7 +15,7 @@ import { useWebRTC, RTCView } from '../../src/hooks/useWebRTC';
 import { getToken } from '../../src/api';
 import { startRingtone, stopRingtone } from '../../src/hooks/useSounds';
 
-const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com').replace(/\/+$/, '').replace(/\/api$/, '');
+const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '').replace(/\/api$/, '');
 async function sigFetch(path: string) {
   const token = await getToken();
   const res = await fetch(`${API_BASE}/api${path}`, {
@@ -135,13 +135,17 @@ export default function CallScreen() {
   const hangUp = useCallback(async () => {
     if (role === 'callee' && incomingPending) {
       const token = await getToken();
+      const headers = { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) };
       try {
-        await fetch(`${API_BASE}/api/call/reject`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
-          body: JSON.stringify({ callId }),
+        const res = await fetch(`${API_BASE}/api/call/reject`, {
+          method: 'POST', headers, body: JSON.stringify({ callId }),
         });
-      } catch {}
+        if (!res.ok) throw new Error(`reject ${res.status}`);
+      } catch {
+        // Backend sin /api/call/reject (deploy antiguo): DELETE también
+        // termina la llamada, así el caller deja de timbrar.
+        try { await fetch(`${API_BASE}/api/call/${callId}`, { method: 'DELETE', headers }); } catch {}
+      }
       await stopRingtone().catch(() => {});
       router.back();
       return;

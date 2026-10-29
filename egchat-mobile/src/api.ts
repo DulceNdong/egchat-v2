@@ -6,7 +6,7 @@ import * as SecureStore from 'expo-secure-store';
 
 const BASE = (() => {
   const url = (process.env.EXPO_PUBLIC_API_URL || '').trim();
-  if (!url) return 'https://chat2-0x2c.onrender.com';
+  if (!url) return 'https://egchat-api-xlxj.onrender.com';
   return url.replace(/\/$/, '');
 })();
 

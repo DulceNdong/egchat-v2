@@ -6,7 +6,7 @@ import { Audio } from 'expo-av';
 import { getToken } from '../api';
 import { startRingtone, stopRingtone } from './useSounds';
 
-const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://chat2-0x2c.onrender.com').trim().replace(/\/+$/, '').replace(/\/api$/, '');
+const BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').trim().replace(/\/+$/, '').replace(/\/api$/, '');
 const STUN_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' },
@@ -66,6 +66,9 @@ export function useWebRTC() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const busyRef = useRef(false);
   const endedRef = useRef(false);
+  const connectedRef = useRef(false);
+  const answerAppliedRef = useRef(false);
+  const connectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const signalingReadyRef = useRef(false);
   const pendingIceRef = useRef<any[]>([]);
   const [callState, setCallState] = useState<CallState>('idle');
@@ -80,8 +83,28 @@ export function useWebRTC() {
     timerRef.current = null;
   }, []);
 
+  const clearConnectTimeout = useCallback(() => {
+    if (connectTimeoutRef.current) { clearTimeout(connectTimeoutRef.current); connectTimeoutRef.current = null; }
+  }, []);
+
+  /** Si el answer llega (o lo enviamos) y la conexión ICE no se completa,
+   *  la llamada se quedaba "Llamando.../Conectando..." para siempre.
+   *  A los 30s se cierra en vez de dejar al otro lado esperando. */
+  const armConnectTimeout = useCallback(() => {
+    if (connectTimeoutRef.current) return;
+    connectTimeoutRef.current = setTimeout(() => {
+      connectTimeoutRef.current = null;
+      if (endedRef.current || connectedRef.current) return;
+      console.warn('[Call] Sin conexión ICE 30s después del answer — terminando llamada');
+      endedRef.current = true;
+      setCallState('ended');
+    }, 30_000);
+  }, []);
+
   const cleanupMedia = useCallback(() => {
     stopPolling();
+    clearConnectTimeout();
+    connectedRef.current = false;
     const pc = pcRef.current;
     pcRef.current = null;
     try { pc?.close(); } catch {}
@@ -94,7 +117,7 @@ export function useWebRTC() {
     setRemoteStream(null);
     stopRingtone().catch(() => {});
     Audio.setAudioModeAsync({ allowsRecordingIOS: false, playsInSilentModeIOS: true, staysActiveInBackground: false }).catch(() => {});
-  }, [stopPolling]);
+  }, [stopPolling, clearConnectTimeout]);
 
   const createPeer = useCallback(async () => {
     if (!RTC) throw new Error('Las llamadas necesitan la versión instalada de EGCHAT con soporte WebRTC. Actualiza la app para continuar.');
@@ -114,8 +137,29 @@ export function useWebRTC() {
       }
     };
     pc.onconnectionstatechange = () => {
-      if (pc.connectionState === 'connected') setCallState('connected');
-      if (pc.connectionState === 'failed' && !endedRef.current) setCallState('ended');
+      if (pc.connectionState === 'connected') {
+        connectedRef.current = true;
+        clearConnectTimeout();
+        setCallState('connected');
+      }
+      if (pc.connectionState === 'failed' && !endedRef.current) {
+        endedRef.current = true;
+        setCallState('ended');
+      }
+    };
+    // Algunos dispositivos reportan la conexión por ICE antes que por
+    // connectionState; sin esto la UI podía quedarse en "Llamando...".
+    pc.oniceconnectionstatechange = () => {
+      const iceState = pc.iceConnectionState;
+      if ((iceState === 'connected' || iceState === 'completed') && !connectedRef.current) {
+        connectedRef.current = true;
+        clearConnectTimeout();
+        setCallState('connected');
+      }
+      if (iceState === 'failed' && !endedRef.current) {
+        endedRef.current = true;
+        setCallState('ended');
+      }
     };
     pc.onicecandidate = (event: any) => {
       if (event.candidate && callIdRef.current) {
@@ -125,7 +169,7 @@ export function useWebRTC() {
       }
     };
     return pc;
-  }, []);
+  }, [clearConnectTimeout]);
 
   const getLocalMedia = useCallback(async (type: 'audio' | 'video') => {
     if (!RTC) throw new Error('Las llamadas necesitan la versión instalada de EGCHAT con soporte WebRTC.');
@@ -141,6 +185,7 @@ export function useWebRTC() {
   const startCall = useCallback(async (type: 'audio' | 'video', targetUserId: string) => {
     cleanupMedia();
     endedRef.current = false;
+    answerAppliedRef.current = false;
     roleRef.current = 'caller';
     signalingReadyRef.current = false;
     pendingIceRef.current = [];
@@ -166,7 +211,18 @@ export function useWebRTC() {
         try {
           const session = await sigFetch(`/call/${callIdRef.current}`);
           if (session.ended || ['ended', 'rejected', 'missed', 'failed'].includes(session.status)) { endedRef.current = true; setCallState('ended'); cleanupMedia(); return; }
-          if (session.answer && pc.signalingState === 'have-local-offer') await pc.setRemoteDescription(new RTC.RTCSessionDescription(session.answer));
+          if (session.answer && !answerAppliedRef.current) {
+            // Hay answer en el servidor → el callee ya contestó. Vigilar que
+            // la conexión ICE se complete para no quedarse "Llamando..." para siempre.
+            armConnectTimeout();
+            const sigState = pc.signalingState;
+            if (sigState === 'have-local-offer' || (sigState === 'stable' && !connectedRef.current)) {
+              try {
+                await pc.setRemoteDescription(new RTC.RTCSessionDescription(session.answer));
+                answerAppliedRef.current = true;
+              } catch (error) { console.warn('[Call] No se pudo aplicar el answer:', error); }
+            }
+          }
           const candidates = session.calleeCandidates || [];
           for (; candidateOffset < candidates.length; candidateOffset++) {
             try { await pc.addIceCandidate(new RTC.RTCIceCandidate(candidates[candidateOffset])); } catch (error) { console.warn('[Call] ICE remoto pendiente:', error); }
@@ -180,11 +236,12 @@ export function useWebRTC() {
       setCallState('ended');
       throw error;
     }
-  }, [cleanupMedia, createPeer, getLocalMedia]);
+  }, [cleanupMedia, createPeer, getLocalMedia, armConnectTimeout]);
 
   const answerCall = useCallback(async (callId: string, offer: any, type: 'audio' | 'video') => {
     cleanupMedia();
     endedRef.current = false;
+    answerAppliedRef.current = false;
     callIdRef.current = callId;
     roleRef.current = 'callee';
     signalingReadyRef.current = true;
@@ -200,6 +257,8 @@ export function useWebRTC() {
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       await sigFetch('/call/answer', 'POST', { callId, answer: pc.localDescription });
+      // Answer enviado: si ICE no conecta en 30s, cerrar en vez de quedarse colgado.
+      armConnectTimeout();
       setCallState('calling');
       let candidateOffset = 0;
       timerRef.current = setInterval(async () => {
@@ -220,7 +279,7 @@ export function useWebRTC() {
       setCallState('ended');
       throw error;
     }
-  }, [cleanupMedia, createPeer, getLocalMedia]);
+  }, [cleanupMedia, createPeer, getLocalMedia, armConnectTimeout]);
 
   const endCall = useCallback(async () => {
     endedRef.current = true;
