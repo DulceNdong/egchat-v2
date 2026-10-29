@@ -31,7 +31,6 @@ export default function AcercaScreen() {
   const runtimeVer   = Constants.expoConfig?.runtimeVersion ?? '—';
   const updateId     = Updates.updateId ? Updates.updateId.substring(0, 8) + '...' : 'Canal local';
   const updateChan   = Updates.channel ?? 'development';
-  const isExpoGo     = !Constants.isDevice;
 
   const info = [
     { label: 'Versión',          value: appVersion },
@@ -43,15 +42,11 @@ export default function AcercaScreen() {
     { label: 'Desarrollador',    value: 'EGCHAT Team' },
     { label: 'País',             value: 'Guinea Ecuatorial 🇬🇶' },
     { label: 'Backend',          value: 'Supabase + Render' },
-    { label: 'EAS Project',      value: '6200ec00' },
+    { label: 'EAS Project',      value: String(Constants.expoConfig?.extra?.eas?.projectId ?? '—').substring(0, 8) },
   ];
 
   // ── Buscar actualización OTA ──────────────────────────────────
   const checkUpdate = useCallback(async () => {
-    if (isExpoGo) {
-      toast.info('OTA no disponible en Expo Go');
-      return;
-    }
     setChecking(true);
     try {
       const update = await Updates.checkForUpdateAsync();
@@ -81,11 +76,12 @@ export default function AcercaScreen() {
       } else {
         toast.success('✓ Tienes la versión más reciente');
       }
-    } catch {
-      toast.error('No se pudo verificar actualizaciones');
+    } catch (e: any) {
+      const msg = String(e?.message ?? '');
+      toast.error(msg.includes('Expo Go') ? 'OTA no disponible en Expo Go' : 'No se pudo verificar actualizaciones');
     }
     setChecking(false);
-  }, [isExpoGo]);
+  }, []);
 
   // ── Diagnóstico push ──────────────────────────────────────────
   const pushDiagnostic = useCallback(async () => {
