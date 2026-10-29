@@ -5490,7 +5490,9 @@ const sendPushToUser = async (userId, payload) => {
         to: sub.token,
         title: payload.title || 'EGChat',
         body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje'),
-        sound: isCall ? 'default' : 'default',
+        // El nombre debe coincidir con el archivo que la app instala en
+        // Library/Sounds del contenedor (useSounds.installIosPushSound).
+        sound: isCall ? 'default' : 'egchat-message.wav',
         badge: isCall ? 0 : 1,
         channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
         priority: isCall ? 'high' : 'normal',
