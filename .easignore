@@ -1,0 +1,71 @@
+# EAS empaqueta todo el repositorio cuando el proyecto vive dentro de un monorepo.
+# Este archivo evita que se suban dependencias, builds y copias de seguridad.
+
+# Dependencias (EAS las instala en el servidor)
+node_modules/
+.npm/
+.yarn/
+.pnp.*
+
+# Control de versiones
+.git/
+
+# iOS/Android locales (EAS regenera Pods y builds)
+ios/
+android/build/
+android/app/build/
+android/.gradle/
+android/.cxx/
+android/local.properties
+android/replay_pid*.log
+android/hs_err_pid*.log
+
+# Builds y distribuciones locales
+build/
+dist/
+dist-android/
+dist-web/
+web-build/
+*.app
+*.ipa
+*.apk
+*.aab
+*.xcarchive
+
+# Copias y carpetas duplicadas
+egchat-v2/
+egchat-v2-temp/
+ios-backup-*/
+*-backup/
+*-backup-temp/
+temp-deploy-clean/
+*-temp/
+*.save
+*.bak
+*.old
+
+# Otras apps del repo que no forman parte del build móvil
+kyc-dashboard/
+server/
+egchat-api/
+public/
+supabase/
+
+# Entornos y secretos
+.env
+.env.*
+!.env.example
+.secrets/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.keystore
+
+# Logs y temporales
+*.log
+.DS_Store
+coverage/
+.vscode/
+.idea/

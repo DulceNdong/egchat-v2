@@ -86,3 +86,10 @@ __tests__/__snapshots__/
 .vscode/
 .idea/
 *.sublime-*
+
+# Carpetas pesadas del monorepo (no necesarias para la app)
+egchat-v2-temp/
+ios-backup-temp/
+temp-deploy-clean/
+kyc-dashboard/
+server/
