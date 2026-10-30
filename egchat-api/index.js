@@ -153,6 +153,95 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight for all routes
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
+// ── Saneador de texto mojibake ────────────────────────────────────
+// El archivo histórico del API contiene literales codificados dos veces
+// (p. ej. "CÁƒÂ³digo" en lugar de "Código"). Se reparan al serializar
+// para que la app reciba siempre texto legible.
+const CP1252_TO_BYTE = { 0x20AC:0x80, 0x201A:0x82, 0x0192:0x83, 0x201E:0x84, 0x2026:0x85, 0x2020:0x86, 0x2021:0x87, 0x02C6:0x88, 0x2030:0x89, 0x0160:0x8A, 0x2039:0x8B, 0x0152:0x8C, 0x017D:0x8E, 0x2018:0x91, 0x2019:0x92, 0x201C:0x93, 0x201D:0x94, 0x2022:0x95, 0x2013:0x96, 0x2014:0x97, 0x02DC:0x98, 0x2122:0x99, 0x0161:0x9A, 0x203A:0x9B, 0x0153:0x9C, 0x017E:0x9E, 0x0178:0x9F };
+
+const isMojibakeChar = (char) => {
+  const code = char.codePointAt(0);
+  return (code >= 0x80 && code <= 0xFF) || CP1252_TO_BYTE[code] !== undefined;
+};
+
+const toMojibakeByte = (char) => {
+  if (char === '\u00C1') return 0xC3; // 'Á' sustituyó a 'Ã' en el archivo histórico
+  const code = char.codePointAt(0);
+  if (CP1252_TO_BYTE[code] !== undefined) return CP1252_TO_BYTE[code];
+  return code < 256 ? code : -1;
+};
+
+// Decodifica solo los tramos con bytes mal codificados, de modo que los
+// caracteres legítimos (•, «, », °) sobrevivan intactos.
+const decodeMojibakeRun = (run) => {
+  let chars = Array.from(run);
+  for (let pass = 0; pass < 4; pass++) {
+    const bytes = chars.map(toMojibakeByte);
+    if (bytes.some((byte) => byte < 0)) return chars.join('');
+    let out = '';
+    let index = 0;
+    let changed = false;
+    while (index < chars.length) {
+      const lead = bytes[index];
+      const size = lead >= 0xC2 && lead <= 0xDF ? 2 : lead >= 0xE0 && lead <= 0xEF ? 3 : 0;
+      if (size && index + size <= bytes.length) {
+        let valid = true;
+        for (let offset = 1; offset < size; offset++) {
+          if (bytes[index + offset] < 0x80 || bytes[index + offset] > 0xBF) { valid = false; break; }
+        }
+        if (valid) {
+          const decoded = Buffer.from(bytes.slice(index, index + size)).toString('utf8');
+          const original = chars.slice(index, index + size).join('');
+          if (decoded && !decoded.includes('\uFFFD') && decoded !== original) {
+            out += decoded;
+            index += size;
+            changed = true;
+            continue;
+          }
+        }
+      }
+      out += chars[index];
+      index += 1;
+    }
+    if (!changed) break;
+    chars = Array.from(out);
+  }
+  return chars.join('');
+};
+
+const repairMojibake = (value) => {
+  if (typeof value !== 'string' || !/[\u00C2\u00C3]/.test(value)) return value;
+  let out = '';
+  let index = 0;
+  while (index < value.length) {
+    if (!isMojibakeChar(value[index])) {
+      out += value[index];
+      index += 1;
+      continue;
+    }
+    let end = index;
+    while (end < value.length && isMojibakeChar(value[end])) end += 1;
+    out += decodeMojibakeRun(value.slice(index, end));
+    index = end;
+  }
+  return out;
+};
+
+const repairDeep = (value, depth = 0) => {
+  if (typeof value === 'string') return repairMojibake(value);
+  if (!value || typeof value !== 'object' || depth > 8) return value;
+  if (Array.isArray(value)) return value.map((item) => repairDeep(item, depth + 1));
+  const out = {};
+  for (const key of Object.keys(value)) out[key] = repairDeep(value[key], depth + 1);
+  return out;
+};
+
+app.use((_req, res, next) => {
+  const originalJson = res.json.bind(res);
+  res.json = (body) => originalJson(repairDeep(body));
+  next();
+});
+
 
 // --- Middleware auth --------------------------------------------------
 const parseBearerToken = (header) => {
@@ -2785,43 +2874,500 @@ app.get('/api/cemac/transfers', auth, async (req, res) => {
 });
 
 // ════════════════════════════════════════════════════════════════════
-// LIA-25
+// LIA-25 — asistente de EGCHAT
+// Responde con datos reales de la app (saldo, movimientos, noticias,
+// tiempo, salud, supermercados, taxi, transferencias). Si el servidor
+// tiene GROQ_API_KEY u OPENAI_API_KEY, usa el modelo para preguntas
+// abiertas; si no, responde con el motor de intenciones.
 // ════════════════════════════════════════════════════════════════════
+const LIA_LANGS = ['es', 'fr', 'en', 'pt'];
+const LIA_LANG_NAMES = { es: 'español', fr: 'francés', en: 'inglés', pt: 'portugués' };
+
+const liaNorm = (value) => String(value || '')
+  .toLowerCase()
+  .normalize('NFD')
+  .replace(/[\u0300-\u036f]/g, '');
+
+const liaMoney = (amount) => `${String(Math.round(Number(amount) || 0)).replace(/\B(?=(\d{3})+(?!\d))/g, ' ')} XAF`;
+
+const liaFill = (template, vars) =>
+  String(template).replace(/\{(\w+)\}/g, (_match, key) => (vars[key] === undefined ? '' : vars[key]));
+
+const LIA_COPY = {
+  es: {
+    emptyMessage: 'Escribe un mensaje para Lia-25.',
+    tooLong: 'El mensaje es demasiado largo (máximo 2000 caracteres).',
+    greeting: '¡Hola! Soy Lia-25, tu asistente de EGCHAT. Puedo consultar tu saldo y tus movimientos, darte las noticias y el tiempo, buscar hospitales, farmacias y supermercados, y guiarte para pedir un taxi o enviar dinero. ¿Qué necesitas?',
+    balance: 'Tu saldo actual es *{balance}*.',
+    balanceWithMovements: 'Tu saldo actual es *{balance}*.\n\nTus últimos movimientos:\n{movements}',
+    movementsTitle: 'Tus últimos movimientos:\n{movements}',
+    noMovements: 'Todavía no tienes movimientos registrados. Puedes recargar desde Cartera → Recargar.',
+    newsTitle: 'Noticias de hoy:\n{list}',
+    noNews: 'Ahora mismo no hay noticias publicadas. Vuelve a mirar más tarde.',
+    weather: 'El tiempo en {city}: {temp} °C, {desc}. Viento de {wind} km/h y humedad del {humidity} %.',
+    weatherError: 'No he podido consultar el tiempo ahora mismo. Inténtalo de nuevo en un minuto.',
+    healthTitle: 'Centros de salud y farmacias:\n{list}',
+    marketTitle: 'Supermercados disponibles:\n{list}',
+    atmTitle: 'Cajeros disponibles:\n{list}',
+    ratesTitle: 'Tipo de cambio:\n{list}',
+    card: 'Puedes ver y gestionar tus tarjetas en Cartera → Tarjetas. Si pierdes una, bloquéala ahí mismo al instante.',
+    bank: 'Consulta las entidades y cajeros disponibles en Servicios → Bancos.',
+    closed: 'cerrado',
+    taxi: 'Para pedir un taxi abre MiTaxi, indica el origen y el destino y confirma.\nTarifas: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.',
+    transfer: 'Para enviar dinero entra en Cartera → Enviar, escribe el número de teléfono y el importe.\nSi quieres, antes te digo tu saldo.',
+    thanks: '¡De nada! Estoy aquí para lo que necesites.',
+    help: 'Puedo hacer esto por ti:\n• Consultar tu saldo y tus últimos movimientos.\n• Darte las noticias del día y el tiempo de tu ciudad.\n• Buscar hospitales, farmacias y supermercados.\n• Explicarte cómo pedir un taxi o enviar dinero.\nEscríbemelo o usa los botones de abajo.',
+    unknown: 'No estoy seguro de haberte entendido. Prueba con: "mi saldo", "últimos movimientos", "noticias", "el tiempo", "taxi" o "hospitales".',
+    serviceError: 'No he podido obtener esa información ahora mismo. Inténtalo de nuevo en unos segundos.',
+    movementTypes: { deposit: 'Recarga', withdraw: 'Retiro', transfer: 'Transferencia', transfer_sent: 'Envío', transfer_received: 'Recibido', shopping_payment: 'Compra', payment: 'Pago', refund: 'Reembolso', default: 'Movimiento' },
+  },
+  fr: {
+    emptyMessage: 'Écrivez un message à Lia-25.',
+    tooLong: 'Le message est trop long (2000 caractères maximum).',
+    greeting: 'Bonjour ! Je suis Lia-25, votre assistante EGCHAT. Je peux consulter votre solde et vos transactions, vous donner les actualités et la météo, chercher des hôpitaux, pharmacies et supermarchés, et vous guider pour commander un taxi ou envoyer de l\'argent. Que puis-je faire ?',
+    balance: 'Votre solde actuel est de *{balance}*.',
+    balanceWithMovements: 'Votre solde actuel est de *{balance}*.\n\nVos dernières transactions :\n{movements}',
+    movementsTitle: 'Vos dernières transactions :\n{movements}',
+    noMovements: 'Vous n\'avez pas encore de transactions. Vous pouvez recharger depuis Portefeuille → Recharger.',
+    newsTitle: 'Actualités du jour :\n{list}',
+    noNews: 'Aucune actualité publiée pour le moment. Revenez plus tard.',
+    weather: 'Météo à {city} : {temp} °C, {desc}. Vent de {wind} km/h et humidité de {humidity} %.',
+    weatherError: 'Impossible de consulter la météo pour le moment. Réessayez dans une minute.',
+    healthTitle: 'Centres de santé et pharmacies :\n{list}',
+    marketTitle: 'Supermarchés disponibles :\n{list}',
+    atmTitle: 'Distributeurs disponibles :\n{list}',
+    ratesTitle: 'Taux de change :\n{list}',
+    card: 'Vous pouvez consulter et gérer vos cartes dans Portefeuille → Cartes. En cas de perte, bloquez-la immédiatement depuis cet écran.',
+    bank: 'Consultez les banques et distributeurs disponibles dans Services → Banques.',
+    closed: 'fermé',
+    taxi: 'Pour commander un taxi, ouvrez MiTaxi, indiquez le départ et la destination puis confirmez.\nTarifs : moto 800 XAF, basique 1 500 XAF, premium 3 500 XAF.',
+    transfer: 'Pour envoyer de l\'argent, allez dans Portefeuille → Envoyer, saisissez le numéro et le montant.\nJe peux d\'abord vous indiquer votre solde.',
+    thanks: 'Avec plaisir ! Je suis là pour vous aider.',
+    help: 'Voici ce que je peux faire :\n• Consulter votre solde et vos dernières transactions.\n• Donner les actualités du jour et la météo de votre ville.\n• Chercher des hôpitaux, pharmacies et supermarchés.\n• Vous expliquer comment commander un taxi ou envoyer de l\'argent.\nÉcrivez-moi ou utilisez les boutons ci-dessous.',
+    unknown: 'Je ne suis pas sûr de comprendre. Essayez : « mon solde », « dernières transactions », « actualités », « météo », « taxi » ou « hôpitaux ».',
+    serviceError: 'Je n\'ai pas pu obtenir cette information. Réessayez dans quelques secondes.',
+    movementTypes: { deposit: 'Rechargement', withdraw: 'Retrait', transfer: 'Transfert', transfer_sent: 'Envoi', transfer_received: 'Reçu', shopping_payment: 'Achat', payment: 'Paiement', refund: 'Remboursement', default: 'Mouvement' },
+  },
+  en: {
+    emptyMessage: 'Write a message to Lia-25.',
+    tooLong: 'The message is too long (2000 characters maximum).',
+    greeting: 'Hi! I am Lia-25, your EGCHAT assistant. I can check your balance and transactions, give you today\'s news and weather, find hospitals, pharmacies and supermarkets, and guide you to request a taxi or send money. What do you need?',
+    balance: 'Your current balance is *{balance}*.',
+    balanceWithMovements: 'Your current balance is *{balance}*.\n\nYour latest transactions:\n{movements}',
+    movementsTitle: 'Your latest transactions:\n{movements}',
+    noMovements: 'You have no transactions yet. You can top up from Wallet → Top up.',
+    newsTitle: 'Today\'s news:\n{list}',
+    noNews: 'There is no news published right now. Check again later.',
+    weather: 'Weather in {city}: {temp} °C, {desc}. Wind {wind} km/h, humidity {humidity}%.',
+    weatherError: 'I could not check the weather right now. Please try again in a minute.',
+    healthTitle: 'Health centers and pharmacies:\n{list}',
+    marketTitle: 'Available supermarkets:\n{list}',
+    atmTitle: 'Available ATMs:\n{list}',
+    ratesTitle: 'Exchange rates:\n{list}',
+    card: 'You can view and manage your cards in Wallet → Cards. If a card is lost, block it there right away.',
+    bank: 'Check available banks and ATMs in Services → Banks.',
+    closed: 'closed',
+    taxi: 'To request a taxi, open MiTaxi, set your pickup and destination, then confirm.\nFares: moto 800 XAF, basic 1 500 XAF, premium 3 500 XAF.',
+    transfer: 'To send money go to Wallet → Send, enter the phone number and the amount.\nI can tell you your balance first.',
+    thanks: 'You are welcome! I am here to help.',
+    help: 'Here is what I can do:\n• Check your balance and latest transactions.\n• Give you today\'s news and your city\'s weather.\n• Find hospitals, pharmacies and supermarkets.\n• Guide you to request a taxi or send money.\nType it or use the buttons below.',
+    unknown: 'I am not sure I understood. Try: "my balance", "latest transactions", "news", "weather", "taxi" or "hospitals".',
+    serviceError: 'I could not get that information right now. Please try again in a few seconds.',
+    movementTypes: { deposit: 'Top-up', withdraw: 'Withdrawal', transfer: 'Transfer', transfer_sent: 'Sent', transfer_received: 'Received', shopping_payment: 'Purchase', payment: 'Payment', refund: 'Refund', default: 'Transaction' },
+  },
+  pt: {
+    emptyMessage: 'Escreva uma mensagem para a Lia-25.',
+    tooLong: 'A mensagem é demasiado longa (máximo 2000 caracteres).',
+    greeting: 'Olá! Sou a Lia-25, a sua assistente EGCHAT. Posso consultar o seu saldo e as suas transações, dar as notícias e o tempo, procurar hospitais, farmácias e supermercados, e orientá-lo para pedir um táxi ou enviar dinheiro. O que precisa?',
+    balance: 'O seu saldo atual é *{balance}*.',
+    balanceWithMovements: 'O seu saldo atual é *{balance}*.\n\nÚltimas transações:\n{movements}',
+    movementsTitle: 'Últimas transações:\n{movements}',
+    noMovements: 'Ainda não tem transações. Pode recarregar em Carteira → Recarregar.',
+    newsTitle: 'Notícias de hoje:\n{list}',
+    noNews: 'Não há notícias publicadas neste momento. Volte mais tarde.',
+    weather: 'Tempo em {city}: {temp} °C, {desc}. Vento de {wind} km/h e humidade de {humidity} %.',
+    weatherError: 'Não consegui consultar o tempo agora. Tente novamente num minuto.',
+    healthTitle: 'Centros de saúde e farmácias:\n{list}',
+    marketTitle: 'Supermercados disponíveis:\n{list}',
+    atmTitle: 'Caixas automáticos disponíveis:\n{list}',
+    ratesTitle: 'Taxas de câmbio:\n{list}',
+    card: 'Pode ver e gerir os seus cartões em Carteira → Cartões. Se perder um cartão, bloqueie-o de imediato nesse ecrã.',
+    bank: 'Consulte os bancos e caixas automáticos disponíveis em Serviços → Bancos.',
+    closed: 'fechado',
+    taxi: 'Para pedir um táxi, abra o MiTaxi, indique a origem e o destino e confirme.\nTarifas: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.',
+    transfer: 'Para enviar dinheiro vá a Carteira → Enviar, indique o número e o valor.\nPosso dizer-lhe primeiro o seu saldo.',
+    thanks: 'De nada! Estou aqui para ajudar.',
+    help: 'Posso fazer isto por si:\n• Consultar o saldo e as últimas transações.\n• Dar as notícias do dia e o tempo da sua cidade.\n• Procurar hospitais, farmácias e supermercados.\n• Explicar como pedir um táxi ou enviar dinheiro.\nEscreva ou use os botões abaixo.',
+    unknown: 'Não tenho a certeza de ter entendido. Tente: "o meu saldo", "últimas transações", "notícias", "tempo", "táxi" ou "hospitais".',
+    serviceError: 'Não consegui obter essa informação agora. Tente novamente em alguns segundos.',
+    movementTypes: { deposit: 'Recarregamento', withdraw: 'Levantamento', transfer: 'Transferência', transfer_sent: 'Envio', transfer_received: 'Recebido', shopping_payment: 'Compra', payment: 'Pagamento', refund: 'Reembolso', default: 'Movimento' },
+  },
+};
+
+const LIA_INTENTS = [
+  ['activity', ['actividad', 'movimiento', 'movimientos', 'transaccion', 'transacciones', 'resumen', 'historico', 'extracto', 'transaction', 'transactions', 'activity', 'summary', 'historique', 'activite', 'atividade', 'movimentos', 'resumo']],
+  ['balance', ['saldo', 'balance', 'solde', 'sald', 'dinero', 'cuanto tengo', 'cuanto dinero', 'tengo en la cuenta', 'cartera', 'wallet', 'argent', 'money', 'dinheiro', 'carteira', 'portefeuille', 'efectivo', 'cash']],
+  ['news', ['noticia', 'noticias', 'actualidad', 'actualite', 'actualites', 'news', 'novidade', 'novidades', 'partido', 'futbol', 'deporte', 'deportes', 'match', 'football', 'esporte', 'esportes', 'jogo']],
+  ['weather', ['tiempo', 'clima', 'meteo', 'weather', 'tempo', 'temps', 'lluvia', 'chuva', 'pluie', 'rain', 'temperatura', 'climat']],
+  ['health', ['salud', 'hospital', 'hospitales', 'farmacia', 'farmacias', 'medico', 'sante', 'health', 'saude', 'pharmacie', 'pharmacy', 'clinica']],
+  ['markets', ['supermercado', 'supermercados', 'supermarche', 'mercado', 'mercados', 'market', 'compra', 'compras', 'achat', 'shopping', 'supermarket']],
+  ['atm', ['cajero', 'cajeros', 'atm', 'distributeur', 'cash machine', 'caixa automatico', 'multibanco']],
+  ['rates', ['tipo de cambio', 'cotizacion', 'exchange rate', 'taux de change', 'taxa de cambio', 'divisa', 'currency', 'moeda estrangeira']],
+  ['card', ['tarjeta', 'tarjetas', 'card', 'cards', 'carte', 'cartes', 'cartao', 'cartoes']],
+  ['banks', ['banco', 'bancos', 'bank', 'banque', 'sucursal', 'agence']],
+  ['taxi', ['taxi', 'carrera', 'ride', 'course', 'corrida']],
+  ['transfer', ['transferir', 'transferencia', 'enviar', 'envoyer', 'send', 'transfer', 'recargar', 'recargo', 'recharger', 'recarregar', 'recharge', 'recarga', 'top up', 'topup', 'deposito', 'deposit', 'retirar', 'retrait', 'withdraw', 'pagar', 'payer', 'pay', 'pagamento', 'factura', 'facture', 'invoice', 'fatura']],
+  ['thanks', ['gracias', 'merci', 'thanks', 'thank', 'obrigado', 'obrigada', 'valeu']],
+  ['help', ['ayuda', 'ayudame', 'help', 'aide', 'ajuda', 'capacidades', 'funciones', 'que puedes', 'que sabes', 'quien eres', 'que eres', 'como te llamas', 'tu nombre', 'who are you', 'qui es tu', 'qui etes vous', 'quem es tu', 'quem e voce', 'o que voce faz', 'o que fazes']],
+  ['greeting', ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'bonjour', 'salut', 'hello', 'hey', 'ola', 'bom dia', 'boa tarde', 'boa noite']],
+];
+
+const liaDetectIntent = (message) => {
+  const norm = ` ${liaNorm(message).replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+  for (const [intent, words] of LIA_INTENTS) {
+    if (words.some((word) => (word.length > 3 ? norm.includes(word) : norm.includes(` ${word} `)))) {
+      return intent;
+    }
+  }
+  return 'unknown';
+};
+
+const LIA_WEATHER_DESC = {
+  clear: { es: 'cielo despejado', fr: 'ciel dégagé', en: 'clear sky', pt: 'céu limpo' },
+  partly: { es: 'parcialmente nublado', fr: 'partiellement nuageux', en: 'partly cloudy', pt: 'parcialmente nublado' },
+  cloudy: { es: 'nublado', fr: 'nuageux', en: 'cloudy', pt: 'nublado' },
+  fog: { es: 'niebla', fr: 'brouillard', en: 'fog', pt: 'nevoeiro' },
+  drizzle: { es: 'llovizna', fr: 'bruine', en: 'drizzle', pt: 'chuvisco' },
+  rain: { es: 'lluvia', fr: 'pluie', en: 'rain', pt: 'chuva' },
+  snow: { es: 'nieve', fr: 'neige', en: 'snow', pt: 'neve' },
+  showers: { es: 'chubascos', fr: 'averses', en: 'showers', pt: 'aguaceiros' },
+  storm: { es: 'tormenta', fr: 'orage', en: 'thunderstorm', pt: 'trovoada' },
+};
+
+const liaWeatherKey = (code) => {
+  const c = Number(code);
+  if (c === 0) return 'clear';
+  if (c <= 2) return 'partly';
+  if (c === 3) return 'cloudy';
+  if (c <= 48) return 'fog';
+  if (c <= 55) return 'drizzle';
+  if (c <= 65) return 'rain';
+  if (c <= 77) return 'snow';
+  if (c <= 82) return 'showers';
+  return 'storm';
+};
+
+const LIA_CITIES = [
+  { name: 'Malabo', lat: 3.75, lon: 8.78 },
+  { name: 'Bata', lat: 1.86, lon: 9.77 },
+  { name: 'Mongomo', lat: 1.63, lon: 11.31 },
+  { name: 'Ebebiyín', lat: 2.15, lon: 11.32 },
+  { name: 'Annobón', lat: -1.44, lon: 5.63 },
+];
+
+const LIA_ATMS = [
+  { bank: 'BANGE', addr: 'Av. de la Independencia 12, Malabo', fee: '500 XAF' },
+  { bank: 'CCEI Bank', addr: 'Centro Comercial Malabo', fee: '0 XAF' },
+  { bank: 'BGFI Bank', addr: 'Calle Rey Malabo 45', fee: '750 XAF' },
+  { bank: 'Ecobank', addr: 'Aeropuerto Internacional de Malabo', fee: '1 000 XAF' },
+];
+
+const LIA_RATES = { EUR: 0.001524, USD: 0.001648, GBP: 0.001302, CHF: 0.001489, CNY: 0.011920 };
+
+const liaPickCity = (message, city) => {
+  const norm = liaNorm(message);
+  const fromMessage = LIA_CITIES.find((item) => norm.includes(liaNorm(item.name)));
+  if (fromMessage) return fromMessage;
+  const fromProfile = city && LIA_CITIES.find((item) => liaNorm(item.name) === liaNorm(city));
+  return fromProfile || LIA_CITIES[0];
+};
+
+const liaProvider = () => {
+  if (process.env.GROQ_API_KEY) {
+    return {
+      name: 'groq',
+      key: process.env.GROQ_API_KEY,
+      base: 'https://api.groq.com/openai/v1',
+      chatModel: process.env.LIA_CHAT_MODEL || 'llama-3.3-70b-versatile',
+      sttModel: process.env.LIA_STT_MODEL || 'whisper-large-v3-turbo',
+    };
+  }
+  if (process.env.OPENAI_API_KEY) {
+    return {
+      name: 'openai',
+      key: process.env.OPENAI_API_KEY,
+      base: 'https://api.openai.com/v1',
+      chatModel: process.env.LIA_CHAT_MODEL || 'gpt-4o-mini',
+      sttModel: 'whisper-1',
+    };
+  }
+  return null;
+};
+
+const liaGetWallet = async (userId) => {
+  try {
+    const { data } = await supabase.from('wallets').select('balance, currency').eq('user_id', userId).maybeSingle();
+    return { balance: Number(data?.balance || 0), currency: data?.currency || 'XAF' };
+  } catch (e) {
+    console.warn('LIA wallet error:', e?.message || e);
+    return { balance: 0, currency: 'XAF' };
+  }
+};
+
+const liaGetTransactions = async (userId, limit) => {
+  try {
+    const { data } = await supabase
+      .from('transactions')
+      .select('type, amount, description, reference, created_at')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false })
+      .limit(limit);
+    return Array.isArray(data) ? data : [];
+  } catch (e) {
+    console.warn('LIA transactions error:', e?.message || e);
+    return [];
+  }
+};
+
+const liaMovementLine = (tx, lang) => {
+  const types = LIA_COPY[lang].movementTypes;
+  const label = types[tx?.type] || types.default;
+  const date = tx?.created_at ? new Date(tx.created_at) : null;
+  const when = date && !Number.isNaN(date.getTime())
+    ? ` · ${date.getDate()}/${date.getMonth() + 1}`
+    : '';
+  return `• ${label}: ${liaMoney(tx?.amount)}${when}`;
+};
+
+const liaWeatherReply = async (message, lang, city) => {
+  const copy = LIA_COPY[lang];
+  const target = liaPickCity(message, city);
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 6000);
+  try {
+    const url = `https://api.open-meteo.com/v1/forecast?latitude=${target.lat}&longitude=${target.lon}`
+      + '&current=temperature_2m,relative_humidity_2m,wind_speed_10m,weather_code&timezone=Africa%2FMalabo';
+    const response = await fetch(url, { signal: controller.signal });
+    if (!response.ok) throw new Error(`weather ${response.status}`);
+    const data = await response.json();
+    const current = data?.current || {};
+    if (typeof current.temperature_2m !== 'number') throw new Error('weather empty');
+    return liaFill(copy.weather, {
+      city: target.name,
+      temp: Math.round(current.temperature_2m),
+      desc: LIA_WEATHER_DESC[liaWeatherKey(current.weather_code)][lang],
+      wind: Math.round(Number(current.wind_speed_10m) || 0),
+      humidity: Math.round(Number(current.relative_humidity_2m) || 0),
+    });
+  } catch (e) {
+    console.warn('LIA weather error:', e?.message || e);
+    return copy.weatherError;
+  } finally {
+    clearTimeout(timer);
+  }
+};
+
+const liaLlmReply = async ({ lang, message, history, userId }) => {
+  const provider = liaProvider();
+  if (!provider) return null;
+  try {
+    const [{ data: profile }, wallet] = await Promise.all([
+      supabase.from('users').select('full_name, city').eq('id', userId).maybeSingle(),
+      liaGetWallet(userId),
+    ]);
+    const system = [
+      `Eres Lia-25, la asistente virtual de EGCHAT, una superapp de Guinea Ecuatorial: dinero móvil en XAF, chat, MiTaxi, Salud, Supermercados, Noticias, Seguros, zona CEMAC.`,
+      `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma breve (máximo 90 palabras), clara y amable. Puedes usar **negritas** con moderación.`,
+      `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
+      `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
+      `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
+      `Si no sabes algo, dilo con naturalidad y ofrece una alternativa útil dentro de la app.`,
+    ].join('\n');
+    const safeHistory = (Array.isArray(history) ? history : [])
+      .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
+      .slice(-6)
+      .map((item) => ({ role: item.role, content: item.content.slice(0, 500) }));
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 20000);
+    try {
+      const response = await fetch(`${provider.base}/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${provider.key}` },
+        body: JSON.stringify({
+          model: provider.chatModel,
+          temperature: 0.4,
+          max_tokens: 400,
+          messages: [{ role: 'system', content: system }, ...safeHistory, { role: 'user', content: message.slice(0, 1000) }],
+        }),
+        signal: controller.signal,
+      });
+      if (!response.ok) {
+        console.warn('LIA LLM error:', provider.name, response.status, (await response.text().catch(() => '')).slice(0, 200));
+        return null;
+      }
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content;
+      return typeof text === 'string' && text.trim() ? text.trim() : null;
+    } finally {
+      clearTimeout(timer);
+    }
+  } catch (e) {
+    console.warn('LIA LLM exception:', e?.message || e);
+    return null;
+  }
+};
+
+const liaAnswer = async (intent, message, lang, userId, history) => {
+  const copy = LIA_COPY[lang];
+  switch (intent) {
+    case 'balance': {
+      const [wallet, movements] = await Promise.all([liaGetWallet(userId), liaGetTransactions(userId, 3)]);
+      if (!movements.length) return liaFill(copy.balance, { balance: liaMoney(wallet.balance) });
+      return liaFill(copy.balanceWithMovements, {
+        balance: liaMoney(wallet.balance),
+        movements: movements.map((tx) => liaMovementLine(tx, lang)).join('\n'),
+      });
+    }
+    case 'activity': {
+      const movements = await liaGetTransactions(userId, 5);
+      if (!movements.length) return copy.noMovements;
+      return liaFill(copy.movementsTitle, { movements: movements.map((tx) => liaMovementLine(tx, lang)).join('\n') });
+    }
+    case 'news': {
+      if (!Array.isArray(NOTICIAS) || !NOTICIAS.length) return copy.noNews;
+      const list = NOTICIAS.slice(0, 5).map((item) => `• ${item.title} (${item.source})`).join('\n');
+      return liaFill(copy.newsTitle, { list });
+    }
+    case 'weather': {
+      let city = '';
+      try {
+        const { data: profile } = await supabase.from('users').select('city').eq('id', userId).maybeSingle();
+        city = profile?.city || '';
+      } catch (e) {
+        console.warn('LIA profile lookup failed:', e?.message || e);
+      }
+      return liaWeatherReply(message, lang, city);
+    }
+    case 'health': {
+      const list = [
+        ...HOSPITALES.map((item) => `• ${item.name} (${item.city}) · ${item.phone}`),
+        ...FARMACIAS.map((item) => `• ${item.name} (${item.city}) · ${item.phone}`),
+      ].join('\n');
+      return liaFill(copy.healthTitle, { list });
+    }
+    case 'markets': {
+      const list = SUPERMERCADOS
+        .map((item) => `• ${item.name} · ${item.city} · ${item.address}${item.open === false ? ` (${copy.closed})` : ''}`)
+        .join('\n');
+      return liaFill(copy.marketTitle, { list });
+    }
+    case 'atm': {
+      const list = LIA_ATMS.map((item) => `• ${item.bank} · ${item.addr} · ${item.fee}`).join('\n');
+      return liaFill(copy.atmTitle, { list });
+    }
+    case 'rates': {
+      const list = Object.entries(LIA_RATES)
+        .map(([currency, rate]) => `• 1 ${currency} = ${Math.round(1 / rate)} XAF`)
+        .concat('• 1 XAF = 1 XOF')
+        .join('\n');
+      return liaFill(copy.ratesTitle, { list });
+    }
+    case 'card':
+      return copy.card;
+    case 'banks':
+      return copy.bank;
+    case 'taxi':
+      return copy.taxi;
+    case 'transfer':
+      return copy.transfer;
+    case 'thanks':
+      return copy.thanks;
+    case 'help':
+      return copy.help;
+    case 'greeting':
+      return copy.greeting;
+    default: {
+      const llmReply = await liaLlmReply({ lang, message, history, userId });
+      return llmReply || copy.unknown;
+    }
+  }
+};
+
 app.post('/api/lia/chat', auth, async (req, res) => {
-  const { message } = req.body;
-  const lower = message.toLowerCase();
+  const message = typeof req.body?.message === 'string' ? req.body.message.trim() : '';
+  const requestedLang = String(req.body?.lang || '').toLowerCase();
+  const lang = LIA_LANGS.includes(requestedLang) ? requestedLang : 'es';
+  const copy = LIA_COPY[lang];
 
-  const { data: wallet } = await supabase.from('wallets').select('balance').eq('user_id', req.user.id).single();
-  const balance = wallet?.balance || 0;
+  if (!message) return res.status(400).json({ message: copy.emptyMessage, code: 'VALIDATION_ERROR' });
+  if (message.length > 2000) return res.status(400).json({ message: copy.tooLong, code: 'VALIDATION_ERROR' });
 
-  let reply = '';
-  if (lower.includes('saldo') || lower.includes('balance'))
-    reply = `Tu saldo actual es **${balance.toLocaleString()} XAF**. Á‚Â¿Deseas recargar o retirar?`;
-  else if (lower.includes('hola') || lower.includes('buenos'))
-    reply = 'Á‚Â¡Hola! Soy Lia-25, tu asistente inteligente de EGCHAT. Á‚Â¿En quÁƒÂ© puedo ayudarte hoy?';
-  else if (lower.includes('taxi'))
-    reply = 'Puedo ayudarte a pedir un taxi. Ve a la secciÁƒÂ³n MiTaxi desde el menÁƒÂº principal.';
-  else if (lower.includes('salud') || lower.includes('hospital'))
-    reply = 'En la secciÁƒÂ³n Salud encontrarÁƒÂ¡s hospitales, farmacias y puedes pedir citas mÁƒÂ©dicas.';
-  else if (lower.includes('supermercado') || lower.includes('compra'))
-    reply = 'Puedes hacer compras en lÁƒÂ­nea desde la secciÁƒÂ³n Supermercados. Tenemos tiendas en Malabo y Bata.';
-  else if (lower.includes('transferir') || lower.includes('enviar dinero'))
-    reply = 'Para enviar dinero, ve a Mi Monedero ââ€ â€™ Enviar, o dime el nÁƒÂºmero y el importe.';
-  else if (lower.includes('seguro'))
-    reply = 'Puedes contratar seguros de salud, vehÁƒÂ­culo, vida y hogar en la secciÁƒÂ³n Seguros.';
-  else if (lower.includes('noticias'))
-    reply = 'Las ÁƒÂºltimas noticias de Guinea Ecuatorial y del mundo estÁƒÂ¡n en la secciÁƒÂ³n Noticias.';
-  else if (lower.includes('gracias'))
-    reply = 'Á‚Â¡De nada! Estoy aquÁƒÂ­ para ayudarte. Á‚Â¿Hay algo mÁƒÂ¡s?';
-  else
-    reply = `Entendido: "${message}". Puedo ayudarte con saldo, transferencias, taxi, salud, supermercados, seguros y noticias.`;
+  const intent = liaDetectIntent(message);
+  let reply = copy.serviceError;
+  let action = intent;
 
-  // Guardar conversaciÁƒÂ³n en Supabase
-  await supabase.from('lia_conversations').insert({
-    user_id: req.user.id, message, reply
-  }).catch(() => {});
+  try {
+    reply = await liaAnswer(intent, message, lang, req.user.id, req.body?.history);
+  } catch (e) {
+    console.error('LIA chat error:', e);
+    action = 'error';
+  }
 
-  res.json({ reply, timestamp: new Date().toISOString() });
+  // La persistencia nunca debe bloquear ni romper la respuesta.
+  try {
+    const { error } = await supabase.from('lia_conversations').insert({ user_id: req.user.id, message, reply });
+    if (error) console.warn('LIA history save failed:', error.message);
+  } catch (e) {
+    console.warn('LIA history save failed:', e?.message || e);
+  }
+
+  res.json({ reply, action, lang, timestamp: new Date().toISOString() });
+});
+
+app.get('/api/lia/history', auth, async (req, res) => {
+  const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 100);
+  const readHistory = async (columns) => supabase
+    .from('lia_conversations')
+    .select(columns)
+    .eq('user_id', req.user.id)
+    .order('created_at', { ascending: false })
+    .limit(limit);
+
+  try {
+    let rows = [];
+    let result = await readHistory('message, reply, created_at');
+    if (result.error) {
+      // Instalaciones antiguas pueden no tener created_at: no perder el historial.
+      result = await supabase
+        .from('lia_conversations')
+        .select('message, reply')
+        .eq('user_id', req.user.id)
+        .limit(limit);
+    }
+    if (result.error) throw result.error;
+    rows = result.data || [];
+
+    const messages = [];
+    rows.slice().reverse().forEach((row) => {
+      if (row.message) messages.push({ role: 'user', content: row.message, time: row.created_at });
+      if (row.reply) messages.push({ role: 'assistant', content: row.reply, time: row.created_at });
+    });
+    res.json({ messages });
+  } catch (e) {
+    console.warn('LIA history error:', e?.message || e);
+    res.json({ messages: [] });
+  }
+});
+
+app.get('/api/lia/status', auth, (_req, res) => {
+  const provider = liaProvider();
+  res.json({
+    engine: provider ? provider.name : 'rules',
+    model: provider ? provider.chatModel : null,
+    dictation: Boolean(provider),
+    languages: LIA_LANGS,
+    features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'taxi', 'transfers'],
+  });
 });
 
 // ════════════════════════════════════════════════════════════════════
@@ -4007,21 +4553,108 @@ app.post('/api/user/avatar', auth, async (req, res) => {
   }
 });
 
-app.post('/lia/analyze', auth, async (_req, res) => {
-  res.json({ analysis: 'Análisis completado.' });
+// Análisis rápido: intención detectada + respuesta que daría Lia.
+const liaAnalyzeHandler = async (req, res) => {
+  const message = typeof req.body?.message === 'string' ? req.body.message
+    : typeof req.body?.text === 'string' ? req.body.text : '';
+  if (!message.trim()) {
+    return res.status(400).json({ message: 'Falta el texto a analizar', code: 'VALIDATION_ERROR' });
+  }
+  const requestedLang = String(req.body?.lang || '').toLowerCase();
+  const lang = LIA_LANGS.includes(requestedLang) ? requestedLang : 'es';
+  const intent = liaDetectIntent(message);
+  try {
+    const reply = await liaAnswer(intent, message, lang, req.user.id, []);
+    res.json({
+      analysis: reply,
+      reply,
+      intent,
+      lang,
+      words: message.trim().split(/\s+/).length,
+      characters: message.length,
+    });
+  } catch (e) {
+    console.error('LIA analyze error:', e);
+    res.status(500).json({ message: 'No se pudo analizar el texto', code: 'ANALYZE_ERROR' });
+  }
+};
+
+app.post('/lia/analyze', auth, liaAnalyzeHandler);
+app.post('/api/lia/analyze', auth, liaAnalyzeHandler);
+
+const liaReadAudio = (req) => new Promise((resolve, reject) => {
+  const busboy = require('busboy');
+  const bb = busboy({ headers: req.headers, limits: { fileSize: 15 * 1024 * 1024, files: 1 } });
+  let audio = null;
+  const fields = {};
+  bb.on('file', (_name, stream, info) => {
+    const chunks = [];
+    stream.on('data', (chunk) => chunks.push(chunk));
+    stream.on('limit', () => reject(new Error('AUDIO_TOO_LARGE')));
+    stream.on('end', () => {
+      audio = {
+        buffer: Buffer.concat(chunks),
+        filename: info?.filename || 'audio.m4a',
+        mimeType: info?.mimeType || 'audio/m4a',
+      };
+    });
+  });
+  bb.on('field', (name, value) => { fields[name] = value; });
+  bb.on('error', reject);
+  bb.on('finish', () => resolve({ audio, fields }));
+  req.pipe(bb);
 });
 
-app.post('/api/lia/analyze', auth, async (_req, res) => {
-  res.json({ analysis: 'Análisis completado.' });
-});
+const liaTranscribeHandler = async (req, res) => {
+  const provider = liaProvider();
+  if (!provider) {
+    return res.status(501).json({
+      message: 'El dictado necesita una clave de transcripción en el servidor (GROQ_API_KEY u OPENAI_API_KEY).',
+      code: 'DICTATION_NOT_CONFIGURED',
+    });
+  }
+  try {
+    if (!String(req.headers['content-type'] || '').includes('multipart/form-data')) {
+      return res.status(400).json({ message: 'Envía el audio como multipart/form-data', code: 'VALIDATION_ERROR' });
+    }
+    const { audio, fields } = await liaReadAudio(req);
+    if (!audio || !audio.buffer.length) {
+      return res.status(400).json({ message: 'Audio vacío', code: 'VALIDATION_ERROR' });
+    }
 
-app.post('/lia/transcribe', auth, async (_req, res) => {
-  res.json({ text: 'Transcripción completada.' });
-});
+    const form = new FormData();
+    form.append('file', new Blob([audio.buffer], { type: audio.mimeType }), audio.filename);
+    form.append('model', provider.sttModel);
+    const requestedLang = String(fields.lang || '').toLowerCase();
+    if (LIA_LANGS.includes(requestedLang)) form.append('language', requestedLang);
 
-app.post('/api/lia/transcribe', auth, async (_req, res) => {
-  res.json({ text: 'Transcripción completada.' });
-});
+    const response = await fetch(`${provider.base}/audio/transcriptions`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${provider.key}` },
+      body: form,
+    });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      console.warn('LIA transcribe error:', provider.name, response.status, detail.slice(0, 200));
+      return res.status(502).json({ message: 'No se pudo transcribir el audio', code: 'STT_FAILED' });
+    }
+    const data = await response.json();
+    const text = typeof data?.text === 'string' ? data.text.trim() : '';
+    if (!text) {
+      return res.status(422).json({ message: 'No se ha reconocido voz en el audio', code: 'STT_EMPTY' });
+    }
+    res.json({ text });
+  } catch (e) {
+    if (e?.message === 'AUDIO_TOO_LARGE') {
+      return res.status(413).json({ message: 'El audio supera 15 MB', code: 'AUDIO_TOO_LARGE' });
+    }
+    console.error('LIA transcribe exception:', e);
+    res.status(500).json({ message: 'Error al transcribir el audio', code: 'STT_ERROR' });
+  }
+};
+
+app.post('/lia/transcribe', auth, liaTranscribeHandler);
+app.post('/api/lia/transcribe', auth, liaTranscribeHandler);
 
 // ════════════════════════════════════════════════════════════════════
 // GRUPOS DE CHAT
@@ -4769,6 +5402,204 @@ app.get('/api/turn-token', auth, async (req, res) => {
   }
 });
 
+// ─────────────────────────────────────────────────────────────────────────────
+// PUSH VoIP (PushKit → CallKit)
+//
+// Es la única forma de que un iPhone con la app cerrada muestre la ventana de
+// llamada entrante: un banner normal de APNs no levanta la UI de CallKit, así
+// que sin este push la llamada "llega como notificación" y no se puede contestar.
+//
+// Requiere en Render las variables de entorno:
+//   APNS_KEY_P8   · contenido del AuthKey_XXXXXXXX.p8 (PEM de una línea o base64)
+//   APNS_KEY_ID   · 10 caracteres (el nombre del archivo sin extensión)
+//   APNS_TEAM_ID  · 10 caracteres
+//   APNS_BUNDLE_ID· opcional, por defecto com.jallzstores.egchat
+//   APNS_ENV      · opcional: production | sandbox
+// Sin APNS_KEY_P8 la función devuelve configured:false y el llamador mantiene
+// el comportamiento anterior (banner por Expo Push).
+// ─────────────────────────────────────────────────────────────────────────────
+const http2  = require('node:http2');
+const crypto = require('node:crypto');
+
+const APNS_VOIP_HOSTS = {
+  production: 'api.push.apple.com',
+  sandbox:    'api.sandbox.push.apple.com',
+};
+
+let _apnsVoipJwt    = null;
+let _apnsVoipJwtIat = 0;
+
+/** Convierte un callId arbitrario ("call_1698…") en el UUID que exige iOS 16. */
+const uuidFromCallId = (callId) => {
+  const h = crypto.createHash('md5').update(String(callId || '')).digest('hex');
+  return `${h.slice(0, 8)}-${h.slice(8, 12)}-4${h.slice(13, 16)}-a${h.slice(17, 20)}-${h.slice(20, 32)}`;
+};
+
+const getApnsVoipJwt = () => {
+  const keyId  = process.env.APNS_KEY_ID;
+  const teamId = process.env.APNS_TEAM_ID;
+  const raw    = process.env.APNS_KEY_P8;
+  if (!keyId || !teamId || !raw) return null;
+
+  const now = Math.floor(Date.now() / 1000);
+  if (_apnsVoipJwt && now - _apnsVoipJwtIat < 3000) return _apnsVoipJwt;
+
+  // Render no admite valores multilínea: se acepta PEM con "\n" literal o base64
+  let keyP8 = raw.includes('BEGIN PRIVATE KEY') ? raw.replace(/\\n/g, '\n')
+                                                : Buffer.from(raw, 'base64').toString('utf8');
+  if (!keyP8.includes('BEGIN PRIVATE KEY')) return null;
+
+  try {
+    _apnsVoipJwt = jwt.sign({ iss: teamId, iat: now }, keyP8, {
+      algorithm: 'ES256',
+      header: { alg: 'ES256', kid: keyId },
+    });
+    _apnsVoipJwtIat = now;
+    return _apnsVoipJwt;
+  } catch (e) {
+    console.error('[voip] JWT APNs no generado:', e.message);
+    return null;
+  }
+};
+
+/** Un POST a APNs para un token device. Nunca rechaza: devuelve {ok, reason}. */
+const sendApnsVoip = (deviceToken, apnsJwt, payload) => new Promise((resolve) => {
+  const host   = APNS_VOIP_HOSTS[process.env.APNS_ENV] || APNS_VOIP_HOSTS.production;
+  const bundle = process.env.APNS_BUNDLE_ID || 'com.jallzstores.egchat';
+  const client = http2.connect(`https://${host}`);
+
+  let settled = false;
+  const settle = (ok, reason) => {
+    if (settled) return;
+    settled = true;
+    clearTimeout(timer);
+    try { client.destroy(); } catch {}
+    resolve({ ok, reason });
+  };
+  const timer = setTimeout(() => settle(false, 'TIMEOUT'), 6000);
+
+  client.on('error', (e) => settle(false, e.message));
+
+  const req = client.request({
+    ':method':          'POST',
+    ':path':            `/3/device/${deviceToken}`,
+    ':authority':       host,
+    'authorization':    `bearer ${apnsJwt}`,
+    'apns-push-type':   'voip',
+    'apns-topic':       `${bundle}.voip`,
+    'apns-priority':    '10',
+    'apns-expiration':  String(Math.floor(Date.now() / 1000) + 90),
+    'content-type':     'application/json',
+  });
+
+  let status = 0;
+  let body   = '';
+  req.on('response', (headers) => { status = Number(headers[':status']) || 0; });
+  req.on('data',     (d) => { body += d; });
+  req.on('error',    (e) => settle(false, e.message));
+  req.on('end',      () => {
+    if (status === 200) return settle(true, null);
+    let reason = `HTTP ${status}`;
+    try { reason = JSON.parse(body).reason || reason; } catch {}
+    settle(false, reason);
+  });
+  req.end(JSON.stringify(payload));
+});
+
+const sendVoipPushToUser = async (userId, call) => {
+  try {
+    const apnsJwt = getApnsVoipJwt();
+    if (!apnsJwt) return { configured: false, delivered: false, reason: 'no_credentials' };
+
+    const { data: voipSubs } = await supabase
+      .from('expo_push_tokens')
+      .select('token')
+      .eq('user_id', userId)
+      .eq('token_type', 'voip')
+      .neq('is_active', false);
+
+    if (!voipSubs || voipSubs.length === 0) {
+      return { configured: true, delivered: false, reason: 'no_voip_token' };
+    }
+
+    const payload = {
+      aps: { 'content-available': 1 },
+      'call-id':      String(call.callId),
+      'call-uuid':    uuidFromCallId(call.callId),
+      'call-timeout': 60,
+      callId:         String(call.callId),
+      callerName:     call.callerName || 'EGCHAT',
+      callerAvatar:   call.callerAvatar || '',
+      callType:       call.callType || 'audio',
+      callerId:       call.callerId || '',
+      ...(call.offer ? { offer: call.offer } : {}),
+    };
+    // APNs limita los pushes VoIP a 5KB. Si el offer SDP no cabe, el callee ya
+    // lo recupera por polling (_fetchOfferWithRetry), así que se omite.
+    if (Buffer.byteLength(JSON.stringify(payload)) > 4800) delete payload.offer;
+
+    const results   = await Promise.all(voipSubs.map(s => sendApnsVoip(s.token, apnsJwt, payload)));
+    const delivered = results.some(r => r.ok);
+    if (!delivered) console.warn(`[voip] ${voipSubs.length} token(s), 0 entregados:`, results.map(r => r.reason).join(' | '));
+    return { configured: true, delivered, reason: delivered ? null : (results[0] && results[0].reason) || 'failed' };
+  } catch (e) {
+    console.error('[voip] error:', e.message);
+    return { configured: true, delivered: false, reason: e.message };
+  }
+};
+
+/**
+ * Entrega una llamada entrante por el mejor canal disponible, en este orden:
+ *   1. APNs VoIP directo (abre la ventana de CallKit con el teléfono bloqueado)
+ *   2. Edge Function deliver-call-push (si Render tiene SERVICE_TOKEN configurado)
+ *   3. Banner por Expo Push (comportamiento clásico)
+ * Solo se usa un canal: si el anterior entregó, se corta para no timbrar dos veces.
+ */
+const deliverIncomingCall = async (targetUserId, call) => {
+  const voip = await sendVoipPushToUser(targetUserId, call);
+  if (voip.delivered) return { channel: 'voip', delivered: true };
+
+  const edgeFnUrl = process.env.SUPABASE_URL
+    ? `${process.env.SUPABASE_URL}/functions/v1/deliver-call-push`
+    : null;
+
+  if (edgeFnUrl && process.env.SERVICE_TOKEN) {
+    try {
+      const edgeRes = await fetch(edgeFnUrl, {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', 'x-service-token': process.env.SERVICE_TOKEN },
+        body: JSON.stringify({
+          callId:     call.callId,
+          callerId:   call.callerId,
+          callerName: call.callerName,
+          callerAvatar: call.callerAvatar,
+          calleeId:   targetUserId,
+          callType:   call.callType || 'audio',
+          offer:      call.offer || null,
+        }),
+      });
+      if (edgeRes.ok) {
+        const r = await edgeRes.json().catch(() => ({}));
+        const s = r.results_summary || {};
+        if (s.voip_sent > 0) return { channel: 'edge-voip', delivered: true };
+        if (s.fcm_sent > 0 || s.expo_sent > 0) return { channel: 'edge-banner', delivered: true };
+      }
+    } catch (e) {
+      console.warn('[deliver] Edge Function falló, se usa banner:', e.message);
+    }
+  }
+
+  const isVideo = call.callType === 'video';
+  await sendPushToUser(targetUserId, {
+    title: isVideo ? `📹 Videollamada de ${call.callerName}` : `📞 Llamada de ${call.callerName}`,
+    body:  isVideo ? 'Toca para responder la videollamada' : 'Toca para responder la llamada',
+    tag: `call-${call.callId}`, requireInteraction: true,
+    ...call,
+    notificationType: 'incoming_call',
+  });
+  return { channel: 'banner', delivered: true };
+};
+
 // Iniciar llamada — caller envía offer + push al destinatario
 // ─────────────────────────────────────────────────────────────────────────────
 // LLAMADAS WebRTC — Señalización y gestión de estado
@@ -4819,24 +5650,23 @@ app.post('/api/call/offer', auth, async (req, res) => {
       }).eq('call_id', callId);
     }
 
+    let delivery = null;
     if (targetUserId) {
       try {
         const { data: caller } = await supabase
           .from('users').select('full_name, avatar_url').eq('id', req.user.id).single();
-        const callerName = caller?.full_name || 'Alguien';
-        const isVideo    = (type || 'audio') === 'video';
-        await sendPushToUser(targetUserId, {
-          title: isVideo ? `📹 Videollamada de ${callerName}` : `📞 Llamada de ${callerName}`,
-          body:  isVideo ? 'Toca para responder la videollamada' : 'Toca para responder la llamada',
-          tag: `call-${callId}`, requireInteraction: true,
-          callId, callerId: req.user.id, callerName,
-          callType: type || 'audio', callerAvatar: caller?.avatar_url || '', offer,
-          notificationType: 'incoming_call',
-        });
+        const callInfo = {
+          callId, callerId: req.user.id,
+          callerName:   caller?.full_name || 'Alguien',
+          callerAvatar: caller?.avatar_url || '',
+          callType: type || 'audio', offer,
+        };
+        delivery = await deliverIncomingCall(targetUserId, callInfo);
+        console.log(`[call/offer] ${callId} entregada por ${delivery.channel}`);
       } catch (pushErr) { console.warn('[call/offer] Push failed:', pushErr.message); }
     }
 
-    res.json({ ok: true, idempotent: callData && callData.idempotent ? true : false });
+    res.json({ ok: true, delivery, idempotent: callData && callData.idempotent ? true : false });
   } catch (e) {
     console.error('[call/offer]', e.message);
     res.status(500).json({ error: 'Error iniciando llamada' });
@@ -5495,6 +6325,9 @@ const sendPushToUser = async (userId, payload) => {
         sound: isCall ? 'default' : 'egchat-message.wav',
         badge: isCall ? 0 : 1,
         channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
+        // En iOS el channelId no existe: la categoría con acciones (Aceptar /
+        // Rechazar) se registra desde la app con setNotificationCategoryAsync.
+        ...(isCall ? { categoryIdentifier: 'EGCHAT_CALL' } : {}),
         priority: isCall ? 'high' : 'normal',
         data: {
           ...payload,
@@ -5517,7 +6350,10 @@ const sendPushToUser = async (userId, payload) => {
             callType: payload.callType || 'audio',
           } : {}),
         },
-        ...((payload.callerAvatar || payload.senderAvatar || payload.imageUrl || (typeof payload.icon === 'string' && /^https?:\/\//.test(payload.icon)))
+        // richContent obliga a pasar por la Notification Service Extension, y
+        // la nuestra reescribe la categoría a EGCHAT_MESSAGE — con ella las
+        // llamadas perderían los botones Aceptar/Rechazar. En llamadas no se usa.
+        ...(!isCall && (payload.callerAvatar || payload.senderAvatar || payload.imageUrl || (typeof payload.icon === 'string' && /^https?:\/\//.test(payload.icon)))
           ? { richContent: { image: payload.callerAvatar || payload.senderAvatar || payload.imageUrl || payload.icon } }
           : {}),
         // Llamadas: TTL de 120s
@@ -5641,9 +6477,33 @@ app.post('/api/push/register-voip-token', auth, async (req, res) => {
   }
 });
 
+// ── Diagnóstico del canal de llamadas ──────────────────────────────────────
+// Devuelve solo booleanos y conteos (nunca valores de secretos ni tokens):
+// permite ver desde la app por qué una llamada se entrega como banner.
+app.get('/api/push/voip-status', auth, async (req, res) => {
+  try {
+    const { data: subs } = await supabase
+      .from('expo_push_tokens')
+      .select('token_type')
+      .eq('user_id', req.user.id)
+      .neq('is_active', false);
+    const counts = {};
+    for (const s of (subs || [])) counts[s.token_type] = (counts[s.token_type] || 0) + 1;
+
+    res.json({
+      apnsConfigured:   !!(process.env.APNS_KEY_P8 && process.env.APNS_KEY_ID && process.env.APNS_TEAM_ID),
+      apnsEnv:          process.env.APNS_ENV || 'production',
+      apnsBundle:       process.env.APNS_BUNDLE_ID || 'com.jallzstores.egchat',
+      edgeFnConfigured: !!(process.env.SUPABASE_URL && process.env.SERVICE_TOKEN),
+      tokens:           counts,
+    });
+  } catch (e) {
+    res.status(500).json({ message: e.message });
+  }
+});
+
 // ── Entregar llamada entrante via push ────────────────────────────────────
-// Punto de entrada que el cliente llama al iniciar una llamada.
-// Delega a la Edge Function deliver-call-push para el envío real.
+// deliverIncomingCall elige el canal: VoIP nativo → Edge Function → banner Expo.
 app.post('/api/push/voip-call', auth, async (req, res) => {
   try {
     const { targetUserId, callId, callType, offer, callerName: bodyCallerName } = req.body;
@@ -5663,55 +6523,16 @@ app.post('/api/push/voip-call', auth, async (req, res) => {
       callerName = caller?.full_name || 'EGChat';
     }
 
-    const edgeFnUrl = process.env.SUPABASE_URL
-      ? `${process.env.SUPABASE_URL}/functions/v1/deliver-call-push`
-      : null;
-
-    if (!edgeFnUrl || !process.env.SERVICE_TOKEN) {
-      console.warn('[voip-call] Edge Function no configurada — usando fallback Expo Push');
-      // Fallback: usar sendPushToUser existente (Expo Push estándar)
-      await sendPushToUser(targetUserId, {
-        title: callType === 'video'
-          ? `📹 Videollamada de ${callerName}`
-          : `📞 Llamada de ${callerName}`,
-        body: 'Toca para responder',
-        notificationType: 'incoming_call',
-        callId,
-        callerName,
-        callType: callType || 'audio',
-        offer: offer || null,
-      });
-      return res.json({ voipPushSent: false, expoPushSent: true, fallback: true });
-    }
-
-    const edgeRes = await fetch(edgeFnUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type':    'application/json',
-        'x-service-token': process.env.SERVICE_TOKEN,
-      },
-      body: JSON.stringify({
-        callId,
-        callerId:     req.user.id,
-        callerName,
-        calleeId:     targetUserId,
-        callType:     callType || 'audio',
-        offer:        offer || null,
-      }),
+    const delivery = await deliverIncomingCall(targetUserId, {
+      callId, callerId: req.user.id, callerName,
+      callType: callType || 'audio', offer: offer || null,
     });
 
-    if (!edgeRes.ok) {
-      const err = await edgeRes.json().catch(() => ({}));
-      console.error('[voip-call] Edge Function error:', err);
-      return res.status(500).json({ message: 'Error en entrega de llamada' });
-    }
-
-    const result = await edgeRes.json();
     res.json({
-      voipPushSent:  result.results_summary?.voip_sent > 0,
-      expoPushSent:  result.results_summary?.expo_sent > 0,
-      fcmSent:       result.results_summary?.fcm_sent  > 0,
-      delivered:     result.delivered,
+      voipPushSent: delivery.channel === 'voip' || delivery.channel === 'edge-voip',
+      expoPushSent: delivery.channel === 'banner' || delivery.channel === 'edge-banner',
+      delivered:    delivery.delivered,
+      channel:      delivery.channel,
     });
   } catch (e) {
     console.error('/api/push/voip-call error:', e.message);
