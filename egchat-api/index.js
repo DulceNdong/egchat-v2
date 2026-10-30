@@ -3088,7 +3088,7 @@ const liaProvider = () => {
       name: 'groq',
       key: process.env.GROQ_API_KEY,
       base: 'https://api.groq.com/openai/v1',
-      chatModel: process.env.LIA_CHAT_MODEL || 'llama-3.3-70b-versatile',
+      chatModel: process.env.LIA_CHAT_MODEL || 'openai/gpt-oss-120b',
       sttModel: process.env.LIA_STT_MODEL || 'whisper-large-v3-turbo',
     };
   }
@@ -3181,6 +3181,8 @@ const liaLlmReply = async ({ lang, message, history, userId }) => {
       `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
       `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
       `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
+      `Nunca inventes direcciones web, números de teléfono, comisiones ni importes: si no están en los datos anteriores, no los des.`,
+      `La app está disponible en español, francés, inglés y portugués; el idioma se cambia en Ajustes → Otras funciones → Idioma.`,
       `Si no sabes algo, dilo con naturalidad y ofrece una alternativa útil dentro de la app.`,
     ].join('\n');
     const safeHistory = (Array.isArray(history) ? history : [])
@@ -3308,6 +3310,7 @@ app.post('/api/lia/chat', auth, async (req, res) => {
 
   try {
     reply = await liaAnswer(intent, message, lang, req.user.id, req.body?.history);
+    if (intent === 'unknown' && reply && reply !== copy.unknown) action = 'ai';
   } catch (e) {
     console.error('LIA chat error:', e);
     action = 'error';
@@ -3366,7 +3369,7 @@ app.get('/api/lia/status', auth, (_req, res) => {
     model: provider ? provider.chatModel : null,
     dictation: Boolean(provider),
     languages: LIA_LANGS,
-    features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'taxi', 'transfers'],
+    features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'atm', 'banks', 'rates', 'cards', 'taxi', 'transfers', 'help'],
   });
 });
 
