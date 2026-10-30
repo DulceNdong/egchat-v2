@@ -2914,7 +2914,7 @@ const LIA_COPY = {
     bank: 'Consulta las entidades y cajeros disponibles en Servicios → Bancos.',
     closed: 'cerrado',
     taxi: 'Para pedir un taxi abre MiTaxi, indica el origen y el destino y confirma.\nTarifas: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.',
-    transfer: 'Para enviar dinero entra en Cartera → Enviar, escribe el número de teléfono y el importe.\nSi quieres, antes te digo tu saldo.',
+    transfer: 'Para enviar dinero entra en Cartera → Enviar; para retirar, Cartera → Retirar; para recargar, Cartera → Recargar.\nSi quieres, antes te digo tu saldo.',
     thanks: '¡De nada! Estoy aquí para lo que necesites.',
     help: 'Puedo hacer esto por ti:\n• Consultar tu saldo y tus últimos movimientos.\n• Darte las noticias del día y el tiempo de tu ciudad.\n• Buscar hospitales, farmacias y supermercados.\n• Explicarte cómo pedir un taxi o enviar dinero.\nEscríbemelo o usa los botones de abajo.',
     unknown: 'No estoy seguro de haberte entendido. Prueba con: "mi saldo", "últimos movimientos", "noticias", "el tiempo", "taxi" o "hospitales".',
@@ -2941,7 +2941,7 @@ const LIA_COPY = {
     bank: 'Consultez les banques et distributeurs disponibles dans Services → Banques.',
     closed: 'fermé',
     taxi: 'Pour commander un taxi, ouvrez MiTaxi, indiquez le départ et la destination puis confirmez.\nTarifs : moto 800 XAF, basique 1 500 XAF, premium 3 500 XAF.',
-    transfer: 'Pour envoyer de l\'argent, allez dans Portefeuille → Envoyer, saisissez le numéro et le montant.\nJe peux d\'abord vous indiquer votre solde.',
+    transfer: 'Pour envoyer de l\'argent, allez dans Portefeuille → Envoyer ; pour retirer, Portefeuille → Retirer ; pour recharger, Portefeuille → Recharger.\nJe peux d\'abord vous indiquer votre solde.',
     thanks: 'Avec plaisir ! Je suis là pour vous aider.',
     help: 'Voici ce que je peux faire :\n• Consulter votre solde et vos dernières transactions.\n• Donner les actualités du jour et la météo de votre ville.\n• Chercher des hôpitaux, pharmacies et supermarchés.\n• Vous expliquer comment commander un taxi ou envoyer de l\'argent.\nÉcrivez-moi ou utilisez les boutons ci-dessous.',
     unknown: 'Je ne suis pas sûr de comprendre. Essayez : « mon solde », « dernières transactions », « actualités », « météo », « taxi » ou « hôpitaux ».',
@@ -2968,7 +2968,7 @@ const LIA_COPY = {
     bank: 'Check available banks and ATMs in Services → Banks.',
     closed: 'closed',
     taxi: 'To request a taxi, open MiTaxi, set your pickup and destination, then confirm.\nFares: moto 800 XAF, basic 1 500 XAF, premium 3 500 XAF.',
-    transfer: 'To send money go to Wallet → Send, enter the phone number and the amount.\nI can tell you your balance first.',
+    transfer: 'To send money go to Wallet → Send; to withdraw, Wallet → Withdraw; to top up, Wallet → Top up.\nI can tell you your balance first.',
     thanks: 'You are welcome! I am here to help.',
     help: 'Here is what I can do:\n• Check your balance and latest transactions.\n• Give you today\'s news and your city\'s weather.\n• Find hospitals, pharmacies and supermarkets.\n• Guide you to request a taxi or send money.\nType it or use the buttons below.',
     unknown: 'I am not sure I understood. Try: "my balance", "latest transactions", "news", "weather", "taxi" or "hospitals".',
@@ -2995,7 +2995,7 @@ const LIA_COPY = {
     bank: 'Consulte os bancos e caixas automáticos disponíveis em Serviços → Bancos.',
     closed: 'fechado',
     taxi: 'Para pedir um táxi, abra o MiTaxi, indique a origem e o destino e confirme.\nTarifas: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.',
-    transfer: 'Para enviar dinheiro vá a Carteira → Enviar, indique o número e o valor.\nPosso dizer-lhe primeiro o seu saldo.',
+    transfer: 'Para enviar dinheiro vá a Carteira → Enviar; para levantar, Carteira → Levantar; para recarregar, Carteira → Recarregar.\nPosso dizer-lhe primeiro o seu saldo.',
     thanks: 'De nada! Estou aqui para ajudar.',
     help: 'Posso fazer isto por si:\n• Consultar o saldo e as últimas transações.\n• Dar as notícias do dia e o tempo da sua cidade.\n• Procurar hospitais, farmácias e supermercados.\n• Explicar como pedir um táxi ou enviar dinheiro.\nEscreva ou use os botões abaixo.',
     unknown: 'Não tenho a certeza de ter entendido. Tente: "o meu saldo", "últimas transações", "notícias", "tempo", "táxi" ou "hospitais".',
@@ -3009,21 +3009,30 @@ const LIA_INTENTS = [
   ['balance', ['saldo', 'balance', 'solde', 'sald', 'dinero', 'cuanto tengo', 'cuanto dinero', 'tengo en la cuenta', 'cartera', 'wallet', 'argent', 'money', 'dinheiro', 'carteira', 'portefeuille', 'efectivo', 'cash']],
   ['news', ['noticia', 'noticias', 'actualidad', 'actualite', 'actualites', 'news', 'novidade', 'novidades', 'partido', 'futbol', 'deporte', 'deportes', 'match', 'football', 'esporte', 'esportes', 'jogo']],
   ['weather', ['tiempo', 'clima', 'meteo', 'weather', 'tempo', 'temps', 'lluvia', 'chuva', 'pluie', 'rain', 'temperatura', 'climat']],
-  ['health', ['salud', 'hospital', 'hospitales', 'farmacia', 'farmacias', 'medico', 'sante', 'health', 'saude', 'pharmacie', 'pharmacy', 'clinica']],
+  ['health', ['salud', 'hospital', 'hospitales', 'hopital', 'hopitaux', 'medico', 'doctor', 'clinica', 'urgencias', 'farmacia', 'farmacias', 'sante', 'health', 'saude', 'pharmacie', 'pharmacy', 'medical']],
   ['markets', ['supermercado', 'supermercados', 'supermarche', 'mercado', 'mercados', 'market', 'compra', 'compras', 'achat', 'shopping', 'supermarket']],
   ['atm', ['cajero', 'cajeros', 'atm', 'distributeur', 'cash machine', 'caixa automatico', 'multibanco']],
-  ['rates', ['tipo de cambio', 'cotizacion', 'exchange rate', 'taux de change', 'taxa de cambio', 'divisa', 'currency', 'moeda estrangeira']],
+  ['rates', ['tipo de cambio', 'cotizacion', 'exchange rate', 'exchange', 'taux de change', 'taxa de cambio', 'divisa', 'divisas', 'currency', 'moeda estrangeira', 'moneda', 'cuanto esta', 'cuanto estan', 'cuanto vale', 'cuanto valen', 'how much is', 'how much are', 'a cuanto', 'conversion', 'euro', 'dolar', 'dollar', 'pound', 'libra', 'franco', 'yuan', 'xaf', 'xof', 'fcfa']],
   ['card', ['tarjeta', 'tarjetas', 'card', 'cards', 'carte', 'cartes', 'cartao', 'cartoes']],
   ['banks', ['banco', 'bancos', 'bank', 'banque', 'sucursal', 'agence']],
   ['taxi', ['taxi', 'carrera', 'ride', 'course', 'corrida']],
   ['transfer', ['transferir', 'transferencia', 'enviar', 'envoyer', 'send', 'transfer', 'recargar', 'recargo', 'recharger', 'recarregar', 'recharge', 'recarga', 'top up', 'topup', 'deposito', 'deposit', 'retirar', 'retrait', 'withdraw', 'pagar', 'payer', 'pay', 'pagamento', 'factura', 'facture', 'invoice', 'fatura']],
   ['thanks', ['gracias', 'merci', 'thanks', 'thank', 'obrigado', 'obrigada', 'valeu']],
-  ['help', ['ayuda', 'ayudame', 'help', 'aide', 'ajuda', 'capacidades', 'funciones', 'que puedes', 'que sabes', 'quien eres', 'que eres', 'como te llamas', 'tu nombre', 'who are you', 'qui es tu', 'qui etes vous', 'quem es tu', 'quem e voce', 'o que voce faz', 'o que fazes']],
+  ['help', ['ayuda', 'ayudame', 'help', 'aide', 'ajuda', 'capacidades', 'funciones', 'que puedes', 'que sabes', 'quien eres', 'que eres', 'como te llamas', 'tu nombre', 'who are you', 'what can you', 'what do you do', 'how can you help', 'qui es tu', 'qui etes vous', 'quem es tu', 'quem e voce', 'que podes fazer', 'o que voce faz', 'o que fazes']],
   ['greeting', ['hola', 'buenas', 'buenos dias', 'buenas tardes', 'bonjour', 'salut', 'hello', 'hey', 'ola', 'bom dia', 'boa tarde', 'boa noite']],
+];
+
+// Frases completas que deben ganar a las palabras sueltas de otras intenciones
+// ("enviar dinero" contiene "dinero", que por sí sola es de saldo).
+const LIA_PRIORITY_INTENTS = [
+  ['transfer', ['send money', 'i want to send', 'i need to send', 'transfer money', 'withdraw money', 'enviar dinero', 'enviar plata', 'enviar dinheiro', 'hacer una transferencia', 'transferir dinero', 'retirar dinero', 'retirar dinheiro', 'levantar dinheiro', 'envoyer de l argent', 'faire un virement', 'je veux envoyer']],
 ];
 
 const liaDetectIntent = (message) => {
   const norm = ` ${liaNorm(message).replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
+  for (const [intent, phrases] of LIA_PRIORITY_INTENTS) {
+    if (phrases.some((phrase) => norm.includes(phrase))) return intent;
+  }
   for (const [intent, words] of LIA_INTENTS) {
     if (words.some((word) => (word.length > 3 ? norm.includes(word) : norm.includes(` ${word} `)))) {
       return intent;
@@ -3179,6 +3188,7 @@ const liaLlmReply = async ({ lang, message, history, userId }) => {
       `Eres Lia-25, la asistente virtual de EGCHAT, una superapp de Guinea Ecuatorial: dinero móvil en XAF, chat, MiTaxi, Salud, Supermercados, Noticias, Seguros, zona CEMAC.`,
       `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma breve (máximo 90 palabras), clara y amable. Puedes usar **negritas** con moderación.`,
       `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
+      `Datos de referencia de la app (puedes usarlos): tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
       `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
       `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
       `Nunca inventes direcciones web, números de teléfono, comisiones ni importes: si no están en los datos anteriores, no los des.`,
@@ -3317,11 +3327,14 @@ app.post('/api/lia/chat', auth, async (req, res) => {
   }
 
   // La persistencia nunca debe bloquear ni romper la respuesta.
-  try {
-    const { error } = await supabase.from('lia_conversations').insert({ user_id: req.user.id, message, reply });
-    if (error) console.warn('LIA history save failed:', error.message);
-  } catch (e) {
-    console.warn('LIA history save failed:', e?.message || e);
+  // Los usuarios locales de demostración tienen id no-uuid y no se pueden guardar.
+  if (!isLocalUserId(req.user.id)) {
+    try {
+      const { error } = await supabase.from('lia_conversations').insert({ user_id: req.user.id, message, reply });
+      if (error) console.warn('LIA history save failed:', error.message);
+    } catch (e) {
+      console.warn('LIA history save failed:', e?.message || e);
+    }
   }
 
   res.json({ reply, action, lang, timestamp: new Date().toISOString() });
@@ -3329,6 +3342,7 @@ app.post('/api/lia/chat', auth, async (req, res) => {
 
 app.get('/api/lia/history', auth, async (req, res) => {
   const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 30, 1), 100);
+  if (isLocalUserId(req.user.id)) return res.json({ messages: [] });
   const readHistory = async (columns) => supabase
     .from('lia_conversations')
     .select(columns)
