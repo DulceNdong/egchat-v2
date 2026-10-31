@@ -14,6 +14,7 @@ import { useAppStore } from '../../src/store/useAppStore';
 import { markAllRead, clearAllNotifications, removeNotification, markNotificationRead } from '../../src/store/appStore';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import { ServiceIcon } from '../../src/components/ServiceIcon';
+import { LiaAvatar } from '../../src/components/LiaAvatar';
 import { DraggableHomeButton } from '../../src/components/DraggableHomeButton';
 import {
   RecargaModal, InternetModal, CanalesModal,
@@ -468,7 +469,9 @@ function ServiciosScreenInner() {
                     delayPressIn={0}
                   >
                     <View style={[styles.serviceIconBox, { backgroundColor: s.color + '15' }]}>
-                      <ServiceIcon name={s.svgIcon} size={22} color={s.color} />
+                      {s.id === 'lia'
+                        ? <LiaAvatar size={22} />
+                        : <ServiceIcon name={s.svgIcon} size={22} color={s.color} />}
                     </View>
                     <Text style={[styles.serviceLabel, { color: C.textPrimary }]} numberOfLines={1}>{s.label}</Text>
                   </TouchableOpacity>

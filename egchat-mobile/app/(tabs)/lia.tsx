@@ -18,6 +18,7 @@ import { Audio } from 'expo-av';
 import { liaAPI } from '../../src/api';
 import { useTranslation } from '../../src/context/LanguageContext';
 import { Colors, Shadow } from '../../src/theme';
+import { LiaAvatar } from '../../src/components/LiaAvatar';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 
@@ -60,17 +61,23 @@ const detectTTSLocale = (text: string, fallback: string) => {
   return best[1] > 0 ? best[0] : fallback;
 };
 
+// LIA es una niña y crecerá con la app. La edad define el tono de voz:
+// a los 2 años el tono va alto (voz infantil) y baja hacia 1.0 al crecer.
+const LIA_AGE = 2;
+const TTS_PITCH = Math.max(1.0, 1.6 - (LIA_AGE - 2) * 0.05);
+
 // Voces preferidas por idioma: suenan mucho más naturales que la voz
-// "compact" que iOS trae por defecto.
+// "compact" que iOS trae por defecto. Solo voces femeninas, porque LIA
+// es una niña.
 const PREFERRED_VOICES: Record<string, string[]> = {
-  'es-ES': ['mónica', 'monica', 'paulina', 'marisol', 'jorge', 'diego', 'enrique', 'lucia'],
-  'fr-FR': ['amélie', 'amelie', 'audrey', 'thomas', 'aurelie', 'aurelie', 'julie', 'paul'],
-  'en-US': ['samantha', 'ava', 'allison', 'susan', 'tom', 'alex', 'nicky', 'joelle'],
-  'pt-PT': ['joana', 'catarina', 'luciana', 'felipe', 'ines', 'ines'],
+  'es-ES': ['mónica', 'monica', 'paulina', 'marisol', 'lucia', 'carmen'],
+  'fr-FR': ['amélie', 'amelie', 'audrey', 'aurelie', 'julie', 'marie'],
+  'en-US': ['samantha', 'ava', 'allison', 'susan', 'nicky', 'joelle', 'karen', 'moira'],
+  'pt-PT': ['joana', 'catarina', 'luciana', 'ines', 'inês', 'carminho'],
 };
 
 const TTS_RATE: Record<string, number> = {
-  'es-ES': 0.97, 'fr-FR': 0.97, 'en-US': 0.97, 'pt-PT': 0.97,
+  'es-ES': 0.95, 'fr-FR': 0.95, 'en-US': 0.95, 'pt-PT': 0.95,
 };
 
 const CURRENCY_WORDS: Record<string, Record<string, string>> = {
@@ -120,10 +127,13 @@ const pickVoice = async (locale: string): Promise<string | undefined> => {
   // Algunas voces del sistema (Siri, personales, de broma) no se pueden usar
   // desde una app: si se fuerzan, iOS no reproduce nada.
   const risky = /(siri|personal|compact|eloquence|novelty|zarvox|bells|bubbles|jester|whisper|albert|bahh|boing|cellos|organ|superstar|trinoids|wobble|good news|bad news)/;
+  // Las voces masculinas suenan irreales con el tono infantil de LIA.
+  const male = /(jorge|diego|enrique|thomas|paul|tom|alex|felipe|daniel|aaron|fred|gordon|arthur|rishi|xander|oliver|serge|yannick|jacques|david|mark|richard)/;
   const score = (v: Speech.Voice) => {
     const name = (v.name || '').toLowerCase();
     const lang = (v.language || '').replace('_', '-').toLowerCase();
     if (risky.test(name)) return -1000;
+    if (male.test(name)) return -900;
     let n = 0;
     if (v.quality === Speech.VoiceQuality.Enhanced) n += 100;
     if (name.includes('premium')) n += 70;
@@ -234,26 +244,6 @@ const LiaWave = ({ active, color = '#00C8A0' }: { active: boolean; color?: strin
     </View>
   );
 };
-
-// ── Avatar LIA ────────────────────────────────────────────────────
-const LiaAvatar = ({ size = 36, speaking = false }: { size?: number; speaking?: boolean }) => (
-  <LinearGradient
-    colors={['#00C8A0', '#00B4E6']}
-    start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-    style={[{
-      width: size, height: size, borderRadius: size / 2,
-      alignItems: 'center', justifyContent: 'center',
-    }, speaking && { shadowColor: '#00C8A0', shadowOffset: { width: 0, height: 0 }, shadowOpacity: 0.7, shadowRadius: 12, elevation: 10 }]}
-  >
-    <Svg width={size * 0.55} height={size * 0.55} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="1.8" strokeLinecap="round">
-      <Rect x="3" y="6" width="18" height="13" rx="3"/>
-      <Path d="M3 10h18"/>
-      <Circle cx="8.5" cy="14" r="1.2" fill="#fff" stroke="none"/>
-      <Circle cx="15.5" cy="14" r="1.2" fill="#fff" stroke="none"/>
-      <Path d="M9 17c.83.63 1.94 1 3 1s2.17-.37 3-1"/>
-    </Svg>
-  </LinearGradient>
-);
 
 // ── Typing dots ───────────────────────────────────────────────────
 const TypingDots = () => {
@@ -553,8 +543,8 @@ export default function LiaScreen() {
     const start = (voiceId?: string) => Speech.speak(clean, {
       language: locale,
       ...(voiceId ? { voice: voiceId } : {}),
-      rate: TTS_RATE[locale] || 0.97,
-      pitch: 1.0,
+      rate: TTS_RATE[locale] || 0.95,
+      pitch: TTS_PITCH,
       onStart: () => { started = true; },
       onDone: finish,
       onStopped: finish,
