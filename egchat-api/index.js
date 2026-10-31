@@ -3176,6 +3176,18 @@ const liaWeatherReply = async (message, lang, city) => {
   }
 };
 
+const liaBuildSystem = (lang, profile, wallet) => [
+  `Eres Lia-25, la asistente virtual de EGCHAT, una superapp de Guinea Ecuatorial: dinero móvil en XAF, chat, MiTaxi, Salud, Supermercados, Noticias, Seguros, zona CEMAC.`,
+  `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma breve (máximo 90 palabras), clara y amable. Puedes usar **negritas** con moderación.`,
+  `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
+  `Datos de referencia de la app (puedes usarlos): tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
+  `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
+  `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
+  `Nunca inventes direcciones web, números de teléfono, comisiones ni importes: si no están en los datos anteriores, no los des.`,
+  `La app está disponible en español, francés, inglés y portugués; el idioma se cambia en Ajustes → Otras funciones → Idioma.`,
+  `Si no sabes algo, dilo con naturalidad y ofrece una alternativa útil dentro de la app.`,
+].join('\n');
+
 const liaLlmReply = async ({ lang, message, history, userId }) => {
   const provider = liaProvider();
   if (!provider) return null;
@@ -3184,17 +3196,7 @@ const liaLlmReply = async ({ lang, message, history, userId }) => {
       supabase.from('users').select('full_name, city').eq('id', userId).maybeSingle(),
       liaGetWallet(userId),
     ]);
-    const system = [
-      `Eres Lia-25, la asistente virtual de EGCHAT, una superapp de Guinea Ecuatorial: dinero móvil en XAF, chat, MiTaxi, Salud, Supermercados, Noticias, Seguros, zona CEMAC.`,
-      `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma breve (máximo 90 palabras), clara y amable. Puedes usar **negritas** con moderación.`,
-      `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
-      `Datos de referencia de la app (puedes usarlos): tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
-      `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
-      `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
-      `Nunca inventes direcciones web, números de teléfono, comisiones ni importes: si no están en los datos anteriores, no los des.`,
-      `La app está disponible en español, francés, inglés y portugués; el idioma se cambia en Ajustes → Otras funciones → Idioma.`,
-      `Si no sabes algo, dilo con naturalidad y ofrece una alternativa útil dentro de la app.`,
-    ].join('\n');
+    const system = liaBuildSystem(lang, profile, wallet);
     const safeHistory = (Array.isArray(history) ? history : [])
       .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
       .slice(-6)
@@ -3383,7 +3385,7 @@ app.get('/api/lia/status', auth, (_req, res) => {
     model: provider ? provider.chatModel : null,
     dictation: Boolean(provider),
     languages: LIA_LANGS,
-    features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'atm', 'banks', 'rates', 'cards', 'taxi', 'transfers', 'help'],
+    features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'atm', 'banks', 'rates', 'cards', 'taxi', 'transfers', 'help', 'attachments', 'vision', 'documents'],
   });
 });
 
@@ -4672,6 +4674,242 @@ const liaTranscribeHandler = async (req, res) => {
 
 app.post('/lia/transcribe', auth, liaTranscribeHandler);
 app.post('/api/lia/transcribe', auth, liaTranscribeHandler);
+
+// ── LIA: lectura de imágenes y documentos ─────────────────────────
+const LIA_ATTACH_COPY = {
+  es: {
+    notConfigured: 'La lectura de archivos necesita una clave de IA en el servidor.',
+    empty: 'El archivo llegó vacío. Inténtalo de nuevo.',
+    tooLarge: 'El archivo supera 20 MB. Envíame uno más pequeño.',
+    unsupported: 'No pude leer este archivo. Puedo con fotos, PDF, Word, Excel, TXT, CSV y RTF.',
+    readError: 'No pude analizar el archivo ahora mismo. Inténtalo de nuevo en un momento.',
+    video: 'Los vídeos todavía no se pueden analizar. Envíame una foto o un documento.',
+    imagePrompt: 'Analiza esta imagen. Si contiene texto, transcríbelo; si es un recibo, factura o documento, resume los datos importantes (importes, fechas, nombres, números).',
+    documentPrompt: 'Lee este documento y explícame lo importante de forma breve. Si el usuario hizo una pregunta, respóndela con el contenido.',
+    rules: 'Acabas de recibir un archivo del usuario. Basa tu respuesta SOLO en su contenido real; no inventes datos que no aparezcan. Si el archivo no se puede leer, dilo con claridad. Si el usuario pide una acción de la app, explica en qué pantalla se hace.',
+  },
+  fr: {
+    notConfigured: 'La lecture de fichiers nécessite une clé d\'IA sur le serveur.',
+    empty: 'Le fichier est arrivé vide. Réessaie.',
+    tooLarge: 'Le fichier dépasse 20 Mo. Envoie-moi un fichier plus petit.',
+    unsupported: 'Je n\'ai pas pu lire ce fichier. Je peux lire les photos, PDF, Word, Excel, TXT, CSV et RTF.',
+    readError: 'Je n\'ai pas pu analyser le fichier pour le moment. Réessaie dans un instant.',
+    video: 'Les vidéos ne peuvent pas encore être analysées. Envoie-moi une photo ou un document.',
+    imagePrompt: 'Analyse cette image. Si elle contient du texte, transcris-le ; s\'il s\'agit d\'un reçu, d\'une facture ou d\'un document, résume les informations importantes (montants, dates, noms, numéros).',
+    documentPrompt: 'Lis ce document et explique-moi l\'essentiel brièvement. Si l\'utilisateur a posé une question, réponds-y à partir du contenu.',
+    rules: 'Tu viens de recevoir un fichier de l\'utilisateur. Fonde ta réponse UNIQUEMENT sur son contenu réel ; n\'invente pas de données absentes. Si le fichier est illisible, dis-le clairement. Si l\'utilisateur demande une action de l\'app, explique sur quel écran elle se fait.',
+  },
+  en: {
+    notConfigured: 'File reading needs an AI key on the server.',
+    empty: 'The file arrived empty. Please try again.',
+    tooLarge: 'The file is over 20 MB. Send me a smaller one.',
+    unsupported: 'I couldn\'t read this file. I can read photos, PDF, Word, Excel, TXT, CSV and RTF.',
+    readError: 'I couldn\'t analyze the file right now. Please try again in a moment.',
+    video: 'Videos can\'t be analyzed yet. Send me a photo or a document.',
+    imagePrompt: 'Analyze this image. If it contains text, transcribe it; if it\'s a receipt, invoice or document, summarize the important details (amounts, dates, names, numbers).',
+    documentPrompt: 'Read this document and briefly explain what matters. If the user asked a question, answer it from the content.',
+    rules: 'You just received a file from the user. Base your answer ONLY on its real content; do not invent details that aren\'t there. If the file can\'t be read, say so clearly. If the user asks for an app action, explain which screen does it.',
+  },
+  pt: {
+    notConfigured: 'A leitura de ficheiros precisa de uma chave de IA no servidor.',
+    empty: 'O ficheiro chegou vazio. Tenta novamente.',
+    tooLarge: 'O ficheiro tem mais de 20 MB. Envia-me um mais pequeno.',
+    unsupported: 'Não consegui ler este ficheiro. Consigo ler fotos, PDF, Word, Excel, TXT, CSV e RTF.',
+    readError: 'Não consegui analisar o ficheiro agora. Tenta novamente daqui a pouco.',
+    video: 'Os vídeos ainda não podem ser analisados. Envia-me uma foto ou um documento.',
+    imagePrompt: 'Analisa esta imagem. Se contiver texto, transcreve-o; se for um recibo, fatura ou documento, resume os dados importantes (valores, datas, nomes, números).',
+    documentPrompt: 'Lê este documento e explica-me o essencial de forma breve. Se o utilizador fez uma pergunta, responde com base no conteúdo.',
+    rules: 'Acabaste de receber um ficheiro do utilizador. Baseia a tua resposta APENAS no conteúdo real; não inventes dados que não apareçam. Se o ficheiro não puder ser lido, diz isso com clareza. Se o utilizador pedir uma ação da app, explica em que ecrã se faz.',
+  },
+};
+
+const liaReadUpload = (req) => new Promise((resolve, reject) => {
+  const busboy = require('busboy');
+  const bb = busboy({ headers: req.headers, limits: { fileSize: 20 * 1024 * 1024, files: 1 } });
+  let file = null;
+  const fields = {};
+  bb.on('file', (_name, stream, info) => {
+    const chunks = [];
+    let size = 0;
+    stream.on('data', (chunk) => { size += chunk.length; chunks.push(chunk); });
+    stream.on('limit', () => {
+      const err = new Error('FILE_TOO_LARGE');
+      err.fields = fields;
+      reject(err);
+    });
+    stream.on('end', () => {
+      file = {
+        buffer: Buffer.concat(chunks),
+        filename: info?.filename || 'archivo',
+        mimeType: info?.mimeType || 'application/octet-stream',
+        size,
+      };
+    });
+  });
+  bb.on('field', (name, value) => { fields[name] = value; });
+  bb.on('error', reject);
+  bb.on('finish', () => resolve({ file, fields }));
+  req.pipe(bb);
+});
+
+const liaExtractDocumentText = async (buffer, filename, mimeType) => {
+  const lower = String(filename || '').toLowerCase();
+  const mime = String(mimeType || '').toLowerCase();
+  const ext = (lower.split('.').pop() || '').trim();
+  if (mime === 'application/pdf' || ext === 'pdf') {
+    const pdfParse = require('pdf-parse');
+    const parsed = await pdfParse(buffer);
+    return parsed?.text || '';
+  }
+  if (mime.includes('wordprocessingml') || ext === 'docx') {
+    const mammoth = require('mammoth');
+    const parsed = await mammoth.extractRawText({ buffer });
+    return parsed?.value || '';
+  }
+  if (mime.includes('spreadsheetml') || ['xlsx', 'xls', 'ods'].includes(ext)) {
+    const XLSX = require('xlsx');
+    const book = XLSX.read(buffer, { type: 'buffer' });
+    return (book.SheetNames || []).slice(0, 8).map((sheet) => {
+      const csv = XLSX.utils.sheet_to_csv(book.Sheets[sheet]);
+      return `# ${sheet}\n${csv}`;
+    }).join('\n\n');
+  }
+  if (ext === 'rtf' || mime === 'application/rtf' || mime === 'text/rtf') {
+    return buffer.toString('utf8')
+      .replace(/\\'([0-9a-f]{2})/gi, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+      .replace(/\\[a-z]+-?\d* ?/gi, ' ')
+      .replace(/[{}]/g, ' ')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+  if (mime.startsWith('text/') || ['txt', 'csv', 'md', 'json', 'xml', 'html', 'htm', 'log', 'srt', 'vtt'].includes(ext)) {
+    return buffer.toString('utf8');
+  }
+  return '';
+};
+
+const liaVisionModels = (provider) => {
+  if (provider.name === 'openai') return [process.env.LIA_VISION_MODEL || 'gpt-4o-mini'];
+  return [...new Set([
+    process.env.LIA_VISION_MODEL,
+    'qwen/qwen3.8-27b',
+    'meta-llama/llama-4-scout-17b-16e-instruct',
+    'meta-llama/llama-4-maverick-17b-128e-instruct',
+  ].filter(Boolean))];
+};
+
+const liaAttachHandler = async (req, res) => {
+  try {
+    if (!String(req.headers['content-type'] || '').includes('multipart/form-data')) {
+      return res.status(400).json({ message: 'Envía el archivo como multipart/form-data', code: 'VALIDATION_ERROR' });
+    }
+    const { file, fields } = await liaReadUpload(req);
+    const requestedLang = String(fields.lang || '').toLowerCase();
+    const lang = LIA_LANGS.includes(requestedLang) ? requestedLang : 'es';
+    const copy = LIA_ATTACH_COPY[lang];
+    const provider = liaProvider();
+    if (!provider) return res.status(501).json({ message: copy.notConfigured, code: 'ATTACH_NOT_CONFIGURED' });
+    if (!file || !file.buffer.length) return res.status(400).json({ message: copy.empty, code: 'VALIDATION_ERROR' });
+
+    const caption = String(fields.prompt || '').trim().slice(0, 1000);
+    const mime = String(file.mimeType || '').toLowerCase();
+    const ext = (String(file.filename || '').toLowerCase().split('.').pop() || '').trim();
+    const isImage = mime.startsWith('image/') || ['jpg', 'jpeg', 'png', 'webp', 'gif', 'heic', 'heif', 'bmp'].includes(ext);
+    const isVideo = mime.startsWith('video/') || ['mp4', 'mov', 'm4v', 'avi', 'webm', 'mkv', '3gp'].includes(ext);
+    if (isVideo) return res.status(415).json({ message: copy.video, code: 'ATTACH_VIDEO_UNSUPPORTED' });
+
+    let userContent;
+    let models;
+    let attachmentKind = 'document';
+
+    if (isImage) {
+      attachmentKind = 'image';
+      const imageMime = mime.startsWith('image/') ? mime : (ext === 'png' ? 'image/png' : 'image/jpeg');
+      userContent = [
+        { type: 'text', text: caption || copy.imagePrompt },
+        { type: 'image_url', image_url: { url: `data:${imageMime};base64,${file.buffer.toString('base64')}` } },
+      ];
+      models = liaVisionModels(provider);
+    } else {
+      let text = await liaExtractDocumentText(file.buffer, file.filename, file.mimeType);
+      text = String(text || '').replace(/\u0000/g, ' ').replace(/[ \t]+\n/g, '\n').trim();
+      if (!text) return res.status(422).json({ message: copy.unsupported, code: 'ATTACH_UNSUPPORTED' });
+      userContent = `${caption || copy.documentPrompt}\n\n--- ${file.filename} ---\n${text.slice(0, 20000)}`;
+      models = [provider.chatModel];
+    }
+
+    const [{ data: profile }, wallet] = await Promise.all([
+      supabase.from('users').select('full_name, city').eq('id', req.user.id).maybeSingle(),
+      liaGetWallet(req.user.id),
+    ]);
+    const system = `${liaBuildSystem(lang, profile, wallet)}\n${copy.rules}`;
+
+    let reply = null;
+    let lastStatus = 0;
+    for (const model of models) {
+      const controller = new AbortController();
+      const timer = setTimeout(() => controller.abort(), 45000);
+      try {
+        const response = await fetch(`${provider.base}/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${provider.key}` },
+          body: JSON.stringify({
+            model,
+            temperature: 0.2,
+            max_tokens: 700,
+            messages: [{ role: 'system', content: system }, { role: 'user', content: userContent }],
+          }),
+          signal: controller.signal,
+        });
+        if (!response.ok) {
+          lastStatus = response.status;
+          console.warn('LIA attach LLM error:', provider.name, model, response.status, (await response.text().catch(() => '')).slice(0, 200));
+          continue;
+        }
+        const data = await response.json();
+        const text = data?.choices?.[0]?.message?.content;
+        if (typeof text === 'string' && text.trim()) { reply = text.trim(); break; }
+      } finally {
+        clearTimeout(timer);
+      }
+    }
+    if (!reply) {
+      return res.status(502).json({ message: copy.readError, code: 'ATTACH_LLM_FAILED' });
+    }
+
+    if (!isLocalUserId(req.user.id)) {
+      try {
+        const { error } = await supabase.from('lia_conversations').insert({
+          user_id: req.user.id,
+          message: `[${attachmentKind === 'image' ? 'Imagen' : 'Documento'}] ${file.filename}${caption ? `: ${caption}` : ''}`,
+          reply,
+        });
+        if (error) console.warn('LIA attach history save failed:', error.message);
+      } catch (e) {
+        console.warn('LIA attach history save failed:', e?.message || e);
+      }
+    }
+
+    res.json({
+      reply,
+      action: 'attachment',
+      lang,
+      attachment: { name: file.filename, kind: attachmentKind, mime: file.mimeType, size: file.size },
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    if (e?.message === 'FILE_TOO_LARGE') {
+      const requestedLang = String(e.fields?.lang || '').toLowerCase();
+      const copy = LIA_ATTACH_COPY[LIA_LANGS.includes(requestedLang) ? requestedLang : 'es'];
+      return res.status(413).json({ message: copy.tooLarge, code: 'FILE_TOO_LARGE' });
+    }
+    console.error('LIA attach exception:', e);
+    res.status(500).json({ message: 'Error al analizar el archivo', code: 'ATTACH_ERROR' });
+  }
+};
+
+app.post('/lia/attach', auth, liaAttachHandler);
+app.post('/api/lia/attach', auth, liaAttachHandler);
 
 // ════════════════════════════════════════════════════════════════════
 // GRUPOS DE CHAT
