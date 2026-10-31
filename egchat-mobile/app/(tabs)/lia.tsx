@@ -272,6 +272,22 @@ const TypingDots = () => {
   );
 };
 
+// ── Texto con negritas (la IA responde con **...**) ───────────────
+const RichText = ({ text, style }: { text: string; style?: any }) => {
+  const parts = String(text).split(/(\*\*[^*\n]+\*\*)/g).filter(Boolean);
+  return (
+    <Text style={style}>
+      {parts.map((part, index) =>
+        part.startsWith('**') && part.endsWith('**') && part.length > 4 ? (
+          <Text key={index} style={{ fontWeight: '700' }}>{part.slice(2, -2)}</Text>
+        ) : (
+          <Text key={index}>{part}</Text>
+        )
+      )}
+    </Text>
+  );
+};
+
 // ── Panel de adjuntos ─────────────────────────────────────────────
 interface AttachPanelProps {
   visible: boolean;
@@ -834,9 +850,10 @@ export default function LiaScreen() {
                       </View>
                     )}
                     {!!content && (
-                      <Text style={[s.bubbleText, attachment ? { marginTop: 8 } : null, isUser ? s.textUser : { color: C.textPrimary }]}>
-                        {content}
-                      </Text>
+                      <RichText
+                        text={content}
+                        style={[s.bubbleText, attachment ? { marginTop: 8 } : null, isUser ? s.textUser : { color: C.textPrimary }]}
+                      />
                     )}
                     <View style={[s.metaRow, isUser && s.metaRowUser]}>
                       {!isUser && (
