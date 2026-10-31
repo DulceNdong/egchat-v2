@@ -1,10 +1,12 @@
 import React from 'react';
 import { Image, View } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { LIA_AVATAR_URI } from './liaAvatarData';
 
 /** LIA es una niña: su foto va dentro del anillo degradado de la marca. */
 export const LiaAvatar = ({ size = 36, speaking = false }: { size?: number; speaking?: boolean }) => {
   const ring = Math.max(2, Math.round(size * 0.06));
+  const inner = size - ring * 2;
   return (
     <View
       style={[
@@ -25,8 +27,8 @@ export const LiaAvatar = ({ size = 36, speaking = false }: { size?: number; spea
         style={{ flex: 1, borderRadius: size / 2, padding: ring }}
       >
         <Image
-          source={require('../../assets/lia-avatar.jpg')}
-          style={{ flex: 1, borderRadius: size / 2 }}
+          source={{ uri: LIA_AVATAR_URI }}
+          style={{ width: inner, height: inner, borderRadius: inner / 2 }}
           resizeMode="cover"
         />
       </LinearGradient>
