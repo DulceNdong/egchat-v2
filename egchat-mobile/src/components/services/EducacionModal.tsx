@@ -8,13 +8,16 @@ import {
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker } from './PublicModuleUI';
+import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; userBalance?: number; }
 
 type Screen = 'home' | 'detail' | 'pay' | 'success';
 
 const TYPE_LABEL: Record<School['type'], string> = {
-  publica: 'Pública', privada: 'Privada', profesional: 'Profesional',
+  get publica() { return tr('xtPublica'); },
+  get privada() { return tr('xtPrivada'); },
+  get profesional() { return tr('xtProfesional'); },
 };
 
 export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance = 100000 }) => {
@@ -51,8 +54,8 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
       <View style={s.bannerRow}>
         <View style={s.bannerIcon}><Text style={{ fontSize: 26 }}>🎓</Text></View>
         <View style={{ flex: 1 }}>
-          <Text style={s.bannerTitle}>Educación</Text>
-          <Text style={s.bannerSub}>Centros educativos · Guinea Ecuatorial</Text>
+          <Text style={s.bannerTitle}>{tr('xtEducacion')}</Text>
+          <Text style={s.bannerSub}>{tr('xtCentrosEducativosGuineaEcuatorial')}</Text>
         </View>
       </View>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.cityScroll} contentContainerStyle={s.cityRow}>
@@ -84,7 +87,7 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
         <View>
           <View style={s.sectionHead}>
             <Text style={s.sectionIcon}>🏫</Text>
-            <Text style={s.sectionTitle}>Centros Escolares</Text>
+            <Text style={s.sectionTitle}>{tr('xtCentrosEscolares')}</Text>
           </View>
           <FilterChips
             options={EDU_TYPE_FILTERS.map(f => ({ id: f.id, label: f.label }))}
@@ -126,7 +129,7 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
             <Text style={s.detailSub}>{selected.city} · {selected.level}</Text>
           </LinearGradient>
           <View style={s.infoCard}>
-            {([['Tipo', TYPE_LABEL[selected.type]], ['Modalidad', selected.modality], ['Plazas', `${selected.plazas}`], ['Teléfono', selected.phone]] as const).map(([l, v]) => (
+            {([[tr('kyType'), TYPE_LABEL[selected.type]], [tr('xtModalidad'), selected.modality], [tr('xtPlazas'), `${selected.plazas}`], [tr('phone'), selected.phone]] as const).map(([l, v]) => (
               <View key={l} style={s.infoRow}>
                 <Text style={s.infoLbl}>{l}</Text>
                 <Text style={s.infoVal}>{v}</Text>
@@ -134,9 +137,9 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
             ))}
           </View>
           <TouchableOpacity style={s.callBtn} onPress={() => Linking.openURL(`tel:${selected.phone}`)}>
-            <Text style={s.callBtnText}>📞 Llamar al centro</Text>
+            <Text style={s.callBtnText}>{tr('xtLlamarAlCentro')}</Text>
           </TouchableOpacity>
-          <PrimaryButton label="Pagar matrícula" onPress={() => setScreen('pay')} color="#6B5BD6" />
+          <PrimaryButton label={tr('xtPagarMatricula')} onPress={() => setScreen('pay')} color="#6B5BD6" />
         </View>
       )}
 
@@ -145,9 +148,9 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
           <LinearGradient colors={['#4C1D95', '#6B5BD6']} style={s.detailBanner}>
             <Text style={s.detailTitle}>Pago — {selected.name}</Text>
           </LinearGradient>
-          <FormField placeholder="Nombre del estudiante" value={form.student} onChangeText={v => setForm(p => ({ ...p, student: v }))} />
-          <FormField placeholder="Número de referencia / matrícula" value={form.ref} onChangeText={v => setForm(p => ({ ...p, ref: v }))} />
-          <FormField placeholder="Importe a pagar (XAF)" value={form.amount} onChangeText={v => setForm(p => ({ ...p, amount: v }))} keyboardType="numeric" />
+          <FormField placeholder={tr('xtNombreDelEstudiante')} value={form.student} onChangeText={v => setForm(p => ({ ...p, student: v }))} />
+          <FormField placeholder={tr('svcRefEnrollment')} value={form.ref} onChangeText={v => setForm(p => ({ ...p, ref: v }))} />
+          <FormField placeholder={tr('svcAmountToPayXaf')} value={form.amount} onChangeText={v => setForm(p => ({ ...p, amount: v }))} keyboardType="numeric" />
           <PayMethodPicker value={form.payMethod} onChange={v => setForm(p => ({ ...p, payMethod: v }))} accent="#6B5BD6" />
           <PrimaryButton
             label={`Pagar ${amount > 0 ? amount.toLocaleString() + ' XAF' : ''}`}
@@ -161,9 +164,9 @@ export const EducacionModal: React.FC<Props> = ({ visible, onClose, userBalance 
       {screen === 'success' && selected && (
         <View style={s.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>Pago registrado</Text>
+          <Text style={s.successTitle}>{tr('xtPagoRegistrado')}</Text>
           <Text style={s.successSub}>{selected.name} — {amount.toLocaleString()} XAF</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color="#6B5BD6" />
+          <PrimaryButton label={tr('close')} onPress={onClose} color="#6B5BD6" />
         </View>
       )}
     </FinancialModuleShell>

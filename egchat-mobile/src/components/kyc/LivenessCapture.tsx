@@ -3,11 +3,12 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated } from 'react-native';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import { encryptImage } from '../../services/kycEncryption';
+import { t as tr } from '../../translations';
 
 const INSTRUCTIONS = [
-  { key: 'turn',   label: '↩ Gira la cabeza a la derecha', duration: 3000 },
-  { key: 'smile',  label: '😊 Sonríe',                     duration: 2500 },
-  { key: 'blink',  label: '👁 Parpadea dos veces',          duration: 2000 },
+  { key: 'turn',   get label() { return tr('xtGiraLaCabezaALaDerecha'); }, duration: 3000 },
+  { key: 'smile',  get label() { return tr('xtSonrie'); },                     duration: 2500 },
+  { key: 'blink',  get label() { return tr('xtParpadeaDosVeces'); },          duration: 2000 },
 ];
 
 interface Props {
@@ -43,7 +44,7 @@ export function LivenessCapture({ attempts, maxAttempts = 3, onSuccess, onFailed
     setProc(true);
     try {
       const photo = await cameraRef.current.takePictureAsync({ quality: 0.85, skipProcessing: false });
-      if (!photo?.uri) throw new Error('Sin foto');
+      if (!photo?.uri) throw new Error(tr('xtSinFoto'));
       const { encryptedBase64 } = await encryptImage(photo.uri);
       setDone(true);
       onSuccess(encryptedBase64, photo.uri);
@@ -65,9 +66,9 @@ export function LivenessCapture({ attempts, maxAttempts = 3, onSuccess, onFailed
   if (!permission.granted) {
     return (
       <View style={st.permWrap}>
-        <Text style={st.permText}>Necesitamos la cámara frontal para la verificación biométrica.</Text>
+        <Text style={st.permText}>{tr('kycFrontCamBody')}</Text>
         <TouchableOpacity style={st.permBtn} onPress={requestPermission}>
-          <Text style={st.permBtnText}>Permitir cámara</Text>
+          <Text style={st.permBtnText}>{tr('kyAllowCamera')}</Text>
         </TouchableOpacity>
       </View>
     );

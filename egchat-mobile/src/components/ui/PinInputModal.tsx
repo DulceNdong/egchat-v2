@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { MIcon } from './MIcon';
+import { t as tr } from '../../translations';
 
 interface PinInputModalProps {
   visible: boolean;
@@ -20,8 +21,8 @@ export const PinInputModal: React.FC<PinInputModalProps> = ({
   visible,
   onClose,
   onSuccess,
-  title = '🔒 Código de seguridad',
-  subtitle = 'Introduce tu PIN de 6 dígitos para confirmar la operación',
+  title = tr('xtCodigoDeSeguridad'),
+  subtitle = tr('pinSubtitle6'),
   loading = false,
   error,
 }) => {

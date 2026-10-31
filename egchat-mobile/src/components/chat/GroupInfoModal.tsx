@@ -16,6 +16,7 @@ import { toast } from '../Toast';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Member {
   user_id: string;
@@ -34,14 +35,15 @@ interface Props {
   onLeft: () => void; // se llamó cuando el usuario sale del grupo
 }
 
-function getMemberName(m: Member) {
-  return m.full_name || m.users?.full_name || m.phone || 'Usuario';
+function getMemberName(m: Member, t: (k: string) => string) {
+  return m.full_name || m.users?.full_name || m.phone || t('chtUser');
 }
 function getMemberAvatar(m: Member) {
   return m.avatar_url || m.users?.avatar_url || undefined;
 }
 
 export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }: Props) {
+  const { t } = useTranslation();
   const [members, setMembers] = useState<Member[]>([]);
   const [loading, setLoading] = useState(false);
   const [groupName, setGroupName] = useState('');
@@ -99,18 +101,18 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
         body: JSON.stringify({ broadcast_mode: next }),
       });
       setBroadcastMode(next);
-      toast.info(next ? '📢 Modo broadcast activado' : 'Modo broadcast desactivado');
+      toast.info(next ? t('chtBroadcastOn') : t('chtBroadcastOff'));
     } catch {
-      toast.error('No se pudo cambiar el modo');
+      toast.error(t('chtBroadcastToggleFailed'));
     } finally {
       setSavingBroadcast(false);
     }
-  }, [isAdmin, broadcastMode, chat]);
+  }, [isAdmin, broadcastMode, chat, t]);
 
   // C4 — generar o copiar enlace de invitación
   const handleInviteLink = useCallback(async () => {
     if (inviteLink) {
-      Share.share({ message: `Únete al grupo "${chat?.name || 'Grupo'}" en EGChat:\n${inviteLink}` });
+      Share.share({ message: `${t('chtInvitePrefix')} "${chat?.name || t('chtGroup')}" ${t('chtInviteSuffix')}\n${inviteLink}` });
       return;
     }
     setLoadingLink(true);
@@ -124,16 +126,16 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
       const data = await res.json();
       const link = data.link || data.invite_link || `https://egchat.app/join/${chat.id}`;
       setInviteLink(link);
-      Share.share({ message: `Únete al grupo "${chat?.name || 'Grupo'}" en EGChat:\n${link}` });
+      Share.share({ message: `${t('chtInvitePrefix')} "${chat?.name || t('chtGroup')}" ${t('chtInviteSuffix')}\n${link}` });
     } catch {
       // Fallback: link estático con el chat ID
       const fallback = `https://egchat.app/join/${chat.id}`;
       setInviteLink(fallback);
-      Share.share({ message: `Únete al grupo "${chat?.name || 'Grupo'}" en EGChat:\n${fallback}` });
+      Share.share({ message: `${t('chtInvitePrefix')} "${chat?.name || t('chtGroup')}" ${t('chtInviteSuffix')}\n${fallback}` });
     } finally {
       setLoadingLink(false);
     }
-  }, [inviteLink, chat]);
+  }, [inviteLink, chat, t]);
 
   const handleSaveName = useCallback(async () => {
     const name = groupName.trim();
@@ -150,19 +152,19 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
       // Nombre del grupo actualizado silenciosamente
       setEditingName(false);
     } catch {
-      toast.error('No se pudo actualizar el nombre');
+      toast.error(t('chtNameUpdateFailed'));
     } finally {
       setSavingName(false);
     }
-  }, [groupName, chat]);
+  }, [groupName, chat, t]);
 
   const handleRemoveMember = useCallback((member: Member) => {
-    if (!isAdmin) { toast.info('Solo admins pueden eliminar miembros'); return; }
+    if (!isAdmin) { toast.info(t('chtOnlyAdminsRemove')); return; }
     if (member.user_id === currentUserId) return;
-    Alert.alert('Eliminar miembro', `¿Quitar a ${getMemberName(member)} del grupo?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('chtRemoveMemberTitle'), `${t('chtRemoveMemberQ1')} ${getMemberName(member, t)} ${t('chtRemoveMemberQ2')}`, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Quitar', style: 'destructive',
+        text: t('remove'), style: 'destructive',
         onPress: async () => {
           try {
             const BASE = getApiBase();
@@ -172,21 +174,21 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               headers: { Authorization: `Bearer ${token}` },
             });
             setMembers(prev => prev.filter(m => m.user_id !== member.user_id));
-            toast.success('Miembro eliminado');
+            toast.success(t('chtMemberRemoved'));
           } catch {
-            toast.error('No se pudo eliminar el miembro');
+            toast.error(t('chtMemberRemoveFailed'));
           }
         },
       },
     ]);
-  }, [isAdmin, currentUserId, chat]);
+  }, [isAdmin, currentUserId, chat, t]);
 
   const handlePromoteAdmin = useCallback((member: Member) => {
     if (!isAdmin) return;
-    Alert.alert('Hacer admin', `¿Hacer admin a ${getMemberName(member)}?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('chtMakeAdmin'), `${t('chtPromoteAdminQ')} ${getMemberName(member, t)}?`, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Hacer admin',
+        text: t('chtMakeAdmin'),
         onPress: async () => {
           try {
             const BASE = getApiBase();
@@ -197,20 +199,20 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               body: JSON.stringify({ role: 'admin' }),
             });
             setMembers(prev => prev.map(m => m.user_id === member.user_id ? { ...m, role: 'admin' } : m));
-            toast.success('Admin asignado');
+            toast.success(t('chtAdminAssigned'));
           } catch {
-            toast.error('No se pudo cambiar el rol');
+            toast.error(t('chtRoleChangeFailed'));
           }
         },
       },
     ]);
-  }, [isAdmin, chat]);
+  }, [isAdmin, chat, t]);
 
   const handleLeaveGroup = useCallback(() => {
-    Alert.alert('Salir del grupo', '¿Seguro que quieres salir?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('chtLeaveGroup'), t('chtLeaveConfirm'), [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Salir', style: 'destructive',
+        text: t('chtLeaveAction'), style: 'destructive',
         onPress: async () => {
           try {
             const BASE = getApiBase();
@@ -219,15 +221,15 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               method: 'POST',
               headers: { Authorization: `Bearer ${token}` },
             });
-            toast.info('Saliste del grupo');
+            toast.info(t('chtLeftGroup'));
             onLeft();
           } catch {
-            toast.error('No se pudo salir del grupo');
+            toast.error(t('chtLeaveFailed'));
           }
         },
       },
     ]);
-  }, [chat, onLeft]);
+  }, [chat, onLeft, t]);
 
   const handleAddMembers = useCallback(async () => {
     setShowAddMember(true);
@@ -238,9 +240,9 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
         (c: any) => !memberIds.has(c.contact_user_id || c.user_id)
       ));
     } catch {
-      toast.error('No se pudieron cargar contactos');
+      toast.error(t('chtLoadContactsFailed'));
     }
-  }, [members]);
+  }, [members, t]);
 
   const handleAddContact = useCallback(async (contact: any) => {
     const userId = contact.contact_user_id || contact.user_id || contact.id;
@@ -252,13 +254,13 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
         body: JSON.stringify({ user_id: userId }),
       });
-      toast.success('Miembro añadido');
+      toast.success(t('chtMemberAdded'));
       setShowAddMember(false);
       loadMembers();
     } catch {
-      toast.error('No se pudo añadir el miembro');
+      toast.error(t('chtMemberAddFailed'));
     }
-  }, [chat, loadMembers]);
+  }, [chat, loadMembers, t]);
 
   const filteredContacts = contacts.filter(c => {
     if (!addSearch) return true;
@@ -277,13 +279,13 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
             </Svg>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>Info del grupo</Text>
+          <Text style={s.headerTitle}>{t('chtGroupInfoTitle')}</Text>
         </LinearGradient>
 
         <ScrollView contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}>
           {/* Avatar + nombre */}
           <View style={s.groupTop}>
-            <EGAvatar src={chat?.avatar_url} name={chat?.name || 'Grupo'} size={80} />
+            <EGAvatar src={chat?.avatar_url} name={chat?.name || t('chtGroup')} size={80} />
             {editingName ? (
               <View style={s.editNameRow}>
                 <TextInput
@@ -304,7 +306,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               </View>
             ) : (
               <TouchableOpacity style={s.nameRow} onPress={() => isAdmin && setEditingName(true)}>
-                <Text style={[s.groupName, { color: C.textPrimary }]}>{chat?.name || 'Grupo'}</Text>
+                <Text style={[s.groupName, { color: C.textPrimary }]}>{chat?.name || t('chtGroup')}</Text>
                 {isAdmin && (
                   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
                     <Path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
@@ -313,7 +315,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                 )}
               </TouchableOpacity>
             )}
-            <Text style={[s.memberCountText, { color: C.textTertiary }]}>{members.length} participantes</Text>
+            <Text style={[s.memberCountText, { color: C.textTertiary }]}>{members.length} {members.length !== 1 ? t('chtParticipantPlural') : t('chtParticipantSingular')}</Text>
           </View>
 
           {/* C3 — Modo broadcast (solo admins escriben) */}
@@ -322,8 +324,8 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>📢</Text>
                 <View>
-                  <Text style={[s.settingTitle, { color: C.textPrimary }]}>Modo broadcast</Text>
-                  <Text style={[s.settingDesc, { color: C.textTertiary }]}>Solo admins pueden escribir</Text>
+                  <Text style={[s.settingTitle, { color: C.textPrimary }]}>{t('chtBroadcastModeTitle')}</Text>
+                  <Text style={[s.settingDesc, { color: C.textTertiary }]}>{t('chtBroadcastModeDesc')}</Text>
                 </View>
               </View>
               <TouchableOpacity
@@ -338,7 +340,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
           )}
           {!isAdmin && broadcastMode && (
             <View style={s.broadcastBanner}>
-              <Text style={s.broadcastBannerText}>📢 Solo los admins pueden enviar mensajes</Text>
+              <Text style={s.broadcastBannerText}>{t('chtBroadcastBanner')}</Text>
             </View>
           )}
 
@@ -352,9 +354,9 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
               <View style={s.settingLeft}>
                 <Text style={s.settingIcon}>🔗</Text>
                 <View>
-                  <Text style={[s.settingTitle, { color: C.textPrimary }]}>Enlace de invitación</Text>
+                  <Text style={[s.settingTitle, { color: C.textPrimary }]}>{t('chtInviteLinkTitle')}</Text>
                   <Text style={[s.settingDesc, { color: C.textTertiary }]}>
-                    {loadingLink ? 'Generando...' : inviteLink ? 'Toca para compartir' : 'Generar y compartir'}
+                    {loadingLink ? t('chtGenerating') : inviteLink ? t('chtTapToShare') : t('chtGenerateShare')}
                   </Text>
                 </View>
               </View>
@@ -376,7 +378,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                   <Line x1="22" y1="11" x2="16" y2="11"/>
                 </Svg>
               </View>
-              <Text style={[s.actionLabel, { color: C.textPrimary }]}>Añadir</Text>
+              <Text style={[s.actionLabel, { color: C.textPrimary }]}>{t('add')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.actionBtn} onPress={handleLeaveGroup}>
               <View style={[s.actionIcon, { backgroundColor: '#ef444420' }]}>
@@ -386,12 +388,12 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                   <Line x1="21" y1="12" x2="9" y2="12"/>
                 </Svg>
               </View>
-              <Text style={[s.actionLabel, { color: '#ef4444' }]}>Salir</Text>
+              <Text style={[s.actionLabel, { color: '#ef4444' }]}>{t('chtLeaveAction')}</Text>
             </TouchableOpacity>
           </View>
 
           {/* Lista de miembros */}
-          <Text style={[s.sectionTitle, { color: C.textTertiary }]}>PARTICIPANTES</Text>
+          <Text style={[s.sectionTitle, { color: C.textTertiary }]}>{t('chtParticipantsSection')}</Text>
           {loading
             ? <ActivityIndicator style={{ marginTop: 20 }} color={Colors.accent} />
             : members.map(member => (
@@ -400,21 +402,21 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                 style={[s.memberRow, { borderBottomColor: C.borderLight }]}
                 onLongPress={() => {
                   if (!isAdmin || member.user_id === currentUserId) return;
-                  Alert.alert(getMemberName(member), 'Opciones', [
-                    { text: 'Hacer admin', onPress: () => handlePromoteAdmin(member) },
-                    { text: 'Quitar del grupo', style: 'destructive', onPress: () => handleRemoveMember(member) },
-                    { text: 'Cancelar', style: 'cancel' },
+                  Alert.alert(getMemberName(member, t), t('chtOptionsTitle'), [
+                    { text: t('chtMakeAdmin'), onPress: () => handlePromoteAdmin(member) },
+                    { text: t('chtRemoveFromGroup'), style: 'destructive', onPress: () => handleRemoveMember(member) },
+                    { text: t('cancel'), style: 'cancel' },
                   ]);
                 }}
                 activeOpacity={0.7}
               >
-                <EGAvatar src={getMemberAvatar(member)} name={getMemberName(member)} size={44} />
+                <EGAvatar src={getMemberAvatar(member)} name={getMemberName(member, t)} size={44} />
                 <View style={s.memberInfo}>
                   <Text style={[s.memberName, { color: C.textPrimary }]}>
-                    {getMemberName(member)}{member.user_id === currentUserId ? ' (tú)' : ''}
+                    {getMemberName(member, t)}{member.user_id === currentUserId ? t('chtYouSuffix') : ''}
                   </Text>
                   {member.role === 'admin' && (
-                    <Text style={s.adminBadge}>Admin</Text>
+                    <Text style={s.adminBadge}>{t('chtAdminBadge')}</Text>
                   )}
                 </View>
               </TouchableOpacity>
@@ -432,12 +434,12 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                 <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
               </Svg>
             </TouchableOpacity>
-            <Text style={s.headerTitle}>Añadir participantes</Text>
+            <Text style={s.headerTitle}>{t('chtAddParticipants')}</Text>
           </LinearGradient>
           <View style={[s.searchWrap, { backgroundColor: C.bgSecondary }]}>
             <TextInput
               style={[s.searchInput, { color: C.textPrimary }]}
-              placeholder="Buscar..."
+              placeholder={t('chtSearchDots')}
               placeholderTextColor={C.textTertiary}
               value={addSearch}
               onChangeText={setAddSearch}
@@ -448,7 +450,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
             keyExtractor={c => c.contact_user_id || c.user_id || c.id}
             contentContainerStyle={{ paddingBottom: insets.bottom + 20 }}
             renderItem={({ item }) => {
-              const name = item.full_name || item.users?.full_name || item.phone || 'Usuario';
+              const name = item.full_name || item.users?.full_name || item.phone || t('chtUser');
               const avatar = item.avatar_url || item.users?.avatar_url;
               return (
                 <TouchableOpacity style={[s.memberRow, { borderBottomColor: C.borderLight }]} onPress={() => handleAddContact(item)}>
@@ -457,7 +459,7 @@ export function GroupInfoModal({ visible, chat, currentUserId, onClose, onLeft }
                 </TouchableOpacity>
               );
             }}
-            ListEmptyComponent={<Text style={[s.empty, { color: C.textTertiary }]}>No hay contactos para añadir</Text>}
+            ListEmptyComponent={<Text style={[s.empty, { color: C.textTertiary }]}>{t('chtNoContactsToAdd')}</Text>}
           />
         </View>
       </Modal>

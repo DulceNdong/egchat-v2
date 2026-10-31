@@ -3,11 +3,13 @@ import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native'
 import { LinearGradient } from 'expo-linear-gradient';
 import { GAS_COMPANIES, GAS_REF_PRICES, GasCompany } from '../../data/serviciosDiarios';
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 type GasScreen = 'companies' | 'stations';
 interface Props { visible: boolean; onClose: () => void; }
 
 export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [view, setView] = useState<GasScreen>('companies');
   const [company, setCompany] = useState<GasCompany | null>(null);
   const [city, setCity] = useState('Malabo');
@@ -21,7 +23,7 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
   const fixedTop = view === 'stations' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
       <FilterChips
-        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c }))}
+        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c === 'Todos' ? t('svcAll') : c }))}
         value={city} onChange={setCity} activeColor="#C47D2A"
       />
     </View>
@@ -30,8 +32,8 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
   return (
     <FinancialModuleShell
       visible={visible}
-      title="Gasolinera"
-      subtitle="Compañías en Guinea Ecuatorial · Precios actualizados"
+      title={t('gasStation')}
+      subtitle={t('svcGasSubtitle')}
       onBack={() => view === 'companies' ? onClose() : setView('companies')}
       onClose={onClose}
       centerTitle
@@ -42,11 +44,11 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
       {view === 'companies' && (
         <View>
           <View style={st.refBox}>
-            <Text style={st.refTitle}>Precios de referencia (XAF/L)</Text>
+            <Text style={st.refTitle}>{t('svcRefPricesTitle')}</Text>
             <View style={st.refGrid}>
-              <View style={st.refCol}><Text style={[st.refLbl, { color: '#C47D2A' }]}>Gasolina</Text><Text style={[st.refVal, { color: '#C47D2A' }]}>{GAS_REF_PRICES.g95}</Text></View>
-              <View style={st.refCol}><Text style={[st.refLbl, { color: '#576B95' }]}>Diesel</Text><Text style={[st.refVal, { color: '#576B95' }]}>{GAS_REF_PRICES.diesel}</Text></View>
-              <View style={st.refCol}><Text style={[st.refLbl, { color: '#16A34A' }]}>Gas</Text><Text style={[st.refVal, { color: '#16A34A' }]}>{GAS_REF_PRICES.glp}</Text></View>
+              <View style={st.refCol}><Text style={[st.refLbl, { color: '#C47D2A' }]}>{t('svcGasoline')}</Text><Text style={[st.refVal, { color: '#C47D2A' }]}>{GAS_REF_PRICES.g95}</Text></View>
+              <View style={st.refCol}><Text style={[st.refLbl, { color: '#576B95' }]}>{t('svcDiesel')}</Text><Text style={[st.refVal, { color: '#576B95' }]}>{GAS_REF_PRICES.diesel}</Text></View>
+              <View style={st.refCol}><Text style={[st.refLbl, { color: '#16A34A' }]}>{t('svcGas')}</Text><Text style={[st.refVal, { color: '#16A34A' }]}>{GAS_REF_PRICES.glp}</Text></View>
             </View>
           </View>
           {GAS_COMPANIES.map(c => (
@@ -56,7 +58,7 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={st.companyName}>{c.nombre}</Text>
-                <Text style={st.companySub}>{c.estaciones.length} estaciones · Malabo, Bata y más</Text>
+                <Text style={st.companySub}>{c.estaciones.length} {t('svcStationsWord')} · {t('svcCitiesAndMore')}</Text>
               </View>
               <Text style={st.chevron}>›</Text>
             </TouchableOpacity>
@@ -68,7 +70,7 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
         <View>
           <LinearGradient colors={[company.color, '#F59E0B']} style={st.banner}>
             <Text style={st.bannerTitle}>{company.nombre}</Text>
-            <Text style={st.bannerSub}>{stations.length} estaciones</Text>
+            <Text style={st.bannerSub}>{stations.length} {t('svcStationsWord')}</Text>
           </LinearGradient>
           {stations.map((s, i) => (
             <View key={i} style={st.stationCard}>
@@ -76,11 +78,11 @@ export const GasolinerasModal: React.FC<Props> = ({ visible, onClose }) => {
               <Text style={st.stationMeta}>📍 {s.barrio}, {s.ciudad} · 🕐 {s.horario}</Text>
               <View style={st.priceRow}>
                 <Text style={st.fuelPrice}>G95: {s.g95}</Text>
-                <Text style={st.fuelPrice}>Diesel: {s.diesel}</Text>
+                <Text style={st.fuelPrice}>{t('svcDiesel')}: {s.diesel}</Text>
                 <Text style={st.fuelPrice}>GLP: {s.glp}</Text>
               </View>
               <TouchableOpacity style={st.callBtn} onPress={() => Linking.openURL(`tel:${s.tel}`)}>
-                <Text style={st.callBtnText}>📞 Llamar</Text>
+                <Text style={st.callBtnText}>{t('svcCallPhone')}</Text>
               </TouchableOpacity>
             </View>
           ))}

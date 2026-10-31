@@ -18,6 +18,7 @@ import { toast } from '../src/components/Toast';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { Colors } from '../src/theme';
 import { DarkColors } from '../src/theme/darkMode';
+import { t as tr } from '../src/translations';
 
 const SHIPS = [
   {
@@ -27,7 +28,7 @@ const SHIPS = [
     capacity: 320,
     icon: '🚢',
     color: '#0EA5E9',
-    amenities: ['Cafetería', 'Asientos reclinables', 'Wi-Fi', 'Climatización'],
+    get amenities() { return [tr('xtCafeteria'), tr('xtAsientosReclinables'), 'Wi-Fi', tr('xtClimatizacion')]; },
   },
   {
     id: 'dona_candida',
@@ -36,7 +37,7 @@ const SHIPS = [
     capacity: 280,
     icon: '⛴️',
     color: '#10B981',
-    amenities: ['Restaurante', 'Cabinas privadas', 'Terraza', 'TV'],
+    get amenities() { return [tr('restaurant'), tr('xtCabinasPrivadas'), tr('xtTerraza'), 'TV']; },
   },
 ];
 
@@ -44,29 +45,29 @@ const ROUTES = [
   {
     id: 'malabo_bata',
     from: 'Malabo', to: 'Bata',
-    duration: '8-10 horas',
+    get duration() { return tr('xt810Horas'); },
     distance: '320 km',
     price: { economy: 25000, business: 45000 },
     departures: ['06:00', '18:00'],
-    days: 'Lun, Mié, Vie, Dom',
+    get days() { return tr('xtLunMieVieDom'); },
   },
   {
     id: 'malabo_annobon',
     from: 'Malabo', to: 'Annobón',
-    duration: '18-20 horas',
+    get duration() { return tr('xt1820Horas'); },
     distance: '700 km',
     price: { economy: 55000, business: 90000 },
     departures: ['08:00'],
-    days: 'Sábado',
+    get days() { return tr('xtSabado'); },
   },
   {
     id: 'malabo_douala',
-    from: 'Malabo', to: 'Douala (Camerún)',
-    duration: '12-14 horas',
+    from: 'Malabo', get to() { return tr('xtDoualaCamerun'); },
+    get duration() { return tr('xt1214Horas'); },
     distance: '450 km',
     price: { economy: 35000, business: 60000 },
     departures: ['07:00', '19:00'],
-    days: 'Mar, Jue, Sáb',
+    get days() { return tr('xtMarJueSab'); },
   },
 ];
 
@@ -98,14 +99,14 @@ export default function BarcosScreen() {
 
   const confirmPurchase = async () => {
     if (!passengerName.trim() || !passengerDNI.trim()) {
-      Alert.alert('Datos incompletos', 'Introduce el nombre y DNI del pasajero principal');
+      Alert.alert('Datos incompletos', tr('xtIntroduceElNombreYDNIDelPasajeroPrincipal'));
       return;
     }
     setLoading(true);
     try {
       const balance = await walletAPI.getBalance();
       if ((balance.balance || 0) < totalPrice) {
-        Alert.alert('Saldo insuficiente', `Necesitas ${totalPrice.toLocaleString()} XAF. Tu saldo: ${(balance.balance||0).toLocaleString()} XAF`);
+        Alert.alert(tr('svcInsufficientBalance'), `Necesitas ${totalPrice.toLocaleString()} XAF. Tu saldo: ${(balance.balance||0).toLocaleString()} XAF`);
         setLoading(false);
         return;
       }
@@ -113,9 +114,9 @@ export default function BarcosScreen() {
       const ref = `BRC-${Date.now().toString(36).toUpperCase()}`;
       setBookingRef(ref);
       setStep('success');
-      toast.success('¡Billete confirmado!');
+      toast.success(tr('xtBilleteConfirmado'));
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'No se pudo procesar el pago');
+      Alert.alert(tr('error'), e?.message || 'No se pudo procesar el pago');
     }
     setLoading(false);
   };
@@ -126,7 +127,7 @@ export default function BarcosScreen() {
       <LinearGradient colors={['#0ea5e9', '#10b981']} style={{ flex: 1 }}>
         <SafeAreaView style={st.successContainer}>
           <Text style={st.successIcon}>🎉</Text>
-          <Text style={st.successTitle}>¡Billete confirmado!</Text>
+          <Text style={st.successTitle}>{tr('xtBilleteConfirmado')}</Text>
           <Text style={st.successRef}>Ref: {bookingRef}</Text>
           <View style={st.successCard}>
             <Text style={st.successLine}>🚢 {ship?.name}</Text>
@@ -138,9 +139,9 @@ export default function BarcosScreen() {
               Total: {totalPrice.toLocaleString()} XAF
             </Text>
           </View>
-          <Text style={st.successHint}>Presenta este código en el puerto. Llega 1 hora antes de la salida.</Text>
+          <Text style={st.successHint}>{tr('brcPortHint')}</Text>
           <TouchableOpacity style={st.successBtn} onPress={() => router.back()}>
-            <Text style={st.successBtnText}>Volver al inicio</Text>
+            <Text style={st.successBtnText}>{tr('backHome')}</Text>
           </TouchableOpacity>
         </SafeAreaView>
       </LinearGradient>
@@ -155,7 +156,7 @@ export default function BarcosScreen() {
           <Text style={[st.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
         <View>
-          <Text style={[st.headerTitle, { color: C.textPrimary }]}>⛴️ Billetes de Barco</Text>
+          <Text style={[st.headerTitle, { color: C.textPrimary }]}>{tr('xtBilletesDeBarco')}</Text>
           <Text style={[st.headerSub, { color: C.textTertiary }]}>
             {step === 'route' ? 'Elige tu destino' : step === 'ship' ? 'Elige el barco' : step === 'class' ? 'Clase y salida' : step === 'passengers' ? 'Pasajeros' : 'Confirmar reserva'}
           </Text>
@@ -231,7 +232,7 @@ export default function BarcosScreen() {
                 </View>
               </TouchableOpacity>
             ))}
-            <Text style={[st.sectionLabel, { color: C.textSecondary, marginTop: 16 }]}>HORA DE SALIDA</Text>
+            <Text style={[st.sectionLabel, { color: C.textSecondary, marginTop: 16 }]}>{tr('xtHORADESALIDA')}</Text>
             <View style={st.departures}>
               {route.departures.map(d => (
                 <TouchableOpacity key={d} style={[st.departureChip, departure === d && st.departureChipActive]}
@@ -251,7 +252,7 @@ export default function BarcosScreen() {
         {/* PASO 4 — Pasajeros */}
         {step === 'passengers' && (
           <>
-            <Text style={[st.sectionLabel, { color: C.textSecondary }]}>NÚMERO DE PASAJEROS</Text>
+            <Text style={[st.sectionLabel, { color: C.textSecondary }]}>{tr('xtNUMERODEPASAJEROS')}</Text>
             <View style={[st.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
               <View style={st.counterRow}>
                 <TouchableOpacity style={st.counterBtn} onPress={() => setPassengers(p => Math.max(1, p - 1))}>
@@ -262,28 +263,28 @@ export default function BarcosScreen() {
                   <Text style={st.counterBtnText}>+</Text>
                 </TouchableOpacity>
               </View>
-              <Text style={[st.counterNote, { color: C.textTertiary }]}>Máximo 9 pasajeros por reserva</Text>
+              <Text style={[st.counterNote, { color: C.textTertiary }]}>{tr('brcMaxPax')}</Text>
             </View>
 
-            <Text style={[st.sectionLabel, { color: C.textSecondary, marginTop: 16 }]}>DATOS DEL PASAJERO PRINCIPAL</Text>
+            <Text style={[st.sectionLabel, { color: C.textSecondary, marginTop: 16 }]}>{tr('xtDATOSDELPASAJEROPRINCIPAL')}</Text>
             <View style={[st.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
               <TextInput style={[st.input, { color: C.textPrimary, borderColor: C.borderLight }]}
                 value={passengerName} onChangeText={setPassengerName}
-                placeholder="Nombre completo" placeholderTextColor={C.textTertiary} />
+                placeholder={tr('name')} placeholderTextColor={C.textTertiary} />
               <TextInput style={[st.input, { color: C.textPrimary, borderColor: C.borderLight, marginTop: 8 }]}
                 value={passengerDNI} onChangeText={setPassengerDNI}
                 placeholder="DNI / Pasaporte" placeholderTextColor={C.textTertiary} />
             </View>
 
             <View style={[st.totalBox, { backgroundColor: '#e0f2fe' }]}>
-              <Text style={st.totalLabel}>Total a pagar</Text>
+              <Text style={st.totalLabel}>{tr('xtTotalAPagar')}</Text>
               <Text style={st.totalAmount}>{totalPrice.toLocaleString()} XAF</Text>
               <Text style={st.totalDetail}>{passengers} billete{passengers > 1 ? 's' : ''} × {route?.price[ticketClass].toLocaleString()} XAF</Text>
             </View>
 
             <TouchableOpacity style={st.nextBtn} onPress={() => setStep('confirm')}>
               <LinearGradient colors={['#00C8A0','#00B4E6']} style={st.nextBtnGrad} start={{x:0,y:0}} end={{x:1,y:0}}>
-                <Text style={st.nextBtnText}>Revisar reserva</Text>
+                <Text style={st.nextBtnText}>{tr('xtRevisarReserva')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </>
@@ -293,13 +294,13 @@ export default function BarcosScreen() {
         {step === 'confirm' && route && ship && (
           <>
             <View style={[st.summaryCard, { backgroundColor: C.bgSecondary }]}>
-              <Text style={[st.summaryTitle, { color: C.textPrimary }]}>Resumen de la reserva</Text>
+              <Text style={[st.summaryTitle, { color: C.textPrimary }]}>{tr('xtResumenDeLaReserva')}</Text>
               {[
-                ['🚢 Barco', ship.name],
-                ['🏢 Compañía', ship.company],
+                [tr('xtBarco'), ship.name],
+                [tr('xtCompania'), ship.company],
                 ['📍 Ruta', `${route.from} → ${route.to}`],
                 ['⏰ Salida', departure],
-                ['🗓️ Días', route.days],
+                [tr('xtDias'), route.days],
                 ['💺 Clase', ticketClass === 'economy' ? 'Económica' : 'Business'],
                 ['👥 Pasajeros', String(passengers)],
                 ['👤 Pasajero', passengerName],
@@ -311,7 +312,7 @@ export default function BarcosScreen() {
                 </View>
               ))}
               <View style={[st.summaryRow, { borderTopWidth: 1, borderTopColor: C.borderLight, marginTop: 8, paddingTop: 8 }]}>
-                <Text style={[st.summaryKey, { color: C.textSecondary, fontWeight: '700' }]}>💰 Total</Text>
+                <Text style={[st.summaryKey, { color: C.textSecondary, fontWeight: '700' }]}>{tr('xtTotal')}</Text>
                 <Text style={[st.summaryVal, { color: '#00b4e6', fontWeight: '800', fontSize: 18 }]}>{totalPrice.toLocaleString()} XAF</Text>
               </View>
             </View>

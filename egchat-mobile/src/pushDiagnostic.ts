@@ -7,6 +7,7 @@ import Constants from 'expo-constants';
 import { Platform, Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getApiBase, getToken } from './api';
+import { t as tr } from './translations';
 
 export async function runPushDiagnostic(): Promise<string> {
   const lines: string[] = [];
@@ -19,9 +20,9 @@ export async function runPushDiagnostic(): Promise<string> {
   lines.push(`🔔 Permisos: ${status}`);
 
   if (status !== 'granted') {
-    lines.push('❌ PROBLEMA: Permisos denegados. Ve a Ajustes > Apps > EGCHAT > Notificaciones');
+    lines.push(tr('xtPROBLEMAPermisosDenegadosVeAAjustesAppsEGCHATNotif'));
     const result = lines.join('\n');
-    Alert.alert('Diagnóstico Push', result);
+    Alert.alert(tr('xtDiagnosticoPush2'), result);
     return result;
   }
 
@@ -43,7 +44,7 @@ export async function runPushDiagnostic(): Promise<string> {
     // 4. Verificar si está registrado en el servidor
     const authToken = await getToken();
     if (!authToken) {
-      lines.push('⚠️ No hay sesión activa — token no enviado al servidor');
+      lines.push(tr('xtNoHaySesionActivaTokenNoEnviadoAlServidor'));
     } else {
       try {
         const res = await fetch(`${getApiBase()}/api/push/register-expo-token`, {
@@ -63,10 +64,10 @@ export async function runPushDiagnostic(): Promise<string> {
   } catch (e: any) {
     lines.push(`❌ Error obteniendo token: ${e.message}`);
     if (e.message?.includes('projectId')) {
-      lines.push('👉 Solución: Corre "npx eas init" en egchat-mobile/ y actualiza app.json');
+      lines.push(tr('xtSolucionCorreNpxEasInitEnEgchatMobileYActualizaApp'));
     }
     if (e.message?.includes('google-services')) {
-      lines.push('👉 Solución: Descarga google-services.json de Firebase Console');
+      lines.push(tr('xtSolucionDescargaGoogleServicesJsonDeFirebaseConsol'));
     }
   }
 
@@ -79,8 +80,38 @@ export async function runPushDiagnostic(): Promise<string> {
     lines.push(`📞 Canal llamadas: ${hasCallChannel ? '✅' : '❌ falta egchat-calls-v2'}`);
   }
 
+  // 6. Verificar el token VoIP (PushKit) — sin él, iOS solo muestra un banner
+  //    y la ventana de llamada entrante no aparece con el teléfono bloqueado.
+  if (Platform.OS === 'ios') {
+    try {
+      const { PushKit } = await import('./native/PushKit');
+      const voipToken = await PushKit.getCurrentVoIPToken();
+      if (!voipToken) {
+        lines.push(tr('xtTokenVoIPNoGeneradoPushKitNoRegistraEnEsteIPhone'));
+      } else {
+        lines.push(`📞 Token VoIP: ✅ …${voipToken.slice(-8)}`);
+        const authToken = await getToken();
+        if (authToken) {
+          try {
+            const res = await fetch(`${getApiBase()}/api/push/register-voip-token`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${authToken}` },
+              body: JSON.stringify({ voipToken }),
+            });
+            lines.push(`🌐 Servidor (VoIP): ${res.ok ? '✅ registrado' : `❌ ${res.status}`}`);
+          } catch (e: any) {
+            lines.push(`🌐 Servidor (VoIP): ❌ ${e.message}`);
+          }
+        }
+      }
+    } catch (e: any) {
+      lines.push(`📞 Token VoIP: ❌ ${e?.message || tr('xtModuloNoDisponible')}`);
+    }
+  }
+
+
   const result = lines.join('\n');
-  Alert.alert('Diagnóstico Push', result, [{ text: 'OK' }]);
+  Alert.alert(tr('xtDiagnosticoPush2'), result, [{ text: 'OK' }]);
   console.log('=== PUSH DIAGNOSTIC ===\n' + result);
   return result;
 }

@@ -20,6 +20,7 @@ import type {
   PerfilFinancieroNegocio,
   HistorialTxNegocio,
 } from '../types/monetizacion';
+import { t as tr } from '../translations';
 
 // ── Utilidades ─────────────────────────────────────────────────────────────
 
@@ -80,7 +81,7 @@ export function useResumenDashboard(): ResumenDashboard {
 
       setStats({ empresas_vencidas: empresasVencidas, taxistas_alerta_docs: taxistasAlerta });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar resumen';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarResumen');
       setError(msg);
     } finally {
       setLoading(false);
@@ -125,7 +126,7 @@ export function useEmpresas(): EmpresasHook {
       if (err) throw err;
       setEmpresas((data ?? []) as Empresa[]);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar empresas';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarEmpresas');
       setError(msg);
     } finally {
       setLoading(false);
@@ -230,7 +231,7 @@ export function useTaxistas(): TaxistasHook {
 
       setTaxistas(enriquecidos);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar taxistas';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarTaxistas');
       setError(msg);
     } finally {
       setLoading(false);
@@ -327,7 +328,7 @@ export function useBarcos(): BarcosHook {
 
       setHistorico(hist);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar barcos';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarBarcos');
       setError(msg);
     } finally {
       setLoading(false);
@@ -502,7 +503,7 @@ export function useMonedero(): MonederoHook {
         .sort((a, b) => b.volumen - a.volumen);
       setBancos(bancosArr);
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar monedero';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarMonedero');
       setError(msg);
     } finally {
       setLoading(false);
@@ -547,7 +548,7 @@ export function usePerfilFinanciero(): PerfilFinancieroHook {
       if (err) throw err;
       setPerfiles((data ?? []).map((p: PerfilFinancieroUsuario) => ({ ...p, historial: [] })));
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar perfiles';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarPerfiles');
       setError(msg);
     } finally {
       setLoading(false);
@@ -616,7 +617,7 @@ export function usePerfilNegocio(): PerfilNegocioHook {
         })),
       );
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al cargar perfiles de negocio';
+      const msg = e instanceof Error ? e.message : tr('xtErrorAlCargarPerfilesDeNegocio');
       setError(msg);
     } finally {
       setLoading(false);

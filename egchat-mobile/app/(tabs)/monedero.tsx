@@ -5,7 +5,7 @@ import {
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
   TextInput, Animated, KeyboardAvoidingView, Platform, Image,
 } from 'react-native';
-import { getKycStatus, KYC_STATUS_LABELS, KYC_STATUS_COLORS, invalidateKycStatusCache } from '../../src/services/kyc';
+import { getKycStatus, KYC_STATUS_COLORS, invalidateKycStatusCache } from '../../src/services/kyc';
 import type { KycStatus } from '../../src/api';
 import { WALLET_KYC_REQUIRED } from '../../src/config/walletConfig';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
@@ -38,7 +38,8 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import SessionManager from '../../src/sessionManager';
-import { useLanguage } from '../../src/context/LanguageContext';
+import { useTranslation } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 0 });
@@ -46,6 +47,11 @@ const formatDate = (s: string) =>
   new Date(s).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
 const isCredit = (type: string) =>
   ['deposit', 'recharge', 'transfer_received', 'received', 'salary'].includes(type);
+
+const KYC_LABEL_KEYS: Record<string, string> = {
+  none: 'walKycNone', pending: 'walKycPending', approved: 'walKycApproved',
+  rejected: 'walKycRejected', suspended: 'walKycSuspended',
+};
 
 const getTxLabel = (tx: any, t: (k: string) => string) => {
   if (tx.method) return tx.method;
@@ -256,6 +262,7 @@ const QRModal = ({
   userAvatar?: string; onClose: () => void;
 }) => {
   const isReceive = type === 'receive';
+  const { t } = useTranslation();
   const qrValue = userId ? buildReceiveQr(userId) : 'egchat://pay/pending';
 
   return (
@@ -266,8 +273,8 @@ const QRModal = ({
           {/* Header */}
           <View style={qrs.header}>
             <View>
-              <Text style={qrs.title}>{isReceive ? 'Recibir dinero' : 'Realizar pago'}</Text>
-              <Text style={qrs.sub}>{isReceive ? 'Muestra este código para recibir' : 'Muestra tu QR o escanea el de otro'}</Text>
+              <Text style={qrs.title}>{isReceive ? t('walReceiveMoney') : t('walMakePayment')}</Text>
+              <Text style={qrs.sub}>{isReceive ? t('walShowCodeToReceive') : t('walShowQrOrScan')}</Text>
             </View>
             <TouchableOpacity style={qrs.closeBtn} onPress={onClose}>
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={2.5} strokeLinecap="round">
@@ -302,14 +309,14 @@ const QRModal = ({
           </View>
 
           {/* Info usuario */}
-          <Text style={qrs.name}>{userName || 'Mi Monedero'}</Text>
+          <Text style={qrs.name}>{userName || t('walMyWallet')}</Text>
           {!!userPhone && <Text style={qrs.phone}>{userPhone}</Text>}
           <View style={qrs.balancePill}>
             <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth={2} strokeLinecap="round">
               <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
               <Path d="M3 10h17"/><Circle cx="17" cy="14" r="1.5" fill="#00C8A0" stroke="none"/>
             </Svg>
-            <Text style={qrs.balanceTxt}>{fmt(balance)} XAF disponibles</Text>
+            <Text style={qrs.balanceTxt}>{fmt(balance)} XAF {t('walAvailableSuffix')}</Text>
           </View>
 
           {/* Botón escanear QR de otro usuario para pagar */}
@@ -322,12 +329,12 @@ const QRModal = ({
               <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
               <Rect x="14" y="14" width="7" height="7"/><Rect x="3" y="14" width="7" height="7"/>
             </Svg>
-            <Text style={qrs.scanBtnTxt}>Escanear QR para pagar</Text>
+            <Text style={qrs.scanBtnTxt}>{t('walScanQrToPay')}</Text>
           </TouchableOpacity>
 
           {/* Cerrar */}
           <TouchableOpacity style={qrs.closeFullBtn} onPress={onClose} activeOpacity={0.85}>
-            <Text style={qrs.closeFullTxt}>Cerrar</Text>
+            <Text style={qrs.closeFullTxt}>{t('close')}</Text>
           </TouchableOpacity>
 
         </Pressable>
@@ -344,6 +351,7 @@ type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm
 const RecargaModal = ({
   visible, balance, onClose, onSuccess,
 }: { visible: boolean; balance: number; onClose: () => void; onSuccess: () => void }) => {
+  const { t } = useTranslation();
   const [step, setStep] = useState<RStep>('menu');
   const [data, setData] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setData(p => ({ ...p, [k]: v }));
@@ -367,7 +375,7 @@ const RecargaModal = ({
 
   const doCode = async () => {
     const clean = (data.codigo || '').replace(/-/g, '');
-    if (clean.length < 12) { Alert.alert('Error', 'Código inválido'); return; }
+    if (clean.length < 12) { Alert.alert(t('error'), t('walInvalidCode')); return; }
     setLoading(true);
     try {
       const res = await walletAPI.redeemCode(data.codigo || '');
@@ -379,33 +387,33 @@ const RecargaModal = ({
   };
 
   const METODOS = [
-    { id: 'stripe',        label: 'Tarjeta Visa / Mastercard', sub: 'Pago inmediato con tarjeta internacional', gradient: ['#635BFF', '#4F46E5'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
-    { id: 'orange_money',  label: 'Orange Money',              sub: 'Pago USSD — inmediato en GQ',              gradient: ['#FF6600', '#EA580C'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
-    { id: 'mtn_mobile',    label: 'MTN Mobile Money',          sub: 'Pago USSD — inmediato',                    gradient: ['#FFCC00', '#D97706'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
-    { id: 'banco',         label: 'Desde banco',               sub: 'Transferencia bancaria desde tu cuenta',   gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
-    { id: 'transferencia', label: 'Transferencia EGCHAT',       sub: 'Recibe de otro usuario EGCHAT',            gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
-    { id: 'codigo',        label: 'Código de recarga',          sub: 'Introduce un código de recarga prepago',   gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
-    { id: 'agente',        label: 'Depósito en efectivo',       sub: 'En agentes autorizados EGCHAT',            gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
+    { id: 'stripe',        label: t('walCardIntl'),        sub: t('walCardIntlSub'),        gradient: ['#635BFF', '#4F46E5'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
+    { id: 'orange_money',  label: 'Orange Money',              sub: t('walUssdGqSub'),              gradient: ['#FF6600', '#EA580C'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'mtn_mobile',    label: 'MTN Mobile Money',          sub: t('walUssdSub'),                    gradient: ['#FFCC00', '#D97706'] as [string,string], icon: <IcoEfectivo color="#fff" /> },
+    { id: 'banco',         label: t('walFromBank'),               sub: t('walFromBankSub'),   gradient: ['#1B3A6B', '#2A5298'] as [string,string], icon: <IcoBanco color="#fff" /> },
+    { id: 'transferencia', label: t('walBankTransferEgchat'),       sub: t('walBankTransferEgchatSub'),            gradient: ['#065F46', '#00c8a0'] as [string,string], icon: <IcoTransfer color="#fff" /> },
+    { id: 'codigo',        label: t('walRechargeCode'),          sub: t('walRechargeCodeSub'),   gradient: ['#92400E', '#D97706'] as [string,string], icon: <IcoCodigo color="#fff" /> },
+    { id: 'agente',        label: t('walCashDeposit'),       sub: t('walCashDepositSub'),            gradient: ['#4C1D95', '#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
   ];
 
   const TITLES: Record<string, string> = {
-    menu: 'Recargar monedero', banco: 'Desde banco', transferencia: 'Transferencia EGCHAT',
-    codigo: 'Código de recarga', agente: 'Depósito en efectivo',
-    confirm: 'Confirmar recarga', success: '¡Recarga completada!',
-    stripe: 'Pagar con tarjeta', orange_money: 'Orange Money', mtn_mobile: 'MTN Mobile Money',
-    polling: 'Esperando pago…',
+    menu: t('walRechargeWallet'), banco: t('walFromBank'), transferencia: t('walBankTransferEgchat'),
+    codigo: t('walRechargeCode'), agente: t('walCashDeposit'),
+    confirm: t('walConfirmRecharge'), success: t('walRechargeDone'),
+    stripe: t('walPayWithCard'), orange_money: 'Orange Money', mtn_mobile: 'MTN Mobile Money',
+    polling: t('walWaitingPayment'),
   };
 
   return (
-    <Sheet visible={visible} title={TITLES[step]} subtitle={`Saldo: ${fmt(balance)} XAF`} onClose={close}>
+    <Sheet visible={visible} title={TITLES[step]} subtitle={`${t('walBalanceLabel')}: ${fmt(balance)} XAF`} onClose={close}>
       <View style={s.sheetBody}>
 
         {/* MENÚ */}
         {step === 'menu' && (
           <>
-            <SectionHead title="Monedero EGCHAT" sub={`${fmt(balance)} XAF disponibles`}
+            <SectionHead title={t('walEgchatWallet')} sub={`${t('walAvailableSuffix')} ${fmt(balance)} XAF`}
               gradient={['#1A3A6B', '#0E5F8A']} icon={<IcoTarjeta color="#fff" />} />
-            <Text style={s.methodsLabel}>MÉTODO DE RECARGA</Text>
+            <Text style={s.methodsLabel}>{t('walRechargeMethod')}</Text>
             {METODOS.map(m => (
               <TouchableOpacity key={m.id} style={s.methodBtn} onPress={() => setStep(m.id as RStep)} activeOpacity={0.7}>
                 <LinearGradient colors={m.gradient} start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }} style={s.methodIconWrap}>
@@ -424,11 +432,11 @@ const RecargaModal = ({
         {/* BANCO */}
         {step === 'banco' && (
           <>
-            <SectionHead title="Transferencia bancaria" sub="Datos para realizar el ingreso"
+            <SectionHead title={t('walBankTransfer')} sub={t('walBankTransferData')}
               gradient={['#1B3A6B', '#2A5298']} icon={<IcoBanco color="#fff" />} />
             <View style={s.infoBox}>
-              {[['Beneficiario','EGCHAT S.A.'],['Bancos','BANGE / CCEI / BGFI'],
-                ['Cuenta','GQ-EGCHAT-001-2026'],['Concepto','Recarga + tu teléfono']].map(([l,v]) => (
+              {[[t('walBeneficiary'),'EGCHAT S.A.'],[t('walBanks'),'BANGE / CCEI / BGFI'],
+                [t('walAccount'),'GQ-EGCHAT-001-2026'],[t('walConcept'),t('walConceptRecharge')]].map(([l,v]) => (
                 <View key={l} style={s.infoRow}>
                   <Text style={s.infoLabel}>{l}</Text>
                   <Text style={s.infoValue}>{v}</Text>
@@ -436,22 +444,22 @@ const RecargaModal = ({
               ))}
             </View>
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe (mín. 1,000 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
-            <Field label="Tu banco" value={data.banco||''} onChangeText={v=>set('banco',v)} placeholder="BANGE, BGFI, CCEI..." />
+            <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walYourBank')} value={data.banco||''} onChangeText={v=>set('banco',v)} placeholder="BANGE, BGFI, CCEI..." />
             <TouchableOpacity
               style={[s.primaryBtn, { backgroundColor: '#1B3A6B' }, (!isValid||!data.banco) && s.primaryBtnDisabled]}
               onPress={() => { if (isValid && data.banco) setStep('confirm'); }}
               disabled={!isValid || !data.banco} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Confirmar — {isValid ? fmt(amountNum) : '0'} XAF</Text>
+              <Text style={s.primaryBtnText}>{t('confirm')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* TRANSFERENCIA EGCHAT */}
         {step === 'transferencia' && (
           <>
-            <SectionHead title="Transferencia EGCHAT" sub="Solicita dinero a otro usuario"
+            <SectionHead title={t('walBankTransferEgchat')} sub={t('walRequestMoneySub')}
               gradient={['#065F46', '#00c8a0']} icon={<IcoTransfer color="#fff" />} />
             <View style={[s.infoBox, { alignItems: 'center', paddingVertical: 20 }]}>
               <View style={s.qrMiniBox}>
@@ -460,16 +468,16 @@ const RecargaModal = ({
                   <Line x1="12" y1="18" x2="12" y2="18"/>
                 </Svg>
               </View>
-              <Text style={s.infoValue}>Comparte tu número para recibir</Text>
-              <Text style={s.infoLabel}>Sin comisión entre usuarios EGCHAT</Text>
+              <Text style={s.infoValue}>{t('walShareNumberToReceive')}</Text>
+              <Text style={s.infoLabel}>{t('walNoFeeBetween')}</Text>
             </View>
             <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe a solicitar (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walAmountToRequest')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <TouchableOpacity
               style={[s.primaryBtn, { backgroundColor: '#065F46' }, !isValid && s.primaryBtnDisabled]}
               onPress={() => {
                 if (!isValid) {
-                  Alert.alert('Monto inválido', 'Introduce al menos 1.000 XAF para generar la solicitud.');
+                  Alert.alert(t('walInvalidAmount'), t('walInvalidAmountMin'));
                   return;
                 }
                 doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`);
@@ -478,18 +486,18 @@ const RecargaModal = ({
               activeOpacity={0.85}>
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.primaryBtnText}>Generar solicitud de pago</Text>}
+                : <Text style={s.primaryBtnText}>{t('walGenerateRequest')}</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* CÓDIGO */}
         {step === 'codigo' && (
           <>
-            <SectionHead title="Código de recarga" sub="Canjea tu voucher prepago"
+            <SectionHead title={t('walRechargeCode')} sub={t('walRedeemVoucher')}
               gradient={['#92400E', '#D97706']} icon={<IcoCodigo color="#fff" />} />
-            <Text style={s.codeHint}>Código de 16 dígitos</Text>
+            <Text style={s.codeHint}>{t('walCode16')}</Text>
             <TextInput
               style={s.codeInput}
               value={data.codigo || ''}
@@ -515,16 +523,16 @@ const RecargaModal = ({
               onPress={doCode}
               disabled={(data.codigo||'').replace(/-/g,'').length < 12 || loading}
               activeOpacity={0.85}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Canjear código</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t('walRedeemCode')}</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* AGENTE */}
         {step === 'agente' && (
           <>
-            <SectionHead title="Depósito en efectivo" sub="Agentes autorizados EGCHAT"
+            <SectionHead title={t('walCashDeposit')} sub={t('walCashDepositSub')}
               gradient={['#4C1D95', '#6B5BD6']} icon={<IcoAgente color="#fff" />} />
             {[
               { name: 'Agente EGCHAT Centro', addr: 'Av. de la Independencia, Malabo', hours: 'L-S 8:00-20:00' },
@@ -541,40 +549,40 @@ const RecargaModal = ({
               </View>
             ))}
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe a depositar (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walAmountToDeposit')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <TouchableOpacity
               style={[s.primaryBtn, { backgroundColor: '#4C1D95' }, !isValid && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid) doDeposit('Depósito en efectivo (Agente)', 'Agente presencial'); }}
+              onPress={() => { if (isValid) doDeposit(tr('xtDepositoEnEfectivoAgente'), 'Agente presencial'); }}
               disabled={!isValid} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Confirmar depósito — {isValid ? fmt(amountNum) : '0'} XAF</Text>
+              <Text style={s.primaryBtnText}>{t('walConfirmDeposit')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* CONFIRM */}
         {step === 'confirm' && (
           <>
-            <SectionHead title="Confirmar recarga" sub="Revisa los datos antes de continuar"
+            <SectionHead title={t('walConfirmRecharge')} sub={t('walReviewBeforeContinue')}
               gradient={['#1B3A6B', '#2A5298']} icon={<IcoBanco color="#fff" />} />
             <View style={s.confirmCard}>
-              {[['Método','Transferencia bancaria'],['Banco',data.banco||''],
-                ['Importe',`${fmt(amountNum)} XAF`],['Cuenta destino','GQ-EGCHAT-001-2026']].map(([l,v]) => (
+              {[[t('walMethod'),t('walBankTransfer')],[t('walBanks'),data.banco||''],
+                [t('walAmount'),`${fmt(amountNum)} XAF`],[t('walDestinationAccount'),'GQ-EGCHAT-001-2026']].map(([l,v]) => (
                 <View key={l} style={s.confirmRow}>
                   <Text style={s.confirmLabel}>{l}</Text>
                   <Text style={s.confirmValue}>{v}</Text>
                 </View>
               ))}
               <View style={[s.confirmRow, { paddingTop: 10, borderTopWidth: 0 }]}>
-                <Text style={[s.confirmLabel, { fontSize: 14, fontWeight: '700' }]}>Total</Text>
+                <Text style={[s.confirmLabel, { fontSize: 14, fontWeight: '700' }]}>{t('total')}</Text>
                 <Text style={[s.confirmValue, { fontSize: 20, fontWeight: '900', color: '#1B3A6B' }]}>{fmt(amountNum)} XAF</Text>
               </View>
             </View>
             <TouchableOpacity
               style={[s.primaryBtn, { backgroundColor: '#1B3A6B' }]}
-              onPress={() => doDeposit('Transferencia bancaria', `Banco: ${data.banco}`)}
+              onPress={() => doDeposit(tr('walBankTransfer'), `Banco: ${data.banco}`)}
               activeOpacity={0.85}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>He realizado la transferencia</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t('walIDidTransfer')}</Text>}
             </TouchableOpacity>
           </>
         )}
@@ -585,18 +593,18 @@ const RecargaModal = ({
             <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.successCircle}>
               <IcoCheck />
             </LinearGradient>
-            <Text style={s.successTitle}>{data.codigo ? '¡Código canjeado!' : '¡Recarga completada!'}</Text>
+            <Text style={s.successTitle}>{data.codigo ? t('walCodeRedeemed') : t('walRechargeDone')}</Text>
             <Text style={s.successSub}>
               {data.codigo
-                ? `+${fmt(parseInt(data.amount||'5000'))} XAF añadidos`
-                : `${fmt(amountNum)} XAF añadidos a tu monedero`}
+                ? `+${fmt(parseInt(data.amount||'5000'))} ${t('walXafAdded')}`
+                : `${fmt(amountNum)} ${t('walAddedToWallet')}`}
             </Text>
             <View style={s.refCard}>
-              <Text style={s.refLabel}>REFERENCIA</Text>
+              <Text style={s.refLabel}>{t('walReference')}</Text>
               <Text style={s.refCode}>EGC-REC-{Date.now().toString().slice(-8)}</Text>
             </View>
             <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={close} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Cerrar</Text>
+              <Text style={s.primaryBtnText}>{t('close')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -604,33 +612,33 @@ const RecargaModal = ({
         {/* ── STRIPE — tarjeta internacional ── */}
         {step === 'stripe' && (
           <>
-            <SectionHead title="Pagar con tarjeta" sub="Visa, Mastercard, Amex — procesado por Stripe"
+            <SectionHead title={t('walPayWithCard')} sub={t('walPayWithCardSub')}
               gradient={['#635BFF', '#4F46E5']} icon={<IcoTarjeta color="#fff" />} />
             <View style={s.infoBox}>
               <Text style={[s.infoValue, { textAlign: 'center', paddingVertical: 4 }]}>
-                💳  Pago 100% seguro · Cifrado SSL
+                💳  {t('walSecurePaymentNote')}
               </Text>
               <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoLabel}>{t('walFee')}</Text>
                 <Text style={s.infoValue}>2.9% + 30 XAF</Text>
               </View>
               <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Disponibilidad</Text>
-                <Text style={s.infoValue}>Inmediato</Text>
+                <Text style={s.infoLabel}>{t('walAvailability')}</Text>
+                <Text style={s.infoValue}>{t('walImmediate')}</Text>
               </View>
             </View>
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe (mín. 500 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="10000" keyboardType="numeric" />
+            <Field label={t('walAmountMin500')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="10000" keyboardType="numeric" />
             {amountNum >= 500 && (
               <View style={[s.infoBox, { marginBottom: 8 }]}>
                 <View style={s.infoRow}>
-                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={s.infoLabel}>{t('walYouWillReceive')}</Text>
                   <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
                     {fmt(getNetAmount('stripe', amountNum))} XAF
                   </Text>
                 </View>
                 <View style={s.infoRow}>
-                  <Text style={s.infoLabel}>Comisión Stripe</Text>
+                  <Text style={s.infoLabel}>{t('walStripeFee')}</Text>
                   <Text style={s.infoValue}>{formatGatewayFee('stripe', amountNum)}</Text>
                 </View>
               </View>
@@ -646,11 +654,11 @@ const RecargaModal = ({
                     // clientSecret listo — en producción integrar @stripe/stripe-react-native aquí
                     // Por ahora confirmamos directamente (sandbox/demo)
                     Alert.alert(
-                      'Pago con Stripe',
-                      `PaymentIntent creado.\n\nEn producción: integra @stripe/stripe-react-native para confirmar con la tarjeta.\n\nClientSecret: ${intent.clientSecret?.slice(0, 30)}...`,
+                      t('walStripePayment'),
+                      `${t('walStripeIntentCreated')}\n\n${t('walStripeIntegrateBody')}\n\nClientSecret: ${intent.clientSecret?.slice(0, 30)}...`,
                       [
-                        { text: 'Cancelar', style: 'cancel', onPress: () => setLoading(false) },
-                        { text: 'Simular pago ✓', onPress: async () => {
+                        { text: t('cancel'), style: 'cancel', onPress: () => setLoading(false) },
+                        { text: t('walSimulatePayment'), onPress: async () => {
                           const result = await confirmDeposit(intent.id, 'stripe');
                           onSuccess();
                           set('ref', intent.id);
@@ -660,11 +668,11 @@ const RecargaModal = ({
                       ],
                     );
                   } else {
-                    Alert.alert('Stripe no configurado', 'Añade STRIPE_SECRET_KEY al servidor para activar pagos reales.');
+                    Alert.alert(t('walStripeNotConfigured'), t('walStripeNotConfiguredBody'));
                     setLoading(false);
                   }
                 } catch (e: any) {
-                  Alert.alert('Error', e.message || 'No se pudo crear el pago');
+                  Alert.alert(t('error'), e.message || t('walPaymentCreateFailed'));
                   setLoading(false);
                 }
               }}
@@ -673,10 +681,10 @@ const RecargaModal = ({
             >
               {loading
                 ? <ActivityIndicator color="#fff" />
-                : <Text style={s.primaryBtnText}>Pagar {amountNum >= 500 ? fmt(amountNum) : '…'} XAF con tarjeta</Text>
+                : <Text style={s.primaryBtnText}>{t('walPay')} {amountNum >= 500 ? fmt(amountNum) : '…'} XAF {t('walWithCard')}</Text>
               }
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
@@ -685,27 +693,27 @@ const RecargaModal = ({
           <>
             <SectionHead
               title={step === 'orange_money' ? 'Orange Money' : 'MTN Mobile Money'}
-              sub="Pago USSD — confirma en tu teléfono"
+              sub={t('walUssdPaySub')}
               gradient={step === 'orange_money' ? ['#FF6600', '#EA580C'] : ['#FFCC00', '#D97706']}
               icon={<IcoEfectivo color="#fff" />}
             />
             <View style={s.infoBox}>
               <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Comisión</Text>
+                <Text style={s.infoLabel}>{t('walFee')}</Text>
                 <Text style={s.infoValue}>1%</Text>
               </View>
               <View style={s.infoRow}>
-                <Text style={s.infoLabel}>Tiempo</Text>
-                <Text style={s.infoValue}>Inmediato tras confirmar USSD</Text>
+                <Text style={s.infoLabel}>{t('walTime')}</Text>
+                <Text style={s.infoValue}>{t('walImmediateAfterUssd')}</Text>
               </View>
             </View>
             <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe (XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
-            <Field label="Tu número de teléfono" value={data.phone||''} onChangeText={v=>set('phone',v)} placeholder="+240 222 000 000" keyboardType="phone-pad" />
+            <Field label={t('walAmountXaf')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walYourPhone')} value={data.phone||''} onChangeText={v=>set('phone',v)} placeholder="+240 222 000 000" keyboardType="phone-pad" />
             {amountNum >= 1000 && (
               <View style={[s.infoBox, { marginBottom: 8 }]}>
                 <View style={s.infoRow}>
-                  <Text style={s.infoLabel}>Recibirás</Text>
+                  <Text style={s.infoLabel}>{t('walYouWillReceive')}</Text>
                   <Text style={[s.infoValue, { color: '#00c8a0', fontWeight: '700' }]}>
                     {fmt(getNetAmount(step as PaymentGateway, amountNum))} XAF
                   </Text>
@@ -726,7 +734,7 @@ const RecargaModal = ({
                   set('ussdCode', (intent as any).ussdCode || '');
                   setStep('polling');
                 } catch (e: any) {
-                  Alert.alert('Error', e.message);
+                  Alert.alert(t('error'), e.message);
                 } finally {
                   setLoading(false);
                 }
@@ -737,11 +745,11 @@ const RecargaModal = ({
               {loading
                 ? <ActivityIndicator color="#fff" />
                 : <Text style={[s.primaryBtnText, { color: step === 'mtn_mobile' ? '#1f2937' : '#fff' }]}>
-                    Iniciar pago USSD — {amountNum >= 1000 ? fmt(amountNum) : '…'} XAF
+                    {t('walStartUssdPayment')} — {amountNum >= 1000 ? fmt(amountNum) : '…'} XAF
                   </Text>
               }
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
@@ -751,19 +759,19 @@ const RecargaModal = ({
             <View style={[s.successCircle, { backgroundColor: '#FF6600' }]}>
               <Text style={{ fontSize: 28 }}>📱</Text>
             </View>
-            <Text style={s.successTitle}>Confirma en tu teléfono</Text>
+            <Text style={s.successTitle}>{t('walConfirmOnPhone')}</Text>
             {data.ussdCode ? (
               <View style={s.refCard}>
-                <Text style={s.refLabel}>CÓDIGO USSD</Text>
+                <Text style={s.refLabel}>{t('walUssdCode')}</Text>
                 <Text style={[s.refCode, { fontSize: 22, letterSpacing: 2 }]}>{data.ussdCode}</Text>
               </View>
             ) : null}
             <Text style={[s.successSub, { marginTop: 8 }]}>
-              Marca el código en tu teléfono {data.phone ? `(${data.phone})` : ''} y confirma con tu PIN.
+              {t('walDialCodeOnPhone')} {data.phone ? `(${data.phone})` : ''} {t('walConfirmWithPin')}
             </Text>
             <ActivityIndicator color="#00c8a0" style={{ marginVertical: 12 }} />
             <Text style={{ color: '#9ca3af', fontSize: 12, textAlign: 'center' }}>
-              Esperando confirmación del operador…
+              {t('walWaitingOperator')}
             </Text>
             <TouchableOpacity
               style={[s.primaryBtn, { backgroundColor: '#00c8a0', marginTop: 16 }]}
@@ -780,10 +788,10 @@ const RecargaModal = ({
               }}
               activeOpacity={0.85}
             >
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Ya confirmé el pago ✓</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t('walIConfirmedPayment')}</Text>}
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={() => setStep('menu')}>
-              <Text style={s.backBtnText}>Cancelar</Text>
+              <Text style={s.backBtnText}>{t('cancel')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -803,6 +811,7 @@ const RetiroModal = ({
   const [data, setData] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setData(p => ({ ...p, [k]: v }));
   const [loading, setLoading] = useState(false);
+  const { t } = useTranslation();
   const amountNum = parseInt(data.amount || '0');
   const isValid = amountNum >= 1000 && amountNum <= balance;
 
@@ -815,12 +824,12 @@ const RetiroModal = ({
     try {
       const checkResult = await checkLimitForTransaction('withdrawal', amountNum);
       if (!checkResult.allowed) {
-        Alert.alert('Límite excedido', checkResult.reason || 'No puedes realizar esta operación.');
+        Alert.alert(t('walLimitExceeded'), checkResult.reason || t('walLimitNotAllowed'));
         setLoading(false);
         return;
       }
       if (checkResult.requiresPin && !data.pin) {
-        Alert.alert('PIN requerido', 'Para esta operación necesitas ingresar tu PIN de seguridad.');
+        Alert.alert(t('walPinRequired'), t('walPinRequiredBody'));
         setLoading(false);
         return;
       }
@@ -835,33 +844,33 @@ const RetiroModal = ({
   };
 
   const METODOS = [
-    { id: 'tarjeta', label: 'Retirar a tarjeta',     sub: 'Tarjeta bancaria vinculada — 1-3 días',    gradient: ['#1B3A6B','#2A5298'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
-    { id: 'banco',   label: 'Transferencia bancaria', sub: 'A tu cuenta bancaria en GQ — 1-2 días',   gradient: ['#065F46','#00c8a0'] as [string,string], icon: <IcoBanco color="#fff" /> },
-    { id: 'agente',  label: 'Retirar en agente',      sub: 'Efectivo inmediato en agentes EGCHAT',    gradient: ['#4C1D95','#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
+    { id: 'tarjeta', label: t('walWithdrawToCard'),  sub: t('walWithdrawToCardSub'),  gradient: ['#1B3A6B','#2A5298'] as [string,string], icon: <IcoTarjeta color="#fff" /> },
+    { id: 'banco',   label: t('walBankTransfer'),    sub: t('walWithdrawBankSub'),    gradient: ['#065F46','#00c8a0'] as [string,string], icon: <IcoBanco color="#fff" /> },
+    { id: 'agente',  label: t('walWithdrawAgent'),   sub: t('walWithdrawAgentSub'),   gradient: ['#4C1D95','#6B5BD6'] as [string,string], icon: <IcoAgente color="#fff" /> },
   ];
 
   const TITLES: Record<WStep, string> = {
-    menu: 'Retirar dinero', tarjeta: 'Retirar a tarjeta',
-    banco: 'Transferencia bancaria', agente: 'Retirar en agente',
-    confirm: 'Confirmar retiro', success: '¡Retiro procesado!',
+    menu: t('walWithdrawMoney'), tarjeta: t('walWithdrawToCard'),
+    banco: t('walBankTransfer'), agente: t('walWithdrawAgent'),
+    confirm: t('walConfirmWithdraw'), success: t('walWithdrawDone'),
   };
 
   const InsufficientAlert = () => amountNum > balance && amountNum > 0 ? (
     <View style={s.alertBox}>
-      <Text style={s.alertText}>⚠️ Saldo insuficiente</Text>
+      <Text style={s.alertText}>{t('walInsufficientWarn')}</Text>
     </View>
   ) : null;
 
   return (
-    <Sheet visible={visible} title={TITLES[step]} subtitle={`Disponible: ${fmt(balance)} XAF`} onClose={close}>
+    <Sheet visible={visible} title={TITLES[step]} subtitle={`${t('walAvailablePrefix')} ${fmt(balance)} XAF`} onClose={close}>
       <View style={s.sheetBody}>
 
         {/* MENÚ */}
         {step === 'menu' && (
           <>
-            <SectionHead title="Retirar dinero" sub={`${fmt(balance)} XAF disponibles`}
+            <SectionHead title={t('walWithdrawMoney')} sub={`${fmt(balance)} ${t('walAvailableSuffix')}`}
               gradient={['#4C1D95','#6B5BD6']} icon={<IcoEfectivo color="#fff" />} />
-            <Text style={s.methodsLabel}>MÉTODO DE RETIRO</Text>
+            <Text style={s.methodsLabel}>{t('walWithdrawMethod')}</Text>
             {METODOS.map(m => (
               <TouchableOpacity key={m.id} style={s.methodBtn} onPress={() => setStep(m.id as WStep)} activeOpacity={0.7}>
                 <LinearGradient colors={m.gradient} start={{ x:0,y:0 }} end={{ x:1,y:1 }} style={s.methodIconWrap}>
@@ -880,51 +889,51 @@ const RetiroModal = ({
         {/* TARJETA */}
         {step === 'tarjeta' && (
           <>
-            <SectionHead title="Retirar a tarjeta" sub="Transferencia a tarjeta bancaria"
+            <SectionHead title={t('walWithdrawToCard')} sub={t('walTransferToCard')}
               gradient={['#1B3A6B','#2A5298']} icon={<IcoTarjeta color="#fff" />} />
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe (mín. 1,000 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
-            <Field label="Últimos 4 dígitos de la tarjeta" value={data.card||''} onChangeText={v=>set('card',v)} placeholder="1234" keyboardType="numeric" />
-            <Field label="PIN de confirmación" value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry />
+            <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walCardLast4')} value={data.card||''} onChangeText={v=>set('card',v)} placeholder="1234" keyboardType="numeric" />
+            <Field label={t('walConfirmPinLabel')} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry />
             <InsufficientAlert />
             <TouchableOpacity
               style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.card||!data.pin) && s.primaryBtnDisabled]}
               onPress={() => { if (isValid && data.card && data.pin) setStep('confirm'); }}
               disabled={!isValid || !data.card || !data.pin} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Continuar — {isValid ? fmt(amountNum) : '0'} XAF</Text>
+              <Text style={s.primaryBtnText}>{t('continue')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* BANCO */}
         {step === 'banco' && (
           <>
-            <SectionHead title="Transferencia bancaria" sub="A tu cuenta bancaria en GQ"
+            <SectionHead title={t('walBankTransfer')} sub={t('walToYourGqAccount')}
               gradient={['#065F46','#00c8a0']} icon={<IcoBanco color="#fff" />} />
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe (mín. 1,000 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
-            <Field label="Banco destino" value={data.banco||''} onChangeText={v=>set('banco',v)} placeholder="BANGE, BGFI, CCEI..." />
-            <Field label="Número de cuenta" value={data.cuenta||''} onChangeText={v=>set('cuenta',v)} placeholder="GQ-XXXX-XXXX" />
-            <Field label="Titular de la cuenta" value={data.titular||''} onChangeText={v=>set('titular',v)} placeholder="Nombre completo" />
+            <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walDestBank')} value={data.banco||''} onChangeText={v=>set('banco',v)} placeholder="BANGE, BGFI, CCEI..." />
+            <Field label={t('accountNumber')} value={data.cuenta||''} onChangeText={v=>set('cuenta',v)} placeholder="GQ-XXXX-XXXX" />
+            <Field label={t('walAccountHolder')} value={data.titular||''} onChangeText={v=>set('titular',v)} placeholder={t('name')} />
             <InsufficientAlert />
             <TouchableOpacity
               style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.banco||!data.cuenta||!data.titular) && s.primaryBtnDisabled]}
               onPress={() => { if (isValid && data.banco && data.cuenta && data.titular) setStep('confirm'); }}
               disabled={!isValid || !data.banco || !data.cuenta || !data.titular} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Continuar — {isValid ? fmt(amountNum) : '0'} XAF</Text>
+              <Text style={s.primaryBtnText}>{t('continue')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* AGENTE */}
         {step === 'agente' && (
           <>
-            <SectionHead title="Retirar en agente" sub="Efectivo inmediato en agentes EGCHAT"
+            <SectionHead title={t('walWithdrawAgent')} sub={t('walWithdrawAgentSub')}
               gradient={['#4C1D95','#6B5BD6']} icon={<IcoAgente color="#fff" />} />
             <View style={s.infoBox}>
-              <Text style={s.infoLabel}>Presenta tu código en cualquier agente EGCHAT autorizado para retirar en efectivo de forma inmediata.</Text>
+              <Text style={s.infoLabel}>{t('walShowAgentCode')}</Text>
             </View>
             {[
               { name: 'Agente EGCHAT Centro',    addr: 'Av. de la Independencia, Malabo' },
@@ -940,28 +949,28 @@ const RetiroModal = ({
               </View>
             ))}
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
-            <Field label="Importe (mín. 1,000 XAF)" value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
               style={[s.primaryBtn, s.withdrawBtn, !isValid && s.primaryBtnDisabled]}
               onPress={() => { if (isValid) setStep('confirm'); }}
               disabled={!isValid} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Generar código de retiro — {isValid ? fmt(amountNum) : '0'} XAF</Text>
+              <Text style={s.primaryBtnText}>{t('walGenerateWithdrawCode')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← Volver</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
         )}
 
         {/* CONFIRM */}
         {step === 'confirm' && (
           <>
-            <SectionHead title="Confirmar retiro" sub="Revisa antes de confirmar"
+            <SectionHead title={t('walConfirmWithdraw')} sub={t('walReviewBeforeConfirm')}
               gradient={['#C0392B','#E74C3C']} icon={<IcoEfectivo color="#fff" />} />
             <View style={s.confirmCard}>
               {[
-                ['Importe', `${fmt(amountNum)} XAF`],
-                ['Método', data.card ? 'Tarjeta bancaria' : data.cuenta ? 'Transferencia bancaria' : 'Agente EGCHAT'],
-                ['Saldo tras retiro', `${fmt(balance - amountNum)} XAF`],
+                [t('walAmount'), `${fmt(amountNum)} XAF`],
+                [t('walMethod'), data.card ? t('walBankCardLabel') : data.cuenta ? t('walBankTransfer') : t('walEgchatAgent')],
+                [t('walBalanceAfterWithdraw'), `${fmt(balance - amountNum)} XAF`],
               ].map(([l,v]) => (
                 <View key={l} style={s.confirmRow}>
                   <Text style={s.confirmLabel}>{l}</Text>
@@ -969,24 +978,24 @@ const RetiroModal = ({
                 </View>
               ))}
               <View style={[s.confirmRow, { paddingTop: 10 }]}>
-                <Text style={[s.confirmLabel, { fontSize: 14, fontWeight: '700' }]}>Total a retirar</Text>
+                <Text style={[s.confirmLabel, { fontSize: 14, fontWeight: '700' }]}>{t('walTotalToWithdraw')}</Text>
                 <Text style={[s.confirmValue, { fontSize: 20, fontWeight: '900', color: '#C0392B' }]}>{fmt(amountNum)} XAF</Text>
               </View>
             </View>
             <View style={s.alertBox}>
-              <Text style={s.alertText}>⚠️ Esta operación debitará {fmt(amountNum)} XAF. No se puede deshacer.</Text>
+              <Text style={s.alertText}>{t('walDebitWarning')} {fmt(amountNum)} XAF. {t('walUndoWarning')}</Text>
             </View>
             <TouchableOpacity
               style={[s.primaryBtn, s.withdrawBtn]}
               onPress={() => {
-                const method = data.card ? 'Tarjeta bancaria' : data.cuenta ? 'Transferencia bancaria' : 'Retiro en agente';
-                const dest = data.card || `${data.banco}-${data.cuenta}` || 'Código agente';
+                const method = data.card ? 'Tarjeta bancaria' : data.cuenta ? tr('walBankTransfer') : 'Retiro en agente';
+                const dest = data.card || `${data.banco}-${data.cuenta}` || tr('xtCodigoAgente');
                 doWithdraw(method, dest);
               }}
               activeOpacity={0.85}>
-              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>Confirmar retiro — {fmt(amountNum)} XAF</Text>}
+              {loading ? <ActivityIndicator color="#fff" /> : <Text style={s.primaryBtnText}>{t('walConfirmWithdraw')} — {fmt(amountNum)} XAF</Text>}
             </TouchableOpacity>
-            <TouchableOpacity style={s.backBtn} onPress={() => setStep('menu')}><Text style={s.backBtnText}>Cancelar</Text></TouchableOpacity>
+            <TouchableOpacity style={s.backBtn} onPress={() => setStep('menu')}><Text style={s.backBtnText}>{t('cancel')}</Text></TouchableOpacity>
           </>
         )}
 
@@ -996,22 +1005,22 @@ const RetiroModal = ({
             <LinearGradient colors={['#4C1D95','#6B5BD6']} style={s.successCircle}>
               <IcoCheck />
             </LinearGradient>
-            <Text style={s.successTitle}>¡Retiro procesado!</Text>
+            <Text style={s.successTitle}>{t('walWithdrawDone')}</Text>
             <Text style={s.successSub}>
-              {data.card ? 'Llegará a tu tarjeta en 1-3 días hábiles.' :
-               data.cuenta ? 'Llegará a tu cuenta en 1-2 días hábiles.' :
-               'Acude al agente con tu código.'}
+              {data.card ? t('walArrivesCard') :
+               data.cuenta ? t('walArrivesAccount') :
+               t('walGoToAgent')}
             </Text>
             <View style={[s.refCard, { borderColor: '#DDD6FE' }]}>
-              <Text style={[s.refLabel, { color: '#4C1D95' }]}>REFERENCIA</Text>
+              <Text style={[s.refLabel, { color: '#4C1D95' }]}>{t('walReference')}</Text>
               <Text style={s.refCode}>EGC-RET-{Date.now().toString().slice(-8)}</Text>
               <View style={s.refBalanceRow}>
-                <Text style={s.refBalanceLabel}>Nuevo saldo</Text>
+                <Text style={s.refBalanceLabel}>{t('walNewBalance')}</Text>
                 <Text style={[s.refBalanceValue, { color: '#4C1D95' }]}>{fmt(balance - amountNum)} XAF</Text>
               </View>
             </View>
             <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#4C1D95' }]} onPress={close} activeOpacity={0.85}>
-              <Text style={s.primaryBtnText}>Cerrar</Text>
+              <Text style={s.primaryBtnText}>{t('close')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -1022,37 +1031,54 @@ const RetiroModal = ({
 };
 
 // ── Modal Agregar Cuenta Bancaria ─────────────────────────────────
+const ACCOUNT_TYPE_KEYS: Record<string, string> = {
+  current: 'walAccountTypeCurrent',
+  savings: 'walAccountTypeSavings',
+  payroll: 'walAccountTypePayroll',
+  investment: 'walAccountTypeInvestment',
+  Corriente: 'walAccountTypeCurrent',
+  Ahorros: 'walAccountTypeSavings',
+  'Nómina': 'walAccountTypePayroll',
+  'Inversión': 'walAccountTypeInvestment',
+};
+
 const AddBankModal = ({
   visible, onClose, onAdd,
 }: { visible: boolean; onClose: () => void; onAdd: (acc: any) => void }) => {
   const [bank, setBank] = useState('');
-  const [type, setType] = useState('Corriente');
+  const [type, setType] = useState('current');
   const [balance, setBalance] = useState('');
-  const TYPES = ['Corriente', 'Ahorros', 'Nómina', 'Inversión'];
+  const { t } = useTranslation();
+  const TYPES = [
+    { id: 'current', labelKey: 'walAccountTypeCurrent' },
+    { id: 'savings', labelKey: 'walAccountTypeSavings' },
+    { id: 'payroll', labelKey: 'walAccountTypePayroll' },
+    { id: 'investment', labelKey: 'walAccountTypeInvestment' },
+  ];
 
   const save = () => {
-    if (!bank || !balance) { Alert.alert('Error', 'Rellena todos los campos'); return; }
+    if (!bank || !balance) { Alert.alert(t('error'), t('walFillAllFields')); return; }
     onAdd({ id: Date.now().toString(), bank, type, balance: parseInt(balance) });
-    setBank(''); setType('Corriente'); setBalance('');
+    setBank(''); setType('current'); setBalance('');
     onClose();
   };
 
   return (
-    <Sheet visible={visible} title="Agregar Cuenta" onClose={onClose}>
+    <Sheet visible={visible} title={t('walAddAccountTitle')} onClose={onClose}>
       <View style={s.sheetBody}>
-        <Field label="Banco" value={bank} onChangeText={setBank} placeholder="Ej: BANGE, CCEI Bank..." />
-        <Text style={s.fieldLabel}>Tipo de cuenta</Text>
+        <Field label={t('walBankLabel')} value={bank} onChangeText={setBank} placeholder={`${t('walExamplePrefix')} BANGE, CCEI Bank...`} />
+        <Text style={s.fieldLabel}>{t('walAccountTypeLabel')}</Text>
         <View style={s.quickRow}>
-          {TYPES.map(t => (
-            <TouchableOpacity key={t} style={[s.quickBtn, type===t && s.quickBtnActive]}
-              onPress={() => setType(t)} activeOpacity={0.7}>
-              <Text style={[s.quickBtnText, type===t && s.quickBtnTextActive]}>{t}</Text>
+          {TYPES.map(bt => (
+            <TouchableOpacity key={bt.id} style={[s.quickBtn, type===bt.id && s.quickBtnActive]}
+              onPress={() => setType(bt.id)} activeOpacity={0.7}>
+              <Text style={[s.quickBtnText, type===bt.id && s.quickBtnTextActive]}>{t(bt.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
-        <Field label="Saldo inicial (XAF)" value={balance} onChangeText={setBalance} placeholder="0" keyboardType="numeric" />
+        <Field label={t('walInitialBalance')} value={balance} onChangeText={setBalance} placeholder="0" keyboardType="numeric" />
         <TouchableOpacity style={[s.primaryBtn, { backgroundColor: '#00c8a0' }]} onPress={save} activeOpacity={0.85}>
-          <Text style={s.primaryBtnText}>Guardar cuenta</Text>
+          <Text style={s.primaryBtnText}>{t('walSaveAccount')}</Text>
         </TouchableOpacity>
       </View>
     </Sheet>
@@ -1064,7 +1090,7 @@ const HistorialModal = ({
   visible, transactions, onClose,
 }: { visible: boolean; transactions: any[]; onClose: () => void }) => {
   const [filter, setFilter] = useState<'all'|'sent'|'received'|'deposit'|'withdraw'>('all');
-  const { translate: t } = useLanguage();
+  const { t } = useTranslation();
   const FILTERS = [
     { id: 'all',      label: t('all') },
     { id: 'received', label: t('received') },
@@ -1113,7 +1139,7 @@ const HistorialModal = ({
                   <Circle cx="7" cy="15" r="1" fill="#d1d5db"/>
                 </Svg>
                 <Text style={s.emptyText}>{t('noTransactions')}</Text>
-                <Text style={s.emptySub}>No hay movimientos en esta categoría</Text>
+                <Text style={s.emptySub}>{t('walNoMovements')}</Text>
               </View>
             ) : filtered.map((tx, i) => (
               <View key={tx.id || i} style={s.txCard}>
@@ -1155,6 +1181,7 @@ function MonederoScreenInner() {
   const [userName, setUserName] = useState('');
   const [userPhone, setUserPhone] = useState('');
   const [user, setUser] = useState<any>(null);
+  const { language, t } = useTranslation();
   const zipAnim = useRef(new Animated.Value(0)).current;
   const skipInitialFocusRefresh = useRef(true);
   const walletCacheKey = 'wallet_overview_v1';
@@ -1264,27 +1291,27 @@ function MonederoScreenInner() {
       setBalance(res.balance);
       setPendingTransfers(prev => prev.filter(t => t.id !== transferId));
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'No se pudo aceptar la transferencia');
+      Alert.alert(t('error'), e?.message || t('walAcceptFailed'));
     } finally {
       setPendingLoading(null);
     }
-  }, []);
+  }, [t]);
 
   const handleCancelTransfer = useCallback(async (transferId: string) => {
     Alert.alert(
-      'Cancelar transferencia',
-      'El dinero se devolverá al remitente. ¿Continuar?',
+      t('walCancelTransferTitle'),
+      t('walCancelTransferBody'),
       [
-        { text: 'No', style: 'cancel' },
+        { text: t('no'), style: 'cancel' },
         {
-          text: 'Sí, cancelar', style: 'destructive',
+          text: t('walYesCancel'), style: 'destructive',
           onPress: async () => {
             setPendingLoading(transferId);
             try {
               await walletAPI.cancelTransfer(transferId);
               setPendingTransfers(prev => prev.filter(t => t.id !== transferId));
             } catch (e: any) {
-              Alert.alert('Error', e?.message || 'No se pudo cancelar');
+              Alert.alert(t('error'), e?.message || t('walCancelFailed'));
             } finally {
               setPendingLoading(null);
             }
@@ -1292,7 +1319,7 @@ function MonederoScreenInner() {
         },
       ]
     );
-  }, []);
+  }, [t]);
 
   const [showNotifications, setShowNotifications] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
@@ -1300,7 +1327,6 @@ function MonederoScreenInner() {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);
 
   const { isDark } = useThemeContext();
-  const { language, translate: t } = useLanguage();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const loadData = useCallback(async () => {
@@ -1342,14 +1368,14 @@ function MonederoScreenInner() {
       if (!active) return;
       setUser(profile);
       setUserId(profile?.id || '');
-      setUserName(profile?.full_name || 'Usuario');
+      setUserName(profile?.full_name || t('walUserFallback'));
       setUserPhone(profile?.phone || '');
     }).catch(() => {});
     authAPI.me().then(async me => {
       const profile = await mergePersistentAvatar(me);
       setUser(profile);
       setUserId(profile?.id || '');
-      setUserName(profile?.full_name || 'Usuario');
+      setUserName(profile?.full_name || t('walUserFallback'));
       setUserPhone(profile?.phone || '');
     }).catch(() => {});
     return () => { active = false; };
@@ -1418,7 +1444,7 @@ function MonederoScreenInner() {
     const isSuspended = kycStatus === 'suspended';
 
     const statusColor = KYC_STATUS_COLORS[kycStatus] || '#9CA3AF';
-    const statusLabel = KYC_STATUS_LABELS[kycStatus] || 'Sin verificar';
+    const statusLabel = t(KYC_LABEL_KEYS[kycStatus] || 'walKycNone');
 
     return (
       <SafeAreaView style={[s.container, { backgroundColor: '#F5F7FA' }]} edges={['left','right','bottom']}>
@@ -1471,19 +1497,19 @@ function MonederoScreenInner() {
             </View>
 
             <Text style={kycS.heroTitle}>
-              {isPending   ? 'Verificación en curso' :
-               isRejected  ? 'Verificación rechazada' :
-               isSuspended ? 'Cuenta suspendida' :
-                             'Monedero no activado'}
+              {isPending   ? t('walKycPendingTitle') :
+               isRejected  ? t('walKycRejectedTitle') :
+               isSuspended ? t('walKycSuspendedTitle') :
+                             t('walKycNoneTitle')}
             </Text>
             <Text style={kycS.heroSub}>
               {isPending
-                ? 'Tu solicitud está siendo revisada. Recibirás una notificación en 24-48 horas hábiles.'
+                ? t('walKycPendingBody')
                 : isRejected
-                ? 'Tu solicitud no fue aprobada. Puedes volver a intentarlo con documentos correctos.'
+                ? t('walKycRejectedBody')
                 : isSuspended
-                ? 'Tu cuenta ha sido suspendida. Contacta con soporte para más información.'
-                : 'Verifica tu identidad para desbloquear todas las funciones del monedero digital.'}
+                ? t('walKycSuspendedBody')
+                : t('walKycNoneBody')}
             </Text>
 
             {!isSuspended && (
@@ -1499,9 +1525,9 @@ function MonederoScreenInner() {
                     style={kycS.ctaBtnGrad}
                   >
                     <Text style={kycS.ctaBtnText}>
-                      {isPending   ? 'Ver estado de verificación' :
-                       isRejected  ? 'Reintentar verificación' :
-                                     'Activar mi monedero'}
+                      {isPending   ? t('walKycViewStatus') :
+                       isRejected  ? t('walKycRetry') :
+                                     t('walKycActivate')}
                     </Text>
                     <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
                       <Path d="M5 12h14M12 5l7 7-7 7"/>
@@ -1519,11 +1545,11 @@ function MonederoScreenInner() {
                 <Rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
                 <Path d="M7 11V7a5 5 0 0 1 10 0v4"/>
               </Svg>
-              <Text style={kycS.lockedTitle}>Funciones disponibles tras verificación</Text>
+              <Text style={kycS.lockedTitle}>{t('walKycLockedTitle')}</Text>
             </View>
             {[
               {
-                text: 'Ver y gestionar tu saldo XAF',
+                text: t('walKycFeatBalance'),
                 icon: (
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
                     <Path d="M3 7h15a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7z"/>
@@ -1532,7 +1558,7 @@ function MonederoScreenInner() {
                 ),
               },
               {
-                text: 'Transferir dinero a contactos',
+                text: t('walKycFeatTransfer'),
                 icon: (
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
                     <Path d="M17 1l4 4-4 4"/><Path d="M3 11V9a4 4 0 0 1 4-4h14"/>
@@ -1541,7 +1567,7 @@ function MonederoScreenInner() {
                 ),
               },
               {
-                text: 'Recargar saldo (tarjeta, Orange Money, MTN…)',
+                text: t('walKycFeatRecharge'),
                 icon: (
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
                     <Polyline points="16 17 12 21 8 17"/>
@@ -1551,7 +1577,7 @@ function MonederoScreenInner() {
                 ),
               },
               {
-                text: 'Pagar electricidad, agua, DGI y más',
+                text: t('walKycFeatPayBills'),
                 icon: (
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
                     <Path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/>
@@ -1559,7 +1585,7 @@ function MonederoScreenInner() {
                 ),
               },
               {
-                text: 'Recibir pagos por QR',
+                text: t('walKycFeatQr'),
                 icon: (
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
                     <Rect x="3" y="3" width="7" height="7"/><Rect x="14" y="3" width="7" height="7"/>
@@ -1568,7 +1594,7 @@ function MonederoScreenInner() {
                 ),
               },
               {
-                text: 'Vincular cuenta bancaria BANGE',
+                text: t('walKycFeatBankLink'),
                 icon: (
                   <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth={1.8} strokeLinecap="round">
                     <Rect x="3" y="10" width="18" height="11" rx="2"/>
@@ -1584,7 +1610,7 @@ function MonederoScreenInner() {
                 <View style={kycS.lockedIconWrap}>{item.icon}</View>
                 <Text style={kycS.lockedRowText}>{item.text}</Text>
                 <View style={kycS.lockedChip}>
-                  <Text style={kycS.lockedChipText}>Bloqueado</Text>
+                  <Text style={kycS.lockedChipText}>{t('walKycBlocked')}</Text>
                 </View>
               </View>
             ))}
@@ -1598,16 +1624,16 @@ function MonederoScreenInner() {
                 <Line x1="12" y1="8" x2="12" y2="12"/>
                 <Line x1="12" y1="16" x2="12.01" y2="16"/>
               </Svg>
-              <Text style={kycS.whyTitle}>¿Por qué necesito verificarme?</Text>
+              <Text style={kycS.whyTitle}>{t('walKycWhyTitle')}</Text>
             </View>
             <Text style={kycS.whyText}>
-              EGChat opera el monedero digital en alianza con{' '}
-              <Text style={kycS.whyBold}>BANGE (Banco Nacional de Guinea Ecuatorial)</Text>,
-              bajo licencia de Emisor de Dinero Electrónico ante la{' '}
+              {t('walKycWhyP1')}{' '}
+              <Text style={kycS.whyBold}>{tr('xtBANGEBancoNacionalDeGuineaEcuatorial')}</Text>
+              {t('walKycWhyP2')}{' '}
               <Text style={kycS.whyBold}>BEAC/COBAC</Text>.{'\n\n'}
-              La verificación de identidad es obligatoria según el{' '}
+              {t('walKycWhyP3')}{' '}
               <Text style={kycS.whyBold}>Reglamento COBAC R-2023/01</Text>{' '}
-              y la <Text style={kycS.whyBold}>Ley N°2/2008</Text> de Guinea Ecuatorial.
+              {t('walKycWhyP4')} <Text style={kycS.whyBold}>Ley N°2/2008</Text>{t('walKycWhyP5')}
             </Text>
           </View>
 
@@ -1616,7 +1642,7 @@ function MonederoScreenInner() {
               <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth={2} strokeLinecap="round">
                 <Path d="M4 4l16 16M4 20L20 4"/>
               </Svg>
-              <Text style={kycS.suspendedText}>Contacta con soporte: soporte@egchat.gq</Text>
+              <Text style={kycS.suspendedText}>{t('walKycContactSupport')} soporte@egchat.gq</Text>
             </View>
           )}
 
@@ -1664,18 +1690,18 @@ function MonederoScreenInner() {
                   >
                     <TouchableOpacity onPress={revealBalance} activeOpacity={0.9} style={s.balanceOverlayTouch}>
                       <Text style={s.balanceHiddenText}>
-                        {balanceRevealing ? 'Abriendo…' : `🔒  ${t('tapToReveal')}`}
+                        {balanceRevealing ? t('walOpening') : `🔒  ${t('tapToReveal')}`}
                       </Text>
                     </TouchableOpacity>
                   </Animated.View>
                 )}
                 {balanceRevealed && (
                   <TouchableOpacity onPress={hideBalance} style={s.balanceHideBtn} hitSlop={12}>
-                    <Text style={s.balanceHideText}>Ocultar</Text>
+                    <Text style={s.balanceHideText}>{t('walHide')}</Text>
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={s.balanceSubLabel}>Saldo disponible</Text>
+              <Text style={s.balanceSubLabel}>{t('walletBalance')}</Text>
 
               {/* 4 botones de acción */}
               <View style={s.actionsRow}>
@@ -1720,7 +1746,7 @@ function MonederoScreenInner() {
                     </View>
                     <View style={s.bankInfo}>
                       <Text style={[s.bankName, { color: C.textPrimary }]}>{acc.bank}</Text>
-                      <Text style={[s.bankType, { color: C.textSecondary }]}>{acc.type}</Text>
+                      <Text style={[s.bankType, { color: C.textSecondary }]}>{ACCOUNT_TYPE_KEYS[acc.type] ? t(ACCOUNT_TYPE_KEYS[acc.type]) : acc.type}</Text>
                     </View>
                     <View style={s.bankBalanceWrap}>
                       <Text style={[s.bankBalance, { color: C.textPrimary }]}>{fmt(acc.balance)}</Text>
@@ -1766,7 +1792,7 @@ function MonederoScreenInner() {
             <>
               <View style={s.sectionHeader}>
                 <Text style={[s.sectionTitle, { color: '#b45309' }]}>
-                  TRANSFERENCIAS PENDIENTES ({pendingTransfers.length})
+                  {t('walPendingTransfersTitle')} ({pendingTransfers.length})
                 </Text>
               </View>
               <View style={[s.card, { backgroundColor: C.bgSecondary }]}>
@@ -1796,8 +1822,8 @@ function MonederoScreenInner() {
                         <View style={{ flex: 1 }}>
                           <Text style={[s.bankName, { color: C.textPrimary }]} numberOfLines={1}>
                             {isIncoming
-                              ? `De: ${transfer.senderName}`
-                              : `Para: ${transfer.recipientName}`}
+                              ? `${t('walFromPrefix')} ${transfer.senderName}`
+                              : `${t('walToPrefix')} ${transfer.recipientName}`}
                           </Text>
                           {!!transfer.concept && (
                             <Text style={[s.bankType, { color: C.textSecondary, fontStyle: 'italic' }]} numberOfLines={1}>
@@ -1805,7 +1831,7 @@ function MonederoScreenInner() {
                             </Text>
                           )}
                           <Text style={[s.bankType, { color: transfer.isExpired ? '#ef4444' : '#b45309' }]}>
-                            {transfer.isExpired ? '⛔ Expirada' : `⏳ Expira en ${timeLabel}`}
+                            {transfer.isExpired ? t('walExpired') : `${t('walExpiresIn')} ${timeLabel}`}
                           </Text>
                         </View>
 
@@ -1825,7 +1851,7 @@ function MonederoScreenInner() {
                           >
                             {isProcessing && pendingLoading === transfer.id
                               ? <ActivityIndicator size="small" color="#dc2626" />
-                              : <Text style={s.pendingBtnCancelText}>❌ Rechazar</Text>
+                              : <Text style={s.pendingBtnCancelText}>{t('walReject')}</Text>
                             }
                           </TouchableOpacity>
                           <TouchableOpacity
@@ -1835,7 +1861,7 @@ function MonederoScreenInner() {
                           >
                             {isProcessing && pendingLoading === transfer.id
                               ? <ActivityIndicator size="small" color="#fff" />
-                              : <Text style={s.pendingBtnAcceptText}>✅ Recibir</Text>
+                              : <Text style={s.pendingBtnAcceptText}>{t('walAcceptReceive')}</Text>
                             }
                           </TouchableOpacity>
                         </View>
@@ -1851,7 +1877,7 @@ function MonederoScreenInner() {
                           >
                             {isProcessing
                               ? <ActivityIndicator size="small" color="#dc2626" />
-                              : <Text style={s.pendingBtnCancelText}>Cancelar envío</Text>
+                              : <Text style={s.pendingBtnCancelText}>{t('walCancelSend')}</Text>
                             }
                           </TouchableOpacity>
                         </View>
@@ -1931,7 +1957,7 @@ function MonederoScreenInner() {
             <TouchableOpacity onPress={() => setShowCards(false)} style={{ marginRight: 12 }}>
               <Text style={{ fontSize: 24, color: '#374151' }}>‹</Text>
             </TouchableOpacity>
-            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A2B4A', flex: 1 }}>Mis Tarjetas</Text>
+            <Text style={{ fontSize: 17, fontWeight: '700', color: '#1A2B4A', flex: 1 }}>{t('walMyCardsTitle')}</Text>
           </View>
           <ScrollView contentContainerStyle={{ padding: 16 }}>
             <CardsScreen bank={{ id: 'egchat', name: 'EGPAY', color: '#1B3A6B', color2: '#2A5298', initials: 'EG', full: 'EGPAY', founded: 2024, desc: '', address: '', phone: '', web: '', swift: '', branches: 0, atms: 0, services: [], accounts: [] }} />
@@ -2187,8 +2213,9 @@ const s = StyleSheet.create({
 });
 
 export default function MonederoScreen() {
+  const { t } = useTranslation();
   return (
-    <TabErrorBoundary tabName="Cartera">
+    <TabErrorBoundary tabName={t('wallet')}>
       <MonederoScreenInner />
     </TabErrorBoundary>
   );

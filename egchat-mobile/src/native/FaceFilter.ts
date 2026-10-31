@@ -13,6 +13,7 @@
  *   // Renderizar <FaceFilterOverlay faces={faces} filterId="glasses" />
  */
 import { NativeModules, Platform } from 'react-native';
+import { t as tr } from '../translations';
 
 const { EGChatFaceFilter } = NativeModules;
 const isAvailable = !!EGChatFaceFilter && Platform.OS !== 'web';
@@ -73,10 +74,10 @@ export type FilterId =
   | 'blur_bg';      // Fondo difuminado
 
 export const FILTERS: Array<{ id: FilterId; label: string; emoji: string }> = [
-  { id: 'none',       label: 'Sin filtro',  emoji: '🚫' },
-  { id: 'glasses',    label: 'Gafas',       emoji: '🕶️' },
-  { id: 'hat',        label: 'Sombrero',    emoji: '🎩' },
-  { id: 'bunny_ears', label: 'Conejito',    emoji: '🐰' },
-  { id: 'crown',      label: 'Corona',      emoji: '👑' },
-  { id: 'mustache',   label: 'Bigote',      emoji: '👨' },
+  { id: 'none',       get label() { return tr('xtSinFiltro'); },  emoji: '🚫' },
+  { id: 'glasses',    get label() { return tr('xtGafas'); },       emoji: '🕶️' },
+  { id: 'hat',        get label() { return tr('xtSombrero'); },    emoji: '🎩' },
+  { id: 'bunny_ears', get label() { return tr('xtConejito'); },    emoji: '🐰' },
+  { id: 'crown',      get label() { return tr('xtCorona'); },      emoji: '👑' },
+  { id: 'mustache',   get label() { return tr('xtBigote'); },      emoji: '👨' },
 ];

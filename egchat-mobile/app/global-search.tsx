@@ -16,6 +16,7 @@ import { EGAvatar } from '../src/components/ui';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { Colors } from '../src/theme/colors';
 import { DarkColors } from '../src/theme/darkMode';
+import { useTranslation } from '../src/context/LanguageContext';
 
 interface SearchResult {
   type: 'chat' | 'message' | 'contact';
@@ -64,6 +65,7 @@ export default function GlobalSearchScreen() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const doSearch = useCallback(async (q: string) => {
@@ -98,7 +100,7 @@ export default function GlobalSearchScreen() {
         if (res.ok) {
           const msgs = await res.json();
           for (const msg of (Array.isArray(msgs) ? msgs : [])) {
-            const chatName = msg.chat?.name || msg.chat?.participants?.[0]?.full_name || 'Chat';
+            const chatName = msg.chat?.name || msg.chat?.participants?.[0]?.full_name || t('chat');
             found.push({
               type: 'message',
               chatId: msg.chat_id || msg.chat?.id,
@@ -107,7 +109,7 @@ export default function GlobalSearchScreen() {
               messageId: msg.id,
               messageText: msg.text || '',
               messageDate: msg.created_at,
-              senderName: msg.sender?.full_name || 'Usuario',
+              senderName: msg.sender?.full_name || t('setUser'),
               highlight: q,
             });
           }
@@ -119,7 +121,7 @@ export default function GlobalSearchScreen() {
             const msgs = await chatAPI.getMessages(chat.id, 50);
             for (const msg of (Array.isArray(msgs) ? msgs : [])) {
               if ((msg.text || '').toLowerCase().includes(q.toLowerCase())) {
-                const chatName = chat.name || chat.participants?.find((p: any) => p.user_id !== 'me')?.full_name || 'Chat';
+                const chatName = chat.name || chat.participants?.find((p: any) => p.user_id !== 'me')?.full_name || t('chat');
                 found.push({
                   type: 'message',
                   chatId: chat.id,
@@ -128,7 +130,7 @@ export default function GlobalSearchScreen() {
                   messageId: msg.id,
                   messageText: msg.text || '',
                   messageDate: msg.created_at,
-                  senderName: msg.sender?.full_name || 'Usuario',
+                  senderName: msg.sender?.full_name || t('setUser'),
                   highlight: q,
                 });
               }
@@ -141,7 +143,7 @@ export default function GlobalSearchScreen() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const handleChange = useCallback((text: string) => {
     setQuery(text);
@@ -172,7 +174,7 @@ export default function GlobalSearchScreen() {
           <TextInput
             ref={inputRef}
             style={s.searchInput}
-            placeholder="Buscar en todos los chats..."
+            placeholder={t('srchPlaceholder')}
             placeholderTextColor="rgba(0,0,0,0.4)"
             value={query}
             onChangeText={handleChange}
@@ -196,21 +198,21 @@ export default function GlobalSearchScreen() {
             <Svg width={48} height={48} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={1.2} strokeLinecap="round">
               <Circle cx="11" cy="11" r="8"/><Path d="M21 21l-4.35-4.35"/>
             </Svg>
-            <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Busca en todos tus chats</Text>
-            <Text style={[s.emptySub, { color: C.textTertiary }]}>Escribe al menos 2 caracteres</Text>
+            <Text style={[s.emptyTitle, { color: C.textPrimary }]}>{t('srchEmptyTitle')}</Text>
+            <Text style={[s.emptySub, { color: C.textTertiary }]}>{t('srchEmptySub')}</Text>
           </View>
         ) : results.length === 0 ? (
           <View style={s.empty}>
             <Text style={s.emptyIcon}>🔍</Text>
-            <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Sin resultados</Text>
-            <Text style={[s.emptySub, { color: C.textTertiary }]}>No se encontró "{query}"</Text>
+            <Text style={[s.emptyTitle, { color: C.textPrimary }]}>{t('noResults')}</Text>
+            <Text style={[s.emptySub, { color: C.textTertiary }]}>{t('srchNotFound')} "{query}"</Text>
           </View>
         ) : (
           <FlatList
             data={[
-              ...(chatResults.length > 0 ? [{ type: 'header', label: `CHATS (${chatResults.length})`, id: 'h_chats' }] : []),
+              ...(chatResults.length > 0 ? [{ type: 'header', label: `${t('srchChats')} (${chatResults.length})`, id: 'h_chats' }] : []),
               ...chatResults.map(r => ({ ...r, id: `chat_${r.chatId}` })),
-              ...(msgResults.length > 0 ? [{ type: 'header', label: `MENSAJES (${msgResults.length})`, id: 'h_msgs' }] : []),
+              ...(msgResults.length > 0 ? [{ type: 'header', label: `${t('srchMessages')} (${msgResults.length})`, id: 'h_msgs' }] : []),
               ...msgResults.map((r, i) => ({ ...r, id: `msg_${r.messageId || i}` })),
             ] as any[]}
             keyExtractor={item => item.id}

@@ -7,6 +7,7 @@ import { IMPUESTOS_OPTIONS } from '../../data/serviciosPublicos';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker, ServiceOptionRow } from './PublicModuleUI';
+import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; userBalance?: number; }
 
@@ -43,7 +44,7 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose, userBalance 
       <Text style={{ fontSize: 28 }}>🏛️</Text>
       <View>
         <Text style={s.headerTitle}>DGI</Text>
-        <Text style={s.headerSub}>Dirección General de Impuestos</Text>
+        <Text style={s.headerSub}>{tr('svcDgiName')}</Text>
       </View>
     </LinearGradient>
   ) : undefined;
@@ -52,7 +53,7 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose, userBalance 
     <FinancialModuleShell visible={visible} title={screen === 'home' ? 'Impuestos' : selected?.label || 'Pago DGI'} onBack={back} onClose={onClose} fixedTop={fixedTop}>
       {screen === 'home' && (
         <View>
-          <Text style={s.sectionLbl}>TIPO DE DECLARACIÓN / PAGO</Text>
+          <Text style={s.sectionLbl}>{tr('xtTIPODEDECLARACIONPAGO')}</Text>
           {IMPUESTOS_OPTIONS.map(imp => (
             <ServiceOptionRow
               key={imp.id}
@@ -69,14 +70,14 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose, userBalance 
         <View>
           <LinearGradient colors={['#1B3A6B', '#2A5298']} style={s.formBanner}>
             <Text style={s.formBannerTitle}>{selected.label}</Text>
-            <Text style={s.formBannerSub}>Dirección General de Impuestos — GQ</Text>
+            <Text style={s.formBannerSub}>{tr('svcDgiNameGq')}</Text>
           </LinearGradient>
-          <FormField placeholder="NIF / DNI del contribuyente" value={form.nif} onChangeText={v => setF('nif', v)} />
-          <FormField placeholder="Referencia de pago / expediente" value={form.ref} onChangeText={v => setF('ref', v)} />
-          <FormField placeholder="Período fiscal (ej: 2025)" value={form.period} onChangeText={v => setF('period', v)} />
-          <FormField placeholder="Importe a pagar (XAF)" value={form.amount} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
+          <FormField placeholder={tr('xtNIFDNIDelContribuyente')} value={form.nif} onChangeText={v => setF('nif', v)} />
+          <FormField placeholder={tr('xtReferenciaDePagoExpediente')} value={form.ref} onChangeText={v => setF('ref', v)} />
+          <FormField placeholder={tr('xtPeriodoFiscalEj2025')} value={form.period} onChangeText={v => setF('period', v)} />
+          <FormField placeholder={tr('svcAmountToPayXaf')} value={form.amount} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
           <View style={s.infoBox}>
-            <Text style={s.infoText}>ℹ️ El pago genera un justificante oficial. Guarda el número de referencia.</Text>
+            <Text style={s.infoText}>{tr('svcPaymentReceiptInfo')}</Text>
           </View>
           <PayMethodPicker value={form.payMethod} onChange={v => setF('payMethod', v)} accent="#1B3A6B" />
           <PrimaryButton
@@ -90,10 +91,10 @@ export const ImpuestosModal: React.FC<Props> = ({ visible, onClose, userBalance 
       {screen === 'success' && (
         <View style={s.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>Pago registrado</Text>
+          <Text style={s.successTitle}>{tr('xtPagoRegistrado')}</Text>
           <Text style={s.successSub}>{selected?.label} — NIF: {form.nif}</Text>
           <Text style={s.successSub}>{amount.toLocaleString()} XAF</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color="#1B3A6B" />
+          <PrimaryButton label={tr('close')} onPress={onClose} color="#1B3A6B" />
         </View>
       )}
     </FinancialModuleShell>

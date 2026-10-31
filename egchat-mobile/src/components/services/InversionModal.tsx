@@ -4,10 +4,12 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { INVEST_OPTIONS } from '../../data/serviciosFinancieros';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Props { visible: boolean; onClose: () => void; }
 
 export const InversionModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState('');
   const [amount, setAmount] = useState('');
   const [months, setMonths] = useState('');
@@ -21,8 +23,8 @@ export const InversionModal: React.FC<Props> = ({ visible, onClose }) => {
   return (
     <FinancialModuleShell
       visible={visible}
-      title={done ? 'Completado' : 'Inversión'}
-      subtitle={!done ? 'Oportunidades de inversión en Guinea Ecuatorial' : undefined}
+      title={done ? t('svcCompleted') : t('investment')}
+      subtitle={!done ? t('svcInvestSubtitle') : undefined}
       onBack={() => done ? onClose() : onClose()}
       onClose={onClose}
       onRefresh={!done ? () => { setSelected(''); setAmount(''); } : undefined}
@@ -47,16 +49,16 @@ export const InversionModal: React.FC<Props> = ({ visible, onClose }) => {
           ))}
           {selected && (
             <View style={s.form}>
-              <FormField placeholder="Monto a invertir (XAF)" value={amount} onChangeText={setAmount} keyboardType="numeric" />
-              <FormField placeholder="Plazo en meses" value={months} onChangeText={setMonths} keyboardType="numeric" />
+              <FormField placeholder={t("svcInvestAmountPh")} value={amount} onChangeText={setAmount} keyboardType="numeric" />
+              <FormField placeholder={t("svcInvestTermPh")} value={months} onChangeText={setMonths} keyboardType="numeric" />
               {gain > 0 && (
                 <View style={s.gainBox}>
-                  <Text style={s.gainLbl}>Ganancia estimada</Text>
+                  <Text style={s.gainLbl}>{t('svcEstimatedGain')}</Text>
                   <Text style={s.gainVal}>+{gain.toLocaleString()} XAF</Text>
                 </View>
               )}
               <PrimaryButton
-                label="Invertir ahora"
+                label={t('svcInvestNow')}
                 color={opt?.color || '#6B5BD6'}
                 disabled={!amount || !months}
                 onPress={() => setDone(true)}
@@ -67,9 +69,9 @@ export const InversionModal: React.FC<Props> = ({ visible, onClose }) => {
       ) : (
         <View style={s.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>Inversión registrada</Text>
+          <Text style={s.successTitle}>{t('svcInvestRecorded')}</Text>
           <Text style={s.successSub}>{opt?.label} — {parseInt(amount, 10).toLocaleString()} XAF</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color="#6B5BD6" />
+          <PrimaryButton label={t('close')} onPress={onClose} color="#6B5BD6" />
         </View>
       )}
     </FinancialModuleShell>

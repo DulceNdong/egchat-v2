@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { StyleSheet, View, Text } from 'react-native';
 import { MALABO_CENTER, MITAXI_PLACES, MapCoord } from '../../data/mitaxiPlaces';
 import type { MiTaxiMapProps } from './types';
+import { t as tr } from '../../translations';
 
 export function MiTaxiMap({
   userLocation,
@@ -34,7 +35,7 @@ export function MiTaxiMap({
   const markers = [
     userLocation && { ...userLocation, label: 'Tú', color: accentColor },
     destLocation && { ...destLocation, label: 'Destino', color: '#0F172A' },
-    driverLocation && { ...driverLocation, label: 'Conductor', color: '#10B981' },
+    driverLocation && { ...driverLocation, label: tr('xtConductor'), color: '#10B981' },
   ].filter(Boolean) as Array<MapCoord & { label: string; color: string }>;
 
   const embedUrl =

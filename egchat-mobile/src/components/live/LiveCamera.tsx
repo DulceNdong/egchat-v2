@@ -14,6 +14,7 @@ import {
   useCameraPermission,
   useMicrophonePermission,
 } from 'react-native-vision-camera';
+import { t as tr } from '../../translations';
 
 // ─── Tipos de efectos disponibles ─────────────────────────────────
 export type LiveEffectId =
@@ -125,7 +126,7 @@ const EFFECT_CONFIGS: Record<LiveEffectId, EffectConfig> = {
     tintOpacity: 0.08,
     tint2: 'rgba(0, 100, 255, 1)',
     tint2Opacity: 0.06,
-    label: 'Vívido',
+    label: tr('xtVivido'),
   },
   dramatic: {
     // Alto contraste — capa oscura con viñeta
@@ -141,7 +142,7 @@ const EFFECT_CONFIGS: Record<LiveEffectId, EffectConfig> = {
     tintOpacity: 0.15,
     tint2: 'rgba(0, 220, 255, 1)',
     tint2Opacity: 0.10,
-    label: 'Neón',
+    label: tr('xtNeon'),
   },
   retro: {
     // Tono sepia/vintage
@@ -199,9 +200,9 @@ export function useLiveCameraPermissions() {
 export const LIVE_EFFECT_LIST: Array<{ id: LiveEffectId; label: string }> = [
   { id: 'none',     label: 'Normal'  },
   { id: 'beauty',   label: 'Beauty'  },
-  { id: 'vivid',    label: 'Vívido'  },
+  { id: 'vivid',    label: tr('xtVivido')  },
   { id: 'dramatic', label: 'Drama'   },
-  { id: 'neon',     label: 'Neón'    },
+  { id: 'neon',     label: tr('xtNeon')    },
   { id: 'retro',    label: 'Retro'   },
   { id: 'blur',     label: 'Blur BG' },
   { id: 'bw',       label: 'B&W'     },

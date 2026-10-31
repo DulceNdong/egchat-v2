@@ -7,6 +7,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import SessionManager from './sessionManager';
 import { saveLocalProfile, getLocalProfile } from './utils/profileEvents';
+import { t as tr } from './translations';
 
 const BASE = (() => {
   const url = (process.env.EXPO_PUBLIC_API_URL || '').trim();
@@ -82,7 +83,7 @@ const isAuthPublicPath = (path: string) =>
   AUTH_PUBLIC_PATHS.some(p => path.startsWith(p));
 
 const CONNECTION_ERROR =
-  'No se pudo conectar al servidor. Verifica tu conexión e intenta de nuevo.';
+  tr('xtNoSePudoConectarAlServidorVerificaTuConexionEInten');
 
 function toFriendlyNetworkError(err: any): Error {
   if (
@@ -225,7 +226,7 @@ async function request<T>(
       if (isReallyInvalid) {
         await clearToken();
         onUnauthorized?.();
-        throw new Error('Sesión expirada. Inicia sesión de nuevo.');
+        throw new Error(tr('xtSesionExpiradaIniciaSesionDeNuevo'));
       }
 
       // 401 ambiguo (servidor Render despertando, etc.) → lanzar error sin desconectar
@@ -502,7 +503,7 @@ export const chatAPI = {
       if (res.status === 401) {
         await clearToken();
         onUnauthorized?.();
-        throw new Error('Sesión expirada');
+        throw new Error(tr('xtSesionExpirada'));
       }
       if (!res.ok) {
         const err = await res.json().catch(() => ({ message: res.statusText }));
@@ -654,8 +655,41 @@ export const callAPI = {
 // LIA-25
 // ══════════════════════════════════════════════════════════════════
 export const liaAPI = {
-  chat: (message: string, history?: any[]) =>
-    post<{ reply: string }>('/api/lia/chat', { message, history }),
+  chat: (message: string, history?: any[], lang?: string) =>
+    post<{ reply: string; action?: string; lang?: string }>('/api/lia/chat', { message, history, lang }),
+  history: (limit = 30) =>
+    get<{ messages: Array<{ role: 'user' | 'assistant'; content: string; time?: string }> }>(
+      `/api/lia/history?limit=${limit}`,
+    ),
+  status: () =>
+    get<{ engine: string; model: string | null; dictation: boolean }>('/api/lia/status'),
+  transcribe: async (uri: string, lang: string): Promise<{ text: string }> => {
+    const token = await getToken();
+    const fileName = uri.split('/').pop() || 'audio.m4a';
+    const ext = (fileName.split('.').pop() || '').toLowerCase();
+    const mimeType = ext === 'wav' ? 'audio/wav' : ext === 'caf' ? 'audio/x-caf' : 'audio/m4a';
+    const formData = new FormData();
+    formData.append('file', { uri, name: fileName, type: mimeType } as unknown as Blob);
+    formData.append('lang', lang);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 60000);
+    try {
+      const res = await fetch(`${BASE}/api/lia/transcribe`, {
+        method: 'POST',
+        body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
+      });
+      clearTimeout(timeoutId);
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error((data as any)?.message || `Error ${res.status}`);
+      return data as { text: string };
+    } catch (e) {
+      clearTimeout(timeoutId);
+      throw e;
+    }
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════
@@ -692,7 +726,7 @@ const buildLocalStory = async (data: { media: Array<{ url: string; type?: string
   const story = {
     id: `local-${Date.now()}`,
     userId: user.id || 'local-user',
-    userName: user.full_name || 'Mi estado',
+    userName: user.full_name || tr('xtMiEstado'),
     avatarUrl: user.avatar_url || '',
     media,
     views: 0,
@@ -731,7 +765,7 @@ export const storiesAPI = {
         const story = {
           id: remote.id || `local-${Date.now()}`,
           userId: user.id || 'local-user',
-          userName: user.full_name || 'Mi estado',
+          userName: user.full_name || tr('xtMiEstado'),
           avatarUrl: user.avatar_url || '',
           media: remote.media || (Array.isArray(data.media) ? data.media : [{ url: String(data.media), type: data.type || 'image' }]),
           views: 0,

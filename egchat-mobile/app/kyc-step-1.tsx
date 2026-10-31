@@ -17,6 +17,7 @@ import {
 } from '../src/services/kyc';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../src/theme';
 import { EGButton, EGErrorMessage } from '../src/components/ui';
+import { t as tr } from '../src/translations';
 
 // ── Componente barra de progreso KYC ─────────────────────────────
 const KycProgressBar = ({ step, total = 3 }: { step: number; total?: number }) => (
@@ -168,7 +169,7 @@ export default function KycStep1() {
             </TouchableOpacity>
             <View style={st.headerCenter}>
               <Text style={st.headerTitle}>Datos Personales</Text>
-              <Text style={st.headerSub}>Paso 1 de 3</Text>
+              <Text style={st.headerSub}>{tr('xtPaso1De3')}</Text>
             </View>
             <View style={{ width: 36 }}/>
           </View>
@@ -180,25 +181,25 @@ export default function KycStep1() {
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
           >
-            <Text style={st.sectionTitle}>Información básica</Text>
+            <Text style={st.sectionTitle}>{tr('xtInformacionBasica')}</Text>
             <Text style={st.sectionSub}>
               Introduce tus datos tal como aparecen en tu documento de identidad oficial.
             </Text>
 
             <Field
-              label="Nombre completo" required
+              label={tr('name')} required
               value={form.full_name} onChangeText={set('full_name')}
-              placeholder="Ej. María López Nguema"
+              placeholder={tr('xtEjMariaLopezNguema')}
             />
 
             <DateField
-              label="Fecha de nacimiento" required
+              label={tr('kyDateOfBirth')} required
               value={form.birth_date} onChange={set('birth_date')}
             />
 
             {/* Género */}
             <View style={st.fieldGroup}>
-              <Text style={st.fieldLabel}>Género</Text>
+              <Text style={st.fieldLabel}>{tr('xtGenero')}</Text>
               <TouchableOpacity
                 style={st.selector}
                 onPress={() => setShowGender(true)}
@@ -226,20 +227,20 @@ export default function KycStep1() {
               </TouchableOpacity>
             </View>
 
-            <Text style={[st.sectionTitle, { marginTop: 8 }]}>Dirección (opcional)</Text>
+            <Text style={[st.sectionTitle, { marginTop: 8 }]}>{tr('xtDireccionOpcional')}</Text>
 
             <Field
-              label="Dirección"
+              label={tr('xtDireccion')}
               value={form.address} onChangeText={set('address')}
-              placeholder="Calle, número, barrio…"
+              placeholder={tr('xtCalleNumeroBarrio')}
             />
             <Field
-              label="Ciudad"
+              label={tr('kyCity')}
               value={form.city} onChangeText={set('city')}
               placeholder="Ej. Malabo, Bata…"
             />
             <Field
-              label="Profesión / Ocupación"
+              label={tr('kyProfessionOccupation')}
               value={form.occupation} onChangeText={set('occupation')}
               placeholder="Ej. Comerciante, Funcionario…"
             />
@@ -263,7 +264,7 @@ export default function KycStep1() {
       <Modal visible={showNationality} transparent animationType="slide">
         <View style={st.modalOverlay}>
           <View style={st.modalBox}>
-            <Text style={st.modalTitle}>Selecciona tu nacionalidad</Text>
+            <Text style={st.modalTitle}>{tr('xtSeleccionaTuNacionalidad')}</Text>
             <FlatList
               data={NATIONALITY_OPTIONS}
               keyExtractor={i => i.code}
@@ -278,7 +279,7 @@ export default function KycStep1() {
               )}
             />
             <TouchableOpacity style={st.modalClose} onPress={() => setShowNationality(false)}>
-              <Text style={st.modalCloseText}>Cerrar</Text>
+              <Text style={st.modalCloseText}>{tr('close')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -288,11 +289,11 @@ export default function KycStep1() {
       <Modal visible={showGender} transparent animationType="slide">
         <View style={st.modalOverlay}>
           <View style={st.modalBox}>
-            <Text style={st.modalTitle}>Género</Text>
+            <Text style={st.modalTitle}>{tr('xtGenero')}</Text>
             {[
               { code: 'M', label: '👨 Hombre' },
               { code: 'F', label: '👩 Mujer' },
-              { code: 'O', label: '🧑 Prefiero no decirlo' },
+              { code: 'O', label: tr('xtPrefieroNoDecirlo') },
             ].map(g => (
               <TouchableOpacity
                 key={g.code}
@@ -304,7 +305,7 @@ export default function KycStep1() {
               </TouchableOpacity>
             ))}
             <TouchableOpacity style={st.modalClose} onPress={() => setShowGender(false)}>
-              <Text style={st.modalCloseText}>Cerrar</Text>
+              <Text style={st.modalCloseText}>{tr('close')}</Text>
             </TouchableOpacity>
           </View>
         </View>

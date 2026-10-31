@@ -11,6 +11,7 @@ import { router } from 'expo-router';
 import { toast } from '../../src/components/Toast';
 import { Colors } from '../../src/theme';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 // ── Sincroniza configuración de privacidad con el backend ─────────
 async function syncPrivacyToBackend(settings: {
@@ -38,10 +39,11 @@ async function syncPrivacyToBackend(settings: {
   }
 }
 
+// `id` es el valor persistido/enviado al backend; `labelKey` es la etiqueta visible.
 const VIS_OPTS = [
-  { id: 'todos', label: 'Todos' },
-  { id: 'contactos', label: 'Contactos' },
-  { id: 'nadie', label: 'Nadie' },
+  { id: 'todos', labelKey: 'everyone' },
+  { id: 'contactos', labelKey: 'contacts' },
+  { id: 'nadie', labelKey: 'nobody' },
 ];
 interface BlockedContact {
   id: string;
@@ -58,6 +60,7 @@ export default function PrivacidadScreen() {
   const [loadingBlocked, setLoadingBlocked] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const { translate: t } = useLanguage();
+  const visOptions = VIS_OPTS.map(o => ({ id: o.id, label: t(o.labelKey) }));
 
   useEffect(() => {
     getCfgString(CFG.lastSeen, 'todos').then(setLastSeen);
@@ -101,12 +104,12 @@ export default function PrivacidadScreen() {
   };
 
   const unblockContact = (contact: BlockedContact) => {
-    const name = contact.full_name || contact.phone || 'este contacto';
+    const name = contact.full_name || contact.phone || tr('setThisContact');
     Alert.alert(
       'Desbloquear',
       `¿Desbloquear a ${name}?`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
         {
           text: 'Desbloquear',
           onPress: async () => {
@@ -120,7 +123,7 @@ export default function PrivacidadScreen() {
               setBlocked(prev => prev.filter(c => c.id !== contact.id));
               // Usuario desbloqueado silenciosamente
             } catch {
-              toast.error('No se pudo desbloquear. Verifica tu conexión.');
+              toast.error(tr('setUnblockFailed'));
             }
           },
         },
@@ -137,7 +140,7 @@ export default function PrivacidadScreen() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (res.ok) {
-        Alert.alert('Solicitud enviada', 'Recibirás un email con tus datos en las próximas 24 horas.');
+        Alert.alert(t('setRequestSent'), t('setRequestSentBody'));
       } else {
         await createLocalDataExport();
       }
@@ -172,33 +175,33 @@ export default function PrivacidadScreen() {
       if (canShare) {
         await Sharing.shareAsync(path, {
           mimeType: 'application/json',
-          dialogTitle: 'Exportar datos de EGCHAT',
+          dialogTitle: tr('setExportDataTitle'),
         });
         return;
       }
-      Alert.alert('Exportación creada', `Archivo guardado: ${fileName}`);
+      Alert.alert(tr('setExportCreated'), `Archivo guardado: ${fileName}`);
     } catch {
-      Alert.alert('Error', 'No se pudo crear la exportación de datos.');
+      Alert.alert(t('error'), t('setExportDataFailed'));
     }
   };
 
   const handleDeleteAccount = useCallback(() => {
     Alert.alert(
-      '⚠️ Eliminar cuenta',
-      'Esta acción es irreversible. Se eliminarán permanentemente tu cuenta, mensajes, contactos y todos tus datos.\n\n¿Estás seguro?',
+      tr('xtEliminarCuenta'),
+      tr('xtEstaAccionEsIrreversibleSeEliminaranPermanentement'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
         {
-          text: 'Confirmar eliminación',
+          text: tr('xtConfirmarEliminacion'),
           style: 'destructive',
           onPress: () => {
             Alert.alert(
-              'Última confirmación',
-              '¿Eliminar tu cuenta definitivamente?',
+              tr('setFinalConfirmation'),
+              tr('setDeleteAccountFinal'),
               [
-                { text: 'Cancelar', style: 'cancel' },
+                { text: tr('cancel'), style: 'cancel' },
                 {
-                  text: 'Sí, eliminar',
+                  text: tr('xtSiEliminar'),
                   style: 'destructive',
                   onPress: async () => {
                     try {
@@ -230,21 +233,21 @@ export default function PrivacidadScreen() {
         <VisibilityRow
           label={t('lastSeen')}
           value={lastSeen}
-          options={VIS_OPTS}
+          options={visOptions}
           onChange={v => updatePrivacy('lastSeen', v, CFG.lastSeen, setLastSeen)}
         />
         <SettingsDivider />
         <VisibilityRow
           label={t('profilePhoto')}
           value={photoVis}
-          options={VIS_OPTS}
+          options={visOptions}
           onChange={v => updatePrivacy('photoVis', v, CFG.photoVis, setPhotoVis)}
         />
         <SettingsDivider />
         <VisibilityRow
           label={t('statusHistory')}
           value={statusVis}
-          options={VIS_OPTS}
+          options={visOptions}
           onChange={v => updatePrivacy('statusVis', v, CFG.statusVis, setStatusVis)}
         />
         {syncing && (
@@ -271,7 +274,7 @@ export default function PrivacidadScreen() {
                   </Text>
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={st.blockedName}>{contact.full_name || 'Usuario'}</Text>
+                  <Text style={st.blockedName}>{contact.full_name || tr('setUser')}</Text>
                   {contact.phone && <Text style={st.blockedPhone}>{contact.phone}</Text>}
                 </View>
                 <Text

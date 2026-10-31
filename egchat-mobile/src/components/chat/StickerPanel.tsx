@@ -23,6 +23,7 @@ import {
   BUILTIN_PACKS,
   type Sticker, type StickerPack, type CustomSticker,
 } from '../../services/stickers';
+import { useTranslation } from '../../context/LanguageContext';
 
 const ACCENT = '#00c8a0';
 
@@ -58,6 +59,7 @@ function StoreTab({
   onInstall: (pack: StickerPack) => void;
   installedIds: string[];
 }) {
+  const { t } = useTranslation();
   const [catalog, setCatalog] = useState<StickerPack[]>([]);
   const [loading, setLoading]  = useState(true);
 
@@ -72,7 +74,7 @@ function StoreTab({
 
   return (
     <ScrollView contentContainerStyle={sp.storeList}>
-      {catalog.length === 0 && <EmptyState text="No hay paquetes disponibles" />}
+      {catalog.length === 0 && <EmptyState text={t('chtNoPacksAvailable')} />}
       {catalog.map(pack => {
         const isInstalled = installedIds.includes(pack.id);
         return (
@@ -80,14 +82,14 @@ function StoreTab({
             <Image source={{ uri: pack.coverUrl }} style={sp.packCover} />
             <View style={sp.packInfo}>
               <Text style={sp.packName}>{pack.name}</Text>
-              <Text style={sp.packAuthor}>{pack.author} · {pack.downloadCount || 0} instalaciones</Text>
+              <Text style={sp.packAuthor}>{pack.author} · {pack.downloadCount || 0} {t('chtInstalls')}</Text>
             </View>
             <TouchableOpacity
               style={[sp.packBtn, isInstalled && sp.packBtnInstalled]}
               onPress={() => !isInstalled && onInstall(pack)}
             >
               <Text style={[sp.packBtnTxt, isInstalled && sp.packBtnTxtInstalled]}>
-                {isInstalled ? 'Instalado' : 'Instalar'}
+                {isInstalled ? t('chtInstalled') : t('chtInstall')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -105,6 +107,7 @@ interface Props {
 }
 
 export function StickerPanel({ onSelect, onClose }: Props) {
+  const { t } = useTranslation();
   const [activeTab, setActiveTab]     = useState('recent');
   const [installedPacks, setInstalledPacks] = useState<StickerPack[]>(BUILTIN_PACKS);
   const [installedIds, setInstalledIds]     = useState<string[]>(BUILTIN_PACKS.map(p => p.id));
@@ -179,7 +182,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
   const handleAddCustom = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso denegado', 'Necesitamos acceso a tu galería para crear stickers.');
+      Alert.alert(t('chtGalleryPermTitle'), t('chtGalleryPermBody'));
       return;
     }
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -190,7 +193,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
       const custom = await addCustomSticker(result.assets[0].uri);
       if (custom) setCustomStickers(prev => [custom, ...prev]);
     }
-  }, []);
+  }, [t]);
 
   // Construir tabs dinámicamente
   const tabs = [
@@ -219,7 +222,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
           <View style={sp.gifSearch}>
             <TextInput
               style={sp.gifInput}
-              placeholder="Buscar GIF..."
+              placeholder={t('chtSearchGifPlaceholder')}
               placeholderTextColor="#9ca3af"
               value={gifQuery}
               onChangeText={setGifQuery}
@@ -247,7 +250,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
                     onLongPress={handleLongPress}
                   />
                 )}
-                ListEmptyComponent={<EmptyState text="Sin resultados — prueba otra búsqueda" />}
+                ListEmptyComponent={<EmptyState text={t('chtNoGifResults')} />}
               />
           }
         </View>
@@ -264,7 +267,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
           renderItem={({ item }) => (
             <StickerItem sticker={item} onSelect={handleSelect} onLongPress={handleLongPress} />
           )}
-          ListEmptyComponent={<EmptyState text="Mantén presionado un sticker para marcarlo como favorito" />}
+          ListEmptyComponent={<EmptyState text={t('chtFavStickersHint')} />}
         />
       );
     }
@@ -279,7 +282,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
           renderItem={({ item }) => (
             <StickerItem sticker={item} onSelect={handleSelect} onLongPress={handleLongPress} />
           )}
-          ListEmptyComponent={<EmptyState text="Los stickers que envíes aparecerán aquí" />}
+          ListEmptyComponent={<EmptyState text={t('chtRecentStickersEmpty')} />}
         />
       );
     }
@@ -288,7 +291,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
       return (
         <View style={{ flex: 1 }}>
           <TouchableOpacity style={sp.addCustomBtn} onPress={handleAddCustom}>
-            <Text style={sp.addCustomTxt}>+ Crear sticker desde foto</Text>
+            <Text style={sp.addCustomTxt}>{t('chtCreateStickerFromPhoto')}</Text>
           </TouchableOpacity>
           <FlatList
             data={customStickers}
@@ -301,7 +304,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
                 onSelect={handleSelect}
               />
             )}
-            ListEmptyComponent={<EmptyState text="Toca el botón para crear tu primer sticker" />}
+            ListEmptyComponent={<EmptyState text={t('chtFirstStickerHint')} />}
           />
         </View>
       );
@@ -309,7 +312,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
 
     // Paquete instalado
     const pack = installedPacks.find(p => p.id === activeTab);
-    if (!pack) return <EmptyState text="Paquete no encontrado" />;
+    if (!pack) return <EmptyState text={t('chtPackNotFound')} />;
 
     return (
       <FlatList
@@ -320,7 +323,7 @@ export function StickerPanel({ onSelect, onClose }: Props) {
         renderItem={({ item }) => (
           <StickerItem sticker={item} onSelect={handleSelect} onLongPress={handleLongPress} />
         )}
-        ListEmptyComponent={<EmptyState text="Este paquete no tiene stickers" />}
+        ListEmptyComponent={<EmptyState text={t('chtPackEmpty')} />}
       />
     );
   };

@@ -18,6 +18,7 @@ import {
   findPlaceCoords, isCurrentLocationLabel,
   calcDistanceKm, estimateFare,
 } from '../src/data/mitaxiPlaces';
+import { t as tr } from '../src/translations';
 
 const { height: SH } = Dimensions.get('window');
 
@@ -30,19 +31,19 @@ const GREEN  = '#10B981';
 const RED    = '#EF4444';
 
 const RIDES = [
-  { id: 'moto',    name: 'Moto',    sub: '1 pasajero',  desc: 'Motocicleta rápida',       color: '#F97316', icon: '🏍️', eta: 2 },
-  { id: 'taxi',    name: 'Taxi',    sub: '4 pasajeros', desc: 'Taxi sedán estándar',       color: '#EAB308', icon: '🚕', eta: 4 },
-  { id: 'suv',     name: 'Confort', sub: 'SUV 4 plazas',desc: 'SUV cómodo y espacioso',   color: '#6366F1', icon: '🚙', eta: 5 },
-  { id: 'vip',     name: 'VIP',     sub: 'Premium 4 plz',desc: 'Vehículo ejecutivo',      color: '#7C3AED', icon: '🚘', eta: 7 },
-  { id: 'cargo',   name: 'Cargo',   sub: 'Pickup/Dina', desc: 'Pickup y camionetas',      color: '#0EA5E9', icon: '🛻', eta: 8 },
-  { id: 'van',     name: 'Van',     sub: '8 pasajeros', desc: 'Van grande para grupos',   color: '#10B981', icon: '🚐', eta: 9 },
-  { id: 'minivan', name: 'MiniVan', sub: '6 pasajeros', desc: 'Minivan familiar',         color: '#EC4899', icon: '🚐', eta: 6 },
+  { id: 'moto',    name: 'Moto',    get sub() { return tr('xtPasajero1'); },  get desc() { return tr('xtMotocicletaRapida'); },       color: '#F97316', icon: '🏍️', eta: 2 },
+  { id: 'taxi',    name: 'Taxi',    get sub() { return tr('xtPasajeros4'); }, get desc() { return tr('xtTaxiSedanEstandar'); },       color: '#EAB308', icon: '🚕', eta: 4 },
+  { id: 'suv',     get name() { return tr('xtConfort'); }, get sub() { return tr('xtSUV4Plazas'); },get desc() { return tr('xtSUVComodoYEspacioso'); },   color: '#6366F1', icon: '🚙', eta: 5 },
+  { id: 'vip',     name: 'VIP',     get sub() { return tr('xtPremium4Plazas'); },get desc() { return tr('xtVehiculoEjecutivo'); },      color: '#7C3AED', icon: '🚘', eta: 7 },
+  { id: 'cargo',   name: 'Cargo',   get sub() { return tr('xtPickupDina'); }, get desc() { return tr('xtPickupYCamionetas'); },      color: '#0EA5E9', icon: '🛻', eta: 8 },
+  { id: 'van',     name: 'Van',     get sub() { return tr('xtPasajeros8'); }, get desc() { return tr('xtVanGrandeParaGrupos'); },   color: '#10B981', icon: '🚐', eta: 9 },
+  { id: 'minivan', name: 'MiniVan', get sub() { return tr('xtPasajeros6'); }, get desc() { return tr('xtMinivanFamiliar'); },         color: '#EC4899', icon: '🚐', eta: 6 },
 ];
 
 const PAYMENT_METHODS = [
-  { id: 'wallet', label: 'Monedero EGChat', icon: '💳' },
-  { id: 'cash',   label: 'Efectivo',         icon: '💵' },
-  { id: 'card',   label: 'Tarjeta',          icon: '🏦' },
+  { id: 'wallet', get label() { return tr('svcEgchatWallet'); }, icon: '💳' },
+  { id: 'cash',   get label() { return tr('xtEfectivo'); },         icon: '💵' },
+  { id: 'card',   get label() { return tr('xtTarjeta'); },          icon: '🏦' },
 ];
 
 type RideOption = typeof RIDES[number];
@@ -123,7 +124,7 @@ export default function MiTaxiScreen() {
   const applyUserCoords = useCallback((coords: MapCoord) => {
     setUserLoc(coords);
     setGpsOk(true);
-    setOrigin(prev => prev || 'Tu ubicación actual');
+    setOrigin(prev => prev || tr('xtTuUbicacionActual'));
   }, []);
 
   const resolvePlace = useCallback(async (name: string, fallback?: MapCoord | null): Promise<MapCoord | null> => {
@@ -238,8 +239,8 @@ export default function MiTaxiScreen() {
   const requestRide = async () => {
     if (!canGo) return;
     if (paymentMethod === 'wallet' && balance < (estimatedFare || minFare)) {
-      Alert.alert('Saldo insuficiente', `Necesitas al menos ${(estimatedFare||minFare).toLocaleString()} XAF. Recarga tu monedero.`,
-        [{ text: 'Recargar', onPress: () => router.push('/(tabs)/monedero' as any) }, { text: 'Cancelar', style: 'cancel' }]);
+      Alert.alert(tr('svcInsufficientBalance'), `Necesitas al menos ${(estimatedFare||minFare).toLocaleString()} XAF. Recarga tu monedero.`,
+        [{ text: 'Recargar', onPress: () => router.push('/(tabs)/monedero' as any) }, { text: tr('cancel'), style: 'cancel' }]);
       return;
     }
     const destCoords  = await resolvePlace(dest, userLocation);
@@ -263,7 +264,7 @@ export default function MiTaxiScreen() {
       startPolling(res.rideId);
       setTimeout(() => setStep(s => s === 'searching' ? (animateDriverToUser(), 'matched') : s), 5000);
     } catch (e: any) {
-      toast.error(e?.message || 'No se pudo solicitar el viaje');
+      toast.error(e?.message || tr('xtNoSePudoSolicitarElViaje'));
       setStep('form');
     }
   };
@@ -277,7 +278,7 @@ export default function MiTaxiScreen() {
 
   const submitRating = async () => {
     if (rideId && rating > 0) {
-      try { await taxiAPI.rateDriver(rideId, rating, ratingComment); toast.success('¡Gracias por tu valoración!'); } catch {}
+      try { await taxiAPI.rateDriver(rideId, rating, ratingComment); toast.success(tr('xtGraciasPorTuValoracion')); } catch {}
     }
     cancelRide(); setDest('');
   };
@@ -295,18 +296,18 @@ export default function MiTaxiScreen() {
   const renderFormSheet = () => (
     <>
       <View style={s.sheetHeaderRow}>
-        <Text style={s.sheetTitle}>¿A dónde vas?</Text>
+        <Text style={s.sheetTitle}>{tr('xtADondeVas')}</Text>
         <View style={{ flexDirection: 'row', gap: 10, alignItems: 'center' }}>
           <TouchableOpacity
             onPress={() => router.push('/taxi-driver-register' as any)}
             style={[s.histBtn, { backgroundColor: '#F0FDF4', borderRadius: 20, paddingHorizontal: 10, paddingVertical: 5 }]}
           >
             <MIcon name="directions-car" size={16} color="#10B981" />
-            <Text style={[s.histBtnTxt, { color: '#10B981' }]}>Soy conductor</Text>
+            <Text style={[s.histBtnTxt, { color: '#10B981' }]}>{tr('xtSoyConductor')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={openHistory} style={s.histBtn}>
             <MIcon name="schedule" size={18} color={ACCENT} />
-            <Text style={[s.histBtnTxt, { color: ACCENT }]}>Historial</Text>
+            <Text style={[s.histBtnTxt, { color: ACCENT }]}>{tr('history')}</Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -323,13 +324,13 @@ export default function MiTaxiScreen() {
             <Text style={[s.fieldLabel, { color: accent }]}>ORIGEN</Text>
             <TextInput value={origin} onChangeText={t => onSuggest(t, 'o')}
               onFocus={() => setFocus('o')} onBlur={() => setTimeout(() => setFocus(null), 200)}
-              placeholder="Tu ubicación actual" placeholderTextColor={SUB} style={s.fieldInput} />
+              placeholder={tr('xtTuUbicacionActual')} placeholderTextColor={SUB} style={s.fieldInput} />
           </View>
           <View style={[s.fieldBox, focus === 'd' && { borderColor: accent }]}>
             <Text style={[s.fieldLabel, { color: TEXT }]}>DESTINO</Text>
             <TextInput value={dest} onChangeText={t => onSuggest(t, 'd')}
               onFocus={() => setFocus('d')} onBlur={() => setTimeout(() => setFocus(null), 200)}
-              placeholder="¿A dónde vas?" placeholderTextColor={SUB} style={s.fieldInput} />
+              placeholder={tr('xtADondeVas')} placeholderTextColor={SUB} style={s.fieldInput} />
           </View>
         </View>
       </View>
@@ -415,11 +416,11 @@ export default function MiTaxiScreen() {
     if (step === 'searching') return (
       <View style={s.activeSheet}>
         <ActivityIndicator size="large" color={accent} />
-        <Text style={s.activeTitle}>Buscando conductor...</Text>
+        <Text style={s.activeTitle}>{tr('xtBuscandoConductor')}</Text>
         <Text style={s.activeSub}>{selected.icon} {selected.name} · {(fare||estimatedFare||minFare).toLocaleString()} XAF</Text>
         {distanceKm > 0 && <Text style={s.activeSub}>📍 {distanceKm.toFixed(1)} km estimados</Text>}
         <TouchableOpacity onPress={cancelRide} style={s.cancelBtn}>
-          <Text style={s.cancelText}>Cancelar búsqueda</Text>
+          <Text style={s.cancelText}>{tr('xtCancelarBusqueda')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -451,11 +452,11 @@ export default function MiTaxiScreen() {
 
         {step === 'matched' && (
           <TouchableOpacity style={[s.ctaBtn, { backgroundColor: GREEN }]} onPress={() => setStep('riding')}>
-            <Text style={s.ctaText}>✔ Iniciar viaje</Text>
+            <Text style={s.ctaText}>{tr('xtIniciarViaje')}</Text>
           </TouchableOpacity>
         )}
         <TouchableOpacity onPress={cancelRide} style={s.cancelBtn}>
-          <Text style={s.cancelText}>Cancelar viaje</Text>
+          <Text style={s.cancelText}>{tr('xtCancelarViaje')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -463,7 +464,7 @@ export default function MiTaxiScreen() {
     if (step === 'rating' && driver) return (
       <View style={s.activeSheet}>
         <Text style={{ fontSize: 52, textAlign: 'center' }}>🎉</Text>
-        <Text style={s.activeTitle}>¡Viaje completado!</Text>
+        <Text style={s.activeTitle}>{tr('mtxTripComplete')}</Text>
         <Text style={s.activeSub}>{distanceKm.toFixed(1)} km · {(fare||minFare).toLocaleString()} XAF</Text>
         <Text style={[s.activeSub, { marginTop: 4 }]}>Valora a {driver.name}</Text>
         <View style={s.starsRow}>
@@ -474,11 +475,11 @@ export default function MiTaxiScreen() {
           ))}
         </View>
         <TextInput value={ratingComment} onChangeText={setRatingCmt}
-          placeholder="Comentario opcional..." placeholderTextColor={SUB}
+          placeholder={tr('xtComentarioOpcional')} placeholderTextColor={SUB}
           style={[s.fieldBox, { paddingVertical: 10, marginTop: 4 }]} multiline />
         <TouchableOpacity style={[s.ctaBtn, { backgroundColor: accent, opacity: rating ? 1 : 0.5 }]}
           onPress={submitRating} disabled={!rating}>
-          <Text style={s.ctaText}>Enviar valoración</Text>
+          <Text style={s.ctaText}>{tr('xtEnviarValoracion')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -486,7 +487,7 @@ export default function MiTaxiScreen() {
     if (step === 'history') return (
       <View style={s.activeSheet}>
         <View style={s.histHeaderRow}>
-          <Text style={s.sheetTitle}>Mis viajes</Text>
+          <Text style={s.sheetTitle}>{tr('xtMisViajes')}</Text>
           <TouchableOpacity onPress={() => setStep('form')}>
             <MIcon name="close" size={22} color={TEXT} />
           </TouchableOpacity>
@@ -495,7 +496,7 @@ export default function MiTaxiScreen() {
           <FlatList
             data={history} keyExtractor={(_,i) => String(i)}
             style={{ maxHeight: SH * 0.35 }}
-            ListEmptyComponent={<Text style={[s.activeSub, {textAlign:'center', marginTop: 16}]}>Sin viajes aún</Text>}
+            ListEmptyComponent={<Text style={[s.activeSub, {textAlign:'center', marginTop: 16}]}>{tr('xtSinViajesAun')}</Text>}
             renderItem={({ item }) => (
               <View style={s.histItem}>
                 <View style={{ flex: 1 }}>
@@ -518,7 +519,7 @@ export default function MiTaxiScreen() {
           />
         )}
         <TouchableOpacity style={[s.ctaBtn, { backgroundColor: accent, marginTop: 10 }]} onPress={() => setStep('form')}>
-          <Text style={s.ctaText}>Nuevo viaje</Text>
+          <Text style={s.ctaText}>{tr('xtNuevoViaje')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -539,7 +540,7 @@ export default function MiTaxiScreen() {
           <Text style={s.headerTitle}>🚕 MiTaxi</Text>
           <View style={s.gpsRow}>
             <View style={[s.gpsDot, { backgroundColor: gpsOk ? GREEN : '#F59E0B' }]} />
-            <Text style={s.gpsText}>{gpsOk ? `GPS activo · ${cityName || 'Obteniendo ciudad...'}` : 'Obteniendo ubicación...'}</Text>
+            <Text style={s.gpsText}>{gpsOk ? `GPS activo · ${cityName || tr('xtObteniendoCiudad')}` : tr('xtObteniendoUbicacion')}</Text>
           </View>
         </View>
         <TouchableOpacity style={s.balancePill} onPress={() => router.push('/(tabs)/monedero' as any)}>
@@ -558,7 +559,7 @@ export default function MiTaxiScreen() {
         >
           <View style={s.sheetHandle} />
           {sheetCollapsed && (
-            <Text style={s.handleHint}>¿A dónde vas? · Toca para expandir</Text>
+            <Text style={s.handleHint}>{tr('mtxWhereToTapExpand')}</Text>
           )}
         </TouchableOpacity>
 
@@ -574,7 +575,7 @@ export default function MiTaxiScreen() {
       <Modal visible={showPayment} transparent animationType="slide" onRequestClose={() => setShowPayment(false)}>
         <Pressable style={s.modalOverlay} onPress={() => setShowPayment(false)}>
           <View style={s.modalSheet}>
-            <Text style={s.sheetTitle}>Método de pago</Text>
+            <Text style={s.sheetTitle}>{tr('svcPaymentMethod')}</Text>
             {PAYMENT_METHODS.map(pm => (
               <TouchableOpacity key={pm.id} style={[s.payOption, paymentMethod === pm.id && { borderColor: ACCENT, backgroundColor: ACCENT+'10' }]}
                 onPress={() => { setPayment(pm.id as any); setShowPayment(false); }}>
@@ -598,9 +599,9 @@ export default function MiTaxiScreen() {
               <Text style={[s.driverName, { textAlign: 'center', fontSize: 20 }]}>{driver.name}</Text>
               <Text style={[s.activeSub, { textAlign: 'center' }]}>⭐ {driver.rating}</Text>
               <View style={s.driverInfoGrid}>
-                <View style={s.driverInfoCell}><Text style={s.driverInfoLabel}>Vehículo</Text><Text style={s.driverInfoVal}>{driver.vehicle}</Text></View>
+                <View style={s.driverInfoCell}><Text style={s.driverInfoLabel}>{tr('xtVehiculo')}</Text><Text style={s.driverInfoVal}>{driver.vehicle}</Text></View>
                 <View style={s.driverInfoCell}><Text style={s.driverInfoLabel}>Placa</Text><Text style={s.driverInfoVal}>{driver.plate}</Text></View>
-                {driver.phone && <View style={s.driverInfoCell}><Text style={s.driverInfoLabel}>Teléfono</Text><Text style={s.driverInfoVal}>{driver.phone}</Text></View>}
+                {driver.phone && <View style={s.driverInfoCell}><Text style={s.driverInfoLabel}>{tr('authPhoneLabel')}</Text><Text style={s.driverInfoVal}>{driver.phone}</Text></View>}
                 <View style={s.driverInfoCell}><Text style={s.driverInfoLabel}>ETA</Text><Text style={s.driverInfoVal}>{selected.eta} min</Text></View>
               </View>
             </>}

@@ -13,6 +13,7 @@ import { router, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, Rect, Polyline } from 'react-native-svg';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface DjangueGroup {
@@ -36,7 +37,7 @@ interface DjangueGroup {
 
 // ── Helpers ───────────────────────────────────────────────────────
 const FREQ_LABELS: Record<string, string> = {
-  daily: 'Diario', weekly: 'Semanal', monthly: 'Mensual', annual: 'Anual',
+  daily: tr('setDaily'), weekly: tr('setWeekly'), monthly: tr('setMonthly'), annual: tr('xtAnual'),
 };
 const FREQ_COLORS: Record<string, [string, string]> = {
   daily:   ['#f59e0b', '#d97706'],
@@ -113,7 +114,7 @@ function FrequencyIcon({ type, size = 18 }: { type: string; size?: number }) {
 }
 
 const STATUS_LABELS: Record<string, string> = {
-  active: 'Activo', paused: 'Pausado', completed: 'Completado', cancelled: 'Cancelado',
+  get active() { return tr('active'); }, get paused() { return tr('xtPausado'); }, get completed() { return tr('svcCompleted'); }, get cancelled() { return tr('xtCancelado2'); },
 };
 const fmtAmount = (n: number, currency = 'XAF') =>
   `${n.toLocaleString('fr-FR')} ${currency}`;
@@ -199,15 +200,15 @@ function DjangueCard({ group, onPress, index }: { group: DjangueGroup; onPress: 
       {/* Info inferior */}
       <View style={c.cardFooter}>
         <View style={c.footerItem}>
-          <Text style={c.footerLabel}>Monedero</Text>
+          <Text style={c.footerLabel}>{tr('mznSvcWallet')}</Text>
           <Text style={c.footerValue}>{fmtAmount(group.wallet_balance, group.currency)}</Text>
         </View>
         <View style={c.footerItem}>
-          <Text style={c.footerLabel}>Próximo cobro</Text>
+          <Text style={c.footerLabel}>{tr('xtProximoCobro')}</Text>
           <Text style={c.footerValue}>{fmtDate(group.next_payout_at)}</Text>
         </View>
         <View style={c.footerItem}>
-          <Text style={c.footerLabel}>Mi rol</Text>
+          <Text style={c.footerLabel}>{tr('xtMiRol')}</Text>
           <Text style={[c.footerValue, { color: group.my_role === 'owner' ? '#f59e0b' : group.my_role === 'secretary' ? '#6366f1' : '#10b981' }]}>
             {group.my_role === 'owner' ? 'Responsable' : group.my_role === 'secretary' ? 'Secretario' : 'Miembro'}
           </Text>
@@ -217,7 +218,7 @@ function DjangueCard({ group, onPress, index }: { group: DjangueGroup; onPress: 
       {/* Badge si es mi turno */}
       {group.is_my_turn && group.status === 'active' && (
         <LinearGradient colors={['#10b981', '#059669']} style={c.myTurnBadge}>
-          <Text style={c.myTurnTxt}>🎉 ¡Este turno te toca a ti!</Text>
+          <Text style={c.myTurnTxt}>{tr('xtEsteTurnoTeTocaATi')}</Text>
         </LinearGradient>
       )}
 
@@ -246,7 +247,7 @@ export default function DjangueScreen() {
     try {
       const token = await AsyncStorage.getItem('token');
       if (!token) {
-        setError('Debes iniciar sesión para acceder a Mi Djangue');
+        setError(tr('xtDebesIniciarSesionParaAccederAMiDjangue'));
         setLoading(false);
         setRefreshing(false);
         return;
@@ -254,7 +255,7 @@ export default function DjangueScreen() {
       const data = await apiFetch('/api/djangues');
       setGroups(Array.isArray(data) ? data : []);
     } catch (e: any) {
-      setError(e.message || 'Error al cargar los djangues');
+      setError(e.message || tr('xtErrorAlCargarLosDjangues'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -278,8 +279,8 @@ export default function DjangueScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={s.headerTitle}>Mi Djangue</Text>
-          <Text style={s.headerSub}>Caja de ahorro grupal</Text>
+          <Text style={s.headerTitle}>{tr('xtMiDjangue')}</Text>
+          <Text style={s.headerSub}>{tr('xtCajaDeAhorroGrupal')}</Text>
         </View>
         <TouchableOpacity
           onPress={() => router.push('/djangue-create' as any)}
@@ -303,12 +304,12 @@ export default function DjangueScreen() {
           <View style={s.statDivider} />
           <View style={s.statItem}>
             <Text style={s.statVal}>{groups.filter(g => g.is_my_turn).length}</Text>
-            <Text style={s.statLbl}>Me toca</Text>
+            <Text style={s.statLbl}>{tr('xtMeToca')}</Text>
           </View>
           <View style={s.statDivider} />
           <View style={s.statItem}>
             <Text style={s.statVal}>{groups.filter(g => !g.my_paid_this_turn && !g.is_my_turn && g.status === 'active').length}</Text>
-            <Text style={s.statLbl}>Pendientes</Text>
+            <Text style={s.statLbl}>{tr('djhPendingWord')}</Text>
           </View>
         </View>
       )}
@@ -329,14 +330,14 @@ export default function DjangueScreen() {
       ) : groups.length === 0 ? (
         <View style={s.center}>
           <DjangueIcon color="#6366f1" size={56} />
-          <Text style={s.emptyTitle}>Sin djangues todavía</Text>
-          <Text style={s.emptyDesc}>Crea tu primer grupo de ahorro o espera una invitación del responsable.</Text>
+          <Text style={s.emptyTitle}>{tr('xtSinDjanguesTodavia')}</Text>
+          <Text style={s.emptyDesc}>{tr('xtCreaTuPrimerGrupoDeAhorroOEsperaUnaInvitacio')}</Text>
           <TouchableOpacity
             style={s.createBtn}
             onPress={() => router.push('/djangue-create' as any)}
           >
             <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.createBtnGrad}>
-              <Text style={s.createBtnTxt}>+ Crear Djangue</Text>
+              <Text style={s.createBtnTxt}>{tr('xtCrearDjangue2')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -358,7 +359,7 @@ export default function DjangueScreen() {
               onPress={() => router.push('/djangue-create' as any)}
             >
               <LinearGradient colors={['#00C8A0', '#00B4E6']} style={s.newBtnGrad}>
-                <Text style={s.newBtnTxt}>+ Crear nuevo Djangue</Text>
+                <Text style={s.newBtnTxt}>{tr('xtCrearNuevoDjangue2')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           }

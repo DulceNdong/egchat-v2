@@ -13,6 +13,7 @@ import { Audio } from 'expo-av';
 import { getToken, getApiBase } from '../../api';
 import { haptics } from '../../hooks/useHaptics';
 import { toast } from '../Toast';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Props {
   chatId: string;
@@ -24,6 +25,7 @@ interface Props {
 type PTTState = 'idle' | 'recording' | 'releasing' | 'transmitting';
 
 export function PushToTalkButton({ chatId, currentUserId, otherName, onRecorded }: Props) {
+  const { t } = useTranslation();
   const [state, setState] = useState<PTTState>('idle');
   const [duration, setDuration] = useState(0);
   const [locked, setLocked] = useState(false); // arrastrar hacia arriba = bloquear
@@ -60,7 +62,7 @@ export function PushToTalkButton({ chatId, currentUserId, otherName, onRecorded 
     try {
       const { status } = await Audio.requestPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Micrófono', 'Necesitas dar permiso de micrófono para usar el walkie-talkie');
+        Alert.alert(t('chtMicPermissionTitle'), t('chtMicPermissionBody'));
         return;
       }
       await Audio.setAudioModeAsync({
@@ -84,7 +86,7 @@ export function PushToTalkButton({ chatId, currentUserId, otherName, onRecorded 
       // Animación de escala al presionar
       Animated.spring(scale, { toValue: 1.2, useNativeDriver: true, speed: 30 }).start();
     } catch (e) {
-      toast.error('No se pudo iniciar el PTT');
+      toast.error(t('chtPttStartFailed'));
     }
   }, [scale]);
 
@@ -151,15 +153,15 @@ export function PushToTalkButton({ chatId, currentUserId, otherName, onRecorded 
             <>
               <View style={s.recDot} />
               <Text style={s.statusText}>
-                {locked ? '🔒 Bloqueado · ' : ''}{formatTime(duration)}
+                {locked ? t('chtPttLocked') : ''}{formatTime(duration)}
               </Text>
               <Text style={s.statusHint}>
-                {locked ? 'Toca para enviar' : '← desliza para cancelar'}
+                {locked ? t('chtPttTapToSend') : t('chtPttSwipeCancel')}
               </Text>
             </>
           )}
           {state === 'transmitting' && (
-            <Text style={s.statusText}>📡 Enviando...</Text>
+            <Text style={s.statusText}>{t('chtPttSending')}</Text>
           )}
         </View>
       )}
@@ -195,7 +197,7 @@ export function PushToTalkButton({ chatId, currentUserId, otherName, onRecorded 
       )}
 
       {state === 'idle' && (
-        <Text style={s.hint}>Mantén pulsado para hablar</Text>
+        <Text style={s.hint}>{t('chtPttHoldToTalk')}</Text>
       )}
     </View>
   );

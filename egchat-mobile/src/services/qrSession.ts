@@ -10,6 +10,7 @@
  * 4. PC hace polling → recibe el token → sesión iniciada
  */
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 export interface QRSession {
   sessionId: string;
@@ -25,7 +26,7 @@ export const qrSessionService = {
   async confirmQRLogin(sessionId: string): Promise<{ ok: boolean; message?: string }> {
     try {
       const token = await getToken();
-      if (!token) return { ok: false, message: 'No hay sesión activa' };
+      if (!token) return { ok: false, message: tr('xtNoHaySesionActiva') };
 
       const base = getApiBase();
       const res = await fetch(`${base}/api/auth/qr-confirm`, {
@@ -39,7 +40,7 @@ export const qrSessionService = {
 
       if (res.ok) return { ok: true };
       const err = await res.json().catch(() => ({}));
-      return { ok: false, message: err.message || 'Error confirmando sesión' };
+      return { ok: false, message: err.message || tr('xtErrorConfirmandoSesion') };
     } catch (e: any) {
       return { ok: false, message: e.message };
     }

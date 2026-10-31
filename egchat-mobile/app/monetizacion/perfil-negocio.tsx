@@ -8,6 +8,7 @@ import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/BarChart';
 import { usePerfilNegocio } from '../../src/hooks/useMonetizacion';
+import { useTranslation } from '../../src/context/LanguageContext';
 import type { PerfilFinancieroNegocio, HistorialTxNegocio } from '../../src/types/monetizacion';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
@@ -42,7 +43,7 @@ function scoreColor(s: number) {
   return '#FF4444';
 }
 
-const MESES = ['Abr', 'May', 'Jun', 'Jul', 'Ago', 'Sep'];
+const MESES = ['mznMonAbr', 'mznMonMay', 'mznMonJun', 'mznMonJul', 'mznMonAgo', 'mznMonSep'];
 
 const PERFILES_DEMO: PerfilNegocioDemo[] = [
   {
@@ -91,6 +92,7 @@ const PERFILES_DEMO: PerfilNegocioDemo[] = [
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function PerfilNegocioScreen() {
+  const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [selectedPerfil, setSelectedPerfil] = useState<PerfilConFact | null>(null);
   const [loadingDetalle, setLoadingDetalle] = useState(false);
@@ -147,19 +149,19 @@ export default function PerfilNegocioScreen() {
       nombre: perfil.empresa?.nombre ?? perfil.razon_social,
       razonSocial: perfil.razon_social,
       nif: perfil.nif ?? '',
-      sector: (perfil.sector ?? 'Sin sector').replace(/\p{Emoji}/gu, '').trim(),
-      periodo: `Últimos ${perfil.meses_operacion} meses`,
+      sector: (perfil.sector ?? t('mznNoSector')).replace(/\p{Emoji}/gu, '').trim(),
+      periodo: `${t('mznLastMonthsPrefix')} ${perfil.meses_operacion} ${t('mznMonthsSuffix')}`,
       scoreFinanciero: perfil.score_financiero,
       numTransacciones: perfil.num_transacciones_total,
       facturacionMensualPromedio: Math.round(facturacionPromedio),
       facturacionTotal: facturacionTotalAcum,
       mesesOperacion: perfil.meses_operacion,
       serviciosActivos: perfil.servicios_activos,
-      observaciones: perfil.score_financiero >= 70
-        ? 'Negocio con facturación estable y creciente. Historial sólido en plataforma EGChat. Recomendado para líneas de crédito empresarial.'
+      observacionesKey: perfil.score_financiero >= 70
+        ? 'mznObsBusinessStrong'
         : perfil.score_financiero >= 40
-        ? 'Negocio en crecimiento con historial moderado. Evaluar condiciones según volumen solicitado.'
-        : 'Negocio con actividad insuficiente en la plataforma. Se recomienda mayor historial antes de aprobar crédito.',
+        ? 'mznObsBusinessGrowing'
+        : 'mznObsBusinessWeak',
     });
     setInformeVisible(true);
   };
@@ -186,11 +188,11 @@ export default function PerfilNegocioScreen() {
 
         {/* Métricas */}
         <View style={styles.metricsRow}>
-          <MetricCard label="Negocios" value={`${totalNegocios}`} icon="🏪" accentColor="#FF4488" subValue="Registrados" />
-          <MetricCard label="Score Promedio" value={`${scorePromedio}/100`} icon="📊" accentColor={scoreColor(scorePromedio)} />
+          <MetricCard label={t('mznBusinesses')} value={`${totalNegocios}`} icon="🏪" accentColor="#FF4488" subValue={t('mznRegistered')} />
+          <MetricCard label={t('mznScoreAverage')} value={`${scorePromedio}/100`} icon="📊" accentColor={scoreColor(scorePromedio)} />
         </View>
         <View style={styles.metricsRow}>
-          <MetricCard label="Facturación Mes" value={fmt(facturacionTotal)} icon="💰" accentColor="#FF4488" fullWidth />
+          <MetricCard label={t('mznMonthlyBilling')} value={fmt(facturacionTotal)} icon="💰" accentColor="#FF4488" fullWidth />
         </View>
 
         {/* Búsqueda */}
@@ -200,7 +202,7 @@ export default function PerfilNegocioScreen() {
             style={styles.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Buscar negocio..."
+            placeholder={t('mznSearchBusiness')}
             placeholderTextColor="#555577"
           />
           {search.length > 0 && (
@@ -213,10 +215,10 @@ export default function PerfilNegocioScreen() {
         {/* Filtros */}
         <View style={styles.filterRow}>
           {([
-            { key: 'todos', label: 'Todos' },
-            { key: 'alto', label: '🟢 Alto (70+)' },
-            { key: 'medio', label: '🟡 Medio' },
-            { key: 'bajo', label: '🔴 Bajo' },
+            { key: 'todos', labelKey: 'everyone' },
+            { key: 'alto', labelKey: 'mznFilterHigh' },
+            { key: 'medio', labelKey: 'mznFilterMedium' },
+            { key: 'bajo', labelKey: 'mznFilterLow' },
           ] as const).map(f => (
             <TouchableOpacity
               key={f.key}
@@ -224,7 +226,7 @@ export default function PerfilNegocioScreen() {
               onPress={() => setFiltroScore(f.key)}
             >
               <Text style={[styles.filterBtnText, filtroScore === f.key && styles.filterBtnTextActive]}>
-                {f.label}
+                {t(f.labelKey)}
               </Text>
             </TouchableOpacity>
           ))}
@@ -238,7 +240,7 @@ export default function PerfilNegocioScreen() {
           const isExpanded = selectedPerfil?.empresa_id === perfil.empresa_id;
 
           const chartData: BarChartDataPoint[] = MESES.map((m, i) => ({
-            label: m,
+            label: t(m),
             value: (isExpanded ? selectedPerfil?.facturacionMensualData[i] : perfil.facturacionMensualData[i]) ?? 0,
           }));
 
@@ -274,7 +276,7 @@ export default function PerfilNegocioScreen() {
                 </View>
                 <View style={styles.cardInfo}>
                   <Text style={styles.cardNombre} numberOfLines={1}>{perfil.razon_social}</Text>
-                  <Text style={styles.cardSub}>{(perfil.sector ?? 'Sin sector')}</Text>
+                  <Text style={styles.cardSub}>{(perfil.sector ?? t('mznNoSector'))}</Text>
                   <Text style={styles.cardSub}>👤 {perfil.empresa?.responsable ?? ''} · NIF: {perfil.nif ?? ''}</Text>
                 </View>
               </View>
@@ -283,17 +285,17 @@ export default function PerfilNegocioScreen() {
               <View style={styles.statsRow}>
                 <View style={styles.statItem}>
                   <Text style={[styles.statVal, { color: '#FF4488' }]}>{fmt(facturacionActual)}</Text>
-                  <Text style={styles.statLabel}>Facturación mes</Text>
+                  <Text style={styles.statLabel}>{t('mznBillingMonth')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statVal}>{perfil.num_transacciones_total}</Text>
-                  <Text style={styles.statLabel}>Transacciones</Text>
+                  <Text style={styles.statLabel}>{t('transactions')}</Text>
                 </View>
                 <View style={styles.statDivider} />
                 <View style={styles.statItem}>
                   <Text style={styles.statVal}>{perfil.meses_operacion}m</Text>
-                  <Text style={styles.statLabel}>Operando</Text>
+                  <Text style={styles.statLabel}>{t('mznOperating')}</Text>
                 </View>
               </View>
 
@@ -303,7 +305,7 @@ export default function PerfilNegocioScreen() {
                   <View style={[styles.scoreBarFill, { width: `${sc}%`, backgroundColor: sc_color }]} />
                 </View>
                 <Text style={[styles.scoreLabel, { color: sc_color }]}>
-                  {sc >= 70 ? '✓ Apto crédito' : sc >= 40 ? '⚠ Evaluar' : '✗ Insuficiente'}
+                  {sc >= 70 ? t('mznCreditEligible') : sc >= 40 ? t('mznCreditEvaluate') : t('mznCreditInsufficient')}
                 </Text>
               </View>
 
@@ -311,7 +313,7 @@ export default function PerfilNegocioScreen() {
               {isExpanded && (
                 <View style={styles.expanded}>
                   {/* Gráfico facturación */}
-                  <Text style={styles.expandedTitle}>📈 Facturación 6 Meses</Text>
+                  <Text style={styles.expandedTitle}>{t('mznRevenueSixMonths')}</Text>
                   <View style={styles.expandedChart}>
                     {loadingDetalle ? (
                       <ActivityIndicator color="#FF4488" style={{ marginVertical: 20 }} />
@@ -327,24 +329,24 @@ export default function PerfilNegocioScreen() {
                   </View>
 
                   {/* Detalle financiero */}
-                  <Text style={[styles.expandedTitle, { marginTop: 14 }]}>📊 Datos Financieros</Text>
+                  <Text style={[styles.expandedTitle, { marginTop: 14 }]}>{t('mznFinancialData')}</Text>
                   <RevenueTable
                     showBars={false}
                     rows={[
-                      { label: 'NIF Fiscal', value: perfil.nif ?? 'N/A' },
-                      { label: 'Sector', value: (perfil.sector ?? 'Sin sector').replace(/\p{Emoji}/gu, '').trim() },
-                      { label: 'Meses en operación', value: `${perfil.meses_operacion} meses` },
+                      { label: t('mznFiscalNif'), value: perfil.nif ?? 'N/A' },
+                      { label: t('mznSector'), value: (perfil.sector ?? t('mznNoSector')).replace(/\p{Emoji}/gu, '').trim() },
+                      { label: t('mznMonthsInOperation'), value: `${perfil.meses_operacion} ${t('mznMonthsSuffix')}` },
                       {
-                        label: 'Facturación promedio',
+                        label: t('mznAverageBilling'),
                         value: fmt(perfil.facturacion_mensual_promedio),
                         color: '#FF4488',
                       },
                       {
-                        label: 'Facturación total',
+                        label: t('mznTotalBilling'),
                         value: fmt(perfil.facturacion_total),
                         color: '#00D4FF',
                       },
-                      { label: 'Servicios activos', value: perfil.servicios_activos.join(', ') || 'Ninguno' },
+                      { label: t('mznActiveServices'), value: perfil.servicios_activos.join(', ') || t('mznNone') },
                     ]}
                   />
 
@@ -352,7 +354,7 @@ export default function PerfilNegocioScreen() {
                     style={styles.informeBtn}
                     onPress={() => handleGenerarInforme(perfil)}
                   >
-                    <Text style={styles.informeBtnText}>📄 Generar Informe Bancario</Text>
+                    <Text style={styles.informeBtnText}>{t('mznGenerateBankReport')}</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -362,7 +364,7 @@ export default function PerfilNegocioScreen() {
 
         {perfilesFiltrados.length === 0 && !loading && (
           <View style={styles.empty}>
-            <Text style={styles.emptyText}>No se encontraron negocios</Text>
+            <Text style={styles.emptyText}>{t('mznNoBusinessesFound')}</Text>
           </View>
         )}
       </ScrollView>

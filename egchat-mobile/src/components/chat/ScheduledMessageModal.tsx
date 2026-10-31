@@ -10,6 +10,7 @@ import {
 import DateTimePicker, { DateTimePickerEvent } from '@react-native-community/datetimepicker';
 import { saveScheduledMessage } from '../../services/scheduledMessages';
 import { toast } from '../Toast';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Props {
   visible: boolean;
@@ -20,6 +21,7 @@ interface Props {
 }
 
 export function ScheduledMessageModal({ visible, chatId, messageText, onClose, onScheduled }: Props) {
+  const { t } = useTranslation();
   const tomorrow = new Date(Date.now() + 60 * 60 * 1000);
   const [date, setDate] = useState(tomorrow);
   const [showPicker, setShowPicker] = useState(false);
@@ -32,7 +34,7 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
 
   const handleSave = async () => {
     if (date.getTime() <= Date.now()) {
-      Alert.alert('Hora inválida', 'La hora de envío debe ser en el futuro');
+      Alert.alert(t('chtInvalidTime'), t('chtInvalidTimeBody'));
       return;
     }
     setSaving(true);
@@ -41,7 +43,7 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
       // Mensaje programado silenciosamente
       onScheduled();
     } catch {
-      toast.error('Error', 'No se pudo programar el mensaje');
+      toast.error(t('error'), t('chtScheduleFailed'));
     } finally {
       setSaving(false);
     }
@@ -57,11 +59,11 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.sheet, { backgroundColor: sheetBg }]} onPress={e => e.stopPropagation()}>
           <View style={s.handle} />
-          <Text style={[s.title, { color: textColor }]}>⏰ Programar envío</Text>
+          <Text style={[s.title, { color: textColor }]}>{t('chtScheduleTitle')}</Text>
           <Text style={[s.preview, { backgroundColor: previewBg, color: textColor }]} numberOfLines={3}>{messageText}</Text>
 
           <TouchableOpacity style={[s.timeBtn, { backgroundColor: isDark ? 'rgba(0,180,230,0.15)' : 'rgba(0,180,230,0.08)' }]} onPress={() => setShowPicker(true)} activeOpacity={0.7}>
-            <Text style={s.timeBtnLabel}>📅 Enviar el</Text>
+            <Text style={s.timeBtnLabel}>{t('chtScheduleSendOn')}</Text>
             <Text style={s.timeValue}>
               {date.toLocaleString('es-ES', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
             </Text>
@@ -80,7 +82,7 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
 
           <View style={s.actions}>
             <TouchableOpacity style={[s.cancelBtn, { backgroundColor: cancelBg }]} onPress={onClose} activeOpacity={0.7}>
-              <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Cancelar</Text>
+              <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>{t('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.saveBtn, saving && { opacity: 0.6 }]}
@@ -88,7 +90,7 @@ export function ScheduledMessageModal({ visible, chatId, messageText, onClose, o
               disabled={saving}
               activeOpacity={0.8}
             >
-              <Text style={s.saveTxt}>Programar</Text>
+              <Text style={s.saveTxt}>{t('chtScheduleAction')}</Text>
             </TouchableOpacity>
           </View>
         </Pressable>

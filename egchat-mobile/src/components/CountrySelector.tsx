@@ -4,6 +4,7 @@ import {
   View, Text, TouchableOpacity, Modal, FlatList,
   TextInput, StyleSheet, SafeAreaView,
 } from 'react-native';
+import { t as tr } from '../translations';
 
 interface Country {
   code: string;
@@ -65,7 +66,7 @@ export const CountrySelector: React.FC<CountrySelectorProps> = ({
       <Modal visible={isOpen} animationType="slide" presentationStyle="pageSheet">
         <SafeAreaView style={styles.modal}>
           <View style={styles.modalHeader}>
-            <Text style={styles.modalTitle}>Seleccionar país</Text>
+            <Text style={styles.modalTitle}>{tr('xtSeleccionarPais')}</Text>
             <TouchableOpacity onPress={() => { setIsOpen(false); setSearch(''); }}>
               <Text style={styles.closeBtn}>✕</Text>
             </TouchableOpacity>
@@ -74,7 +75,7 @@ export const CountrySelector: React.FC<CountrySelectorProps> = ({
           <View style={styles.searchWrap}>
             <TextInput
               style={styles.searchInput}
-              placeholder="Buscar país..."
+              placeholder={tr('xtBuscarPais')}
               value={search}
               onChangeText={setSearch}
               autoFocus

@@ -9,20 +9,21 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t as tr } from '../../translations';
 
 const STORAGE_KEY = 'egchat_call_background';
 
 // Fondos predeterminados incluidos en la app
 export const PRESET_BACKGROUNDS = [
-  { id: 'cherry',   label: 'Sakura',    color: '#f9a8d4', gradient: ['#fce7f3', '#fbcfe8', '#f9a8d4'] as [string,string,string] },
-  { id: 'night',    label: 'Noche',     color: '#1e1b4b', gradient: ['#1e1b4b', '#312e81', '#4338ca'] as [string,string,string] },
-  { id: 'tokyo',    label: 'Tokio',     color: '#0f172a', gradient: ['#0f172a', '#1e3a5f', '#0369a1'] as [string,string,string] },
-  { id: 'forest',   label: 'Bosque',    color: '#14532d', gradient: ['#052e16', '#14532d', '#166534'] as [string,string,string] },
-  { id: 'sunset',   label: 'Atardecer', color: '#7c2d12', gradient: ['#7c2d12', '#c2410c', '#fb923c'] as [string,string,string] },
-  { id: 'ocean',    label: 'Océano',    color: '#0c4a6e', gradient: ['#0c4a6e', '#0369a1', '#38bdf8'] as [string,string,string] },
-  { id: 'purple',   label: 'Violeta',   color: '#581c87', gradient: ['#3b0764', '#581c87', '#7e22ce'] as [string,string,string] },
-  { id: 'dark',     label: 'Oscuro',    color: '#0f172a', gradient: ['#000000', '#0f172a', '#1e293b'] as [string,string,string] },
-  { id: 'rose',     label: 'Rosa',      color: '#881337', gradient: ['#881337', '#be123c', '#fb7185'] as [string,string,string] },
+  { id: 'cherry',   get label() { return tr('xtSakura'); },    color: '#f9a8d4', gradient: ['#fce7f3', '#fbcfe8', '#f9a8d4'] as [string,string,string] },
+  { id: 'night',    get label() { return tr('xtNoche'); },     color: '#1e1b4b', gradient: ['#1e1b4b', '#312e81', '#4338ca'] as [string,string,string] },
+  { id: 'tokyo',    get label() { return tr('xtTokio'); },     color: '#0f172a', gradient: ['#0f172a', '#1e3a5f', '#0369a1'] as [string,string,string] },
+  { id: 'forest',   get label() { return tr('xtBosque'); },    color: '#14532d', gradient: ['#052e16', '#14532d', '#166534'] as [string,string,string] },
+  { id: 'sunset',   get label() { return tr('xtAtardecer'); }, color: '#7c2d12', gradient: ['#7c2d12', '#c2410c', '#fb923c'] as [string,string,string] },
+  { id: 'ocean',    get label() { return tr('xtOceano'); },    color: '#0c4a6e', gradient: ['#0c4a6e', '#0369a1', '#38bdf8'] as [string,string,string] },
+  { id: 'purple',   get label() { return tr('setPurple'); },   color: '#581c87', gradient: ['#3b0764', '#581c87', '#7e22ce'] as [string,string,string] },
+  { id: 'dark',     get label() { return tr('setDark'); },    color: '#0f172a', gradient: ['#000000', '#0f172a', '#1e293b'] as [string,string,string] },
+  { id: 'rose',     get label() { return tr('setPink'); },      color: '#881337', gradient: ['#881337', '#be123c', '#fb7185'] as [string,string,string] },
 ] as const;
 
 export type BackgroundId = typeof PRESET_BACKGROUNDS[number]['id'] | 'custom';
@@ -62,7 +63,7 @@ export function CallBackgroundPicker({ visible, current, onSelect, onClose }: Pr
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para elegir un fondo.');
+        Alert.alert(tr('setPermissionNeeded'), tr('cmpBgGalleryPermBody'));
         return;
       }
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -78,7 +79,7 @@ export function CallBackgroundPicker({ visible, current, onSelect, onClose }: Pr
         onClose();
       }
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la galería.');
+      Alert.alert(tr('error'), 'No se pudo abrir la galería.');
     }
   };
 
@@ -87,14 +88,14 @@ export function CallBackgroundPicker({ visible, current, onSelect, onClose }: Pr
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={s.sheet}>
           <View style={s.handle} />
-          <Text style={s.title}>Fondo de llamadas</Text>
+          <Text style={s.title}>{tr('xtFondoDeLlamadas')}</Text>
 
           {/* Tabs */}
           <View style={s.tabs}>
             {(['gallery', 'colors'] as const).map(t => (
               <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
                 <Text style={[s.tabText, tab === t && s.tabTextActive]}>
-                  {t === 'gallery' ? 'Galería' : 'Colores'}
+                  {t === 'gallery' ? tr('chtGallery') : tr('xtColores')}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -105,7 +106,7 @@ export function CallBackgroundPicker({ visible, current, onSelect, onClose }: Pr
               {/* Opción galería del usuario */}
               <TouchableOpacity style={s.pickBtn} onPress={pickFromGallery} activeOpacity={0.8}>
                 <Text style={s.pickBtnIcon}>🖼️</Text>
-                <Text style={s.pickBtnText}>Elegir de la galería</Text>
+                <Text style={s.pickBtnText}>{tr('chtChooseGallery')}</Text>
               </TouchableOpacity>
 
               {/* Fondos predeterminados de paisaje */}

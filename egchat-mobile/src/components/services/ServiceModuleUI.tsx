@@ -7,6 +7,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Polyline, Line, Rect, Circle } from 'react-native-svg';
+import { t as tr } from '../../translations';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -188,16 +189,16 @@ export const FormField = ({
 
 // ── Pantalla soporte ─────────────────────────────────────────────
 const SUPPORT_ITEMS = [
-  { icon: '🐛', label: 'Reportar incidencia', desc: 'Problema con tu servicio' },
-  { icon: '🎫', label: 'Abrir ticket', desc: 'Nueva solicitud de soporte' },
-  { icon: '💬', label: 'Chat con soporte', desc: 'Respuesta en menos de 1h' },
-  { icon: '📞', label: 'Llamar soporte', desc: '+240 333 00 00 00', action: 'tel:+240333000000' },
-  { icon: '📧', label: 'Email soporte', desc: 'soporte@egchat.gq', action: 'mailto:soporte@egchat.gq' },
+  { icon: '🐛', get label() { return tr('xtReportarIncidencia'); }, get desc() { return tr('xtProblemaConTuServicio'); } },
+  { icon: '🎫', get label() { return tr('xtAbrirTicket'); }, get desc() { return tr('xtNuevaSolicitudDeSoporte'); } },
+  { icon: '💬', get label() { return tr('xtChatConSoporte'); }, get desc() { return tr('xtRespuestaEnMenosDe1h'); } },
+  { icon: '📞', get label() { return tr('xtLlamarSoporte'); }, desc: '+240 333 00 00 00', action: 'tel:+240333000000' },
+  { icon: '📧', get label() { return tr('xtEmailSoporte'); }, desc: 'soporte@egchat.gq', action: 'mailto:soporte@egchat.gq' },
 ];
 
 export const SupportScreen = () => (
   <View style={sh.supportCard}>
-    <Text style={sh.supportTitle}>🎧 Soporte</Text>
+    <Text style={sh.supportTitle}>{tr('xtSoporteTitle')}</Text>
     {SUPPORT_ITEMS.map((s, i) => (
       <TouchableOpacity
         key={i}

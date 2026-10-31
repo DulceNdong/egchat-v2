@@ -72,8 +72,8 @@ export default function ActividadScreen() {
         <View style={st.chipRow}>
           {(['all','login','transaction','security','profile','chat'] as const).map(id => (
             <Chip key={id} id={id} label={
-              id === 'all' ? t('all') : id === 'login' ? 'Login' :
-              id === 'transaction' ? t('transactions') : id === 'security' ? t('twoFactor').split(' ')[0] :
+              id === 'all' ? t('all') : id === 'login' ? t('setChipLogin') :
+              id === 'transaction' ? t('transactions') : id === 'security' ? t('security') :
               id === 'profile' ? t('profile') : t('chat')
             }/>
           ))}

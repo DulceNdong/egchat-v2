@@ -4,11 +4,13 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { FOOD_DELIVERY } from '../../data/serviciosDiarios';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 type ComidaScreen = 'list' | 'order' | 'ok';
 interface Props { visible: boolean; onClose: () => void; }
 
 export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [view, setView] = useState<ComidaScreen>('list');
   const [selected, setSelected] = useState<typeof FOOD_DELIVERY[0] | null>(null);
   const [form, setForm] = useState({ name: '', phone: '', address: '', notes: '' });
@@ -22,8 +24,8 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
   return (
     <FinancialModuleShell
       visible={visible}
-      title="Comida"
-      subtitle="Delivery a domicilio · Guinea Ecuatorial"
+      title={t('food')}
+      subtitle={t('svcFoodSubtitle')}
       onBack={() => view === 'list' ? onClose() : setView('list')}
       onClose={onClose}
       centerTitle
@@ -34,8 +36,8 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
       {view === 'list' && (
         <View>
           <LinearGradient colors={['#C0392B', '#E74C3C']} style={st.banner}>
-            <Text style={st.bannerTitle}>🍱 Comida a domicilio</Text>
-            <Text style={st.bannerSub}>Pide y recibe en casa</Text>
+            <Text style={st.bannerTitle}>{t('svcFoodAtHome')}</Text>
+            <Text style={st.bannerSub}>{t('svcOrderReceiveHome')}</Text>
           </LinearGradient>
           {FOOD_DELIVERY.map(f => (
             <TouchableOpacity
@@ -64,18 +66,18 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
               <Text style={st.desc}>⏱ {selected.time}</Text>
             </View>
           </View>
-          <FormField placeholder="Nombre completo" value={form.name} onChangeText={v => setF('name', v)} />
-          <FormField placeholder="Teléfono" value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
-          <FormField placeholder="Dirección de entrega" value={form.address} onChangeText={v => setF('address', v)} />
-          <FormField placeholder="Notas del pedido (opcional)" value={form.notes} onChangeText={v => setF('notes', v)} />
+          <FormField placeholder={t('name')} value={form.name} onChangeText={v => setF('name', v)} />
+          <FormField placeholder={t('phone')} value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
+          <FormField placeholder={t("svcDeliveryAddress")} value={form.address} onChangeText={v => setF('address', v)} />
+          <FormField placeholder={t("svcOrderNotesOptional")} value={form.notes} onChangeText={v => setF('notes', v)} />
           <PrimaryButton
-            label="Confirmar pedido"
+            label={t('svcConfirmOrder')}
             onPress={() => setView('ok')}
             color="#C0392B"
             disabled={!form.name || !form.phone || !form.address}
           />
           <TouchableOpacity style={st.callLink} onPress={() => Linking.openURL(`tel:${selected.tel}`)}>
-            <Text style={st.callLinkText}>📞 O llamar directamente</Text>
+            <Text style={st.callLinkText}>{t('svcOrCallDirect')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -83,10 +85,10 @@ export const ComidaModal: React.FC<Props> = ({ visible, onClose }) => {
       {view === 'ok' && selected && (
         <View style={st.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>¡Pedido enviado!</Text>
+          <Text style={st.successTitle}>{t('svcOrderSent')}</Text>
           <Text style={st.successSub}>{selected.nombre}</Text>
-          <Text style={st.successSub}>Entrega estimada: {selected.time}</Text>
-          <PrimaryButton label="Pedir de nuevo" onPress={() => { setView('list'); setSelected(null); }} color="#C0392B" />
+          <Text style={st.successSub}>{t('svcEstimatedDelivery')}: {selected.time}</Text>
+          <PrimaryButton label={t('svcOrderAgain')} onPress={() => { setView('list'); setSelected(null); }} color="#C0392B" />
         </View>
       )}
     </FinancialModuleShell>

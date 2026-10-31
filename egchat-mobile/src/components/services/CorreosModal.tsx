@@ -7,12 +7,15 @@ import { CORREOS_OPTIONS } from '../../data/serviciosPublicos';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker, ServiceOptionRow } from './PublicModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
+import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; userBalance?: number; }
 
 type Screen = 'home' | 'form' | 'success';
 
 export const CorreosModal: React.FC<Props> = ({ visible, onClose, userBalance = 100000 }) => {
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<Screen>('home');
   const [selected, setSelected] = useState<typeof CORREOS_OPTIONS[0] | null>(null);
   const [form, setForm] = useState({ sender: '', dest: '', address: '', phone: '', payMethod: '' });
@@ -52,17 +55,17 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose, userBalance = 
     <LinearGradient colors={['#C62828', '#E53935']} style={s.header}>
       <Text style={{ fontSize: 28 }}>📮</Text>
       <View>
-        <Text style={s.headerTitle}>Correos GQ</Text>
-        <Text style={s.headerSub}>Correos de Guinea Ecuatorial</Text>
+        <Text style={s.headerTitle}>{tr('xtCorreosGQ')}</Text>
+        <Text style={s.headerSub}>{tr('xtCorreosDeGuineaEcuatorial')}</Text>
       </View>
     </LinearGradient>
   ) : undefined;
 
   return (
-    <FinancialModuleShell visible={visible} title={screen === 'home' ? 'Correos' : selected?.label || 'Envío'} onBack={back} onClose={onClose} fixedTop={fixedTop}>
+    <FinancialModuleShell visible={visible} title={screen === 'home' ? t('mail') : selected?.label || t('svcShipment')} onBack={back} onClose={onClose} fixedTop={fixedTop}>
       {screen === 'home' && (
         <View>
-          <Text style={s.sectionLbl}>SELECCIONA EL TIPO DE ENVÍO</Text>
+          <Text style={s.sectionLbl}>{t('svcSelectShipmentType')}</Text>
           {CORREOS_OPTIONS.map(c => (
             <ServiceOptionRow
               key={c.id}
@@ -82,13 +85,13 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose, userBalance = 
             <Text style={s.formBannerTitle}>{selected.label}</Text>
             <Text style={s.formBannerPrice}>{selected.price.toLocaleString()} XAF</Text>
           </LinearGradient>
-          <FormField placeholder="Remitente (nombre)" value={form.sender} onChangeText={v => setF('sender', v)} />
-          <FormField placeholder="Destinatario (nombre)" value={form.dest} onChangeText={v => setF('dest', v)} />
-          <FormField placeholder="Dirección de entrega completa" value={form.address} onChangeText={v => setF('address', v)} />
-          <FormField placeholder="Teléfono de contacto" value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
+          <FormField placeholder={t('svcSenderName')} value={form.sender} onChangeText={v => setF('sender', v)} />
+          <FormField placeholder={t('svcRecipientName')} value={form.dest} onChangeText={v => setF('dest', v)} />
+          <FormField placeholder={t('svcFullDeliveryAddress')} value={form.address} onChangeText={v => setF('address', v)} />
+          <FormField placeholder={t('svcContactPhone')} value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
           <PayMethodPicker value={form.payMethod} onChange={v => setF('payMethod', v)} accent="#C62828" />
           <PrimaryButton
-            label={loading ? 'Registrando...' : `Confirmar envío — ${price.toLocaleString()} XAF`}
+            label={loading ? t('svcRegistering') : `${t('svcConfirmShipment')} — ${price.toLocaleString()} XAF`}
             onPress={submit}
             disabled={!canSubmit || loading || price > balance}
             color="#C62828"
@@ -98,10 +101,10 @@ export const CorreosModal: React.FC<Props> = ({ visible, onClose, userBalance = 
       {screen === 'success' && (
         <View style={s.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>Envío registrado</Text>
-          <Text style={s.successSub}>Tracking: {tracking}</Text>
+          <Text style={s.successTitle}>{t('svcShipmentRecorded')}</Text>
+          <Text style={s.successSub}>{t('svcTrackingLabel')}: {tracking}</Text>
           <Text style={s.successSub}>{form.sender} → {form.dest}</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color="#C62828" />
+          <PrimaryButton label={t('close')} onPress={onClose} color="#C62828" />
         </View>
       )}
     </FinancialModuleShell>

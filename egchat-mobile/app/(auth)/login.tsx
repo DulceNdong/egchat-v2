@@ -254,7 +254,7 @@ export default function LoginScreen() {
                     <View style={s.mProgressTrack}>
                       <LinearGradient colors={['#00c8a0','#0099c8']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mProgressFill} />
                     </View>
-                    <Text style={s.mProgressLabel}>En desarrollo · En cours de développement</Text>
+                    <Text style={s.mProgressLabel}>{t('authInDevelopment')}</Text>
                     <TouchableOpacity style={s.mBtn} onPress={() => setComingSoonCountry(null)} activeOpacity={0.85}>
                       <LinearGradient colors={['#00c8a0','#0099c8']} start={{x:0,y:0}} end={{x:1,y:0}} style={s.mBtnGrad}>
                         <Text style={s.mBtnText}>{cs.cta}</Text>
@@ -281,7 +281,7 @@ export default function LoginScreen() {
               <SpinningLogo size={84} glow={false} />
             </View>
             <Text style={s.appName}>EGChat</Text>
-            <Text style={s.appTagline}>África Central conectada</Text>
+            <Text style={s.appTagline}>{t('authTagline')}</Text>
             <View style={s.cemacBadge}>
               <Text style={s.cemacLabel}>CEMAC</Text>
               <View style={s.flagsRow}>
@@ -301,12 +301,12 @@ export default function LoginScreen() {
           {/* ── Tarjeta ────────────────────────────────────── */}
           <View style={[s.card, { backgroundColor: cardBg }]}>
 
-            <Text style={[s.cardTitle, { color: C.textPrimary }]}>Iniciar sesión</Text>
-            <Text style={[s.cardSub, { color: C.textSecondary }]}>Ingresa tu teléfono y contraseña</Text>
+            <Text style={[s.cardTitle, { color: C.textPrimary }]}>{t('login')}</Text>
+            <Text style={[s.cardSub, { color: C.textSecondary }]}>{t('authLoginSubtitle')}</Text>
 
             {/* País */}
             <View style={f.wrap}>
-              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>PAÍS</Text>
+              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>{t('authCountryLabel')}</Text>
               <TouchableOpacity
                 style={[s.countryBox, { backgroundColor: fieldBg, borderColor: fieldBdr }]}
                 onPress={() => setShowCountryPicker(p => !p)}
@@ -338,7 +338,7 @@ export default function LoginScreen() {
                       <Text style={s.cFlag}>{getFlag(c.code)}</Text>
                       <View style={{ flex: 1 }}>
                         <Text style={[s.ddItemText, { color: C.textPrimary }]}>{c.name}</Text>
-                        {!c.active && <Text style={s.ddSoonText}>Próximamente · Bientôt</Text>}
+                        {!c.active && <Text style={s.ddSoonText}>{t('authComingSoonDotted')}</Text>}
                       </View>
                       {c.active
                         ? <Text style={s.cBadge}>{c.phone}</Text>
@@ -352,7 +352,7 @@ export default function LoginScreen() {
 
             {/* Teléfono */}
             <View style={[f.wrap, { marginBottom: 10 }]}>
-              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>TELÉFONO</Text>
+              <Text style={[f.label, { color: isDark ? '#4a6a80' : '#94a3b8' }]}>{t('authPhoneLabel')}</Text>
               <View style={[f.box, { backgroundColor: fieldBg, borderColor: fieldBdr, paddingHorizontal: 0 }]}>
                 {/* Prefijo */}
                 <View style={[s.prefixBox, { backgroundColor: isDark ? '#162330' : '#eef2f7', borderColor: fieldBdr }]}>
@@ -375,7 +375,7 @@ export default function LoginScreen() {
 
             {/* Contraseña — input propio con ojo SVG */}
             <Field
-              label="CONTRASEÑA"
+              label={t('authPasswordLabel')}
               value={password}
               onChangeText={setPassword}
               placeholder="••••••••"
@@ -402,7 +402,7 @@ export default function LoginScreen() {
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
                 style={s.loginGrad}
               >
-                <Text style={s.loginText}>{isLoading ? 'Iniciando...' : 'Iniciar sesión'}</Text>
+                <Text style={s.loginText}>{isLoading ? t('setStarting') : t('login')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -411,13 +411,13 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/forgot-password' as any)}
               style={s.forgotBtn}
             >
-              <Text style={s.forgotText}>¿Olvidaste tu contraseña?</Text>
+              <Text style={s.forgotText}>{t('forgotPassword')}</Text>
             </TouchableOpacity>
 
             {/* Separador */}
             <View style={s.sep}>
               <View style={[s.sepLine, { backgroundColor: isDark ? '#1e2d3a' : '#e2e8f0' }]} />
-              <Text style={[s.sepText, { color: isDark ? '#3a5060' : '#cbd5e1' }]}>o</Text>
+              <Text style={[s.sepText, { color: isDark ? '#3a5060' : '#cbd5e1' }]}>{t('authOr')}</Text>
               <View style={[s.sepLine, { backgroundColor: isDark ? '#1e2d3a' : '#e2e8f0' }]} />
             </View>
 
@@ -427,7 +427,7 @@ export default function LoginScreen() {
               onPress={() => router.push('/(auth)/register' as any)}
               activeOpacity={0.8}
             >
-              <Text style={[s.createText, { color: C.textPrimary }]}>Crear nueva cuenta</Text>
+              <Text style={[s.createText, { color: C.textPrimary }]}>{t('authCreateNewAccount')}</Text>
             </TouchableOpacity>
 
             {/* Volver */}
@@ -440,7 +440,7 @@ export default function LoginScreen() {
                 router.replace('/(tabs)' as any);
               }
             }} style={s.backBtn}>
-              <Text style={[s.backText, { color: isDark ? '#3a5060' : '#94a3b8' }]}>← Volver al inicio</Text>
+              <Text style={[s.backText, { color: isDark ? '#3a5060' : '#94a3b8' }]}>← {t('backHome')}</Text>
             </TouchableOpacity>
 
           </View>

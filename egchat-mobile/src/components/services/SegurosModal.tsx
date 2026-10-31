@@ -5,14 +5,15 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { INS_COMPANIES, INS_COLORS, InsCompany, InsProduct } from '../../data/serviciosFinancieros';
 import { FinancialModuleShell } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { t as tr } from '../../translations';
 
 type SgScreen = 'home' | 'company' | 'product' | 'docs' | 'apply' | 'success';
 
 interface Props { visible: boolean; onClose: () => void; }
 
 const FILTER_OPTS = [
-  { id: 'all', label: 'Todos' }, { id: 'vida', label: 'Vida' }, { id: 'salud', label: 'Salud' },
-  { id: 'auto', label: 'Vehículo' }, { id: 'hogar', label: 'Hogar' }, { id: 'viaje', label: 'Viaje' },
+  { id: 'all', get label() { return tr('everyone'); } }, { id: 'vida', get label() { return tr('xtVida'); } }, { id: 'salud', get label() { return tr('health'); } },
+  { id: 'auto', get label() { return tr('xtVehiculo'); } }, { id: 'hogar', get label() { return tr('xtHogar'); } }, { id: 'viaje', get label() { return tr('xtViaje'); } },
 ];
 
 export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
@@ -43,7 +44,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
 
   const titles: Record<SgScreen, string> = {
     home: 'Seguros', company: co?.name || '', product: prod?.name || '',
-    apply: 'Solicitar Seguro', docs: 'Documentos', success: 'Solicitud Enviada',
+    apply: tr('xtSolicitarSeguro'), docs: 'Documentos', success: 'Solicitud Enviada',
   };
 
   return (
@@ -129,7 +130,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
               <Text style={[s.covVal, { color: INS_COLORS[prod.type] }]}>{prod.coverage}</Text>
             </View>
           </View>
-          <PrimaryButton label="📋 Solicitar este seguro" onPress={() => setScreen('docs')} color="#2E9E6B" />
+          <PrimaryButton label={tr('xtSolicitarEsteSeguro')} onPress={() => setScreen('docs')} color="#2E9E6B" />
         </View>
       )}
 
@@ -146,7 +147,7 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
                 style={[s.docBtn, docs[doc] && s.docBtnDone]}
                 onPress={() => setDocs(p => ({ ...p, [doc]: !p[doc] }))}
               >
-                <Text style={[s.docBtnText, docs[doc] && { color: '#2E9E6B' }]}>{docs[doc] ? '✓ Subido' : 'Subir'}</Text>
+                <Text style={[s.docBtnText, docs[doc] && { color: '#2E9E6B' }]}>{docs[doc] ? tr('xtSubido') : tr('xtSubir')}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -161,19 +162,19 @@ export const SegurosModal: React.FC<Props> = ({ visible, onClose }) => {
 
       {screen === 'apply' && prod && (
         <View>
-          {([['name', 'Nombre completo'], ['dni', 'DNI / Pasaporte'], ['phone', 'Teléfono'], ['email', 'Correo electrónico'], ['address', 'Dirección'], ['city', 'Ciudad / Barrio']] as const).map(([k, l]) => (
+          {([['name', 'Nombre completo'], ['dni', 'DNI / Pasaporte'], ['phone', 'Teléfono'], ['email', 'Correo electrónico'], ['address', 'Dirección'], ['city', tr('xtCiudadBarrio')]] as const).map(([k, l]) => (
             <FormField key={k} placeholder={l} value={form[k]} onChangeText={v => setForm(p => ({ ...p, [k]: v }))} keyboardType={k === 'phone' ? 'phone-pad' : 'default'} />
           ))}
-          <PrimaryButton label="✅ Enviar solicitud" disabled={!formOk} onPress={() => setScreen('success')} color="#2E9E6B" />
+          <PrimaryButton label={tr('xtEnviarSolicitud')} disabled={!formOk} onPress={() => setScreen('success')} color="#2E9E6B" />
         </View>
       )}
 
       {screen === 'success' && (
         <View style={s.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>¡Solicitud enviada!</Text>
+          <Text style={s.successTitle}>{tr('kyRequestSentTitle')}</Text>
           <Text style={s.successSub}>{prod?.name} — {co?.name}</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color="#2E9E6B" />
+          <PrimaryButton label={tr('close')} onPress={onClose} color="#2E9E6B" />
         </View>
       )}
     </FinancialModuleShell>

@@ -1,7 +1,7 @@
 // ══════════════════════════════════════════════════════════════════
 // EGCHAT — LIA-25 Asistente IA  (diseño mejorado v3)
 // ══════════════════════════════════════════════════════════════════
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
@@ -15,6 +15,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as DocumentPicker from 'expo-document-picker';
 import { Audio } from 'expo-av';
 import { liaAPI } from '../../src/api';
+import { useTranslation } from '../../src/context/LanguageContext';
 import { Colors, Shadow } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
@@ -29,62 +30,68 @@ interface LIAMessage {
   time: string;
 }
 
-const WELCOME: LIAMessage = {
-  id: '0', role: 'assistant',
-  content: '¡Hola! Soy Lia-25, tu asistente inteligente de EGCHAT. Puedo ayudarte con cualquier cosa: responder preguntas, enviar mensajes a contactos, gestionar tu dinero, y mucho más. ¿En qué puedo ayudarte?',
-  time: '00:00',
-};
-let sessionHistory: LIAMessage[] = [WELCOME];
+const TTS_LOCALE: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-US', pt: 'pt-PT' };
+
+const makeWelcome = (content: string): LIAMessage => ({ id: '0', role: 'assistant', content, time: '00:00' });
+let sessionHistory: LIAMessage[] = [];
 
 const formatTime = () => {
   const d = new Date();
   return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
 
+const formatStamp = (iso?: string) => {
+  if (!iso) return formatTime();
+  const d = new Date(iso);
+  return Number.isNaN(d.getTime()) ? formatTime() : `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+};
+
 // ── Sugerencias ───────────────────────────────────────────────────
+// El texto visible sale de t(key); al enviarlo el servidor reconoce la
+// intención en los cuatro idiomas.
 const SUGGESTIONS = [
   {
-    color: '#00C8A0', bg: '#E6FAF6', text: '¿Cuál es mi saldo?',
+    key: 'liaSugBalance', color: '#00C8A0', bg: '#E6FAF6',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth="1.8" strokeLinecap="round"><Rect x="2" y="5" width="20" height="14" rx="2"/><Line x1="2" y1="10" x2="22" y2="10"/><Circle cx="12" cy="15" r="2" fill="#00C8A0" stroke="none"/></Svg>,
   },
   {
-    color: '#6B5BD6', bg: '#F0EEFF', text: 'Resumen de actividad',
+    key: 'liaSugActivity', color: '#6B5BD6', bg: '#F0EEFF',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.8" strokeLinecap="round"><Line x1="18" y1="20" x2="18" y2="10"/><Line x1="12" y1="20" x2="12" y2="4"/><Line x1="6" y1="20" x2="6" y2="14"/></Svg>,
   },
   {
-    color: '#F59E0B', bg: '#FFF8E6', text: 'Noticias de hoy',
+    key: 'liaSugNews', color: '#F59E0B', bg: '#FFF8E6',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round"><Rect x="2" y="9" width="4" height="12" rx="1"/><Path d="M4 22h16a2 2 0 0 0 2-2V4a2 2 0 0 0-2-2H8a2 2 0 0 0-2 2v2"/><Path d="M10 11h8"/><Path d="M10 15h8"/></Svg>,
   },
   {
-    color: '#00B4E6', bg: '#E6F8FF', text: '¿Cómo está el tiempo?',
+    key: 'liaSugWeather', color: '#00B4E6', bg: '#E6F8FF',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00B4E6" strokeWidth="1.8" strokeLinecap="round"><Path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9z"/></Svg>,
   },
   {
-    color: '#00C8A0', bg: '#E6FAF6', text: 'Enviar dinero',
+    key: 'liaSugSend', color: '#00C8A0', bg: '#E6FAF6',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#00C8A0" strokeWidth="1.8" strokeLinecap="round"><Line x1="22" y1="2" x2="11" y2="13"/><Polygon points="22 2 15 22 11 13 2 9 22 2"/></Svg>,
   },
   {
-    color: '#EF4444', bg: '#FEF2F2', text: 'Centros de salud',
+    key: 'liaSugHealth', color: '#EF4444', bg: '#FEF2F2',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#EF4444" strokeWidth="1.8" strokeLinecap="round"><Path d="M22 12h-4l-3 9L9 3l-3 9H2"/></Svg>,
   },
   {
-    color: '#F59E0B', bg: '#FFF8E6', text: 'Pedir un taxi',
+    key: 'liaSugTaxi', color: '#F59E0B', bg: '#FFF8E6',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round"><Path d="M5 17H3a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v5a2 2 0 0 1-2 2h-2"/><Circle cx="7" cy="17" r="2"/><Circle cx="17" cy="17" r="2"/></Svg>,
   },
   {
-    color: '#6B5BD6', bg: '#F0EEFF', text: 'Supermercados cercanos',
+    key: 'liaSugMarket', color: '#6B5BD6', bg: '#F0EEFF',
     icon: <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#6B5BD6" strokeWidth="1.8" strokeLinecap="round"><Path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><Line x1="3" y1="6" x2="21" y2="6"/><Path d="M16 10a4 4 0 0 1-8 0"/></Svg>,
   },
 ];
 
 const QUICK_CHIPS = [
-  { icon: '💳', text: 'Saldo' },
-  { icon: '📰', text: 'Noticias' },
-  { icon: '🚕', text: 'Taxi' },
-  { icon: '↗️', text: 'Enviar' },
-  { icon: '🏥', text: 'Salud' },
-  { icon: '🛒', text: 'Compras' },
-  { icon: '☀️', text: 'Clima' },
+  { icon: '💳', key: 'liaChipBalance' },
+  { icon: '📰', key: 'liaChipNews' },
+  { icon: '🚕', key: 'liaChipTaxi' },
+  { icon: '↗️', key: 'liaChipSend' },
+  { icon: '🏥', key: 'liaChipHealth' },
+  { icon: '🛒', key: 'liaChipShopping' },
+  { icon: '☀️', key: 'liaChipWeather' },
 ];
 
 // ── Animación onda LIA ────────────────────────────────────────────
@@ -209,15 +216,16 @@ const AttachIcons: Record<string, React.ReactElement> = {
 };
 
 const ATTACH_OPTIONS = [
-  { key: 'photo',    label: 'Foto',      bg: '#E6FAF6', color: '#00C8A0' },
-  { key: 'video',    label: 'Video',     bg: '#F0EEFF', color: '#6B5BD6' },
-  { key: 'document', label: 'Documento', bg: '#FFF8E6', color: '#F59E0B' },
-  { key: 'file',     label: 'Archivo',   bg: '#E0F7F0', color: '#00B4A0' },
-  { key: 'location', label: 'Ubicación', bg: '#FEF2F2', color: '#EF4444' },
-  { key: 'contact',  label: 'Contacto',  bg: '#E6F8FF', color: '#00B4E6' },
+  { id: 'photo',    labelKey: 'liaAttachPhoto',    bg: '#E6FAF6', color: '#00C8A0' },
+  { id: 'video',    labelKey: 'liaAttachVideo',    bg: '#F0EEFF', color: '#6B5BD6' },
+  { id: 'document', labelKey: 'liaAttachDocument', bg: '#FFF8E6', color: '#F59E0B' },
+  { id: 'file',     labelKey: 'liaAttachFile',     bg: '#E0F7F0', color: '#00B4A0' },
+  { id: 'location', labelKey: 'liaAttachLocation', bg: '#FEF2F2', color: '#EF4444' },
+  { id: 'contact',  labelKey: 'liaAttachContact',  bg: '#E6F8FF', color: '#00B4E6' },
 ];
 
 const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }: AttachPanelProps) => {
+  const { t } = useTranslation();
   const slideAnim = useRef(new Animated.Value(220)).current;
 
   useEffect(() => {
@@ -238,24 +246,24 @@ const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }
     try {
       if (key === 'photo') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') { onSendText('⚠️ Permiso de galería denegado'); return; }
+        if (status !== 'granted') { onSendText(`⚠️ ${t('liaGalleryDenied')}`); return; }
         const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85 });
-        if (!res.canceled && res.assets[0]) onSendText(`📷 Foto adjunta: ${res.assets[0].fileName || 'imagen.jpg'}`);
+        if (!res.canceled && res.assets[0]) onSendText(`${t('liaPhotoAttached')}: ${res.assets[0].fileName || 'imagen.jpg'}`);
       } else if (key === 'video') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-        if (status !== 'granted') { onSendText('⚠️ Permiso de galería denegado'); return; }
+        if (status !== 'granted') { onSendText(`⚠️ ${t('liaGalleryDenied')}`); return; }
         const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Videos });
-        if (!res.canceled && res.assets[0]) onSendText(`🎬 Video adjunto: ${res.assets[0].fileName || 'video.mp4'}`);
+        if (!res.canceled && res.assets[0]) onSendText(`${t('liaVideoAttached')}: ${res.assets[0].fileName || 'video.mp4'}`);
       } else if (key === 'document' || key === 'file') {
         const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-        if (!res.canceled && res.assets[0]) onSendText(`📎 Archivo adjunto: ${res.assets[0].name}`);
+        if (!res.canceled && res.assets[0]) onSendText(`${t('liaFileAttached')}: ${res.assets[0].name}`);
       } else if (key === 'location') {
-        onSendText('📍 Ubicación compartida');
+        onSendText(t('liaLocationShared'));
       } else if (key === 'contact') {
-        onSendText('👤 Contacto compartido');
+        onSendText(t('liaContactShared'));
       }
     } catch {
-      onSendText('⚠️ No se pudo adjuntar el archivo');
+      onSendText(`⚠️ ${t('liaAttachError')}`);
     }
   };
 
@@ -270,16 +278,16 @@ const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }
       <View style={s.attachGrid}>
         {ATTACH_OPTIONS.map(opt => (
           <TouchableOpacity
-            key={opt.key}
+            key={opt.id}
             style={s.attachItem}
-            onPress={() => handleOption(opt.key)}
+            onPress={() => handleOption(opt.id)}
             activeOpacity={0.72}
           >
             <View style={[s.attachIconWrap, { backgroundColor: opt.bg }]}>
-              {AttachIcons[opt.key]}
+              {AttachIcons[opt.id]}
             </View>
             <Text style={[s.attachLabel, { color: isDark ? C.textSecondary : '#374151' }]}>
-              {opt.label}
+              {t(opt.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -301,7 +309,7 @@ const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }
           <Line x1="18" y1="14" x2="18" y2="14"/>
           <Line x1="10" y1="14" x2="14" y2="14"/>
         </Svg>
-        <Text style={s.attachKeyboardTxt}>Teclado</Text>
+        <Text style={s.attachKeyboardTxt}>{t('liaKeyboard')}</Text>
       </TouchableOpacity>
     </Animated.View>
   );
@@ -312,7 +320,10 @@ const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }
 // ══════════════════════════════════════════════════════════════════
 export default function LiaScreen() {
   const insets = useSafeAreaInsets();
-  const [messages, setMessages] = useState<LIAMessage[]>(() => [...sessionHistory]);
+  const { t, language } = useTranslation();
+  const welcome = useMemo(() => makeWelcome(t('liaGreeting')), [t]);
+  const [messages, setMessages] = useState<LIAMessage[]>(() =>
+    sessionHistory.length > 1 ? [...sessionHistory] : [welcome]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -322,6 +333,7 @@ export default function LiaScreen() {
   const [isRecording, setIsRecording] = useState(false);
   const [recordingObj, setRecordingObj] = useState<Audio.Recording | null>(null);
   const [showAttach, setShowAttach] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
 
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
@@ -347,32 +359,73 @@ export default function LiaScreen() {
 
   useEffect(() => { scrollToEnd(); }, [messages.length]);
 
+  // Recuperar la conversación guardada en el servidor (solo la primera vez
+  // de la sesión, y solo si aún no hay mensajes locales).
+  useEffect(() => {
+    if (sessionHistory.length > 1) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await liaAPI.history(20);
+        if (cancelled || !res?.messages?.length) return;
+        const restored: LIAMessage[] = res.messages.map((m, index) => ({
+          id: `h-${index}`,
+          role: m.role,
+          content: m.content,
+          time: formatStamp(m.time),
+        }));
+        sessionHistory = [welcome, ...restored];
+        setMessages([...sessionHistory]);
+        setShowChips(true);
+      } catch {
+        // sin historial: se empieza de cero
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [welcome]);
+
   // ── Grabación de voz ─────────────────────────────────────────────
   const startRecording = useCallback(async () => {
     try {
       const { granted } = await Audio.requestPermissionsAsync();
-      if (!granted) { setError('Permiso de micrófono denegado'); return; }
+      if (!granted) { setError(t('liaMicDenied')); return; }
       await Audio.setAudioModeAsync({ allowsRecordingIOS: true, playsInSilentModeIOS: true });
       const { recording } = await Audio.Recording.createAsync(Audio.RecordingOptionsPresets.HIGH_QUALITY);
       setRecordingObj(recording);
       setIsRecording(true);
     } catch {
-      setError('No se pudo iniciar la grabación');
+      setError(t('liaRecordStartError'));
     }
-  }, []);
+  }, [t]);
 
   const stopRecording = useCallback(async () => {
     if (!recordingObj) return;
     setIsRecording(false);
+    let uri: string | null = null;
     try {
       await recordingObj.stopAndUnloadAsync();
-      await Audio.setAudioModeAsync({ allowsRecordingIOS: false });
-      setInput(prev => prev || '🎙️ Mensaje de voz');
-      setRecordingObj(null);
+      uri = recordingObj.getURI();
     } catch {
       setRecordingObj(null);
+      return;
     }
-  }, [recordingObj]);
+    setRecordingObj(null);
+    try { await Audio.setAudioModeAsync({ allowsRecordingIOS: false }); } catch {}
+    if (!uri) return;
+
+    setTranscribing(true);
+    setError(null);
+    try {
+      const res = await liaAPI.transcribe(uri, language);
+      const text = (res?.text || '').trim();
+      if (!text) { setError(t('liaTranscribeUnavailable')); return; }
+      setInput(prev => (prev.trim() ? `${prev.trim()} ${text}` : text));
+    } catch {
+      setError(t('liaTranscribeUnavailable'));
+    } finally {
+      setTranscribing(false);
+    }
+  }, [recordingObj, language, t]);
 
   // ── Enviar mensaje ────────────────────────────────────────────────
   const send = useCallback(async (text?: string) => {
@@ -392,26 +445,34 @@ export default function LiaScreen() {
     ]).start();
     try {
       const history = sessionHistory.slice(-7, -1).map(m => ({ role: m.role, content: m.content }));
-      const res = await liaAPI.chat(msg, history);
+      const res = await liaAPI.chat(msg, history, language);
       const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
       setMessages(prev => { const next = [...prev, aiMsg]; sessionHistory = next; return next; });
       setShowChips(true);
       if (res.reply.length < 250) {
         setSpeaking(true);
-        Speech.speak(res.reply, { language: 'es-ES', rate: 1.0, onDone: () => setSpeaking(false), onError: () => setSpeaking(false) });
+        Speech.speak(res.reply, { language: TTS_LOCALE[language] || 'es-ES', rate: 1.0, onDone: () => setSpeaking(false), onError: () => setSpeaking(false) });
       }
-    } catch (err: any) {
-      setError(err?.message || 'No se pudo conectar con LIA-25. Inténtalo de nuevo.');
+    } catch {
+      setError(t('liaErrorConnection'));
     } finally {
       setLoading(false);
     }
-  }, [input, loading, sendScale]);
+  }, [input, loading, sendScale, language, t]);
 
   const retry = useCallback(() => { if (lastMsg) send(lastMsg); }, [lastMsg, send]);
   const stopSpeaking = () => { Speech.stop(); setSpeaking(false); };
 
   const isFirstVisit = messages.length <= 1 && !loading && !showChips;
-  const statusLabel = loading ? '● Escribiendo...' : speaking ? '🔊 Hablando...' : isRecording ? '🎙️ Escuchando...' : '● Asistente inteligente';
+  const statusLabel = loading
+    ? `● ${t('liaStatusTyping')}`
+    : transcribing
+      ? `● ${t('liaTranscribing')}`
+      : speaking
+        ? `🔊 ${t('liaStatusTalking')}`
+        : isRecording
+          ? `🎙️ ${t('liaStatusListening')}`
+          : `● ${t('liaStatusIdle')}`;
 
   return (
     <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['top', 'left', 'right']}>
@@ -432,7 +493,7 @@ export default function LiaScreen() {
         </View>
         {speaking && (
           <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
-            <Text style={s.stopBtnText}>■ Parar</Text>
+            <Text style={s.stopBtnText}>■ {t('liaStop')}</Text>
           </TouchableOpacity>
         )}
       </LinearGradient>
@@ -460,18 +521,18 @@ export default function LiaScreen() {
             <View style={{ marginVertical: 10 }}>
               <LiaWave active={false} />
             </View>
-            <Text style={[s.welcomeTitle, { color: C.textPrimary }]}>Hola, soy Lia-25</Text>
-            <Text style={[s.welcomeSub, { color: C.textSecondary }]}>Tu asistente inteligente — Habla o escribe</Text>
+            <Text style={[s.welcomeTitle, { color: C.textPrimary }]}>{t('liaWelcomeTitle')}</Text>
+            <Text style={[s.welcomeSub, { color: C.textSecondary }]}>{t('liaWelcomeSub')}</Text>
             <View style={s.suggestionsGrid}>
               {SUGGESTIONS.map((sg, i) => (
                 <TouchableOpacity
-                  key={i}
+                  key={sg.key}
                   style={[s.suggestionCard, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.borderLight : '#E8F4FC' }]}
-                  onPress={() => send(sg.text)}
+                  onPress={() => send(t(sg.key))}
                   activeOpacity={0.75}
                 >
                   <View style={[s.suggestionIconWrap, { backgroundColor: sg.bg }]}>{sg.icon}</View>
-                  <Text style={[s.suggestionText, { color: C.textPrimary }]} numberOfLines={2}>{sg.text}</Text>
+                  <Text style={[s.suggestionText, { color: C.textPrimary }]} numberOfLines={2}>{t(sg.key)}</Text>
                 </TouchableOpacity>
               ))}
             </View>
@@ -489,11 +550,12 @@ export default function LiaScreen() {
             keyboardShouldPersistTaps="handled"
             renderItem={({ item }) => {
               const isUser = item.role === 'user';
+              const content = item.id === '0' ? t('liaGreeting') : item.content;
               return (
                 <View style={[s.row, isUser ? s.rowUser : s.rowAI]}>
                   {!isUser && <LiaAvatar size={30} />}
                   <View style={[s.bubble, isUser ? s.bubbleUser : [s.bubbleAI, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.borderLight : '#E4EFF7' }]]}>
-                    <Text style={[s.bubbleText, isUser ? s.textUser : { color: C.textPrimary }]}>{item.content}</Text>
+                    <Text style={[s.bubbleText, isUser ? s.textUser : { color: C.textPrimary }]}>{content}</Text>
                     <Text style={[s.timeText, isUser && s.timeUser]}>{item.time}</Text>
                   </View>
                   {isUser && <View style={s.userAvatarDot} />}
@@ -509,7 +571,7 @@ export default function LiaScreen() {
           <View style={s.errorBanner}>
             <Text style={s.errorText}>⚠️ {error}</Text>
             <TouchableOpacity onPress={retry} style={s.retryBtn} activeOpacity={0.8}>
-              <Text style={s.retryText}>Reintentar</Text>
+              <Text style={s.retryText}>{t('liaRetry')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -519,13 +581,13 @@ export default function LiaScreen() {
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chipsRow}>
             {QUICK_CHIPS.map(c => (
               <TouchableOpacity
-                key={c.text}
+                key={c.key}
                 style={[s.quickChip, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.border : '#DFF0FA' }]}
-                onPress={() => send(c.text)}
+                onPress={() => send(t(c.key))}
                 activeOpacity={0.75}
               >
                 <Text style={s.quickChipIcon}>{c.icon}</Text>
-                <Text style={[s.quickChipText, { color: C.textSecondary }]}>{c.text}</Text>
+                <Text style={[s.quickChipText, { color: C.textSecondary }]}>{t(c.key)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -575,7 +637,9 @@ export default function LiaScreen() {
             onPress={isRecording ? stopRecording : startRecording}
             activeOpacity={0.8}
           >
-            {isRecording ? (
+            {transcribing ? (
+              <ActivityIndicator size="small" color="#00C8A0" />
+            ) : isRecording ? (
               <Text style={{ fontSize: 16 }}>⏹</Text>
             ) : (
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth="1.8" strokeLinecap="round">
@@ -599,7 +663,7 @@ export default function LiaScreen() {
                 style={[s.input, { color: C.textPrimary }]}
                 value={input}
                 onChangeText={setInput}
-                placeholder="Pregunta a Lia-25..."
+                placeholder={t('liaPlaceholder')}
                 placeholderTextColor={C.textTertiary}
                 onSubmitEditing={() => send()}
                 onFocus={() => setShowAttach(false)}

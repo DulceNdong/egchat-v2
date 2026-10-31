@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../../theme';
+import { t as tr } from '../../translations';
 
 interface PhotoEditorProps {
   visible: boolean;
@@ -15,13 +16,13 @@ interface PhotoEditorProps {
 
 const FILTERS = [
   { id: 'none',       label: 'Original',  style: {} },
-  { id: 'warm',       label: 'Cálido',    style: { tintColor: undefined } },
-  { id: 'cool',       label: 'Frío',      style: {} },
+  { id: 'warm',       label: tr('xtCalido'),    style: { tintColor: undefined } },
+  { id: 'cool',       label: tr('xtFrio'),      style: {} },
   { id: 'grayscale',  label: 'B&N',       style: {} },
 ];
 
 export const PhotoEditor: React.FC<PhotoEditorProps> = ({
-  visible, onClose, onSave, title = 'Editar foto',
+  visible, onClose, onSave, title = tr('xtEditarFoto'),
 }) => {
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [brightness, setBrightness] = useState(1);
@@ -55,7 +56,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
   };
 
   const handleSave = () => {
-    if (!imageUri) { Alert.alert('Error', 'Selecciona una imagen primero'); return; }
+    if (!imageUri) { Alert.alert(tr('error'), 'Selecciona una imagen primero'); return; }
     onSave(imageUri);
     onClose();
   };
@@ -66,11 +67,11 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={onClose} style={styles.headerBtn}>
-            <Text style={styles.headerBtnText}>Cancelar</Text>
+            <Text style={styles.headerBtnText}>{tr('cancel')}</Text>
           </TouchableOpacity>
           <Text style={styles.title}>{title}</Text>
           <TouchableOpacity onPress={handleSave} style={styles.headerBtn}>
-            <Text style={[styles.headerBtnText, { color: Colors.accent }]}>Guardar</Text>
+            <Text style={[styles.headerBtnText, { color: Colors.accent }]}>{tr('chtSaveAction')}</Text>
           </TouchableOpacity>
         </View>
 
@@ -81,7 +82,7 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
           ) : (
             <View style={styles.previewEmpty}>
               <Text style={styles.previewEmptyIcon}>🖼️</Text>
-              <Text style={styles.previewEmptyText}>Selecciona una foto</Text>
+              <Text style={styles.previewEmptyText}>{tr('xtSeleccionaUnaFoto')}</Text>
             </View>
           )}
         </View>
@@ -105,16 +106,16 @@ export const PhotoEditor: React.FC<PhotoEditorProps> = ({
         <View style={styles.actions}>
           <TouchableOpacity style={styles.actionBtn} onPress={pickImage}>
             <Text style={styles.actionIcon}>🖼️</Text>
-            <Text style={styles.actionLabel}>Galería</Text>
+            <Text style={styles.actionLabel}>{tr('chtGallery')}</Text>
           </TouchableOpacity>
           <TouchableOpacity style={styles.actionBtn} onPress={takePhoto}>
             <Text style={styles.actionIcon}>📷</Text>
-            <Text style={styles.actionLabel}>Cámara</Text>
+            <Text style={styles.actionLabel}>{tr('chtCamera')}</Text>
           </TouchableOpacity>
           {imageUri && (
             <TouchableOpacity style={styles.actionBtn} onPress={() => setImageUri(null)}>
               <Text style={styles.actionIcon}>🗑️</Text>
-              <Text style={styles.actionLabel}>Eliminar</Text>
+              <Text style={styles.actionLabel}>{tr('delete')}</Text>
             </TouchableOpacity>
           )}
         </View>

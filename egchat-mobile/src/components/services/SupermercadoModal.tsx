@@ -9,6 +9,7 @@ import {
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { SearchField } from './PublicModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { t as tr } from '../../translations';
 
 type Screen = 'home' | 'cities' | 'stores' | 'products' | 'cart' | 'checkout' | 'success' | 'history';
 type SuperOrder = { id: string; store: string; total: number; items: number; createdAt: string };
@@ -121,11 +122,11 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
 
   const fixedTop = screen === 'home' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-      <SearchField placeholder="Buscar producto en todos los supermercados..." value={search} onChangeText={setSearch} />
+      <SearchField placeholder={tr('xtBuscarProductoEnTodosLosSupermercados')} value={search} onChangeText={setSearch} />
     </View>
   ) : screen === 'products' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
-      <SearchField placeholder="Buscar producto..." value={search} onChangeText={setSearch} />
+      <SearchField placeholder={tr('xtBuscarProducto')} value={search} onChangeText={setSearch} />
     </View>
   ) : null;
 
@@ -156,12 +157,12 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
 
           <View style={st.grid}>
             {([
-              { icon: '🏙️', label: 'Ver Ciudades', sub: `${DAILY_CITIES.length} ciudades`, action: () => setScreen('cities') },
-              { icon: '🛒', label: 'Supermercados', sub: `${SUPERMARKETS.length} tiendas`, action: () => { setCityId(null); setScreen('stores'); } },
-              { icon: '🛍️', label: 'Mi Carrito', sub: cartCount ? `${cartCount} productos` : 'Vacío', action: () => cartCount ? setScreen('cart') : Alert.alert('Carrito vacío') },
-              { icon: '📦', label: 'Mis Pedidos', sub: `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`, action: () => setScreen('history') },
-              { icon: '📋', label: 'Historial', sub: 'Compras anteriores', action: () => setScreen('history') },
-              { icon: '🎧', label: 'Soporte', sub: 'Ayuda y reportes', action: () => Alert.alert('Soporte', '+240 222 20 00 00') },
+              { icon: '🏙️', label: tr('xtVerCiudades'), sub: `${DAILY_CITIES.length} ciudades`, action: () => setScreen('cities') },
+              { icon: '🛒', label: tr('svcSupermarkets'), sub: `${SUPERMARKETS.length} tiendas`, action: () => { setCityId(null); setScreen('stores'); } },
+              { icon: '🛍️', label: tr('svcMyCart'), sub: cartCount ? `${cartCount} productos` : tr('xtVacio'), action: () => cartCount ? setScreen('cart') : Alert.alert(tr('xtCarritoVacio')) },
+              { icon: '📦', label: tr('svcMyOrders'), sub: `${orderHistory.length} pedido${orderHistory.length === 1 ? '' : 's'}`, action: () => setScreen('history') },
+              { icon: '📋', label: tr('history'), sub: tr('xtComprasAnteriores'), action: () => setScreen('history') },
+              { icon: '🎧', label: tr('svcSupport'), sub: tr('xtAyudaYReportes'), action: () => Alert.alert(tr('svcSupport'), '+240 222 20 00 00') },
             ]).map(item => (
               <TouchableOpacity key={item.label} style={st.gridCard} onPress={item.action} activeOpacity={0.8}>
                 <Text style={{ fontSize: 22 }}>{item.icon}</Text>
@@ -180,7 +181,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
                 <Text style={st.prodBrand}>{p.marca}</Text>
                 <Text style={st.prodPrice}>{p.precio.toLocaleString()} XAF</Text>
                 <TouchableOpacity style={st.addBtn} onPress={() => addToCart(p)}>
-                  <Text style={st.addBtnText}>+ Añadir</Text>
+                  <Text style={st.addBtnText}>{tr('xtAnadir2')}</Text>
                 </TouchableOpacity>
               </View>
             ))}
@@ -193,8 +194,8 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
           {orderHistory.length === 0 ? (
             <View style={st.emptyHistory}>
               <Text style={{ fontSize: 38 }}>📦</Text>
-              <Text style={st.emptyHistoryTitle}>No tienes pedidos recientes</Text>
-              <Text style={st.emptyHistorySub}>Tus compras de supermercado aparecerán aquí.</Text>
+              <Text style={st.emptyHistoryTitle}>{tr('xtNoTienesPedidosRecientes')}</Text>
+              <Text style={st.emptyHistorySub}>{tr('xtTusComprasDeSupermercadoApareceranAqui')}</Text>
               <PrimaryButton label="Comprar ahora" color="#00c8a0" onPress={() => setScreen('cities')} />
             </View>
           ) : orderHistory.map(order => (
@@ -256,7 +257,7 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
                 <Text style={st.prodPrice}>{p.precio.toLocaleString()} XAF</Text>
               </View>
               <TouchableOpacity style={st.addBtn} onPress={() => addToCart(p)}>
-                <Text style={st.addBtnText}>+ Añadir</Text>
+                <Text style={st.addBtnText}>{tr('xtAnadir2')}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -289,31 +290,31 @@ export const SupermercadoModal: React.FC<Props> = ({ visible, onClose }) => {
             </View>
           ))}
           <Text style={st.cartTotal}>Total: {cartTotal.toLocaleString()} XAF</Text>
-          <PrimaryButton label="Continuar al pago" onPress={() => setScreen('checkout')} color="#00c8a0" disabled={!cart.length} />
+          <PrimaryButton label={tr('xtContinuarAlPago')} onPress={() => setScreen('checkout')} color="#00c8a0" disabled={!cart.length} />
         </View>
       )}
 
       {screen === 'checkout' && (
         <View>
-          <FormField placeholder="Nombre completo" value={name} onChangeText={setName} />
-          <FormField placeholder="Teléfono de contacto" value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
-          <FormField placeholder="Dirección de entrega" value={address} onChangeText={setAddress} />
+          <FormField placeholder={tr('name')} value={name} onChangeText={setName} />
+          <FormField placeholder={tr('svcContactPhone')} value={phone} onChangeText={setPhone} keyboardType="phone-pad" />
+          <FormField placeholder={tr('svcDeliveryAddress')} value={address} onChangeText={setAddress} />
           <View style={st.summaryBox}>
-            <Text style={st.summaryTitle}>Resumen del pedido</Text>
+            <Text style={st.summaryTitle}>{tr('svcOrderSummary')}</Text>
             <Text style={st.summaryTotal}>{cartTotal.toLocaleString()} XAF</Text>
             {store && <Text style={st.storeMeta}>{store.nombre}</Text>}
           </View>
-          <PrimaryButton label={loading ? 'Procesando...' : 'Confirmar pedido'} onPress={placeOrder} color="#00c8a0" disabled={loading || !address.trim() || !phone.trim() || !name.trim()} />
+          <PrimaryButton label={loading ? tr('processing') : tr('svcConfirmOrder')} onPress={placeOrder} color="#00c8a0" disabled={loading || !address.trim() || !phone.trim() || !name.trim()} />
         </View>
       )}
 
       {screen === 'success' && (
         <View style={st.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>¡Pedido confirmado!</Text>
+          <Text style={st.successTitle}>{tr('svcOrderConfirmedTitle')}</Text>
           <Text style={st.successSub}>Orden {orderId}</Text>
           <Text style={st.successSub}>Entrega estimada: 30-45 min</Text>
-          <PrimaryButton label="Volver al inicio" onPress={refresh} color="#00c8a0" />
+          <PrimaryButton label={tr('backHome')} onPress={refresh} color="#00c8a0" />
         </View>
       )}
     </FinancialModuleShell>

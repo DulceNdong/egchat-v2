@@ -6,12 +6,14 @@ import {
   ServiceModuleShell, ServiceHomeGrid, ServiceBanner, OperatorGrid,
   StatusBadge, SupportScreen, EmptyState, PrimaryButton, FormField, Ico, LogoThumb,
 } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 type CScreen = 'home' | 'companies' | 'packages' | 'detail' | 'subscribe' | 'paySubscription' | 'orders' | 'myChannels' | 'support';
 
 interface Props { visible: boolean; onClose: () => void; }
 
 export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<CScreen>('home');
   const [company, setCompany] = useState('');
   const [pkg, setPkg] = useState<ChannelPackage | null>(null);
@@ -30,10 +32,10 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
   const color = selCo?.color || '#8B5CF6';
 
   const titles: Record<CScreen, string> = {
-    home: 'Canales', companies: 'Compañías',
-    packages: `${selCo?.name || ''} — Paquetes`, detail: pkg?.name || 'Detalle',
-    subscribe: 'Suscribirme', paySubscription: 'Pagar Suscripción',
-    orders: 'Mis Pedidos', myChannels: 'Mis Canales', support: 'Soporte',
+    home: t('channels'), companies: t('svcCompanies'),
+    packages: `${selCo?.name || ''} — ${t('svcPackagesWord')}`, detail: pkg?.name || t('svcDetail'),
+    subscribe: t('svcSubscribe'), paySubscription: t('svcPaySubscription'),
+    orders: t('svcMyOrders'), myChannels: t('svcMyChannels'), support: t('svcSupport'),
   };
 
   const goBack = () => {
@@ -45,26 +47,26 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
   };
 
   const homeItems = [
-    { id: 'companies', label: 'Ver Compañías', desc: `${CHANNEL_COMPANIES.length} disponibles`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.tv('#6B5BD6') },
-    { id: 'packages', label: 'Ver Paquetes', desc: 'Todos los paquetes', color: '#3B7DD8', bg: '#EFF5FD', icon: Ico.box('#3B7DD8') },
-    { id: 'subscribe', label: 'Suscribirme', desc: 'Contratar servicio', color: '#2E9E6B', bg: '#F0FAF5', icon: Ico.check('#2E9E6B') },
-    { id: 'paySubscription', label: 'Pagar Suscripción', desc: 'Renovar o pagar', color: '#C47D2A', bg: '#FDF6EE', icon: Ico.card('#C47D2A') },
-    { id: 'orders', label: 'Mis Pedidos', desc: `${orders.length} pedidos`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clipboard('#6B5BD6') },
-    { id: 'myChannels', label: 'Mis Canales', desc: 'Servicios activos', color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.wifi('#0E7FA8') },
-    { id: 'support', label: 'Soporte', desc: 'Ayuda y tickets', color: '#C0392B', bg: '#FDF2F2', icon: Ico.headset('#C0392B') },
+    { id: 'companies', label: t('svcSeeCompanies'), desc: `${CHANNEL_COMPANIES.length} ${t('svcAvailableWord')}`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.tv('#6B5BD6') },
+    { id: 'packages', label: t('svcSeePackages'), desc: t('svcAllPackages'), color: '#3B7DD8', bg: '#EFF5FD', icon: Ico.box('#3B7DD8') },
+    { id: 'subscribe', label: t('svcSubscribe'), desc: t('svcHireService'), color: '#2E9E6B', bg: '#F0FAF5', icon: Ico.check('#2E9E6B') },
+    { id: 'paySubscription', label: t('svcPaySubscription'), desc: t('svcRenewOrPay'), color: '#C47D2A', bg: '#FDF6EE', icon: Ico.card('#C47D2A') },
+    { id: 'orders', label: t('svcMyOrders'), desc: `${orders.length} ${t('svcOrdersWord')}`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clipboard('#6B5BD6') },
+    { id: 'myChannels', label: t('svcMyChannels'), desc: t('svcActiveServices'), color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.wifi('#0E7FA8') },
+    { id: 'support', label: t('svcSupport'), desc: t('svcHelpTickets'), color: '#C0392B', bg: '#FDF2F2', icon: Ico.headset('#C0392B') },
   ];
 
   const formFields = [
-    { k: 'name', l: 'Nombre completo' }, { k: 'phone', l: 'Teléfono' },
-    { k: 'address', l: 'Dirección' }, { k: 'city', l: 'Ciudad / Barrio / Zona' },
-    { k: 'notes', l: 'Observaciones (opcional)' },
+    { k: 'name', l: t('name') }, { k: 'phone', l: t('phone') },
+    { k: 'address', l: t('setAddress') }, { k: 'city', l: t('svcCityAreaZone') },
+    { k: 'notes', l: t('svcNotesOptional') },
   ] as const;
 
   return (
     <ServiceModuleShell
       visible={visible}
       title={titles[screen]}
-      subtitle={screen === 'home' ? 'TV — Streaming — Entretenimiento' : undefined}
+      subtitle={screen === 'home' ? t('svcTvStreamingEntertainment') : undefined}
       onBack={goBack}
       onClose={onClose}
     >
@@ -73,9 +75,9 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
           <ServiceHomeGrid items={homeItems} onPress={id => setScreen(id as CScreen)} />
           <ServiceBanner
             key={refreshKey}
-            label="Compañías disponibles"
+            label={t('svcCompaniesAvailable')}
             count={CHANNEL_COMPANIES.length}
-            suffix="TV — Streaming — Deportes — Local — Satélite"
+            suffix={t('svcTvSportsLocal')}
             colors={['#8B5CF6', '#6D28D9']}
             onRefresh={() => setRefreshKey(k => k + 1)}
           />
@@ -92,13 +94,13 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
       {screen === 'packages' && (
         !company ? (
           <View>
-            <Text style={st.hint}>Selecciona una compañía para ver sus paquetes</Text>
+            <Text style={st.hint}>{t('svcSelectCompanyHint')}</Text>
             {CHANNEL_COMPANIES.map(c => (
               <TouchableOpacity key={c.id} style={st.companyRow} onPress={() => setCompany(c.id)} activeOpacity={0.7}>
                 <LogoThumb name={c.name} color={c.color} size={36} />
                 <View style={{ flex: 1 }}>
                   <Text style={st.companyName}>{c.name}</Text>
-                  <Text style={st.companySub}>{(CHANNEL_PACKAGES[c.id] || []).length} paquetes</Text>
+                  <Text style={st.companySub}>{(CHANNEL_PACKAGES[c.id] || []).length} {t('svcPackagesWord')}</Text>
                 </View>
                 <Text style={st.arrow}>›</Text>
               </TouchableOpacity>
@@ -132,7 +134,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
             </View>
             <Text style={[st.detailPrice, { color }]}>{pkg.price}</Text>
             <Text style={st.detailDesc}>{pkg.desc}</Text>
-            <Text style={st.channelsTitle}>Canales incluidos:</Text>
+            <Text style={st.channelsTitle}>{t('svcIncludedChannels')}:</Text>
             <View style={st.channelsWrap}>
               {pkg.channels.map((ch, i) => (
                 <View key={i} style={[st.channelTag, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
@@ -141,7 +143,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
               ))}
             </View>
           </View>
-          <PrimaryButton label="✅ Suscribirme ahora" onPress={() => setScreen('subscribe')} color={color} />
+          <PrimaryButton label={t('svcSubscribeNow')} onPress={() => setScreen('subscribe')} color={color} />
         </View>
       )}
 
@@ -166,7 +168,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
             />
           ))}
           <PrimaryButton
-            label="Confirmar suscripción"
+            label={t('svcConfirmSubscription')}
             onPress={() => {
               if (form.name && form.phone) {
                 setOrders(p => [...p, {
@@ -188,9 +190,9 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
         !payOk ? (
           <View>
             <View style={st.confirmCard}>
-              <Text style={st.payTitle}>💳 Pagar Suscripción</Text>
-              <FormField placeholder="Referencia / Número de contrato" value={payRef} onChangeText={setPayRef} />
-              <Text style={st.payHint}>Selecciona el paquete a pagar:</Text>
+              <Text style={st.payTitle}>{t('svcPaySubscriptionTitle')}</Text>
+              <FormField placeholder={t('svcRefContractPh')} value={payRef} onChangeText={setPayRef} />
+              <Text style={st.payHint}>{t('svcSelectPackageToPay')}:</Text>
               {CHANNEL_COMPANIES.slice(0, 4).map(c => (
                 <TouchableOpacity
                   key={c.id}
@@ -203,7 +205,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
               ))}
             </View>
             <PrimaryButton
-              label="Confirmar pago"
+              label={t('svcConfirmPayment')}
               onPress={() => { if (payRef && company) setPayOk(true); }}
               disabled={!payRef || !company}
               color="#F59E0B"
@@ -212,10 +214,10 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
         ) : (
           <View style={st.success}>
             <Text style={{ fontSize: 52, marginBottom: 12 }}>✅</Text>
-            <Text style={st.successTitle}>Pago confirmado</Text>
-            <Text style={st.successSub}>Ref: {payRef}</Text>
+            <Text style={st.successTitle}>{t('svcPaymentConfirmed')}</Text>
+            <Text style={st.successSub}>{t('svcRefShortLabel')}: {payRef}</Text>
             <TouchableOpacity style={[st.doneBtn, { backgroundColor: '#8B5CF6' }]} onPress={() => { setPayOk(false); setPayRef(''); setScreen('home'); }}>
-              <Text style={st.doneBtnText}>Listo</Text>
+              <Text style={st.doneBtnText}>{t('done')}</Text>
             </TouchableOpacity>
           </View>
         )
@@ -223,7 +225,7 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
 
       {screen === 'orders' && (
         orders.length === 0 ? (
-          <EmptyState emoji="📋" title="Sin pedidos aún" desc="Suscríbete a un paquete para ver tus pedidos aquí" />
+          <EmptyState emoji="📋" title={t('svcNoOrdersYet')} desc={t('svcSubscribeToSeeOrders')} />
         ) : orders.map(o => (
           <View key={o.id} style={st.orderCard}>
             <View style={st.orderTop}>
@@ -243,8 +245,8 @@ export const CanalesModal: React.FC<Props> = ({ visible, onClose }) => {
 
       {screen === 'myChannels' && (
         <EmptyState
-          emoji="📡" title="Sin canales activos" desc="Tus suscripciones activas aparecerán aquí"
-          actionLabel="Ver compañías" onAction={() => setScreen('companies')}
+          emoji="📡" title={t('svcNoActiveChannels')} desc={t('svcActiveSubsHere')}
+          actionLabel={t('svcSeeCompanies')} onAction={() => setScreen('companies')}
         />
       )}
 

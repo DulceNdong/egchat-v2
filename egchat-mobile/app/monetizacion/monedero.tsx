@@ -8,6 +8,7 @@ import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/BarChart';
 import { useMonedero } from '../../src/hooks/useMonetizacion';
+import { useTranslation } from '../../src/context/LanguageContext';
 import type { MovimientoConNombre, TopUsuario as TopUsuarioType } from '../../src/types/monetizacion';
 
 const COMISION_PCT = 0.5;
@@ -36,13 +37,13 @@ const TOP_USUARIOS: TopUsuarioType[] = [
   { user_id: 'u10', nombre: 'Luis Nve', numMovimientos: 10, totalMovido: 5100000, comisionesTotales: 25500 },
 ];
 
-const CHART_DATA: BarChartDataPoint[] = [
-  { label: 'Abr', value: 58000 },
-  { label: 'May', value: 62000 },
-  { label: 'Jun', value: 68000 },
-  { label: 'Jul', value: 65000 },
-  { label: 'Ago', value: 72000 },
-  { label: 'Sep', value: 78500 },
+const CHART_DATA: { labelKey: string; value: number }[] = [
+  { labelKey: 'mznMonAbr', value: 58000 },
+  { labelKey: 'mznMonMay', value: 62000 },
+  { labelKey: 'mznMonJun', value: 68000 },
+  { labelKey: 'mznMonJul', value: 65000 },
+  { labelKey: 'mznMonAgo', value: 72000 },
+  { labelKey: 'mznMonSep', value: 78500 },
 ];
 
 const BANCOS_DATA = [
@@ -53,6 +54,7 @@ const BANCOS_DATA = [
 
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function MonederoScreen() {
+  const { t } = useTranslation();
   const [filtroTipo, setFiltroTipo] = useState<'todos' | 'recarga_banco' | 'retiro_banco'>('todos');
 
   const { movimientos, topUsuarios, historico, bancos, totales, loading, error, refresh } = useMonedero();
@@ -63,7 +65,7 @@ export default function MonederoScreen() {
   const fuenteBancos = bancos.length > 0 ? bancos : BANCOS_DATA;
   const chartDataFinal: BarChartDataPoint[] = historico.length > 0
     ? historico.map(h => ({ label: h.label, value: h.value }))
-    : CHART_DATA;
+    : CHART_DATA.map(c => ({ label: t(c.labelKey), value: c.value }));
 
   // Métricas con fallback
   const displayMovimientos = (!loading && totales.movimientos > 0) ? totales.movimientos : (loading ? 0 : 2100);
@@ -74,7 +76,7 @@ export default function MonederoScreen() {
     ? fuenteMovimientos
     : fuenteMovimientos.filter(m => m.tipo === filtroTipo);
 
-  const tipoLabel = (tipo: string) => tipo === 'recarga_banco' ? '↓ Recarga' : '↑ Retiro';
+  const tipoLabel = (tipo: string) => tipo === 'recarga_banco' ? t('mznTopUpShort') : t('mznWithdrawShort');
   const tipoColor = (tipo: string) => tipo === 'recarga_banco' ? '#00FF88' : '#FF8800';
 
   // Total volumen para porcentajes de la tabla de bancos
@@ -100,15 +102,15 @@ export default function MonederoScreen() {
 
         {/* Métricas */}
         <View style={styles.metricsRow}>
-          <MetricCard label="Movimientos" value={`${displayMovimientos}`} icon="🔄" accentColor="#CC88FF" trend={9.7} subValue="Este mes" />
-          <MetricCard label="Comisiones (0.5%)" value={fmt(displayComisiones)} icon="💰" accentColor="#00FF88" trend={9.0} />
+          <MetricCard label={t('mznMovements')} value={`${displayMovimientos}`} icon="🔄" accentColor="#CC88FF" trend={9.7} subValue={t('mznThisMonth')} />
+          <MetricCard label={`${t('mznCommissions')} (0.5%)`} value={fmt(displayComisiones)} icon="💰" accentColor="#00FF88" trend={9.0} />
         </View>
         <View style={styles.metricsRow}>
-          <MetricCard label="Volumen Total" value={fmt(displayVolumen)} icon="💵" accentColor="#CC88FF" fullWidth />
+          <MetricCard label={t('mznTotalVolume')} value={fmt(displayVolumen)} icon="💵" accentColor="#CC88FF" fullWidth />
         </View>
 
         {/* Gráfico evolución comisiones */}
-        <Text style={styles.sectionTitle}>📈 Comisiones por Mes</Text>
+        <Text style={styles.sectionTitle}>{t('mznCommissionsPerMonth')}</Text>
         <View style={styles.chartCard}>
           <BarChart
             data={chartDataFinal}
@@ -116,30 +118,30 @@ export default function MonederoScreen() {
             barColor="#CC88FF"
             barColorSecondary="#664488"
             formatValue={v => `${(v / 1000).toFixed(0)}K`}
-            title="Comisiones mensuales monedero (XAF)"
+            title={t('mznWalletFeesChart')}
           />
         </View>
 
         {/* Por banco */}
-        <Text style={styles.sectionTitle}>🏦 Por Banco</Text>
+        <Text style={styles.sectionTitle}>{t('mznPerBank')}</Text>
         <View style={{ marginHorizontal: 16 }}>
           <RevenueTable
             rows={fuenteBancos.map((b, i) => {
               const colors = ['#CC88FF', '#9944DD', '#6622AA'];
               return {
                 label: b.banco,
-                subLabel: `${b.movimientos} movimientos`,
+                subLabel: `${b.movimientos} ${t('mznMovementsWord')}`,
                 value: fmt(b.volumen * COMISION_PCT / 100),
                 color: colors[i % colors.length],
                 percentage: Math.round((b.volumen / totalVolumenBancos) * 100),
               };
             })}
-            title="Comisiones por banco"
+            title={t('mznFeesPerBank')}
           />
         </View>
 
         {/* Top usuarios */}
-        <Text style={styles.sectionTitle}>🏆 Top Usuarios por Volumen</Text>
+        <Text style={styles.sectionTitle}>{t('mznTopUsersByVolume')}</Text>
         <View style={{ marginHorizontal: 16 }}>
           {fuenteTop.map((u, i) => (
             <View key={u.user_id} style={styles.topUserCard}>
@@ -148,30 +150,30 @@ export default function MonederoScreen() {
               </View>
               <View style={styles.topUserInfo}>
                 <Text style={styles.topUserName}>{u.nombre}</Text>
-                <Text style={styles.topUserSub}>{u.numMovimientos} movimientos · {fmt(u.totalMovido)}</Text>
+                <Text style={styles.topUserSub}>{u.numMovimientos} {t('mznMovementsWord')} · {fmt(u.totalMovido)}</Text>
               </View>
               <View style={styles.topUserComision}>
                 <Text style={styles.topUserComisionVal}>{fmt(u.comisionesTotales)}</Text>
-                <Text style={styles.topUserComisionLabel}>comisión</Text>
+                <Text style={styles.topUserComisionLabel}>{t('mznFeeLower')}</Text>
               </View>
             </View>
           ))}
         </View>
 
         {/* Últimas transacciones */}
-        <Text style={styles.sectionTitle}>📋 Últimas Transacciones</Text>
+        <Text style={styles.sectionTitle}>{t('mznLatestTransactions')}</Text>
         <View style={styles.filterRow}>
           {([
-            { key: 'todos', label: 'Todos' },
-            { key: 'recarga_banco', label: '↓ Recargas' },
-            { key: 'retiro_banco', label: '↑ Retiros' },
+            { key: 'todos', labelKey: 'everyone' },
+            { key: 'recarga_banco', labelKey: 'mznFilterTopUps' },
+            { key: 'retiro_banco', labelKey: 'mznFilterWithdrawals' },
           ] as const).map(f => (
             <TouchableOpacity
               key={f.key}
               style={[styles.filterBtn, filtroTipo === f.key && styles.filterBtnActive]}
               onPress={() => setFiltroTipo(f.key)}
             >
-              <Text style={[styles.filterBtnText, filtroTipo === f.key && styles.filterBtnTextActive]}>{f.label}</Text>
+              <Text style={[styles.filterBtnText, filtroTipo === f.key && styles.filterBtnTextActive]}>{t(f.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>

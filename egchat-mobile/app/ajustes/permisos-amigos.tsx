@@ -11,6 +11,7 @@ import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 function OptionRow({
   label,
@@ -71,8 +72,8 @@ export default function PermisosAmigosScreen() {
 
       if (result.permissionDenied) {
         Alert.alert(
-          'Permiso requerido',
-          'Para sincronizar, ve a Ajustes del sistema y activa el permiso de Contactos para EGChat.',
+          tr('kyPermRequired'),
+          tr('xtParaSincronizarVeAAjustesDelSistemaYActivaElPermis'),
         );
         return;
       }
@@ -81,12 +82,12 @@ export default function PermisosAmigosScreen() {
         ? `✅ ${result.newContacts} contacto${result.newContacts > 1 ? 's' : ''} nuevo${result.newContacts > 1 ? 's' : ''} encontrado${result.newContacts > 1 ? 's' : ''} en EGChat.`
         : result.totalFound > 0
           ? `✅ Todos tus contactos ya estaban agregados (${result.totalFound} en EGChat).`
-          : '✅ Ningún contacto tuyo usa EGChat aún.';
+          : tr('xtNingunContactoTuyoUsaEGChatAun');
 
-      Alert.alert('Sincronización completa', msg);
+      Alert.alert(tr('xtSincronizacionCompleta'), msg);
       getLastSyncTime().then(d => setLastSync(formatLastSync(d)));
     } catch {
-      Alert.alert('Error', 'No se pudo sincronizar. Verifica tu conexión.');
+      Alert.alert(tr('error'), 'No se pudo sincronizar. Verifica tu conexión.');
     } finally {
       setSyncing(false);
     }

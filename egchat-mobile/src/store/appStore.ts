@@ -7,6 +7,7 @@
  * Patrón: módulo singleton con listeners → cero dependencias externas.
  */
 import { Platform } from 'react-native';
+import { t as tr } from '../translations';
 
 // Tipo definido aquí para evitar ciclo de importación con EGChatHeader
 export type WeatherCondition = 'sunny' | 'cloudy' | 'rain';
@@ -57,7 +58,7 @@ export interface AppState {
 const state: AppState = {
   weather: {
     temp: 24,
-    city: 'Detectando ubicación...',
+    city: tr('xtDetectandoUbicacion'),
     condition: 'cloudy',
     fetchedAt: 0,
   },
@@ -65,17 +66,17 @@ const state: AppState = {
     {
       id: 'welcome',
       type: 'system',
-      title: '💬 Bienvenido a EGCHAT',
-      body: 'Tu cuenta está activa y lista para usar',
-      time: 'Ahora',
+      get title() { return tr('sysWelcomeTitle'); },
+      get body() { return tr('sysWelcomeBody'); },
+      get time() { return tr('sysNow'); },
       read: false,
     },
     {
       id: 'e2e',
       type: 'system',
-      title: '🔒 Cifrado E2E activado',
-      body: 'Todos tus mensajes están cifrados',
-      time: 'Hoy',
+      get title() { return tr('sysE2eTitle'); },
+      get body() { return tr('sysE2eBody'); },
+      get time() { return tr('sysToday'); },
       read: false,
     },
   ],
@@ -214,7 +215,7 @@ const getCityName = async (latitude: number, longitude: number): Promise<string>
                           address.subregion || 
                           address.region || 
                           address.country || 
-                          'Ciudad desconocida';
+                          tr('xtCiudadDesconocida');
         console.log('[Geolocation] Ciudad detectada con Expo:', detectedCityName);
       }
     }
@@ -230,7 +231,7 @@ const getCityName = async (latitude: number, longitude: number): Promise<string>
                         data?.address?.town || 
                         data?.address?.village || 
                         data?.address?.county || 
-                        'Ciudad desconocida';
+                        tr('xtCiudadDesconocida');
       
       console.log('[Geolocation] Ciudad detectada con OpenStreetMap:', detectedCityName, 'para coordenadas:', latitude, longitude);
     }
@@ -312,7 +313,7 @@ export const initializeLocation = async () => {
       // Pedir permisos
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== 'granted') {
-        throw new Error('Permiso de ubicación denegado');
+        throw new Error(tr('xtPermisoDeUbicacionDenegado2'));
       }
 
       // Obtener ubicación actual

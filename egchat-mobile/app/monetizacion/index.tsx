@@ -10,6 +10,7 @@ import { BarChart, BarChartDataPoint } from '../../src/components/monetizacion/B
 import { RevenueTable, RevenueRow } from '../../src/components/monetizacion/RevenueTable';
 import { useResumenDashboard } from '../../src/hooks/useMonetizacion';
 import type { ResumenMensualAgrupado } from '../../src/types/monetizacion';
+import { t as tr } from '../../src/translations';
 
 // ── Tipos ──────────────────────────────────────────────────────────────────
 interface ResumenMes {
@@ -95,7 +96,7 @@ export default function MonetizacionDashboard() {
     },
     {
       label: 'Comisiones Taxis (5%)',
-      subLabel: 'Viajes este mes',
+      subLabel: tr('xtViajesEsteMes'),
       value: fmt(MES_ACTUAL.taxis),
       color: '#FFD700',
       percentage: totalMesActual > 0 ? Math.round((MES_ACTUAL.taxis / totalMesActual) * 100) : 0,
@@ -108,7 +109,7 @@ export default function MonetizacionDashboard() {
       percentage: totalMesActual > 0 ? Math.round((MES_ACTUAL.barcos / totalMesActual) * 100) : 0,
     },
     {
-      label: 'Comisiones Monedero (0.5%)',
+      label: tr('xtComisionesMonedero05'),
       subLabel: 'Movimientos',
       value: fmt(MES_ACTUAL.wallet),
       color: '#CC88FF',
@@ -124,7 +125,7 @@ export default function MonetizacionDashboard() {
     { icon: '🏢', label: 'Empresas', sub: 'Activas', route: '/monetizacion/empresas', color: '#00D4FF', revenue: fmt(MES_ACTUAL.empresas) },
     { icon: '🚖', label: 'Taxis', sub: 'Taxistas', route: '/monetizacion/taxis', color: '#FFD700', revenue: fmt(MES_ACTUAL.taxis) },
     { icon: '⛵', label: 'Barcos', sub: 'Rutas', route: '/monetizacion/barcos', color: '#FF8800', revenue: fmt(MES_ACTUAL.barcos) },
-    { icon: '💳', label: 'Monedero', sub: 'Movimientos', route: '/monetizacion/monedero', color: '#CC88FF', revenue: fmt(MES_ACTUAL.wallet) },
+    { icon: '💳', label: tr('mznSvcWallet'), sub: 'Movimientos', route: '/monetizacion/monedero', color: '#CC88FF', revenue: fmt(MES_ACTUAL.wallet) },
     { icon: '👤', label: 'Perfiles', sub: 'Usuarios', route: '/monetizacion/perfil-financiero', color: '#00FF88', revenue: 'Historial' },
     { icon: '🏪', label: 'Negocios', sub: 'Empresas', route: '/monetizacion/perfil-negocio', color: '#FF4488', revenue: 'Informes' },
   ];
@@ -200,7 +201,7 @@ export default function MonetizacionDashboard() {
         </LinearGradient>
 
         {/* Métricas rápidas */}
-        <Text style={styles.sectionTitle}>📊 Métricas del Mes</Text>
+        <Text style={styles.sectionTitle}>{tr('xtMetricasDelMes')}</Text>
         <View style={styles.metricsRow}>
           <MetricCard
             label="Empresas"
@@ -213,7 +214,7 @@ export default function MonetizacionDashboard() {
           <MetricCard
             label="Taxis"
             value={fmt(MES_ACTUAL.taxis)}
-            subValue="5% por viaje"
+            subValue={tr('xt5PorViaje')}
             trend={trendOf(MES_ACTUAL.taxis, MES_ANTERIOR.taxis)}
             icon="🚖"
             accentColor="#FFD700"
@@ -223,15 +224,15 @@ export default function MonetizacionDashboard() {
           <MetricCard
             label="Barcos"
             value={fmt(MES_ACTUAL.barcos)}
-            subValue="1% por billete"
+            subValue={tr('xt1PorBillete')}
             trend={trendOf(MES_ACTUAL.barcos, MES_ANTERIOR.barcos)}
             icon="⛵"
             accentColor="#FF8800"
           />
           <MetricCard
-            label="Monedero"
+            label={tr('mznSvcWallet')}
             value={fmt(MES_ACTUAL.wallet)}
-            subValue="0.5% por movimiento"
+            subValue={tr('xt05PorMovimiento')}
             trend={trendOf(MES_ACTUAL.wallet, MES_ANTERIOR.wallet)}
             icon="💳"
             accentColor="#CC88FF"
@@ -239,7 +240,7 @@ export default function MonetizacionDashboard() {
         </View>
 
         {/* Gráfico evolución */}
-        <Text style={styles.sectionTitle}>📈 Evolución 6 Meses</Text>
+        <Text style={styles.sectionTitle}>{tr('xtEvolucion6Meses')}</Text>
         <View style={styles.chartCard}>
           <BarChart
             data={CHART_DATA}
@@ -252,14 +253,14 @@ export default function MonetizacionDashboard() {
         </View>
 
         {/* Top fuentes de ingresos */}
-        <Text style={styles.sectionTitle}>🏆 Top Fuentes de Ingresos</Text>
+        <Text style={styles.sectionTitle}>{tr('xtTopFuentesDeIngresos')}</Text>
         <RevenueTable
           rows={TOP_FUENTES}
           showBars
         />
 
         {/* Módulos de acceso rápido */}
-        <Text style={styles.sectionTitle}>⚡ Módulos</Text>
+        <Text style={styles.sectionTitle}>{tr('xtModulos')}</Text>
         <View style={styles.modulesGrid}>
           {MODULES.map(mod => (
             <TouchableOpacity
@@ -286,7 +287,7 @@ export default function MonetizacionDashboard() {
 
         {/* Alertas */}
         <View style={styles.alertCard}>
-          <Text style={styles.alertTitle}>⚠️ Alertas Pendientes</Text>
+          <Text style={styles.alertTitle}>{tr('xtAlertasPendientes')}</Text>
           {stats.empresas_vencidas > 0 && (
             <View style={styles.alertItem}>
               <View style={[styles.alertDot, { backgroundColor: '#FF4444' }]} />
@@ -306,7 +307,7 @@ export default function MonetizacionDashboard() {
           {stats.empresas_vencidas === 0 && stats.taxistas_alerta_docs === 0 && !loading && (
             <View style={styles.alertItem}>
               <View style={[styles.alertDot, { backgroundColor: '#00FF88' }]} />
-              <Text style={styles.alertText}>Sin alertas pendientes</Text>
+              <Text style={styles.alertText}>{tr('xtSinAlertasPendientes')}</Text>
             </View>
           )}
         </View>

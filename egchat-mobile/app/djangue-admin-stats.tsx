@@ -14,6 +14,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 const { width } = Dimensions.get('window');
 
@@ -84,7 +85,7 @@ export default function DjangueAdminStatsScreen() {
       const response = await apiFetch(`/api/djangue/${id}/admin-stats`);
       setData(response);
     } catch (e: any) {
-      setError(e.message || 'Error al cargar estadísticas');
+      setError(e.message || tr('xtErrorAlCargarEstadisticas'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,7 +97,7 @@ export default function DjangueAdminStatsScreen() {
   if (loading) return (
     <View style={s.center}>
       <ActivityIndicator size="large" color="#6366f1" />
-      <Text style={s.loadingTxt}>Cargando estadísticas...</Text>
+      <Text style={s.loadingTxt}>{tr('xtCargandoEstadisticas')}</Text>
     </View>
   );
 
@@ -104,7 +105,7 @@ export default function DjangueAdminStatsScreen() {
     <View style={s.center}>
       <Text style={s.errorTxt}>{error || 'No encontrado'}</Text>
       <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-        <Text style={s.linkTxt}>Volver</Text>
+        <Text style={s.linkTxt}>{tr('djhBack')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -122,7 +123,7 @@ export default function DjangueAdminStatsScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
           {data.group_logo && <Image source={{ uri: data.group_logo }} style={{ width: 32, height: 32, borderRadius: 8, marginBottom: 3 }} contentFit="cover" />}
-          <Text style={s.headerTitle} numberOfLines={1}>Estadísticas</Text>
+          <Text style={s.headerTitle} numberOfLines={1}>{tr('djhStatsTab')}</Text>
           <Text style={s.headerSub}>{data.group_name}</Text>
         </View>
         <View style={{ width: 40 }} />
@@ -138,7 +139,7 @@ export default function DjangueAdminStatsScreen() {
               <Path d="M12 1v22M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
             </Svg>
             <Text style={[s.metricValue, { color: '#059669' }]}>{fmt(data.total_collected, data.currency)}</Text>
-            <Text style={s.metricLabel}>Total recaudado</Text>
+            <Text style={s.metricLabel}>{tr('xtTotalRecaudado')}</Text>
           </View>
 
           <View style={[s.metricCard, { backgroundColor: '#f0f1fe', borderColor: '#c7d2fe' }]}>
@@ -147,7 +148,7 @@ export default function DjangueAdminStatsScreen() {
               <Path d="M12 6v6l4 2" />
             </Svg>
             <Text style={[s.metricValue, { color: '#4f46e5' }]}>{fmt(data.total_delivered, data.currency)}</Text>
-            <Text style={s.metricLabel}>Total entregado</Text>
+            <Text style={s.metricLabel}>{tr('xtTotalEntregado')}</Text>
           </View>
 
           <View style={[s.metricCard, { backgroundColor: '#fef9c3', borderColor: '#fde68a' }]}>
@@ -173,7 +174,7 @@ export default function DjangueAdminStatsScreen() {
 
         {/* Progreso general */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>PROGRESO DEL DJANGUE</Text>
+          <Text style={s.cardLabel}>{tr('xtPROGRESODELDJANGUE')}</Text>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginTop: 8 }}>
             <Text style={s.progressTxt}>Turno {data.current_turn} de {data.total_turns}</Text>
             <Text style={s.progressTxt}>{Math.round((data.completed_turns / data.total_turns) * 100)}%</Text>
@@ -185,7 +186,7 @@ export default function DjangueAdminStatsScreen() {
 
         {/* Cumplimiento */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>TASA DE CUMPLIMIENTO</Text>
+          <Text style={s.cardLabel}>{tr('xtTASADECUMPLIMIENTO')}</Text>
           <View style={{ alignItems: 'center', marginVertical: 12 }}>
             <View style={[s.complianceCircle, { borderColor: complianceColor }]}>
               <Text style={[s.complianceValue, { color: complianceColor }]}>{data.overall_compliance_rate}%</Text>
@@ -206,7 +207,7 @@ export default function DjangueAdminStatsScreen() {
         {/* Próximos turnos */}
         {data.upcoming_turns && data.upcoming_turns.length > 0 && (
           <View style={s.card}>
-            <Text style={s.cardLabel}>📅 PRÓXIMOS TURNOS</Text>
+            <Text style={s.cardLabel}>{tr('xtPROXIMOSTURNOS')}</Text>
             <View style={{ gap: 8, marginTop: 8 }}>
               {data.upcoming_turns.slice(0, 5).map((turn, idx) => (
                 <View key={idx} style={r.row}>
@@ -272,7 +273,7 @@ export default function DjangueAdminStatsScreen() {
         {/* Miembros con moras */}
         {data.members_with_penalties && data.members_with_penalties.length > 0 && (
           <View style={s.card}>
-            <Text style={s.cardLabel}>⚠️ MORAS PENDIENTES</Text>
+            <Text style={s.cardLabel}>{tr('xtMORASPENDIENTES')}</Text>
             <View style={{ gap: 8, marginTop: 8 }}>
               {data.members_with_penalties.map((member, idx) => (
                 <View key={idx} style={r.row}>
@@ -285,7 +286,7 @@ export default function DjangueAdminStatsScreen() {
                   </View>
                   <View style={r.info}>
                     <Text style={r.name}>{member.user_name}</Text>
-                    <Text style={r.date}>Mora pendiente</Text>
+                    <Text style={r.date}>{tr('xtMoraPendiente')}</Text>
                   </View>
                   <Text style={[r.amount, { color: '#ef4444' }]}>{fmt(member.pending_amount, data.currency)}</Text>
                 </View>

@@ -19,10 +19,13 @@ import { VideoViewerModal } from './VideoViewerModal';
 import { MarkdownText } from './MarkdownText';
 import { downloadMediaIfNeeded } from '../../services/autoDownload';
 import { useFont } from '../../context/FontContext';
+import { useTranslation } from '../../context/LanguageContext';
 import type { ChatMessage } from '../../types/chat';
+import { t as tr } from '../../translations';
 
 // ── Tarjeta VIDEO — estilo WhatsApp ──────────────────────────────
 const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const { t } = useTranslation();
   const [playing, setPlaying] = useState(false);
   const [ready, setReady] = useState(false);
   const [viewerOpen, setViewerOpen] = useState(false);
@@ -32,7 +35,7 @@ const VideoCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
   // Nombre limpio: quitar prefijo 🎥, hash técnico → mostrar "Video"
   const rawName = (message.text || '').replace(/^🎥\s*/, '').trim();
   const isHashName = /^[a-z0-9]{20,}/i.test(rawName.split('.')[0]);
-  const fileName = isHashName ? 'Video' : (rawName || 'Video');
+  const fileName = isHashName ? t('chtVideo') : (rawName || t('chtVideo'));
   const ext = rawName.split('.').pop()?.toLowerCase() || 'mp4';
 
   // Pausa el inline antes de abrir el visor para evitar doble audio
@@ -289,6 +292,7 @@ function _fmtDur(s: number | null | undefined): string {
 const CallCard = ({ message, isOwn, onCallback }: {
   message: ChatMessage; isOwn: boolean; onCallback?: () => void;
 }) => {
+  const { t } = useTranslation();
   // ── 1. Intentar datos estructurados desde metadata ──
   const meta = _parseCallMeta((message as any).metadata);
 
@@ -342,19 +346,19 @@ const CallCard = ({ message, isOwn, onCallback }: {
         : '#6b7280';
 
   // ── 3. Etiquetas ──
-  const title = isVideo ? 'Llamada de vídeo' : 'Llamada de voz';
+  const title = isVideo ? t('chtVideoCall') : t('chtVoiceCall');
 
   const statusLabel = isPerdida
-    ? 'Perdida'
+    ? t('chtMissed')
     : isRejected
-      ? 'Rechazada'
+      ? t('chtRejected')
       : isFailed
-        ? 'No conectó'
+        ? t('chtNotConnected')
         : isCancelled
-          ? 'Cancelada'
+          ? t('chtCallCancelled')
           : isSaliente
-            ? (durStr ? 'Tú llamaste' : 'Saliente')
-            : (durStr ? 'Recibida'   : 'Recibida');
+            ? (durStr ? t('chtYouCalled') : t('chtOutgoing'))
+            : (durStr ? t('chtCallReceived')   : t('chtCallReceived'));
 
   const canCallback = (isPerdida || isRejected) && !!onCallback;
 
@@ -388,7 +392,7 @@ const CallCard = ({ message, isOwn, onCallback }: {
           </View>
         )}
         {canCallback && (
-          <Text style={cl.callbackHint}>Toca para volver a llamar</Text>
+          <Text style={cl.callbackHint}>{t('chtTapToCallBack')}</Text>
         )}
       </View>
 
@@ -465,6 +469,7 @@ const VOICE_BARS = [0.3,0.5,0.8,0.6,1.0,0.7,0.4,0.9,0.5,0.8,0.6,0.3,0.7,1.0,0.5,
 // ── VoiceCard — mensaje de voz con velocidad 1×/1.5×/2×, scrubbing táctil
 // y reproducción continua al salir del chat (usa reproductor global singleton)
 const VoiceCard = ({ message, isOwn, onTranscribed }: { message: ChatMessage; isOwn: boolean; onTranscribed?: (t: string) => void }) => {
+  const { t } = useTranslation();
   const url = message.file_url || '';
   const { playing, progress, position, duration, speed, togglePlay, cycleSpeed, seek } =
     useAudioPlayer(url);
@@ -486,12 +491,12 @@ const VoiceCard = ({ message, isOwn, onTranscribed }: { message: ChatMessage; is
         body: JSON.stringify({ audio_url: url }),
       });
       const data = await res.json();
-      const text = data.text || data.transcript || 'No se pudo transcribir';
+      const text = data.text || data.transcript || t('chtTranscribeFailed');
       setTranscript(text);
       // C8 — persistir en el estado del chat
       onTranscribed?.(text);
     } catch {
-      setTranscript('Error al transcribir');
+      setTranscript(t('chtTranscribeError'));
     } finally {
       setTranscribing(false);
     }
@@ -651,20 +656,20 @@ const vc = StyleSheet.create({
 });
 
 
-const parseTrackInfo = (raw: string) => {
+const parseTrackInfo = (raw: string, translate: (key: string) => string) => {
   const clean = (raw || '')
     .replace(/^🎵\s*/, '')
     .replace(/\s*\(\d+(\.\d+)?\s*(MB|KB|GB|B)\)/i, '')
     .replace(/\.[a-z0-9]{2,4}$/i, '')
     .trim();
   const isHash = /^[a-z0-9_\-]{20,}$/i.test(clean);
-  if (isHash || !clean) return { title: 'Sin título', artist: 'Artista desconocido' };
+  if (isHash || !clean) return { title: translate('chtNoTitle'), artist: translate('chtUnknownArtist') };
   const sep = clean.match(/\s[-–]\s/) ? clean.match(/\s[-–]\s/)![0] : null;
   if (sep) {
     const parts = clean.split(sep);
-    return { title: parts[1]?.trim() || clean, artist: parts[0]?.trim() || 'Artista desconocido' };
+    return { title: parts[1]?.trim() || clean, artist: parts[0]?.trim() || translate('chtUnknownArtist') };
   }
-  return { title: clean, artist: 'Artista desconocido' };
+  return { title: clean, artist: translate('chtUnknownArtist') };
 };
 
 // Colores de portada generados por hash del título
@@ -682,6 +687,7 @@ const getCoverGradient = (title: string): [string, string] => {
 
 // ── MusicCard — tarjeta de música con play/pausa y seek táctil ────
 const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean }) => {
+  const { t } = useTranslation();
   const [playing, setPlaying]   = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -695,7 +701,7 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
   const isWeb       = typeof document !== 'undefined';
 
   const rawText           = message.text || message.file_url?.split('/').pop() || '';
-  const { title, artist } = parseTrackInfo(rawText);
+  const { title, artist } = parseTrackInfo(rawText, t);
   const [gradA, gradB]    = getCoverGradient(title);
   const url               = message.file_url || '';
   const accentColor       = isOwn ? '#00c8a0' : '#667eea';
@@ -863,7 +869,7 @@ const MusicCard = ({ message, isOwn }: { message: ChatMessage; isOwn: boolean })
             onPress={togglePlay}
             style={mc.playBtn}
             activeOpacity={0.85}
-            accessibilityLabel={playing ? 'Pausar' : 'Reproducir'}
+            accessibilityLabel={playing ? t('chtPause') : t('chtPlay')}
             accessibilityRole="button"
             disabled={loading}
           >
@@ -989,8 +995,9 @@ const ContactCard = ({
   onContactCall?: (type: 'audio' | 'video', phone: string, name: string) => void;
   onContactMessage?: (phone: string, name: string) => void;
 }) => {
+  const { t } = useTranslation();
   const lines = (text || '').split('\n');
-  const name      = lines[0]?.replace(/^👤\s*/, '').trim() || 'Contacto';
+  const name      = lines[0]?.replace(/^👤\s*/, '').trim() || t('chtContact');
   const phone     = lines[1]?.replace(/^📞\s*/, '').trim() || '';
   const avatarUrl = lines[2]?.trim() || '';
   const isValidUrl = avatarUrl.startsWith('http://') || avatarUrl.startsWith('https://');
@@ -1002,7 +1009,7 @@ const ContactCard = ({
       <TouchableOpacity
         activeOpacity={0.75}
         onPress={() => onOpenContact?.(phone, name, isValidUrl ? avatarUrl : undefined)}
-        accessibilityLabel={`Ver información de ${name}`}
+        accessibilityLabel={`${t('chtViewContactInfoPrefix')} ${name}`}
         accessibilityRole="button"
       >
         <View style={cs.row}>
@@ -1030,14 +1037,14 @@ const ContactCard = ({
           onPress={() => onContactMessage?.(phone, name)}
           activeOpacity={0.7}
           style={cs.actionBtn}
-          accessibilityLabel="Enviar mensaje"
+          accessibilityLabel={t('chtSendMessage')}
           accessibilityRole="button"
         >
           <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
             stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <Path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
           </Svg>
-          <Text style={[cs.actionText, { color }]}>Mensaje</Text>
+          <Text style={[cs.actionText, { color }]}>{t('chtMessage')}</Text>
         </TouchableOpacity>
 
         <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
@@ -1047,7 +1054,7 @@ const ContactCard = ({
           onPress={() => onContactCall?.('video', phone, name)}
           activeOpacity={0.7}
           style={cs.actionBtn}
-          accessibilityLabel="Videollamada"
+          accessibilityLabel={t('chtVideoCallAction')}
           accessibilityRole="button"
         >
           <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
@@ -1055,7 +1062,7 @@ const ContactCard = ({
             <Polygon points="23 7 16 12 23 17 23 7"/>
             <Rect x={1} y={5} width={15} height={14} rx={2}/>
           </Svg>
-          <Text style={[cs.actionText, { color }]}>Video</Text>
+          <Text style={[cs.actionText, { color }]}>{t('chtVideo')}</Text>
         </TouchableOpacity>
 
         <View style={[cs.actionDivider, isOwn ? cs.divOwn : cs.divTheir]} />
@@ -1065,14 +1072,14 @@ const ContactCard = ({
           onPress={() => onContactCall?.('audio', phone, name)}
           activeOpacity={0.7}
           style={cs.actionBtn}
-          accessibilityLabel="Llamada de voz"
+          accessibilityLabel={t('chtVoiceCall')}
           accessibilityRole="button"
         >
           <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
             stroke={color} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
             <Path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.63 3.4 2 2 0 0 1 3.6 1.21h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.81a16 16 0 0 0 6 6l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/>
           </Svg>
-          <Text style={[cs.actionText, { color }]}>Audio</Text>
+          <Text style={[cs.actionText, { color }]}>{t('chtAudio')}</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -1105,8 +1112,9 @@ const cs = StyleSheet.create({
 
 // ── Tarjeta UBICACIÓN ─────────────────────────────────────────────
 const LocationCard = ({ text, isOwn, isLive }: { text: string; isOwn: boolean; isLive?: boolean }) => {
+  const { t } = useTranslation();
   const lines = (text || '').split('\n');
-  const label = lines[0]?.replace(/^📍\s*/, '').trim() || 'Ubicación';
+  const label = lines[0]?.replace(/^📍\s*/, '').trim() || t('chtLocation');
   const url = lines[1]?.trim() || '';
   // Extraer coordenadas de live_location: "lat:X,lng:Y"
   const coordMatch = text.match(/lat:([-\d.]+),lng:([-\d.]+)/);
@@ -1122,15 +1130,15 @@ const LocationCard = ({ text, isOwn, isLive }: { text: string; isOwn: boolean; i
           <View style={ls.pin}><Text style={ls.pinEmoji}>{isLive ? '🔴' : '📍'}</Text></View>
           {isLive && (
             <View style={ls.liveBadge}>
-              <Text style={ls.liveText}>EN VIVO</Text>
+              <Text style={ls.liveText}>{t('chtLiveBadge')}</Text>
             </View>
           )}
         </LinearGradient>
       </TouchableOpacity>
-      <Text style={ls.label} numberOfLines={2}>{isLive ? '📍 Ubicación en vivo' : label}</Text>
+      <Text style={ls.label} numberOfLines={2}>{isLive ? `📍 ${t('chtLiveLocation')}` : label}</Text>
       <TouchableOpacity onPress={() => mapsUrl && Linking.openURL(mapsUrl)}
         style={[ls.btn, isOwn ? ls.btnOwn : ls.btnTheir]} activeOpacity={0.7}>
-        <Text style={ls.btnText}>{isLive ? 'Ver en Maps' : 'Abrir en Maps'}</Text>
+        <Text style={ls.btnText}>{isLive ? t('chtViewOnMaps') : t('chtOpenInMaps')}</Text>
       </TouchableOpacity>
     </View>
   );
@@ -1272,6 +1280,7 @@ const MoneyCard = ({
   onAccept?: () => void;
   onCancel?: () => void;
 }) => {
+  const { t } = useTranslation();
   const [loading, setLoading] = React.useState<'accept' | 'cancel' | null>(null);
   // Derivar estado inicial desde el texto del mensaje para persistencia entre recargas
   const initialDone: 'accepted' | 'cancelled' | null =
@@ -1338,15 +1347,15 @@ const MoneyCard = ({
         </View>
         {/* Título */}
         <Text style={[ms.doneTitle, isAccepted ? ms.doneTitleGreen : ms.doneTitleRed]}>
-          {isAccepted ? 'Transferencia recibida' : 'Transferencia rechazada'}
+          {isAccepted ? t('chtTransferAccepted') : t('chtTransferRejected')}
         </Text>
         {/* Monto */}
         <Text style={ms.doneAmount}>{amount}</Text>
         {/* Subtítulo */}
         <Text style={ms.doneSub}>
           {isAccepted
-            ? `${to} · Fondos disponibles en tu monedero`
-            : `El dinero fue devuelto a ${to}`}
+            ? `${to} · ${t('chtFundsAvailable')}`
+            : `${t('chtMoneyReturnedTo')} ${to}`}
         </Text>
         {/* Ref */}
         {!!ref && (
@@ -1370,8 +1379,8 @@ const MoneyCard = ({
         </View>
         <Text style={[ms.headerTitle, { color: accentColor }]}>
           {isPending
-            ? (isOwn ? 'Transferencia enviada' : 'Transferencia recibida')
-            : 'Transferencia enviada'}
+            ? (isOwn ? t('chtTransferSent') : t('chtTransferReceived'))
+            : t('chtTransferSent')}
         </Text>
       </View>
 
@@ -1384,7 +1393,7 @@ const MoneyCard = ({
       {!!to && (
         <View style={ms.toRow}>
           <McIconUser />
-          <Text style={ms.toText}>{isOwn ? `Para: ${to}` : `De: ${to}`}</Text>
+          <Text style={ms.toText}>{isOwn ? `${t('chtToPrefix')} ${to}` : `${t('chtFromPrefix')} ${to}`}</Text>
         </View>
       )}
 
@@ -1396,7 +1405,7 @@ const MoneyCard = ({
         <View style={ms.statusRow}>
           <McIconClock />
           <Text style={[ms.statusText, { color: accentColor }]}>
-            {isPending ? 'Pendiente de aceptación' : 'Completada'}
+            {isPending ? t('chtPendingAcceptance') : t('chtCompleted')}
           </Text>
         </View>
         {!!ref && (
@@ -1424,7 +1433,7 @@ const MoneyCard = ({
                     <Line x1="18" y1="6" x2="6" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
                     <Line x1="6" y1="6" x2="18" y2="18" stroke="#dc2626" strokeWidth={2.5} strokeLinecap="round"/>
                   </Svg>
-                  <Text style={ms.btnCancelText}>Rechazar</Text>
+                  <Text style={ms.btnCancelText}>{t('reject')}</Text>
                 </View>
               )}
           </TouchableOpacity>
@@ -1442,7 +1451,7 @@ const MoneyCard = ({
                   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none">
                     <Polyline points="20,6 9,17 4,12" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round"/>
                   </Svg>
-                  <Text style={ms.btnAcceptText}>Recibir</Text>
+                  <Text style={ms.btnAcceptText}>{t('receive')}</Text>
                 </View>
               )}
           </TouchableOpacity>
@@ -1547,7 +1556,7 @@ const parseTransferData = (text: string, messageDate: string) => {
   return {
     amount: amount || '0 CFA',
     recipient: recipient || 'Destinatario desconocido',
-    reference: reference || 'Sin referencia',
+    reference: reference || tr('xtSinReferencia'),
     status: 'completed' as const,
     date: new Date(messageDate).toLocaleString('es-ES'),
   };
@@ -1621,6 +1630,7 @@ export const ChatMessageBubble = React.memo(({
   const [imageViewerOpen, setImageViewerOpen] = useState(false);
   const [localReactions, setLocalReactions] = useState<Record<string, number>>({});
   const [popEmoji, setPopEmoji] = useState<string | null>(null);
+  const { t } = useTranslation();
   const { fontScale } = useFont();
 
   // ── Animación de entrada ──────────────────────────────────────
@@ -1721,13 +1731,13 @@ export const ChatMessageBubble = React.memo(({
         <View style={s.avatarCol}>
           <LinearGradient colors={['#00c8a0', '#00B4E6']}
             style={[s.avatarRing, { width: ringSize, height: ringSize, borderRadius: ringSize / 2 }]}>
-            <EGAvatar src={myAvatar} name={myName || 'Yo'} size={avatarSize} />
+            <EGAvatar src={myAvatar} name={myName || t('chtMe')} size={avatarSize} />
           </LinearGradient>
         </View>
       );
     }
 
-    const senderName = message.sender?.full_name || otherName || 'Usuario';
+    const senderName = message.sender?.full_name || otherName || t('chtUser');
     // Usar avatar del sender si es válido; si sender existe pero no tiene avatar, caer a otherAvatar
     const rawSenderAvatar = message.sender?.avatar_url;
     const isValidSenderAvatar =
@@ -1762,7 +1772,7 @@ export const ChatMessageBubble = React.memo(({
           {replyPreview.imageUri ? (
             <View style={s.replyImageRow}>
               <Image source={{ uri: replyPreview.imageUri }} style={s.replyThumb} />
-              <Text style={s.replyText} numberOfLines={1}>{replyPreview.text || '📷 Foto'}</Text>
+              <Text style={s.replyText} numberOfLines={1}>{replyPreview.text || `📷 ${t('chtPhoto')}`}</Text>
             </View>
           ) : (
             <Text style={s.replyText} numberOfLines={2}>{replyPreview.text}</Text>
@@ -1825,7 +1835,7 @@ export const ChatMessageBubble = React.memo(({
           <Image source={{ uri: imageUri }} style={s.bubbleImage} contentFit="cover" cachePolicy="memory-disk" />
         </TouchableOpacity>
       ) : message.type === 'image' ? (
-        <Text style={[s.bubbleText, { fontSize: 13.5 * fontScale }]}>Foto</Text>
+        <Text style={[s.bubbleText, { fontSize: 13.5 * fontScale }]}>{t('chtPhoto')}</Text>
       ) : null}
       {message.type === 'video' && (
         <VideoCard message={message} isOwn={isOwn} />
@@ -1855,7 +1865,7 @@ export const ChatMessageBubble = React.memo(({
         >
           {(() => {
             // Obtener nombre limpio del archivo (quitar emoji si ya viene en text)
-            const rawName = message.text || message.file_url?.split('/').pop() || 'Archivo';
+            const rawName = message.text || message.file_url?.split('/').pop() || t('chtFile');
             const fileName = rawName.replace(/^📄\s*/, '').replace(/^📁\s*/, '').trim();
             const ext = fileName.split('.').pop()?.toLowerCase() || '';
             const isWord = ['doc', 'docx'].includes(ext);
@@ -1873,12 +1883,12 @@ export const ChatMessageBubble = React.memo(({
                   </View>
                   <View style={s.fileInfo}>
                     <Text style={[s.fileName, { fontSize: 13 * fontScale }]} numberOfLines={2}>{fileName}</Text>
-                    <Text style={[s.fileExt, { color: fileColor, fontSize: 11 * fontScale }]}>{ext.toUpperCase() || 'ARCHIVO'}</Text>
+                    <Text style={[s.fileExt, { color: fileColor, fontSize: 11 * fontScale }]}>{ext.toUpperCase() || t('chtFile').toUpperCase()}</Text>
                   </View>
                 </View>
                 <View style={s.fileActionRow}>
                   <Text style={[s.fileAction, { color: fileColor }]}>
-                    {message.file_url ? '↓ Descargar' : 'Preparando archivo'}
+                    {message.file_url ? `↓ ${t('chtDownload')}` : t('chtPreparingFile')}
                   </Text>
                 </View>
               </View>
@@ -1888,7 +1898,7 @@ export const ChatMessageBubble = React.memo(({
       )}
       <View style={s.meta}>
         {message.edited && (
-          <Text style={s.editedLabel}>editado</Text>
+          <Text style={s.editedLabel}>{t('chtEdited')}</Text>
         )}
         <Text style={s.time}>{time}</Text>
         {isOwn && showReadReceipts && <MessageStatusIndicator status={message.status} />}
@@ -1899,11 +1909,11 @@ export const ChatMessageBubble = React.memo(({
             <View style={[s.uploadFill, { width: `${uploadPercent}%` }]} />
           </View>
           <Text style={s.uploadText}>
-            {message.uploadState === 'processing' ? 'Procesando...' : `Subiendo ${uploadPercent}%`}
+            {message.uploadState === 'processing' ? t('processing') : `${t('chtUploading')} ${uploadPercent}%`}
           </Text>
         </View>
       )}
-      {canRetry && <Text style={s.retryHint}>Toca para reintentar</Text>}
+      {canRetry && <Text style={s.retryHint}>{t('chtTapToRetry')}</Text>}
     </>
   );
 

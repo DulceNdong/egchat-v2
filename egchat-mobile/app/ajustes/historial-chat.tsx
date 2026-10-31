@@ -20,10 +20,11 @@ import {
 import { Colors } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useLanguage } from '../../src/context/LanguageContext';
 
 // ── Modal genérico de contraseña ──────────────────────────────────
 function PasswordModal({
-  visible, title, description, buttonLabel, onConfirm, onClose,
+  visible, title, description, buttonLabel, onConfirm, onClose, confirmField = false,
 }: {
   visible: boolean;
   title: string;
@@ -31,18 +32,20 @@ function PasswordModal({
   buttonLabel: string;
   onConfirm: (pwd: string) => void;
   onClose: () => void;
+  confirmField?: boolean;
 }) {
+  const { translate: t } = useLanguage();
   const [pwd, setPwd] = useState('');
   const [confirm, setConfirm] = useState('');
-  const isBackup = buttonLabel.toLowerCase().includes('backup') || buttonLabel.toLowerCase().includes('guardar');
+  const isBackup = confirmField;
 
   const handleConfirm = () => {
     if (!pwd || pwd.length < 6) {
-      Alert.alert('Error', 'La contraseña debe tener al menos 6 caracteres');
+      Alert.alert(t('error'), t('setPasswordMin6'));
       return;
     }
     if (isBackup && pwd !== confirm) {
-      Alert.alert('Error', 'Las contraseñas no coinciden');
+      Alert.alert(t('error'), t('setPasswordsDontMatch'));
       return;
     }
     onConfirm(pwd);
@@ -61,7 +64,7 @@ function PasswordModal({
               style={st.input}
               value={pwd}
               onChangeText={setPwd}
-              placeholder="Contraseña de recuperación"
+              placeholder={t('setRecoveryPassword')}
               placeholderTextColor="#9ca3af"
               secureTextEntry
               autoFocus
@@ -71,14 +74,14 @@ function PasswordModal({
                 style={st.input}
                 value={confirm}
                 onChangeText={setConfirm}
-                placeholder="Confirmar contraseña"
+                placeholder={t('confirmPassword')}
                 placeholderTextColor="#9ca3af"
                 secureTextEntry
               />
             )}
             <View style={st.modalBtns}>
               <TouchableOpacity style={[st.modalBtn, st.modalBtnCancel]} onPress={onClose}>
-                <Text style={st.modalBtnCancelTxt}>Cancelar</Text>
+                <Text style={st.modalBtnCancelTxt}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[st.modalBtn, st.modalBtnConfirm]} onPress={handleConfirm}>
                 <Text style={st.modalBtnConfirmTxt}>{buttonLabel}</Text>
@@ -105,6 +108,7 @@ export default function HistorialChatScreen() {
 
   const { isDark } = useThemeContext();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
+  const { translate: t } = useLanguage();
 
   useEffect(() => {
     getCfgBool(CFG.backupWifi, true).then(setBackupWifi);
@@ -122,19 +126,19 @@ export default function HistorialChatScreen() {
 
   const handleExportChat = async () => {
     Alert.alert(
-      'Exportar backup',
-      'El backup se cifrará con la contraseña "egchat123". Puedes importarlo en otro dispositivo.',
+      t('setExportBackup'),
+      t('setExportBackupBody'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Exportar',
+          text: t('setExport'),
           onPress: async () => {
             setExporting(true);
             const me = await authAPI.me().catch(() => null);
             const ok = await exportBackup(me?.id || 'user', 'egchat123');
             setExporting(false);
             // Backup exportado silenciosamente si es exitoso
-            if (!ok) toast.error('No se pudo exportar el backup');
+            if (!ok) toast.error(t('setExportFailed'));
           },
         },
       ],
@@ -152,7 +156,7 @@ export default function HistorialChatScreen() {
       // Claves respaldadas silenciosamente
       await loadE2EStatus();
     } else {
-      Alert.alert('Error', result.error || 'No se pudo hacer el backup');
+      Alert.alert(t('error'), result.error || t('setBackupError'));
     }
   };
 
@@ -165,18 +169,18 @@ export default function HistorialChatScreen() {
       // Claves restauradas silenciosamente
       await loadE2EStatus();
     } else {
-      Alert.alert('Error', result.error || 'No se pudo restaurar');
+      Alert.alert(t('error'), result.error || t('setRestoreFailed'));
     }
   };
 
   const clearLocalMessages = () => {
     Alert.alert(
-      'Limpiar caché',
-      '¿Borrar todos los mensajes almacenados localmente? Los mensajes del servidor se descargarán al abrir cada chat.',
+      t('clearCache'),
+      t('setClearLocalMessagesConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Limpiar', style: 'destructive',
+          text: t('setClean'), style: 'destructive',
           onPress: async () => {
             const keys = await AsyncStorage.getAllKeys();
             const chatKeys = keys.filter(k => k.startsWith('chat_messages_'));
@@ -189,32 +193,32 @@ export default function HistorialChatScreen() {
   };
 
   const fmtDate = (d: Date | null) => {
-    if (!d) return 'Nunca';
+    if (!d) return t('setNever');
     return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
   };
 
   return (
     <>
-      <SettingsLayout title="Historial de chat">
+      <SettingsLayout title={t('setChatHistoryTitle')}>
 
         {/* ── Backup de chats ─────────────────────────────── */}
-        <SettingsSection label="Copia de seguridad de mensajes" />
+        <SettingsSection label={t('setMessagesBackup')} />
         <SettingsCard>
           <SettingsRow
-            label={exporting ? 'Exportando...' : 'Exportar backup de chats'}
+            label={exporting ? t('setExporting') : t('setExportChats')}
             value=".egbackup"
             onPress={exporting ? undefined : handleExportChat}
           />
           <SettingsDivider />
           <SettingsToggleRow
-            label="Solo con Wi-Fi"
+            label={t('wifiOnly')}
             value={backupWifi}
             onValueChange={v => { setBackupWifi(v); setCfgBool(CFG.backupWifi, v); }}
           />
         </SettingsCard>
 
         {/* ── Backup de claves E2E (multi-dispositivo) ────── */}
-        <SettingsSection label="Claves de cifrado E2E" />
+        <SettingsSection label={t('setE2eKeys')} />
         <View style={[st.e2eCard, { backgroundColor: isDark ? '#161b22' : '#fff' }]}>
           {/* Info status */}
           <View style={st.e2eStatus}>
@@ -223,12 +227,12 @@ export default function HistorialChatScreen() {
             }]} />
             <View style={{ flex: 1 }}>
               <Text style={[st.e2eStatusTitle, { color: C.textPrimary }]}>
-                {hasServerBackup ? 'Claves respaldadas' : 'Sin backup en la nube'}
+                {hasServerBackup ? t('setKeysBackedUp') : t('setNoCloudBackup')}
               </Text>
               <Text style={[st.e2eStatusSub, { color: C.textTertiary }]}>
                 {hasServerBackup
-                  ? `Último backup: ${fmtDate(lastE2EBackup)}`
-                  : 'Si cambias de dispositivo perderás acceso a mensajes cifrados'}
+                  ? `${t('setLastBackup')}: ${fmtDate(lastE2EBackup)}`
+                  : t('setLostKeysWarning')}
               </Text>
             </View>
             {e2eLoading && <ActivityIndicator color={Colors.accent} size="small" />}
@@ -236,8 +240,7 @@ export default function HistorialChatScreen() {
 
           {/* Descripción */}
           <Text style={[st.e2eDesc, { color: C.textSecondary }]}>
-            Tus claves se cifran con tu contraseña antes de subirse al servidor.
-            EGChat nunca ve tu clave privada.
+            {t('setE2eDesc')}
           </Text>
 
           {/* Botones */}
@@ -248,7 +251,7 @@ export default function HistorialChatScreen() {
               disabled={e2eLoading}
             >
               <Text style={[st.e2eBtnTxt, { color: Colors.accent }]}>
-                {hasServerBackup ? '🔄 Actualizar backup' : '☁️ Hacer backup'}
+                {hasServerBackup ? `🔄 ${t('setUpdateBackup')}` : `☁️ ${t('setMakeBackup')}`}
               </Text>
             </TouchableOpacity>
 
@@ -259,7 +262,7 @@ export default function HistorialChatScreen() {
                 disabled={e2eLoading}
               >
                 <Text style={[st.e2eBtnTxt, { color: '#6b7280' }]}>
-                  📲 Restaurar en este dispositivo
+                  📲 {t('setRestoreOnDevice')}
                 </Text>
               </TouchableOpacity>
             )}
@@ -267,21 +270,21 @@ export default function HistorialChatScreen() {
         </View>
 
         {/* ── Gestión local ──────────────────────────────── */}
-        <SettingsSection label="Gestión local" />
+        <SettingsSection label={t('management')} />
         <SettingsCard>
-          <SettingsRow label="Limpiar caché de mensajes" onPress={clearLocalMessages} />
+          <SettingsRow label={t('setClearMessagesCache')} onPress={clearLocalMessages} />
           <SettingsDivider />
           <SettingsRow
-            label="Eliminar todos los chats"
+            label={t('setDeleteAllChats')}
             danger
             onPress={() =>
               Alert.alert(
-                'Eliminar chats',
-                '¿Eliminar todos los chats locales? Esta acción no se puede deshacer.',
+                t('setDeleteChats'),
+                t('setDeleteAllChatsConfirm'),
                 [
-                  { text: 'Cancelar', style: 'cancel' },
+                  { text: t('cancel'), style: 'cancel' },
                   {
-                    text: 'Eliminar', style: 'destructive',
+                    text: t('delete'), style: 'destructive',
                     onPress: async () => {
                       const keys = await AsyncStorage.getAllKeys();
                       const toRemove = keys.filter(k =>
@@ -303,17 +306,18 @@ export default function HistorialChatScreen() {
       {/* Modales de contraseña */}
       <PasswordModal
         visible={showBackupModal}
-        title="Hacer backup de claves E2E"
-        description="Elige una contraseña de recuperación. La necesitarás si cambias de dispositivo. EGChat no la guarda."
-        buttonLabel="Guardar backup"
+        title={t('setBackupKeysTitle')}
+        description={t('setBackupKeysDesc')}
+        buttonLabel={t('setSaveBackup')}
+        confirmField
         onConfirm={handleBackupE2EKey}
         onClose={() => setShowBackupModal(false)}
       />
       <PasswordModal
         visible={showRestoreModal}
-        title="Restaurar claves E2E"
-        description="Ingresa la contraseña que usaste al hacer el backup en tu dispositivo anterior."
-        buttonLabel="Restaurar"
+        title={t('setRestoreKeysTitle')}
+        description={t('setRestoreKeysDesc')}
+        buttonLabel={t('msgRestore')}
         onConfirm={handleRestoreE2EKey}
         onClose={() => setShowRestoreModal(false)}
       />

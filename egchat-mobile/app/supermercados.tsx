@@ -11,6 +11,7 @@ import { toast } from '../src/components/Toast';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import { useTranslation } from '../src/context/LanguageContext';
 
 interface Supermarket {
   id: string;
@@ -34,13 +35,23 @@ interface CartItem extends Product {
 }
 
 const CATEGORIES = [
-  { id: 'Alimentación', name: '🥩 Carnicería', emoji: '🥩' },
-  { id: 'Bebidas', name: '🥤 Bebidas', emoji: '🥤' },
-  { id: 'Lácteos', name: '🥛 Lácteos', emoji: '🥛' },
-  { id: 'Panadería', name: '🍞 Panadería', emoji: '🍞' },
-  { id: 'Higiene', name: '🧴 Higiene', emoji: '🧴' },
-  { id: 'Limpieza', name: '🧹 Limpieza', emoji: '🧹' }
+  { id: 'Alimentación', nameKey: 'svcCatMeat', emoji: '🥩' },
+  { id: 'Bebidas', nameKey: 'svcCatDrinks', emoji: '🥤' },
+  { id: 'Lácteos', nameKey: 'svcCatDairy', emoji: '🥛' },
+  { id: 'Panadería', nameKey: 'svcCatBakery', emoji: '🍞' },
+  { id: 'Higiene', nameKey: 'svcCatHygiene', emoji: '🧴' },
+  { id: 'Limpieza', nameKey: 'svcCatCleaning', emoji: '🧹' }
 ];
+
+// Category values returned by the API (Spanish) mapped to translation keys
+const PRODUCT_CATEGORY_KEYS: Record<string, string> = {
+  'Alimentación': 'svcCatMeat',
+  'Bebidas': 'svcCatDrinks',
+  'Lácteos': 'svcCatDairy',
+  'Panadería': 'svcCatBakery',
+  'Higiene': 'svcCatHygiene',
+  'Limpieza': 'svcCatCleaning'
+};
 
 async function fetchSupermarkets(): Promise<Supermarket[]> {
   try {
@@ -67,7 +78,7 @@ async function fetchProducts(supermarketId: string, category?: string): Promise<
   return [];
 }
 
-async function createOrder(supermarketId: string, items: CartItem[], address: string): Promise<any> {
+async function createOrder(supermarketId: string, items: CartItem[], address: string, t: (key: string) => string): Promise<any> {
   const BASE = getApiBase();
   const token = await getToken();
   const res = await fetch(`${BASE}/api/supermarkets/orders`, {
@@ -84,7 +95,7 @@ async function createOrder(supermarketId: string, items: CartItem[], address: st
   });
   if (!res.ok) {
     const error = await res.json();
-    throw new Error(error.message || 'Error al procesar el pedido');
+    throw new Error(error.message || t('svcOrderError'));
   }
   return res.json();
 }
@@ -105,6 +116,7 @@ export default function SupermercadosScreen() {
   const [balance, setBalance] = useState(0);
   const [search, setSearch] = useState('');
 
+  const { t } = useTranslation();
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
@@ -122,11 +134,11 @@ export default function SupermercadosScreen() {
         await loadProducts(data[0].id);
       }
     } catch (error) {
-      toast.error('Error cargando supermercados');
+      toast.error(t('svcLoadSupermarketsFailed'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   const loadProducts = useCallback(async (supermarketId: string, category?: string) => {
     setLoadingProducts(true);
@@ -135,11 +147,11 @@ export default function SupermercadosScreen() {
       setProducts(data);
       setFilteredProducts(data);
     } catch (error) {
-      toast.error('Error cargando productos');
+      toast.error(t('svcLoadProductsFailed'));
     } finally {
       setLoadingProducts(false);
     }
-  }, []);
+  }, [t]);
 
   const loadBalance = useCallback(async () => {
     try {
@@ -178,7 +190,7 @@ export default function SupermercadosScreen() {
       }
       return [...prev, { ...product, qty: 1 }];
     });
-    toast.success(`${product.name} añadido al carrito`);
+    toast.success(`${product.name} ${t('svcAddedToCart')}`);
   };
 
   const updateCartItemQty = (productId: string, qty: number) => {
@@ -200,16 +212,16 @@ export default function SupermercadosScreen() {
   const handleCheckout = async () => {
     if (!selectedSupermarket || cart.length === 0) return;
     if (!address.trim()) {
-      toast.error('Ingresa tu dirección de entrega');
+      toast.error(t('svcEnterAddress'));
       return;
     }
     if (balance < cartTotal) {
       Alert.alert(
-        'Saldo insuficiente',
-        `Necesitas ${cartTotal.toLocaleString()} XAF. Tu saldo actual es ${balance.toLocaleString()} XAF.`,
+        t('svcInsufficientBalance'),
+        `${t('svcYouNeed')} ${cartTotal.toLocaleString()} XAF. ${t('svcYourCurrentBalance')} ${balance.toLocaleString()} XAF.`,
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Recargar', onPress: () => router.push('/(tabs)/monedero' as any) }
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('svcTopUpNow'), onPress: () => router.push('/(tabs)/monedero' as any) }
         ]
       );
       return;
@@ -217,15 +229,15 @@ export default function SupermercadosScreen() {
 
     setOrdering(true);
     try {
-      const result = await createOrder(selectedSupermarket.id, cart, address.trim());
-      toast.success('¡Pedido confirmado! Llegará en 30-45 min');
+      const result = await createOrder(selectedSupermarket.id, cart, address.trim(), t);
+      toast.success(t('svcOrderConfirmed'));
       setCart([]);
       setShowCheckout(false);
       setShowCart(false);
       setAddress('');
       loadBalance();
     } catch (error: any) {
-      toast.error(error.message || 'Error al procesar el pedido');
+      toast.error(error.message || t('svcOrderError'));
     } finally {
       setOrdering(false);
     }
@@ -236,7 +248,7 @@ export default function SupermercadosScreen() {
       <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]}>
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={[styles.loadingText, { color: C.textSecondary }]}>Cargando supermercados...</Text>
+          <Text style={[styles.loadingText, { color: C.textSecondary }]}>{t('svcLoadingSupermarkets')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -249,7 +261,7 @@ export default function SupermercadosScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>Supermercados</Text>
+        <Text style={[styles.title, { color: C.textPrimary }]}>{t('svcSupermarkets')}</Text>
         <TouchableOpacity 
           style={styles.cartBtn} 
           onPress={() => setShowCart(true)}
@@ -297,7 +309,7 @@ export default function SupermercadosScreen() {
         <MIcon name="search" size={20} color={C.textTertiary} />
         <TextInput
           style={[styles.searchInput, { color: C.textPrimary }]}
-          placeholder="Buscar productos..."
+          placeholder={t('svcSearchProducts')}
           placeholderTextColor={C.textTertiary}
           value={search}
           onChangeText={setSearch}
@@ -320,7 +332,7 @@ export default function SupermercadosScreen() {
             styles.categoryChipText,
             { color: !selectedCategory ? '#fff' : C.textPrimary }
           ]}>
-            Todos
+            {t('svcAll')}
           </Text>
         </TouchableOpacity>
         {CATEGORIES.map(cat => (
@@ -339,7 +351,7 @@ export default function SupermercadosScreen() {
               styles.categoryChipText,
               { color: selectedCategory === cat.id ? '#fff' : C.textPrimary }
             ]}>
-              {cat.name}
+              {cat.emoji} {t(cat.nameKey)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -349,7 +361,7 @@ export default function SupermercadosScreen() {
       {loadingProducts ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={[styles.loadingText, { color: C.textSecondary }]}>Cargando productos...</Text>
+          <Text style={[styles.loadingText, { color: C.textSecondary }]}>{t('svcLoadingProducts')}</Text>
         </View>
       ) : (
         <FlatList
@@ -364,13 +376,13 @@ export default function SupermercadosScreen() {
                 {item.name}
               </Text>
               <Text style={[styles.productCategory, { color: C.textSecondary }]}>
-                {item.category}
+                {PRODUCT_CATEGORY_KEYS[item.category] ? t(PRODUCT_CATEGORY_KEYS[item.category]) : item.category}
               </Text>
               <Text style={[styles.productPrice, { color: Colors.accent }]}>
                 {item.price.toLocaleString()} XAF
               </Text>
               <Text style={[styles.productStock, { color: C.textTertiary }]}>
-                Stock: {item.stock}
+                {t('svcStockLabel')}: {item.stock}
               </Text>
               <TouchableOpacity
                 style={[styles.addToCartBtn, { backgroundColor: Colors.accent }]}
@@ -378,7 +390,7 @@ export default function SupermercadosScreen() {
                 disabled={item.stock === 0}
               >
                 <Text style={styles.addToCartText}>
-                  {item.stock === 0 ? 'Agotado' : 'Añadir'}
+                  {item.stock === 0 ? t('svcOutOfStock') : t('add')}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -386,7 +398,7 @@ export default function SupermercadosScreen() {
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Text style={[styles.emptyText, { color: C.textTertiary }]}>
-                {search.trim() ? 'No se encontraron productos' : 'No hay productos disponibles'}
+                {search.trim() ? t('svcNoProductsFound') : t('svcNoProductsAvailable')}
               </Text>
             </View>
           }
@@ -400,10 +412,10 @@ export default function SupermercadosScreen() {
             <TouchableOpacity onPress={() => setShowCart(false)}>
               <MIcon name="close" size={24} color={C.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: C.textPrimary }]}>Mi Carrito</Text>
+            <Text style={[styles.modalTitle, { color: C.textPrimary }]}>{t('svcMyCart')}</Text>
             <TouchableOpacity onPress={clearCart} disabled={cart.length === 0}>
               <Text style={[styles.clearCartText, { color: cart.length > 0 ? Colors.accent : C.textTertiary }]}>
-                Limpiar
+                {t('setClean')}
               </Text>
             </TouchableOpacity>
           </View>
@@ -411,7 +423,7 @@ export default function SupermercadosScreen() {
           {cart.length === 0 ? (
             <View style={styles.emptyCartContainer}>
               <Text style={styles.emptyCartEmoji}>🛒</Text>
-              <Text style={[styles.emptyCartText, { color: C.textTertiary }]}>Tu carrito está vacío</Text>
+              <Text style={[styles.emptyCartText, { color: C.textTertiary }]}>{t('svcEmptyCart')}</Text>
             </View>
           ) : (
             <>
@@ -447,7 +459,7 @@ export default function SupermercadosScreen() {
                 )}
               />
               <View style={[styles.cartTotal, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
-                <Text style={[styles.totalLabel, { color: C.textSecondary }]}>Total:</Text>
+                <Text style={[styles.totalLabel, { color: C.textSecondary }]}>{t('total')}:</Text>
                 <Text style={[styles.totalAmount, { color: Colors.accent }]}>
                   {cartTotal.toLocaleString()} XAF
                 </Text>
@@ -459,7 +471,7 @@ export default function SupermercadosScreen() {
                   setShowCheckout(true);
                 }}
               >
-                <Text style={styles.checkoutBtnText}>Proceder al checkout</Text>
+                <Text style={styles.checkoutBtnText}>{t('svcProceedCheckout')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -473,16 +485,16 @@ export default function SupermercadosScreen() {
             <TouchableOpacity onPress={() => setShowCheckout(false)}>
               <MIcon name="arrow-back" size={24} color={C.textPrimary} />
             </TouchableOpacity>
-            <Text style={[styles.modalTitle, { color: C.textPrimary }]}>Finalizar Pedido</Text>
+            <Text style={[styles.modalTitle, { color: C.textPrimary }]}>{t('svcPlaceOrder')}</Text>
             <View style={{ width: 24 }} />
           </View>
 
           <ScrollView style={styles.checkoutContent}>
             <View style={[styles.checkoutSection, { backgroundColor: C.bgSecondary }]}>
-              <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>Dirección de entrega</Text>
+              <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>{t('svcDeliveryAddress')}</Text>
               <TextInput
                 style={[styles.addressInput, { backgroundColor: C.bgTertiary, color: C.textPrimary, borderColor: C.borderLight }]}
-                placeholder="Ingresa tu dirección completa..."
+                placeholder={t('svcAddressPlaceholder')}
                 placeholderTextColor={C.textTertiary}
                 value={address}
                 onChangeText={setAddress}
@@ -491,7 +503,7 @@ export default function SupermercadosScreen() {
             </View>
 
             <View style={[styles.checkoutSection, { backgroundColor: C.bgSecondary }]}>
-              <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>Resumen del pedido</Text>
+              <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>{t('svcOrderSummary')}</Text>
               {cart.map(item => (
                 <View key={item.id} style={styles.orderSummaryItem}>
                   <Text style={[styles.orderItemName, { color: C.textSecondary }]}>
@@ -503,7 +515,7 @@ export default function SupermercadosScreen() {
                 </View>
               ))}
               <View style={[styles.orderTotal, { borderTopColor: C.borderLight }]}>
-                <Text style={[styles.orderTotalLabel, { color: C.textPrimary }]}>Total:</Text>
+                <Text style={[styles.orderTotalLabel, { color: C.textPrimary }]}>{t('total')}:</Text>
                 <Text style={[styles.orderTotalAmount, { color: Colors.accent }]}>
                   {cartTotal.toLocaleString()} XAF
                 </Text>
@@ -511,13 +523,13 @@ export default function SupermercadosScreen() {
             </View>
 
             <View style={[styles.checkoutSection, { backgroundColor: C.bgSecondary }]}>
-              <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>Método de pago</Text>
+              <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>{t('svcPaymentMethod')}</Text>
               <View style={styles.paymentMethod}>
                 <Text style={styles.paymentIcon}>💳</Text>
-                <Text style={[styles.paymentText, { color: C.textSecondary }]}>Monedero EGChat</Text>
+                <Text style={[styles.paymentText, { color: C.textSecondary }]}>{t('svcEgchatWallet')}</Text>
               </View>
               <Text style={[styles.balanceText, { color: balance >= cartTotal ? '#10b981' : '#ef4444' }]}>
-                Saldo disponible: {balance.toLocaleString()} XAF
+                {t('walletBalance')}: {balance.toLocaleString()} XAF
               </Text>
             </View>
           </ScrollView>
@@ -536,7 +548,7 @@ export default function SupermercadosScreen() {
               <ActivityIndicator color="#fff" />
             ) : (
               <Text style={styles.placeOrderText}>
-                {balance < cartTotal ? 'Saldo insuficiente' : 'Confirmar pedido'}
+                {balance < cartTotal ? t('svcInsufficientBalance') : t('svcConfirmOrder')}
               </Text>
             )}
           </TouchableOpacity>

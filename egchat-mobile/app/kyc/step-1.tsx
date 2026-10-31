@@ -11,8 +11,11 @@ import { saveKycDraft } from '../../src/services/kycStorage';
 import { savePersonalData, createKycApplication } from '../../src/services/kycService';
 import { getNetworkStatus } from '../../src/store/offlineStore';
 import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 // ── Datos GE ──────────────────────────────────────────────────────
+// Los nombres de provincia y ciudad son topónimos oficiales y a la vez
+// claves de búsqueda / valores persistidos, por lo que se mantienen literalmente.
 const GE_PROVINCES = [
   'Bioko Norte','Bioko Sur','Annobón','Centro Sur',
   'Djibloho','Kié-Ntem','Litoral','Wele-Nzas',
@@ -27,8 +30,22 @@ const GE_CITIES: Record<string, string[]> = {
   'Djibloho':    ['Oyala / Djibloho'],
   'Annobón':     ['San Antonio de Palé'],
 };
-const MARITAL_STATUS = ['Soltero/a','Casado/a','Divorciado/a','Viudo/a'];
-const NATIONALITIES  = ['GQ - Guinea Ecuatorial','ES - España','CM - Camerún','GA - Gabón','NG - Nigeria','FR - Francia','Otro'];
+// `value` es el código enviado al backend; `labelKey` es la texto visible.
+const MARITAL_STATUS: { value: string; labelKey: string }[] = [
+  { value: 'Soltero/a',     labelKey: 'kyMaritalSingle' },
+  { value: 'Casado/a',      labelKey: 'kyMaritalMarried' },
+  { value: 'Divorciado/a',  labelKey: 'kyMaritalDivorced' },
+  { value: 'Viudo/a',       labelKey: 'kyMaritalWidowed' },
+];
+const NATIONALITIES: { value: string; labelKey: string }[] = [
+  { value: 'GQ', labelKey: 'svcEquatorialGuinea' },
+  { value: 'ES', labelKey: 'setCountrySpain' },
+  { value: 'CM', labelKey: 'setCountryCameroon' },
+  { value: 'GA', labelKey: 'setCountryGabon' },
+  { value: 'NG', labelKey: 'setCountryNigeria' },
+  { value: 'FR', labelKey: 'setCountryFrance' },
+  { value: 'OT', labelKey: 'setOther' },
+];
 
 // ── Componentes UI menores ────────────────────────────────────────
 function FieldLabel({ text, required }: { text: string; required?: boolean }) {
@@ -63,44 +80,51 @@ function FieldInput({
 }
 
 function DropdownField({
-  label, value, options, onSelect, required, accessibilityLabel,
+  label, value, options, onSelect, required, accessibilityLabel, placeholder,
 }: {
-  label: string; value: string; options: string[];
+  label: string; value: string; options: { value: string; labelKey?: string }[];
   onSelect: (v: string) => void; required?: boolean; accessibilityLabel?: string;
+  placeholder?: string;
 }) {
+  const { t } = useTranslation();
   const [open, setOpen] = useState(false);
+  const hint = placeholder ?? label;
   return (
     <>
       <FieldLabel text={label} required={required} />
       <TouchableOpacity
         style={st.dropdown}
         onPress={() => setOpen(true)}
-        accessibilityLabel={accessibilityLabel ?? label}
+        accessibilityLabel={accessibilityLabel ?? hint}
         accessibilityRole="button"
       >
         <Text style={value ? st.dropdownValue : st.dropdownPlaceholder}>
-          {value || `Seleccionar ${label.toLowerCase()}`}
+          {value || hint}
         </Text>
         <Text style={st.dropdownArrow}>▾</Text>
       </TouchableOpacity>
       <Modal visible={open} transparent animationType="slide" onRequestClose={() => setOpen(false)}>
         <TouchableOpacity style={st.overlay} activeOpacity={1} onPress={() => setOpen(false)}>
-          <View style={st.sheet} accessibilityViewIsModal={true} accessibilityLabel={`Seleccionar ${label}`}>
+          <View style={st.sheet} accessibilityViewIsModal={true} accessibilityLabel={hint}>
             <Text style={st.sheetTitle}>{label}</Text>
             <FlatList
               data={options}
-              keyExtractor={i => i}
-              renderItem={({ item }) => (
-                <TouchableOpacity
-                  style={[st.sheetItem, item === value && st.sheetItemActive]}
-                  onPress={() => { onSelect(item); setOpen(false); }}
-                >
-                  <Text style={[st.sheetItemText, item === value && st.sheetItemTextActive]}>
-                    {item}
-                  </Text>
-                  {item === value && <Text style={{ color: '#00C8A0' }}>✓</Text>}
-                </TouchableOpacity>
-              )}
+              keyExtractor={i => i.value}
+              renderItem={({ item }) => {
+                const text = item.labelKey ? t(item.labelKey) : item.value;
+                const selected = item.value === value || text === value;
+                return (
+                  <TouchableOpacity
+                    style={[st.sheetItem, selected && st.sheetItemActive]}
+                    onPress={() => { onSelect(item.value); setOpen(false); }}
+                  >
+                    <Text style={[st.sheetItemText, selected && st.sheetItemTextActive]}>
+                      {text}
+                    </Text>
+                    {selected && <Text style={{ color: '#00C8A0' }}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              }}
             />
           </View>
         </TouchableOpacity>
@@ -113,6 +137,7 @@ function DropdownField({
 export default function Step1() {
   const store = useKycStore();
   const d     = store.personalData;
+  const { t } = useTranslation();
 
   const [errors, setErrors]       = useState<Record<string, string>>({});
   const [loading, setLoading]     = useState(false);
@@ -126,23 +151,23 @@ export default function Step1() {
   // Validación
   const validate = (): boolean => {
     const e: Record<string, string> = {};
-    if (!d.fullName.trim())      e.fullName    = 'El nombre completo es obligatorio';
-    if (!d.dateOfBirth)          e.dateOfBirth = 'La fecha de nacimiento es obligatoria';
+    if (!d.fullName.trim())      e.fullName    = t('kyFullNameRequired');
+    if (!d.dateOfBirth)          e.dateOfBirth = t('kyDobRequired');
     else {
       const [y, m, day] = d.dateOfBirth.split('-').map(Number);
       const date = new Date(y, m - 1, day);
       const now = new Date();
       if (isNaN(date.getTime()) || day < 1 || day > 31 || m < 1 || m > 12)
-        e.dateOfBirth = 'Fecha no válida';
+        e.dateOfBirth = t('kyDobInvalid');
       else if (date > now)
-        e.dateOfBirth = 'La fecha no puede ser futura';
+        e.dateOfBirth = t('kyDobFuture');
       else if (y < 1920)
-        e.dateOfBirth = 'Año demasiado antiguo';
+        e.dateOfBirth = t('kyDobTooOld');
     }
-    if (!d.placeOfBirth.trim())  e.placeOfBirth = 'El lugar de nacimiento es obligatorio';
-    if (!d.sex)                  e.sex         = 'El sexo es obligatorio';
+    if (!d.placeOfBirth.trim())  e.placeOfBirth = t('kyPlaceOfBirthRequired');
+    if (!d.sex)                  e.sex         = t('kySexRequired');
     if (d.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(d.email))
-                                 e.email       = 'El email no es válido';
+                                 e.email       = t('kyEmailInvalid');
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -196,7 +221,7 @@ export default function Step1() {
       router.push('/kyc/step-2');
     } catch (e: any) {
       console.error('[KYC step-1]', e?.message, e);
-      setErrors({ api: `Error al guardar: ${e?.message ?? 'desconocido'}` });
+      setErrors({ api: `${t('setSaveError')}: ${e?.message ?? t('kyUnknown')}` });
     } finally {
       setLoading(false);
     }
@@ -206,24 +231,24 @@ export default function Step1() {
     <KycStepLayout
       step={1}
       completed={store.completedSteps}
-      title="Datos Personales"
+      title={t('kyPersonalData')}
       onNext={handleNext}
       nextDisabled={loading}
       loading={loading}
       onExit={() => router.back()}
     >
       {/* Nombre */}
-      <FieldLabel text="Nombre completo" required />
+      <FieldLabel text={t('fullName')} required />
       <FieldInput
         value={d.fullName}
         onChangeText={v => update({ fullName: v })}
-        placeholder="Juan Carlos Nguema Mbá"
+        placeholder={t('kyFullNameExample')}
         error={errors.fullName}
-        accessibilityLabel="Nombre completo"
+        accessibilityLabel={t('fullName')}
       />
 
       {/* Fecha de nacimiento */}
-      <FieldLabel text="Fecha de nacimiento" required />
+      <FieldLabel text={t('kyDateOfBirth')} required />
       <View style={st.dobRow}>
         <TextInput
           style={[st.dobInput, !!errors.dateOfBirth && st.inputError]}
@@ -233,7 +258,7 @@ export default function Step1() {
           placeholderTextColor="#9ca3af"
           keyboardType="number-pad"
           maxLength={2}
-          accessibilityLabel="Día de nacimiento"
+          accessibilityLabel={t('kyDayOfBirth')}
         />
         <Text style={st.dobSep}>/</Text>
         <TextInput
@@ -244,7 +269,7 @@ export default function Step1() {
           placeholderTextColor="#9ca3af"
           keyboardType="number-pad"
           maxLength={2}
-          accessibilityLabel="Mes de nacimiento"
+          accessibilityLabel={t('kyMonthOfBirth')}
         />
         <Text style={st.dobSep}>/</Text>
         <TextInput
@@ -255,43 +280,44 @@ export default function Step1() {
           placeholderTextColor="#9ca3af"
           keyboardType="number-pad"
           maxLength={4}
-          accessibilityLabel="Año de nacimiento"
+          accessibilityLabel={t('kyYearOfBirth')}
         />
       </View>
       {!!errors.dateOfBirth && <Text style={st.errorText}>{errors.dateOfBirth}</Text>}
 
       {/* Lugar de nacimiento */}
-      <FieldLabel text="Lugar de nacimiento" required />
+      <FieldLabel text={t('kyPlaceOfBirth')} required />
       <FieldInput
         value={d.placeOfBirth}
         onChangeText={v => update({ placeOfBirth: v })}
         placeholder="Malabo"
         error={errors.placeOfBirth}
-        accessibilityLabel="Lugar de nacimiento"
+        accessibilityLabel={t('kyPlaceOfBirth')}
       />
 
       {/* Nacionalidad */}
       <DropdownField
-        label="Nacionalidad"
+        label={t('kyNationality')}
         value={d.nationality}
         options={NATIONALITIES}
-        onSelect={v => update({ nationality: v.split(' - ')[0] })}
-        accessibilityLabel="Seleccionar nacionalidad"
+        placeholder={t('kySelectNationality')}
+        onSelect={v => update({ nationality: v })}
+        accessibilityLabel={t('kySelectNationality')}
       />
 
       {/* Sexo */}
-      <FieldLabel text="Sexo" required />
+      <FieldLabel text={t('kySex')} required />
       <View style={st.radioRow}>
         {(['M','F'] as const).map(val => (
           <TouchableOpacity
             key={val}
             style={[st.radioBtn, d.sex === val && st.radioBtnActive]}
             onPress={() => update({ sex: val })}
-            accessibilityLabel={val === 'M' ? 'Masculino' : 'Femenino'}
+            accessibilityLabel={val === 'M' ? t('kyMale') : t('kyFemale')}
             accessibilityRole="radio"
           >
             <View style={[st.radioCircle, d.sex === val && st.radioCircleActive]} />
-            <Text style={st.radioText}>{val === 'M' ? 'Masculino' : 'Femenino'}</Text>
+            <Text style={st.radioText}>{val === 'M' ? t('kyMale') : t('kyFemale')}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -299,56 +325,59 @@ export default function Step1() {
 
       {/* Estado civil */}
       <DropdownField
-        label="Estado civil"
+        label={t('kyMaritalStatus')}
         value={d.maritalStatus}
         options={MARITAL_STATUS}
+        placeholder={t('kySelectMaritalStatus')}
         onSelect={v => update({ maritalStatus: v })}
       />
 
       {/* Provincia */}
       <DropdownField
-        label="Provincia"
+        label={t('kyProvince')}
         value={d.province}
-        options={GE_PROVINCES}
+        options={GE_PROVINCES.map(p => ({ value: p }))}
+        placeholder={t('kySelectProvince')}
         onSelect={v => update({ province: v, city: '' })}
       />
 
       {/* Ciudad */}
       <DropdownField
-        label="Ciudad"
+        label={t('kyCity')}
         value={d.city}
-        options={d.province ? (GE_CITIES[d.province] ?? []) : []}
+        options={(d.province ? (GE_CITIES[d.province] ?? []) : []).map(c => ({ value: c }))}
+        placeholder={t('kySelectCity')}
         onSelect={v => update({ city: v })}
       />
 
       {/* Dirección */}
-      <FieldLabel text="Dirección" />
+      <FieldLabel text={t('setAddress')} />
       <FieldInput
         value={d.address}
         onChangeText={v => update({ address: v })}
-        placeholder="Calle, número, barrio..."
-        accessibilityLabel="Dirección"
+        placeholder={t('kyAddressPlaceholder')}
+        accessibilityLabel={t('setAddress')}
       />
 
       {/* Teléfono */}
-      <FieldLabel text="Teléfono" />
+      <FieldLabel text={t('phone')} />
       <FieldInput
         value={d.phone}
         onChangeText={v => update({ phone: v })}
         keyboardType="phone-pad"
         placeholder="+240 222 000 000"
-        accessibilityLabel="Número de teléfono"
+        accessibilityLabel={t('kyPhoneNumber')}
       />
 
       {/* Email */}
-      <FieldLabel text="Email (opcional)" />
+      <FieldLabel text={`${t('kyEmail')} (${t('optional')})`} />
       <FieldInput
         value={d.email}
         onChangeText={v => update({ email: v })}
         keyboardType="email-address"
-        placeholder="correo@ejemplo.com"
+        placeholder={t('kyEmailPlaceholder')}
         error={errors.email}
-        accessibilityLabel="Correo electrónico"
+        accessibilityLabel={t('kyEmailFull')}
       />
 
       {!!errors.api && (

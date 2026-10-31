@@ -8,6 +8,7 @@ import Svg, { Polyline, Circle, Line } from 'react-native-svg';
 import { Colors, Spacing } from '../../theme';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 const Chevron = ({ color = '#c7c7cc' }: { color?: string }) => (
   <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth={2.5} strokeLinecap="round">
@@ -48,7 +49,7 @@ export function SettingsLayout({
           <Svg width={11} height={18} viewBox="0 0 10 18" fill="none" stroke={Colors.accent} strokeWidth={2.5} strokeLinecap="round">
             <Polyline points="9 1 1 9 9 17" />
           </Svg>
-          <Text style={styles.backText}>Volver</Text>
+          <Text style={styles.backText}>{tr('djhBack')}</Text>
         </TouchableOpacity>
         <Text style={[styles.headerTitle, { color: C.textPrimary }]}>{title}</Text>
         <View style={{ width: 72 }} />
@@ -231,7 +232,7 @@ const visStyles = StyleSheet.create({
 export function SettingsSearch({
   value,
   onChangeText,
-  placeholder = 'Buscar',
+  placeholder = tr('search'),
 }: {
   value: string;
   onChangeText: (t: string) => void;

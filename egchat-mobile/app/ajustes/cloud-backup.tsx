@@ -18,9 +18,11 @@ import { toast } from '../../src/components/Toast';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { Colors } from '../../src/theme/colors';
 import { DarkColors } from '../../src/theme/darkMode';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 export default function CloudBackupScreen() {
   const insets = useSafeAreaInsets();
+  const { t } = useTranslation();
   const [settings, setSettings] = useState<BackupSettings>({
     autoBackup: false, frequency: 'weekly', includeMedia: false, destination: 'server',
   });
@@ -40,7 +42,7 @@ export default function CloudBackupScreen() {
   const handleBackup = useCallback(async () => {
     setBacking(true);
     setProgress(0);
-    setProgressMsg('Iniciando...');
+    setProgressMsg(t('setStarting'));
     try {
       const result = await createCloudBackup((pct, msg) => {
         setProgress(pct);
@@ -49,14 +51,14 @@ export default function CloudBackupScreen() {
       if (result) {
         setLastBackup(new Date());
         setLastResult(result);
-        toast.success('Backup completado', `${result.chatCount} chats · ${formatSize(result.size)}`);
+        toast.success(t('setBackupDone'), `${result.chatCount} chats · ${formatSize(result.size)}`);
       } else {
-        toast.error('Backup fallido', 'Inténtalo de nuevo');
+        toast.error(t('setBackupFailed'), t('setTryAgain'));
       }
     } finally {
       setBacking(false);
     }
-  }, []);
+  }, [t]);
 
   const handleChangeSetting = useCallback(async (patch: Partial<BackupSettings>) => {
     const next = { ...settings, ...patch };
@@ -65,7 +67,7 @@ export default function CloudBackupScreen() {
   }, [settings]);
 
   const formatDate = (d: Date | null) => {
-    if (!d) return 'Nunca';
+    if (!d) return t('setNever');
     return d.toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
@@ -78,7 +80,7 @@ export default function CloudBackupScreen() {
             <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
           </Svg>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Backup en la nube</Text>
+        <Text style={s.headerTitle}>{t('setCloudBackup')}</Text>
       </LinearGradient>
 
       <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 80, backgroundColor: C.bgPrimary }}>
@@ -90,7 +92,7 @@ export default function CloudBackupScreen() {
             </Svg>
           </View>
           <View style={{ flex: 1 }}>
-            <Text style={[s.statusTitle, { color: C.textPrimary }]}>Último backup</Text>
+            <Text style={[s.statusTitle, { color: C.textPrimary }]}>{t('setLastBackup')}</Text>
             <Text style={[s.statusDate, { color: C.textTertiary }]}>{formatDate(lastBackup)}</Text>
             {lastResult && (
               <Text style={[s.statusInfo, { color: C.textTertiary }]}>
@@ -120,21 +122,21 @@ export default function CloudBackupScreen() {
                 <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2} strokeLinecap="round">
                   <Polyline points="21 15 21 19 3 19 3 15"/><Path d="M12 3v12"/><Polyline points="8 9 12 3 16 9"/>
                 </Svg>
-                <Text style={s.backupBtnText}>Hacer backup ahora</Text>
+                <Text style={s.backupBtnText}>{t('setBackupNow')}</Text>
               </View>
             )}
           </LinearGradient>
         </TouchableOpacity>
 
         {/* Configuración */}
-        <Text style={[s.sectionLabel, { color: C.textTertiary }]}>CONFIGURACIÓN</Text>
+        <Text style={[s.sectionLabel, { color: C.textTertiary }]}>{t('configuration')}</Text>
 
         <View style={[s.settingsCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
           {/* Auto backup */}
           <View style={s.settingRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.settingLabel, { color: C.textPrimary }]}>Backup automático</Text>
-              <Text style={[s.settingSub, { color: C.textTertiary }]}>Respalda automáticamente</Text>
+              <Text style={[s.settingLabel, { color: C.textPrimary }]}>{t('setAutoBackup')}</Text>
+              <Text style={[s.settingSub, { color: C.textTertiary }]}>{t('setAutoBackupSub')}</Text>
             </View>
             <Switch
               value={settings.autoBackup}
@@ -148,7 +150,7 @@ export default function CloudBackupScreen() {
             <>
               <View style={[s.divider, { backgroundColor: C.borderLight }]} />
               {/* Frecuencia */}
-              <Text style={[s.settingLabel, { color: C.textPrimary, paddingHorizontal: 14, paddingTop: 12 }]}>Frecuencia</Text>
+              <Text style={[s.settingLabel, { color: C.textPrimary, paddingHorizontal: 14, paddingTop: 12 }]}>{t('setFrequency')}</Text>
               <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
                 {(['daily', 'weekly', 'monthly'] as const).map(f => (
                   <TouchableOpacity
@@ -157,7 +159,7 @@ export default function CloudBackupScreen() {
                     onPress={() => handleChangeSetting({ frequency: f })}
                   >
                     <Text style={[s.freqText, settings.frequency === f && s.freqTextActive]}>
-                      {f === 'daily' ? 'Diario' : f === 'weekly' ? 'Semanal' : 'Mensual'}
+                      {f === 'daily' ? t('setDaily') : f === 'weekly' ? t('setWeekly') : t('setMonthly')}
                     </Text>
                   </TouchableOpacity>
                 ))}
@@ -170,8 +172,8 @@ export default function CloudBackupScreen() {
           {/* Incluir media */}
           <View style={s.settingRow}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.settingLabel, { color: C.textPrimary }]}>Incluir fotos y videos</Text>
-              <Text style={[s.settingSub, { color: C.textTertiary }]}>Aumenta el tamaño del backup</Text>
+              <Text style={[s.settingLabel, { color: C.textPrimary }]}>{t('setIncludeMedia')}</Text>
+              <Text style={[s.settingSub, { color: C.textTertiary }]}>{t('setIncludeMediaSub')}</Text>
             </View>
             <Switch
               value={settings.includeMedia}
@@ -184,7 +186,7 @@ export default function CloudBackupScreen() {
           <View style={[s.divider, { backgroundColor: C.borderLight }]} />
 
           {/* Destino */}
-          <Text style={[s.settingLabel, { color: C.textPrimary, paddingHorizontal: 14, paddingTop: 12 }]}>Destino</Text>
+          <Text style={[s.settingLabel, { color: C.textPrimary, paddingHorizontal: 14, paddingTop: 12 }]}>{t('setDestination')}</Text>
           <View style={{ flexDirection: 'row', gap: 8, paddingHorizontal: 14, paddingBottom: 12, paddingTop: 8 }}>
             {(['server', 'local'] as const).map(d => (
               <TouchableOpacity
@@ -193,7 +195,7 @@ export default function CloudBackupScreen() {
                 onPress={() => handleChangeSetting({ destination: d })}
               >
                 <Text style={[s.freqText, settings.destination === d && s.freqTextActive]}>
-                  {d === 'server' ? '☁️ Servidor' : '📱 Local'}
+                  {d === 'server' ? `☁️ ${t('setServer')}` : `📱 ${t('setLocal')}`}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -206,7 +208,7 @@ export default function CloudBackupScreen() {
             <Circle cx="12" cy="12" r="10"/><Line x1="12" y1="8" x2="12" y2="12"/><Line x1="12" y1="16" x2="12.01" y2="16"/>
           </Svg>
           <Text style={s.infoText}>
-            El backup incluye todos tus mensajes de texto. Las fotos y videos solo se incluyen si activas la opción correspondiente.
+            {t('setBackupInfo')}
           </Text>
         </View>
       </ScrollView>

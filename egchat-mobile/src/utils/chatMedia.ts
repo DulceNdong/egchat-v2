@@ -5,6 +5,7 @@ import * as DocumentPicker from 'expo-document-picker';
 import * as Contacts from 'expo-contacts';
 import { chatAPI } from '../api';
 import { toast } from '../components/Toast';
+import { t as tr } from '../translations';
 
 const MAX_IMAGE_BYTES = 8 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 64 * 1024 * 1024;
@@ -25,7 +26,7 @@ function isTooLarge(size: number | undefined, maxBytes: number) {
 
 function rejectLargeAsset(size: number | undefined, maxBytes: number) {
   if (!isTooLarge(size, maxBytes)) return false;
-  toast.error('Archivo muy grande', `Maximo permitido: ${formatFileSize(maxBytes)}`);
+  toast.error(tr('xtArchivoMuyGrande'), `Maximo permitido: ${formatFileSize(maxBytes)}`);
   return true;
 }
 
@@ -113,7 +114,7 @@ export async function pickMultipleImages(): Promise<PickedAsset[]> {
   }
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a la galería');
+    toast.error(tr('kyPermRequired'), tr('xtActivaElAccesoALaGaleria'));
     return [];
   }
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -145,7 +146,7 @@ export async function pickImageFromLibrary(): Promise<PickedAsset | null> {
   }
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a la galería');
+    toast.error(tr('kyPermRequired'), tr('xtActivaElAccesoALaGaleria'));
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -176,7 +177,7 @@ export async function pickImageFromCamera(): Promise<PickedAsset | null> {
   }
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a la cámara');
+    toast.error(tr('kyPermRequired'), tr('xtActivaElAccesoALaCamara'));
     return null;
   }
   const result = await ImagePicker.launchCameraAsync({ quality: 0.85 });
@@ -203,7 +204,7 @@ export async function pickVideo(): Promise<PickedAsset | null> {
   }
   const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
   if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a la galería');
+    toast.error(tr('kyPermRequired'), tr('xtActivaElAccesoALaGaleria'));
     return null;
   }
   const result = await ImagePicker.launchImageLibraryAsync({
@@ -228,7 +229,7 @@ export async function pickFile(): Promise<PickedAsset | null> {
 export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: string; label: string } | null> {
   const { status } = await Location.requestForegroundPermissionsAsync();
   if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa la ubicación para compartirla');
+    toast.error(tr('kyPermRequired'), tr('xtActivaLaUbicacionParaCompartirla'));
     return null;
   }
   try {
@@ -238,9 +239,9 @@ export async function getCurrentLocationLabel(): Promise<{ lat: string; lng: str
     });
     const lat = pos.coords.latitude.toFixed(6);
     const lng = pos.coords.longitude.toFixed(6);
-    return { lat, lng, label: 'Mi ubicación actual' };
+    return { lat, lng, label: tr('xtMiUbicacionActual') };
   } catch {
-    toast.error('GPS', 'No se pudo obtener tu ubicación');
+    toast.error('GPS', tr('chtCouldNotGetLocation'));
     return null;
   }
 }
@@ -253,7 +254,7 @@ export function formatFileSize(bytes: number): string {
 export async function pickVideoFromCamera(): Promise<PickedAsset | null> {
   const { status } = await ImagePicker.requestCameraPermissionsAsync();
   if (status !== 'granted') {
-    toast.error('Permiso requerido', 'Activa el acceso a la cámara');
+    toast.error(tr('kyPermRequired'), tr('xtActivaElAccesoALaCamara'));
     return null;
   }
   const result = await ImagePicker.launchCameraAsync({

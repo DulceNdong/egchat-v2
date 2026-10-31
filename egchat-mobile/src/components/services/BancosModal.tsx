@@ -6,6 +6,8 @@ import { GQ_BANKS, GQBank } from '../../data/serviciosFinancieros';
 import { FinancialModuleShell, SummaryCard, BankLogo } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { CardsScreen } from './CardsScreen';
+import { useTranslation } from '../../context/LanguageContext';
+import { t as tr } from '../../translations';
 
 type BkScreen = 'home' | 'detail' | 'transfer' | 'loan' | 'bills' | 'invest' | 'cards' | 'history' | 'success';
 
@@ -17,6 +19,7 @@ interface Props {
 }
 
 export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'home', userBalance = 100000 }) => {
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<BkScreen>(initScreen);
   const [bank, setBank] = useState<GQBank | null>(null);
   const [form, setForm] = useState<Record<string, string>>({});
@@ -24,9 +27,9 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
   const [balance, setBalance] = useState(userBalance);
   const [refreshKey, setRefreshKey] = useState(0);
   const [txHistory, setTxHistory] = useState([
-    { type: 'in', desc: 'Depósito salario', amount: 150000, date: '01/03/2026' },
-    { type: 'out', desc: 'Transferencia a María', amount: 25000, date: '05/03/2026' },
-    { type: 'out', desc: 'Pago electricidad', amount: 8500, date: '10/03/2026' },
+    { type: 'in', desc: t('svcTxSalaryDeposit'), amount: 150000, date: '01/03/2026' },
+    { type: 'out', desc: t('svcTxToMaria'), amount: 25000, date: '05/03/2026' },
+    { type: 'out', desc: t('svcTxElectricityPayment'), amount: 8500, date: '10/03/2026' },
   ]);
 
   const banks = useMemo(() => GQ_BANKS.map(b => ({ ...b, accounts: b.accounts.map(a => ({ ...a })) })), [refreshKey]);
@@ -47,9 +50,9 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
   };
 
   const titles: Record<BkScreen, string> = {
-    home: 'Bancos', detail: bank?.name || '', transfer: 'Transferencia',
-    loan: 'Préstamos', bills: 'Pagar Factura', invest: 'Inversiones',
-    cards: bank ? `Tarjetas — ${bank.name}` : 'Mis Tarjetas', history: 'Historial', success: 'Completado',
+    home: t('banks'), detail: bank?.name || '', transfer: t('svcTransfer'),
+    loan: t('svcLoans'), bills: t('svcPayBill'), invest: t('svcInvestments'),
+    cards: bank ? `${t('cards')} — ${bank.name}` : t('svcMyCards'), history: t('history'), success: t('svcCompleted'),
   };
 
   const ok = (m: string, txDesc?: string, txAmount?: number, txType?: string) => {
@@ -63,13 +66,13 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
   const fixedTop = screen === 'home' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 12 }}>
       <SummaryCard
-        label="Saldo total"
+        label={t('svcTotalBalance')}
         amount={totalBalance}
         colors={['#4A90D9', '#2563EB']}
         stats={[
-          { v: accountsCount, l: 'Cuentas' },
-          { v: GQ_BANKS.length, l: 'Bancos' },
-          { v: accountsCount, l: 'Tarjetas' },
+          { v: accountsCount, l: t('svcAccounts') },
+          { v: GQ_BANKS.length, l: t('banks') },
+          { v: accountsCount, l: t('cards') },
         ]}
       />
     </View>
@@ -79,7 +82,7 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
     <FinancialModuleShell
       visible={visible}
       title={titles[screen]}
-      subtitle={screen === 'home' ? `Guinea Ecuatorial — ${GQ_BANKS.length} bancos` : screen === 'detail' && bank ? bank.full : undefined}
+      subtitle={screen === 'home' ? `${t('svcEquatorialGuinea')} — ${GQ_BANKS.length} ${t('svcBanksWord')}` : screen === 'detail' && bank ? bank.full : undefined}
       onBack={back}
       onClose={onClose}
       fixedTop={fixedTop}
@@ -91,10 +94,10 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
             <BankLogo bank={b} size={38} />
             <View style={{ flex: 1, marginLeft: 10 }}>
               <Text style={s.bankName}>{b.name}</Text>
-              <Text style={s.bankMeta}>{b.branches} sucursales — {b.atms} ATMs</Text>
+              <Text style={s.bankMeta}>{b.branches} {t('svcBranches')} — {b.atms} ATMs</Text>
             </View>
             <TouchableOpacity style={[s.verBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' }]} onPress={() => { setBank(b); setScreen('detail'); }}>
-              <Text style={[s.verText, { color: b.color }]}>Ver</Text>
+              <Text style={[s.verText, { color: b.color }]}>{t('svcView')}</Text>
             </TouchableOpacity>
           </View>
           {b.accounts.length > 0 ? (
@@ -117,7 +120,7 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
               <View style={[s.accRow, s.cardRow, { borderColor: 'rgba(0,0,0,0.08)' }]}>
                 <View style={[s.accIcon, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}><Text>💳</Text></View>
                 <View style={{ flex: 1 }}>
-                  <Text style={s.accType}>Tarjeta de Débito</Text>
+                  <Text style={s.accType}>{tr('xtTarjetaDeDebito')}</Text>
                   <Text style={s.accNum}>**** 4521 — Vence 12/28</Text>
                 </View>
                 <View style={[s.activeBadge, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.08)' }]}>
@@ -127,14 +130,14 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
             </View>
           ) : (
             <View style={s.noAcc}>
-              <Text style={s.noAccText}>Sin cuentas activas</Text>
+              <Text style={s.noAccText}>{tr('xtSinCuentasActivas')}</Text>
               <TouchableOpacity style={[s.verBtn, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.1)' }]} onPress={() => { setBank(b); setScreen('detail'); }}>
-                <Text style={[s.verText, { color: b.color }]}>+ Abrir cuenta</Text>
+                <Text style={[s.verText, { color: b.color }]}>{tr('xtAbrirCuenta')}</Text>
               </TouchableOpacity>
             </View>
           )}
           <View style={s.quickActions}>
-            {([['Transferir', 'transfer'], ['Pagar', 'bills'], ['Préstamo', 'loan'], ['Invertir', 'invest']] as const).map(([label, sc]) => (
+            {([['Transferir', 'transfer'], ['Pagar', 'bills'], [tr('xtPrestamo'), 'loan'], ['Invertir', 'invest']] as const).map(([label, sc]) => (
               <TouchableOpacity key={sc} style={s.quickBtn} onPress={() => { setBank(b); setScreen(sc); }}>
                 <Text style={s.quickText}>{label}</Text>
               </TouchableOpacity>
@@ -163,8 +166,8 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
           ))}
           <View style={s.actionGrid}>
             {([
-              ['transfer', 'Transferir'], ['bills', 'Pagar Factura'], ['loan', 'Préstamos'],
-              ['invest', 'Inversiones'], ['cards', 'Tarjetas'], ['history', 'Historial'],
+              ['transfer', 'Transferir'], ['bills', tr('xtPagarFactura')], ['loan', 'Préstamos'],
+              ['invest', tr('svcInvestments')], ['cards', tr('cards')], ['history', tr('history')],
             ] as [BkScreen, string][]).map(([id, label]) => (
               <TouchableOpacity key={id} style={s.actionCell} onPress={() => setScreen(id)}>
                 <Text style={s.actionLabel}>{label}</Text>
@@ -177,9 +180,9 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
       {screen === 'transfer' && bank && (
         <View>
           {([
-            ['local', 'Transferencia Local', 'Entre cuentas del mismo banco'],
-            ['inter', 'Transferencia Interna', 'Entre bancos de Guinea Ec.'],
-            ['cemac', 'Transferencia CEMAC', 'Camerún, Gabón, Congo...'],
+            ['local', 'Transferencia Local', tr('xtEntreCuentasDelMismoBanco')],
+            ['inter', 'Transferencia Interna', tr('xtEntreBancosDeGuineaEc')],
+            ['cemac', 'Transferencia CEMAC', tr('xtCamerunGabonCongo')],
           ] as const).map(([id, label, sub]) => (
             <TouchableOpacity key={id} style={[s.optionRow, form.tt === id && { borderColor: bank.color }]} onPress={() => setF('tt', id)}>
               <Text style={s.optionTitle}>{label}</Text>
@@ -188,11 +191,11 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
           ))}
           {form.tt && (
             <View style={s.formCard}>
-              <FormField placeholder="Destinatario / IBAN / Teléfono" value={form.recipient || ''} onChangeText={v => setF('recipient', v)} />
+              <FormField placeholder={tr('xtDestinatarioIBANTelefono')} value={form.recipient || ''} onChangeText={v => setF('recipient', v)} />
               <FormField placeholder="Monto (XAF)" value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
               <Text style={s.balHint}>Saldo disponible: {balance.toLocaleString()} XAF</Text>
               <PrimaryButton
-                label="Confirmar transferencia"
+                label={tr('xtConfirmarTransferencia2')}
                 color={bank.color}
                 disabled={!form.recipient || !form.amount}
                 onPress={() => {
@@ -208,8 +211,8 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
       {screen === 'loan' && bank && (
         <View>
           {([
-            ['personal', 'Préstamo Personal', 'Hasta 5,000,000 XAF', '12% anual'],
-            ['negocio', 'Préstamo Negocio', 'Hasta 50,000,000 XAF', '9% anual'],
+            ['personal', tr('xtPrestamoPersonal'), 'Hasta 5,000,000 XAF', '12% anual'],
+            ['negocio', tr('xtPrestamoNegocio'), 'Hasta 50,000,000 XAF', '9% anual'],
           ] as const).map(([id, label, sub, rate]) => (
             <TouchableOpacity key={id} style={[s.optionRow, form.lt === id && { borderColor: '#2E9E6B' }]} onPress={() => setF('lt', id)}>
               <Text style={s.optionTitle}>{label}</Text>
@@ -221,7 +224,7 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
               <FormField placeholder="Monto solicitado (XAF)" value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
               <FormField placeholder="Plazo en meses (6-60)" value={form.months || ''} onChangeText={v => setF('months', v)} keyboardType="numeric" />
               <PrimaryButton
-                label="Solicitar préstamo"
+                label={tr('xtSolicitarPrestamo')}
                 color={bank.color}
                 disabled={!form.amount || !form.months}
                 onPress={() => ok(`Solicitud de préstamo por ${parseInt(form.amount, 10).toLocaleString()} XAF enviada a ${bank.name}.`)}
@@ -240,10 +243,10 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
           ))}
           {form.bt && (
             <View style={s.formCard}>
-              <FormField placeholder="Número de referencia / Contrato" value={form.ref || ''} onChangeText={v => setF('ref', v)} />
-              <FormField placeholder="Monto a pagar (XAF)" value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
+              <FormField placeholder={t('svcRefContractUpper')} value={form.ref || ''} onChangeText={v => setF('ref', v)} />
+              <FormField placeholder={tr('xtMontoAPagarXAF')} value={form.amount || ''} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
               <PrimaryButton
-                label="Pagar factura"
+                label={tr('svcPayBill')}
                 color="#C47D2A"
                 disabled={!form.ref || !form.amount}
                 onPress={() => {
@@ -259,9 +262,9 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
       {screen === 'invest' && bank && (
         <View>
           {([
-            ['plazo', 'Depósito a Plazo', '3-24 meses', '+6% anual'],
-            ['fondos', 'Fondos de Inversión', 'Cartera diversificada', '+8-12% anual'],
-            ['bonos', 'Bonos del Estado', 'Renta fija CEMAC', '+5% anual'],
+            ['plazo', tr('xtDepositoAPlazo'), '3-24 meses', '+6% anual'],
+            ['fondos', tr('xtFondosDeInversion'), 'Cartera diversificada', '+8-12% anual'],
+            ['bonos', tr('xtBonosDelEstado'), 'Renta fija CEMAC', '+5% anual'],
           ] as const).map(([id, label, sub, rate]) => (
             <TouchableOpacity key={id} style={[s.optionRow, form.it === id && { borderColor: '#6B5BD6' }]} onPress={() => setF('it', id)}>
               <View style={{ flex: 1 }}>
@@ -308,10 +311,10 @@ export const BancosModal: React.FC<Props> = ({ visible, onClose, initScreen = 'h
       {screen === 'success' && (
         <View style={s.success}>
           <Text style={{ fontSize: 48, marginBottom: 16 }}>✅</Text>
-          <Text style={s.successTitle}>Operación completada</Text>
+          <Text style={s.successTitle}>{tr('xtOperacionCompletada')}</Text>
           <Text style={s.successMsg}>{msg}</Text>
           <TouchableOpacity style={[s.doneBtn, { backgroundColor: bank?.color || '#1485EE' }]} onPress={() => setScreen(bank ? 'detail' : 'home')}>
-            <Text style={s.doneText}>Volver</Text>
+            <Text style={s.doneText}>{tr('djhBack')}</Text>
           </TouchableOpacity>
         </View>
       )}

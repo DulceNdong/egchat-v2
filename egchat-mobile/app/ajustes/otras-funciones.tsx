@@ -13,6 +13,7 @@ const LANGUAGE_OPTIONS = [
   { code: 'es', label: 'Español' },
   { code: 'fr', label: 'Français' },
   { code: 'en', label: 'English' },
+  { code: 'pt', label: 'Português' },
 ];
 
 export default function OtrasFuncionesScreen() {
@@ -21,7 +22,7 @@ export default function OtrasFuncionesScreen() {
   const [onlineStatus, setOnlineStatus] = React.useState(true);
 
   // Idioma desde el contexto reactivo — ya persistido y sincronizado globalmente
-  const { language: appLanguage, changeLanguage } = useLanguage();
+  const { language: appLanguage, changeLanguage, translate: t } = useLanguage();
 
   React.useEffect(() => {
     getCfgBool(CFG.autoTranslate, false).then(setAutoTranslate);
@@ -35,11 +36,11 @@ export default function OtrasFuncionesScreen() {
     // Permisos denegados explícitamente → llevar directo a Ajustes del sistema
     if (status === 'denied') {
       Alert.alert(
-        'Notificaciones desactivadas',
-        'Para recibir notificaciones ve a Ajustes → EGCHAT → Notificaciones y actívalas.',
+        t('setPushDisabledTitle'),
+        t('setPushDisabledBody'),
         [
-          { text: 'Cancelar', style: 'cancel' },
-          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() },
+          { text: t('cancel'), style: 'cancel' },
+          { text: t('setOpenSettings'), onPress: () => Linking.openSettings() },
         ],
       );
       return;
@@ -48,15 +49,15 @@ export default function OtrasFuncionesScreen() {
     // Permiso no solicitado aún o ya concedido → intentar registrar token
     const token = await registerForPushNotifications();
     if (token) {
-      Alert.alert('✅ Notificaciones activadas', 'Recibirás mensajes y llamadas aunque la app esté cerrada.');
+      Alert.alert(`✅ ${t('setPushEnabledTitle')}`, t('setPushEnabledBody'));
     } else {
       // El usuario rechazó el diálogo del sistema en este intento
       Alert.alert(
-        'Permiso no concedido',
-        'Puedes activar las notificaciones en Ajustes → EGCHAT → Notificaciones.',
+        t('setPermissionDenied'),
+        t('setPermissionDeniedBody'),
         [
-          { text: 'Ahora no', style: 'cancel' },
-          { text: 'Abrir Ajustes', onPress: () => Linking.openSettings() },
+          { text: t('setNotNow'), style: 'cancel' },
+          { text: t('setOpenSettings'), onPress: () => Linking.openSettings() },
         ],
       );
     }
@@ -64,15 +65,15 @@ export default function OtrasFuncionesScreen() {
 
   const openLanguagePicker = () => {
     Alert.alert(
-      'Idioma de la app',
-      'Selecciona el idioma de la interfaz.',
+      t('appLanguage'),
+      t('selectAppLanguage'),
       [
         ...LANGUAGE_OPTIONS.map(opt => ({
           text: opt.label,
           // Usar changeLanguage del contexto: actualiza estado global + AsyncStorage + translations.ts
           onPress: () => changeLanguage(opt.code),
         })),
-        { text: 'Cancelar', style: 'cancel' as const },
+        { text: t('cancel'), style: 'cancel' as const },
       ],
     );
   };
@@ -80,65 +81,65 @@ export default function OtrasFuncionesScreen() {
   const languageLabel = LANGUAGE_OPTIONS.find(opt => opt.code === appLanguage)?.label || 'Español';
 
   return (
-    <SettingsLayout title="Otras funciones">
+    <SettingsLayout title={t('otherFeatures')}>
 
-      <SettingsSection label="Herramientas" />
+      <SettingsSection label={t('setTools')} />
       <SettingsCard>
-        <SettingsRow label="Escáner QR" value="Escanear" onPress={() => router.push('/_qr-scanner' as any)} />
+        <SettingsRow label={t('setQrScanner')} value={t('setScan')} onPress={() => router.push('/_qr-scanner' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Compartir ubicación" value="Mapa" onPress={() => router.push('/map' as any)} />
+        <SettingsRow label={t('setShareLocation')} value={t('map')} onPress={() => router.push('/map' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Login QR desde PC" value="Escanear" onPress={() => router.push('/_qr-scanner' as any)} />
+        <SettingsRow label={t('qrLoginFromPC')} value={t('setScan')} onPress={() => router.push('/_qr-scanner' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Activar notificaciones push" onPress={activatePush} />
+        <SettingsRow label={t('setActivatePush')} onPress={activatePush} />
         <SettingsDivider />
-        <SettingsRow label="Idioma de la app" value={languageLabel} onPress={openLanguagePicker} />
+        <SettingsRow label={t('appLanguage')} value={languageLabel} onPress={openLanguagePicker} />
       </SettingsCard>
 
-      <SettingsSection label="Mensajes" />
+      <SettingsSection label={t('messages')} />
       <SettingsCard>
         <SettingsToggleRow
-          label="Confirmaciones de lectura"
-          description="Mostrar cuando lees un mensaje"
+          label={t('readReceipts')}
+          description={t('setReadReceiptsSub')}
           value={readReceipts}
           onValueChange={v => { setReadReceipts(v); setCfgBool(CFG.readReceipts, v); }}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Estado en línea"
-          description="Mostrar cuando estás conectado"
+          label={t('setOnlineStatus')}
+          description={t('setOnlineStatusSub')}
           value={onlineStatus}
           onValueChange={v => { setOnlineStatus(v); setCfgBool(CFG.onlineStatus, v); }}
         />
         <SettingsDivider />
         <SettingsToggleRow
-          label="Traducción automática"
-          description="Traduce mensajes al español"
+          label={t('setAutoTranslate')}
+          description={t('setAutoTranslateSub')}
           value={autoTranslate}
           onValueChange={v => { setAutoTranslate(v); setCfgBool(CFG.autoTranslate, v); }}
         />
       </SettingsCard>
 
-      <SettingsSection label="IA y experimental" />
+      <SettingsSection label={t('setAiExperimental')} />
       <SettingsCard>
-        <SettingsRow label="LIA-25 — Asistente IA" value="Abrir" onPress={() => router.push('/(tabs)/lia' as any)} />
+        <SettingsRow label={t('setLiaAssistant')} value={t('open')} onPress={() => router.push('/(tabs)/lia' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Mini-Apps" value="Ver tienda" onPress={() => router.push('/mini-apps' as any)} />
+        <SettingsRow label={t('miniApps')} value={t('setViewStore')} onPress={() => router.push('/mini-apps' as any)} />
         <SettingsDivider />
         <SettingsRow
-          label="Face Filters AR"
-          value="En videollamada"
+          label={t('setFaceFilters')}
+          value={t('setInVideoCall')}
           onPress={() => router.push('/(tabs)/mensajeria' as any)}
         />
       </SettingsCard>
 
-      <SettingsSection label="Privacidad avanzada" />
+      <SettingsSection label={t('setAdvancedPrivacy')} />
       <SettingsCard>
-        <SettingsRow label="Modo incógnito" value="Chats" onPress={() => router.push('/ajustes/privacidad' as any)} />
+        <SettingsRow label={t('incognitoMode')} value={t('setChats')} onPress={() => router.push('/ajustes/privacidad' as any)} />
         <SettingsDivider />
-        <SettingsRow label="Mensajes efímeros" onPress={() => Alert.alert('Mensajes efímeros', 'Configura el tiempo de borrado automático en cada chat.')} />
+        <SettingsRow label={t('setEphemeralMessages')} onPress={() => Alert.alert(t('setEphemeralMessages'), t('setEphemeralMessagesBody'))} />
         <SettingsDivider />
-        <SettingsRow label="Cifrado E2E" value="Activo ✓" onPress={() => Alert.alert('Cifrado E2E', 'Todos tus mensajes están protegidos con cifrado de extremo a extremo.')} />
+        <SettingsRow label={t('e2eEncryption')} value={`${t('active')} ✓`} onPress={() => Alert.alert(t('e2eEncryption'), t('setE2eBody'))} />
       </SettingsCard>
 
     </SettingsLayout>

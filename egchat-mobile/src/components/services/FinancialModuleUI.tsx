@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Polyline, Path } from 'react-native-svg';
+import { t as tr } from '../../translations';
 
 const { height: SCREEN_H } = Dimensions.get('window');
 
@@ -127,7 +128,7 @@ export const BankLogo = ({ bank, size = 38 }: { bank: { color: string; color2: s
 
 export const StatusPill = ({ status }: { status: string }) => {
   const cfg: Record<string, { bg: string; color: string; label: string }> = {
-    pendiente: { bg: '#FEF3C7', color: '#92400E', label: 'Pendiente' },
+    pendiente: { bg: '#FEF3C7', color: '#92400E', label: tr('kyPending') },
     vencida: { bg: '#FEF2F2', color: '#DC2626', label: 'Vencida' },
     pagada: { bg: '#F0FAF5', color: '#16A34A', label: 'Pagada' },
   };

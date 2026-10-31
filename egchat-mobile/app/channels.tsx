@@ -15,6 +15,7 @@ import { getToken, getApiBase } from '../src/api';
 import { EGAvatar } from '../src/components/ui';
 import { toast } from '../src/components/Toast';
 import { useThemeContext } from '../src/theme/ThemeContext';
+import { useTranslation } from '../src/context/LanguageContext';
 import { Colors } from '../src/theme/colors';
 import { DarkColors } from '../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -35,7 +36,16 @@ interface Channel {
   };
 }
 
-const CATEGORIES = ['Todos', 'Noticias', 'Tecnología', 'Negocios', 'Deportes', 'Salud', 'Entretenimiento'];
+// value = dato del API (no se traduce); labelKey = clave i18n para la UI
+const CATEGORIES: { value: string; labelKey: string }[] = [
+  { value: 'Todos', labelKey: 'everyone' },
+  { value: 'Noticias', labelKey: 'news' },
+  { value: 'Tecnología', labelKey: 'chtChTecnologia' },
+  { value: 'Negocios', labelKey: 'chtChNegocios' },
+  { value: 'Deportes', labelKey: 'chtChDeportes' },
+  { value: 'Salud', labelKey: 'health' },
+  { value: 'Entretenimiento', labelKey: 'chtChEntretenimiento' },
+];
 
 const FOLLOWED_KEY = 'egchat_followed_channels';
 
@@ -63,6 +73,7 @@ export default function ChannelsScreen() {
   const [tab, setTab] = useState<'discover' | 'following'>('discover');
   const insets = useSafeAreaInsets();
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
   const load = useCallback(async (showRefresh = false) => {
@@ -76,11 +87,11 @@ export default function ChannelsScreen() {
         setChannels(data);
       } else {
         // Error en API - mantener canales actuales
-        toast.error('Error cargando canales');
+        toast.error(t('chtChErrorCargando'));
       }
     } catch (error) {
       // Error de conexión - mantener canales actuales
-      toast.error('Error de conexión');
+      toast.error(t('chtChErrorConexion'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -109,18 +120,18 @@ export default function ChannelsScreen() {
             (c.followers_count || c.followers || 0) + 1 : 
             Math.max((c.followers_count || c.followers || 0) - 1, 0)
         } : c));
-        toast.info(followed ? `Siguiendo a ${ch.name}` : `Dejaste de seguir a ${ch.name}`);
+        toast.info(followed ? `${t('chtChSiguiendoA')} ${ch.name}` : `${t('chtChDejasteDeSeguir')} ${ch.name}`);
       } else {
         // Fallback a AsyncStorage si API falla
         await toggleFollow(ch.id);
         setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-        toast.info(ch.followed ? `Dejaste de seguir a ${ch.name}` : `Siguiendo a ${ch.name}`);
+        toast.info(ch.followed ? `${t('chtChDejasteDeSeguir')} ${ch.name}` : `${t('chtChSiguiendoA')} ${ch.name}`);
       }
     } catch (error) {
       // Fallback a AsyncStorage si hay error
       await toggleFollow(ch.id);
       setChannels(prev => prev.map(c => c.id === ch.id ? { ...c, followed: !c.followed } : c));
-      toast.info(ch.followed ? `Dejaste de seguir a ${ch.name}` : `Siguiendo a ${ch.name}`);
+      toast.info(ch.followed ? `${t('chtChDejasteDeSeguir')} ${ch.name}` : `${t('chtChSiguiendoA')} ${ch.name}`);
     }
   }, []);
 
@@ -162,7 +173,7 @@ export default function ChannelsScreen() {
             <Text style={[s.channelDesc, { color: C.textTertiary }]} numberOfLines={1}>{item.description}</Text>
           )}
           <Text style={[s.followers, { color: C.textTertiary }]}>
-            {formatCount(item.followers_count || item.followers || 0)} seguidores
+            {`${formatCount(item.followers_count || item.followers || 0)} ${t('chtChSeguidores')}`}
           </Text>
         </View>
       </View>
@@ -172,7 +183,7 @@ export default function ChannelsScreen() {
         activeOpacity={0.8}
       >
         <Text style={[s.followBtnText, item.followed && s.followBtnTextActive]}>
-          {item.followed ? 'Siguiendo' : 'Seguir'}
+          {item.followed ? t('chtChSiguiendo') : t('chtChSeguir')}
         </Text>
       </TouchableOpacity>
     </TouchableOpacity>
@@ -187,17 +198,17 @@ export default function ChannelsScreen() {
             <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
           </Svg>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Canales</Text>
+        <Text style={s.headerTitle}>{t('channels')}</Text>
       </LinearGradient>
 
       {/* Tabs */}
       <View style={[s.tabs, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-        {(['discover', 'following'] as const).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
-            <Text style={[s.tabText, { color: tab === t ? C.brand : C.textTertiary }]}>
-              {t === 'discover' ? 'Descubrir' : 'Siguiendo'}
+        {(['discover', 'following'] as const).map(tabKey => (
+          <TouchableOpacity key={tabKey} style={[s.tab, tab === tabKey && s.tabActive]} onPress={() => setTab(tabKey)}>
+            <Text style={[s.tabText, { color: tab === tabKey ? C.brand : C.textTertiary }]}>
+              {tabKey === 'discover' ? t('chtChDescubrir') : t('chtChSiguiendo')}
             </Text>
-            {tab === t && <View style={s.tabIndicator} />}
+            {tab === tabKey && <View style={s.tabIndicator} />}
           </TouchableOpacity>
         ))}
       </View>
@@ -209,7 +220,7 @@ export default function ChannelsScreen() {
         </Svg>
         <TextInput
           style={[s.searchInput, { color: C.textPrimary }]}
-          placeholder="Buscar canales..."
+          placeholder={t('chtChBuscarCanales')}
           placeholderTextColor={C.textTertiary}
           value={search}
           onChangeText={setSearch}
@@ -221,15 +232,15 @@ export default function ChannelsScreen() {
         <FlatList
           horizontal
           data={CATEGORIES}
-          keyExtractor={c => c}
+          keyExtractor={c => c.value}
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={{ paddingHorizontal: 12, gap: 8, paddingVertical: 8 }}
           renderItem={({ item: cat }) => (
             <TouchableOpacity
-              style={[s.catChip, category === cat && s.catChipActive]}
-              onPress={() => setCategory(cat)}
+              style={[s.catChip, category === cat.value && s.catChipActive]}
+              onPress={() => setCategory(cat.value)}
             >
-              <Text style={[s.catChipText, category === cat && s.catChipTextActive]}>{cat}</Text>
+              <Text style={[s.catChipText, category === cat.value && s.catChipTextActive]}>{t(cat.labelKey)}</Text>
             </TouchableOpacity>
           )}
         />
@@ -249,7 +260,7 @@ export default function ChannelsScreen() {
             <View style={s.empty}>
               <Text style={s.emptyIcon}>📡</Text>
               <Text style={[s.emptyText, { color: C.textTertiary }]}>
-                {tab === 'following' ? 'No sigues ningún canal aún' : 'Sin canales disponibles'}
+                {tab === 'following' ? t('chtChNoSiguesNinguno') : t('chtChSinCanalesDisponibles')}
               </Text>
             </View>
           }

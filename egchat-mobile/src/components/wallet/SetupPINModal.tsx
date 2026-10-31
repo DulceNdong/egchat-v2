@@ -5,6 +5,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { walletPIN } from '../../services/walletPin';
 import { authAPI } from '../../api';
+import { t as tr } from '../../translations';
 
 const PIN_LEN = 6;
 const KEYS = ['1', '2', '3', '4', '5', '6', '7', '8', '9', '', '0', '⌫'];
@@ -86,7 +87,7 @@ export function SetupPINModal({ visible, onDone, onCancel }: Props) {
             reset();
             onDone();
           } else {
-            setError('Los PINs no coinciden. Inténtalo de nuevo.');
+            setError(tr('xtLosPINsNoCoincidenIntentaloDeNuevo'));
             setPin1('');
             setPin2('');
             setStep('create');
@@ -108,8 +109,8 @@ export function SetupPINModal({ visible, onDone, onCancel }: Props) {
               </Text>
               <Text style={s.subtitle}>
                 {step === 'create'
-                  ? 'Elige un PIN de 6 dígitos para proteger tus pagos'
-                  : 'Introduce el PIN de nuevo para confirmar'}
+                  ? tr('xtEligeUnPINDe6DigitosParaProtegerTusPagos')
+                  : tr('xtIntroduceElPINDeNuevoParaConfirmar')}
               </Text>
             </View>
             <TouchableOpacity style={s.closeBtn} onPress={handleClose}>

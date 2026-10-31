@@ -12,6 +12,9 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { useTranslation } from '../src/context/LanguageContext';
+
+const LOCALES: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-GB', pt: 'pt-PT' };
 
 interface Member {
   id: string;
@@ -41,6 +44,7 @@ interface DjangueInfo {
 }
 
 export default function DjangueSecretaryScreen() {
+  const { language, t } = useTranslation();
   const insets = useSafeAreaInsets();
   const { id } = useLocalSearchParams<{ id: string }>();
   const [data, setData] = useState<DjangueInfo | null>(null);
@@ -64,7 +68,7 @@ export default function DjangueSecretaryScreen() {
       const response = await apiFetch(`/api/djangue/${id}/secretary-view`);
       setData(response);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo cargar la información');
+      Alert.alert(t('error'), e.message || t('djhLoadInfoError'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -75,12 +79,12 @@ export default function DjangueSecretaryScreen() {
     if (!data || data.pending_count === 0) return;
 
     Alert.alert(
-      'Enviar recordatorio',
-      `Se enviará una notificación a ${data.pending_count} integrante${data.pending_count > 1 ? 's' : ''} que no han cotizado.`,
+      t('djhSendReminder'),
+      `${t('djhReminderBodyPrefix')} ${data.pending_count} ${data.pending_count > 1 ? t('djhMembersWordPlural') : t('djhMemberWord')} ${t('djhReminderBodySuffix')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Enviar',
+          text: t('liaChipSend'),
           onPress: async () => {
             setSendingNotif(true);
             try {
@@ -88,9 +92,9 @@ export default function DjangueSecretaryScreen() {
                 method: 'POST',
                 body: JSON.stringify({ type: 'secretary_manual' }),
               });
-              Alert.alert('✅ Enviado', 'Los recordatorios se enviaron correctamente');
+              Alert.alert(t('djhSentTitle'), t('djhRemindersSentBody'));
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'No se pudieron enviar las notificaciones');
+              Alert.alert(t('error'), e.message || t('djhSendNotifsError'));
             } finally {
               setSendingNotif(false);
             }
@@ -102,21 +106,21 @@ export default function DjangueSecretaryScreen() {
 
   const sendReminderToOne = async (memberId: string, userName: string) => {
     Alert.alert(
-      'Enviar recordatorio',
-      `¿Enviar notificación a ${userName}?`,
+      t('djhSendReminder'),
+      `${t('djhSendToPrefix')} ${userName}${t('djhSendToSuffix')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Enviar',
+          text: t('liaChipSend'),
           onPress: async () => {
             try {
               await apiFetch(`/api/djangue/${id}/send-reminder`, {
                 method: 'POST',
                 body: JSON.stringify({ type: 'secretary_manual', member_id: memberId }),
               });
-              Alert.alert('✅ Enviado', `Recordatorio enviado a ${userName}`);
+              Alert.alert(t('djhSentTitle'), `${t('djhReminderSentToPrefix')} ${userName}`);
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'No se pudo enviar la notificación');
+              Alert.alert(t('error'), e.message || t('djhSendNotifError'));
             }
           },
         },
@@ -126,12 +130,12 @@ export default function DjangueSecretaryScreen() {
 
   const markAsJustified = async (memberId: string, userName: string) => {
     Alert.prompt(
-      'Justificar ausencia',
-      `Ingresa el motivo por el cual ${userName} no puede cotizar a tiempo:`,
+      t('djhJustifyAbsence'),
+      `${t('djhJustifyPromptPrefix')} ${userName} ${t('djhJustifyPromptSuffix')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Guardar',
+          text: t('save'),
           onPress: async (note: string | undefined) => {
             if (!note?.trim()) return;
             try {
@@ -139,10 +143,10 @@ export default function DjangueSecretaryScreen() {
                 method: 'POST',
                 body: JSON.stringify({ member_id: memberId, note: note.trim() }),
               });
-              Alert.alert('✅ Guardado', `${userName} ha sido justificado por este periodo`);
+              Alert.alert(t('djhSavedTitle'), `${userName} ${t('djhJustifiedBodySuffix')}`);
               load();
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'No se pudo guardar la justificación');
+              Alert.alert(t('error'), e.message || t('djhSaveJustifyError'));
             }
           },
         },
@@ -153,7 +157,7 @@ export default function DjangueSecretaryScreen() {
 
   const addMember = async () => {
     if (!phoneToAdd.trim()) {
-      Alert.alert('Error', 'Ingresa un número de teléfono');
+      Alert.alert(t('error'), t('djhPhoneRequired'));
       return;
     }
 
@@ -163,12 +167,12 @@ export default function DjangueSecretaryScreen() {
         method: 'POST',
         body: JSON.stringify({ phone: phoneToAdd.trim() }),
       });
-      Alert.alert('✅ Agregado', 'El integrante se agregó correctamente');
+      Alert.alert(t('djhAddedTitle'), t('djhMemberAddedBody'));
       setPhoneToAdd('');
       setShowAddMember(false);
       load();
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo agregar el integrante');
+      Alert.alert(t('error'), e.message || t('djhAddMemberError'));
     } finally {
       setAddingMember(false);
     }
@@ -176,12 +180,12 @@ export default function DjangueSecretaryScreen() {
 
   const removeMember = async (memberId: string, userName: string) => {
     Alert.alert(
-      'Eliminar integrante',
-      `¿Estás seguro de eliminar a ${userName} del djangue? Esta acción no se puede deshacer.`,
+      t('djhRemoveMemberTitle'),
+      `${t('djhRemoveConfirmPrefix')} ${userName} ${t('djhRemoveConfirmSuffix')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Eliminar',
+          text: t('delete'),
           style: 'destructive',
           onPress: async () => {
             try {
@@ -189,10 +193,10 @@ export default function DjangueSecretaryScreen() {
                 method: 'DELETE',
                 body: JSON.stringify({ member_id: memberId }),
               });
-              Alert.alert('✅ Eliminado', `${userName} fue removido del djangue`);
+              Alert.alert(t('djhDeletedTitle'), `${userName} ${t('djhRemovedBodySuffix')}`);
               load();
             } catch (e: any) {
-              Alert.alert('Error', e.message || 'No se pudo eliminar el integrante');
+              Alert.alert(t('error'), e.message || t('djhRemoveMemberError'));
             }
           },
         },
@@ -205,7 +209,7 @@ export default function DjangueSecretaryScreen() {
       <SafeAreaView style={s.root} edges={['left', 'right']}>
         <View style={s.center}>
           <ActivityIndicator size="large" color="#6366f1" />
-          <Text style={s.loadingText}>Cargando panel del secretario...</Text>
+          <Text style={s.loadingText}>{t('djhLoadingPanel')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -233,19 +237,19 @@ export default function DjangueSecretaryScreen() {
         <View style={s.memberStatus}>
           {m.is_current_beneficiary ? (
             <View style={s.beneficiaryBadge}>
-              <Text style={s.beneficiaryText}>Recibe</Text>
+              <Text style={s.beneficiaryText}>{t('djhReceivesBadge')}</Text>
             </View>
           ) : m.paid_current_turn ? (
             <View style={s.paidBadge}>
-              <Text style={s.paidText}>✓ Pagó</Text>
+              <Text style={s.paidText}>{t('djhPaidBadge')}</Text>
             </View>
           ) : m.has_justified ? (
             <View style={s.justifiedBadge}>
-              <Text style={s.justifiedText}>Justificado</Text>
+              <Text style={s.justifiedText}>{t('djhJustifiedBadge')}</Text>
             </View>
           ) : (
             <View style={s.pendingBadge}>
-              <Text style={s.pendingText}>Pendiente</Text>
+              <Text style={s.pendingText}>{t('djhPendingBadge')}</Text>
             </View>
           )}
         </View>
@@ -264,7 +268,7 @@ export default function DjangueSecretaryScreen() {
                   stroke="#6366f1" strokeWidth={2} strokeLinecap="round">
                   <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
                 </Svg>
-                <Text style={s.actionBtnText}>Recordar</Text>
+                <Text style={s.actionBtnText}>{t('djhRemind')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[s.actionBtn, s.actionBtnSecondary]}
@@ -275,7 +279,7 @@ export default function DjangueSecretaryScreen() {
                   <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
                   <Path d="M14 2v6h6M16 13H8M16 17H8M10 9H8" />
                 </Svg>
-                <Text style={s.actionBtnText}>Justificar</Text>
+                <Text style={s.actionBtnText}>{t('djhJustify')}</Text>
               </TouchableOpacity>
             </>
           )}
@@ -287,7 +291,7 @@ export default function DjangueSecretaryScreen() {
               stroke="#ef4444" strokeWidth={2} strokeLinecap="round">
               <Path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
             </Svg>
-            <Text style={[s.actionBtnText, { color: '#ef4444' }]}>Eliminar</Text>
+            <Text style={[s.actionBtnText, { color: '#ef4444' }]}>{t('delete')}</Text>
           </TouchableOpacity>
         </View>
       )}
@@ -306,7 +310,7 @@ export default function DjangueSecretaryScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={s.headerTitle}>Panel del Secretario</Text>
+          <Text style={s.headerTitle}>{t('djhSecretaryPanel')}</Text>
           <Text style={s.headerSub}>{data.name}</Text>
         </View>
         <TouchableOpacity
@@ -316,7 +320,7 @@ export default function DjangueSecretaryScreen() {
             if (data.chat_group_id) {
               router.push(`/chat/${data.chat_group_id}` as any);
             } else {
-              Alert.alert('Chat no disponible', 'Este djangue aún no tiene grupo de chat.');
+              Alert.alert(t('djhChatUnavailable'), t('djhNoChatGroupBody'));
             }
           }}
         >
@@ -331,17 +335,17 @@ export default function DjangueSecretaryScreen() {
       <View style={s.statsRow}>
         <View style={s.statItem}>
           <Text style={s.statVal}>{data.paid_count}</Text>
-          <Text style={s.statLbl}>Pagaron</Text>
+          <Text style={s.statLbl}>{t('djhStatPaid')}</Text>
         </View>
         <View style={s.statDivider} />
         <View style={s.statItem}>
           <Text style={s.statVal}>{pendingMembers.length}</Text>
-          <Text style={s.statLbl}>Pendientes</Text>
+          <Text style={s.statLbl}>{t('djhPendingWord')}</Text>
         </View>
         <View style={s.statDivider} />
         <View style={s.statItem}>
           <Text style={s.statVal}>{justifiedMembers.length}</Text>
-          <Text style={s.statLbl}>Justificados</Text>
+          <Text style={s.statLbl}>{t('djhStatJustified')}</Text>
         </View>
       </View>
 
@@ -352,7 +356,7 @@ export default function DjangueSecretaryScreen() {
           onPress={() => setActiveTab('pending')}
         >
           <Text style={[s.tabText, activeTab === 'pending' && s.tabTextActive]}>
-            Pendientes ({pendingMembers.length})
+            {t('djhPendingWord')} ({pendingMembers.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -360,7 +364,7 @@ export default function DjangueSecretaryScreen() {
           onPress={() => setActiveTab('members')}
         >
           <Text style={[s.tabText, activeTab === 'members' && s.tabTextActive]}>
-            Todos ({data.members.length})
+            {t('everyone')} ({data.members.length})
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
@@ -368,7 +372,7 @@ export default function DjangueSecretaryScreen() {
           onPress={() => setActiveTab('stats')}
         >
           <Text style={[s.tabText, activeTab === 'stats' && s.tabTextActive]}>
-            📊 Stats
+            {t('djhStatsTab')}
           </Text>
         </TouchableOpacity>
       </View>
@@ -391,7 +395,7 @@ export default function DjangueSecretaryScreen() {
                     <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9M13.73 21a2 2 0 0 1-3.46 0" />
                   </Svg>
                   <Text style={s.sendAllBtnText}>
-                    Enviar recordatorio a {pendingMembers.length} pendiente{pendingMembers.length > 1 ? 's' : ''}
+                    {t('djhSendAllPrefix')} {pendingMembers.length} {pendingMembers.length > 1 ? t('djhPendingShortPlural') : t('djhPendingShort')}
                   </Text>
                 </>
               )}
@@ -410,7 +414,7 @@ export default function DjangueSecretaryScreen() {
             stroke="#6366f1" strokeWidth={2} strokeLinecap="round">
             <Path d="M16 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2M12.5 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0zM20 8v6M23 11h-6" />
           </Svg>
-          <Text style={s.addMemberBtnText}>Agregar integrante</Text>
+          <Text style={s.addMemberBtnText}>{t('djhAddMember')}</Text>
         </TouchableOpacity>
         {showAddMember && (
           <View style={s.addMemberForm}>
@@ -418,7 +422,7 @@ export default function DjangueSecretaryScreen() {
               style={s.phoneInput}
               value={phoneToAdd}
               onChangeText={setPhoneToAdd}
-              placeholder="Número de teléfono"
+              placeholder={t('djhPhonePlaceholder')}
               keyboardType="phone-pad"
               placeholderTextColor="rgba(16,32,43,0.3)"
             />
@@ -430,7 +434,7 @@ export default function DjangueSecretaryScreen() {
               {addingMember ? (
                 <ActivityIndicator color="#fff" size="small" />
               ) : (
-                <Text style={s.addBtnText}>Agregar</Text>
+                <Text style={s.addBtnText}>{t('djhAdd')}</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -442,32 +446,32 @@ export default function DjangueSecretaryScreen() {
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, gap: 12 }}>
           {/* Barra de progreso de cobro */}
           <View style={s.dashCard}>
-            <Text style={s.dashTitle}>💰 Cobro del turno actual</Text>
+            <Text style={s.dashTitle}>{t('djhCurrentTurnCollection')}</Text>
             <View style={s.barTrack}>
               <View style={[s.barFill, { width: `${Math.round((data.paid_count / Math.max(1, data.members.length)) * 100)}%` as any }]} />
             </View>
-            <Text style={s.barLabel}>{data.paid_count} de {data.members.length} han pagado ({Math.round((data.paid_count / Math.max(1, data.members.length)) * 100)}%)</Text>
+            <Text style={s.barLabel}>{data.paid_count} {t('djhOfWord')} {data.members.length} {t('djhHavePaid')} ({Math.round((data.paid_count / Math.max(1, data.members.length)) * 100)}%)</Text>
             {/* C2 — Payout manual */}
             <TouchableOpacity
               style={s.payoutBtn}
               activeOpacity={0.8}
               onPress={() => {
                 const beneficiary = data.members.find(m => m.is_current_beneficiary);
-                const name = beneficiary?.user.full_name || 'el beneficiario';
+                const name = beneficiary?.user.full_name || t('djhDefaultBeneficiary');
                 Alert.alert(
-                  '💸 Ejecutar pago',
-                  `¿Transferir el saldo del monedero al beneficiario del turno #${data.current_turn} (${name})?`,
+                  t('djhExecutePayout'),
+                  `${t('djhPayoutConfirmPrefix')} #${data.current_turn} (${name})?`,
                   [
-                    { text: 'Cancelar', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: 'Confirmar pago',
+                      text: t('djhConfirmPayout'),
                       onPress: async () => {
                         try {
                           await apiFetch(`/api/djangue/${id}/manual-payout`, { method: 'POST' });
-                          Alert.alert('✅ Pago ejecutado', `El saldo fue transferido a ${name}`);
+                          Alert.alert(t('djhPayoutDoneTitle'), `${t('djhPayoutTransferredPrefix')} ${name}`);
                           load(true);
                         } catch (e: any) {
-                          Alert.alert('Error', e.message || 'No se pudo ejecutar el pago');
+                          Alert.alert(t('error'), e.message || t('djhPayoutError'));
                         }
                       },
                     },
@@ -476,7 +480,7 @@ export default function DjangueSecretaryScreen() {
               }}
             >
               <LinearGradient colors={['#10b981', '#059669']} style={s.payoutBtnGrad}>
-                <Text style={s.payoutBtnText}>💸 Pagar al beneficiario</Text>
+                <Text style={s.payoutBtnText}>{t('djhPayBeneficiary')}</Text>
               </LinearGradient>
             </TouchableOpacity>
 
@@ -486,19 +490,19 @@ export default function DjangueSecretaryScreen() {
               activeOpacity={0.8}
               onPress={() => {
                 Alert.alert(
-                  '⏭ Avanzar turno',
-                  `¿Cerrar el turno #${data.current_turn} y pasar al siguiente beneficiario?`,
+                  t('djhAdvanceTurn'),
+                  `${t('djhAdvanceConfirmPrefix')} #${data.current_turn} ${t('djhAdvanceConfirmSuffix')}`,
                   [
-                    { text: 'Cancelar', style: 'cancel' },
+                    { text: t('cancel'), style: 'cancel' },
                     {
-                      text: 'Avanzar',
+                      text: t('djhAdvance'),
                       onPress: async () => {
                         try {
                           const res = await apiFetch(`/api/djangue/${id}/advance-turn`, { method: 'POST' });
-                          Alert.alert('✅ Turno avanzado', `Ahora estamos en el turno #${res.new_turn}`);
+                          Alert.alert(t('djhTurnAdvancedTitle'), `${t('djhNowTurnPrefix')} #${res.new_turn}`);
                           load(true);
                         } catch (e: any) {
-                          Alert.alert('Error', e.message || 'No se pudo avanzar el turno');
+                          Alert.alert(t('error'), e.message || t('djhAdvanceTurnError'));
                         }
                       },
                     },
@@ -507,19 +511,19 @@ export default function DjangueSecretaryScreen() {
               }}
             >
               <LinearGradient colors={['#6366f1', '#4f46e5']} style={s.payoutBtnGrad}>
-                <Text style={s.payoutBtnText}>⏭ Avanzar al siguiente turno</Text>
+                <Text style={s.payoutBtnText}>{t('djhNextTurnBtn')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           {/* Resumen de miembros */}
           <View style={s.dashCard}>
-            <Text style={s.dashTitle}>👥 Estado de miembros</Text>
+            <Text style={s.dashTitle}>{t('djhMembersStatus')}</Text>
             {[
-              { label: '✅ Pagados', value: data.paid_count, color: '#10b981' },
-              { label: '⏳ Pendientes', value: data.pending_count, color: '#f59e0b' },
-              { label: '📋 Justificados', value: data.members.filter(m => m.has_justified).length, color: '#6366f1' },
-              { label: '👑 Beneficiario actual', value: data.members.filter(m => m.is_current_beneficiary).length, color: '#00b4e6' },
+              { label: t('djhRowPaid'), value: data.paid_count, color: '#10b981' },
+              { label: t('djhRowPending'), value: data.pending_count, color: '#f59e0b' },
+              { label: t('djhRowJustified'), value: data.members.filter(m => m.has_justified).length, color: '#6366f1' },
+              { label: t('djhRowBeneficiary'), value: data.members.filter(m => m.is_current_beneficiary).length, color: '#00b4e6' },
             ].map(row => (
               <View key={row.label} style={s.dashRow}>
                 <Text style={s.dashRowLabel}>{row.label}</Text>
@@ -532,35 +536,35 @@ export default function DjangueSecretaryScreen() {
 
           {/* Info del turno */}
           <View style={s.dashCard}>
-            <Text style={s.dashTitle}>🔄 Turno actual</Text>
+            <Text style={s.dashTitle}>{t('djhCurrentTurnInfo')}</Text>
             <View style={s.dashRow}>
-              <Text style={s.dashRowLabel}>Turno</Text>
+              <Text style={s.dashRowLabel}>{t('djhTurnLabel')}</Text>
               <Text style={s.dashRowValue}>#{data.current_turn}</Text>
             </View>
             <View style={s.dashRow}>
-              <Text style={s.dashRowLabel}>Cuota</Text>
+              <Text style={s.dashRowLabel}>{t('djhQuotaLabel')}</Text>
               <Text style={s.dashRowValue}>{data.quota_amount.toLocaleString()} {data.currency}</Text>
             </View>
             <View style={s.dashRow}>
-              <Text style={s.dashRowLabel}>Penalización mora</Text>
+              <Text style={s.dashRowLabel}>{t('djhPenaltyLabel')}</Text>
               <Text style={s.dashRowValue}>{data.penalty_percent}%</Text>
             </View>
             <View style={s.dashRow}>
-              <Text style={s.dashRowLabel}>Fin del período</Text>
-              <Text style={s.dashRowValue}>{new Date(data.period_end_date).toLocaleDateString('es-ES', { day: 'numeric', month: 'long' })}</Text>
+              <Text style={s.dashRowLabel}>{t('djhPeriodEndLabel')}</Text>
+              <Text style={s.dashRowValue}>{new Date(data.period_end_date).toLocaleDateString(LOCALES[language] || 'es-ES', { day: 'numeric', month: 'long' })}</Text>
             </View>
           </View>
 
           {/* Ranking de pago */}
           <View style={s.dashCard}>
-            <Text style={s.dashTitle}>🏆 Orden de turno</Text>
+            <Text style={s.dashTitle}>{t('djhTurnOrderTitle')}</Text>
             {data.members.slice().sort((a, b) => a.turn_order - b.turn_order).map((m, i) => (
               <View key={m.id} style={[s.dashRow, { paddingVertical: 6 }]}>
                 <Text style={[s.dashRowLabel, { opacity: 0.6 }]}>#{i + 1}</Text>
                 <Text style={[s.dashRowLabel, { flex: 1, marginLeft: 8 }]} numberOfLines={1}>{m.user.full_name}</Text>
                 <View style={[s.dashChip, { backgroundColor: m.paid_current_turn ? '#10b98122' : '#f59e0b22' }]}>
                   <Text style={{ fontSize: 11, fontWeight: '700', color: m.paid_current_turn ? '#10b981' : '#f59e0b' }}>
-                    {m.paid_current_turn ? '✅ Pagó' : m.has_justified ? '📋 Just.' : '⏳'}
+                    {m.paid_current_turn ? t('djhChipPaid') : m.has_justified ? t('djhChipJustified') : '⏳'}
                   </Text>
                 </View>
               </View>
@@ -587,8 +591,8 @@ export default function DjangueSecretaryScreen() {
           <View style={s.empty}>
             <Text style={s.emptyText}>
               {activeTab === 'pending'
-                ? '✅ Todos han cotizado o están justificados'
-                : 'No hay integrantes todavía'}
+                ? t('djhAllSetEmpty')
+                : t('djhNoMembersEmpty')}
             </Text>
           </View>
         }

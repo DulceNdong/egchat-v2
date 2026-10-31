@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { BEAUTY } from '../../data/serviciosDiarios';
 import { FinancialModuleShell } from './FinancialModuleUI';
+import { t as tr } from '../../translations';
 
 interface Props { visible: boolean; onClose: () => void; }
 
@@ -9,7 +10,7 @@ export const BellezaModal: React.FC<Props> = ({ visible, onClose }) => (
   <FinancialModuleShell
     visible={visible}
     title="Belleza"
-    subtitle="Salones y centros de belleza"
+    subtitle={tr('xtSalonesYCentrosDeBelleza')}
     onBack={onClose}
     onClose={onClose}
     centerTitle
@@ -20,8 +21,8 @@ export const BellezaModal: React.FC<Props> = ({ visible, onClose }) => (
         key={b.id}
         style={st.card}
         onPress={() => Alert.alert(b.nombre, b.desc, [
-          { text: 'Cerrar', style: 'cancel' },
-          { text: '📞 Llamar', onPress: () => Linking.openURL(`tel:${b.tel}`) },
+          { text: tr('close'), style: 'cancel' },
+          { text: tr('svcCallPhone'), onPress: () => Linking.openURL(`tel:${b.tel}`) },
         ])}
         activeOpacity={0.85}
       >

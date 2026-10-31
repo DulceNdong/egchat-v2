@@ -45,6 +45,7 @@ import {
 import { addNotification, markNotificationRead, fetchWeatherIfStale, initializeLocation } from '../src/store/appStore';
 import { IncomingTransferModal, type IncomingTransfer } from '../src/components/wallet/IncomingTransferModal';
 import { emitTransferResolved } from '../src/utils/transferEvents';
+import { t as tr } from '../src/translations';
 interface EBState { hasError: boolean; error?: string; }
 class RootErrorBoundary extends React.Component<{ children: React.ReactNode }, EBState> {
   constructor(props: any) { super(props); this.state = { hasError: false }; }
@@ -153,7 +154,7 @@ function IncomingCallOverlay({
       <View style={ic.backdrop}>
         <View style={ic.card}>
           {/* Tipo de llamada */}
-          <Text style={ic.callType}>{isVideo ? 'Videollamada entrante' : 'Llamada de voz'}</Text>
+          <Text style={ic.callType}>{isVideo ? 'Videollamada entrante' : tr('chtVoiceCall')}</Text>
 
           {/* Avatar + nombre */}
           <EGAvatar src={callData.callerAvatar} name={callData.callerName} size={72} />
@@ -414,11 +415,11 @@ export default function RootLayout() {
       const msg = event.message;
       addNotification({
         type: 'message',
-        title: msg.sender?.full_name || msg.senderName || 'Nuevo mensaje',
+        title: msg.sender?.full_name || msg.senderName || tr('xtNuevoMensaje'),
         body: msg.type === 'image' ? '📷 Foto' :
               msg.type === 'audio' ? '🎤 Audio' :
               msg.type === 'video' ? '🎬 Video' :
-              msg.text || 'Nuevo mensaje',
+              msg.text || tr('xtNuevoMensaje'),
         chatId: event.chatId,
       });
     }
@@ -426,7 +427,7 @@ export default function RootLayout() {
     // Transferencia recibida (legacy) → notificación en campanita
     if (event.type === 'transfer_received') {
       const amount = event.amount ?? 0;
-      const sender = event.senderName || 'Usuario';
+      const sender = event.senderName || tr('setUser');
       addNotification({
         type: 'message',
         title: '💸 Transferencia recibida',
@@ -440,7 +441,7 @@ export default function RootLayout() {
       setIncomingTransfer({
         transferId: event.transferId!,
         amount:     event.amount ?? 0,
-        senderName: event.senderName || 'Usuario',
+        senderName: event.senderName || tr('setUser'),
         concept:    event.concept ?? null,
         expiresAt:  event.expiresAt,
       });
@@ -500,7 +501,7 @@ export default function RootLayout() {
     }
     if (event.type === 'session_revoked') {
       handleSessionRevoked(event, () =>
-        Alert.alert('Sesión cerrada', 'Tu sesión fue cerrada desde otro dispositivo.',
+        Alert.alert(tr('setSessionClosed'), 'Tu sesión fue cerrada desde otro dispositivo.',
           [{ text: 'OK', onPress: () => router.replace('/welcome') }]),
       );
     }
@@ -544,7 +545,7 @@ export default function RootLayout() {
         }
         handleIncomingCall({
           callId,
-          callerName:   call.callerName || call.caller_name || 'Usuario',
+          callerName:   call.callerName || call.caller_name || tr('setUser'),
           callerAvatar: call.callerAvatar || call.caller_avatar || '',
           callType:     call.type || call.callType || 'audio',
           offer:        parsedOffer,
@@ -1041,7 +1042,7 @@ export default function RootLayout() {
                     if (data?.notificationType === 'incoming_call' && data?.callId) {
                       handleIncomingCall({
                         callId:       data.callId,
-                        callerName:   data.callerName || 'Usuario',
+                        callerName:   data.callerName || tr('setUser'),
                         callerAvatar: data.callerAvatar || '',
                         callType:     data.callType || 'audio',
                         offer:        data.offer,

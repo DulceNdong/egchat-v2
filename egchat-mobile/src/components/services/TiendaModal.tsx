@@ -2,10 +2,29 @@ import React, { useState, useEffect } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking, Alert } from 'react-native';
 import { ONLINE_STORES, STORE_CATEGORIES } from '../../data/serviciosDiarios';
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Props { visible: boolean; onClose: () => void; }
 
+// Etiquetas de categorías de tiendas (valores de datos en español -> clave de traducción)
+const STORE_CATEGORY_KEYS: Record<string, string> = {
+  Todos: 'svcAll',
+  Moda: 'svcCatFashion',
+  'Electrónica': 'svcCatElectronics',
+  Hogar: 'svcCatHome',
+  Farmacia: 'svcCatPharmacy',
+  'Librería': 'svcCatBookstore',
+};
+
+const STORE_CATEGORY_EMOJI: Record<string, string> = {
+  'Electrónica': '📱',
+  Moda: '👗',
+  Hogar: '🏠',
+  Farmacia: '💊',
+};
+
 export const TiendaModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [city, setCity] = useState('Malabo');
   const [category, setCategory] = useState<string>('Todos');
 
@@ -21,11 +40,15 @@ export const TiendaModal: React.FC<Props> = ({ visible, onClose }) => {
   const fixedTop = (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
       <FilterChips
-        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c }))}
+        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c === 'Todos' ? t('svcAll') : c }))}
         value={city} onChange={setCity} activeColor="#2E9E6B"
       />
       <FilterChips
-        options={STORE_CATEGORIES.map(c => ({ id: c, label: c === 'Electrónica' ? '📱 Electrónica' : c === 'Moda' ? '👗 Moda' : c === 'Hogar' ? '🏠 Hogar' : c === 'Farmacia' ? '💊 Farmacia' : c }))}
+        options={STORE_CATEGORIES.map(c => {
+          const key = STORE_CATEGORY_KEYS[c] || '';
+          const label = key ? `${STORE_CATEGORY_EMOJI[c] ? STORE_CATEGORY_EMOJI[c] + ' ' : ''}${t(key)}` : c;
+          return { id: c, label };
+        })}
         value={category} onChange={setCategory} activeColor="#065F46"
       />
     </View>
@@ -34,8 +57,8 @@ export const TiendaModal: React.FC<Props> = ({ visible, onClose }) => {
   return (
     <FinancialModuleShell
       visible={visible}
-      title="Tienda Online"
-      subtitle={`${ONLINE_STORES.length} tiendas · Guinea Ecuatorial`}
+      title={t('svcOnlineStore')}
+      subtitle={`${ONLINE_STORES.length} ${t('svcStoresWord')} · ${t('svcEqGuinea')}`}
       onBack={onClose}
       onClose={onClose}
       centerTitle
@@ -48,9 +71,9 @@ export const TiendaModal: React.FC<Props> = ({ visible, onClose }) => {
           <TouchableOpacity
             key={s.id}
             style={st.card}
-            onPress={() => Alert.alert(s.nombre, `${s.categoria} · ${s.barrio}\n\nMarcas: ${s.marcas.join(', ')}`, [
-              { text: 'Cerrar', style: 'cancel' },
-              { text: 'Ver catálogo', onPress: () => Alert.alert('Catálogo', `Explorando productos de ${s.nombre}...`) },
+            onPress={() => Alert.alert(s.nombre, `${s.categoria} · ${s.barrio}\n\n${t('svcBrandsLabel')}: ${s.marcas.join(', ')}`, [
+              { text: t('close'), style: 'cancel' },
+              { text: t('svcViewCatalog'), onPress: () => Alert.alert(t('svcCatalog'), `${t('svcExploringProducts')} ${s.nombre}...`) },
             ])}
             activeOpacity={0.85}
           >

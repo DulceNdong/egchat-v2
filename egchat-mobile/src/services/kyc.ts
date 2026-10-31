@@ -6,6 +6,7 @@
 // ══════════════════════════════════════════════════════════════════
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { kycAPI, KycStatus, KycDraftPayload, KycSubmitPayload, KycStatusResponse } from '../api';
+import { t as tr } from '../translations';
 
 const DRAFT_KEY   = 'egchat_kyc_draft_v1';
 const STATUS_KEY  = 'egchat_kyc_status_v1';
@@ -152,11 +153,11 @@ export async function submitKyc(
     let selfieUrl = form.selfie_url;
 
     if (!frontUrl && form.doc_front_uri) {
-      onProgress?.('Subiendo documento (frontal)…');
+      onProgress?.(tr('xtSubiendoDocumentoFrontal'));
       frontUrl = await uploadKycDocument(form.doc_front_uri, 'doc_front');
     }
     if (!backUrl && form.doc_back_uri) {
-      onProgress?.('Subiendo documento (reverso)…');
+      onProgress?.(tr('xtSubiendoDocumentoReverso'));
       backUrl = await uploadKycDocument(form.doc_back_uri, 'doc_back');
     }
     if (!selfieUrl && form.selfie_uri) {
@@ -190,41 +191,41 @@ export async function submitKyc(
 
     return { success: true, message: res.message, kyc_status: res.kyc_status };
   } catch (e: any) {
-    return { success: false, message: e.message || 'Error al enviar la solicitud KYC' };
+    return { success: false, message: e.message || tr('xtErrorAlEnviarLaSolicitudKYC') };
   }
 }
 
 // ── Validadores de pasos ──────────────────────────────────────────
 export function validateStep1(form: KycFormData): string | null {
-  if (!form.full_name.trim())  return 'Escribe tu nombre completo';
-  if (!form.birth_date)        return 'Indica tu fecha de nacimiento';
+  if (!form.full_name.trim())  return tr('authNameRequired');
+  if (!form.birth_date)        return tr('xtIndicaTuFechaDeNacimiento');
   // Debe ser mayor de 18 años
   const age = (Date.now() - new Date(form.birth_date).getTime()) / (365.25 * 24 * 3600 * 1000);
-  if (age < 18)                return 'Debes ser mayor de 18 años para activar el monedero';
-  if (!form.nationality)       return 'Selecciona tu nacionalidad';
+  if (age < 18)                return tr('xtDebesSerMayorDe18AnosParaActivarElMonedero');
+  if (!form.nationality)       return tr('xtSeleccionaTuNacionalidad');
   return null;
 }
 
 export function validateStep2(form: KycFormData): string | null {
-  if (!form.doc_number.trim()) return 'Introduce el número de documento';
+  if (!form.doc_number.trim()) return tr('xtIntroduceElNumeroDeDocumento');
   if (!form.doc_front_uri && !form.doc_front_url)
-    return 'Adjunta una foto del frente de tu documento';
+    return tr('xtAdjuntaUnaFotoDelFrenteDeTuDocumento');
   return null;
 }
 
 export function validateStep3(form: KycFormData): string | null {
   if (!form.selfie_uri && !form.selfie_url)
-    return 'Tómate una selfie de verificación';
+    return tr('xtTomateUnaSelfieDeVerificacion');
   return null;
 }
 
 // ── Etiquetas legibles ────────────────────────────────────────────
 export const KYC_STATUS_LABELS: Record<KycStatus, string> = {
-  none:      'Sin verificar',
-  pending:   'En revisión',
-  approved:  'Verificado',
-  rejected:  'Rechazado',
-  suspended: 'Suspendido',
+  get none()      { return tr('xtSinVerificar'); },
+  get pending()   { return tr('xtEnRevision'); },
+  get approved()  { return tr('xtVerificado'); },
+  get rejected()  { return tr('xtRechazado'); },
+  get suspended() { return tr('xtSuspendido'); },
 };
 
 export const KYC_STATUS_COLORS: Record<KycStatus, string> = {
@@ -236,20 +237,20 @@ export const KYC_STATUS_COLORS: Record<KycStatus, string> = {
 };
 
 export const DOC_TYPE_LABELS = {
-  dni:           'DNI / Cédula Nacional',
-  passport:      'Pasaporte',
-  resident_card: 'Tarjeta de Residencia',
+  get dni() { return tr('xtDNICedulaNacional'); },
+  get passport() { return tr('xtPasaporte'); },
+  get resident_card() { return tr('xtTarjetaDeResidencia'); },
 };
 
 export const NATIONALITY_OPTIONS = [
-  { code: 'GQ', label: '🇬🇶 Guinea Ecuatorial' },
-  { code: 'CM', label: '🇨🇲 Camerún' },
-  { code: 'GA', label: '🇬🇦 Gabón' },
-  { code: 'CG', label: '🇨🇬 Congo' },
-  { code: 'CF', label: '🇨🇫 Rep. Centroafricana' },
-  { code: 'TD', label: '🇹🇩 Chad' },
-  { code: 'NG', label: '🇳🇬 Nigeria' },
-  { code: 'ES', label: '🇪🇸 España' },
-  { code: 'FR', label: '🇫🇷 Francia' },
-  { code: 'OTHER', label: '🌍 Otra' },
+  { code: 'GQ', get label() { return tr('xtGuineaEcuatorial'); } },
+  { code: 'CM', get label() { return tr('xtCamerun'); } },
+  { code: 'GA', get label() { return tr('xtGabon'); } },
+  { code: 'CG', get label() { return tr('xtCongo'); } },
+  { code: 'CF', get label() { return tr('xtRepCentroafricana'); } },
+  { code: 'TD', get label() { return tr('xtChad'); } },
+  { code: 'NG', get label() { return tr('xtNigeria'); } },
+  { code: 'ES', get label() { return tr('xtEspana'); } },
+  { code: 'FR', get label() { return tr('xtFrancia'); } },
+  { code: 'OTHER', get label() { return tr('xtOtra'); } },
 ];

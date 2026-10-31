@@ -11,16 +11,19 @@ import { uploadDocumentImage, getActiveKycApplication, createKycApplication } fr
 import { getNetworkStatus } from '../../src/store/offlineStore';
 import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
 import type { DocumentType } from '../../src/store/kycStore';
+import { useTranslation } from '../../src/context/LanguageContext';
 
-const DOC_TYPES: { value: DocumentType; label: string; hasBack: boolean }[] = [
-  { value: 'DNI',              label: 'DNI',                    hasBack: true  },
-  { value: 'PASSPORT',         label: 'Pasaporte',              hasBack: false },
-  { value: 'RESIDENCE_PERMIT', label: 'Permiso de residencia',  hasBack: true  },
+// `value` es el código técnico enviado al backend; `labelKey` es la etiqueta visible.
+const DOC_TYPES: { value: DocumentType; labelKey: string; hasBack: boolean }[] = [
+  { value: 'DNI',              labelKey: 'kyDniLabel',            hasBack: true  },
+  { value: 'PASSPORT',         labelKey: 'kyPassport',            hasBack: false },
+  { value: 'RESIDENCE_PERMIT', labelKey: 'kyResidencePermit',     hasBack: true  },
 ];
 
 export default function Step2() {
   const store = useKycStore();
   const d = store.documentData;
+  const { t } = useTranslation();
 
   const [uploading, setUploading]     = useState(false);
   const [frontDone, setFrontDone]     = useState(!!d.frontImageUri);
@@ -47,7 +50,7 @@ export default function Step2() {
     })();
   }, []);
 
-  const selectedDoc = DOC_TYPES.find(t => t.value === d.documentType);
+  const selectedDoc = DOC_TYPES.find(o => o.value === d.documentType);
   const needsBack   = selectedDoc?.hasBack ?? false;
   // canContinue: foto frontal lista + (trasera si aplica) + ocrConfirmed
   // Si no hay applicationId no hay OCR del servidor, ocrConfirmed se gestiona manualmente
@@ -88,7 +91,7 @@ export default function Step2() {
       }
       setFrontDone(true);
     } catch {
-      setError('Error al subir la foto frontal. Inténtalo de nuevo.');
+      setError(t('kyFrontUploadError'));
       // Aun si falla el upload, marcamos frontDone para no bloquear al usuario
       setFrontDone(true);
     } finally {
@@ -119,7 +122,7 @@ export default function Step2() {
       }
       setBackDone(true);
     } catch {
-      setError('Error al subir la foto trasera. Inténtalo de nuevo.');
+      setError(t('kyBackUploadError'));
       setBackDone(true);
     } finally {
       setUploading(false);
@@ -136,7 +139,7 @@ export default function Step2() {
   return (
     <KycStepLayout
       step={2} completed={store.completedSteps}
-      title="Documento de Identidad"
+      title={t('kyDocumentIdentity')}
       onBack={() => router.push('/kyc/step-1')}
       onNext={handleNext}
       nextDisabled={!canContinue || uploading}
@@ -144,22 +147,22 @@ export default function Step2() {
       onExit={() => router.back()}
     >
       {/* Tipo de documento */}
-      <Text style={st.sectionTitle}>Tipo de documento</Text>
+      <Text style={st.sectionTitle}>{t('kyDocType')}</Text>
       <View style={st.radioGroup}>
-        {DOC_TYPES.map(t => (
+        {DOC_TYPES.map(opt => (
           <TouchableOpacity
-            key={t.value}
-            style={[st.radioBtn, d.documentType === t.value && st.radioBtnActive]}
+            key={opt.value}
+            style={[st.radioBtn, d.documentType === opt.value && st.radioBtnActive]}
             onPress={() => {
-              store.setDocumentData({ documentType: t.value, ocrConfirmed: false, ocrData: {} });
+              store.setDocumentData({ documentType: opt.value, ocrConfirmed: false, ocrData: {} });
               setFrontDone(false); setBackDone(false); setShowOcr(false);
               setFrontEncFailed(false); setError('');
             }}
             accessibilityRole="radio"
-            accessibilityLabel={t.label}
+            accessibilityLabel={t(opt.labelKey)}
           >
-            <View style={[st.radioCircle, d.documentType === t.value && st.radioCircleActive]} />
-            <Text style={st.radioText}>{t.label}</Text>
+            <View style={[st.radioCircle, d.documentType === opt.value && st.radioCircleActive]} />
+            <Text style={st.radioText}>{t(opt.labelKey)}</Text>
           </TouchableOpacity>
         ))}
       </View>
@@ -167,16 +170,16 @@ export default function Step2() {
       {/* Número de documento */}
       {d.documentType && (
         <>
-          <Text style={st.sectionTitle}>Número de documento</Text>
+          <Text style={st.sectionTitle}>{t('kyDocumentNumber')}</Text>
           <TextInput
             style={st.textInput}
             value={d.documentNumber ?? ''}
             onChangeText={v => store.setDocumentData({ documentNumber: v })}
-            placeholder={d.documentType === 'passport' ? 'Ej. AB1234567' : 'Ej. GQ-12345678'}
+            placeholder={`${t('kyExamplePrefix')} ${d.documentType === 'passport' ? 'AB1234567' : 'GQ-12345678'}`}
             placeholderTextColor="#9ca3af"
             autoCapitalize="characters"
             maxLength={30}
-            accessibilityLabel="Número de documento"
+            accessibilityLabel={t('kyDocumentNumber')}
           />
         </>
       )}
@@ -184,7 +187,7 @@ export default function Step2() {
       {d.documentType && (
         <>
           {/* Foto frontal */}
-          <Text style={st.sectionTitle}>Foto frontal</Text>
+          <Text style={st.sectionTitle}>{t('kyFrontPhoto')}</Text>
           <DocumentCapture
             side="front"
             onCapture={handleFrontCapture}
@@ -204,16 +207,14 @@ export default function Step2() {
             <View>
               {frontEncFailed && (
                 <View style={st.warnBox}>
-                  <Text style={st.warnText}>
-                    ⚠️ Hubo un problema al procesar la imagen. Puedes confirmarla de todos modos o volver a capturarla.
-                  </Text>
+                  <Text style={st.warnText}>{t('kyImageProcessWarning')}</Text>
                 </View>
               )}
               <TouchableOpacity
                 style={st.confirmManualBtn}
                 onPress={() => { store.setDocumentData({ ocrConfirmed: true }); setError(''); }}
               >
-                <Text style={st.confirmManualText}>✓ Confirmar foto frontal</Text>
+                <Text style={st.confirmManualText}>{t('kyConfirmFrontPhoto')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -221,7 +222,7 @@ export default function Step2() {
           {/* Foto trasera */}
           {needsBack && d.ocrConfirmed && (
             <>
-              <Text style={st.sectionTitle}>Foto trasera</Text>
+              <Text style={st.sectionTitle}>{t('kyBackPhoto')}</Text>
               <DocumentCapture
                 side="back"
                 onCapture={handleBackCapture}

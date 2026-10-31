@@ -44,8 +44,12 @@ class NotificationService: UNNotificationServiceExtension {
         // 4. Registrar categoría con acciones rápidas
         registerNotificationCategory()
 
-        // Asignar categoría para las acciones
-        content.categoryIdentifier = "EGCHAT_MESSAGE"
+        // Asignar categoría para las acciones. Las llamadas entrante traen la suya
+        // propia (EGCHAT_CALL, con Aceptar/Rechazar) y no se debe pisar.
+        let isCall = (content.userInfo["notificationType"] as? String) == "incoming_call"
+        if !isCall || content.categoryIdentifier.isEmpty {
+            content.categoryIdentifier = "EGCHAT_MESSAGE"
+        }
 
         // Descargar avatar en paralelo con la imagen del mensaje
         let group = DispatchGroup()

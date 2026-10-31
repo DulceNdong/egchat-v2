@@ -8,6 +8,7 @@ import { PrimaryButton } from './ServiceModuleUI';
 import {
   UtilityProviderBanner, IconFormField, PayMethodPicker, FacturaResultCard,
 } from './PublicModuleUI';
+import { t as tr } from '../../translations';
 
 interface Props {
   visible: boolean;
@@ -51,10 +52,10 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
         importe: res.importe || cfg.mockImporte,
         periodo: res.periodo || 'Marzo 2026',
         vencimiento: res.vencimiento || '30/04/2026',
-        estado: res.estado || 'Pendiente',
+        estado: res.estado || tr('kyPending'),
       });
     } catch {
-      setFactura({ importe: cfg.mockImporte, periodo: 'Marzo 2026', vencimiento: '30/04/2026', estado: 'Pendiente' });
+      setFactura({ importe: cfg.mockImporte, periodo: 'Marzo 2026', vencimiento: '30/04/2026', estado: tr('kyPending') });
     } finally { setLoading(false); }
   };
 
@@ -79,8 +80,8 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
 
   const titles: Record<Screen, string> = {
     main: variant === 'elec' ? 'Electricidad' : 'Agua',
-    confirm: 'Confirmar pago',
-    success: 'Confirmación',
+    confirm: tr('djhConfirmPayout'),
+    success: tr('xtConfirmacion'),
   };
 
   const fixedTop = screen === 'main' ? (
@@ -109,7 +110,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
         <View style={s.body}>
           {variant === 'elec' && (
             <View style={s.block}>
-              <Text style={s.lbl}>Tipo de cliente</Text>
+              <Text style={s.lbl}>{tr('xtTipoDeCliente')}</Text>
               <View style={s.chipRow}>
                 {CLIENT_TYPES.map(t => (
                   <TouchableOpacity
@@ -123,7 +124,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
               </View>
             </View>
           )}
-          <Text style={s.lbl}>Número de contrato / medidor</Text>
+          <Text style={s.lbl}>{tr('svcContractMeter')}</Text>
           <IconFormField
             icon={variant === 'elec' ? '▦' : '💧'}
             placeholder={cfg.placeholder}
@@ -133,7 +134,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
           <Text style={s.hint}>{cfg.hint}</Text>
           {contrato.trim() && !factura && (
             <PrimaryButton
-              label={loading ? 'Consultando...' : '🔍 Consultar factura'}
+              label={loading ? 'Consultando...' : tr('xtConsultarFactura')}
               onPress={consultar}
               disabled={loading}
               color={cfg.accent}
@@ -168,7 +169,7 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
             <Text style={s.confirmBal}>Saldo EGPAY: {balance.toLocaleString()} XAF</Text>
           </View>
           <PrimaryButton
-            label={loading ? 'Procesando...' : 'Confirmar pago'}
+            label={loading ? tr('processing') : tr('djhConfirmPayout')}
             onPress={pagar}
             disabled={loading || factura.importe > balance}
             color={cfg.accent}
@@ -178,9 +179,9 @@ export const UtilityBillModal: React.FC<Props> = ({ visible, onClose, variant, u
       {screen === 'success' && factura && (
         <View style={s.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={s.successTitle}>Pago realizado</Text>
+          <Text style={s.successTitle}>{tr('svcPaymentDone')}</Text>
           <Text style={s.successSub}>{cfg.title} — {factura.importe.toLocaleString()} XAF</Text>
-          <PrimaryButton label="Cerrar" onPress={onClose} color={cfg.accent} />
+          <PrimaryButton label={tr('close')} onPress={onClose} color={cfg.accent} />
         </View>
       )}
     </FinancialModuleShell>

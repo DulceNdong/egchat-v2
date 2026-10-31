@@ -5,11 +5,13 @@ import { RESTAURANTS, Restaurant, precioColor, precioLabel } from '../../data/se
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { SearchField } from './PublicModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 type RestScreen = 'list' | 'menu' | 'reserva' | 'ok';
 interface Props { visible: boolean; onClose: () => void; }
 
 export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [city, setCity] = useState('Malabo');
   const [search, setSearch] = useState('');
   const [view, setView] = useState<RestScreen>('list');
@@ -31,7 +33,7 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
   const fixedTop = view === 'list' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
       <FilterChips
-        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c }))}
+        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c === 'Todos' ? t('svcAll') : c }))}
         value={city} onChange={setCity} activeColor="#C47D2A"
       />
     </View>
@@ -40,8 +42,8 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
   return (
     <FinancialModuleShell
       visible={visible}
-      title="Restaurante"
-      subtitle={view === 'list' ? `Guinea Ecuatorial · ${RESTAURANTS.length} restaurantes` : selected?.nombre}
+      title={t('restaurant')}
+      subtitle={view === 'list' ? `${t('svcEqGuinea')} · ${RESTAURANTS.length} ${t('svcRestaurantsWord')}` : selected?.nombre}
       onBack={() => view === 'list' ? onClose() : setView('list')}
       onClose={onClose}
       centerTitle
@@ -52,7 +54,7 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
     >
       {view === 'list' && (
         <View>
-          <SearchField placeholder="Buscar restaurante o tipo..." value={search} onChangeText={setSearch} />
+          <SearchField placeholder={t('svcSearchRestaurantPh')} value={search} onChangeText={setSearch} />
           {filtered.map(r => (
             <View key={r.id} style={st.card}>
               <View style={st.cardTop}>
@@ -72,10 +74,10 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
                   <Text style={[st.actText, { color: '#1485EE' }]}>📍 GPS</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[st.actBtn, { backgroundColor: '#FEF3C7' }]} onPress={() => { setSelected(r); setView('menu'); }}>
-                  <Text style={[st.actText, { color: '#92400E' }]}>Ver menú</Text>
+                  <Text style={[st.actText, { color: '#92400E' }]}>{t('svcViewMenu')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity style={[st.actBtn, { backgroundColor: '#C47D2A' }]} onPress={() => { setSelected(r); setView('reserva'); }}>
-                  <Text style={[st.actText, { color: '#fff' }]}>Reservar</Text>
+                  <Text style={[st.actText, { color: '#fff' }]}>{t('svcBookNow')}</Text>
                 </TouchableOpacity>
               </View>
             </View>
@@ -95,7 +97,7 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
               <Text style={st.menuPrecio}>{item.precio.toLocaleString()} XAF</Text>
             </View>
           ))}
-          <PrimaryButton label="Reservar mesa" onPress={() => setView('reserva')} color="#C47D2A" />
+          <PrimaryButton label={t('svcReserveTable')} onPress={() => setView('reserva')} color="#C47D2A" />
         </View>
       )}
 
@@ -105,22 +107,22 @@ export const RestaurantesModal: React.FC<Props> = ({ visible, onClose }) => {
             <Text style={st.menuTitle}>{selected.nombre}</Text>
             <Text style={st.menuSub}>{selected.barrio} · {selected.ciudad}</Text>
           </LinearGradient>
-          <FormField placeholder="Tu nombre completo" value={form.name} onChangeText={v => setF('name', v)} />
-          <FormField placeholder="Teléfono de contacto" value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
-          <FormField placeholder="Fecha (DD/MM/AAAA)" value={form.date} onChangeText={v => setF('date', v)} />
-          <FormField placeholder="Hora de llegada" value={form.hora} onChangeText={v => setF('hora', v)} />
-          <FormField placeholder="Número de personas" value={form.personas} onChangeText={v => setF('personas', v)} keyboardType="numeric" />
-          <PrimaryButton label="Confirmar reserva" onPress={() => setView('ok')} color="#C47D2A" disabled={!canReserve} />
+          <FormField placeholder={t('svcYourFullName')} value={form.name} onChangeText={v => setF('name', v)} />
+          <FormField placeholder={t('svcContactPhone')} value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
+          <FormField placeholder={t('svcDatePh')} value={form.date} onChangeText={v => setF('date', v)} />
+          <FormField placeholder={t('svcArrivalTime')} value={form.hora} onChangeText={v => setF('hora', v)} />
+          <FormField placeholder={t('svcNumPeople')} value={form.personas} onChangeText={v => setF('personas', v)} keyboardType="numeric" />
+          <PrimaryButton label={t('svcConfirmBooking')} onPress={() => setView('ok')} color="#C47D2A" disabled={!canReserve} />
         </View>
       )}
 
       {view === 'ok' && selected && (
         <View style={st.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>¡Reserva confirmada!</Text>
+          <Text style={st.successTitle}>{t('svcBookingConfirmed')}</Text>
           <Text style={st.successSub}>{selected.nombre}</Text>
-          <Text style={st.successSub}>{form.date} · {form.hora} · {form.personas} personas</Text>
-          <PrimaryButton label="Ver más restaurantes" onPress={() => { setView('list'); setSelected(null); }} color="#C47D2A" />
+          <Text style={st.successSub}>{form.date} · {form.hora} · {form.personas} {t('svcPeopleWord')}</Text>
+          <PrimaryButton label={t('svcMoreRestaurants')} onPress={() => { setView('list'); setSelected(null); }} color="#C47D2A" />
         </View>
       )}
     </FinancialModuleShell>

@@ -12,6 +12,7 @@ import { View, Text, StyleSheet, Animated, Easing } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNetworkStatus } from '../../store/offlineStore';
 import { useThemeContext } from '../../theme/ThemeContext';
+import { t as tr } from '../../translations';
 
 type BannerState = 'hidden' | 'offline' | 'reconnected';
 
@@ -116,7 +117,7 @@ export function OfflineBanner() {
         {isOffline ? (
           <>
             <Animated.View style={[s.spinner, { transform: [{ rotate: spin }] }]} />
-            <Text style={s.textOffline}>Sin conexión</Text>
+            <Text style={s.textOffline}>{tr('xtSinConexion')}</Text>
           </>
         ) : (
           <>

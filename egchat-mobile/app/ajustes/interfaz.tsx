@@ -13,32 +13,32 @@ import { DarkColors } from '../../src/theme/darkMode';
 import { useLanguage } from '../../src/context/LanguageContext';
 
 const CHAT_BG_COLORS = [
-  { color: '#e5ddd5', label: 'Clásico' },
-  { color: '#d6eaf8', label: 'Azul' },
-  { color: '#d5f5e3', label: 'Verde' },
-  { color: '#f9ebea', label: 'Rosa' },
-  { color: '#f4ecf7', label: 'Violeta' },
-  { color: '#fef9c3', label: 'Amarillo' },
-  { color: '#ffffff', label: 'Blanco' },
-  { color: '#111827', label: 'Oscuro' },
+  { color: '#e5ddd5', labelKey: 'setClassic' },
+  { color: '#d6eaf8', labelKey: 'setBlue' },
+  { color: '#d5f5e3', labelKey: 'setGreen' },
+  { color: '#f9ebea', labelKey: 'setPink' },
+  { color: '#f4ecf7', labelKey: 'setPurple' },
+  { color: '#fef9c3', labelKey: 'setYellow' },
+  { color: '#ffffff', labelKey: 'setWhite' },
+  { color: '#111827', labelKey: 'setDark' },
 ];
 
 const ACCENT_COLORS = [
-  { color: '#07c160', label: 'Verde EGCHAT' },
-  { color: '#00b4e6', label: 'Azul EGCHAT' },
-  { color: '#6b5bd6', label: 'Violeta' },
-  { color: '#f59e0b', label: 'Dorado' },
-  { color: '#ef4444', label: 'Rojo' },
-  { color: '#ec4899', label: 'Rosa' },
-  { color: '#0ea5e9', label: 'Celeste' },
-  { color: '#10b981', label: 'Esmeralda' },
+  { color: '#07c160', labelKey: 'setAccentGreen' },
+  { color: '#00b4e6', labelKey: 'setAccentBlue' },
+  { color: '#6b5bd6', labelKey: 'setPurple' },
+  { color: '#f59e0b', labelKey: 'setGold' },
+  { color: '#ef4444', labelKey: 'setRed' },
+  { color: '#ec4899', labelKey: 'setPink' },
+  { color: '#0ea5e9', labelKey: 'setSky' },
+  { color: '#10b981', labelKey: 'setEmerald' },
 ];
 
 const FONT_FAMILIES = [
-  { id: 'default', name: 'Sistema', preview: 'Hola, ¿cómo estás?' },
-  { id: 'rounded', name: 'Redondeada', preview: 'Hola, ¿cómo estás?' },
-  { id: 'modern', name: 'Moderna', preview: 'Hola, ¿cómo estás?' },
-  { id: 'classic', name: 'Clásica', preview: 'Hola, ¿cómo estás?' },
+  { id: 'default', nameKey: 'setSystemFont' },
+  { id: 'rounded', nameKey: 'setRoundedFont' },
+  { id: 'modern', nameKey: 'setModernFont' },
+  { id: 'classic', nameKey: 'setClassicFont' },
 ];
 
 const FONT_PRESETS = [
@@ -51,7 +51,7 @@ const FONT_PRESETS = [
 const THEME_OPTIONS = [
   {
     id: 'light',
-    label: 'Claro',
+    labelKey: 'setLight',
     icon: (
       <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#f59e0b" strokeWidth={2} strokeLinecap="round">
         <Circle cx="12" cy="12" r="5"/>
@@ -71,7 +71,7 @@ const THEME_OPTIONS = [
   },
   {
     id: 'dark',
-    label: 'Oscuro',
+    labelKey: 'setDark',
     icon: (
       <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#6b5bd6" strokeWidth={2} strokeLinecap="round">
         <Path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/>
@@ -83,7 +83,7 @@ const THEME_OPTIONS = [
   },
   {
     id: 'auto',
-    label: 'Auto',
+    labelKey: 'setAuto',
     icon: (
       <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth={2} strokeLinecap="round">
         <Path d="M12 2v20M2 12h20"/>
@@ -117,7 +117,7 @@ export default function InterfazScreen() {
   const applyAccent = async (color: string) => {
     setAccentColor(color);
     await AsyncStorage.setItem('egchat_accent', color);
-    Alert.alert('Color aplicado', 'El color de acento se aplicará en toda la interfaz.');
+    Alert.alert(t('setColorApplied'), t('setColorAppliedBody'));
   };
 
   return (
@@ -138,7 +138,7 @@ export default function InterfazScreen() {
                 <View style={[styles.themePreview, { backgroundColor: th.id === 'auto' ? (isDark ? '#1a1a2e' : '#f8fafc') : th.bg, borderColor: th.border }]}>
                   {th.icon}
                 </View>
-                <Text style={[styles.themeLabel, { color: active ? '#00c8a0' : C.textSecondary }]}>{th.label}</Text>
+                <Text style={[styles.themeLabel, { color: active ? '#00c8a0' : C.textSecondary }]}>{t(th.labelKey)}</Text>
                 {active && <View style={styles.themeCheck}><Text style={{ color: '#fff', fontSize: 9, fontWeight: '800' }}>✓</Text></View>}
               </TouchableOpacity>
             );
@@ -159,7 +159,7 @@ export default function InterfazScreen() {
               <View style={[styles.accentCircle, { backgroundColor: ac.color }, accentColor === ac.color && styles.accentActive]}>
                 {accentColor === ac.color && <Text style={{ color: '#fff', fontSize: 11, fontWeight: '900' }}>✓</Text>}
               </View>
-              <Text style={[styles.accentLabel, { color: C.textTertiary }]} numberOfLines={1}>{ac.label}</Text>
+              <Text style={[styles.accentLabel, { color: C.textTertiary }]} numberOfLines={1}>{t(ac.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -197,8 +197,8 @@ export default function InterfazScreen() {
               onPress={() => changeFontFamily(f.id as any)}
             >
               <View style={{ flex: 1 }}>
-                <Text style={{ fontSize: 12, fontWeight: '600', color: fontFamily === f.id ? '#00c8a0' : C.textTertiary, marginBottom: 2 }}>{f.name}</Text>
-                <Text style={{ fontSize: 15, color: C.textPrimary }}>{f.preview}</Text>
+                <Text style={{ fontSize: 12, fontWeight: '600', color: fontFamily === f.id ? '#00c8a0' : C.textTertiary, marginBottom: 2 }}>{t(f.nameKey)}</Text>
+                <Text style={{ fontSize: 15, color: C.textPrimary }}>{t('setFontPreview')}</Text>
               </View>
               {fontFamily === f.id && <Text style={{ color: '#00c8a0', fontSize: 16 }}>✓</Text>}
             </TouchableOpacity>
@@ -221,7 +221,7 @@ export default function InterfazScreen() {
                 borderColor: chatBg === bg.color ? '#00c8a0' : (isDark ? '#30363d' : '#e5e7eb') }]}>
                 {chatBg === bg.color && <Text style={{ color: bg.color === '#ffffff' || bg.color === '#e5ddd5' ? '#00c8a0' : '#fff', fontSize: 14 }}>✓</Text>}
               </View>
-              <Text style={[styles.swatchLabel, { color: C.textTertiary }]}>{bg.label}</Text>
+              <Text style={[styles.swatchLabel, { color: C.textTertiary }]}>{t(bg.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>

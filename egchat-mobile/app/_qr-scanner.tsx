@@ -17,6 +17,7 @@ import Svg, { Path, Line, Circle, Polyline, Rect } from 'react-native-svg';
 import { walletAPI, authAPI } from '../src/api';
 import { parseEgchatPayQr } from '../src/utils/walletQr';
 import { Colors } from '../src/theme';
+import { t as tr } from '../src/translations';
 
 const { width: W } = Dimensions.get('window');
 const FRAME = W * 0.68;
@@ -120,7 +121,7 @@ function AmountModal({ visible, payData, onConfirm, onCancel }: {
             {/* Header */}
             <View style={am.header}>
               <View>
-                <Text style={am.title}>Confirmar pago</Text>
+                <Text style={am.title}>{tr('djhConfirmPayout')}</Text>
                 {payData?.name && <Text style={am.subtitle}>A: {payData.name}</Text>}
               </View>
               <TouchableOpacity style={am.closeBtn} onPress={onCancel}>
@@ -144,7 +145,7 @@ function AmountModal({ visible, payData, onConfirm, onCancel }: {
               />
             </View>
             {isFixed && (
-              <Text style={am.fixedNote}>Monto fijado por el receptor</Text>
+              <Text style={am.fixedNote}>{tr('xtMontoFijadoPorElReceptor')}</Text>
             )}
 
             {/* Concepto */}
@@ -153,7 +154,7 @@ function AmountModal({ visible, payData, onConfirm, onCancel }: {
                 style={am.conceptInput}
                 value={concept}
                 onChangeText={setConcept}
-                placeholder="Concepto (opcional)"
+                placeholder={tr('xtConceptoOpcional')}
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 editable={!payData?.concept}
                 selectionColor="#00C8A0"
@@ -172,7 +173,7 @@ function AmountModal({ visible, payData, onConfirm, onCancel }: {
             </TouchableOpacity>
 
             <TouchableOpacity onPress={onCancel} style={am.cancelBtn}>
-              <Text style={am.cancelTxt}>Cancelar</Text>
+              <Text style={am.cancelTxt}>{tr('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -210,8 +211,8 @@ function PinModal({ visible, onConfirm, onCancel, loading }: {
               <IcShield />
             </View>
 
-            <Text style={pm.title}>Introduce tu PIN</Text>
-            <Text style={pm.sub}>Introduce tu código de 4 dígitos para validar el pago</Text>
+            <Text style={pm.title}>{tr('xtIntroduceTuPIN')}</Text>
+            <Text style={pm.sub}>{tr('qrsPinSub')}</Text>
 
             {/* Puntos del PIN */}
             <TouchableOpacity style={pm.dotsRow} onPress={() => inputRef.current?.focus()} activeOpacity={1}>
@@ -262,12 +263,12 @@ function PinModal({ visible, onConfirm, onCancel, loading }: {
             >
               {loading
                 ? <ActivityIndicator color="#fff" size="small" />
-                : <Text style={pm.confirmBtnTxt}>Confirmar pago</Text>
+                : <Text style={pm.confirmBtnTxt}>{tr('djhConfirmPayout')}</Text>
               }
             </TouchableOpacity>
 
             <TouchableOpacity onPress={onCancel} style={{ marginTop: 12 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Cancelar</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>{tr('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -300,7 +301,7 @@ function SuccessModal({ visible, amount, recipientName, onDone }: {
               <Polyline points="20 6 9 17 4 12"/>
             </Svg>
           </Animated.View>
-          <Text style={sc.title}>¡Pago realizado!</Text>
+          <Text style={sc.title}>{tr('xtPagoRealizado')}</Text>
           <Text style={sc.amount}>{amount.toLocaleString()} XAF</Text>
           {!!recipientName && <Text style={sc.recipient}>enviados a {recipientName}</Text>}
           <TouchableOpacity style={sc.doneBtn} onPress={onDone}>
@@ -336,7 +337,7 @@ export default function QRScannerScreen() {
 
     try {
       const me = await authAPI.me();
-      if (me?.id === payQr.userId) { Alert.alert('Error', 'No puedes pagarte a ti mismo'); return; }
+      if (me?.id === payQr.userId) { Alert.alert(tr('error'), 'No puedes pagarte a ti mismo'); return; }
     } catch {}
 
     setScanned(true);
@@ -362,12 +363,12 @@ export default function QRScannerScreen() {
     setPinLoading(true);
     try {
       // Validar PIN y ejecutar transferencia
-      await walletAPI.transfer(payData.userId, pendingAmt, pendingCon || 'Pago QR', pin);
+      await walletAPI.transfer(payData.userId, pendingAmt, pendingCon || tr('xtPagoQR'), pin);
       setPaidAmount(pendingAmt);
       setShowPin(false);
       setShowSuccess(true);
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'PIN incorrecto o saldo insuficiente');
+      Alert.alert(tr('error'), e?.message || 'PIN incorrecto o saldo insuficiente');
       setPinLoading(false);
     } finally {
       setPinLoading(false);
@@ -391,13 +392,13 @@ export default function QRScannerScreen() {
             <Path d="M3 9h18M9 21V9"/>
           </Svg>
         </View>
-        <Text style={st.permTitle}>Acceso a la cámara</Text>
-        <Text style={st.permSub}>Necesitamos la cámara para escanear el QR de pago</Text>
+        <Text style={st.permTitle}>{tr('xtAccesoALaCamara')}</Text>
+        <Text style={st.permSub}>{tr('qrsPermSub')}</Text>
         <TouchableOpacity style={st.permBtn} onPress={requestPermission}>
           <Text style={st.permBtnTxt}>Permitir acceso</Text>
         </TouchableOpacity>
         <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 14 }}>
-          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Volver</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>{tr('djhBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -443,7 +444,7 @@ export default function QRScannerScreen() {
           <TouchableOpacity style={st.backBtn} onPress={() => router.back()}>
             <IcClose />
           </TouchableOpacity>
-          <Text style={st.headerTitle}>Escanear QR de pago</Text>
+          <Text style={st.headerTitle}>{tr('xtEscanearQRDePago')}</Text>
           <View style={{ width: 42 }} />
         </View>
       </SafeAreaView>
@@ -453,12 +454,12 @@ export default function QRScannerScreen() {
         <View style={st.hintBadge}>
           <IcWallet />
           <Text style={st.hintTxt}>
-            {scanned ? 'QR detectado...' : 'Apunta al QR de pago EGChat'}
+            {scanned ? 'QR detectado...' : tr('xtApuntaAlQRDePagoEGChat')}
           </Text>
         </View>
         {scanned && !showAmount && !showPin && !showSuccess && (
           <TouchableOpacity onPress={reset} style={st.rescanBtn}>
-            <Text style={st.rescanTxt}>Volver a escanear</Text>
+            <Text style={st.rescanTxt}>{tr('xtVolverAEscanear')}</Text>
           </TouchableOpacity>
         )}
       </View>

@@ -17,6 +17,7 @@ import { getDNDSettings, isDNDActive, formatTime } from '../../src/services/doNo
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 export default function NotificacionesScreen() {
   const { isDark } = useThemeContext();
@@ -81,9 +82,9 @@ export default function NotificacionesScreen() {
   const activatePush = useCallback(async () => {
     const { status } = await Notifications.getPermissionsAsync();
     if (status === 'denied') {
-      Alert.alert('Bloqueadas', 'Actívalas en Ajustes del sistema.', [
-        { text: 'Abrir ajustes', onPress: () => Linking.openSettings() },
-        { text: 'Cancelar', style: 'cancel' },
+      Alert.alert(t('setBlockedTitle'), t('setBlockedBody'), [
+        { text: tr('xtAbrirAjustes'), onPress: () => Linking.openSettings() },
+        { text: tr('cancel'), style: 'cancel' },
       ]);
       return;
     }
@@ -101,7 +102,7 @@ export default function NotificacionesScreen() {
     setDiagRunning(false);
   }, []);
 
-  const pushStatus = pushGranted ? '✅ Activadas' : '⚠️ Sin configurar';
+  const pushStatus = pushGranted ? '✅ Activadas' : tr('xtSinConfigurar');
 
   return (
     <SettingsLayout title={t('notifTitle')}>
@@ -132,7 +133,7 @@ export default function NotificacionesScreen() {
       </SettingsCard>
 
       {/* ── Diagnóstico ─────────────────────────── */}
-      <SettingsSection label="Diagnóstico" />
+      <SettingsSection label={tr('xtDiagnostico')} />
       <SettingsCard>
         <TouchableOpacity style={st.diagRow} onPress={runDiag} disabled={diagRunning}>
           {diagRunning
@@ -140,7 +141,7 @@ export default function NotificacionesScreen() {
             : <MaterialIcons name="notifications" size={22} color="#8b5cf6" style={{ width: 28 }} />
           }
           <View style={{ flex: 1 }}>
-            <Text style={[st.diagLabel, { color: C.textPrimary }]}>Diagnóstico push</Text>
+            <Text style={[st.diagLabel, { color: C.textPrimary }]}>{tr('xtDiagnosticoPush')}</Text>
             <Text style={[st.diagSub, { color: C.textSecondary }]}>
               Token, permisos, canales y registro en servidor
             </Text>

@@ -6,6 +6,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as Sharing from 'expo-sharing';
 import { getToken, getApiBase, chatAPI } from '../api';
+import { t as tr } from '../translations';
 
 const KEY = 'egchat_cloud_backup_settings';
 const LAST_BACKUP_KEY = 'egchat_last_backup_ts';
@@ -53,7 +54,7 @@ export async function createCloudBackup(
     onProgress?.(5, 'Cargando chats...');
     const chats = await chatAPI.getChats();
     if (!Array.isArray(chats) || chats.length === 0) {
-      onProgress?.(100, 'No hay chats que respaldar');
+      onProgress?.(100, tr('xtNoHayChatsQueRespaldar'));
       return { size: 0, chatCount: 0 };
     }
 
@@ -84,7 +85,7 @@ export async function createCloudBackup(
       } catch { /* skip this chat */ }
     }
 
-    onProgress?.(75, 'Guardando archivo...');
+    onProgress?.(75, tr('xtGuardandoArchivo'));
     const json = JSON.stringify(backupData, null, 2);
     const fileName = `egchat_backup_${new Date().toISOString().split('T')[0]}.json`;
     const localPath = `${FileSystem.cacheDirectory}${fileName}`;
@@ -92,7 +93,7 @@ export async function createCloudBackup(
     const info = await FileSystem.getInfoAsync(localPath);
     const size = (info as any).size || json.length;
 
-    onProgress?.(85, 'Subiendo al servidor...');
+    onProgress?.(85, tr('xtSubiendoAlServidor'));
     let serverUrl: string | undefined;
     try {
       const BASE = getApiBase();
@@ -111,7 +112,7 @@ export async function createCloudBackup(
     } catch { /* silencioso — backup local funciona igual */ }
 
     await AsyncStorage.setItem(LAST_BACKUP_KEY, Date.now().toString());
-    onProgress?.(100, serverUrl ? 'Backup en la nube completo' : 'Backup local guardado');
+    onProgress?.(100, serverUrl ? tr('xtBackupEnLaNubeCompleto') : 'Backup local guardado');
 
     return { url: serverUrl, localPath, size, chatCount };
   } catch (e: any) {

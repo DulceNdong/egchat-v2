@@ -7,6 +7,7 @@ import { router } from 'expo-router';
 import Svg, { Line, Polyline } from 'react-native-svg';
 import { walletAPI } from '../src/api';
 import { LinearGradient } from 'expo-linear-gradient';
+import { t as tr } from '../src/translations';
 
 const fmt = (n: number) => n.toLocaleString('es-ES', { minimumFractionDigits: 0 });
 const formatDate = (s: string) =>
@@ -22,11 +23,11 @@ const normalizeType = (type: string): string => {
 };
 
 const FILTERS = [
-  { id: 'all', label: 'Todas' },
+  { id: 'all', label: tr('all') },
   { id: 'sent', label: 'Enviadas' },
   { id: 'received', label: 'Recibidas' },
-  { id: 'payment', label: 'Pagos' },
-  { id: 'deposit', label: 'Depósitos' },
+  { id: 'payment', label: tr('setPayments') },
+  { id: 'deposit', label: tr('deposit') },
   { id: 'withdrawal', label: 'Retiros' },
 ] as const;
 
@@ -62,7 +63,7 @@ export default function HistorialCompletoScreen() {
         style={StyleSheet.absoluteFillObject}
       />
       <View style={[s.header, { paddingTop: insets.top + 10 }]}>
-        <Text style={s.title}>Historial Completo</Text>
+        <Text style={s.title}>{tr('fullHistory')}</Text>
         <TouchableOpacity onPress={() => router.back()} style={s.closeBtn}>
           <Svg width={16} height={16} viewBox="0 0 24 24" stroke="#0d0d0d" strokeWidth={2.5} strokeLinecap="round">
             <Line x1="18" y1="6" x2="6" y2="18" /><Line x1="6" y1="6" x2="18" y2="18" />
@@ -89,8 +90,8 @@ export default function HistorialCompletoScreen() {
           {filtered.length === 0 ? (
             <View style={s.empty}>
               <Text style={{ fontSize: 40 }}>📭</Text>
-              <Text style={s.emptyTitle}>Sin transacciones</Text>
-              <Text style={s.emptySub}>No hay movimientos en esta categoría</Text>
+              <Text style={s.emptyTitle}>{tr('noTransactions')}</Text>
+              <Text style={s.emptySub}>{tr('xtNoHayMovimientosEnEstaCategoria')}</Text>
             </View>
           ) : filtered.map((tx, i) => {
             const credit = isCredit(tx.type);

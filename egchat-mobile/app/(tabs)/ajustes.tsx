@@ -24,6 +24,7 @@ import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
 type MenuItem = { label: string; route: string; value?: string };
 
@@ -263,7 +264,7 @@ function AjustesScreenInner() {
 
         {filtered ? (
           filtered.length === 0 ? (
-            <Text style={{ textAlign: 'center', padding: 32, color: C.textTertiary }}>Sin resultados</Text>
+            <Text style={{ textAlign: 'center', padding: 32, color: C.textTertiary }}>{tr('noResults')}</Text>
           ) : (
             renderMenuCard(filtered)
           )
@@ -284,7 +285,7 @@ function AjustesScreenInner() {
                 )}
               </LinearGradient>
               <View style={styles.heroInfo}>
-                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || 'Toca para añadir tu nombre'}</Text>
+                <Text style={[styles.heroName, { color: C.textPrimary }]}>{user?.full_name || t('ajtTapAddName')}</Text>
                 <Text style={[styles.heroSub, { color: C.textTertiary }]}>
                   {user?.id ? `ID: ${user.id.slice(0, 12).toUpperCase()}` : (user?.phone || '')}
                 </Text>
@@ -340,7 +341,7 @@ function AjustesScreenInner() {
             <View style={{ height: 16 }} />
             <SettingsCard>
               <TouchableOpacity style={styles.actionBtn} onPress={() => setShowAccountSwitcher(true)}>
-                <Text style={styles.actionGreen}>Cambiar de cuenta</Text>
+                <Text style={styles.actionGreen}>{tr('xtCambiarDeCuenta')}</Text>
               </TouchableOpacity>
             </SettingsCard>
             <View style={{ height: 12 }} />
@@ -433,7 +434,7 @@ const styles = StyleSheet.create({
 
 export default function AjustesScreen() {
   return (
-    <TabErrorBoundary tabName="Ajustes">
+    <TabErrorBoundary tabName={tr('settings')}>
       <AjustesScreenInner />
     </TabErrorBoundary>
   );

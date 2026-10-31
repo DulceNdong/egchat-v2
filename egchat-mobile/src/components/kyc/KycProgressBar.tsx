@@ -2,6 +2,7 @@ import React from 'react';
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { router } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { t as tr } from '../../translations';
 
 const STEPS = [
   { n: 1, label: 'Datos' },
@@ -26,11 +27,11 @@ export function KycProgressBar({ current, completed, onExit }: Props) {
       <View style={st.row}>
         <TouchableOpacity
           onPress={onExit ?? (() => router.back())}
-          accessibilityLabel="Salir del formulario KYC"
+          accessibilityLabel={tr('xtSalirDelFormularioKYC')}
           accessibilityRole="button"
           hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
         >
-          <Text style={st.exit}>✕ Salir</Text>
+          <Text style={st.exit}>{tr('xtSalir')}</Text>
         </TouchableOpacity>
         <Text style={st.stepLabel} accessibilityLiveRegion="polite">Paso {current} de 5</Text>
       </View>

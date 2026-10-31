@@ -6,6 +6,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { MIcon } from './MIcon';
 import { authAPI } from '../../api';
+import { t as tr } from '../../translations';
 
 interface SetupPinModalProps {
   visible: boolean;
@@ -18,7 +19,7 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
   visible,
   onClose,
   onSuccess,
-  title = '🔒 Configurar PIN de Seguridad',
+  title = tr('xtConfigurarPINDeSeguridad'),
 }) => {
   const [step, setStep] = useState<'create' | 'confirm'>('create');
   const [firstPin, setFirstPin] = useState(['', '', '', '', '', '']);
@@ -108,7 +109,7 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
     const confirmPinString = confirmPin.join('');
     
     if (firstPinString !== confirmPinString) {
-      setError('Los PIN no coinciden');
+      setError(tr('xtLosPINNoCoinciden'));
       Vibration.vibrate([100, 50, 100]);
       setStep('create');
       setFirstPin(['', '', '', '', '', '']);
@@ -125,12 +126,12 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
       await authAPI.setupPin(firstPinString);
       Alert.alert(
         '✅ PIN Configurado',
-        'Tu PIN de seguridad ha sido configurado correctamente. Ahora podrás realizar transferencias.',
+        tr('xtTuPINDeSeguridadHaSidoConfiguradoCorrectamenteAhor'),
         [{ text: 'Continuar', onPress: onSuccess }],
         { cancelable: false }
       );
     } catch (e: any) {
-      setError(e?.message || 'Error al configurar PIN');
+      setError(e?.message || tr('xtErrorAlConfigurarPIN'));
       setStep('create');
       setFirstPin(['', '', '', '', '', '']);
       setConfirmPin(['', '', '', '', '', '']);
@@ -177,8 +178,8 @@ export const SetupPinModal: React.FC<SetupPinModalProps> = ({
             <Text style={s.title}>{title}</Text>
             <Text style={s.subtitle}>
               {step === 'create' 
-                ? 'Crea un PIN de 6 dígitos para proteger tus transferencias'
-                : 'Confirma tu PIN ingresándolo nuevamente'
+                ? tr('xtCreaUnPINDe6DigitosParaProtegerTusTransferencias')
+                : tr('xtConfirmaTuPINIngresandoloNuevamente')
               }
             </Text>
           </LinearGradient>

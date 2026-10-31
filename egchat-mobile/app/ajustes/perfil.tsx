@@ -27,11 +27,24 @@ import { Colors, Spacing } from '../../src/theme';
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useLanguage } from '../../src/context/LanguageContext';
+import { t as tr } from '../../src/translations';
 
-const GENDERS = ['Hombre', 'Mujer', 'No especificado'] as const;
+// `value` es el valor persistido/enviado al backend; `labelKey` es la etiqueta visible.
+const GENDERS = [
+  { value: 'Hombre',        labelKey: 'setMale' },
+  { value: 'Mujer',         labelKey: 'setFemale' },
+  { value: 'No especificado', labelKey: 'setUnspecified' },
+] as const;
 const REGIONS = [
-  'Guinea Ecuatorial', 'Camerún', 'Gabón', 'Nigeria',
-  'España', 'Francia', 'Estados Unidos', 'China', 'Otro',
+  { value: 'Guinea Ecuatorial', labelKey: 'svcEquatorialGuinea' },
+  { value: 'Camerún',           labelKey: 'setCountryCameroon' },
+  { value: 'Gabón',             labelKey: 'setCountryGabon' },
+  { value: 'Nigeria',           labelKey: 'setCountryNigeria' },
+  { value: 'España',            labelKey: 'setCountrySpain' },
+  { value: 'Francia',           labelKey: 'setCountryFrance' },
+  { value: 'Estados Unidos',    labelKey: 'setCountryUsa' },
+  { value: 'China',             labelKey: 'setCountryChina' },
+  { value: 'Otro',              labelKey: 'setOther' },
 ] as const;
 
 type EditField = 'name' | 'bio' | 'gender' | 'region' | 'address';
@@ -86,13 +99,14 @@ function BannerHeader({
 }) {
   const [bannerErr, setBannerErr] = React.useState(false);
   const [avatarErr, setAvatarErr] = React.useState(false);
+  const { translate: t } = useLanguage();
   React.useEffect(() => { setBannerErr(false); }, [bannerUrl]);
   React.useEffect(() => { setAvatarErr(false); }, [avatarUrl]);
 
   return (
     <View style={bh.root}>
       {/* PORTADA */}
-      <TouchableOpacity activeOpacity={0.88} onPress={onPickBanner} style={bh.bannerTouch} accessibilityLabel="Cambiar portada">
+      <TouchableOpacity activeOpacity={0.88} onPress={onPickBanner} style={bh.bannerTouch} accessibilityLabel={t('setChangeCover')}>
         {bannerUrl && !bannerErr ? (
           <Image source={{ uri: bannerUrl }} style={StyleSheet.absoluteFillObject as any} resizeMode="cover" onError={() => setBannerErr(true)} />
         ) : (
@@ -107,7 +121,7 @@ function BannerHeader({
                 <Circle cx="12" cy="13" r="4" />
               </Svg>
           }
-          <Text style={bh.bannerCamText}>Portada</Text>
+          <Text style={bh.bannerCamText}>{t('setCover')}</Text>
         </View>
       </TouchableOpacity>
 
@@ -118,7 +132,7 @@ function BannerHeader({
             onPress={avatarUrl && !avatarUrl.startsWith('file://') ? onViewAvatar : onPickAvatar}
             activeOpacity={0.85}
             style={{ width: '100%', height: '100%' }}
-            accessibilityLabel="Ver o cambiar foto de perfil"
+            accessibilityLabel={t('setViewOrChangePhoto')}
           >
             {avatarUrl && !avatarErr ? (
               <Image key={avatarUrl} source={{ uri: avatarUrl }} style={{ width: '100%', height: '100%' }} resizeMode="cover" onError={() => setAvatarErr(true)} />
@@ -134,7 +148,7 @@ function BannerHeader({
             )}
           </TouchableOpacity>
           {/* Badge cámara */}
-          <TouchableOpacity style={bh.avatarCamBadge} onPress={onPickAvatar} activeOpacity={0.8} accessibilityLabel="Cambiar foto">
+          <TouchableOpacity style={bh.avatarCamBadge} onPress={onPickAvatar} activeOpacity={0.8} accessibilityLabel={t('changePhoto')}>
             <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
               <Rect x="1" y="5" width="22" height="15" rx="2" />
               <Circle cx="12" cy="13" r="4" />
@@ -144,7 +158,7 @@ function BannerHeader({
 
         {/* Nombre y bio */}
         <View style={bh.nameBlock}>
-          <Text style={[bh.name, { color: C.textPrimary }]} numberOfLines={1}>{fullName || 'Tu nombre'}</Text>
+          <Text style={[bh.name, { color: C.textPrimary }]} numberOfLines={1}>{fullName || t('yourName')}</Text>
           {!!bio && <Text style={[bh.bioLine, { color: C.textTertiary }]} numberOfLines={2}>{bio}</Text>}
         </View>
       </View>
@@ -239,8 +253,10 @@ function FieldEditModal({
   onSave: () => void;
   onClose: () => void;
 }) {
+  const { translate: t } = useLanguage();
+
   const titles: Record<EditField, string> = {
-    name: 'Nombre', bio: 'Novedades', gender: 'Género', region: 'Región', address: 'Dirección',
+    name: t('nameField'), bio: t('newsStatus'), gender: t('gender'), region: t('region'), address: t('setAddress'),
   };
 
   return (
@@ -257,11 +273,11 @@ function FieldEditModal({
               <View style={styles.optionList}>
                 {GENDERS.map(g => (
                   <TouchableOpacity
-                    key={g}
-                    style={[styles.optionBtn, value === g && styles.optionBtnActive]}
-                    onPress={() => onChange(g)}
+                    key={g.value}
+                    style={[styles.optionBtn, value === g.value && styles.optionBtnActive]}
+                    onPress={() => onChange(g.value)}
                   >
-                    <Text style={styles.optionText}>{g}{value === g ? ' ✓' : ''}</Text>
+                    <Text style={styles.optionText}>{t(g.labelKey)}{value === g.value ? ' ✓' : ''}</Text>
                   </TouchableOpacity>
                 ))}
               </View>
@@ -269,11 +285,11 @@ function FieldEditModal({
               <ScrollView style={styles.regionScroll} showsVerticalScrollIndicator={false}>
                 {REGIONS.map(r => (
                   <TouchableOpacity
-                    key={r}
-                    style={[styles.optionBtn, value === r && styles.optionBtnActive]}
-                    onPress={() => onChange(r)}
+                    key={r.value}
+                    style={[styles.optionBtn, value === r.value && styles.optionBtnActive]}
+                    onPress={() => onChange(r.value)}
                   >
-                    <Text style={styles.optionText}>{r}{value === r ? ' ✓' : ''}</Text>
+                    <Text style={styles.optionText}>{t(r.labelKey)}{value === r.value ? ' ✓' : ''}</Text>
                   </TouchableOpacity>
                 ))}
               </ScrollView>
@@ -282,7 +298,7 @@ function FieldEditModal({
                 autoFocus
                 value={value}
                 onChangeText={onChange}
-                placeholder={field === 'bio' ? 'Escribe tu estado...' : 'Escribe aquí...'}
+                placeholder={field === 'bio' ? t('setWriteStatus') : t('setWriteHere')}
                 placeholderTextColor="#9ca3af"
                 style={styles.fieldInput}
                 multiline={field === 'bio'}
@@ -293,10 +309,10 @@ function FieldEditModal({
             )}
             <View style={styles.modalActions}>
               <TouchableOpacity style={[styles.modalBtn, styles.modalBtnCancel]} onPress={onClose}>
-                <Text style={styles.modalBtnCancelText}>Cancelar</Text>
+                <Text style={styles.modalBtnCancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[styles.modalBtn, styles.modalBtnSave]} onPress={onSave}>
-                <Text style={styles.modalBtnSaveText}>Guardar</Text>
+                <Text style={styles.modalBtnSaveText}>{t('save')}</Text>
               </TouchableOpacity>
             </View>
           </Pressable>
@@ -315,7 +331,7 @@ export default function PerfilScreen() {
   const [showProfileQR, setShowProfileQR] = useState(false);
   const [showSetupPIN, setShowSetupPIN] = useState(false);
   const [pinConfigured, setPinConfigured] = useState(false);
-  const [ringtoneName, setRingtoneName] = useState('Clásico');
+  const [ringtoneName, setRingtoneName] = useState<string | null>(null);
   const [bio, setBio] = useState('');
   const [gender, setGender] = useState('No especificado');
   const [region, setRegion] = useState('Guinea Ecuatorial');
@@ -323,6 +339,8 @@ export default function PerfilScreen() {
   const [fieldVal, setFieldVal] = useState('');
   const [saving, setSaving] = useState(false);
   const [showAvatarViewer, setShowAvatarViewer] = useState(false);
+
+  const { translate: t } = useLanguage();
 
   const loadProfile = useCallback(async () => {
     try {
@@ -345,7 +363,7 @@ export default function PerfilScreen() {
     setGender(genderVal);
     setPinConfigured(pinSet);
     const rt = RINGTONES.find(r => r.id === sounds.ringtone);
-    setRingtoneName(rt?.name || 'Clásico');
+    setRingtoneName(rt?.name ?? null);
   }, []);
 
   useEffect(() => {
@@ -395,7 +413,7 @@ export default function PerfilScreen() {
         // Dirección guardada silenciosamente
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al guardar';
+      const msg = e instanceof Error ? e.message : t('setSaveError');
       toast.error(msg);
     } finally {
       setSaving(false);
@@ -408,7 +426,7 @@ export default function PerfilScreen() {
     if (Platform.OS !== 'web') {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
-        Alert.alert('Permiso necesario', 'Necesitamos acceso a tu galería para cambiar la portada.');
+        Alert.alert(t('setPermissionNeeded'), t('setGalleryPermissionCover'));
         return;
       }
     }
@@ -435,10 +453,10 @@ export default function PerfilScreen() {
         await authAPI.updateProfile({ banner_url: supabaseUrl });
         setUser(prev => prev ? { ...prev, banner_url: supabaseUrl } : prev);
         emitProfileUpdated({ banner_url: supabaseUrl });
-        toast.success('Portada actualizada');
+        toast.success(t('setCoverUpdated'));
       }
     } catch {
-      toast.error('Error al actualizar la portada');
+      toast.error(t('setCoverUpdateError'));
     } finally {
       setUploadingBanner(false);
     }
@@ -450,9 +468,9 @@ export default function PerfilScreen() {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       if (status !== 'granted') {
         Alert.alert(
-          'Permiso necesario',
-          'Necesitamos acceso a tu galería para cambiar la foto de perfil. Actívalo en Ajustes > EGCHAT > Fotos.',
-          [{ text: 'OK' }]
+          t('setPermissionNeeded'),
+          t('setGalleryPermissionPhoto'),
+          [{ text: t('setOk') }]
         );
         return;
       }
@@ -469,7 +487,7 @@ export default function PerfilScreen() {
     setUploadingPhoto(true);
     try {
       const currentUserId = user?.id;
-      if (!currentUserId) throw new Error('No hay usuario');
+      if (!currentUserId) throw new Error(tr('xtNoHayUsuario'));
 
       // 1. Mostrar imagen local inmediatamente (optimistic UI)
       const localUri = uri.startsWith('file:') ? uri : `file://${uri}`;
@@ -491,17 +509,17 @@ export default function PerfilScreen() {
         setUser(prev => prev ? { ...prev, avatar_url: finalUrl } : prev);
         emitProfileUpdated({ id: currentUserId, avatar_url: finalUrl });
         await saveLocalAvatar(currentUserId, finalUrl);
-        toast.success('Foto actualizada');
+        toast.success(t('setPhotoUpdated'));
       } else {
         // Supabase no devolvió URL — guardar localmente
         await saveLocalAvatar(currentUserId, uri);
         setUser(prev => prev ? { ...prev, avatar_url: localUri } : prev);
         emitProfileUpdated({ id: currentUserId, avatar_url: localUri });
-        toast.success('Foto guardada localmente');
+        toast.success(t('setPhotoSavedLocally'));
       }
     } catch (error) {
       console.error('[uploadPhoto] Error:', error);
-      toast.error('Error al actualizar foto');
+      toast.error(t('setPhotoUpdateError'));
     } finally {
       setUploadingPhoto(false);
     }
@@ -509,7 +527,7 @@ export default function PerfilScreen() {
 
   if (loading) {
     return (
-      <SettingsLayout title="Perfil" scroll={false}>
+      <SettingsLayout title={t('profile')} scroll={false}>
         <ActivityIndicator color={Colors.accent} style={{ marginTop: 40 }} />
       </SettingsLayout>
     );
@@ -518,7 +536,6 @@ export default function PerfilScreen() {
   const initials = user?.full_name?.split(' ').filter(Boolean).map(w => w[0].toUpperCase()).slice(0, 2).join('') || 'U';
   const userIdShort = user?.id ? user.id.slice(0, 8).toUpperCase() : '—';
   const { isDark } = useThemeContext();
-  const { translate: t } = useLanguage();
   const C = isDark ? (DarkColors as unknown as typeof Colors) : Colors;
 
   return (
@@ -552,9 +569,20 @@ export default function PerfilScreen() {
             onPress={() => openEdit('bio', bio)}
           />
           <SettingsDivider />
-          <SettingsRow label={t('gender')} value={gender} onPress={() => openEdit('gender', gender)} />
+          <SettingsRow
+            label={t('gender')}
+            value={t(GENDERS.find(g => g.value === gender)?.labelKey ?? 'setUnspecified')}
+            onPress={() => openEdit('gender', gender)}
+          />
           <SettingsDivider />
-          <SettingsRow label={t('region')} value={region} onPress={() => openEdit('region', region)} />
+          <SettingsRow
+            label={t('region')}
+            value={(() => {
+              const found = REGIONS.find(r => r.value === region);
+              return found ? t(found.labelKey) : region;
+            })()}
+            onPress={() => openEdit('region', region)}
+          />
           <SettingsDivider />
           <SettingsRow
             label={t('phone')}
@@ -592,7 +620,7 @@ export default function PerfilScreen() {
         <SettingsCard>
           <SettingsRow
             label={t('ringtoneIncoming')}
-            value={ringtoneName}
+            value={ringtoneName || t('setClassic')}
             onPress={() => router.push('/ajustes/llamadas')}
           />
           <SettingsDivider />
@@ -653,7 +681,7 @@ export default function PerfilScreen() {
         visible={showProfileQR}
         onClose={() => setShowProfileQR(false)}
         userId={user?.id || ''}
-        name={user?.full_name || 'Usuario'}
+        name={user?.full_name || t('setUser')}
         phone={user?.phone}
         avatar={user?.avatar_url}
       />

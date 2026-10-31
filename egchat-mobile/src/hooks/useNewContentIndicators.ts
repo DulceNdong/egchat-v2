@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken, getApiBase } from '../api';
 import { supabase } from '../supabase';
 import { addNotification } from '../store/appStore';
+import { t as tr } from '../translations';
 
 export type ContentType = 'story' | 'moment' | 'live';
 
@@ -113,8 +114,8 @@ export function useNewContentIndicators(currentUserId: string) {
             addIndicator(s.user_id, 'story');
             if (!notifiedStoryIds.has(s.id)) {
               notifiedStoryIds.add(s.id);
-              const userName = (s as any).user_name || (s as any).author_name || (s as any).full_name || 'Un contacto';
-              addNotification({ type: 'story', title: `${userName} publicó un estado`, body: 'Toca para verlo', targetUserId: s.user_id, storyId: s.id, imageUrl: storyThumb.get(s.id) });
+              const userName = (s as any).user_name || (s as any).author_name || (s as any).full_name || tr('xtUnContacto');
+              addNotification({ type: 'story', title: userName + tr('nciPublishedStatus'), body: tr('xtTocaParaVerlo'), targetUserId: s.user_id, storyId: s.id, imageUrl: storyThumb.get(s.id) });
             }
           }
         }
@@ -144,8 +145,8 @@ export function useNewContentIndicators(currentUserId: string) {
             addIndicator(m.user_id, 'moment');
             if (!notifiedMomentIds.has(m.id)) {
               notifiedMomentIds.add(m.id);
-              const userName = (m as any).user_name || (m as any).author_name || (m as any).full_name || 'Un contacto';
-              addNotification({ type: 'moment', title: `${userName} publicó un Moment`, body: 'Toca para verlo', targetUserId: m.user_id, momentId: m.id, imageUrl: momentThumb.get(m.id) });
+              const userName = (m as any).user_name || (m as any).author_name || (m as any).full_name || tr('xtUnContacto');
+              addNotification({ type: 'moment', title: userName + tr('nciPublishedMoment'), body: tr('xtTocaParaVerlo'), targetUserId: m.user_id, momentId: m.id, imageUrl: momentThumb.get(m.id) });
             }
           }
         }
@@ -159,8 +160,8 @@ export function useNewContentIndicators(currentUserId: string) {
             addIndicator(l.host_id, 'live');
             if (!notifiedLiveIds.has(l.live_id)) {
               notifiedLiveIds.add(l.live_id);
-              const userName = (l as any).user_name || (l as any).host_name || (l as any).full_name || 'Un contacto';
-              addNotification({ type: 'live', title: `${userName} está en directo`, body: 'Toca para unirte', targetUserId: l.host_id, liveId: l.live_id });
+              const userName = (l as any).user_name || (l as any).host_name || (l as any).full_name || tr('xtUnContacto');
+              addNotification({ type: 'live', title: `${userName} está en directo`, body: tr('xtTocaParaUnirte'), targetUserId: l.host_id, liveId: l.live_id });
             }
           }
         }

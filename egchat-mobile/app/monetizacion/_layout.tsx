@@ -1,4 +1,5 @@
 import { Stack } from 'expo-router';
+import { t as tr } from '../../src/translations';
 
 export default function MonetizacionLayout() {
   return (
@@ -14,12 +15,12 @@ export default function MonetizacionLayout() {
     >
       <Stack.Screen
         name="index"
-        options={{ title: '💰 Monetización', headerLargeTitle: false }}
+        options={{ title: tr('xtMonetizacion'), headerLargeTitle: false }}
       />
       <Stack.Screen name="empresas" options={{ title: '🏢 Empresas' }} />
       <Stack.Screen name="taxis" options={{ title: '🚖 Taxis' }} />
       <Stack.Screen name="barcos" options={{ title: '⛵ Barcos' }} />
-      <Stack.Screen name="monedero" options={{ title: '💳 Monedero' }} />
+      <Stack.Screen name="monedero" options={{ title: tr('xtMonedero') }} />
       <Stack.Screen name="perfil-financiero" options={{ title: '👤 Perfiles Usuarios' }} />
       <Stack.Screen name="perfil-negocio" options={{ title: '🏪 Perfiles Negocios' }} />
     </Stack>

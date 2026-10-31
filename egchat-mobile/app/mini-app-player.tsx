@@ -9,6 +9,7 @@ import { MiniAppRuntime } from '../src/miniapps/MiniAppRuntime';
 import { addRecentApp, getMiniAppById, type MiniAppPermission } from '../src/miniapps/miniAppsStore';
 import { router } from 'expo-router';
 import { toast } from '../src/components/Toast';
+import { t as tr } from '../src/translations';
 
 export default function MiniAppPlayerScreen() {
   const { url, title, appId, permissions: permStr } = useLocalSearchParams<{
@@ -38,7 +39,7 @@ export default function MiniAppPlayerScreen() {
   })();
 
   const handlePayment = (amount: number, description: string) => {
-    toast.info('💳 Pago', `${description} — ${amount} XAF`);
+    toast.info(tr('xtPago'), `${description} — ${amount} XAF`);
     router.push('/(tabs)/monedero' as any);
   };
 

@@ -5,36 +5,37 @@ import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import { useTranslation } from '../src/context/LanguageContext';
 
 const TABS = [
-  { id: 'salud', icon: '🏥', label: 'Salud' },
-  { id: 'seguros', icon: '🛡️', label: 'Seguros' },
-  { id: 'impuestos', icon: '📋', label: 'Impuestos' },
-  { id: 'correos', icon: '📮', label: 'Correos' },
+  { id: 'salud', icon: '🏥', labelKey: 'svcTabSalud' },
+  { id: 'seguros', icon: '🛡️', labelKey: 'svcTabSeguros' },
+  { id: 'impuestos', icon: '📋', labelKey: 'svcTabImpuestos' },
+  { id: 'correos', icon: '📮', labelKey: 'svcTabCorreos' },
 ];
 
 const HEALTH = [
-  { name: 'Hospital General de Malabo', type: 'Hospital público', phone: '+240 333 09 50 00', services: ['Urgencias 24h', 'Cirugía', 'Maternidad', 'Pediatría', 'Laboratorio'] },
-  { name: 'Clínica La Paz', type: 'Clínica privada', phone: '+240 333 09 51 00', services: ['Consultas generales', 'Especialistas', 'Radiología', 'Farmacia'] },
-  { name: 'Hospital de Bata', type: 'Hospital público', phone: '+240 333 09 52 00', services: ['Urgencias', 'Cirugía', 'Maternidad', 'Pediatría'] },
-  { name: 'Centro de Salud Ela Nguema', type: 'Centro de salud', phone: '+240 333 09 53 00', services: ['Consultas', 'Vacunación', 'Planificación familiar'] },
-  { name: 'INSESO', type: 'Seguridad Social', phone: '+240 333 09 54 00', services: ['Prestaciones sociales', 'Pensiones', 'Accidentes laborales'] },
+  { name: 'Hospital General de Malabo', typeKey: 'svcPublicHospital', phone: '+240 333 09 50 00', serviceKeys: ['svcUrgencies24', 'svcSurgery', 'svcMaternity', 'svcPediatrics', 'svcLaboratory'] },
+  { name: 'Clínica La Paz', typeKey: 'svcPrivateClinic', phone: '+240 333 09 51 00', serviceKeys: ['svcGeneralConsultations', 'svcSpecialists', 'svcRadiology', 'svcPharmacy'] },
+  { name: 'Hospital de Bata', typeKey: 'svcPublicHospital', phone: '+240 333 09 52 00', serviceKeys: ['svcUrgencies', 'svcSurgery', 'svcMaternity', 'svcPediatrics'] },
+  { name: 'Centro de Salud Ela Nguema', typeKey: 'svcHealthCenter', phone: '+240 333 09 53 00', serviceKeys: ['svcConsultations', 'svcVaccination', 'svcFamilyPlanning'] },
+  { name: 'INSESO', typeKey: 'svcSocialSecurity', phone: '+240 333 09 54 00', serviceKeys: ['svcSocialBenefits', 'svcPensions', 'svcWorkAccidents'] },
 ];
 
 const INSURANCE = [
-  { icon: '🚗', name: 'Seguro de Auto', desc: 'Cobertura total o terceros', price: 'Desde 25,000 XAF/año' },
-  { icon: '🏠', name: 'Seguro de Hogar', desc: 'Protección para tu vivienda', price: 'Desde 15,000 XAF/año' },
-  { icon: '❤️', name: 'Seguro de Vida', desc: 'Protección para tu familia', price: 'Desde 10,000 XAF/mes' },
-  { icon: '🏥', name: 'Seguro Médico', desc: 'Cobertura sanitaria completa', price: 'Desde 20,000 XAF/mes' },
-  { icon: '✈️', name: 'Seguro de Viaje', desc: 'Viajes nacionales e internacionales', price: 'Desde 5,000 XAF/viaje' },
-  { icon: '💼', name: 'Seguro Empresarial', desc: 'Protección para tu negocio', price: 'Consultar' },
+  { icon: '🚗', nameKey: 'svcCarInsurance', descKey: 'svcCarInsuranceDesc', amount: '25,000 XAF', fromKey: 'svcPriceFrom', perKey: 'svcPerYear' },
+  { icon: '🏠', nameKey: 'svcHomeInsurance', descKey: 'svcHomeInsuranceDesc', amount: '15,000 XAF', fromKey: 'svcPriceFrom', perKey: 'svcPerYear' },
+  { icon: '❤️', nameKey: 'svcLifeInsurance', descKey: 'svcLifeInsuranceDesc', amount: '10,000 XAF', fromKey: 'svcPriceFrom', perKey: 'svcPerMonth' },
+  { icon: '🏥', nameKey: 'svcMedicalInsurance', descKey: 'svcMedicalInsuranceDesc', amount: '20,000 XAF', fromKey: 'svcPriceFrom', perKey: 'svcPerMonth' },
+  { icon: '✈️', nameKey: 'svcTravelInsurance', descKey: 'svcTravelInsuranceDesc', amount: '5,000 XAF', fromKey: 'svcPriceFrom', perKey: 'svcPerTrip' },
+  { icon: '💼', nameKey: 'svcBusinessInsurance', descKey: 'svcBusinessInsuranceDesc', priceKey: 'svcPriceConsult' },
 ];
 
 const POSTAL = [
-  { icon: '📦', name: 'Envío nacional', price: 'Desde 2,000 XAF' },
-  { icon: '✈️', name: 'Envío internacional', price: 'Desde 15,000 XAF' },
-  { icon: '📬', name: 'Apartado postal', price: '5,000 XAF/año' },
-  { icon: '🔍', name: 'Seguimiento de envío', price: 'Gratis' },
+  { icon: '📦', nameKey: 'svcDomesticShipping', amount: '2,000 XAF', fromKey: 'svcPriceFrom' },
+  { icon: '✈️', nameKey: 'svcInternationalShipping', amount: '15,000 XAF', fromKey: 'svcPriceFrom' },
+  { icon: '📬', nameKey: 'svcPostalBox', amount: '5,000 XAF', perKey: 'svcPerYear' },
+  { icon: '🔍', nameKey: 'svcShipmentTracking', priceKey: 'svcPriceFree' },
 ];
 
 export default function SegurosSaludScreen() {
@@ -44,17 +45,27 @@ export default function SegurosSaludScreen() {
   const [taxResult, setTaxResult] = useState<any>(null);
   const [taxLoading, setTaxLoading] = useState(false);
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
+  const priceLabel = (item: { amount?: string; fromKey?: string; perKey?: string; priceKey?: string }) => {
+    if (item.priceKey) return t(item.priceKey);
+    const from = item.fromKey ? `${t(item.fromKey)} ` : '';
+    const per = item.perKey ? t(item.perKey) : '';
+    return `${from}${item.amount}${per}`;
+  };
+
   const consultarDGI = () => {
-    if (!nif.trim()) { Alert.alert('Error', 'Introduce tu NIF'); return; }
+    if (!nif.trim()) { Alert.alert(t('error'), t('svcEnterNif')); return; }
     setTaxLoading(true);
     setTimeout(() => {
-      setTaxResult({ nif, estado: 'Al corriente', deuda: 0, periodo: '2025' });
+      setTaxResult({ nif, estadoKey: 'svcTaxUpToDate', deuda: 0, periodo: '2025' });
       setTaxLoading(false);
     }, 1500);
   };
+
+  const activeTab = TABS.find(tab => tab.id === active);
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: C.bgPrimary }]} edges={['left', 'right']}>
@@ -63,15 +74,15 @@ export default function SegurosSaludScreen() {
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
         <Text style={[styles.title, { color: C.textPrimary }]}>
-          {selectedHealth ? selectedHealth.name : TABS.find(t => t.id === active)?.icon + ' ' + TABS.find(t => t.id === active)?.label}
+          {selectedHealth ? selectedHealth.name : `${activeTab?.icon ?? ''} ${activeTab ? t(activeTab.labelKey) : ''}`}
         </Text>
       </View>
       {!selectedHealth && (
         <View style={[styles.tabs, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
-          {TABS.map(t => (
-            <TouchableOpacity key={t.id} style={[styles.tab, active === t.id && styles.tabActive]} onPress={() => { setActive(t.id); setTaxResult(null); setNif(''); }} activeOpacity={0.7}>
-              <Text style={styles.tabIcon}>{t.icon}</Text>
-              <Text style={[styles.tabText, { color: active === t.id ? Colors.accent : C.textTertiary }, active === t.id && styles.tabTextActive]}>{t.label}</Text>
+          {TABS.map(tab => (
+            <TouchableOpacity key={tab.id} style={[styles.tab, active === tab.id && styles.tabActive]} onPress={() => { setActive(tab.id); setTaxResult(null); setNif(''); }} activeOpacity={0.7}>
+              <Text style={styles.tabIcon}>{tab.icon}</Text>
+              <Text style={[styles.tabText, { color: active === tab.id ? Colors.accent : C.textTertiary }, active === tab.id && styles.tabTextActive]}>{t(tab.labelKey)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -83,7 +94,7 @@ export default function SegurosSaludScreen() {
             <Text style={styles.cardEmoji}>🏥</Text>
             <View style={styles.cardInfo}>
               <Text style={[styles.cardName, { color: C.textPrimary }]}>{h.name}</Text>
-              <Text style={[styles.cardSub, { color: C.textTertiary }]}>{h.type}</Text>
+              <Text style={[styles.cardSub, { color: C.textTertiary }]}>{t(h.typeKey)}</Text>
             </View>
             <Text style={[styles.arrow, { color: C.border }]}>›</Text>
           </TouchableOpacity>
@@ -91,13 +102,13 @@ export default function SegurosSaludScreen() {
         {active === 'salud' && selectedHealth && (
           <View>
             <View style={[styles.detailHeader, { backgroundColor: C.accentLight }]}>
-              <Text style={styles.detailType}>{selectedHealth.type}</Text>
+              <Text style={styles.detailType}>{t(selectedHealth.typeKey)}</Text>
             </View>
-            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>SERVICIOS</Text>
-            {selectedHealth.services.map(s => (
-              <View key={s} style={styles.serviceRow}>
+            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>{t('svcServicesSection')}</Text>
+            {selectedHealth.serviceKeys.map(sk => (
+              <View key={sk} style={styles.serviceRow}>
                 <Text style={styles.dot}>●</Text>
-                <Text style={[styles.serviceText, { color: C.textPrimary }]}>{s}</Text>
+                <Text style={[styles.serviceText, { color: C.textPrimary }]}>{t(sk)}</Text>
               </View>
             ))}
             <TouchableOpacity style={styles.callBtn} onPress={() => Linking.openURL(`tel:${selectedHealth.phone}`)}>
@@ -106,34 +117,43 @@ export default function SegurosSaludScreen() {
           </View>
         )}
         {active === 'seguros' && INSURANCE.map(ins => (
-          <TouchableOpacity key={ins.name} style={[styles.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]} onPress={() => Alert.alert('Solicitar seguro', `Un agente te contactará para "${ins.name}".\n\nPrecio: ${ins.price}`)} activeOpacity={0.7}>
+          <TouchableOpacity key={ins.nameKey} style={[styles.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
+            onPress={() => Alert.alert(
+              t('svcRequestInsurance'),
+              `${t('svcAgentWillContact')} "${t(ins.nameKey)}".\n\n${t('svcPriceWord')}: ${priceLabel(ins)}`,
+            )} activeOpacity={0.7}>
             <Text style={styles.cardEmoji}>{ins.icon}</Text>
             <View style={styles.cardInfo}>
-              <Text style={[styles.cardName, { color: C.textPrimary }]}>{ins.name}</Text>
-              <Text style={[styles.cardSub, { color: C.textTertiary }]}>{ins.desc}</Text>
-              <Text style={styles.cardPrice}>{ins.price}</Text>
+              <Text style={[styles.cardName, { color: C.textPrimary }]}>{t(ins.nameKey)}</Text>
+              <Text style={[styles.cardSub, { color: C.textTertiary }]}>{t(ins.descKey)}</Text>
+              <Text style={styles.cardPrice}>{priceLabel(ins)}</Text>
             </View>
           </TouchableOpacity>
         ))}
         {active === 'impuestos' && (
           <View style={styles.taxSection}>
-            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>CONSULTA TU SITUACIÓN FISCAL</Text>
+            <Text style={[styles.sectionLabel, { color: C.textTertiary }]}>{t('svcTaxQueryTitle')}</Text>
             <View style={[styles.inputWrap, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
-              <TextInput style={[styles.input, { color: C.textPrimary }]} value={nif} onChangeText={setNif} placeholder="NIF / Número de contribuyente" placeholderTextColor={C.textTertiary} />
+              <TextInput style={[styles.input, { color: C.textPrimary }]} value={nif} onChangeText={setNif} placeholder={t('svcNifPlaceholder')} placeholderTextColor={C.textTertiary} />
             </View>
             <TouchableOpacity style={[styles.callBtn, !nif.trim() && { opacity: 0.5 }]} onPress={consultarDGI} disabled={!nif.trim() || taxLoading}>
-              {taxLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.callBtnText}>Consultar DGI</Text>}
+              {taxLoading ? <ActivityIndicator color={Colors.white} /> : <Text style={styles.callBtnText}>{t('svcQueryDgi')}</Text>}
             </TouchableOpacity>
             {taxResult && (
               <View style={[styles.resultCard, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
-                {[['NIF', taxResult.nif], ['Estado', taxResult.estado], ['Período', taxResult.periodo], ['Deuda', `${taxResult.deuda.toLocaleString()} XAF`]].map(([l, v]) => (
-                  <View key={l} style={styles.resultRow}>
-                    <Text style={[styles.resultLabel, { color: C.textSecondary }]}>{l}</Text>
-                    <Text style={[styles.resultValue, { color: C.textPrimary }, l === 'Estado' && { color: Colors.accent }]}>{v}</Text>
+                {[
+                  { label: 'NIF', value: taxResult.nif, highlight: false },
+                  { label: t('svcTaxRowStatus'), value: t(taxResult.estadoKey), highlight: true },
+                  { label: t('svcTaxRowPeriod'), value: taxResult.periodo, highlight: false },
+                  { label: t('svcTaxRowDebt'), value: `${taxResult.deuda.toLocaleString()} XAF`, highlight: false },
+                ].map(row => (
+                  <View key={row.label} style={styles.resultRow}>
+                    <Text style={[styles.resultLabel, { color: C.textSecondary }]}>{row.label}</Text>
+                    <Text style={[styles.resultValue, { color: C.textPrimary }, row.highlight && { color: Colors.accent }]}>{row.value}</Text>
                   </View>
                 ))}
                 <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]} onPress={() => Linking.openURL('tel:+240333095500')}>
-                  <Text style={styles.callBtnText}>📞 Contactar DGI</Text>
+                  <Text style={styles.callBtnText}>{t('svcCallDgi')}</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -142,16 +162,16 @@ export default function SegurosSaludScreen() {
         {active === 'correos' && (
           <View>
             {POSTAL.map(p => (
-              <View key={p.name} style={[styles.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
+              <View key={p.nameKey} style={[styles.card, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
                 <Text style={styles.cardEmoji}>{p.icon}</Text>
                 <View style={styles.cardInfo}>
-                  <Text style={[styles.cardName, { color: C.textPrimary }]}>{p.name}</Text>
-                  <Text style={styles.cardPrice}>{p.price}</Text>
+                  <Text style={[styles.cardName, { color: C.textPrimary }]}>{t(p.nameKey)}</Text>
+                  <Text style={styles.cardPrice}>{priceLabel(p)}</Text>
                 </View>
               </View>
             ))}
             <TouchableOpacity style={[styles.callBtn, { marginTop: Spacing.md }]} onPress={() => Linking.openURL('tel:+240333095600')}>
-              <Text style={styles.callBtnText}>📞 Llamar a Correos GQ</Text>
+              <Text style={styles.callBtnText}>{t('svcCallCorreosGq')}</Text>
             </TouchableOpacity>
           </View>
         )}

@@ -4,12 +4,13 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { CHAT_WALLPAPERS, WallpaperCategory } from '../../data/chatWallpapers';
+import { useTranslation } from '../../context/LanguageContext';
 
-const TABS: { id: WallpaperCategory | 'all'; label: string }[] = [
-  { id: 'crystal', label: 'Cristalinos' },
-  { id: 'static', label: 'Estáticos' },
-  { id: 'dynamic', label: 'Dinámicos' },
-  { id: 'none', label: 'Sin fondo' },
+const TABS: { id: WallpaperCategory | 'all'; labelKey: string }[] = [
+  { id: 'crystal', labelKey: 'chtWallpaperCrystal' },
+  { id: 'static', labelKey: 'chtWallpaperStatic' },
+  { id: 'dynamic', labelKey: 'chtWallpaperDynamic' },
+  { id: 'none', labelKey: 'chtWallpaperNone' },
 ];
 
 export function ChatWallpaperModal({
@@ -23,6 +24,7 @@ export function ChatWallpaperModal({
   onClose: () => void;
   onSelect: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   const [tab, setTab] = useState<WallpaperCategory | 'all'>('crystal');
   const items = CHAT_WALLPAPERS.filter(w => tab === 'all' || w.category === tab || (tab === 'none' && w.id === 'none'));
 
@@ -31,15 +33,15 @@ export function ChatWallpaperModal({
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={s.sheet} onPress={() => {}}>
           <View style={s.handle} />
-          <Text style={s.title}>Fondo de pantalla</Text>
+          <Text style={s.title}>{t('wallpaper')}</Text>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.tabs}>
-            {TABS.map(t => (
+            {TABS.map(tabItem => (
               <TouchableOpacity
-                key={t.id}
-                style={[s.tab, tab === t.id && s.tabActive]}
-                onPress={() => setTab(t.id)}
+                key={tabItem.id}
+                style={[s.tab, tab === tabItem.id && s.tabActive]}
+                onPress={() => setTab(tabItem.id)}
               >
-                <Text style={[s.tabText, tab === t.id && s.tabTextActive]}>{t.label}</Text>
+                <Text style={[s.tabText, tab === tabItem.id && s.tabTextActive]}>{t(tabItem.labelKey)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -56,7 +58,7 @@ export function ChatWallpaperModal({
                   style={[s.thumbGrad, activeId === wp.id && s.thumbGradActive]}
                 />
                 {wp.live && (
-                  <View style={s.liveBadge}><Text style={s.liveText}>VIVO</Text></View>
+                  <View style={s.liveBadge}><Text style={s.liveText}>{t('chtLiveTag')}</Text></View>
                 )}
                 <Text style={s.thumbLabel} numberOfLines={1}>{wp.label}</Text>
               </TouchableOpacity>

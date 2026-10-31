@@ -6,12 +6,14 @@ import {
   ServiceModuleShell, ServiceHomeGrid, ServiceBanner, OperatorGrid,
   StatusBadge, SupportScreen, EmptyState, PrimaryButton, FormField, Ico, LogoThumb,
 } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 type IScreen = 'home' | 'providers' | 'services' | 'detail' | 'form' | 'orders' | 'myServices' | 'support' | 'payBill';
 
 interface Props { visible: boolean; onClose: () => void; userBalance?: number; }
 
 export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance = 100000 }) => {
+  const { t } = useTranslation();
   const [screen, setScreen] = useState<IScreen>('home');
   const [provider, setProvider] = useState('');
   const [service, setService] = useState<InternetService | null>(null);
@@ -31,10 +33,10 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
   const color = selProv?.color || '#1485EE';
 
   const titles: Record<IScreen, string> = {
-    home: 'Internet', providers: 'Proveedores',
-    services: `${selProv?.name || ''} — Servicios`, detail: service?.name || 'Detalle',
-    form: 'Solicitar Instalación', orders: 'Mis Pedidos', myServices: 'Mis Servicios',
-    support: 'Soporte', payBill: 'Pagar Factura',
+    home: t('internet'), providers: t('svcProviders'),
+    services: `${selProv?.name || ''} — ${t('services')}`, detail: service?.name || t('svcDetail'),
+    form: t('svcRequestInstall'), orders: t('svcMyOrders'), myServices: t('svcMyServices'),
+    support: t('svcSupport'), payBill: t('svcPayBill'),
   };
 
   const goBack = () => {
@@ -46,25 +48,25 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
   };
 
   const homeItems = [
-    { id: 'providers', label: 'Ver Proveedores', desc: `${INTERNET_PROVIDERS.length} disponibles`, color: '#1485EE', bg: '#EFF5FD', icon: Ico.home('#1485EE') },
-    { id: 'form', label: 'Solicitar Instalación', desc: 'Contratar servicio', color: '#10B981', bg: '#F0FAF5', icon: Ico.wrench('#10B981') },
-    { id: 'payBill', label: 'Pagar Factura', desc: 'Pago de servicios', color: '#C47D2A', bg: '#FDF6EE', icon: Ico.card('#C47D2A') },
-    { id: 'orders', label: 'Mis Pedidos', desc: `${orders.length} pedidos`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clipboard('#6B5BD6') },
-    { id: 'myServices', label: 'Mis Servicios', desc: 'Servicios activos', color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.wifi('#0E7FA8') },
-    { id: 'support', label: 'Soporte', desc: 'Ayuda técnica', color: '#C0392B', bg: '#FDF2F2', icon: Ico.headset('#C0392B') },
+    { id: 'providers', label: t('svcSeeProviders'), desc: `${INTERNET_PROVIDERS.length} ${t('svcAvailableWord')}`, color: '#1485EE', bg: '#EFF5FD', icon: Ico.home('#1485EE') },
+    { id: 'form', label: t('svcRequestInstall'), desc: t('svcHireService'), color: '#10B981', bg: '#F0FAF5', icon: Ico.wrench('#10B981') },
+    { id: 'payBill', label: t('svcPayBill'), desc: t('payServices'), color: '#C47D2A', bg: '#FDF6EE', icon: Ico.card('#C47D2A') },
+    { id: 'orders', label: t('svcMyOrders'), desc: `${orders.length} ${t('svcOrdersWord')}`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clipboard('#6B5BD6') },
+    { id: 'myServices', label: t('svcMyServices'), desc: t('svcActiveServices'), color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.wifi('#0E7FA8') },
+    { id: 'support', label: t('svcSupport'), desc: t('svcTechHelp'), color: '#C0392B', bg: '#FDF2F2', icon: Ico.headset('#C0392B') },
   ];
 
   const formFields = [
-    { k: 'name', l: 'Nombre completo' }, { k: 'phone', l: 'Teléfono' },
-    { k: 'address', l: 'Dirección' }, { k: 'city', l: 'Ciudad / Barrio / Zona' },
-    { k: 'type', l: 'Tipo de instalación' }, { k: 'notes', l: 'Observaciones (opcional)' },
+    { k: 'name', l: t('name') }, { k: 'phone', l: t('phone') },
+    { k: 'address', l: t('setAddress') }, { k: 'city', l: t('svcCityAreaZone') },
+    { k: 'type', l: t('svcInstallType') }, { k: 'notes', l: t('svcNotesOptional') },
   ] as const;
 
   return (
     <ServiceModuleShell
       visible={visible}
       title={titles[screen]}
-      subtitle={screen === 'home' ? 'Conectividad — Guinea Ecuatorial' : undefined}
+      subtitle={screen === 'home' ? t('svcConnectivityEq') : undefined}
       onBack={goBack}
       onClose={onClose}
     >
@@ -73,9 +75,9 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
           <ServiceHomeGrid items={homeItems} onPress={id => setScreen(id as IScreen)} />
           <ServiceBanner
             key={refreshKey}
-            label="Proveedores en Guinea Ecuatorial"
+            label={t('svcProvidersEq')}
             count={INTERNET_PROVIDERS.length}
-            suffix="Hogar — Empresa — Fibra — Móvil — Satélite"
+            suffix={t('svcHomeBusinessFiber')}
             colors={['#1485EE', '#0066CC']}
             onRefresh={() => setRefreshKey(k => k + 1)}
           />
@@ -91,7 +93,7 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
       {screen === 'services' && (
         provServices.length === 0 ? (
-          <EmptyState emoji="📡" title="Sin servicios disponibles" desc="" />
+          <EmptyState emoji="📡" title={t('svcNoServicesAvailable')} desc="" />
         ) : (
           <View style={st.pkgCard}>
             <View style={st.pkgGrid}>
@@ -122,11 +124,11 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
             <Text style={st.detailDesc}>{service.desc}</Text>
             {service.speed !== '—' && (
               <View style={[st.speedBox, { backgroundColor: 'transparent', borderWidth: 1, borderColor: 'rgba(0,0,0,0.07)' }]}>
-                <Text style={[st.speedText, { color }]}>⚡ Velocidad: {service.speed}</Text>
+                <Text style={[st.speedText, { color }]}>⚡ {t('svcSpeedLabel')}: {service.speed}</Text>
               </View>
             )}
           </View>
-          <PrimaryButton label="🔧 Solicitar ahora" onPress={() => setScreen('form')} color={color} />
+          <PrimaryButton label={t('svcRequestNow')} onPress={() => setScreen('form')} color={color} />
         </View>
       )}
 
@@ -151,12 +153,12 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
             />
           ))}
           <PrimaryButton
-            label="Confirmar solicitud"
+            label={t('svcConfirmRequest')}
             onPress={() => {
               if (form.name && form.phone) {
                 setOrders(p => [...p, {
                   id: `io${Date.now()}`, provider: selProv?.name || '',
-                  service: service?.name || 'Instalación', status: 'pendiente',
+                  service: service?.name || t('svcInstallationWord'), status: 'pendiente',
                   date: new Date().toLocaleDateString('es'), price: service?.price || '—',
                 }]);
                 setForm({ name: '', phone: '', address: '', city: '', notes: '', type: '' });
@@ -173,12 +175,12 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
         !billOk ? (
           <View>
             <View style={st.confirmCard}>
-              <Text style={st.payTitle}>💳 Pagar Factura de Internet</Text>
-              <FormField placeholder="Referencia / Número de contrato" value={billRef} onChangeText={setBillRef} />
-              <FormField placeholder="Importe a pagar (XAF)" value={billAmt} onChangeText={setBillAmt} keyboardType="numeric" />
+              <Text style={st.payTitle}>{t('svcPayInternetBill')}</Text>
+              <FormField placeholder={t('svcRefContractPh')} value={billRef} onChangeText={setBillRef} />
+              <FormField placeholder={t('svcAmountToPayXaf')} value={billAmt} onChangeText={setBillAmt} keyboardType="numeric" />
             </View>
             <PrimaryButton
-              label={`Pagar ${billAmt ? `${parseInt(billAmt, 10).toLocaleString()} XAF` : ''}`}
+              label={`${t('svcPayWord')} ${billAmt ? `${parseInt(billAmt, 10).toLocaleString()} XAF` : ''}`}
               onPress={() => {
                 const amt = parseInt(billAmt, 10);
                 if (billRef && amt && amt <= balance) { setBalance(b => b - amt); setBillOk(true); }
@@ -190,10 +192,10 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
         ) : (
           <View style={st.success}>
             <Text style={{ fontSize: 52, marginBottom: 12 }}>✅</Text>
-            <Text style={st.successTitle}>Pago realizado</Text>
-            <Text style={st.successSub}>Ref: {billRef} — {parseInt(billAmt, 10).toLocaleString()} XAF</Text>
+            <Text style={st.successTitle}>{t('svcPaymentDone')}</Text>
+            <Text style={st.successSub}>{t('svcRefShortLabel')}: {billRef} — {parseInt(billAmt, 10).toLocaleString()} XAF</Text>
             <TouchableOpacity style={[st.doneBtn, { backgroundColor: '#1485EE' }]} onPress={() => { setBillOk(false); setBillRef(''); setBillAmt(''); setScreen('home'); }}>
-              <Text style={st.doneBtnText}>Listo</Text>
+              <Text style={st.doneBtnText}>{t('done')}</Text>
             </TouchableOpacity>
           </View>
         )
@@ -201,7 +203,7 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
       {screen === 'orders' && (
         orders.length === 0 ? (
-          <EmptyState emoji="📋" title="Sin pedidos aún" desc="Solicita un servicio para ver tus pedidos aquí" />
+          <EmptyState emoji="📋" title={t('svcNoOrdersYet')} desc={t('svcRequestToSeeOrders')} />
         ) : orders.map(o => (
           <View key={o.id} style={st.orderCard}>
             <View style={st.orderTop}>
@@ -221,8 +223,8 @@ export const InternetModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
       {screen === 'myServices' && (
         <EmptyState
-          emoji="📡" title="Sin servicios activos" desc="Tus servicios activos aparecerán aquí"
-          actionLabel="Ver proveedores" onAction={() => setScreen('providers')}
+          emoji="📡" title={t('svcNoActiveServices')} desc={t('svcActiveServicesHere')}
+          actionLabel={t('svcSeeProviders')} onAction={() => setScreen('providers')}
         />
       )}
 

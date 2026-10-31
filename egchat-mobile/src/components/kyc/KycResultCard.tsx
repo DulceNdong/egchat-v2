@@ -2,6 +2,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Linking } from 'react-native';
 import { router } from 'expo-router';
+import { t as tr } from '../../translations';
 
 type ResultType = 'approved' | 'manual_review' | 'rejected_fixable' | 'rejected_final';
 
@@ -12,10 +13,10 @@ interface Props {
 }
 
 const CONFIG: Record<ResultType, { icon: string; title: string; color: string; bg: string }> = {
-  approved:         { icon: '✅', title: '¡Verificación completada!',   color: '#065f46', bg: '#f0fdf4' },
-  manual_review:    { icon: '🕐', title: 'En revisión manual',           color: '#92400e', bg: '#fffbeb' },
-  rejected_fixable: { icon: '⚠️',  title: 'Verificación no aprobada',    color: '#991b1b', bg: '#fef2f2' },
-  rejected_final:   { icon: '❌', title: 'Verificación rechazada',       color: '#374151', bg: '#f9fafb' },
+  approved:         { icon: '✅', title: tr('xtVerificacionCompletada'),   color: '#065f46', bg: '#f0fdf4' },
+  manual_review:    { icon: '🕐', title: tr('xtEnRevisionManual'),           color: '#92400e', bg: '#fffbeb' },
+  rejected_fixable: { icon: '⚠️',  title: tr('xtVerificacionNoAprobada'),    color: '#991b1b', bg: '#fef2f2' },
+  rejected_final:   { icon: '❌', title: tr('walKycRejectedTitle'),       color: '#374151', bg: '#f9fafb' },
 };
 
 export function KycResultCard({ result, rejectReason, onRetry }: Props) {
@@ -28,20 +29,20 @@ export function KycResultCard({ result, rejectReason, onRetry }: Props) {
 
       {result === 'approved' && (
         <>
-          <Text style={st.body}>Ya puedes usar tu monedero EGPAY.</Text>
+          <Text style={st.body}>{tr('xtYaPuedesUsarTuMonederoEGPAY')}</Text>
           <TouchableOpacity style={st.btnPrimary} onPress={() => router.replace('/(tabs)/monedero' as any)}>
-            <Text style={st.btnPrimaryText}>Ir a mi monedero →</Text>
+            <Text style={st.btnPrimaryText}>{tr('xtIrAMiMonedero')}</Text>
           </TouchableOpacity>
         </>
       )}
 
       {result === 'manual_review' && (
         <>
-          <Text style={st.body}>Tu verificación está siendo revisada por BANGE.</Text>
+          <Text style={st.body}>{tr('xtTuVerificacionEstaSiendoRevisadaPorBANGE')}</Text>
           <Text style={st.sub}>Tiempo estimado: 24–48 horas</Text>
-          <Text style={st.sub}>Te avisaremos por notificación push cuando haya una decisión.</Text>
+          <Text style={st.sub}>{tr('kycPushDecisionBody')}</Text>
           <TouchableOpacity style={st.btnSecondary} onPress={() => router.replace('/(tabs)/mensajeria' as any)}>
-            <Text style={st.btnSecondaryText}>Volver al inicio</Text>
+            <Text style={st.btnSecondaryText}>{tr('backHome')}</Text>
           </TouchableOpacity>
         </>
       )}
@@ -62,8 +63,8 @@ export function KycResultCard({ result, rejectReason, onRetry }: Props) {
 
       {result === 'rejected_final' && (
         <>
-          <Text style={st.body}>No podemos completar tu verificación en este momento.</Text>
-          <Text style={st.sub}>Contacta con soporte para más información.</Text>
+          <Text style={st.body}>{tr('kycRejectBody')}</Text>
+          <Text style={st.sub}>{tr('xtContactaConSoporteParaMasInformacion')}</Text>
           <TouchableOpacity
             style={st.btnSecondary}
             onPress={() => Linking.openURL('https://egchat-v2.vercel.app/support')}

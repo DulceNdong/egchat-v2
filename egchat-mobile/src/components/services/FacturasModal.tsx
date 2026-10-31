@@ -6,6 +6,7 @@ import { toast } from '../Toast';
 import { FinancialModuleShell, SummaryCard, FilterChips, StatusPill } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker } from './PublicModuleUI';
+import { t as tr } from '../../translations';
 
 type FScreen = 'home' | 'add' | 'detail' | 'pay' | 'success';
 
@@ -39,8 +40,8 @@ interface Props {
 }
 
 const FILTER_OPTS = [
-  { id: 'todas', label: 'Todas' }, 
-  { id: 'pendiente', label: 'Pendiente' },
+  { id: 'todas', label: tr('all') }, 
+  { id: 'pendiente', label: tr('kyPending') },
   { id: 'vencida', label: 'Vencida' }, 
   { id: 'pagada', label: 'Pagada' },
 ];
@@ -90,7 +91,7 @@ const billsAPI = {
     
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.message || 'Error al crear factura');
+      throw new Error(error.message || tr('xtErrorAlCrearFactura'));
     }
     
     return res.json();
@@ -110,7 +111,7 @@ const billsAPI = {
     
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.message || 'Error al pagar factura');
+      throw new Error(error.message || tr('xtErrorAlPagarFactura'));
     }
     
     return res.json();
@@ -126,7 +127,7 @@ const billsAPI = {
     
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.message || 'Error al eliminar factura');
+      throw new Error(error.message || tr('xtErrorAlEliminarFactura'));
     }
     
     return res.json();
@@ -170,7 +171,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       setBills(billsData);
       setCategories(categoriesData);
     } catch (error) {
-      toast.error('Error cargando datos');
+      toast.error(tr('xtErrorCargandoDatos'));
     } finally {
       setLoadingData(false);
     }
@@ -182,7 +183,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       const data = await billsAPI.getBills(status);
       setBills(data);
     } catch (error) {
-      toast.error('Error cargando facturas');
+      toast.error(tr('xtErrorCargandoFacturas'));
     } finally {
       setLoadingData(false);
     }
@@ -212,12 +213,12 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
   const payBill = async () => {
     if (!selected || !payMethod) {
-      toast.error('Selecciona método de pago');
+      toast.error(tr('xtSeleccionaMetodoDePago'));
       return;
     }
 
     if (selected.amount > balance) {
-      toast.error('Saldo insuficiente');
+      toast.error(tr('svcInsufficientBalance'));
       return;
     }
 
@@ -232,9 +233,9 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       setBills(p => p.map(b => b.id === selected.id ? { ...b, status: 'pagada' as const } : b));
       
       setScreen('success');
-      toast.success('¡Pago completado!');
+      toast.success(tr('xtPagoCompletado'));
     } catch (error: any) {
-      toast.error(error.message || 'Error al procesar pago');
+      toast.error(error.message || tr('xtErrorAlProcesarPago'));
     } finally {
       setLoading(false);
     }
@@ -243,7 +244,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
   const addBill = async () => {
     const cat = categories.find(c => c.id === form.categoryId);
     if (!form.service.trim() || !form.amount.trim() || !form.dueDate.trim()) {
-      toast.error('Completa todos los campos requeridos');
+      toast.error(tr('xtCompletaTodosLosCamposRequeridos'));
       return;
     }
 
@@ -262,12 +263,12 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       
       setForm({ service: '', provider: '', amount: '', dueDate: '', reference: '', categoryId: '' });
       setScreen('home');
-      toast.success('Factura creada correctamente');
+      toast.success(tr('xtFacturaCreadaCorrectamente'));
       
       // Recargar facturas
       loadBills(filter);
     } catch (error: any) {
-      toast.error(error.message || 'Error al crear factura');
+      toast.error(error.message || tr('xtErrorAlCrearFactura'));
     } finally {
       setLoading(false);
     }
@@ -280,14 +281,14 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
   const headerAction = screen === 'home' ? (
     <TouchableOpacity style={s.addBtn} onPress={() => setScreen('add')}>
-      <Text style={s.addBtnText}>+ Añadir</Text>
+      <Text style={s.addBtnText}>{tr('xtAnadir2')}</Text>
     </TouchableOpacity>
   ) : undefined;
 
   const fixedTop = screen === 'home' ? (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
       <SummaryCard
-        label="Total pendiente de pago"
+        label={tr('xtTotalPendienteDePago')}
         amount={totalPending}
         colors={['#C47D2A', '#D97706']}
         stats={[
@@ -306,11 +307,11 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
   ) : undefined;
 
   const titles: Record<FScreen, string> = {
-    home: 'Mis Facturas', 
-    add: 'Nueva Factura', 
-    detail: selected?.service || 'Factura',
-    pay: 'Pagar Factura', 
-    success: 'Pago completado',
+    home: tr('xtMisFacturas'), 
+    add: tr('xtNuevaFactura'), 
+    detail: selected?.service || tr('xtFactura'),
+    pay: tr('xtPagarFactura'), 
+    success: tr('xtPagoCompletado2'),
   };
 
   return (
@@ -336,9 +337,9 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
           ) : filtered.length === 0 ? (
             <View style={s.empty}>
               <Text style={{ fontSize: 40 }}>📋</Text>
-              <Text style={s.emptyTitle}>Sin facturas</Text>
+              <Text style={s.emptyTitle}>{tr('xtSinFacturas')}</Text>
               <TouchableOpacity style={s.addBtn} onPress={() => setScreen('add')}>
-                <Text style={s.addBtnText}>+ Añadir factura</Text>
+                <Text style={s.addBtnText}>{tr('svcAddBill')}</Text>
               </TouchableOpacity>
             </View>
           ) : filtered.map(b => (
@@ -365,7 +366,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
 
       {screen === 'add' && (
         <View>
-          <Text style={s.catLbl}>Categoría</Text>
+          <Text style={s.catLbl}>{tr('xtCategoria')}</Text>
           <View style={s.catGrid}>
             {categories.map(c => (
               <TouchableOpacity
@@ -382,13 +383,13 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
               </TouchableOpacity>
             ))}
           </View>
-          <FormField placeholder="Nombre del servicio" value={form.service} onChangeText={v => setF('service', v)} />
+          <FormField placeholder={tr('xtNombreDelServicio')} value={form.service} onChangeText={v => setF('service', v)} />
           <FormField placeholder="Proveedor / Empresa" value={form.provider} onChangeText={v => setF('provider', v)} />
-          <FormField placeholder="Número de referencia / contrato" value={form.reference} onChangeText={v => setF('reference', v)} />
-          <FormField placeholder="Importe (XAF)" value={form.amount} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
-          <FormField placeholder="Fecha de vencimiento (AAAA-MM-DD)" value={form.dueDate} onChangeText={v => setF('dueDate', v)} />
+          <FormField placeholder={tr('svcRefContractLower')} value={form.reference} onChangeText={v => setF('reference', v)} />
+          <FormField placeholder={tr('walAmountXaf')} value={form.amount} onChangeText={v => setF('amount', v)} keyboardType="numeric" />
+          <FormField placeholder={tr('xtFechaDeVencimientoAAAAMMDD')} value={form.dueDate} onChangeText={v => setF('dueDate', v)} />
           <PrimaryButton 
-            label={loading ? 'Guardando...' : 'Guardar factura'} 
+            label={loading ? 'Guardando...' : tr('xtGuardarFactura')} 
             color="#C47D2A" 
             disabled={!form.service.trim() || !form.amount.trim() || !form.dueDate.trim() || loading} 
             onPress={addBill} 
@@ -405,10 +406,10 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
             <Text style={s.detailName}>{selected.service}</Text>
             <Text style={s.detailProv}>{selected.provider}</Text>
             {[
-              ['Referencia', selected.reference || '—'], 
-              ['Vencimiento', new Date(selected.due_date).toLocaleDateString('es')], 
-              ['Estado', selected.status], 
-              ['Importe', `${selected.amount.toLocaleString()} XAF`]
+              [tr('xtReferencia'), selected.reference || '—'], 
+              [tr('xtVencimiento'), new Date(selected.due_date).toLocaleDateString('es')], 
+              [tr('mznStatusField'), selected.status], 
+              [tr('walAmount'), `${selected.amount.toLocaleString()} XAF`]
             ].map(([l, v]) => (
               <View key={l} style={s.detailRow}>
                 <Text style={s.detailLbl}>{l}</Text>
@@ -417,10 +418,10 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
             ))}
           </View>
           {selected.status !== 'pagada' ? (
-            <PrimaryButton label="💳 Pagar ahora" color={selected.color} onPress={() => setScreen('pay')} />
+            <PrimaryButton label={tr('xtPagarAhora')} color={selected.color} onPress={() => setScreen('pay')} />
           ) : (
             <View style={s.paidBanner}>
-              <Text style={s.paidText}>✅ Esta factura ya está pagada</Text>
+              <Text style={s.paidText}>{tr('xtEstaFacturaYaEstaPagada')}</Text>
             </View>
           )}
         </View>
@@ -429,13 +430,13 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       {screen === 'pay' && selected && (
         <View>
           <View style={s.detailCard}>
-            <Text style={s.payTitle}>Confirmar pago</Text>
+            <Text style={s.payTitle}>{tr('djhConfirmPayout')}</Text>
             <Text style={s.payAmt}>{selected.amount.toLocaleString()} XAF</Text>
             <Text style={s.balHint}>Saldo monedero: {balance.toLocaleString()} XAF</Text>
           </View>
           <PayMethodPicker value={payMethod} onChange={setPayMethod} accent="#C47D2A" />
           <PrimaryButton
-            label={loading ? 'Procesando...' : 'Confirmar pago'}
+            label={loading ? tr('processing') : tr('djhConfirmPayout')}
             color="#C47D2A"
             disabled={!payMethod || selected.amount > balance || loading}
             onPress={payBill}
@@ -446,7 +447,7 @@ export const FacturasModal: React.FC<Props> = ({ visible, onClose, userBalance =
       {screen === 'success' && selected && (
         <View style={s.success}>
           <Text style={{ fontSize: 52 }}>✅</Text>
-          <Text style={s.successTitle}>Pago realizado</Text>
+          <Text style={s.successTitle}>{tr('svcPaymentDone')}</Text>
           <Text style={s.successSub}>{selected.service} — {selected.amount.toLocaleString()} XAF</Text>
           <PrimaryButton 
             label="Listo" 

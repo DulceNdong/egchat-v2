@@ -5,6 +5,7 @@ import {
   Modal, StyleSheet, ActivityIndicator, SafeAreaView,
 } from 'react-native';
 import { Avatar } from './Avatar';
+import { t as tr } from '../translations';
 
 interface AppUser {
   id: string;
@@ -51,7 +52,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
         .filter((u: any) => u.id?.toString() !== currentUserId)
         .map((u: any) => ({
           id: u.id?.toString() || '',
-          full_name: u.full_name || 'Usuario',
+          full_name: u.full_name || tr('setUser'),
           phone: u.phone || '',
           avatar_url: u.avatar_url || '',
           isInContacts: existingIds.has(u.id?.toString()),
@@ -106,7 +107,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
         {step === 'welcome' && (
           <View style={styles.welcomeWrap}>
             <View style={styles.header}>
-              <Text style={styles.headerTitle}>¡Bienvenido a EGChat!</Text>
+              <Text style={styles.headerTitle}>{tr('xtBienvenidoAEGChat')}</Text>
               <TouchableOpacity onPress={onClose}>
                 <Text style={styles.closeText}>✕</Text>
               </TouchableOpacity>
@@ -116,7 +117,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
               <View style={styles.iconCircle}>
                 <Text style={styles.iconText}>👥</Text>
               </View>
-              <Text style={styles.welcomeTitle}>Agrega tus contactos</Text>
+              <Text style={styles.welcomeTitle}>{tr('xtAgregaTusContactos')}</Text>
               <Text style={styles.welcomeSub}>
                 Encuentra a tus amigos y familiares que ya están en EGChat.
               </Text>
@@ -127,12 +128,12 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
                 disabled={loading}
               >
                 <Text style={styles.btnPrimaryText}>
-                  {loading ? 'Cargando...' : 'Buscar usuarios en EGChat'}
+                  {loading ? 'Cargando...' : tr('xtBuscarUsuariosEnEGChat')}
                 </Text>
               </TouchableOpacity>
 
               <TouchableOpacity style={styles.btnSecondary} onPress={onClose}>
-                <Text style={styles.btnSecondaryText}>Omitir por ahora</Text>
+                <Text style={styles.btnSecondaryText}>{tr('xtOmitirPorAhora')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -143,7 +144,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
           <>
             <View style={styles.header}>
               <TouchableOpacity onPress={() => setStep('welcome')}>
-                <Text style={styles.backText}>← Atrás</Text>
+                <Text style={styles.backText}>{tr('walBackArrow')}</Text>
               </TouchableOpacity>
               <Text style={styles.headerTitle}>Usuarios en EGChat</Text>
               <TouchableOpacity onPress={onClose}>
@@ -154,7 +155,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
             <View style={styles.searchWrap}>
               <TextInput
                 style={styles.searchInput}
-                placeholder="Buscar por nombre o teléfono..."
+                placeholder={tr('chtNcBuscarNombreTelefono')}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholderTextColor="#9CA3AF"
@@ -192,7 +193,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
                 ListEmptyComponent={
                   <View style={styles.center}>
                     <Text style={styles.emptyText}>
-                      {searchQuery ? 'No se encontraron usuarios' : 'No hay usuarios disponibles'}
+                      {searchQuery ? 'No se encontraron usuarios' : tr('xtNoHayUsuariosDisponibles')}
                     </Text>
                   </View>
                 }
@@ -213,7 +214,7 @@ export const ContactImportModal: React.FC<ContactImportModalProps> = ({
                 </Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.btnSecondary} onPress={onClose}>
-                <Text style={styles.btnSecondaryText}>Omitir por ahora</Text>
+                <Text style={styles.btnSecondaryText}>{tr('xtOmitirPorAhora')}</Text>
               </TouchableOpacity>
             </View>
           </>

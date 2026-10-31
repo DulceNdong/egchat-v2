@@ -1,6 +1,7 @@
 // apiInterceptor.ts — Interceptor de peticiones HTTP para React Native
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
+import { t as tr } from './translations';
 
 type AuthLogoutCallback = (message: string) => void;
 
@@ -46,7 +47,7 @@ class ApiInterceptor {
         this.refreshPromise = null;
 
         if (!refreshSuccess) {
-          await this.handleAuthError('Sesión expirada');
+          await this.handleAuthError(tr('xtSesionExpirada'));
         }
       }
 

@@ -15,6 +15,7 @@ import nacl from 'tweetnacl';
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
 import * as FileSystem from 'expo-file-system';
 import { chatAPI } from '../api';
+import { t as tr } from '../translations';
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -99,7 +100,7 @@ export async function importBackup(
   try {
     const raw  = await FileSystem.readAsStringAsync(fileUri);
     const data = decryptBackup(raw, password);
-    if (!data) return { ok: false, message: 'Contraseña incorrecta o archivo dañado' };
+    if (!data) return { ok: false, message: tr('xtContrasenaIncorrectaOArchivoDanado') };
     return { ok: true, data };
   } catch (e: any) {
     return { ok: false, message: e.message };

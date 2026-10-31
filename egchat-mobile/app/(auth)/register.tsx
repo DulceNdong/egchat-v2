@@ -25,34 +25,34 @@ import { EGButton, EGInput, EGErrorMessage } from '../../src/components/ui';
 import { useTranslation } from '../../src/context/LanguageContext';
 
 const COUNTRIES = [
-  { code: 'GQ', name: 'Guinea Ecuatorial', phone: '+240' },
-  { code: 'CM', name: 'Camerún',           phone: '+237' },
-  { code: 'GA', name: 'Gabón',             phone: '+241' },
-  { code: 'CG', name: 'Congo',             phone: '+242' },
-  { code: 'CF', name: 'Rep. Centroafricana', phone: '+236' },
-  { code: 'TD', name: 'Chad',              phone: '+235' },
-  { code: 'NG', name: 'Nigeria',           phone: '+234' },
-  { code: 'ES', name: 'España',            phone: '+34'  },
-  { code: 'FR', name: 'Francia',           phone: '+33'  },
-  { code: 'GB', name: 'Reino Unido',       phone: '+44'  },
-  { code: 'US', name: 'Estados Unidos',    phone: '+1'   },
-  { code: 'DE', name: 'Alemania',          phone: '+49'  },
-  { code: 'IT', name: 'Italia',            phone: '+39'  },
-  { code: 'PT', name: 'Portugal',          phone: '+351' },
-  { code: 'SN', name: 'Senegal',           phone: '+221' },
-  { code: 'CI', name: 'Costa de Marfil',   phone: '+225' },
-  { code: 'MA', name: 'Marruecos',         phone: '+212' },
-  { code: 'BR', name: 'Brasil',            phone: '+55'  },
-  { code: 'MX', name: 'México',            phone: '+52'  },
-  { code: 'CO', name: 'Colombia',          phone: '+57'  },
-  { code: 'AR', name: 'Argentina',         phone: '+54'  },
-  { code: 'VE', name: 'Venezuela',         phone: '+58'  },
-  { code: 'CN', name: 'China',             phone: '+86'  },
-  { code: 'AO', name: 'Angola',            phone: '+244' },
-  { code: 'CD', name: 'Congo RDC',         phone: '+243' },
-  { code: 'KE', name: 'Kenia',             phone: '+254' },
-  { code: 'GH', name: 'Ghana',             phone: '+233' },
-  { code: 'ZA', name: 'Sudáfrica',         phone: '+27'  },
+  { code: 'GQ', nameKey: 'svcEquatorialGuinea',      phone: '+240' },
+  { code: 'CM', nameKey: 'setCountryCameroon',       phone: '+237' },
+  { code: 'GA', nameKey: 'setCountryGabon',          phone: '+241' },
+  { code: 'CG', nameKey: 'authCountryCongo',         phone: '+242' },
+  { code: 'CF', nameKey: 'authCountryCentralAfricanRep', phone: '+236' },
+  { code: 'TD', nameKey: 'authCountryChad',          phone: '+235' },
+  { code: 'NG', nameKey: 'setCountryNigeria',        phone: '+234' },
+  { code: 'ES', nameKey: 'setCountrySpain',          phone: '+34'  },
+  { code: 'FR', nameKey: 'setCountryFrance',         phone: '+33'  },
+  { code: 'GB', nameKey: 'authCountryUk',            phone: '+44'  },
+  { code: 'US', nameKey: 'setCountryUsa',            phone: '+1'   },
+  { code: 'DE', nameKey: 'authCountryGermany',       phone: '+49'  },
+  { code: 'IT', nameKey: 'authCountryItaly',         phone: '+39'  },
+  { code: 'PT', nameKey: 'authCountryPortugal',      phone: '+351' },
+  { code: 'SN', nameKey: 'authCountrySenegal',       phone: '+221' },
+  { code: 'CI', nameKey: 'authCountryCoteDivoire',   phone: '+225' },
+  { code: 'MA', nameKey: 'authCountryMorocco',       phone: '+212' },
+  { code: 'BR', nameKey: 'authCountryBrazil',        phone: '+55'  },
+  { code: 'MX', nameKey: 'authCountryMexico',        phone: '+52'  },
+  { code: 'CO', nameKey: 'authCountryColombia',      phone: '+57'  },
+  { code: 'AR', nameKey: 'authCountryArgentina',     phone: '+54'  },
+  { code: 'VE', nameKey: 'authCountryVenezuela',     phone: '+58'  },
+  { code: 'CN', nameKey: 'setCountryChina',          phone: '+86'  },
+  { code: 'AO', nameKey: 'authCountryAngola',        phone: '+244' },
+  { code: 'CD', nameKey: 'authCountryCongoDrc',      phone: '+243' },
+  { code: 'KE', nameKey: 'authCountryKenya',         phone: '+254' },
+  { code: 'GH', nameKey: 'authCountryGhana',         phone: '+233' },
+  { code: 'ZA', nameKey: 'authCountrySouthAfrica',   phone: '+27'  },
 ];
 
 const getFlag = (code: string) =>
@@ -107,20 +107,20 @@ export default function RegisterScreen() {
     setLocalError('');
     clearError();
     if (step === 1) {
-      if (!name.trim()) { setLocalError('Escribe tu nombre completo'); return; }
+      if (!name.trim()) { setLocalError(t('authNameRequired')); return; }
       setStep(2);
     } else if (step === 2) {
-      if (!phone.trim()) { setLocalError('Introduce tu número de teléfono'); return; }
-      if (phone.replace(/\s/g, '').length < 6) { setLocalError('Número de teléfono inválido'); return; }
+      if (!phone.trim()) { setLocalError(t('authPhoneRequired')); return; }
+      if (phone.replace(/\s/g, '').length < 6) { setLocalError(t('authPhoneInvalid')); return; }
       // Verificar que el teléfono no esté ya registrado antes de avanzar
       try {
         const { exists } = await authAPI.checkPhone(fullPhone);
-        if (exists) { setLocalError('Este número ya está registrado. Usa "Ya tengo cuenta".'); return; }
+        if (exists) { setLocalError(t('authPhoneAlreadyRegistered')); return; }
       } catch {}
       setStep(3);
     } else if (step === 3) {
-      if (password.length < 6) { setLocalError('La contraseña debe tener al menos 6 caracteres'); return; }
-      if (password !== password2) { setLocalError('Las contraseñas no coinciden'); return; }
+      if (password.length < 6) { setLocalError(t('setPasswordMin6')); return; }
+      if (password !== password2) { setLocalError(t('setPasswordsDontMatch')); return; }
       await register({ full_name: name.trim(), phone: fullPhone, password, avatar_url: avatar || undefined });
     }
   };
@@ -212,7 +212,7 @@ export default function RegisterScreen() {
                     activeOpacity={0.8}
                   >
                     <Text style={styles.countryFlag}>{getFlag(selectedCountry.code)}</Text>
-                    <Text style={[styles.countryName, { color: C.textPrimary }]}>{selectedCountry.name}:</Text>
+                    <Text style={[styles.countryName, { color: C.textPrimary }]}>{t(selectedCountry.nameKey)}:</Text>
                     <Text style={[styles.countryChevron, { color: C.textTertiary }]}>›</Text>
                   </TouchableOpacity>
                   {showCountryPicker && (
@@ -224,7 +224,7 @@ export default function RegisterScreen() {
                           onPress={() => { setCountryCode(c.phone); setShowCountryPicker(false); }}
                         >
                           <Text style={styles.countryFlag}>{getFlag(c.code)}</Text>
-                          <Text style={[styles.countryOptionText, { color: C.textPrimary }]}>{c.name}</Text>
+                          <Text style={[styles.countryOptionText, { color: C.textPrimary }]}>{t(c.nameKey)}</Text>
                           <Text style={[styles.countryPhone, { color: C.textTertiary }]}>{c.phone}</Text>
                         </TouchableOpacity>
                       ))}
@@ -269,7 +269,7 @@ export default function RegisterScreen() {
                   onChangeText={setPassword2}
                   secureTextEntry
                   placeholder={t('repeatPassword')}
-                  error={password2 && password !== password2 ? 'Las contraseñas no coinciden' : undefined}
+                  error={password2 && password !== password2 ? t('setPasswordsDontMatch') : undefined}
                   returnKeyType="done"
                   onSubmitEditing={goNext}
                 />

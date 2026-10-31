@@ -49,6 +49,7 @@ import {
   markAllRead, clearAllNotifications, removeNotification, markNotificationRead,
 } from '../../src/store/appStore';
 import * as Haptics from 'expo-haptics';
+import { t as tr } from '../../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface UserProfile {
@@ -105,7 +106,7 @@ const IconClose = ({ color = '#fff', size = 22 }: { color?: string; size?: numbe
 
 // ── APPS principales (grid visible en home) ───────────────────────
 const HOME_APPS = [
-  { id: 'estados',   label: 'Estados',    route: '/stories',    color: '#00B4E6' },
+  { id: 'estados',   label: tr('stories'),    route: '/stories',    color: '#00B4E6' },
   { id: 'apuestas',  label: 'Juegos',     route: '/apuestas',   color: '#8b5cf6' },
   { id: 'cemac',     label: 'Cemac',      route: '/cemac',      color: '#00C8A0' },
   { id: 'mitaxi',    label: 'MiTaxi',     route: '/mitaxi',     color: '#f59e0b' },
@@ -396,11 +397,11 @@ function HomeScreenInner() {
   };
 
   const openSendMoney = () => {
-    Alert.alert('Enviar dinero', '¿Cómo quieres enviar?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Escanear QR', onPress: () => router.push('/_qr-scanner' as any) },
-      { text: 'Elegir contacto', onPress: () => router.push('/contacts' as any) },
-      { text: 'Mi Cartera', onPress: () => router.push('/(tabs)/monedero' as any) },
+    Alert.alert(t('sendMoney'), t('hmeHowToSend'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('scanQR'), onPress: () => router.push('/_qr-scanner' as any) },
+      { text: tr('xtElegirContacto'), onPress: () => router.push('/contacts' as any) },
+      { text: tr('xtMiCartera'), onPress: () => router.push('/(tabs)/monedero' as any) },
     ]);
   };
 
@@ -505,7 +506,7 @@ function HomeScreenInner() {
             <View style={st.infoCardText}>
               <Text style={[st.infoCardTitle, { color: C.textPrimary }]}>{t('digitalId')}</Text>
               <Text style={[st.infoCardSub, { color: Colors.accent }]}>
-                {user?.verified ? '✓ Verificado' : user ? t('activeAccount') : 'Sin verificar'}
+                {user?.verified ? '✓ Verificado' : user ? t('activeAccount') : tr('xtSinVerificar')}
               </Text>
             </View>
           </TouchableOpacity>
@@ -741,7 +742,7 @@ function HomeScreenInner() {
       <HomeIdDigitalModal
         visible={showIdDigital}
         onClose={() => setShowIdDigital(false)}
-        userName={user?.full_name || 'Usuario'}
+        userName={user?.full_name || tr('setUser')}
         userPhone={user?.phone || ''}
         userId={user?.id || ''}
         verified={user?.verified}

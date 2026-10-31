@@ -5,6 +5,7 @@ import {
 } from 'react-native';
 import { contactsAPI } from '../../api';
 import { EGAvatar } from '../ui';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Contact {
   id: string;
@@ -21,6 +22,7 @@ interface Props {
 }
 
 export function ChatContactPickerModal({ visible, onClose, onSelect }: Props) {
+  const { t } = useTranslation();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -38,7 +40,7 @@ export function ChatContactPickerModal({ visible, onClose, onSelect }: Props) {
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={s.sheet} onPress={e => e.stopPropagation()}>
           <View style={s.header}>
-            <Text style={s.title}>Compartir contacto</Text>
+            <Text style={s.title}>{t('shareContact')}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={12}>
               <Text style={s.close}>✕</Text>
             </TouchableOpacity>
@@ -46,13 +48,13 @@ export function ChatContactPickerModal({ visible, onClose, onSelect }: Props) {
           {loading ? (
             <ActivityIndicator style={{ marginVertical: 40 }} color="#00c8a0" />
           ) : contacts.length === 0 ? (
-            <Text style={s.empty}>No tienes contactos guardados</Text>
+            <Text style={s.empty}>{t('chtNoContactsSaved')}</Text>
           ) : (
             <FlatList
               data={contacts}
               keyExtractor={item => item.id}
               renderItem={({ item }) => {
-                const name = item.full_name || item.name || 'Contacto';
+                const name = item.full_name || item.name || t('chtContact');
                 return (
                   <TouchableOpacity
                     style={s.row}

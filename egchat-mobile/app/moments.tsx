@@ -24,6 +24,7 @@ import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCa
 import { uploadStoryMediaToSupabase } from '../src/utils/storyMediaStorage';
 import { notifyNewMoment } from '../src/notifications';
 import { MomentImageViewer, type MomentViewerPost } from '../src/components/MomentImageViewer';
+import { t as tr } from '../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface MomentPost {
@@ -52,7 +53,7 @@ const formatRelativeTime = (dateStr: string) => {
   const now = Date.now();
   const then = new Date(dateStr).getTime();
   const diff = Math.floor((now - then) / 1000);
-  if (diff < 60) return 'Hace un momento';
+  if (diff < 60) return tr('xtHaceUnMomento');
   if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
   return `Hace ${Math.floor(diff / 86400)}d`;
@@ -243,7 +244,7 @@ export default function MomentsScreen() {
           <TouchableOpacity
             onPress={() => Alert.alert('Post', 'Opciones', [
               {
-                text: 'Eliminar', style: 'destructive',
+                text: tr('delete'), style: 'destructive',
                 onPress: async () => {
                   setPosts(p => p.filter(x => x.id !== item.id)); // optimistic
                   try {
@@ -251,11 +252,11 @@ export default function MomentsScreen() {
                   } catch {
                     // Si falla el servidor, revertir el post y avisar
                     setPosts(p => [item, ...p.filter(x => x.id !== item.id)]);
-                    toast.error('No se pudo eliminar. Intenta de nuevo.');
+                    toast.error(tr('xtNoSePudoEliminarIntentaDeNuevo'));
                   }
                 },
               },
-              { text: 'Cancelar', style: 'cancel' },
+              { text: tr('cancel'), style: 'cancel' },
             ])}
           >
             <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
@@ -341,7 +342,7 @@ export default function MomentsScreen() {
         <View style={[ps.commentInput, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
           <TextInput
             style={[ps.commentInputText, { color: C.textPrimary }]}
-            placeholder="Escribe un comentario..."
+            placeholder={tr('xtEscribeUnComentario')}
             placeholderTextColor={C.textTertiary}
             value={commentText}
             onChangeText={setCommentText}
@@ -418,7 +419,7 @@ export default function MomentsScreen() {
                     <Circle cx={18.5} cy={9.5} r={1} fill="#00C8A0" />
                   </Svg>
                 </View>
-                <Text style={[s.emptyTitle, { color: C.textPrimary }]}>Sin posts aún</Text>
+                <Text style={[s.emptyTitle, { color: C.textPrimary }]}>{tr('xtSinPostsAun')}</Text>
                 <Text style={[s.emptyText, { color: C.textTertiary }]}>
                   Comparte un momento con tus contactos
                 </Text>
@@ -520,12 +521,12 @@ function CreatePostModal({
         onCreated(post);
         setText('');
         setImages([]);
-        toast.success('¡Moment publicado! 🎉');
+        toast.success(tr('xtMomentPublicado'));
         // Notificar a contactos via push
         notifyNewMoment({
           momentId: post.id,
           authorName: post.user_name,
-          preview: text.trim() || (images.length > 0 ? '📸 Nueva foto' : undefined),
+          preview: text.trim() || (images.length > 0 ? tr('xtNuevaFoto') : undefined),
         }).catch(() => {});
       }
     } finally {
@@ -543,11 +544,11 @@ function CreatePostModal({
               <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
             </Svg>
           </TouchableOpacity>
-          <Text style={cm.title}>Nuevo post</Text>
+          <Text style={cm.title}>{tr('xtNuevoPost')}</Text>
           <TouchableOpacity onPress={handleCreate} disabled={creating} style={cm.publishBtn}>
             {creating
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={cm.publishText}>Publicar</Text>
+              : <Text style={cm.publishText}>{tr('xtPublicar')}</Text>
             }
           </TouchableOpacity>
         </LinearGradient>
@@ -555,7 +556,7 @@ function CreatePostModal({
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <TextInput
             style={[cm.textInput, { color: C.textPrimary, borderColor: C.borderLight }]}
-            placeholder="¿Qué está pasando?"
+            placeholder={tr('xtQueEstaPasando')}
             placeholderTextColor={C.textTertiary}
             value={text}
             onChangeText={setText}
@@ -589,7 +590,7 @@ function CreatePostModal({
               <Svg width={24} height={24} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={1.8} strokeLinecap="round">
                 <Polyline points="4 17 10 11 13 14 17 10 21 14"/><Polyline points="21 4 12 4 12 10"/><Path d="M4 4h16a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2z"/>
               </Svg>
-              <Text style={[cm.addPhotoText, { color: C.textTertiary }]}>Añadir fotos</Text>
+              <Text style={[cm.addPhotoText, { color: C.textTertiary }]}>{tr('xtAnadirFotos')}</Text>
             </TouchableOpacity>
           )}
         </ScrollView>

@@ -16,6 +16,7 @@ import { Colors, Spacing, BorderRadius, FontSize, FontWeight } from '../src/them
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import { useFont } from '../src/context/FontContext';
+import { t as tr } from '../src/translations';
 
 // ── Normalizar teléfono ───────────────────────────────────────────
 const normalizePhone = (raw: string) => {
@@ -29,7 +30,7 @@ const normalizePhone = (raw: string) => {
 };
 
 // ── Helpers de campo ──────────────────────────────────────────────
-const getName    = (c: any) => c?.user?.full_name || c?.full_name || c?.name || c?.nickname || 'Usuario';
+const getName    = (c: any) => c?.user?.full_name || c?.full_name || c?.name || c?.nickname || tr('setUser');
 const getPhone   = (c: any) => c?.user?.phone     || c?.phone     || '';
 const getAvatar  = (c: any) => c?.user?.avatar_url || c?.avatar_url || '';
 const getUserId  = (c: any) => c?.contact_user_id  || c?.user?.id  || c?.id;
@@ -114,10 +115,10 @@ export default function ContactsScreen() {
       setAddPhone('');
       setShowAdd(false);
       load();
-      Alert.alert('✅ Contacto añadido', '¿Quieres abrir el chat ahora?', [
+      Alert.alert(tr('ctsContactAddedTitle'), tr('ctsOpenChatNow'), [
         { text: 'Luego', style: 'cancel' },
         {
-          text: 'Abrir chat',
+          text: tr('xtAbrirChat'),
           onPress: async () => {
             const uid = getUserId(contact);
             if (!uid) return;
@@ -133,7 +134,7 @@ export default function ContactsScreen() {
         setShowAdd(false);
         router.replace(`/chat/${chat.id}` as any);
       } catch {
-        Alert.alert('No encontrado', `El número ${phone} no está registrado en EGCHAT.`);
+        Alert.alert(tr('djhNotFoundTitle'), `${tr('ctsNumberNotRegisteredPrefix')}${phone}${tr('ctsNumberNotRegisteredSuffix')}`);
       }
     } finally { setAdding(false); }
   }, [addPhone, load]);
@@ -141,28 +142,28 @@ export default function ContactsScreen() {
   // ── Abrir chat ───────────────────────────────────────────────
   const openChat = useCallback(async (contact: any) => {
     const uid = getUserId(contact);
-    if (!uid) { Alert.alert('Error', 'Contacto sin usuario asociado'); return; }
+    if (!uid) { Alert.alert(tr('error'), 'Contacto sin usuario asociado'); return; }
     try {
       const chat = await chatAPI.createPrivate(uid);
       router.push(`/chat/${chat.id}` as any);
     } catch (e: any) {
-      Alert.alert('Error', e?.message || 'No se pudo abrir el chat');
+      Alert.alert(tr('error'), e?.message || 'No se pudo abrir el chat');
     }
   }, []);
 
   // ── Eliminar contacto ────────────────────────────────────────
   const removeContact = useCallback((id: string, name: string) => {
-    Alert.alert('Eliminar contacto', `¿Eliminar a ${name} de tus contactos?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(tr('ctsDeleteContact'), `${tr('ctsDeletePrefix')}${name}${tr('ctsDeleteSuffix')}`, [
+      { text: tr('cancel'), style: 'cancel' },
       {
-        text: 'Eliminar', style: 'destructive',
+        text: tr('delete'), style: 'destructive',
         onPress: async () => {
           setContacts(prev => prev.filter(c => c.id !== id));
           try {
             await contactsAPI.remove(id);
           } catch {
             load();
-            Alert.alert('Error', 'No se pudo eliminar el contacto. Verifica tu conexión.');
+            Alert.alert(tr('error'), 'No se pudo eliminar el contacto. Verifica tu conexión.');
           }
         },
       },
@@ -264,7 +265,7 @@ export default function ContactsScreen() {
           <IcoBack color={C.textPrimary} />
         </TouchableOpacity>
         <View style={st.headerCenter}>
-          <Text style={[st.headerTitle, { color: C.textPrimary, fontSize: 19 * fontScale }]}>Contactos</Text>
+          <Text style={[st.headerTitle, { color: C.textPrimary, fontSize: 19 * fontScale }]}>{tr('contacts')}</Text>
           {contacts.length > 0 && (
             <View style={st.countBadge}>
               <Text style={st.countText}>{contacts.length}</Text>
@@ -309,7 +310,7 @@ export default function ContactsScreen() {
           >
             {adding
               ? <ActivityIndicator size="small" color="#fff" />
-              : <Text style={st.addBtnText}>Añadir</Text>}
+              : <Text style={st.addBtnText}>{tr('xtAnadir')}</Text>}
           </TouchableOpacity>
         </View>
       )}
@@ -322,7 +323,7 @@ export default function ContactsScreen() {
             style={[st.searchInput, { color: C.textPrimary }]}
             value={query}
             onChangeText={setQuery}
-            placeholder="Buscar contacto..."
+            placeholder={tr('xtBuscarContacto')}
             placeholderTextColor={C.textTertiary}
             returnKeyType="search"
           />
@@ -343,10 +344,10 @@ export default function ContactsScreen() {
         <View style={st.center}>
           <IcoUsers color={C.border} />
           <Text style={[st.emptyTitle, { color: C.textPrimary }]}>
-            {query ? 'Sin resultados' : 'No tienes contactos aún'}
+            {query ? tr('noResults') : tr('chtNoContactsYet')}
           </Text>
           <Text style={[st.emptySub, { color: C.textSecondary }]}>
-            {query ? 'Prueba con otro nombre o número' : 'Toca el icono + para añadir tu primer contacto'}
+            {query ? tr('xtPruebaConOtroNombreONumero') : tr('xtTocaElIconoParaAnadirTuPrimerContacto')}
           </Text>
           {!query && (
             <TouchableOpacity
@@ -354,7 +355,7 @@ export default function ContactsScreen() {
               onPress={() => setShowAdd(true)}
               activeOpacity={0.85}
             >
-              <Text style={st.emptyAddBtnText}>Añadir contacto</Text>
+              <Text style={st.emptyAddBtnText}>{tr('ctsAddContact')}</Text>
             </TouchableOpacity>
           )}
         </View>

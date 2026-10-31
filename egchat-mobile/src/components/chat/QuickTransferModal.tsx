@@ -10,6 +10,8 @@ import { walletPIN } from '../../services/walletPin';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../services/limits';
 import { EGAvatar } from '../ui';
 import { loadBankAccounts, BankAccount } from '../../utils/bankAccounts';
+import { useTranslation } from '../../context/LanguageContext';
+import { t as tr } from '../../translations';
 
 interface Props {
   visible: boolean;
@@ -102,6 +104,7 @@ export function QuickTransferModal({
   onNeedPin,
   onNeedSetupPin,
 }: Props) {
+  const { t } = useTranslation();
   const [amount, setAmount]               = useState('');
   const [balance, setBalance]             = useState(0);
   const [loading, setLoading]             = useState(false);
@@ -151,14 +154,14 @@ export function QuickTransferModal({
   const handleSend = async () => {
     const raw = amount.replace(/[^0-9]/g, '');
     const num = parseInt(raw, 10);
-    if (!raw || num <= 0) { setError('Introduce un monto válido'); return; }
+    if (!raw || num <= 0) { setError(t('chtInvalidAmount')); return; }
 
     // Verificar fondos según la fuente seleccionada
     if (fundSource.type === 'wallet') {
-      if (num > Number(balance)) { setError('Saldo insuficiente en el monedero'); return; }
+      if (num > Number(balance)) { setError(t('chtWalletInsufficient')); return; }
     } else {
       if (num > fundSource.account.balance) {
-        setError(`Saldo insuficiente en cuenta ${fundSource.account.bank}`);
+        setError(`${t('chtAccountInsufficientPrefix')} ${fundSource.account.bank}`);
         return;
       }
     }
@@ -173,7 +176,7 @@ export function QuickTransferModal({
       // Verificar límites
       const limitCheck = await checkLimitForTransaction('transfer', num);
       if (!limitCheck.allowed) {
-        setError(limitCheck.reason || 'Límite diario de transferencias excedido');
+        setError(limitCheck.reason || t('chtDailyLimitExceeded'));
         setLoading(false);
         return;
       }
@@ -223,7 +226,7 @@ export function QuickTransferModal({
 
             if (!pinOk) {
               transferExecuted.current = false;
-              throw new Error('PIN incorrecto');
+              throw new Error(t('chtPinIncorrect'));
             }
 
             const result = await walletAPI.transferPending(
@@ -241,7 +244,7 @@ export function QuickTransferModal({
 
             const sourceLabel = fundSource.type === 'bank'
               ? `${fundSource.account.bank} (${fundSource.account.type})`
-              : 'Monedero EGCHAT';
+              : tr('chtEgchatWallet');
             const code = Math.floor(100000 + Math.random() * 900000).toString();
             const msgText = [
               '💸 Transferencia enviada',
@@ -278,7 +281,7 @@ export function QuickTransferModal({
         onNeedPin(executor);
       }
     } catch (e: any) {
-      setError(e?.message || 'Error al preparar la transferencia. Inténtalo de nuevo.');
+      setError(e?.message || t('chtPrepareTransferError'));
       setLoading(false);
     }
   };
@@ -305,11 +308,11 @@ export function QuickTransferModal({
               <View style={s.avatarsRow}>
                 <View style={s.avatarCol}>
                   <EGAvatar src={myAvatar} name={myName} size={52} />
-                  <Text style={s.avatarLabel}>Yo</Text>
+                  <Text style={s.avatarLabel}>{t('chtYouLabel')}</Text>
                 </View>
                 <View style={s.arrowCol}>
                   <IconArrow />
-                  <Text style={s.arrowLabel}>Enviar</Text>
+                  <Text style={s.arrowLabel}>{t('transfer')}</Text>
                 </View>
                 <View style={s.avatarCol}>
                   <EGAvatar src={contactAvatar} name={contactName} size={52} />
@@ -326,7 +329,7 @@ export function QuickTransferModal({
               {/* ── Saldo de la fuente activa ── */}
               <View style={s.balanceRow}>
                 {fundSource.type === 'wallet'
-                  ? <View style={s.balanceLeft}><IconWallet /><Text style={s.balanceLabel}>Saldo monedero</Text></View>
+                  ? <View style={s.balanceLeft}><IconWallet /><Text style={s.balanceLabel}>{t('chtWalletBalanceLabel')}</Text></View>
                   : <View style={s.balanceLeft}><IconBank /><Text style={s.balanceLabelBank}>{fundSource.account.bank}</Text></View>
                 }
                 {loadingBalance
@@ -338,13 +341,13 @@ export function QuickTransferModal({
               </View>
 
               {/* ── Input de monto ── */}
-              <Text style={s.amountLabel}>MONTO (XAF)</Text>
+              <Text style={s.amountLabel}>{t('chtAmountLabelXaf')}</Text>
               <View style={s.amountRow}>
                 <Text style={s.amountPrefix}>XAF</Text>
                 <TextInput
                   style={s.amountInput}
                   value={amount}
-                  onChangeText={t => { setAmount(t.replace(/[^0-9]/g, '')); setError(''); }}
+                  onChangeText={(val) => { setAmount(val.replace(/[^0-9]/g, '')); setError(''); }}
                   placeholder="0"
                   placeholderTextColor="#d1d5db"
                   keyboardType="number-pad"
@@ -359,7 +362,7 @@ export function QuickTransferModal({
               {showBankPicker && (
                 <View style={s.bankPickerSection}>
                   <Text style={s.bankPickerTitle}>
-                    Saldo insuficiente en monedero. Selecciona otra fuente:
+                    {t('chtInsufficientPickSource')}
                   </Text>
 
                   {/* Opción monedero (aunque sea insuficiente, mostrar para que el user elija) */}
@@ -373,8 +376,8 @@ export function QuickTransferModal({
                         <IconWallet />
                       </View>
                       <View>
-                        <Text style={s.bankOptionName}>Monedero EGCHAT</Text>
-                        <Text style={s.bankOptionType}>Saldo disponible</Text>
+                        <Text style={s.bankOptionName}>{t('chtEgchatWallet')}</Text>
+                        <Text style={s.bankOptionType}>{t('balance')}</Text>
                       </View>
                     </View>
                     <View style={s.bankOptionRight}>
@@ -428,12 +431,12 @@ export function QuickTransferModal({
                 >
                   {loading
                     ? <ActivityIndicator color="#fff" />
-                    : <Text style={s.sendText}>Enviar a {contactName}</Text>}
+                    : <Text style={s.sendText}>{t('chtSendToPrefix')} {contactName}</Text>}
                 </LinearGradient>
               </TouchableOpacity>
 
               <TouchableOpacity onPress={onClose} style={s.cancelBtn}>
-                <Text style={s.cancelText}>Cancelar</Text>
+                <Text style={s.cancelText}>{t('cancel')}</Text>
               </TouchableOpacity>
             </ScrollView>
 

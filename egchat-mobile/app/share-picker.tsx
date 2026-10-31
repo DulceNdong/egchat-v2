@@ -14,10 +14,11 @@ import { router } from 'expo-router';
 import { chatAPI } from '../src/api';
 import { ShareExtension, SharedContent } from '../src/native/ShareExtension';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { t as tr } from '../src/translations';
 
 // ── Helpers (iguales a mensajeria.tsx) ──────────────────────────────────────
 const getParticipantName = (p?: any) =>
-  p?.full_name || p?.users?.full_name || p?.user?.full_name || 'Usuario';
+  p?.full_name || p?.users?.full_name || p?.user?.full_name || tr('setUser');
 
 const getParticipantAvatar = (p?: any): string => {
   const raw =
@@ -59,7 +60,7 @@ export default function SharePicker() {
     const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
     const name   = chat.type === 'private'
       ? getParticipantName(other)
-      : (chat.name || 'Grupo');
+      : (chat.name || tr('msgGroup'));
     const avatar = chat.type === 'private'
       ? getParticipantAvatar(other)
       : (chat.avatar_url || '');
@@ -104,7 +105,7 @@ export default function SharePicker() {
             <Text style={s.backIcon}>✕</Text>
           </TouchableOpacity>
           <View style={s.headerText}>
-            <Text style={s.title}>Compartir en EGChat</Text>
+            <Text style={s.title}>{tr('xtCompartirEnEGChat')}</Text>
             {!!contentPreview() && (
               <Text style={s.preview} numberOfLines={1}>{contentPreview()}</Text>
             )}
@@ -115,7 +116,7 @@ export default function SharePicker() {
         <View style={s.searchRow}>
           <TextInput
             style={s.searchInput}
-            placeholder="Buscar chat..."
+            placeholder={tr('searchChat')}
             placeholderTextColor="#888"
             value={search}
             onChangeText={setSearch}
@@ -170,14 +171,14 @@ export default function SharePicker() {
 
                   {/* Acción */}
                   <View style={s.sendBtn}>
-                    <Text style={s.sendBtnText}>Enviar</Text>
+                    <Text style={s.sendBtnText}>{tr('liaChipSend')}</Text>
                   </View>
                 </TouchableOpacity>
               );
             }}
             ListEmptyComponent={
               <View style={s.center}>
-                <Text style={s.emptyText}>No se encontraron chats</Text>
+                <Text style={s.emptyText}>{tr('xtNoSeEncontraronChats')}</Text>
               </View>
             }
           />

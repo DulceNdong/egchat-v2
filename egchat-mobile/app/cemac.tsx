@@ -12,16 +12,21 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { cemacAPI, walletAPI } from '../src/api';
 import { toast } from '../src/components/Toast';
+import { useLanguage } from '../src/context/LanguageContext';
 import { CemacLogo } from '../src/components/CemacLogo';
 import {
   LANGS, COUNTRIES, T, SERVICES, LEISURE, CAT_ICON, ATMS, NEWS, RATES, HISTORY, NEWS_COLOR,
   type Lang, type CountryCode, type CemacTab,
 } from '../src/data/cemacData';
+import { t as tr } from '../src/translations';
 
 export default function CemacScreen() {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
+  // CEMAC usa su propio selector (ES/FR/EN/AR); arranca con el idioma de la app.
+  const { language: appLanguage } = useLanguage();
+  const appLang: Lang = appLanguage === 'fr' ? 'FR' : appLanguage === 'en' ? 'EN' : appLanguage === 'pt' ? 'FR' : 'ES';
   const [lang, setLang] = useState<Lang | null>(null);
   const [country, setCountry] = useState<CountryCode | null>(null);
   const [tab, setTab] = useState<CemacTab>('servicios');
@@ -34,14 +39,14 @@ export default function CemacScreen() {
   const [toCur, setToCur] = useState('EUR');
   const [amt, setAmt] = useState('');
 
-  const t = T[lang || 'ES'];
+  const t = T[lang || appLang];
 
   useEffect(() => {
     walletAPI.getBalance().then(r => setBalance(r.balance || 0)).catch(() => {});
   }, []);
 
   const enterCountry = (code: CountryCode) => {
-    setLang(prev => prev || 'ES');
+    setLang(prev => prev || appLang);
     setCountry(code);
   };
 
@@ -62,7 +67,7 @@ export default function CemacScreen() {
   const sendTransfer = async () => {
     const amount = parseInt(xfer.amount, 10);
     if (!xfer.name.trim() || !xfer.account.trim() || !amount || amount > balance) {
-      toast.error('Datos incompletos o saldo insuficiente');
+      toast.error(tr('xtDatosIncompletosOSaldoInsuficiente'));
       return;
     }
     setXferLoading(true);
@@ -80,7 +85,7 @@ export default function CemacScreen() {
       const r = await walletAPI.getBalance();
       setBalance(r.balance || 0);
     } catch {
-      toast.error('No se pudo enviar la transferencia');
+      toast.error(tr('xtNoSePudoEnviarLaTransferencia'));
     } finally {
       setXferLoading(false);
     }
@@ -98,13 +103,13 @@ export default function CemacScreen() {
         <SafeAreaView style={{ flex: 1 }} edges={['left', 'right', 'bottom']}>
         <TouchableOpacity onPress={() => router.back()} style={[s.welcomeBack, { paddingTop: insets.top + 12 }]}>
           <Text style={{ color: '#fff', fontSize: 28, lineHeight: 32 }}>‹</Text>
-          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>Volver</Text>
+          <Text style={{ color: '#fff', fontSize: 16, fontWeight: '600' }}>{tr('djhBack')}</Text>
         </TouchableOpacity>
         <ScrollView contentContainerStyle={s.welcomeScroll} showsVerticalScrollIndicator={false}>
             <View style={s.welcomeHero}>
               <CemacLogo size={80} />
-              <Text style={s.welcomeTitle}>Bienvenido a la CEMAC</Text>
-              <Text style={s.welcomeSub}>Comunidad Económica y Monetaria de África Central</Text>
+              <Text style={s.welcomeTitle}>{tr('xtBienvenidoALaCEMAC')}</Text>
+              <Text style={s.welcomeSub}>{tr('cmcFullName')}</Text>
               <View style={s.statsRow}>
                 {[{ v: '6', l: 'Países' }, { v: 'XAF', l: 'Moneda' }, { v: '60M+', l: 'Personas' }].map(st => (
                   <View key={st.l} style={s.statItem}>
@@ -116,7 +121,7 @@ export default function CemacScreen() {
             </View>
 
             <View style={s.glassCard}>
-              <Text style={s.glassLabel}>TOCA UN PAÍS PARA ENTRAR</Text>
+              <Text style={s.glassLabel}>{tr('xtTOCAUNPAISPARAENTRAR')}</Text>
               <View style={s.countryGrid}>
                 {COUNTRIES.map(c => (
                   <TouchableOpacity key={c.code} style={s.countryCell} onPress={() => enterCountry(c.code)} activeOpacity={0.85}>
@@ -131,7 +136,7 @@ export default function CemacScreen() {
             </View>
 
             <View style={[s.glassCard, { marginBottom: 24 }]}>
-              <Text style={s.glassLabel}>ELIGE TU IDIOMA</Text>
+              <Text style={s.glassLabel}>{tr('xtELIGETUIDIOMA')}</Text>
               <View style={s.langGrid}>
                 {LANGS.map(l => (
                   <TouchableOpacity
@@ -171,7 +176,7 @@ export default function CemacScreen() {
         </TouchableOpacity>
         <View style={{ flex: 1 }}>
           <Text style={s.headerTitle}>CEMAC</Text>
-          <Text style={s.headerSub}>{ctry?.nameES || 'Zona CEMAC'} · {lang}</Text>
+          <Text style={s.headerSub}>{ctry?.nameES || tr('svcCemacZone')} · {lang}</Text>
         </View>
         <TouchableOpacity onPress={() => setTransferOpen(true)} style={s.sendBtn}>
           <Text style={s.sendBtnText}>💸</Text>
@@ -251,7 +256,7 @@ export default function CemacScreen() {
                 <Text style={s.primaryBtnText}>{t.sendMoney}</Text>
               </TouchableOpacity>
             </View>
-            <Text style={s.sectionLabel}>HISTORIAL</Text>
+            <Text style={s.sectionLabel}>{tr('xtHISTORIAL')}</Text>
             {HISTORY.map(h => (
               <View key={h.id} style={s.histRow}>
                 <Text style={{ fontSize: 18 }}>{h.type === 'in' ? '📥' : '📤'}</Text>
@@ -335,7 +340,7 @@ export default function CemacScreen() {
               ))}
             </ScrollView>
             <TextInput style={s.search} value={xfer.name} onChangeText={v => setXfer(p => ({ ...p, name: v }))} placeholder={t.recipient} placeholderTextColor="#888" />
-            <TextInput style={s.search} value={xfer.account} onChangeText={v => setXfer(p => ({ ...p, account: v }))} placeholder="Cuenta / IBAN" placeholderTextColor="#888" />
+            <TextInput style={s.search} value={xfer.account} onChangeText={v => setXfer(p => ({ ...p, account: v }))} placeholder={tr('xtCuentaIBAN')} placeholderTextColor="#888" />
             <TextInput style={s.search} value={xfer.amount} onChangeText={v => setXfer(p => ({ ...p, amount: v }))} placeholder={t.amount} keyboardType="numeric" placeholderTextColor="#888" />
             <View style={s.modalBtns}>
               <TouchableOpacity style={s.cancelBtn} onPress={() => setTransferOpen(false)}>

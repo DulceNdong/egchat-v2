@@ -5,6 +5,7 @@ import { AIRLINES, Airline } from '../../data/serviciosDiarios';
 import { FinancialModuleShell, SegmentTabs } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
 import { PayMethodPicker } from './PublicModuleUI';
+import { t as tr } from '../../translations';
 
 type FlightScreen = 'airlines' | 'routes' | 'book' | 'ok';
 interface Props { visible: boolean; onClose: () => void; }
@@ -44,7 +45,7 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
     <FinancialModuleShell
       visible={visible}
       title="Vuelos"
-      subtitle="Aerolíneas que operan en Guinea Ecuatorial"
+      subtitle={tr('svcAirlinesEq')}
       onBack={() => {
         if (view === 'book') setView('routes');
         else if (view === 'routes') setView('airlines');
@@ -92,7 +93,7 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
                 </View>
               </View>
               <TouchableOpacity style={[st.bookBtn, { backgroundColor: airline.color }]} onPress={() => { setRoute(r); setView('book'); }}>
-                <Text style={st.bookBtnText}>Reservar este vuelo</Text>
+                <Text style={st.bookBtnText}>{tr('xtReservarEsteVuelo')}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -119,27 +120,27 @@ export const VuelosModal: React.FC<Props> = ({ visible, onClose }) => {
               </TouchableOpacity>
             ))}
           </View>
-          <FormField placeholder="Nombre completo" value={form.name} onChangeText={v => setF('name', v)} />
+          <FormField placeholder={tr('name')} value={form.name} onChangeText={v => setF('name', v)} />
           <FormField placeholder="Pasaporte / DNI" value={form.dni} onChangeText={v => setF('dni', v)} />
-          <FormField placeholder="Teléfono" value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
-          <FormField placeholder="Fecha salida (DD/MM/AAAA)" value={form.date} onChangeText={v => setF('date', v)} />
+          <FormField placeholder={tr('authPhoneLabel')} value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
+          <FormField placeholder={tr('xtFechaSalidaDDMMAAAA')} value={form.date} onChangeText={v => setF('date', v)} />
           <FormField placeholder="Nº pasajeros" value={form.pax} onChangeText={v => setF('pax', v)} keyboardType="numeric" />
           <View style={st.totalBox}>
-            <Text style={st.totalLbl}>Total estimado</Text>
+            <Text style={st.totalLbl}>{tr('xtTotalEstimado')}</Text>
             <Text style={st.totalVal}>{total.toLocaleString()} XAF</Text>
           </View>
           <PayMethodPicker value={form.payMethod} onChange={v => setF('payMethod', v)} accent="#1B3A6B" />
-          <PrimaryButton label="Reservar vuelo" onPress={() => setView('ok')} color="#1B3A6B" disabled={!canBook} />
+          <PrimaryButton label={tr('xtReservarVuelo')} onPress={() => setView('ok')} color="#1B3A6B" disabled={!canBook} />
         </View>
       )}
 
       {view === 'ok' && route && (
         <View style={st.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>¡Reserva confirmada!</Text>
+          <Text style={st.successTitle}>{tr('svcBookingConfirmed')}</Text>
           <Text style={st.successSub}>{route.origen} → {route.destino}</Text>
           <Text style={st.totalVal}>{total.toLocaleString()} XAF</Text>
-          <PrimaryButton label="Ver más vuelos" onPress={() => setView('airlines')} color="#1B3A6B" />
+          <PrimaryButton label={tr('xtVerMasVuelos')} onPress={() => setView('airlines')} color="#1B3A6B" />
         </View>
       )}
     </FinancialModuleShell>

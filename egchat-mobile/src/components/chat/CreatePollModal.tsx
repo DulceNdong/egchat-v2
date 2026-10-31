@@ -15,6 +15,7 @@ import { createPoll, serializePoll } from './PollMessage';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Props {
   visible: boolean;
@@ -30,6 +31,7 @@ let _optId = 0;
 const newOpt = (value = ''): OptionItem => ({ id: ++_optId, value });
 
 export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Props) {
+  const { t } = useTranslation();
   const [question, setQuestion] = useState('');
   const [options, setOptions] = useState<OptionItem[]>([newOpt(), newOpt()]);
   const [multipleChoice, setMultipleChoice] = useState(false);
@@ -82,10 +84,10 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
       handleClose();
     } catch (err) {
       console.error('[CreatePollModal] Error al crear encuesta:', err);
-      Alert.alert('Error', 'No se pudo crear la encuesta. Inténtalo de nuevo.');
+      Alert.alert(t('error'), t('chtPollCreateFailed'));
       if (isMounted.current) setSending(false);
     }
-  }, [question, options, multipleChoice, currentUserId, onSend, handleClose]);
+  }, [question, options, multipleChoice, currentUserId, onSend, handleClose, t]);
 
   const canSend = question.trim().length > 0 && options.filter(o => o.value.trim()).length >= 2;
 
@@ -111,7 +113,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
             onPress={handleClose}
             style={s.headerBtn}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Cerrar"
+            accessibilityLabel={t('close')}
             accessibilityRole="button"
           >
             <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.2} strokeLinecap="round" strokeLinejoin="round">
@@ -129,7 +131,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
                 <Rect x="17" y="3" width="4" height="18" rx="1"/>
               </Svg>
             </View>
-            <Text style={s.headerTitle}>Nueva encuesta</Text>
+            <Text style={s.headerTitle}>{t('chtNewPoll')}</Text>
           </View>
 
           <TouchableOpacity
@@ -137,7 +139,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
             disabled={!canSend || sending}
             style={[s.headerBtn, s.headerSendBtn, (!canSend || sending) && { opacity: 0.4 }]}
             hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-            accessibilityLabel="Enviar encuesta"
+            accessibilityLabel={t('chtSendPollA11y')}
             accessibilityRole="button"
           >
             {sending
@@ -155,25 +157,25 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
           keyboardShouldPersistTaps="handled"
         >
           {/* ── Pregunta ── */}
-          <Text style={[s.sectionLabel, { color: C.textTertiary }]}>PREGUNTA</Text>
+          <Text style={[s.sectionLabel, { color: C.textTertiary }]}>{t('chtPollQuestionLabel')}</Text>
           <View style={[s.inputBox, { backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}>
             <TextInput
               ref={questionRef}
               style={[s.questionInput, { color: C.textPrimary }]}
-              placeholder="Escribe tu pregunta..."
+              placeholder={t('chtPollQuestionPlaceholder')}
               placeholderTextColor={C.textTertiary}
               value={question}
               onChangeText={setQuestion}
               maxLength={255}
               multiline
-              accessibilityLabel="Pregunta de la encuesta"
+              accessibilityLabel={t('chtPollQuestionA11y')}
             />
             <Text style={[s.charCount, { color: C.textTertiary }]}>{question.length}/255</Text>
           </View>
 
           {/* ── Opciones ── */}
           <View style={s.optionsHeader}>
-            <Text style={[s.sectionLabel, { color: C.textTertiary }]}>OPCIONES ({options.length}/12)</Text>
+            <Text style={[s.sectionLabel, { color: C.textTertiary }]}>{t('chtPollOptionsLabel')} ({options.length}/12)</Text>
           </View>
 
           {options.map((opt, i) => (
@@ -183,20 +185,20 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
               </View>
               <TextInput
                 style={[s.optionInput, { color: C.textPrimary }]}
-                placeholder={`Opción ${i + 1}${i < 2 ? ' (requerida)' : ''}`}
+                placeholder={`${t('chtPollOption')} ${i + 1}${i < 2 ? ' ' + t('chtPollOptionRequired') : ''}`}
                 placeholderTextColor={C.textTertiary}
                 value={opt.value}
                 onChangeText={v => updateOption(opt.id, v)}
                 maxLength={100}
                 returnKeyType="next"
-                accessibilityLabel={`Opción ${i + 1}`}
+                accessibilityLabel={`${t('chtPollOption')} ${i + 1}`}
               />
               {options.length > 2 && (
                 <TouchableOpacity
                   onPress={() => removeOption(opt.id)}
                   style={s.removeBtn}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
-                  accessibilityLabel={`Eliminar opción ${i + 1}`}
+                  accessibilityLabel={`${t('chtDeleteOptionPrefix')} ${i + 1}`}
                   accessibilityRole="button"
                 >
                   <View style={s.removeBtnInner}>
@@ -214,7 +216,7 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
             <TouchableOpacity
               style={[s.addOptionBtn, { borderColor: '#00C8A040', backgroundColor: isDark ? '#00C8A010' : '#00C8A008' }]}
               onPress={addOption}
-              accessibilityLabel="Añadir opción"
+              accessibilityLabel={t('chtAddOption')}
               accessibilityRole="button"
             >
               <View style={s.addOptionIcon}>
@@ -224,22 +226,22 @@ export function CreatePollModal({ visible, currentUserId, onClose, onSend }: Pro
                   <Line x1="8" y1="12" x2="16" y2="12"/>
                 </Svg>
               </View>
-              <Text style={s.addOptionText}>Añadir opción</Text>
+              <Text style={s.addOptionText}>{t('chtAddOption')}</Text>
             </TouchableOpacity>
           )}
 
           {/* ── Respuesta múltiple ── */}
           <View style={[s.advancedRow, { borderColor: C.borderLight }]}>
             <View style={{ flex: 1 }}>
-              <Text style={[s.advancedLabel, { color: C.textPrimary }]}>Respuesta múltiple</Text>
-              <Text style={[s.advancedSub, { color: C.textTertiary }]}>Permite votar más de una opción</Text>
+              <Text style={[s.advancedLabel, { color: C.textPrimary }]}>{t('chtPollMultiple')}</Text>
+              <Text style={[s.advancedSub, { color: C.textTertiary }]}>{t('chtPollMultipleSub')}</Text>
             </View>
             <Switch
               value={multipleChoice}
               onValueChange={setMultipleChoice}
               trackColor={{ false: '#d1d5db', true: '#00C8A0' }}
               thumbColor="#fff"
-              accessibilityLabel="Activar respuesta múltiple"
+              accessibilityLabel={t('chtPollMultipleA11y')}
             />
           </View>
         </ScrollView>

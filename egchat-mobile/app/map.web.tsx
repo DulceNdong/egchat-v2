@@ -4,6 +4,7 @@ import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
 import { Colors, FontSize, FontWeight, Spacing } from '../src/theme';
+import { t as tr } from '../src/translations';
 
 const PLACES = [
   { id: '1', title: 'Hospital General Malabo', emoji: '🏥' },
@@ -25,7 +26,7 @@ export default function MapScreen() {
 
       <View style={styles.center}>
         <Text style={styles.mapIcon}>🗺️</Text>
-        <Text style={styles.notice}>El mapa interactivo está disponible en la app móvil.</Text>
+        <Text style={styles.notice}>{tr('mpaInteractiveWebOnly')}</Text>
       </View>
 
       <View style={styles.legend}>

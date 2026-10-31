@@ -24,6 +24,7 @@ import {
   type CallHistoryEntry,
   type CallDirection,
 } from '../src/call/callHistory';
+import { t as tr } from '../src/translations';
 
 // ── Tipos ────────────────────────────────────────────────────────
 
@@ -44,7 +45,7 @@ function formatTime(ts: string): string {
   const now = new Date();
   const diff = now.getTime() - d.getTime();
   if (diff < 86_400_000) return d.toLocaleTimeString('es', { hour: '2-digit', minute: '2-digit' });
-  if (diff < 604_800_000) return ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'][d.getDay()];
+  if (diff < 604_800_000) return [tr('dndDaySun'),tr('dndDayMon'),tr('dndDayTue'),tr('dndDayWed'),tr('dndDayThu'),tr('dndDayFri'),tr('dndDaySat')][d.getDay()];
   return d.toLocaleDateString('es', { day: 'numeric', month: 'short' });
 }
 
@@ -118,7 +119,7 @@ export default function CallHistoryScreen() {
       const chats = await chatAPI.getChats();
       const map: Record<string, { name: string; avatar?: string }> = {};
       for (const c of (chats || [])) {
-        if (c.id) map[c.id] = { name: c.name || c.title || 'Contacto', avatar: c.avatar_url };
+        if (c.id) map[c.id] = { name: c.name || c.title || tr('liaAttachContact'), avatar: c.avatar_url };
       }
       setChatMap(map);
     } catch { /* ignorar */ }
@@ -228,7 +229,7 @@ export default function CallHistoryScreen() {
         {/* Avatar */}
         <View style={s.avatarWrap}>
           <EGAvatar
-            uri={item.contactAvatar}
+            src={item.contactAvatar}
             name={item.contactName}
             size={46}
           />
@@ -293,7 +294,7 @@ export default function CallHistoryScreen() {
             <Path d="M19 12H5M12 19l-7-7 7-7"/>
           </Svg>
         </TouchableOpacity>
-        <Text style={s.title}>Historial de llamadas</Text>
+        <Text style={s.title}>{tr('xtHistorialDeLlamadas')}</Text>
         <TouchableOpacity onPress={onRefresh} style={s.back} hitSlop={10}>
           <RefreshIcon color="#fff" size={20} />
         </TouchableOpacity>
@@ -322,7 +323,7 @@ export default function CallHistoryScreen() {
       ) : filtered.length === 0 ? (
         <View style={s.center}>
           <PhoneIcon color={C.textTertiary} size={40} />
-          <Text style={[s.empty, { color: C.textTertiary }]}>Sin llamadas</Text>
+          <Text style={[s.empty, { color: C.textTertiary }]}>{tr('xtSinLlamadas')}</Text>
         </View>
       ) : (
         <FlatList

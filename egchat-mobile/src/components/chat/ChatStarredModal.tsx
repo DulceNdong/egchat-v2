@@ -3,6 +3,7 @@ import {
   View, Text, TouchableOpacity, StyleSheet, Modal, Pressable, ScrollView,
 } from 'react-native';
 import type { ChatMessage } from '../../types/chat';
+import { useTranslation } from '../../context/LanguageContext';
 
 export function ChatStarredModal({
   visible,
@@ -15,19 +16,20 @@ export function ChatStarredModal({
   onClose: () => void;
   onRemove: (id: string) => void;
 }) {
+  const { t } = useTranslation();
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose}>
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={s.sheet} onPress={() => {}}>
-          <Text style={s.title}>⭐ Mensajes destacados</Text>
+          <Text style={s.title}>⭐ {t('starredMessages')}</Text>
           <ScrollView style={s.list}>
             {messages.length === 0 ? (
-              <Text style={s.empty}>No hay mensajes destacados</Text>
+              <Text style={s.empty}>{t('chtNoStarredMessages')}</Text>
             ) : messages.map(m => (
               <View key={m.id} style={s.card}>
                 <Text style={s.body} numberOfLines={3}>{m.text || `[${m.type}]`}</Text>
                 <TouchableOpacity onPress={() => onRemove(m.id)}>
-                  <Text style={s.remove}>Quitar</Text>
+                  <Text style={s.remove}>{t('remove')}</Text>
                 </TouchableOpacity>
               </View>
             ))}

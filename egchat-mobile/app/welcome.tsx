@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import { SpinningLogo } from '../src/components/SpinningLogo';
 import { authAPI } from '../src/api';
+import { t as tr } from '../src/translations';
 
 export default function WelcomeScreen() {
   const logoScale   = useRef(new Animated.Value(0.4)).current;
@@ -60,7 +61,7 @@ export default function WelcomeScreen() {
 
         <Animated.View style={{ opacity: textOpacity, alignItems: 'center', marginTop: 24 }}>
           <Text style={s.appName}>EGChat</Text>
-          <Text style={s.tagline}>África Central conectada</Text>
+          <Text style={s.tagline}>{tr('authTagline')}</Text>
         </Animated.View>
 
         <Animated.View style={[s.dotsRow, { opacity: dotsOpacity }]}>

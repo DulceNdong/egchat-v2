@@ -9,6 +9,7 @@ import { chatAPI, contactsAPI } from '../src/api';
 import { EGAvatar } from '../src/components/ui';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
+import { useTranslation } from '../src/context/LanguageContext';
 import { DarkColors } from '../src/theme/darkMode';
 import Svg, { Path, Circle } from 'react-native-svg';
 import { pickContact } from '../src/utils/chatMedia';
@@ -34,6 +35,7 @@ export default function NewChatScreen() {
   const [phone, setPhone] = useState('');
   const [adding, setAdding] = useState(false);
   const { isDark } = useThemeContext();
+  const { t } = useTranslation();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
 
@@ -68,7 +70,7 @@ export default function NewChatScreen() {
   const getRealUserId = (item: any) => item?.contact_user_id || item?.user?.id || item?.id;
   const getDisplayName = (item: any) => {
     const realUser = getRealUser(item);
-    return realUser?.full_name || item?.full_name || item?.name || item?.nickname || 'Usuario';
+    return realUser?.full_name || item?.full_name || item?.name || item?.nickname || t('setUser');
   };
   const getDisplayPhone = (item: any) => {
     const realUser = getRealUser(item);
@@ -82,7 +84,7 @@ export default function NewChatScreen() {
   const startChat = useCallback(async (user: any) => {
     const realUserId = getRealUserId(user);
     if (!realUserId) {
-      Alert.alert('Contacto incompleto', 'Este contacto no tiene usuario asociado.');
+      Alert.alert(t('chtNcContactoIncompleto'), t('chtNcSinUsuarioAsociado'));
       return;
     }
     setCreating(realUserId);
@@ -90,7 +92,7 @@ export default function NewChatScreen() {
       const chat = await chatAPI.createPrivate(realUserId);
       router.replace(`/chat/${chat.id}` as any);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo crear el chat');
+      Alert.alert(t('error'), e.message || t('chtNcNoSePudoCrearChat'));
     } finally { setCreating(null); }
   }, []);
 
@@ -110,9 +112,9 @@ export default function NewChatScreen() {
         router.replace(`/chat/${chat.id}` as any);
       } catch {
         Alert.alert(
-          'Usuario no encontrado',
-          `El número ${cleanPhone} no aparece registrado en EGCHAT. Para iniciar chat, el contacto debe tener cuenta EGCHAT o puedes buscarlo por nombre/teléfono en la lista de usuarios.`,
-          [{ text: 'Entendido' }],
+          t('chtNcUsuarioNoEncontrado'),
+          `${t('chtNcNumeroNoRegistradoAntes')}${cleanPhone}${t('chtNcNumeroNoRegistradoDespues')}`,
+          [{ text: t('chtEntendido') }],
         );
       }
     } finally {
@@ -132,10 +134,10 @@ export default function NewChatScreen() {
       ? contacts
       : suggestedUsers;
   const sectionTitle = query.trim().length >= 2
-    ? 'RESULTADOS'
+    ? t('chtNcResultados')
     : contacts.length > 0
-      ? 'MIS CONTACTOS'
-      : 'USUARIOS EGCHAT DISPONIBLES';
+      ? t('chtNcMisContactos')
+      : t('chtNcUsuariosDisponibles');
 
   const renderItem = ({ item }: { item: any }) => (
     <TouchableOpacity
@@ -161,7 +163,7 @@ export default function NewChatScreen() {
         <TouchableOpacity onPress={() => router.back()} style={styles.backBtn}>
           <Text style={[styles.backIcon, { color: C.textPrimary }]}>‹</Text>
         </TouchableOpacity>
-        <Text style={[styles.title, { color: C.textPrimary }]}>Nuevo chat</Text>
+        <Text style={[styles.title, { color: C.textPrimary }]}>{t('newChat')}</Text>
       </View>
       <View style={[styles.searchBar, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
         <Svg width={16} height={16} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
@@ -171,7 +173,7 @@ export default function NewChatScreen() {
           style={[styles.searchInput, { color: C.textPrimary }]}
           value={query}
           onChangeText={search}
-          placeholder="Buscar por nombre o teléfono..."
+          placeholder={t('chtNcBuscarNombreTelefono')}
           placeholderTextColor={C.textTertiary}
           autoFocus
         />
@@ -183,7 +185,7 @@ export default function NewChatScreen() {
           style={[styles.phoneInput, { backgroundColor: C.bgSecondary, borderColor: C.border, color: C.textPrimary }]}
           value={phone}
           onChangeText={setPhone}
-          placeholder="Añadir por teléfono..."
+          placeholder={t('chtNcAnadirTelefono')}
           placeholderTextColor={C.textTertiary}
           keyboardType="phone-pad"
         />
@@ -195,7 +197,7 @@ export default function NewChatScreen() {
           {adding ? <ActivityIndicator size="small" color="#fff" /> : <Text style={styles.addBtnText}>+</Text>}
         </TouchableOpacity>
         <TouchableOpacity style={[styles.importBtn, { backgroundColor: C.bgSecondary, borderColor: C.border }]} onPress={importDeviceContact}>
-          <Text style={styles.importBtnText}>Agenda</Text>
+          <Text style={styles.importBtnText}>{t('chtNcAgenda')}</Text>
         </TouchableOpacity>
       </View>
 
@@ -204,15 +206,15 @@ export default function NewChatScreen() {
       )}
       {query.trim().length >= 2 && results.length === 0 && !loading && (
         <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: C.textSecondary }]}>Sin resultados para "{query}"</Text>
+          <Text style={[styles.emptyText, { color: C.textSecondary }]}>{`${t('chtNcSinResultadosPara')} "${query}"`}</Text>
         </View>
       )}
       {loadingInitial ? (
         <View style={styles.empty}><ActivityIndicator color={Colors.accent} /></View>
       ) : displayList.length === 0 && query.trim().length < 2 ? (
         <View style={styles.empty}>
-          <Text style={[styles.emptyText, { color: C.textPrimary }]}>No hay contactos todavía</Text>
-          <Text style={[styles.emptySub, { color: C.textSecondary }]}>Añade un número, importa desde la agenda o busca un usuario EGCHAT.</Text>
+          <Text style={[styles.emptyText, { color: C.textPrimary }]}>{t('chtNcNoHayContactos')}</Text>
+          <Text style={[styles.emptySub, { color: C.textSecondary }]}>{t('chtNcAnadeNumero')}</Text>
         </View>
       ) : (
         <FlatList

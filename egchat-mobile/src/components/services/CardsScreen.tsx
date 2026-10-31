@@ -6,21 +6,25 @@ import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path, Rect, Circle, Line } from 'react-native-svg';
 import { GQBank } from '../../data/serviciosFinancieros';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
-type Card = { id: string; bank: string; type: string; number: string; holder: string; expiry: string; color: string };
+type Card = { id: string; bank: string; type: string; number: string; holder?: string; holderKey?: string; expiry: string; color: string };
+
+const CARD_TYPE_KEYS: Record<string, string> = { debit: 'svcCardTypeDebit', credit: 'svcCardTypeCredit' };
 
 export const CardsScreen = ({ bank }: { bank: GQBank }) => {
+  const { t } = useTranslation();
   const [cards, setCards] = useState<Card[]>([
-    { id: 'c1', bank: bank.name, type: 'Débito', number: '4521', holder: 'USUARIO EGCHAT', expiry: '12/28', color: bank.color },
+    { id: 'c1', bank: bank.name, type: 'debit', number: '4521', holderKey: 'svcCardHolderDefault', expiry: '12/28', color: bank.color },
   ]);
   const [addMode, setAddMode] = useState<'none' | 'manual'>('none');
-  const [form, setForm] = useState({ number: '', holder: '', expiry: '', cvv: '', type: 'Débito', bankName: bank.name });
+  const [form, setForm] = useState({ number: '', holder: '', expiry: '', cvv: '', type: 'debit', bankName: bank.name });
   const setF = (k: string, v: string) => setForm(p => ({ ...p, [k]: v }));
 
   const scanCard = async () => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Activa la cámara para escanear tarjetas.');
+      Alert.alert(t('svcPermissionRequired'), t('svcCameraPermissionBody'));
       return;
     }
     const result = await ImagePicker.launchCameraAsync({
@@ -30,8 +34,8 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
     if (result.canceled || !result.assets?.[0]) return;
     setAddMode('manual');
     Alert.alert(
-      'Tarjeta capturada',
-      'Por seguridad no guardamos la foto. Revisa e introduce los datos manualmente.',
+      t('svcCardCaptured'),
+      t('svcCardNoPhotoBody'),
     );
   };
 
@@ -41,7 +45,7 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
         id: `c${Date.now()}`, bank: form.bankName || bank.name, type: form.type,
         number: form.number.slice(-4), holder: form.holder.toUpperCase(), expiry: form.expiry, color: bank.color,
       }]);
-      setForm({ number: '', holder: '', expiry: '', cvv: '', type: 'Débito', bankName: bank.name });
+      setForm({ number: '', holder: '', expiry: '', cvv: '', type: 'debit', bankName: bank.name });
       setAddMode('none');
     }
   };
@@ -52,16 +56,16 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
         <LinearGradient key={c.id} colors={[c.color, c.color + 'bb']} style={s.cardVisual}>
           <View style={s.cardTop}>
             <Text style={s.cardBank}>{c.bank}</Text>
-            <View style={s.cardTypeBadge}><Text style={s.cardTypeText}>{c.type}</Text></View>
+            <View style={s.cardTypeBadge}><Text style={s.cardTypeText}>{t(CARD_TYPE_KEYS[c.type] || c.type)}</Text></View>
           </View>
           <Text style={s.cardNumber}>•••• •••• •••• {c.number}</Text>
           <View style={s.cardBottom}>
             <View>
-              <Text style={s.cardLbl}>TITULAR</Text>
-              <Text style={s.cardVal}>{c.holder}</Text>
+              <Text style={s.cardLbl}>{t('svcHolderUpper')}</Text>
+              <Text style={s.cardVal}>{c.holderKey ? t(c.holderKey) : c.holder}</Text>
             </View>
             <View style={{ alignItems: 'flex-end' }}>
-              <Text style={s.cardLbl}>VENCE</Text>
+              <Text style={s.cardLbl}>{t('svcExpiresUpper')}</Text>
               <Text style={s.cardVal}>{c.expiry}</Text>
             </View>
           </View>
@@ -70,7 +74,7 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
 
       {addMode === 'none' ? (
         <View style={s.addCard}>
-          <Text style={s.addTitle}>Añadir nueva tarjeta</Text>
+          <Text style={s.addTitle}>{t('svcAddNewCard')}</Text>
           <View style={s.addRow}>
             {/* Escanear tarjeta */}
             <TouchableOpacity style={s.scanBtn} onPress={scanCard}>
@@ -83,8 +87,8 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
                   <Line x1="13.5" y1="14" x2="15" y2="14" stroke="#3B7DD8" strokeWidth="1.6" strokeLinecap="round"/>
                 </Svg>
               </View>
-              <Text style={s.scanLabel}>Escanear tarjeta</Text>
-              <Text style={s.scanSub}>Cámara → datos automáticos</Text>
+              <Text style={s.scanLabel}>{t('svcScanCard')}</Text>
+              <Text style={s.scanSub}>{t('svcCameraAutoFill')}</Text>
             </TouchableOpacity>
 
             {/* Manual */}
@@ -98,38 +102,38 @@ export const CardsScreen = ({ bank }: { bank: GQBank }) => {
                   <Line x1="15.5" y1="13.5" x2="14.5" y2="16.5" stroke="#2E9E6B" strokeWidth="1.4" strokeLinecap="round"/>
                 </Svg>
               </View>
-              <Text style={s.manualLabel}>Manual</Text>
-              <Text style={s.scanSub}>Introduce los datos</Text>
+              <Text style={s.manualLabel}>{t('svcManual')}</Text>
+              <Text style={s.scanSub}>{t('svcEnterData')}</Text>
             </TouchableOpacity>
           </View>
         </View>
       ) : (
         <View style={s.addCard}>
           <View style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 14 }}>
-            <Text style={s.addTitle}>Datos de la tarjeta</Text>
+            <Text style={s.addTitle}>{t('svcCardData')}</Text>
             <TouchableOpacity onPress={() => setAddMode('none')}><Text style={{ color: '#9CA3AF', fontSize: 16 }}>✕</Text></TouchableOpacity>
           </View>
           <LinearGradient colors={[bank.color, bank.color + 'bb']} style={s.preview}>
-            <Text style={s.previewSub}>{form.bankName || bank.name} — {form.type}</Text>
+            <Text style={s.previewSub}>{form.bankName || bank.name} — {t(CARD_TYPE_KEYS[form.type] || form.type)}</Text>
             <Text style={s.previewNum}>
               {form.number ? `•••• •••• •••• ${form.number.slice(-4)}` : '•••• •••• •••• ••••'}
             </Text>
             <View style={s.cardBottom}>
               <View>
-                <Text style={s.cardLbl}>TITULAR</Text>
-                <Text style={s.cardVal}>{form.holder || 'NOMBRE APELLIDO'}</Text>
+                <Text style={s.cardLbl}>{t('svcHolderUpper')}</Text>
+                <Text style={s.cardVal}>{form.holder || t('svcFullNameUpper')}</Text>
               </View>
               <View style={{ alignItems: 'flex-end' }}>
-                <Text style={s.cardLbl}>VENCE</Text>
-                <Text style={s.cardVal}>{form.expiry || 'MM/AA'}</Text>
+                <Text style={s.cardLbl}>{t('svcExpiresUpper')}</Text>
+                <Text style={s.cardVal}>{form.expiry || t('svcMmYyUpper')}</Text>
               </View>
             </View>
           </LinearGradient>
-          <FormField placeholder="Número de tarjeta (16 dígitos)" value={form.number} onChangeText={v => setF('number', v)} keyboardType="numeric" />
-          <FormField placeholder="Nombre del titular" value={form.holder} onChangeText={v => setF('holder', v)} />
-          <FormField placeholder="Fecha de vencimiento (MM/AA)" value={form.expiry} onChangeText={v => setF('expiry', v)} />
-          <FormField placeholder="CVV (3 dígitos)" value={form.cvv} onChangeText={v => setF('cvv', v)} keyboardType="numeric" />
-          <PrimaryButton label="Añadir tarjeta" color={bank.color} disabled={!form.number || !form.holder || !form.expiry} onPress={addCard} />
+          <FormField placeholder={t('svcCardNumberPh')} value={form.number} onChangeText={v => setF('number', v)} keyboardType="numeric" />
+          <FormField placeholder={t('svcHolderNamePh')} value={form.holder} onChangeText={v => setF('holder', v)} />
+          <FormField placeholder={t('svcExpiryDatePh')} value={form.expiry} onChangeText={v => setF('expiry', v)} />
+          <FormField placeholder={t('svcCvvPh')} value={form.cvv} onChangeText={v => setF('cvv', v)} keyboardType="numeric" />
+          <PrimaryButton label={t('svcAddCard')} color={bank.color} disabled={!form.number || !form.holder || !form.expiry} onPress={addCard} />
         </View>
       )}
     </View>

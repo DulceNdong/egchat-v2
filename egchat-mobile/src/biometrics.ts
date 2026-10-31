@@ -3,6 +3,7 @@
 
 import * as LocalAuthentication from 'expo-local-authentication';
 import * as SecureStore from 'expo-secure-store';
+import { t as tr } from './translations';
 
 const BIOMETRIC_ENABLED_KEY = 'egchat_biometric_enabled';
 const BIOMETRIC_CREDENTIALS_KEY = 'egchat_biometric_credentials';
@@ -18,17 +19,17 @@ export async function isBiometricAvailable(): Promise<boolean> {
 export async function getBiometricType(): Promise<string> {
   const types = await LocalAuthentication.supportedAuthenticationTypesAsync();
   if (types.includes(LocalAuthentication.AuthenticationType.FACIAL_RECOGNITION)) return 'Face ID';
-  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) return 'Huella dactilar';
-  return 'Biometría';
+  if (types.includes(LocalAuthentication.AuthenticationType.FINGERPRINT)) return tr('xtHuellaDactilar');
+  return tr('setBiometrics');
 }
 
 // ── Autenticar ────────────────────────────────────────────────────
-export async function authenticateWithBiometrics(reason = 'Confirma tu identidad'): Promise<boolean> {
+export async function authenticateWithBiometrics(reason = tr('xtConfirmaTuIdentidad')): Promise<boolean> {
   try {
     const result = await LocalAuthentication.authenticateAsync({
       promptMessage: reason,
-      cancelLabel: 'Cancelar',
-      fallbackLabel: 'Usar contraseña',
+      cancelLabel: tr('cancel'),
+      fallbackLabel: tr('xtUsarContrasena'),
       disableDeviceFallback: false,
     });
     return result.success;

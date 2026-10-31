@@ -6,6 +6,7 @@ import {
 import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../theme';
 import { useThemeContext } from '../theme/ThemeContext';
 import { DarkColors } from '../theme/darkMode';
+import { t as tr } from '../translations';
 
 interface LimitAlertProps {
   visible: boolean;
@@ -49,7 +50,7 @@ export function LimitAlert({
           </Text>
 
           <Text style={[styles.alertTitle, { color: C.textPrimary }]}>
-            {isBlocked ? 'Transacción Bloqueada' : 'Alerta de Límite'}
+            {isBlocked ? tr('xtTransaccionBloqueada') : tr('xtAlertaDeLimite')}
           </Text>
 
           <View style={[styles.alertContent, { borderColor: C.border }]}>
@@ -60,7 +61,7 @@ export function LimitAlert({
             {!isBlocked && (
               <View style={styles.limits}>
                 <View style={styles.limitItem}>
-                  <Text style={[styles.limitLabel, { color: C.textTertiary }]}>Intentas enviar:</Text>
+                  <Text style={[styles.limitLabel, { color: C.textTertiary }]}>{tr('xtIntentasEnviar')}</Text>
                   <Text style={[styles.limitValue, { color: C.textPrimary }]}>
                     {(amount / 1000).toFixed(0)}K XAF
                   </Text>
@@ -89,7 +90,7 @@ export function LimitAlert({
               onPress={onCancel}
             >
               <Text style={[styles.btnText, { color: C.textPrimary }]}>
-                {isBlocked ? 'Entendido' : 'Cancelar'}
+                {isBlocked ? tr('chtEntendido') : tr('cancel')}
               </Text>
             </TouchableOpacity>
 
@@ -105,8 +106,8 @@ export function LimitAlert({
 
           <Text style={[styles.hint, { color: C.textTertiary }]}>
             {isBlocked
-              ? 'Para transacciones mayores, vuelve mañana.'
-              : 'Los límites se resetean cada 24 horas.'}
+              ? tr('xtParaTransaccionesMayoresVuelveManana')
+              : tr('xtLosLimitesSeReseteanCada24Horas')}
           </Text>
         </View>
       </View>

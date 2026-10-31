@@ -24,6 +24,7 @@ import { useLocalSearchParams, router } from 'expo-router';
 import Svg, { Path, Polygon, Rect, Line } from 'react-native-svg';
 import { useSFUGroupCall, type SFUParticipant } from '../src/hooks/useSFUGroupCall';
 import { authAPI, getToken, getApiBase } from '../src/api';
+import { useTranslation } from '../src/context/LanguageContext';
 
 const ACCENT = '#00c8a0';
 const { width: SW, height: SH } = Dimensions.get('window');
@@ -73,6 +74,7 @@ const ParticipantCell = React.memo(({
   size: { width: number; height: number };
   isSpeaking: boolean;
 }) => {
+  const { t } = useTranslation();
   const speakerAnim = useRef(new Animated.Value(0)).current;
   const gradColors = GRAD_PALETTES[
     participant.userId.charCodeAt(0) % GRAD_PALETTES.length
@@ -111,7 +113,7 @@ const ParticipantCell = React.memo(({
         >
           <Text style={cs.initials}>{initials}</Text>
           {!participant.isConnected && (
-            <Text style={cs.connecting}>Conectando…</Text>
+            <Text style={cs.connecting}>{t('chtGcConectando')}</Text>
           )}
         </LinearGradient>
       )}
@@ -159,6 +161,7 @@ const LocalPiP = ({
   stream: any; isMuted: boolean; isCamOff: boolean; isVideo: boolean; name: string;
 }) => {
   const pan = useRef(new Animated.ValueXY({ x: SW - 110, y: 80 })).current;
+  const { t } = useTranslation();
   const panResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -179,12 +182,12 @@ const LocalPiP = ({
       ) : (
         <LinearGradient colors={['#00c8a0', '#00B4E6']} style={[pip.video, pip.center]}>
           <Text style={pip.initials}>
-            {(name || 'Yo').slice(0, 2).toUpperCase()}
+            {(name || t('chtGcYo')).slice(0, 2).toUpperCase()}
           </Text>
         </LinearGradient>
       )}
       <View style={pip.nameTag}>
-        <Text style={pip.nameText}>Tú</Text>
+        <Text style={pip.nameText}>{t('chtGcTu')}</Text>
       </View>
       {isMuted && (
         <View style={pip.mutedBadge}>
@@ -207,6 +210,7 @@ export default function GroupCallScreen() {
   const callType = (rawType as 'audio' | 'video') || 'audio';
   const isVideo = callType === 'video';
   const participantNames: Record<string, string> = rawNames ? JSON.parse(rawNames) : {};
+  const { t } = useTranslation();
 
   const {
     participants, localStream, isActive,
@@ -237,7 +241,7 @@ export default function GroupCallScreen() {
       }
       const { mediaDevices } = require('react-native-webrtc');
       if (!mediaDevices?.getDisplayMedia) {
-        Alert.alert('No disponible', 'Compartir pantalla requiere Android 10+ y build nativo.');
+        Alert.alert(t('chtGcNoDisponible'), t('chtGcPantallaRequiere'));
         return;
       }
       const screenStream = await mediaDevices.getDisplayMedia({ video: true });
@@ -245,7 +249,7 @@ export default function GroupCallScreen() {
       setIsSharingScreen(true);
     } catch (e: any) {
       if (!e?.message?.includes('cancel') && !e?.message?.includes('denied')) {
-        Alert.alert('Error', 'No se pudo iniciar compartición de pantalla.');
+        Alert.alert(t('error'), t('chtGcNoPudoCompartir'));
       }
     }
   }, [isSharingScreen]);
@@ -262,17 +266,17 @@ export default function GroupCallScreen() {
 
         if (!hasWebRTC) {
           Alert.alert(
-            'Requiere EAS Dev Client',
-            'Las llamadas grupales con audio/video real necesitan un APK/IPA.\nCon Expo Go solo se completa la señalización.',
-            [{ text: 'Entendido', onPress: () => router.back() }],
+            t('chtGcRequiereEas'),
+            t('chtGcLlamadasNecesitanApk'),
+            [{ text: t('chtEntendido'), onPress: () => router.back() }],
           );
           return;
         }
 
         const ok = await startSFUCall(groupId, me.id, me.full_name || me.id, callType, me.avatar_url);
         if (!ok) {
-          Alert.alert('Error', 'No se pudo iniciar la llamada grupal', [
-            { text: 'OK', onPress: () => router.back() },
+          Alert.alert(t('error'), t('chtGcNoPudoIniciar'), [
+            { text: t('chtGcOk'), onPress: () => router.back() },
           ]);
           return;
         }
@@ -309,8 +313,8 @@ export default function GroupCallScreen() {
           if (msg.type === 'group_call_participant_joined' && msg.roomId === groupId) {
             handlePeerJoined(msg.userId, msg.name, msg.avatar);
             // Toast de quien se unió
-            const name = msg.name || participantNames[msg.userId] || 'Alguien';
-            setJoinToasts(prev => [...prev, `${name} se unió`]);
+            const name = msg.name || participantNames[msg.userId] || t('chtGcAlguien');
+            setJoinToasts(prev => [...prev, `${name} ${t('chtGcSeUnio')}`]);
             setTimeout(() => setJoinToasts(prev => prev.slice(1)), 3000);
           }
         } catch {}
@@ -337,10 +341,10 @@ export default function GroupCallScreen() {
         <View style={g.waiting}>
           <LinearGradient colors={['#00c8a0', '#00B4E6']} style={g.waitingAvatar}>
             <Text style={g.waitingInitials}>
-              {(myUser?.full_name || 'Yo').slice(0, 2).toUpperCase()}
+              {(myUser?.full_name || t('chtGcYo')).slice(0, 2).toUpperCase()}
             </Text>
           </LinearGradient>
-          <Text style={g.waitingText}>Esperando participantes…</Text>
+          <Text style={g.waitingText}>{t('chtGcEsperandoParticipantes')}</Text>
           <Text style={g.waitingTimer}>{fmt(duration)}</Text>
         </View>
       );
@@ -398,10 +402,10 @@ export default function GroupCallScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         {/* Header compacto */}
         <View style={s.header}>
-          <Text style={s.title}>Llamada grupal</Text>
+          <Text style={s.title}>{t('chtGcLlamadaGrupal')}</Text>
           <Text style={s.timerTxt}>{fmt(duration)}</Text>
           <Text style={s.countTxt}>
-            {total + 1} participante{total !== 0 ? 's' : ''}
+            {`${total + 1} ${t(total !== 0 ? 'chtGcParticipantes' : 'chtGcParticipante')}`}
           </Text>
         </View>
 
@@ -468,15 +472,15 @@ export default function GroupCallScreen() {
           isMuted={isMuted}
           isCamOff={isCamOff}
           isVideo={isVideo}
-          name={myUser?.full_name || 'Yo'}
+          name={myUser?.full_name || t('chtGcYo')}
         />
       )}
 
       {/* Toasts de quien se une */}
       <View style={{ position: 'absolute', top: 100, left: 0, right: 0, alignItems: 'center', gap: 6 }} pointerEvents="none">
-        {joinToasts.map((t, i) => (
+        {joinToasts.map((toastTxt, i) => (
           <View key={i} style={{ backgroundColor: 'rgba(0,200,160,0.85)', borderRadius: 20, paddingHorizontal: 16, paddingVertical: 8 }}>
-            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>👋 {t}</Text>
+            <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>👋 {toastTxt}</Text>
           </View>
         ))}
       </View>
@@ -485,7 +489,7 @@ export default function GroupCallScreen() {
       {showChat && (
         <View style={s.chatPanel}>
           <View style={s.chatHeader}>
-            <Text style={s.chatTitle}>Chat de la llamada</Text>
+            <Text style={s.chatTitle}>{t('chtGcChatDeLlamada')}</Text>
             <TouchableOpacity onPress={() => setShowChat(false)}>
               <Text style={{ color: '#fff', fontSize: 18 }}>✕</Text>
             </TouchableOpacity>
@@ -495,7 +499,7 @@ export default function GroupCallScreen() {
             keyExtractor={m => m.id}
             style={{ flex: 1 }}
             contentContainerStyle={{ padding: 10, gap: 8 }}
-            ListEmptyComponent={<Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 20 }}>Sin mensajes aún</Text>}
+            ListEmptyComponent={<Text style={{ color: 'rgba(255,255,255,0.5)', textAlign: 'center', marginTop: 20 }}>{t('chtGcSinMensajesAun')}</Text>}
             renderItem={({ item }) => (
               <View>
                 <Text style={{ color: '#00c8a0', fontSize: 11, fontWeight: '700' }}>{item.name}</Text>
@@ -508,12 +512,12 @@ export default function GroupCallScreen() {
               style={s.chatTextInput}
               value={chatText}
               onChangeText={setChatText}
-              placeholder="Mensaje..."
+              placeholder={t('chtGcMensajePlaceholder')}
               placeholderTextColor="rgba(255,255,255,0.4)"
               returnKeyType="send"
               onSubmitEditing={() => {
                 if (!chatText.trim()) return;
-                const msg = { id: String(Date.now()), name: myUser?.full_name || 'Yo', text: chatText.trim(), ts: Date.now() };
+                const msg = { id: String(Date.now()), name: myUser?.full_name || t('chtGcYo'), text: chatText.trim(), ts: Date.now() };
                 setChatMessages(prev => [...prev, msg]);
                 setChatText('');
               }}
@@ -521,7 +525,7 @@ export default function GroupCallScreen() {
             <TouchableOpacity
               onPress={() => {
                 if (!chatText.trim()) return;
-                const msg = { id: String(Date.now()), name: myUser?.full_name || 'Yo', text: chatText.trim(), ts: Date.now() };
+                const msg = { id: String(Date.now()), name: myUser?.full_name || t('chtGcYo'), text: chatText.trim(), ts: Date.now() };
                 setChatMessages(prev => [...prev, msg]);
                 setChatText('');
               }}

@@ -9,6 +9,8 @@ import * as ImagePicker from 'expo-image-picker';
 import Svg, { Path } from 'react-native-svg';
 import { MaterialCommunityIcons, Ionicons } from '@expo/vector-icons';
 import { encryptImage } from '../../services/kycEncryption';
+import { useTranslation } from '../../context/LanguageContext';
+import { t as tr } from '../../translations';
 
 interface Props {
   side: 'front' | 'back' | 'selfie';
@@ -16,13 +18,21 @@ interface Props {
   onError?: (msg: string) => void;
 }
 
-const SIDE_LABELS: Record<string, string> = {
-  front: 'Foto frontal',
-  back:  'Foto trasera',
-  selfie:'Selfie',
+// Mensajes i18n por lado una vez capturada la foto.
+const SIDE_CAPTURED_KEYS: Record<string, string> = {
+  front: 'kyFrontCaptured',
+  back:  'kyBackCaptured',
+  selfie:'kySelfieCaptured',
+};
+// Acciones i18n de captura por lado.
+const SIDE_CAPTURE_KEYS: Record<string, string> = {
+  front: 'kyCaptureFront',
+  back:  'kyCaptureBack',
+  selfie:'kyCaptureSelfie',
 };
 
 export function DocumentCapture({ side, onCapture, onError }: Props) {
+  const { t } = useTranslation();
   const [permission, requestPermission] = useCameraPermissions();
   const cameraRef = useRef<CameraView>(null);
 
@@ -31,7 +41,8 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
   const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [confirmed, setConfirmed] = useState(false);
 
-  const sideLabel = SIDE_LABELS[side] ?? 'Foto';
+  const sideCaptured   = t(SIDE_CAPTURED_KEYS[side] ?? 'chtPhoto');
+  const sideCaptureAct = t(SIDE_CAPTURE_KEYS[side] ?? 'chtPhoto');
 
   // ── Procesar URI (tanto cámara como galería) ──────────────────────────────
   const processUri = useCallback(async (uri: string) => {
@@ -49,7 +60,7 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
       // sepa qué imagen eligió, y le ofrecemos reintentar desde la vista previa.
       // Pasamos la URI sin cifrar con prefijo "raw:" como señal al padre.
       setPreviewUri(uri);
-      const msg = 'Error al procesar la imagen. Intenta de nuevo o elige otra foto.';
+      const msg = t('kyImageProcessError');
       setQualityTip(msg);
       onError?.(msg);
       // Llamar igualmente al padre con la imagen en crudo para que pueda
@@ -58,7 +69,7 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
     } finally {
       setProcessing(false);
     }
-  }, [onCapture, onError]);
+  }, [onCapture, onError, t]);
 
   // ── Capturar con cámara ───────────────────────────────────────────────────
   const handleCapture = useCallback(async () => {
@@ -70,23 +81,23 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
         quality: 0.92,
         skipProcessing: false,
       });
-      if (!photo?.uri) throw new Error('No se recibió URI de la foto');
+      if (!photo?.uri) throw new Error(tr('xtNoSeRecibioURIDeLaFoto'));
       await processUri(photo.uri);
     } catch (e: any) {
-      const msg = 'Error al capturar. Mantén el teléfono firme e inténtalo de nuevo.';
+      const msg = t('kyCaptureError');
       setQualityTip(msg);
       onError?.(msg);
       setProcessing(false);
     }
-  }, [processing, processUri, onError]);
+  }, [processing, processUri, onError, t]);
 
   // ── Elegir de galería ─────────────────────────────────────────────────────
   const handleGallery = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
       Alert.alert(
-        'Permiso requerido',
-        'Necesitamos acceso a tus fotos para que puedas seleccionar una imagen.',
+        t('kyPermRequired'),
+        t('kyGalleryAccessBody'),
       );
       return;
     }
@@ -99,7 +110,7 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
     if (!result.canceled && result.assets.length > 0) {
       await processUri(result.assets[0].uri);
     }
-  }, [processUri]);
+  }, [processUri, t]);
 
   // ── Reintentar ────────────────────────────────────────────────────────────
   const handleRetake = () => {
@@ -118,15 +129,13 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
     return (
       <View style={st.permWrap}>
         <MaterialCommunityIcons name="camera-off" size={40} color="#9ca3af" />
-        <Text style={st.permText}>
-          EGCHAT necesita acceso a la cámara para capturar tu documento.
-        </Text>
+        <Text style={st.permText}>{t('kyCameraAccessBody')}</Text>
         <TouchableOpacity style={st.permBtn} onPress={requestPermission}>
-          <Text style={st.permBtnText}>Permitir cámara</Text>
+          <Text style={st.permBtnText}>{t('kyAllowCamera')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={st.galleryFallbackBtn} onPress={handleGallery}>
           <Ionicons name="images-outline" size={17} color="#00C8A0" />
-          <Text style={st.galleryFallbackText}>Elegir desde galería</Text>
+          <Text style={st.galleryFallbackText}>{t('kyChooseFromGallery')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -145,13 +154,13 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
               color={qualityTip ? '#f59e0b' : '#10b981'}
             />
             <Text style={[st.previewBadgeText, qualityTip ? st.previewBadgeTextError : undefined]}>
-              {qualityTip ?? `${sideLabel} capturada`}
+              {qualityTip ?? sideCaptured}
             </Text>
           </View>
         </View>
         <TouchableOpacity style={st.retakeBtn} onPress={handleRetake}>
           <Ionicons name="refresh" size={16} color="#374151" />
-          <Text style={st.retakeBtnText}>Volver a capturar</Text>
+          <Text style={st.retakeBtnText}>{t('kyRetake')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -181,12 +190,12 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
         {processing && (
           <View style={st.processingOverlay}>
             <ActivityIndicator color="#fff" size="large" />
-            <Text style={st.processingText}>Procesando…</Text>
+            <Text style={st.processingText}>{t('kyProcessingEllipsis')}</Text>
           </View>
         )}
       </View>
 
-      <Text style={st.hint}>Coloca el documento dentro del marco</Text>
+      <Text style={st.hint}>{t('kyPlaceDocumentInFrame')}</Text>
 
       {/* Botones de acción */}
       <View style={st.actions}>
@@ -195,11 +204,11 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
           style={[st.captureBtn, processing && st.captureBtnDisabled]}
           onPress={handleCapture}
           disabled={processing}
-          accessibilityLabel={`Capturar ${sideLabel}`}
+          accessibilityLabel={sideCaptureAct}
         >
           <Ionicons name="camera" size={20} color="#fff" />
           <Text style={st.captureBtnText}>
-            {processing ? 'Procesando…' : `Capturar ${sideLabel.toLowerCase()}`}
+            {processing ? t('kyProcessingEllipsis') : sideCaptureAct}
           </Text>
         </TouchableOpacity>
 
@@ -208,10 +217,10 @@ export function DocumentCapture({ side, onCapture, onError }: Props) {
           style={[st.galleryBtn, processing && st.captureBtnDisabled]}
           onPress={handleGallery}
           disabled={processing}
-          accessibilityLabel="Elegir foto de la galería"
+          accessibilityLabel={t('kyGalleryA11y')}
         >
           <Ionicons name="images-outline" size={18} color="#374151" />
-          <Text style={st.galleryBtnText}>Elegir de galería</Text>
+          <Text style={st.galleryBtnText}>{t('kyChooseFromGallery')}</Text>
         </TouchableOpacity>
       </View>
     </View>

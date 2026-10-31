@@ -11,6 +11,7 @@
 import React, { useState, useCallback } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
+import { t as tr } from '../../translations';
 
 export interface PollData {
   question: string;
@@ -80,7 +81,7 @@ export function PollMessage({ poll, currentUserId, isOwn, onVote }: Props) {
       {/* Footer */}
       <Text style={ps.footer}>
         {totalVotes} {totalVotes === 1 ? 'voto' : 'votos'}
-        {poll.multipleChoice ? ' · Respuesta múltiple' : ''}
+        {poll.multipleChoice ? tr('xtRespuestaMultiple') : ''}
       </Text>
     </View>
   );

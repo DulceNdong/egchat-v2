@@ -9,6 +9,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useLocalSearchParams, router } from 'expo-router';
 import { qrSessionService } from '../src/services/qrSession';
+import { t as tr } from '../src/translations';
 
 export default function QRLoginScreen() {
   const { sessionId } = useLocalSearchParams<{ sessionId: string }>();
@@ -16,7 +17,7 @@ export default function QRLoginScreen() {
   const [message, setMessage] = useState('');
 
   const confirm = async () => {
-    if (!sessionId) { setStatus('error'); setMessage('QR inválido'); return; }
+    if (!sessionId) { setStatus('error'); setMessage(tr('xtQRInvalido')); return; }
     setStatus('loading');
     const result = await qrSessionService.confirmQRLogin(sessionId);
     if (result.ok) {
@@ -24,7 +25,7 @@ export default function QRLoginScreen() {
       setTimeout(() => router.back(), 2000);
     } else {
       setStatus('error');
-      setMessage(result.message || 'No se pudo confirmar');
+      setMessage(result.message || tr('xtNoSePudoConfirmar'));
     }
   };
 
@@ -46,14 +47,14 @@ export default function QRLoginScreen() {
             {status === 'success' ? '¡Sesión confirmada!' :
              status === 'error'   ? 'Error' :
              status === 'loading' ? 'Confirmando...' :
-             'Iniciar sesión en PC'}
+             tr('xtIniciarSesionEnPC')}
           </Text>
 
           <Text style={s.sub}>
             {status === 'success' ? 'Ya puedes usar EGChat en tu ordenador' :
              status === 'error'   ? message :
              status === 'loading' ? 'Autorizando la sesión...' :
-             '¿Quieres iniciar sesión en EGChat Web desde este dispositivo?'}
+             tr('xtQuieresIniciarSesionEnEGChatWebDesdeEsteDispositiv')}
           </Text>
 
           {status === 'loading' ? (
@@ -61,17 +62,17 @@ export default function QRLoginScreen() {
           ) : status === 'confirm' ? (
             <View style={s.actions}>
               <TouchableOpacity style={s.btnCancel} onPress={() => router.back()}>
-                <Text style={s.btnCancelText}>Cancelar</Text>
+                <Text style={s.btnCancelText}>{tr('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity onPress={confirm}>
                 <LinearGradient colors={['#00c8a0', '#00B4E6']} style={s.btnConfirm}>
-                  <Text style={s.btnConfirmText}>Confirmar</Text>
+                  <Text style={s.btnConfirmText}>{tr('confirm')}</Text>
                 </LinearGradient>
               </TouchableOpacity>
             </View>
           ) : status === 'error' ? (
             <TouchableOpacity style={s.btnCancel} onPress={() => router.back()}>
-              <Text style={s.btnCancelText}>Volver</Text>
+              <Text style={s.btnCancelText}>{tr('djhBack')}</Text>
             </TouchableOpacity>
           ) : null}
         </View>

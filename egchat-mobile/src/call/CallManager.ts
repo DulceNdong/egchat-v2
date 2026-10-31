@@ -56,6 +56,7 @@ import type {
   CallStateObserver,
   IncomingCallPayload,
 } from './types';
+import { t as tr } from '../translations';
 
 // ── WebRTC nativo (react-native-webrtc) ───────────────────────────
 type NativeWebRTC = {
@@ -300,8 +301,8 @@ export class CallManager {
 
     if (!await this._ensurePermissions(callType)) {
       throw new Error(callType === 'video'
-        ? 'Permisos de cámara o micrófono denegados. Actívalos en Ajustes.'
-        : 'Permiso de micrófono denegado. Actívalo en Ajustes.');
+        ? tr('xtPermisosDeCamaraOMicrofonoDenegadosActivalosEnAjus')
+        : tr('xtPermisoDeMicrofonoDenegadoActivaloEnAjustes'));
     }
 
     const iceServers = await this._getIceServers();
@@ -462,12 +463,12 @@ export class CallManager {
 
       if (!await this._ensurePermissions(callType)) {
         await this.endCall();
-        throw new Error('Permisos denegados. Actívalos en Ajustes.');
+        throw new Error(tr('xtPermisosDenegadosActivalosEnAjustes'));
       }
 
       let offer: any = rawOffer;
       if (!this._isValidSdp(offer)) offer = await this._fetchOfferWithRetry(callId);
-      if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error('No se pudo obtener los datos de la llamada.'); }
+      if (!this._isValidSdp(offer)) { await this.endCall(); throw new Error(tr('xtNoSePudoObtenerLosDatosDeLaLlamada')); }
 
       const iceServers = await this._getIceServers();
 
@@ -995,7 +996,7 @@ export class CallManager {
   // FIX 2 — usa _isFrontCamera para el facingMode correcto.
   // FIX 6 — resolución adaptativa 720p ideal con fallback a 480p.
   private async _getUserMedia(type: 'audio' | 'video'): Promise<any> {
-    if (!NativeRTC) throw new Error('react-native-webrtc no disponible');
+    if (!NativeRTC) throw new Error(tr('xtReactNativeWebrtcNoDisponible'));
 
     const facing = this._isFrontCamera ? 'user' : 'environment';
 

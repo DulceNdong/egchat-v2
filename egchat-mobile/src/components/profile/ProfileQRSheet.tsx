@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import * as Clipboard from 'expo-clipboard';
 import { buildContactQrPayload, buildContactQrUrl } from '../../utils/contactQr';
 import { EGAvatar } from '../ui';
+import { t as tr } from '../../translations';
 
 // QR nativo (react-native-qrcode-svg) solo en nativo
 let QRCode: any = null;
@@ -34,12 +35,12 @@ export function ProfileQRSheet({ visible, onClose, userId, name, phone, avatar }
 
   const copyLink = async () => {
     await Clipboard.setStringAsync(shareUrl || payload);
-    Alert.alert('✓ Copiado', 'Enlace copiado al portapapeles');
+    Alert.alert(tr('xtCopiado'), 'Enlace copiado al portapapeles');
   };
 
   const shareProfile = async () => {
     try {
-      await Share.share({ message: `Añádeme en EGCHAT: ${name}\n${shareUrl}`, title: 'Mi perfil EGCHAT' });
+      await Share.share({ message: tr('pqAddMePrefix') + name + '\n' + shareUrl, title: tr('pqShareTitle') });
     } catch {}
   };
 
@@ -59,7 +60,7 @@ export function ProfileQRSheet({ visible, onClose, userId, name, phone, avatar }
             </View>
           </View>
 
-          <Text style={s.scanLabel}>Escanea para añadirme a EGChat</Text>
+          <Text style={s.scanLabel}>{tr('xtEscaneaParaAnadirmeAEGChat')}</Text>
 
           {/* QR Card con diseño premium */}
           <View style={s.qrCard}>
@@ -71,7 +72,7 @@ export function ProfileQRSheet({ visible, onClose, userId, name, phone, avatar }
 
             <View style={s.qrInner}>
               {!userId ? (
-                <Text style={s.noQr}>Inicia sesión para ver tu QR</Text>
+                <Text style={s.noQr}>{tr('pqSignInToSeeQr')}</Text>
               ) : Platform.OS === 'web' ? (
                 // Web: imagen del QR generada por API externa
                 <Image
@@ -124,7 +125,7 @@ export function ProfileQRSheet({ visible, onClose, userId, name, phone, avatar }
             </TouchableOpacity>
             <TouchableOpacity onPress={shareProfile} activeOpacity={0.85} style={{ flex: 1 }}>
               <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.btnPrimary}>
-                <Text style={s.btnPrimaryText}>Compartir perfil</Text>
+                <Text style={s.btnPrimaryText}>{tr('xtCompartirPerfil')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>

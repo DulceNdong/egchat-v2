@@ -50,8 +50,8 @@ export default function ChatSettingsScreen() {
     setSyncingReceipts(true);
     await syncReadReceiptsToBackend(v);
     setSyncingReceipts(false);
-    toast.info(v ? '●● Confirmaciones de lectura activadas' : '●● Confirmaciones de lectura desactivadas');
-  }, []);
+    toast.info(v ? `●● ${t('setReadReceiptsOn')}` : `●● ${t('setReadReceiptsOff')}`);
+  }, [t]);
 
   const labels: Record<ChatFontSize, string> = {
     small: t('fontSmall'),

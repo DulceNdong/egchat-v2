@@ -8,6 +8,7 @@ import { StatusBadge } from '../../src/components/monetizacion/StatusBadge';
 import { MetricCard } from '../../src/components/monetizacion/MetricCard';
 import { RevenueTable } from '../../src/components/monetizacion/RevenueTable';
 import { useEmpresas } from '../../src/hooks/useMonetizacion';
+import { useTranslation } from '../../src/context/LanguageContext';
 import type { Empresa, EstadoPago } from '../../src/types/monetizacion';
 
 // ── Tipos UI (compatibilidad con la pantalla) ──────────────────────────────
@@ -54,8 +55,30 @@ const EMPRESAS_DEMO: EmpresaUI[] = [
 const fmt = (n: number) =>
   new Intl.NumberFormat('es-GQ', { style: 'currency', currency: 'XAF', maximumFractionDigits: 0 }).format(n);
 
+const FILTROS: { id: 'todas' | EstadoPago; labelKey: string }[] = [
+  { id: 'todas', labelKey: 'all' },
+  { id: 'pagado', labelKey: 'mznFilterPaid' },
+  { id: 'pendiente', labelKey: 'mznFilterPending' },
+  { id: 'vencido', labelKey: 'mznFilterOverdue' },
+];
+
+const CAMPOS_FORM: { key: keyof typeof FORM_INICIAL; labelKey: string; placeholderKey?: string; placeholder?: string; keyboardType?: string }[] = [
+  { key: 'nombre', labelKey: 'mznCompanyNameRequired', placeholderKey: 'mznCompanyNameExample' },
+  { key: 'responsable', labelKey: 'mznManagerRequired', placeholderKey: 'mznFullNamePlaceholder' },
+  { key: 'email', labelKey: 'mznEmailLabel', placeholderKey: 'mznEmailPlaceholder' },
+  { key: 'tipo', labelKey: 'mznServiceType', placeholderKey: 'mznServiceTypeExample' },
+  { key: 'cuota_mensual', labelKey: 'mznMonthlyFeeXaf', placeholder: '50000', keyboardType: 'numeric' },
+  { key: 'comision_pct', labelKey: 'mznSalesCommissionPct', placeholder: '1.5', keyboardType: 'decimal-pad' },
+];
+
+const FORM_INICIAL = {
+  nombre: '', responsable: '', email: '', tipo: 'General',
+  cuota_mensual: '50000', comision_pct: '1.5',
+};
+
 // ── Pantalla ───────────────────────────────────────────────────────────────
 export default function EmpresasScreen() {
+  const { t } = useTranslation();
   const { empresas: rawEmpresas, loading, error, refresh, crearEmpresa, marcarPago } = useEmpresas();
   const [refreshing, setRefreshing] = useState(false);
   const [modalVisible, setModalVisible] = useState(false);
@@ -71,10 +94,7 @@ export default function EmpresasScreen() {
   const totalIngresos = totalCuotas + totalComisiones;
 
   // Form nueva empresa
-  const [form, setForm] = useState({
-    nombre: '', responsable: '', email: '', tipo: 'General',
-    cuota_mensual: '50000', comision_pct: '1.5',
-  });
+  const [form, setForm] = useState(FORM_INICIAL);
 
   const empresasFiltradas = filtro === 'todas'
     ? empresas
@@ -88,7 +108,7 @@ export default function EmpresasScreen() {
 
   const handleAdd = async () => {
     if (!form.nombre || !form.responsable) {
-      Alert.alert('Error', 'Nombre y responsable son obligatorios');
+      Alert.alert(t('error'), t('mznNameResponsibleRequired'));
       return;
     }
     try {
@@ -105,8 +125,8 @@ export default function EmpresasScreen() {
       setModalVisible(false);
       setForm({ nombre: '', responsable: '', email: '', tipo: 'General', cuota_mensual: '50000', comision_pct: '1.5' });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al guardar';
-      Alert.alert('Error', msg);
+      const msg = e instanceof Error ? e.message : t('setSaveError');
+      Alert.alert(t('error'), msg);
     }
   };
 
@@ -117,8 +137,8 @@ export default function EmpresasScreen() {
         await marcarPago(id, nuevoEstado);
       }
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : 'Error al actualizar';
-      Alert.alert('Error', msg);
+      const msg = e instanceof Error ? e.message : t('mznUpdateError');
+      Alert.alert(t('error'), msg);
     }
   };
 
@@ -130,39 +150,39 @@ export default function EmpresasScreen() {
       {loading && (
         <View style={styles.loadingBar}>
           <ActivityIndicator size="small" color="#00D4FF" />
-          <Text style={styles.loadingText}>Cargando...</Text>
+          <Text style={styles.loadingText}>{t('loading')}</Text>
         </View>
       )}
 
       {/* Error */}
       {error && !loading && (
         <View style={styles.errorBar}>
-          <Text style={styles.errorText}>⚠ {error} — datos de ejemplo</Text>
+          <Text style={styles.errorText}>⚠ {error} {t('mznDemoDataNote')}</Text>
         </View>
       )}
 
       {/* Resumen métricas */}
       <View style={styles.metricsBar}>
-        <MetricCard label="Cuotas Mes" value={fmt(totalCuotas)} icon="📋" accentColor="#00D4FF" trend={2.1} />
-        <MetricCard label="Comisiones" value={fmt(totalComisiones)} icon="💰" accentColor="#00FF88" trend={4.3} />
+        <MetricCard label={t('mznMonthlyFees')} value={fmt(totalCuotas)} icon="📋" accentColor="#00D4FF" trend={2.1} />
+        <MetricCard label={t('mznCommissions')} value={fmt(totalComisiones)} icon="💰" accentColor="#00FF88" trend={4.3} />
       </View>
       <View style={styles.totalBar}>
         <LinearGradient colors={['#0D2A1A', '#0A0A0A']} style={styles.totalGrad}>
-          <Text style={styles.totalLabel}>INGRESOS TOTALES EMPRESAS</Text>
+          <Text style={styles.totalLabel}>{t('mznTotalCompanyRevenue')}</Text>
           <Text style={styles.totalValue}>{fmt(totalIngresos)}</Text>
         </LinearGradient>
       </View>
 
       {/* Filtros */}
       <View style={styles.filterRow}>
-        {(['todas', 'pagado', 'pendiente', 'vencido'] as const).map(f => (
+        {FILTROS.map(f => (
           <TouchableOpacity
-            key={f}
-            style={[styles.filterBtn, filtro === f && styles.filterBtnActive]}
-            onPress={() => setFiltro(f)}
+            key={f.id}
+            style={[styles.filterBtn, filtro === f.id && styles.filterBtnActive]}
+            onPress={() => setFiltro(f.id)}
           >
-            <Text style={[styles.filterBtnText, filtro === f && styles.filterBtnTextActive]}>
-              {f.charAt(0).toUpperCase() + f.slice(1)}
+            <Text style={[styles.filterBtnText, filtro === f.id && styles.filterBtnTextActive]}>
+              {t(f.labelKey)}
             </Text>
           </TouchableOpacity>
         ))}
@@ -199,15 +219,15 @@ export default function EmpresasScreen() {
 
               <View style={styles.cardMetrics}>
                 <View style={styles.cardMetric}>
-                  <Text style={styles.cardMetricLabel}>Cuota mensual</Text>
+                  <Text style={styles.cardMetricLabel}>{t('mznMonthlyFee')}</Text>
                   <Text style={styles.cardMetricValue}>{fmt(empresa.cuota_mensual)}</Text>
                 </View>
                 <View style={styles.cardMetric}>
-                  <Text style={styles.cardMetricLabel}>Comisión ({empresa.comision_pct}%)</Text>
+                  <Text style={styles.cardMetricLabel}>{t('fee')} ({empresa.comision_pct}%)</Text>
                   <Text style={[styles.cardMetricValue, { color: '#00FF88' }]}>{fmt(comision)}</Text>
                 </View>
                 <View style={styles.cardMetric}>
-                  <Text style={styles.cardMetricLabel}>Total mes</Text>
+                  <Text style={styles.cardMetricLabel}>{t('mznMonthTotal')}</Text>
                   <Text style={[styles.cardMetricValue, { color: '#00D4FF', fontSize: 15 }]}>{fmt(ingresoTotal)}</Text>
                 </View>
               </View>
@@ -225,7 +245,7 @@ export default function EmpresasScreen() {
                     styles.pagoBtnText,
                     { color: empresa.estado_pago === 'pagado' ? '#00FF88' : '#FFD700' },
                   ]}>
-                    {empresa.estado_pago === 'pagado' ? '✓ Pagado' : 'Marcar pagado'}
+                    {empresa.estado_pago === 'pagado' ? t('mznPaidMark') : t('mznMarkPaid')}
                   </Text>
                 </TouchableOpacity>
               </View>
@@ -237,7 +257,7 @@ export default function EmpresasScreen() {
       {/* Botón agregar */}
       <TouchableOpacity style={styles.fab} onPress={() => setModalVisible(true)}>
         <LinearGradient colors={['#00D4FF', '#0088AA']} style={styles.fabGrad}>
-          <Text style={styles.fabText}>+ Empresa</Text>
+          <Text style={styles.fabText}>{t('mznAddCompany')}</Text>
         </LinearGradient>
       </TouchableOpacity>
 
@@ -246,27 +266,20 @@ export default function EmpresasScreen() {
         <View style={styles.overlay}>
           <View style={styles.sheet}>
             <View style={styles.sheetHeader}>
-              <Text style={styles.sheetTitle}>🏢 Nueva Empresa</Text>
+              <Text style={styles.sheetTitle}>{t('mznNewCompany')}</Text>
               <TouchableOpacity onPress={() => setModalVisible(false)} style={styles.closeBtn}>
                 <Text style={styles.closeBtnText}>✕</Text>
               </TouchableOpacity>
             </View>
             <ScrollView style={{ maxHeight: 420 }} showsVerticalScrollIndicator={false}>
-              {[
-                { key: 'nombre', label: 'Nombre de la empresa *', placeholder: 'Ej: Supermercado Bioko' },
-                { key: 'responsable', label: 'Responsable / Contacto *', placeholder: 'Nombre y apellido' },
-                { key: 'email', label: 'Email', placeholder: 'correo@empresa.gq' },
-                { key: 'tipo', label: 'Tipo de servicio', placeholder: 'Ej: Supermercado, Farmacia...' },
-                { key: 'cuota_mensual', label: 'Cuota mensual (XAF)', placeholder: '50000', keyboardType: 'numeric' },
-                { key: 'comision_pct', label: 'Comisión por ventas (%)', placeholder: '1.5', keyboardType: 'decimal-pad' },
-              ].map(field => (
+              {CAMPOS_FORM.map(field => (
                 <View key={field.key} style={styles.formGroup}>
-                  <Text style={styles.formLabel}>{field.label}</Text>
+                  <Text style={styles.formLabel}>{t(field.labelKey)}</Text>
                   <TextInput
                     style={styles.input}
                     value={(form as any)[field.key]}
                     onChangeText={v => setForm(prev => ({ ...prev, [field.key]: v }))}
-                    placeholder={field.placeholder}
+                    placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
                     placeholderTextColor="#555577"
                     keyboardType={(field as any).keyboardType || 'default'}
                     autoCapitalize="none"
@@ -276,10 +289,10 @@ export default function EmpresasScreen() {
             </ScrollView>
             <View style={styles.sheetActions}>
               <TouchableOpacity style={styles.btnPrimary} onPress={handleAdd}>
-                <Text style={styles.btnPrimaryText}>Registrar Empresa</Text>
+                <Text style={styles.btnPrimaryText}>{t('mznRegisterCompany')}</Text>
               </TouchableOpacity>
               <TouchableOpacity style={styles.btnSecondary} onPress={() => setModalVisible(false)}>
-                <Text style={styles.btnSecondaryText}>Cancelar</Text>
+                <Text style={styles.btnSecondaryText}>{t('cancel')}</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -301,20 +314,20 @@ export default function EmpresasScreen() {
                 <ScrollView style={{ maxHeight: 420 }}>
                   <RevenueTable
                     rows={[
-                      { label: 'Responsable', value: detailEmpresa.responsable },
-                      { label: 'Email', value: detailEmpresa.email },
-                      { label: 'Tipo', value: detailEmpresa.tipo },
-                      { label: 'Cuota mensual', value: fmt(detailEmpresa.cuota_mensual), color: '#00D4FF' },
-                      { label: 'Ventas del mes', value: fmt(detailEmpresa.ventas_mes) },
-                      { label: `Comisión (${detailEmpresa.comision_pct}%)`, value: fmt(detailEmpresa.ventas_mes * detailEmpresa.comision_pct / 100), color: '#00FF88' },
-                      { label: 'Total ingreso mes', value: fmt(detailEmpresa.cuota_mensual + detailEmpresa.ventas_mes * detailEmpresa.comision_pct / 100), color: '#FFD700' },
+                      { label: t('mznManagerLabel'), value: detailEmpresa.responsable },
+                      { label: t('mznEmailLabel'), value: detailEmpresa.email },
+                      { label: t('mznType'), value: detailEmpresa.tipo },
+                      { label: t('mznMonthlyFee'), value: fmt(detailEmpresa.cuota_mensual), color: '#00D4FF' },
+                      { label: t('mznMonthSales'), value: fmt(detailEmpresa.ventas_mes) },
+                      { label: `${t('fee')} (${detailEmpresa.comision_pct}%)`, value: fmt(detailEmpresa.ventas_mes * detailEmpresa.comision_pct / 100), color: '#00FF88' },
+                      { label: t('mznMonthTotalIncome'), value: fmt(detailEmpresa.cuota_mensual + detailEmpresa.ventas_mes * detailEmpresa.comision_pct / 100), color: '#FFD700' },
                     ]}
                     showBars={false}
                   />
                 </ScrollView>
                 <View style={styles.sheetActions}>
                   <TouchableOpacity style={styles.btnSecondary} onPress={() => setDetailEmpresa(null)}>
-                    <Text style={styles.btnSecondaryText}>Cerrar</Text>
+                    <Text style={styles.btnSecondaryText}>{t('close')}</Text>
                   </TouchableOpacity>
                 </View>
               </>

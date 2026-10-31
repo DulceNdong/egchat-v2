@@ -11,6 +11,7 @@ import { EGAvatar } from '../ui';
 import { chatAPI } from '../../api';
 import { toast } from '../Toast';
 import type { ChatMessage } from '../../types/chat';
+import { t as tr } from '../../translations';
 
 interface ChatSummary {
   id: string;
@@ -83,13 +84,13 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
       onForwarded?.();
       onClose();
     } catch {
-      Alert.alert('Error', 'No se pudo reenviar el mensaje');
+      Alert.alert(tr('error'), 'No se pudo reenviar el mensaje');
     } finally {
       setSending(false);
     }
   };
 
-  const getChatName = (c: ChatSummary) => c.name || 'Chat';
+  const getChatName = (c: ChatSummary) => c.name || tr('chat');
 
   return (
     <Modal visible={visible} transparent animationType="slide" onRequestClose={onClose} statusBarTranslucent>
@@ -99,7 +100,7 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
           <Text style={[s.title, { color: textColor }]}>
             {(messages && messages.length > 1)
               ? `➡️ Reenviar ${messages.length} mensajes`
-              : '➡️ Reenviar mensaje'}
+              : tr('xtReenviarMensaje')}
           </Text>
 
           {(messages && messages.length > 1) ? (
@@ -111,18 +112,18 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
             </View>
           ) : message ? (
             <View style={[s.preview, { backgroundColor: previewBg }]}>
-              <Text style={[s.previewLabel]}>Mensaje original:</Text>
+              <Text style={[s.previewLabel]}>{tr('xtMensajeOriginal')}</Text>
               <Text style={[s.previewText, { color: textColor }]} numberOfLines={3}>
                 {message.type === 'image' ? '📷 Foto'
                   : message.type === 'video' ? '🎥 Video'
                   : message.type === 'audio' ? '🎵 Audio'
                   : message.type === 'album' ? '📷 Álbum'
-                  : message.text || '(sin texto)'}
+                  : message.text || tr('xtSinTexto')}
               </Text>
             </View>
           ) : null}
 
-          <Text style={[s.sectionLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Enviar a:</Text>
+          <Text style={[s.sectionLabel, { color: isDark ? '#9ca3af' : '#6b7280' }]}>{tr('xtEnviarA')}</Text>
           {loading ? (
             <ActivityIndicator color="#00b4e6" style={{ marginVertical: 12 }} />
           ) : (
@@ -147,7 +148,7 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
 
           <TextInput
             style={[s.commentInput, { color: textColor, borderColor: inputBorder, backgroundColor: inputBg }]}
-            placeholder="Añadir comentario (opcional)..."
+            placeholder={tr('xtAnadirComentarioOpcional')}
             placeholderTextColor={isDark ? '#6b7280' : '#9ca3af'}
             value={comment}
             onChangeText={setComment}
@@ -157,7 +158,7 @@ export function ForwardWithCommentModal({ visible, message, messages, currentUse
 
           <View style={s.actions}>
             <TouchableOpacity style={[s.cancelBtn, { backgroundColor: cancelBg }]} onPress={onClose} activeOpacity={0.7}>
-              <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>Cancelar</Text>
+              <Text style={[s.cancelTxt, { color: isDark ? '#9ca3af' : '#6b7280' }]}>{tr('cancel')}</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={[s.sendBtn, (!selectedChat || sending || ((!message) && (!messages || messages.length === 0))) && s.sendBtnDisabled]}

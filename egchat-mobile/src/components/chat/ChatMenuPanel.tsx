@@ -6,6 +6,7 @@ import {
 } from 'react-native';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useTranslation } from '../../context/LanguageContext';
 
 const PANEL_W = 220;
 const SCREEN_W = Dimensions.get('window').width;
@@ -39,6 +40,7 @@ export function ChatMenuPanel({
   items: ChatMenuItem[];
   headerHeight?: number;
 }) {
+  const { t } = useTranslation();
   const insets = useSafeAreaInsets();
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
@@ -94,7 +96,7 @@ export function ChatMenuPanel({
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={s.headerName} numberOfLines={1}>{chatName}</Text>
               <Text style={s.headerSub}>
-                {isGroup ? '👥 Grupo' : isOnline ? '● En línea' : '○ Desconectado'}
+                {isGroup ? `👥 ${t('chtGroup')}` : isOnline ? `● ${t('online')}` : `○ ${t('chtOffline')}`}
               </Text>
             </View>
           </LinearGradient>

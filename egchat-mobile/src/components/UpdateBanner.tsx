@@ -2,6 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native';
 import * as Updates from 'expo-updates';
+import { t as tr } from '../translations';
 
 export const UpdateBanner: React.FC = () => {
   const [hasUpdate, setHasUpdate] = useState(false);
@@ -48,7 +49,7 @@ export const UpdateBanner: React.FC = () => {
   return (
     <Animated.View style={[styles.banner, { transform: [{ translateY: slideAnim }] }]}>
       <Text style={styles.icon}>🔄</Text>
-      <Text style={styles.text}>Nueva versión disponible</Text>
+      <Text style={styles.text}>{tr('sysNewVersion')}</Text>
       <TouchableOpacity
         style={[styles.btn, updating && styles.btnDisabled]}
         onPress={handleUpdate}

@@ -13,6 +13,7 @@ import Svg, { Path, Line, Polyline } from 'react-native-svg';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { t as tr } from '../../translations';
 
 export interface MediaPreviewItem {
   uri: string;
@@ -91,7 +92,7 @@ export function MediaPreviewModal({ visible, item, onSend, onCancel, sending }: 
           <View style={[s.captionRow, { backgroundColor: 'rgba(255,255,255,0.1)' }]}>
             <TextInput
               style={s.captionInput}
-              placeholder="Añade un texto..."
+              placeholder={tr('cmpAddTextPh')}
               placeholderTextColor="rgba(255,255,255,0.5)"
               value={caption}
               onChangeText={setCaption}

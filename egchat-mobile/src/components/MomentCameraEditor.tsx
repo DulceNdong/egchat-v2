@@ -16,6 +16,7 @@ import * as ImageManipulator from 'expo-image-manipulator';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Circle, Line, Polyline, Rect, G } from 'react-native-svg';
 import { StoryMusicPicker, StoryMusicBadge, type StoryMusic } from './StoryMusicPicker';
+import { t as tr } from '../translations';
 
 const { width: W, height: H } = Dimensions.get('window');
 
@@ -41,9 +42,9 @@ const DIM2   = 'rgba(255,255,255,0.08)';
 // ── Filtros ────────────────────────────────────────────────────────
 const FILTERS = [
   { id: 'normal',  label: 'Original' },
-  { id: 'vivid',   label: 'Vívido'   },
-  { id: 'warm',    label: 'Cálido'   },
-  { id: 'cool',    label: 'Frío'     },
+  { id: 'vivid',   get label() { return tr('xtVivido'); }   },
+  { id: 'warm',    get label() { return tr('xtCalido'); }   },
+  { id: 'cool',    get label() { return tr('xtFrio'); }     },
   { id: 'bw',      label: 'B&N'      },
   { id: 'fade',    label: 'Fade'     },
   { id: 'drama',   label: 'Drama'    },
@@ -158,7 +159,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
           : p.uri;
         setCaptured({ uri, type: 'photo' });
       }
-    } catch { Alert.alert('Error', 'No se pudo tomar la foto'); }
+    } catch { Alert.alert(tr('error'), 'No se pudo tomar la foto'); }
     finally { setProcessing(false); }
   }, [cameraRef, facing, ensurePerms]);
 
@@ -170,7 +171,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
     try {
       const v = await cameraRef.current.recordAsync({ maxDuration: 60 });
       if (v?.uri) setCaptured({ uri: v.uri, type: 'video' });
-    } catch { Alert.alert('Error', 'No se pudo grabar el video'); }
+    } catch { Alert.alert(tr('error'), 'No se pudo grabar el video'); }
     finally {
       setRecording(false); setRecSecs(0);
       if (recTimer.current) { clearInterval(recTimer.current); recTimer.current = null; }
@@ -182,7 +183,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
   // ── Galería ───────────────────────────────────────────────────
   const openGallery = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Sin permiso', 'Necesitas acceso a la galería'); return; }
+    if (status !== 'granted') { Alert.alert(tr('chtNoPermission'), 'Necesitas acceso a la galería'); return; }
     const r = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.All, quality: 0.92, videoMaxDuration: 60,
     });
@@ -228,17 +229,17 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
             <View style={s.permIconWrap}>
               <IcFilter size={40} />
             </View>
-            <Text style={s.permTitle}>Acceso a la cámara</Text>
-            <Text style={s.permSub}>EGChat necesita la cámara para crear tus Moments</Text>
+            <Text style={s.permTitle}>{tr('xtAccesoALaCamara')}</Text>
+            <Text style={s.permSub}>{tr('cmpMomentsCamBody')}</Text>
             <TouchableOpacity style={s.permBtn} onPress={async () => { await requestCamPerm(); await requestMicPerm(); }}>
               <Text style={s.permBtnTxt}>Permitir acceso</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.permBtnSec} onPress={openGallery}>
               <IcGallery size={18} />
-              <Text style={s.permBtnSecTxt}>Elegir de la galería</Text>
+              <Text style={s.permBtnSecTxt}>{tr('chtChooseGallery')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={onClose} style={{ marginTop: 20 }}>
-              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>Cancelar</Text>
+              <Text style={{ color: 'rgba(255,255,255,0.4)', fontSize: 14 }}>{tr('cancel')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -300,10 +301,10 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
           {/* Barra de herramientas lateral derecha */}
           <View style={[s.edSidebar, { bottom: insets.bottom + 140 }]}>
             {[
-              { id: 'text',     Icon: IcText,    label: 'Texto',    action: () => { addTextLayer(); } },
+              { id: 'text',     Icon: IcText,    label: tr('xtTexto'),    action: () => { addTextLayer(); } },
               { id: 'stickers', Icon: IcSticker, label: 'Stickers', action: () => setEditorTab(t => t === 'stickers' ? null : 'stickers') },
               { id: 'filters',  Icon: IcFilter,  label: 'Filtros',  action: () => setEditorTab(t => t === 'filters' ? null : 'filters') },
-              { id: 'music',    Icon: IcMusic,   label: 'Música',   action: () => setShowMusicPicker(true) },
+              { id: 'music',    Icon: IcMusic,   label: tr('xtMusica'),   action: () => setShowMusicPicker(true) },
             ].map(tool => (
               <TouchableOpacity
                 key={tool.id}
@@ -421,7 +422,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
             {(['photo', 'video'] as const).map(m => (
               <TouchableOpacity key={m} onPress={() => setMode(m)} style={s.modeTab}>
                 <Text style={[s.modeTabTxt, mode === m && s.modeTabTxtOn]}>
-                  {m === 'photo' ? 'FOTO' : 'VIDEO'}
+                  {m === 'photo' ? tr('xtFOTO') : 'VIDEO'}
                 </Text>
                 {mode === m && <View style={s.modeTabDot} />}
               </TouchableOpacity>
@@ -435,7 +436,7 @@ export default function MomentCameraEditor({ visible, onClose, onDone }: Props) 
           {!recording ? (
             <TouchableOpacity style={s.camSideBtn} onPress={openGallery}>
               <IcGallery size={28} />
-              <Text style={s.camSideLbl}>Galería</Text>
+              <Text style={s.camSideLbl}>{tr('chtGallery')}</Text>
             </TouchableOpacity>
           ) : <View style={{ width: 56 }} />}
 
@@ -597,14 +598,14 @@ function TextEditorPanel({ draft, color, bold, size, onDraft, onColor, onBold, o
         textAlign: 'center', marginBottom: 10, minHeight: 44,
         textShadowColor: 'rgba(0,0,0,0.6)', textShadowOffset: { width: 1, height: 1 }, textShadowRadius: 4,
       }}>
-        {draft || 'Tu texto aquí...'}
+        {draft || tr('xtTuTextoAqui')}
       </Text>
 
       <TextInput
         style={s.textInput}
         value={draft}
         onChangeText={onDraft}
-        placeholder="Escribe algo..."
+        placeholder={tr('xtEscribeAlgo')}
         placeholderTextColor="rgba(255,255,255,0.35)"
         multiline autoFocus maxLength={120}
         selectionColor={ACCENT}
@@ -636,12 +637,12 @@ function TextEditorPanel({ draft, color, bold, size, onDraft, onColor, onBold, o
       {/* Acciones */}
       <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 16 }}>
         <TouchableOpacity style={s.txtCancelBtn} onPress={onCancel}>
-          <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>Cancelar</Text>
+          <Text style={{ color: 'rgba(255,255,255,0.6)', fontWeight: '600' }}>{tr('cancel')}</Text>
         </TouchableOpacity>
         <TouchableOpacity style={[s.txtSaveBtn, !draft.trim() && { opacity: 0.4 }]}
           onPress={onSave} disabled={!draft.trim()}>
           <IcCheck size={16} stroke={BLACK} strokeWidth={2.5} />
-          <Text style={{ color: BLACK, fontWeight: '800' }}>Añadir texto</Text>
+          <Text style={{ color: BLACK, fontWeight: '800' }}>{tr('xtAnadirTexto')}</Text>
         </TouchableOpacity>
       </View>
     </KeyboardAvoidingView>

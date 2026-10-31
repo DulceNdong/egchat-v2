@@ -14,6 +14,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { EGAvatar } from './ui';
 import Svg, { Path, Line, Circle, Polyline } from 'react-native-svg';
+import { t as tr } from '../translations';
 
 const { width: W, height: H } = Dimensions.get('window');
 const IOS = Platform.OS === 'ios';
@@ -232,7 +233,7 @@ export function MomentImageViewer({
               <View style={sv.headerInfo}>
                 <Text style={sv.headerName}>{post.user_name}</Text>
                 <Text style={sv.headerMeta}>
-                  {timeAgo(post.created_at)} · {total > 1 ? `${imgIdx + 1}/${total} fotos` : '1 foto'}
+                  {timeAgo(post.created_at)} · {total > 1 ? `${imgIdx + 1}/${total} fotos` : tr('xt1Foto')}
                 </Text>
               </View>
               <TouchableOpacity onPress={onClose} style={sv.closeBtn} activeOpacity={0.8}>
@@ -345,7 +346,7 @@ export function MomentImageViewer({
                 {/* Indicador "desliza para cerrar" */}
                 <View style={sv.swipeHint}>
                   <View style={sv.swipeBar} />
-                  <Text style={sv.swipeHintText}>Desliza para cerrar</Text>
+                  <Text style={sv.swipeHintText}>{tr('xtDeslizaParaCerrar')}</Text>
                 </View>
               </View>
             </View>

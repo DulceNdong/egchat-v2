@@ -9,6 +9,14 @@ import { toast } from '../../src/components/Toast';
 import { useLanguage } from '../../src/context/LanguageContext';
 
 const CATEGORIES = ['Sugerencia', 'Error / Bug', 'Problema de pagos', 'Problema de llamadas', 'Otro'];
+// Los valores se envían tal cual a la API; solo se traduce la etiqueta visible.
+const CATEGORY_KEYS: Record<string, string> = {
+  'Sugerencia': 'setCatSuggestion',
+  'Error / Bug': 'setCatBug',
+  'Problema de pagos': 'setCatPayments',
+  'Problema de llamadas': 'setCatCalls',
+  'Otro': 'setOther',
+};
 
 export default function ComentariosScreen() {
   const [text, setText] = useState('');
@@ -19,7 +27,7 @@ export default function ComentariosScreen() {
   const { translate: t } = useLanguage();
 
   const send = async () => {
-    if (!text.trim()) { Alert.alert('Error', 'Escribe tu comentario antes de enviar'); return; }
+    if (!text.trim()) { Alert.alert(t('error'), t('setCommentRequired')); return; }
     setSending(true);
     try {
       const token = await getToken();
@@ -32,7 +40,7 @@ export default function ComentariosScreen() {
       setText('');
       // Comentario enviado
     } catch {
-      toast.error('No se pudo enviar', 'Verifica tu conexión');
+      toast.error(t('setSendFailed'), t('setCheckConnection'));
     }
     setSending(false);
   };
@@ -48,7 +56,7 @@ export default function ComentariosScreen() {
               style={[st.catChip, category === cat && st.catChipActive]}
               onPress={() => setCategory(cat)}
             >
-              <Text style={[st.catTxt, category === cat && { color: Colors.accent }]}>{cat}</Text>
+              <Text style={[st.catTxt, category === cat && { color: Colors.accent }]}>{t(CATEGORY_KEYS[cat] || cat)}</Text>
             </TouchableOpacity>
           ))}
         </View>
@@ -76,7 +84,7 @@ export default function ComentariosScreen() {
       <SettingsCard>
         <SettingsRow label="support@egchat.gq" onPress={() => Linking.openURL('mailto:support@egchat.gq').catch(() => {})} />
         <SettingsDivider />
-        <SettingsRow label="WhatsApp soporte" onPress={() => Linking.openURL('https://wa.me/240222123456').catch(() => {})} />
+        <SettingsRow label={t('setWhatsAppSupport')} onPress={() => Linking.openURL('https://wa.me/240222123456').catch(() => {})} />
       </SettingsCard>
     </SettingsLayout>
   );

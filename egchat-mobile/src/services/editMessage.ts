@@ -2,6 +2,7 @@
 // editMessage — editar mensajes enviados con marca "editado"
 // ══════════════════════════════════════════════════════════════════
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 export interface EditResult {
   success: boolean;
@@ -26,13 +27,13 @@ export async function editMessage(messageId: string, newText: string): Promise<E
       body: JSON.stringify({ text: newText, edited: true }),
     });
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: 'Error desconocido' }));
+      const err = await res.json().catch(() => ({ message: tr('chtUnknownError') }));
       return { success: false, error: err.message };
     }
     const data = await res.json();
     return { success: true, message: data };
   } catch (e: any) {
-    return { success: false, error: e?.message || 'No se pudo editar el mensaje' };
+    return { success: false, error: e?.message || tr('xtNoSePudoEditarElMensaje') };
   }
 }
 

@@ -5,6 +5,7 @@ import { router } from 'expo-router';
 import { Colors, Typography, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
+import { t as tr } from '../src/translations';
 
 const SECTIONS = [
   {
@@ -19,18 +20,18 @@ const SECTIONS = [
   {
     id: 'vuelos', icon: '✈️', title: 'Vuelos',
     items: [
-      { name: 'Ceiba Intercontinental', desc: 'Aerolínea nacional · Malabo-Bata-Madrid', phone: '+240 333 09 70 00', price: 'Desde 80,000 XAF' },
-      { name: 'Iberia', desc: 'Malabo-Madrid directo', phone: '+240 333 09 71 00', price: 'Desde 350,000 XAF' },
-      { name: 'Air France', desc: 'Malabo-París vía Douala', phone: '+240 333 09 72 00', price: 'Desde 400,000 XAF' },
+      { name: 'Ceiba Intercontinental', get desc() { return tr('xtAerolineaNacionalMalaboBataMadrid'); }, phone: '+240 333 09 70 00', price: 'Desde 80,000 XAF' },
+      { name: 'Iberia', get desc() { return tr('xtMalaboMadridDirecto'); }, phone: '+240 333 09 71 00', price: 'Desde 350,000 XAF' },
+      { name: 'Air France', get desc() { return tr('xtMalaboParisViaDouala'); }, phone: '+240 333 09 72 00', price: 'Desde 400,000 XAF' },
       { name: 'Ethiopian Airlines', desc: 'Malabo-Addis Abeba', phone: '+240 333 09 73 00', price: 'Desde 250,000 XAF' },
     ],
   },
   {
     id: 'gasolineras', icon: '⛽', title: 'Gasolineras',
     items: [
-      { name: 'GEPetrol Centro', desc: 'Av. de la Independencia · 24h', phone: '+240 222 30 30 01', price: 'Gasolina: 650 XAF/L' },
+      { name: 'GEPetrol Centro', get desc() { return tr('xtAvDeLaIndependencia24h'); }, phone: '+240 222 30 30 01', price: 'Gasolina: 650 XAF/L' },
       { name: 'GEPetrol Caracolas', desc: 'Barrio Caracolas · 6:00-22:00', phone: '+240 222 30 30 02', price: 'Gasolina: 650 XAF/L' },
-      { name: 'Total Malabo', desc: 'Carretera del Aeropuerto · 24h', phone: '+240 222 30 30 03', price: 'Gasolina: 660 XAF/L' },
+      { name: 'Total Malabo', get desc() { return tr('xtCarreteraDelAeropuerto24h'); }, phone: '+240 222 30 30 03', price: 'Gasolina: 660 XAF/L' },
       { name: 'GEPetrol Bata', desc: 'Centro Bata · 6:00-22:00', phone: '+240 222 30 30 04', price: 'Gasolina: 650 XAF/L' },
     ],
   },

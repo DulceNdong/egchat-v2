@@ -24,6 +24,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router';
 import Svg, { Path, Line, Circle, Defs, Stop } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 const { width } = Dimensions.get('window');
 
@@ -81,10 +82,10 @@ interface MemberData {
 }
 
 const FREQ_LABELS: Record<string, string> = {
-  daily: 'Diario',
-  weekly: 'Semanal',
-  monthly: 'Mensual',
-  annual: 'Anual',
+  daily: tr('setDaily'),
+  weekly: tr('setWeekly'),
+  monthly: tr('setMonthly'),
+  annual: tr('xtAnual'),
 };
 
 const fmtAmount = (n: number, currency = 'XAF') =>
@@ -142,7 +143,7 @@ export default function DjangueMemberScreen() {
       const response = await apiFetch(`/api/djangue/${id}/member-view`);
       setData(response);
     } catch (e: any) {
-      setError(e.message || 'Error al cargar datos');
+      setError(e.message || tr('xtErrorAlCargarDatos'));
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -158,11 +159,11 @@ export default function DjangueMemberScreen() {
   const handleJustifyAbsence = () => {
     Alert.prompt(
       'Justificar ausencia',
-      'Explica por qué no podrás cotizar a tiempo:',
+      tr('xtExplicaPorQueNoPodrasCotizarATiempo'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
         {
-          text: 'Enviar',
+          text: tr('transfer'),
           onPress: async (note: string | undefined) => {
             if (!note?.trim()) return;
             try {
@@ -170,10 +171,10 @@ export default function DjangueMemberScreen() {
                 method: 'POST',
                 body: JSON.stringify({ note: note.trim() }),
               });
-              Alert.alert('Listo', 'Tu justificación fue enviada al secretario.');
+              Alert.alert('Listo', tr('xtTuJustificacionFueEnviadaAlSecretario'));
               load(true);
             } catch (e: any) {
-              Alert.alert('Error', e.message);
+              Alert.alert(tr('error'), e.message);
             }
           },
         },
@@ -203,7 +204,7 @@ export default function DjangueMemberScreen() {
     return (
       <View style={s.center}>
         <PulseLoader />
-        <Text style={s.loadingTxt}>Cargando tu información...</Text>
+        <Text style={s.loadingTxt}>{tr('xtCargandoTuInformacion')}</Text>
       </View>
     );
   }
@@ -213,7 +214,7 @@ export default function DjangueMemberScreen() {
       <View style={s.center}>
         <Text style={s.errorTxt}>{error || 'No encontrado'}</Text>
         <TouchableOpacity onPress={() => router.back()} style={{ marginTop: 16 }}>
-          <Text style={s.linkTxt}>Volver</Text>
+          <Text style={s.linkTxt}>{tr('djhBack')}</Text>
         </TouchableOpacity>
       </View>
     );
@@ -261,7 +262,7 @@ export default function DjangueMemberScreen() {
       >
         {/* Tu posición */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>TU POSICIÓN</Text>
+          <Text style={s.cardLabel}>{tr('xtTUPOSICION')}</Text>
 
           <View style={{ alignItems: 'center', marginVertical: 8 }}>
             <View style={s.turnCircle}>
@@ -274,7 +275,7 @@ export default function DjangueMemberScreen() {
             <View style={s.highlightBanner}>
               <Text style={s.highlightEmoji}>🎉</Text>
               <View style={{ flex: 1 }}>
-                <Text style={s.highlightTitle}>¡Es tu turno!</Text>
+                <Text style={s.highlightTitle}>{tr('djnYourTurn')}</Text>
                 <Text style={s.highlightSub}>
                   Recibirás {fmtAmount(data.expected_payout, data.currency)} cuando todos paguen
                 </Text>
@@ -306,7 +307,7 @@ export default function DjangueMemberScreen() {
                   <Circle cx="12" cy="12" r="10" />
                   <Path d="M9 12l2 2 4-4" />
                 </Svg>
-                <Text style={s.paidTitle}>¡Pagaste esta cuota!</Text>
+                <Text style={s.paidTitle}>{tr('xtPagasteEstaCuota')}</Text>
                 <Text style={s.paidAmount}>
                   {fmtAmount(data.amount_paid_current_turn, data.currency)}
                 </Text>
@@ -314,18 +315,18 @@ export default function DjangueMemberScreen() {
             ) : (
               <>
                 <View style={s.owedBox}>
-                  <Text style={s.owedLabel}>Debes cotizar:</Text>
+                  <Text style={s.owedLabel}>{tr('xtDebesCotizar')}</Text>
                   <Text style={s.owedAmount}>
                     {fmtAmount(data.amount_owed, data.currency)}
                   </Text>
                 </View>
 
                 <TouchableOpacity onPress={handlePay} activeOpacity={0.85} style={s.payBtn}>
-                  <Text style={s.payBtnTxt}>💳 Pagar ahora</Text>
+                  <Text style={s.payBtnTxt}>{tr('xtPagarAhora')}</Text>
                 </TouchableOpacity>
 
                 <TouchableOpacity onPress={handleJustifyAbsence} style={s.justifyBtn}>
-                  <Text style={s.justifyTxt}>📝 No puedo pagar a tiempo</Text>
+                  <Text style={s.justifyTxt}>{tr('xtNoPuedoPagarATiempo')}</Text>
                 </TouchableOpacity>
               </>
             )}
@@ -334,22 +335,22 @@ export default function DjangueMemberScreen() {
 
         {/* Estadísticas personales */}
         <View style={s.card}>
-          <Text style={s.cardLabel}>TUS ESTADÍSTICAS</Text>
+          <Text style={s.cardLabel}>{tr('xtTUSESTADISTICAS')}</Text>
 
           <View style={s.statsGrid}>
             <View style={s.statBox}>
               <Text style={s.statValue}>{fmtAmount(data.total_paid, data.currency)}</Text>
-              <Text style={s.statLabel}>Total cotizado</Text>
+              <Text style={s.statLabel}>{tr('xtTotalCotizado')}</Text>
             </View>
 
             <View style={s.statBox}>
               <Text style={s.statValue}>{fmtAmount(data.total_received, data.currency)}</Text>
-              <Text style={s.statLabel}>Total recibido</Text>
+              <Text style={s.statLabel}>{tr('xtTotalRecibido')}</Text>
             </View>
 
             <View style={s.statBox}>
               <Text style={s.statValue}>{data.payment_streak}</Text>
-              <Text style={s.statLabel}>Racha de pagos</Text>
+              <Text style={s.statLabel}>{tr('xtRachaDePagos')}</Text>
             </View>
 
             <View style={s.statBox}>

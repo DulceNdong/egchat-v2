@@ -4,6 +4,7 @@
  * Las llamadas usan solo señalización HTTP (sin media nativa) en este build.
  */
 import { View } from 'react-native';
+import { t as tr } from '../translations';
 
 export const RTCPeerConnection = class {
   constructor() {}
@@ -35,8 +36,8 @@ export const RTCIceCandidate = class {
 };
 
 export const mediaDevices = {
-  getUserMedia: () => Promise.reject(new Error('WebRTC no disponible en este build')),
-  getDisplayMedia: () => Promise.reject(new Error('WebRTC no disponible en este build')),
+  getUserMedia: () => Promise.reject(new Error(tr('xtWebRTCNoDisponibleEnEsteBuild'))),
+  getDisplayMedia: () => Promise.reject(new Error(tr('xtWebRTCNoDisponibleEnEsteBuild'))),
 };
 
 export const RTCView = View;

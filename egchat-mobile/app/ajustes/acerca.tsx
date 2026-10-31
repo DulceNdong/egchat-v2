@@ -29,18 +29,18 @@ export default function AcercaScreen() {
     (Constants.expoConfig?.android as any)?.versionCode ??
     '—';
   const runtimeVer   = Constants.expoConfig?.runtimeVersion ?? '—';
-  const updateId     = Updates.updateId ? Updates.updateId.substring(0, 8) + '...' : 'Canal local';
+  const updateId     = Updates.updateId ? Updates.updateId.substring(0, 8) + '...' : t('setLocalChannel');
   const updateChan   = Updates.channel ?? 'development';
 
   const info = [
-    { label: 'Versión',          value: appVersion },
+    { label: t('version'),          value: appVersion },
     { label: 'Build',            value: String(buildNumber) },
     { label: 'Runtime',          value: String(runtimeVer) },
-    { label: 'Canal OTA',        value: updateChan },
+    { label: `${t('channel')} OTA`, value: updateChan },
     { label: 'Update ID',        value: updateId },
-    { label: 'Plataforma',       value: 'React Native + Expo ~54' },
-    { label: 'Desarrollador',    value: 'EGCHAT Team' },
-    { label: 'País',             value: 'Guinea Ecuatorial 🇬🇶' },
+    { label: t('setPlatform'),      value: 'React Native + Expo ~54' },
+    { label: t('setDeveloper'),     value: 'EGCHAT Team' },
+    { label: t('country'),          value: `${t('hdrEquatorialGuinea')} 🇬🇶` },
     { label: 'Backend',          value: 'Supabase + Render' },
     { label: 'EAS Project',      value: String(Constants.expoConfig?.extra?.eas?.projectId ?? '—').substring(0, 8) },
   ];
@@ -52,36 +52,36 @@ export default function AcercaScreen() {
       const update = await Updates.checkForUpdateAsync();
       if (update.isAvailable) {
         Alert.alert(
-          '🆕 Actualización disponible',
-          'Hay una nueva versión de EGCHAT. ¿Descargar e instalar ahora?',
+          `🆕 ${t('setUpdateAvailable')}`,
+          t('setUpdateAvailableBody'),
           [
-            { text: 'Ahora no', style: 'cancel' },
+            { text: t('setNotNow'), style: 'cancel' },
             {
-              text: 'Actualizar',
+              text: t('setUpdate'),
               onPress: async () => {
                 try {
                   await Updates.fetchUpdateAsync();
                   Alert.alert(
-                    '✅ Actualización descargada',
-                    'La app se reiniciará para aplicar los cambios.',
-                    [{ text: 'Reiniciar', onPress: () => Updates.reloadAsync() }],
+                    `✅ ${t('setUpdateDownloaded')}`,
+                    t('setUpdateDownloadedBody'),
+                    [{ text: t('setRestart'), onPress: () => Updates.reloadAsync() }],
                   );
                 } catch (e: any) {
-                  toast.error('Error descargando actualización');
+                  toast.error(t('setUpdateDownloadError'));
                 }
               },
             },
           ],
         );
       } else {
-        toast.success('✓ Tienes la versión más reciente');
+        toast.success(`✓ ${t('setLatestVersion')}`);
       }
     } catch (e: any) {
       const msg = String(e?.message ?? '');
-      toast.error(msg.includes('Expo Go') ? 'OTA no disponible en Expo Go' : 'No se pudo verificar actualizaciones');
+      toast.error(msg.includes('Expo Go') ? t('setOtaUnavailable') : t('setUpdateCheckError'));
     }
     setChecking(false);
-  }, []);
+  }, [t]);
 
   // ── Diagnóstico push ──────────────────────────────────────────
   const pushDiagnostic = useCallback(async () => {
@@ -89,10 +89,10 @@ export default function AcercaScreen() {
     try {
       await runPushDiagnostic();
     } catch {
-      toast.error('Error en diagnóstico');
+      toast.error(t('setDiagnosticError'));
     }
     setRunningDiag(false);
-  }, []);
+  }, [t]);
 
   return (
     <SettingsLayout title={t('aboutTitle')}>

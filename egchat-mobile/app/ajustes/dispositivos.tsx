@@ -51,23 +51,29 @@ function DeviceIcon({ type, color }: { type: string; color: string }) {
 }
 
 // ── Calcular tiempo relativo ──────────────────────────────────────
-function relativeTime(iso: string): string {
+function relativeTime(iso: string, t: (key: string) => string, language: string): string {
   const diff = Date.now() - new Date(iso).getTime();
   const mins  = Math.floor(diff / 60000);
   const hours = Math.floor(diff / 3600000);
   const days  = Math.floor(diff / 86400000);
-  if (mins < 2)   return 'Ahora mismo';
-  if (mins < 60)  return `Hace ${mins} min`;
-  if (hours < 24) return `Hace ${hours}h`;
-  return `Hace ${days} día${days !== 1 ? 's' : ''}`;
+  if (mins < 2)   return t('setNow');
+  if (mins < 60)  return language === 'en'
+    ? `${mins} ${t('setMinShort')} ${t('setAgoSuffix')}`
+    : `${t('setAgoPrefix')} ${mins} ${t('setMinShort')}`;
+  if (hours < 24) return language === 'en'
+    ? `${hours} ${t('setHourShort')} ${t('setAgoSuffix')}`
+    : `${t('setAgoPrefix')} ${hours} ${t('setHourShort')}`;
+  return language === 'en'
+    ? `${days} ${days === 1 ? t('setDayShort') : t('setDaysShort')} ${t('setAgoSuffix')}`
+    : `${t('setAgoPrefix')} ${days} ${days === 1 ? t('setDayShort') : t('setDaysShort')}`;
 }
 
-function deviceTypeLabel(type: string): string {
+function deviceTypeLabel(type: string, t: (key: string) => string): string {
   const map: Record<string, string> = {
     ios: 'iPhone / iPad', android: 'Android',
-    web: 'Web', desktop: 'Escritorio',
+    web: 'Web', desktop: t('setDesktop'),
   };
-  return map[type] || 'Dispositivo';
+  return map[type] || t('setDevice');
 }
 
 // ── Tarjeta de sesión ─────────────────────────────────────────────
@@ -80,7 +86,7 @@ function SessionCard({
 }) {
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
-  const { translate: t } = useLanguage();
+  const { translate: t, language } = useLanguage();
   const accent = session.isCurrentDevice ? '#00c8a0' : '#6b7280';
 
   return (
@@ -93,7 +99,7 @@ function SessionCard({
       <View style={sc.info}>
         <View style={sc.nameRow}>
           <Text style={[sc.name, { color: C.textPrimary }]} numberOfLines={1}>
-            {session.deviceName || deviceTypeLabel(session.deviceType)}
+            {session.deviceName || deviceTypeLabel(session.deviceType, t)}
           </Text>
           {session.isCurrentDevice && (
             <View style={sc.currentBadge}>
@@ -102,10 +108,10 @@ function SessionCard({
           )}
         </View>
         <Text style={[sc.platform, { color: C.textSecondary }]}>
-          {session.platform || deviceTypeLabel(session.deviceType)}
+          {session.platform || deviceTypeLabel(session.deviceType, t)}
         </Text>
         <Text style={[sc.lastSeen, { color: C.textTertiary }]}>
-          {session.isCurrentDevice ? `🟢 ${t('activeNow')}` : `⏱ ${relativeTime(session.lastSeen)}`}
+          {session.isCurrentDevice ? `🟢 ${t('activeNow')}` : `⏱ ${relativeTime(session.lastSeen, t, language)}`}
         </Text>
       </View>
 
@@ -155,15 +161,15 @@ export default function DispositivosScreen() {
 
   const handleRevoke = useCallback((sessionId: string) => {
     const session = sessions.find(s => s.id === sessionId);
-    const name = session?.deviceName || 'este dispositivo';
+    const name = session?.deviceName || t('setThisDevice');
 
     Alert.alert(
-      'Cerrar sesión',
-      `¿Cerrar la sesión en ${name}? Ese dispositivo tendrá que volver a iniciar sesión.`,
+      t('setCloseSessionTitle'),
+      `${t('setCloseSessionConfirm')} ${name}? ${t('setCloseSessionConfirmEnd')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Cerrar sesión',
+          text: t('setCloseSessionTitle'),
           style: 'destructive',
           onPress: async () => {
             setRevoking(sessionId);
@@ -171,43 +177,44 @@ export default function DispositivosScreen() {
             setRevoking(null);
             if (ok) {
               setSessions(prev => prev.filter(s => s.id !== sessionId));
-              toast.success('✓ Sesión cerrada');
+              toast.success(`✓ ${t('setSessionClosed')}`);
             } else {
-              toast.error('No se pudo cerrar la sesión');
+              toast.error(t('setSessionCloseFailed'));
             }
           },
         },
       ],
     );
-  }, [sessions]);
+  }, [sessions, t]);
 
   const handleRevokeAll = useCallback(() => {
     const others = sessions.filter(s => !s.isCurrentDevice);
     if (others.length === 0) {
-      toast.info('No hay otras sesiones activas');
+      toast.info(t('setNoOtherSessions'));
       return;
     }
+    const count = others.length;
     Alert.alert(
-      'Cerrar todas las sesiones',
-      `Esto cerrará la sesión en ${others.length} dispositivo${others.length !== 1 ? 's' : ''} (excepto este). ¿Continuar?`,
+      t('setCloseAllSessions'),
+      `${t('setCloseAllBody')} ${count} ${count === 1 ? t('setDeviceSingular') : t('setDevices')} ${t('setCloseAllBodyEnd')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Cerrar todas',
+          text: t('setCloseAll'),
           style: 'destructive',
           onPress: async () => {
             const ok = await revokeAllOtherSessions();
             if (ok) {
               setSessions(prev => prev.filter(s => s.isCurrentDevice));
-              toast.success('✓ Todas las otras sesiones cerradas');
+              toast.success(`✓ ${t('setAllSessionsClosed')}`);
             } else {
-              toast.error('No se pudieron cerrar las sesiones');
+              toast.error(t('setSessionsCloseFailed'));
             }
           },
         },
       ],
     );
-  }, [sessions]);
+  }, [sessions, t]);
 
   const otherSessions = sessions.filter(s => !s.isCurrentDevice);
   const currentSession = sessions.find(s => s.isCurrentDevice);
@@ -284,10 +291,10 @@ export default function DispositivosScreen() {
         {/* Acción: cerrar todas */}
         {!loading && otherSessions.length > 0 && (
           <>
-            <SettingsSection label="Acciones" />
+            <SettingsSection label={t('setActions')} />
             <SettingsCard>
               <SettingsRow
-                label="Cerrar todas las otras sesiones"
+                label={t('setCloseAllSessionsRow')}
                 danger
                 onPress={handleRevokeAll}
               />
@@ -299,7 +306,7 @@ export default function DispositivosScreen() {
         {!loading && (
           <View style={st.securityNote}>
             <Text style={[st.securityTxt, { color: C.textTertiary }]}>
-              🔒 Si no reconoces algún dispositivo, cierra esa sesión de inmediato y cambia tu contraseña en Ajustes → Seguridad.
+              🔒 {t('setSecurityNote')}
             </Text>
           </View>
         )}

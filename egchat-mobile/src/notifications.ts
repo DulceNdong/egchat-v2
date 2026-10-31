@@ -11,6 +11,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 import { RichNotifications } from './native/RichNotifications';
 import { playNotification } from './hooks/useSounds';
+import { t as tr } from './translations';
 
 const API_BASE = process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com';
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
@@ -164,12 +165,38 @@ export async function refreshAndroidChannels(): Promise<void> {
   });
 }
 
+// ── Categorías iOS ──────────────────────────────────────────────────────────
+// El backend pide la categoría EGCHAT_CALL en el push de llamadas. Sin ella, el
+// banner de una llamada entrante no tiene botones y con el teléfono bloqueado el
+// usuario no puede ni rechazar. Hay que registrarla antes de que llegue el push.
+export async function ensureIosCategories() {
+  if (Platform.OS !== 'ios') return;
+  try {
+    await Notifications.setNotificationCategoryAsync('EGCHAT_CALL', [
+      {
+        identifier: 'EGCHAT_ANSWER',
+        buttonTitle: 'Aceptar',
+        // authentication-required: no se contesta sola dentro de un bolsillo.
+        // opensAppToForeground: con la app cerrada el listener solo dispara si
+        // la llamada abre la app.
+        options: { isAuthenticationRequired: true, opensAppToForeground: true },
+      },
+      {
+        identifier: 'EGCHAT_REJECT',
+        buttonTitle: 'Rechazar',
+        options: { isDestructive: true, opensAppToForeground: false },
+      },
+    ]);
+  } catch { /* el NSE puede haber fijado otra categoría; no es crítico */ }
+}
+
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
 export async function registerForPushNotifications(): Promise<string | null> {
   if (Platform.OS === 'web') return null;
   if (!PUSH_ENABLED) return null;
 
   await createChannels();
+  await ensureIosCategories();
   const { installIosPushSound } = await import('./hooks/useSounds');
   await installIosPushSound();
 
@@ -401,7 +428,19 @@ export function setupNotificationListeners(
     const action = response.actionIdentifier;
 
     if (data?.notificationType === 'incoming_call') {
-      if (action === 'REJECT') return;
+      if (action === 'EGCHAT_REJECT') {
+        // Rechazar desde el banner: hay que avisar al servidor para que el
+        // llamante deje de timbrar, no basta con cerrar la notificación.
+        // Con la app recién abierta puede no haber sesión → rechazar por API.
+        const { callManager } = await import('./call/CallManager');
+        if (callManager.session?.callId === data?.callId) {
+          callManager.rejectCall().catch(() => {});
+        } else if (data?.callId) {
+          const { callAPI } = await import('./api');
+          callAPI.reject(data.callId).catch(() => {});
+        }
+        return;
+      }
       handleIncomingCall(data);
 
     } else if (action === 'REPLY_ACTION') {
@@ -472,7 +511,7 @@ export async function notifyReaction(params: {
     const { senderName, emoji, messagePreview, chatId, chatName } = params;
     const body = messagePreview
       ? `"${messagePreview.slice(0, 40)}${messagePreview.length > 40 ? '…' : ''}"`
-      : 'tu mensaje';
+      : tr('xtTuMensaje');
 
     await Notifications.scheduleNotificationAsync({
       content: {
@@ -508,7 +547,7 @@ export async function notifyNewMoment(params: {
       },
       body: JSON.stringify({
         authorName: params.authorName,
-        preview: params.preview || 'Ha publicado un nuevo Moment',
+        preview: params.preview || tr('xtHaPublicadoUnNuevoMoment'),
       }),
     });
   } catch { /* silencioso */ }
@@ -592,7 +631,7 @@ export async function consumePendingCall(): Promise<PendingCall | null> {
             await AsyncStorage.removeItem(PENDING_CALL_KEY).catch(() => {});
             return {
               callId:      parsed.callId,
-              callerName:  parsed.callerName  || 'Usuario',
+              callerName:  parsed.callerName  || tr('setUser'),
               callerAvatar: parsed.callerAvatar || '',
               callType:    (parsed.callType   || 'audio') as 'audio' | 'video',
               offer:       parsed.offer ? JSON.parse(parsed.offer) : null,

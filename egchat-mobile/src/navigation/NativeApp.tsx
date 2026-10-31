@@ -5,6 +5,7 @@ import { createStackNavigator } from '@react-navigation/stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { t as tr } from '../translations';
 
 const RootStack = createStackNavigator();
 const AppTabs = createBottomTabNavigator();
@@ -13,7 +14,7 @@ function PlaceholderScreen({ title }: { title: string }) {
   return (
     <View style={styles.centered}>
       <Text style={styles.title}>{title}</Text>
-      <Text style={styles.subtitle}>Base nativa React Navigation en construcción.</Text>
+      <Text style={styles.subtitle}>{tr('xtBaseNativaReactNavigationEnConstruccion')}</Text>
     </View>
   );
 }
@@ -31,23 +32,23 @@ function MainTabs() {
     >
       <AppTabs.Screen
         name="Mensajeria"
-        options={{ title: 'Mensajes' }}
-        component={() => <PlaceholderScreen title="Mensajería nativa" />}
+        options={{ title: tr('messages') }}
+        component={() => <PlaceholderScreen title={tr('xtMensajeriaNativa')} />}
       />
       <AppTabs.Screen
         name="Monedero"
-        options={{ title: 'Cartera' }}
-        component={() => <PlaceholderScreen title="Monedero nativo" />}
+        options={{ title: tr('wallet') }}
+        component={() => <PlaceholderScreen title={tr('xtMonederoNativo')} />}
       />
       <AppTabs.Screen
         name="Servicios"
-        options={{ title: 'Servicios' }}
-        component={() => <PlaceholderScreen title="Servicios nativo" />}
+        options={{ title: tr('services') }}
+        component={() => <PlaceholderScreen title={tr('xtServiciosNativo')} />}
       />
       <AppTabs.Screen
         name="Ajustes"
-        options={{ title: 'Ajustes' }}
-        component={() => <PlaceholderScreen title="Ajustes nativo" />}
+        options={{ title: tr('settings') }}
+        component={() => <PlaceholderScreen title={tr('xtAjustesNativo')} />}
       />
     </AppTabs.Navigator>
   );
@@ -66,7 +67,7 @@ function AuthFlow() {
       />
       <RootStack.Screen
         name="ForgotPassword"
-        component={() => <PlaceholderScreen title="Recuperar contraseña" />}
+        component={() => <PlaceholderScreen title={tr('xtRecuperarContrasena')} />}
       />
       <RootStack.Screen name="AppTabs" component={MainTabs} />
     </RootStack.Navigator>

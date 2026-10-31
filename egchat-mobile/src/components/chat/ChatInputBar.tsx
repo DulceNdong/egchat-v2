@@ -67,7 +67,7 @@ export function ChatInputBar({
     const selected = text.slice(start, end);
     const before   = text.slice(0, start);
     const after    = text.slice(end);
-    onChangeText(`${before}${open}${selected || 'texto'}${close}${after}`);
+    onChangeText(`${before}${open}${selected || t('chtFormatSample')}${close}${after}`);
   };
 
   if (isRecording) {

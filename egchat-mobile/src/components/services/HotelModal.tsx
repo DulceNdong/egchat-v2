@@ -4,6 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { HOTELS, Hotel } from '../../data/serviciosDiarios';
 import { FinancialModuleShell, FilterChips } from './FinancialModuleUI';
 import { FormField, PrimaryButton } from './ServiceModuleUI';
+import { useTranslation } from '../../context/LanguageContext';
 
 type HotelScreen = 'list' | 'detail' | 'book' | 'ok';
 interface Props { visible: boolean; onClose: () => void; }
@@ -13,6 +14,7 @@ const StarRow = ({ n }: { n: number }) => (
 );
 
 export const HotelModal: React.FC<Props> = ({ visible, onClose }) => {
+  const { t } = useTranslation();
   const [city, setCity] = useState('Malabo');
   const [view, setView] = useState<HotelScreen>('list');
   const [selected, setSelected] = useState<Hotel | null>(null);
@@ -30,7 +32,7 @@ export const HotelModal: React.FC<Props> = ({ visible, onClose }) => {
   const fixedTop = (
     <View style={{ paddingHorizontal: 16, paddingBottom: 8 }}>
       <FilterChips
-        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c }))}
+        options={['Malabo', 'Bata', 'Ebebiyín', 'Mongomo', 'Todos'].map(c => ({ id: c, label: c === 'Todos' ? t('svcAll') : c }))}
         value={city} onChange={setCity} activeColor="#1485EE"
       />
     </View>
@@ -39,8 +41,8 @@ export const HotelModal: React.FC<Props> = ({ visible, onClose }) => {
   return (
     <FinancialModuleShell
       visible={visible}
-      title="Hotel"
-      subtitle={`${HOTELS.length} hoteles · Guinea Ecuatorial`}
+      title={t('hotel')}
+      subtitle={`${HOTELS.length} ${t('svcHotelsWord')} · ${t('svcEqGuinea')}`}
       onBack={() => view === 'list' ? onClose() : setView('list')}
       onClose={onClose}
       centerTitle
@@ -60,9 +62,9 @@ export const HotelModal: React.FC<Props> = ({ visible, onClose }) => {
               <Text style={st.name}>{h.nombre}</Text>
               <Text style={st.meta}>📍 {h.barrio}</Text>
               <View style={st.priceRow}>
-                <Text style={st.priceLbl}>Desde</Text>
+                <Text style={st.priceLbl}>{t('svcFromLabel')}</Text>
                 <Text style={st.price}>{h.precio.toLocaleString()} XAF</Text>
-                <Text style={st.priceLbl}>por noche</Text>
+                <Text style={st.priceLbl}>{t('svcPerNight')}</Text>
               </View>
             </TouchableOpacity>
           ))}
@@ -76,17 +78,17 @@ export const HotelModal: React.FC<Props> = ({ visible, onClose }) => {
             <StarRow n={selected.estrellas} />
             <Text style={st.bannerSub}>📍 {selected.barrio}, {selected.ciudad}</Text>
           </LinearGradient>
-          <Text style={st.sectionLbl}>Servicios incluidos</Text>
+          <Text style={st.sectionLbl}>{t('svcIncludedServices')}</Text>
           {selected.amenities.map(a => (
             <View key={a} style={st.amenityRow}><Text style={st.amenityDot}>●</Text><Text style={st.meta}>{a}</Text></View>
           ))}
-          <Text style={st.priceBig}>{selected.precio.toLocaleString()} XAF <Text style={st.priceLbl}>/ noche</Text></Text>
+          <Text style={st.priceBig}>{selected.precio.toLocaleString()} XAF <Text style={st.priceLbl}>{t('svcPerNightSlash')}</Text></Text>
           <View style={st.rowBtns}>
             <TouchableOpacity style={[st.actBtn, { backgroundColor: '#EFF5FD', flex: 1 }]} onPress={() => Linking.openURL(`tel:${selected.telefono}`)}>
-              <Text style={[st.actText, { color: '#1485EE' }]}>📞 Llamar</Text>
+              <Text style={[st.actText, { color: '#1485EE' }]}>{t('svcCallPhone')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.actBtn, { backgroundColor: '#1485EE', flex: 1 }]} onPress={() => setView('book')}>
-              <Text style={[st.actText, { color: '#fff' }]}>Reservar</Text>
+              <Text style={[st.actText, { color: '#fff' }]}>{t('svcBookNow')}</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -94,26 +96,26 @@ export const HotelModal: React.FC<Props> = ({ visible, onClose }) => {
 
       {view === 'book' && selected && (
         <View>
-          <FormField placeholder="Nombre completo" value={form.name} onChangeText={v => setF('name', v)} />
-          <FormField placeholder="Teléfono" value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
-          <FormField placeholder="Check-in (DD/MM/AAAA)" value={form.checkin} onChangeText={v => setF('checkin', v)} />
-          <FormField placeholder="Check-out (DD/MM/AAAA)" value={form.checkout} onChangeText={v => setF('checkout', v)} />
-          <FormField placeholder="Huéspedes" value={form.guests} onChangeText={v => setF('guests', v)} keyboardType="numeric" />
+          <FormField placeholder={t('name')} value={form.name} onChangeText={v => setF('name', v)} />
+          <FormField placeholder={t('phone')} value={form.phone} onChangeText={v => setF('phone', v)} keyboardType="phone-pad" />
+          <FormField placeholder={t('svcCheckInPh')} value={form.checkin} onChangeText={v => setF('checkin', v)} />
+          <FormField placeholder={t('svcCheckOutPh')} value={form.checkout} onChangeText={v => setF('checkout', v)} />
+          <FormField placeholder={t('svcGuests')} value={form.guests} onChangeText={v => setF('guests', v)} keyboardType="numeric" />
           <View style={st.summaryBox}>
             <Text style={st.meta}>{selected.nombre}</Text>
             <Text style={st.priceBig}>{total.toLocaleString()} XAF</Text>
           </View>
-          <PrimaryButton label="Confirmar reserva" onPress={() => setView('ok')} color="#1485EE" disabled={!form.name || !form.phone || !form.checkin} />
+          <PrimaryButton label={t('svcConfirmBooking')} onPress={() => setView('ok')} color="#1485EE" disabled={!form.name || !form.phone || !form.checkin} />
         </View>
       )}
 
       {view === 'ok' && selected && (
         <View style={st.success}>
           <Text style={{ fontSize: 48 }}>✅</Text>
-          <Text style={st.successTitle}>¡Reserva confirmada!</Text>
+          <Text style={st.successTitle}>{t('svcBookingConfirmed')}</Text>
           <Text style={st.successSub}>{selected.nombre}</Text>
-          <Text style={st.successSub}>{form.checkin} → {form.checkout || 'A confirmar'}</Text>
-          <PrimaryButton label="Ver más hoteles" onPress={() => { setView('list'); setSelected(null); }} color="#1485EE" />
+          <Text style={st.successSub}>{form.checkin} → {form.checkout || t('svcToConfirm')}</Text>
+          <PrimaryButton label={t('svcMoreHotels')} onPress={() => { setView('list'); setSelected(null); }} color="#1485EE" />
         </View>
       )}
     </FinancialModuleShell>

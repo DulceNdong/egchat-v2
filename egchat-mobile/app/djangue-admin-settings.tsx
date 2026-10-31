@@ -14,6 +14,7 @@ import Svg, { Path, Line, Circle } from 'react-native-svg';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'expo-image';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 const FREQUENCIES = [
   { value: 'daily', label: 'Diario' },
@@ -63,7 +64,7 @@ export default function DjangueAdminSettingsScreen() {
       // No se puede modificar cuota/frecuencia si ya hay cotizaciones en curso
       setCanModifyFinancial(data.paid_count === 0);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo cargar el djangue');
+      Alert.alert(tr('error'), e.message || 'No se pudo cargar el djangue');
       router.back();
     } finally {
       setLoading(false);
@@ -73,7 +74,7 @@ export default function DjangueAdminSettingsScreen() {
   const pickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert('Permiso requerido', 'Necesitamos acceso a tus fotos.');
+      Alert.alert(tr('kyPermRequired'), 'Necesitamos acceso a tus fotos.');
       return;
     }
 
@@ -91,7 +92,7 @@ export default function DjangueAdminSettingsScreen() {
 
   const saveSettings = async () => {
     if (!name.trim()) {
-      setError('El nombre es obligatorio');
+      setError(tr('mznNameRequired'));
       return;
     }
 
@@ -143,11 +144,11 @@ export default function DjangueAdminSettingsScreen() {
         body: JSON.stringify(updates),
       });
 
-      Alert.alert('✅ Guardado', 'Los cambios se guardaron correctamente', [
+      Alert.alert('✅ Guardado', tr('xtLosCambiosSeGuardaronCorrectamente'), [
         { text: 'OK', onPress: () => router.back() },
       ]);
     } catch (e: any) {
-      setError(e.message || 'Error al guardar');
+      setError(e.message || tr('setSaveError'));
     } finally {
       setSaving(false);
     }
@@ -158,11 +159,11 @@ export default function DjangueAdminSettingsScreen() {
     Alert.alert(
       newStatus === 'paused' ? 'Pausar Djangue' : 'Reactivar Djangue',
       newStatus === 'paused'
-        ? 'Al pausar, los integrantes no podrán realizar cotizaciones hasta que lo reactives.'
-        : 'Al reactivar, el djangue continuará con el ciclo actual.',
+        ? tr('xtAlPausarLosIntegrantesNoPodranRealizarCotizaciones')
+        : tr('xtAlReactivarElDjangueContinuaraConElCicloActual'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Confirmar', onPress: () => setStatus(newStatus) },
+        { text: tr('cancel'), style: 'cancel' },
+        { text: tr('confirm'), onPress: () => setStatus(newStatus) },
       ]
     );
   };
@@ -172,7 +173,7 @@ export default function DjangueAdminSettingsScreen() {
       <SafeAreaView style={s.root} edges={['left', 'right']}>
         <View style={s.center}>
           <ActivityIndicator size="large" color="#6366f1" />
-          <Text style={s.loadingText}>Cargando configuración...</Text>
+          <Text style={s.loadingText}>{tr('xtCargandoConfiguracion')}</Text>
         </View>
       </SafeAreaView>
     );
@@ -189,7 +190,7 @@ export default function DjangueAdminSettingsScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={{ flex: 1, alignItems: 'center' }}>
-          <Text style={s.headerTitle}>Configuración</Text>
+          <Text style={s.headerTitle}>{tr('xtConfiguracion')}</Text>
           <Text style={s.headerSub}>Administrador General</Text>
         </View>
         <View style={{ width: 36 }} />
@@ -200,7 +201,7 @@ export default function DjangueAdminSettingsScreen() {
         <View style={s.section}>
           <View style={s.statusRow}>
             <View style={{ flex: 1 }}>
-              <Text style={s.sectionTitle}>Estado del Djangue</Text>
+              <Text style={s.sectionTitle}>{tr('xtEstadoDelDjangue')}</Text>
               <Text style={s.statusText}>
                 {status === 'active' ? '✅ Activo' : '⏸️ Pausado'}
               </Text>
@@ -216,25 +217,25 @@ export default function DjangueAdminSettingsScreen() {
 
         {/* Logo e identidad */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Identidad</Text>
+          <Text style={s.sectionTitle}>{tr('xtIdentidad')}</Text>
           
           <TouchableOpacity style={s.logoUpload} onPress={pickImage} activeOpacity={0.8}>
             {logoUri ? (
               <Image source={{ uri: logoUri }} style={s.logoPreview} contentFit="cover" />
             ) : (
               <View style={s.logoPlaceholder}>
-                <Text style={s.logoPlaceholderText}>Toca para cambiar logo</Text>
+                <Text style={s.logoPlaceholderText}>{tr('xtTocaParaCambiarLogo')}</Text>
               </View>
             )}
           </TouchableOpacity>
 
           <View style={s.inputGroup}>
-            <Text style={s.label}>Nombre *</Text>
+            <Text style={s.label}>{tr('mznNameStar')}</Text>
             <TextInput
               style={s.input}
               value={name}
               onChangeText={setName}
-              placeholder="Nombre del djangue"
+              placeholder={tr('xtNombreDelDjangue')}
               placeholderTextColor="rgba(16,32,43,0.3)"
             />
           </View>
@@ -245,18 +246,18 @@ export default function DjangueAdminSettingsScreen() {
               style={s.input}
               value={slogan}
               onChangeText={setSlogan}
-              placeholder="Eslogan del grupo"
+              placeholder={tr('xtEsloganDelGrupo')}
               placeholderTextColor="rgba(16,32,43,0.3)"
             />
           </View>
 
           <View style={s.inputGroup}>
-            <Text style={s.label}>Descripción</Text>
+            <Text style={s.label}>{tr('mznDescription')}</Text>
             <TextInput
               style={[s.input, s.textArea]}
               value={description}
               onChangeText={setDescription}
-              placeholder="Descripción del djangue..."
+              placeholder={tr('xtDescripcionDelDjangue')}
               placeholderTextColor="rgba(16,32,43,0.3)"
               multiline
               numberOfLines={3}
@@ -266,7 +267,7 @@ export default function DjangueAdminSettingsScreen() {
 
         {/* Configuración financiera */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Configuración Financiera</Text>
+          <Text style={s.sectionTitle}>{tr('xtConfiguracionFinanciera2')}</Text>
 
           {!canModifyFinancial && (
             <View style={s.warningBox}>
@@ -310,7 +311,7 @@ export default function DjangueAdminSettingsScreen() {
 
           <View style={s.row}>
             <View style={[s.inputGroup, { flex: 1 }]}>
-              <Text style={s.label}>Cuota (XAF)</Text>
+              <Text style={s.label}>{tr('xtCuotaXAF')}</Text>
               <TextInput
                 style={[s.input, !canModifyFinancial && s.inputDisabled]}
                 value={quotaAmount}
@@ -335,10 +336,10 @@ export default function DjangueAdminSettingsScreen() {
 
         {/* Sanciones y notificaciones */}
         <View style={s.section}>
-          <Text style={s.sectionTitle}>Sanciones y Notificaciones</Text>
+          <Text style={s.sectionTitle}>{tr('xtSancionesYNotificaciones2')}</Text>
 
           <View style={s.inputGroup}>
-            <Text style={s.label}>% de Mora *</Text>
+            <Text style={s.label}>{tr('xtDeMora')}</Text>
             <TextInput
               style={s.input}
               value={penaltyPercent}
@@ -349,7 +350,7 @@ export default function DjangueAdminSettingsScreen() {
 
           <View style={s.row}>
             <View style={[s.inputGroup, { flex: 1 }]}>
-              <Text style={s.label}>1ra notif (días antes)</Text>
+              <Text style={s.label}>{tr('xt1raNotifDiasAntes')}</Text>
               <TextInput
                 style={s.input}
                 value={notificationDaysBefore}
@@ -359,7 +360,7 @@ export default function DjangueAdminSettingsScreen() {
             </View>
             <View style={{ width: 12 }} />
             <View style={[s.inputGroup, { flex: 1 }]}>
-              <Text style={s.label}>Notifs diarias (últimos)</Text>
+              <Text style={s.label}>{tr('xtNotifsDiariasUltimos')}</Text>
               <TextInput
                 style={s.input}
                 value={notificationFinalDays}
@@ -389,7 +390,7 @@ export default function DjangueAdminSettingsScreen() {
             {saving ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={s.saveBtnText}>Guardar Cambios</Text>
+              <Text style={s.saveBtnText}>{tr('xtGuardarCambios')}</Text>
             )}
           </LinearGradient>
         </TouchableOpacity>

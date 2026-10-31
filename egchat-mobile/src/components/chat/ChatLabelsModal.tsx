@@ -9,6 +9,7 @@ import { toast } from '../Toast';
 import { useThemeContext } from '../../theme/ThemeContext';
 import { Colors } from '../../theme/colors';
 import { DarkColors } from '../../theme/darkMode';
+import { useTranslation } from '../../context/LanguageContext';
 
 interface Props {
   visible: boolean;
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function ChatLabelsModal({ visible, chatId, onClose, onChanged }: Props) {
+  const { t } = useTranslation();
   const [selected, setSelected] = useState<string[]>([]);
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
@@ -32,7 +34,9 @@ export function ChatLabelsModal({ visible, chatId, onClose, onChanged }: Props) 
     onChanged?.(next);
     const label = DEFAULT_LABELS.find(l => l.id === labelId);
     const added = next.includes(labelId);
-    toast.info(added ? `Etiqueta "${label?.name}" añadida` : `Etiqueta eliminada`);
+    toast.info(added
+      ? `${t('chtLabelPrefix')} "${label?.name}" ${t('chtLabelAddedSuffix')}`
+      : t('chtLabelRemoved'));
   };
 
   return (
@@ -40,7 +44,7 @@ export function ChatLabelsModal({ visible, chatId, onClose, onChanged }: Props) 
       <Pressable style={s.overlay} onPress={onClose}>
         <Pressable style={[s.panel, { backgroundColor: C.bgPrimary }]}>
           <View style={s.header}>
-            <Text style={[s.title, { color: C.textPrimary }]}>🏷️ Etiquetas del chat</Text>
+            <Text style={[s.title, { color: C.textPrimary }]}>🏷️ {t('chtChatLabelsTitle')}</Text>
             <TouchableOpacity onPress={onClose}>
               <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round">
                 <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
@@ -48,7 +52,7 @@ export function ChatLabelsModal({ visible, chatId, onClose, onChanged }: Props) 
             </TouchableOpacity>
           </View>
           <Text style={[s.subtitle, { color: C.textTertiary }]}>
-            Organiza tus chats con etiquetas personalizadas
+            {t('chtChatLabelsSubtitle')}
           </Text>
           {DEFAULT_LABELS.map(label => {
             const active = selected.includes(label.id);

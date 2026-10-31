@@ -4,6 +4,7 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import * as Location from 'expo-location';
 import { Colors, FontSize, FontWeight, Spacing } from '../src/theme';
+import { t as tr } from '../src/translations';
 
 const PLACES = [
   { id: '1', title: 'Hospital General Malabo', emoji: '🏥', lat: 3.7523, lng: 8.7741 },
@@ -71,13 +72,13 @@ export default function MapScreen() {
       {loading ? (
         <View style={styles.center}>
           <ActivityIndicator size="large" color={Colors.accent} />
-          <Text style={styles.loadingText}>Obteniendo ubicación...</Text>
+          <Text style={styles.loadingText}>{tr('xtObteniendoUbicacion')}</Text>
         </View>
       ) : Platform.OS === 'web' ? (
         // Fallback web — react-native-maps no soporta navegador
         <View style={styles.center}>
           <Text style={styles.mapIcon}>🗺️</Text>
-          <Text style={styles.notice}>El mapa interactivo está disponible en la app móvil.</Text>
+          <Text style={styles.notice}>{tr('mpaInteractiveWebOnly')}</Text>
         </View>
       ) : (
         <MapView

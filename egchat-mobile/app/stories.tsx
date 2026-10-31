@@ -36,6 +36,7 @@ import { LiveCamera, useLiveCameraPermissions, type LiveEffectId } from '../src/
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import MomentCameraEditor, { type MomentMedia } from '../src/components/MomentCameraEditor';
 import { MomentImageViewer, type MomentViewerPost } from '../src/components/MomentImageViewer';
+import { t as tr } from '../src/translations';
 
 const { width: W, height: H } = Dimensions.get('window');
 const STORY_DURATION = 5000;
@@ -218,7 +219,7 @@ const StoryViewer = ({
         } catch { /* si falla no bloqueamos */ }
       }
     } catch {
-      Alert.alert('Error', 'No se pudo enviar la respuesta');
+      Alert.alert(tr('error'), 'No se pudo enviar la respuesta');
     }
   };
 
@@ -558,7 +559,7 @@ interface MomentComment {
 }
 const formatRelativeTime = (dateStr: string) => {
   const diff = Math.floor((Date.now() - new Date(dateStr).getTime()) / 1000);
-  if (diff < 60) return 'Hace un momento';
+  if (diff < 60) return tr('xtHaceUnMomento');
   if (diff < 3600) return `Hace ${Math.floor(diff / 60)} min`;
   if (diff < 86400) return `Hace ${Math.floor(diff / 3600)}h`;
   return `Hace ${Math.floor(diff / 86400)}d`;
@@ -755,7 +756,7 @@ export default function StoriesScreen() {
   const displayedGroups = activeTab === 'estados' ? recentGroups : seenGroups;
 
   const allGroupsForViewer = useMemo<StoryGroup[]>(() => [
-    ...(myGroup ? [{ ...myGroup, userName: 'Mi estado' }] : []),
+    ...(myGroup ? [{ ...myGroup, userName: tr('xtMiEstado') }] : []),
     ...groups,
   ], [myGroup, groups]);
 
@@ -850,7 +851,7 @@ export default function StoriesScreen() {
       if (data) {
         setLiveStreams(data.map((s: any) => ({
           id: s.id,
-          hostName: s.host_name || 'En vivo',
+          hostName: s.host_name || tr('xtEnVivo'),
           hostAvatar: s.host_avatar,
           viewerCount: s.viewer_count || 0,
         })));
@@ -902,7 +903,7 @@ export default function StoriesScreen() {
         if (uploaded) {
           mediaUrl = uploaded;
         } else {
-          Alert.alert('Error', 'No se pudo subir la imagen al servidor. Verifica tu conexión.');
+          Alert.alert(tr('error'), 'No se pudo subir la imagen al servidor. Verifica tu conexión.');
           return;
         }
       }
@@ -921,21 +922,21 @@ export default function StoriesScreen() {
         }
       } catch {}
     } catch {
-      Alert.alert('Error', 'No se pudo publicar el estado');
+      Alert.alert(tr('error'), 'No se pudo publicar el estado');
     } finally {
       setUploading(false);
     }
   }, [meId, storyMusic, loadStories]);
 
   const createTextStatus = useCallback(async () => {
-    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00c8a0"/><stop offset="100%" stop-color="#00B4E6"/></linearGradient></defs><rect width="1080" height="1920" fill="url(#g)"/><circle cx="200" cy="300" r="220" fill="rgba(255,255,255,0.1)"/><circle cx="900" cy="1600" r="300" fill="rgba(255,255,255,0.08)"/><text x="540" y="900" text-anchor="middle" font-family="Arial,sans-serif" font-size="96" font-weight="800" fill="#fff">Nuevo estado</text><text x="540" y="1020" text-anchor="middle" font-family="Arial,sans-serif" font-size="52" fill="rgba(255,255,255,0.85)">EGChat</text></svg>`;
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1920" viewBox="0 0 1080 1920"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0%" stop-color="#00c8a0"/><stop offset="100%" stop-color="#00B4E6"/></linearGradient></defs><rect width="1080" height="1920" fill="url(#g)"/><circle cx="200" cy="300" r="220" fill="rgba(255,255,255,0.1)"/><circle cx="900" cy="1600" r="300" fill="rgba(255,255,255,0.08)"/><text x="540" y="900" text-anchor="middle" font-family="Arial,sans-serif" font-size="96" font-weight="800" fill="#fff">{tr('xtNuevoEstado')}</text><text x="540" y="1020" text-anchor="middle" font-family="Arial,sans-serif" font-size="52" fill="rgba(255,255,255,0.85)">EGChat</text></svg>`;
     await uploadStory(`data:image/svg+xml;charset=utf-8,${encodeURIComponent(svg)}`, 'image');
   }, [uploadStory]);
 
   const pickFromGallery = useCallback(async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      if (status !== 'granted') { Alert.alert('Sin permiso para galeria'); return; }
+      if (status !== 'granted') { Alert.alert(tr('xtSinPermisoParaGaleria')); return; }
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.All,
         allowsMultipleSelection: true,
@@ -955,7 +956,7 @@ export default function StoriesScreen() {
         }
       }
     } catch {
-      Alert.alert('Error', 'No se pudo abrir la galería');
+      Alert.alert(tr('error'), 'No se pudo abrir la galería');
     }
   }, [uploadStory]);
 
@@ -964,10 +965,10 @@ export default function StoriesScreen() {
   }, []);
 
   const deleteStory = useCallback((storyId: string) => {
-    Alert.alert('Eliminar estado', '¿Eliminar este estado?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(tr('xtEliminarEstado'), '¿Eliminar este estado?', [
+      { text: tr('cancel'), style: 'cancel' },
       {
-        text: 'Eliminar', style: 'destructive', onPress: async () => {
+        text: tr('delete'), style: 'destructive', onPress: async () => {
           // Eliminar optimistamente del estado local
           setMyGroup(prev => {
             if (!prev) return null;
@@ -977,7 +978,7 @@ export default function StoriesScreen() {
           try {
             await storiesAPI.delete(storyId);
           } catch (e) {
-            Alert.alert('Error', 'No se pudo eliminar el estado');
+            Alert.alert(tr('error'), 'No se pudo eliminar el estado');
           } finally {
             // Recargar siempre para sincronizar con el servidor
             await loadStories();
@@ -991,7 +992,7 @@ export default function StoriesScreen() {
   const MyBubble = useCallback(() => {
     const hasStory = myStories.length > 0;
     return (
-      <TouchableOpacity onPress={() => hasStory ? setMyStoryMenu(true) : addStory()} activeOpacity={0.8} style={buStyles.wrap} accessibilityRole="button" accessibilityLabel="Mi estado">
+      <TouchableOpacity onPress={() => hasStory ? setMyStoryMenu(true) : addStory()} activeOpacity={0.8} style={buStyles.wrap} accessibilityRole="button" accessibilityLabel={tr('xtMiEstado')}>
         <View style={mbu.outer}>
           {hasStory ? (
             <LinearGradient colors={[BRAND, BRAND2]} style={[mbu.ring, { borderRadius: (BUBBLE_SIZE + 6) / 2 }]}>
@@ -1016,7 +1017,7 @@ export default function StoriesScreen() {
               : <MIcon name="add" size={12} color="#fff" />}
           </View>
         </View>
-        <Text style={buStyles.name} numberOfLines={1}>Mi estado</Text>
+        <Text style={buStyles.name} numberOfLines={1}>{tr('xtMiEstado')}</Text>
       </TouchableOpacity>
     );
   }, [myStories.length, myAvatarUrl, uploading, addStory, buStyles, mbu, C]);
@@ -1056,12 +1057,12 @@ export default function StoriesScreen() {
   const [chSportFilter,setChSportFilter]= React.useState<string>('Todos');
 
   const SPORT_FILTERS = [
-    { id: 'Todos',      label: 'Todo',      icon: 'grid-view' },
-    { id: 'Futbol',     label: 'Fútbol',    icon: 'sports-soccer' },
+    { id: 'Todos',      label: tr('xtTodo'),      icon: 'grid-view' },
+    { id: 'Futbol',     label: tr('xtFutbol'),    icon: 'sports-soccer' },
     { id: 'Baloncesto', label: 'Basket',    icon: 'sports-basketball' },
     { id: 'Tennis',     label: 'Tenis',     icon: 'sports-tennis' },
     { id: 'Atletismo',  label: 'Atletismo', icon: 'directions-run' },
-    { id: 'Natacion',   label: 'Natación',  icon: 'pool' },
+    { id: 'Natacion',   label: tr('xtNatacion'),  icon: 'pool' },
     { id: 'Boxeo',      label: 'Boxeo',     icon: 'sports-mma' },
     { id: 'Rugby',      label: 'Rugby',     icon: 'sports-rugby' },
     { id: 'Ciclismo',   label: 'Ciclismo',  icon: 'directions-bike' },
@@ -1284,7 +1285,7 @@ export default function StoriesScreen() {
             <MIcon name="search" size={16} color={C.textTertiary} />
             <TextInput
               style={[chst.searchInput, { color: C.textPrimary }]}
-              placeholder="Buscar..."
+              placeholder={tr('chtSearchDots')}
               placeholderTextColor={C.textTertiary}
               value={chSearch}
               onChangeText={setChSearch}
@@ -1464,12 +1465,12 @@ export default function StoriesScreen() {
                           <Text style={{ color: C.textSecondary, marginTop: 14, fontSize: 16, fontWeight: '700' }}>
                             {chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
                               ? `Sin noticias de ${SPORT_FILTERS.find(s => s.id === chSportFilter)?.label || chSportFilter}`
-                              : 'Sin publicaciones aun'}
+                              : tr('xtSinPublicacionesAun')}
                           </Text>
                           <Text style={{ color: C.textTertiary, marginTop: 6, fontSize: 13, textAlign: 'center', paddingHorizontal: 24 }}>
                             {chDetail.category === 'Deportes' && chSportFilter !== 'Todos'
                               ? 'Prueba otra modalidad o vuelve mas tarde'
-                              : 'Las publicaciones del canal aparecerán aquí'}
+                              : tr('xtLasPublicacionesDelCanalApareceranAqui')}
                           </Text>
                         </View>
                       );
@@ -1527,11 +1528,11 @@ export default function StoriesScreen() {
 
       {/* HEADER */}
       <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={[st.header, { paddingTop: insets.top + 10 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Volver">
+        <TouchableOpacity onPress={() => router.back()} style={st.backBtn} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={tr('djhBack')}>
           <MIcon name="arrow-back" size={22} color="#fff" />
         </TouchableOpacity>
         <View style={st.headerCenter}>
-          <Text style={[st.headerTitle, { color: '#fff' }]}>Estados</Text>
+          <Text style={[st.headerTitle, { color: '#fff' }]}>{tr('stories')}</Text>
           {activeTab === 'estados' && recentGroups.length > 0 && (
             <View style={[st.headerBadge, { backgroundColor: 'rgba(255,255,255,0.3)' }]}>
               <Text style={st.headerBadgeText}>{recentGroups.length}</Text>
@@ -1544,13 +1545,13 @@ export default function StoriesScreen() {
               <TouchableOpacity style={st.headerBtn} onPress={pickFromGallery} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Galeria">
                 <MIcon name="image" size={21} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={st.headerBtn} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo estado">
+              <TouchableOpacity style={st.headerBtn} onPress={addStory} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={tr('xtNuevoEstado')}>
                 <MIcon name="photo-camera" size={21} color="#fff" />
               </TouchableOpacity>
             </>
           )}
           {activeTab === 'estados' && activeSubTab === 'sub_vivos' && (
-            <TouchableOpacity style={st.headerBtn} onPress={() => setShowLive(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Iniciar vivo">
+            <TouchableOpacity style={st.headerBtn} onPress={() => setShowLive(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={tr('xtIniciarVivo')}>
               <MIcon name="fiber-manual-record" size={21} color="#fff" />
             </TouchableOpacity>
           )}
@@ -1559,7 +1560,7 @@ export default function StoriesScreen() {
               <TouchableOpacity style={st.headerBtn} onPress={() => setShowMomentCamera(true)} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Camara momentos">
                 <MIcon name="photo-camera" size={21} color="#fff" />
               </TouchableOpacity>
-              <TouchableOpacity style={st.headerBtn} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel="Nuevo momento">
+              <TouchableOpacity style={st.headerBtn} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.7} accessibilityRole="button" accessibilityLabel={tr('xtNuevoMomento')}>
                 <MIcon name="add" size={21} color="#fff" />
               </TouchableOpacity>
             </>
@@ -1570,7 +1571,7 @@ export default function StoriesScreen() {
       {/* TABS */}
       <View style={[st.tabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
         {([
-          { id: 'estados'   as StoryTab, label: 'Estados'  },
+          { id: 'estados'   as StoryTab, label: tr('stories')  },
           { id: 'canales'   as StoryTab, label: 'Canales Dulce' },
         ]).map(t => (
           <TouchableOpacity
@@ -1595,9 +1596,9 @@ export default function StoriesScreen() {
       {activeTab === 'estados' && (
         <View style={[st.subTabsWrap, { backgroundColor: C.bgSecondary, borderBottomColor: C.borderLight }]}>
           {([
-            { id: 'sub_estados'  as EstadoSubTab, label: 'Estados'  },
+            { id: 'sub_estados'  as EstadoSubTab, label: tr('stories')  },
             { id: 'sub_vivos'    as EstadoSubTab, label: 'Vivos'    },
-            { id: 'sub_momentos' as EstadoSubTab, label: 'Momentos' },
+            { id: 'sub_momentos' as EstadoSubTab, label: tr('notifMoments') },
           ]).map(t => (
             <TouchableOpacity
               key={t.id}
@@ -1631,7 +1632,7 @@ export default function StoriesScreen() {
             <StoriesCarousel />
             {recentGroups.length > 0 && (
               <View style={st.feedLabel}>
-                <Text style={[st.feedLabelText, { color: C.textTertiary }]}>TODOS LOS ESTADOS</Text>
+                <Text style={[st.feedLabelText, { color: C.textTertiary }]}>{tr('xtTODOSLOSESTADOS')}</Text>
               </View>
             )}
             {recentGroups.length > 0 ? recentGroups.map(group => {
@@ -1647,12 +1648,12 @@ export default function StoriesScreen() {
             }) : (
               <View style={st.empty}>
                 <MIcon name="auto-awesome" size={52} color={C.border} />
-                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>Todo al dia</Text>
-                <Text style={[st.emptySub, { color: C.textTertiary }]}>No hay estados nuevos de tus contactos</Text>
+                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{tr('xtTodoAlDia')}</Text>
+                <Text style={[st.emptySub, { color: C.textTertiary }]}>{tr('xtNoHayEstadosNuevosDeTusContactos')}</Text>
                 <TouchableOpacity style={st.emptyBtn} onPress={addStory} activeOpacity={0.85}>
                   <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
                     <MIcon name="add" size={18} color="#fff" />
-                    <Text style={st.emptyBtnText}>Publicar estado</Text>
+                    <Text style={st.emptyBtnText}>{tr('xtPublicarEstado')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -1672,8 +1673,8 @@ export default function StoriesScreen() {
           <LinearGradient colors={[BRAND + '22', BRAND2 + '11']} style={st.liveBannerCard}>
             <View style={st.liveDotLarge} />
             <View style={{ flex: 1 }}>
-              <Text style={[st.liveBannerTitle, { color: C.textPrimary }]}>Streamings en vivo</Text>
-              <Text style={[st.liveBannerSub, { color: C.textSecondary }]}>Inicia o únete a un directo</Text>
+              <Text style={[st.liveBannerTitle, { color: C.textPrimary }]}>{tr('xtStreamingsEnVivo')}</Text>
+              <Text style={[st.liveBannerSub, { color: C.textSecondary }]}>{tr('stoLiveBannerSub')}</Text>
             </View>
             <MIcon name="live-tv" size={32} color={BRAND} />
           </LinearGradient>
@@ -1681,7 +1682,7 @@ export default function StoriesScreen() {
           {/* Streams activos */}
           {liveStreams.length > 0 && (
             <View style={{ marginBottom: 24 }}>
-              <Text style={[st.feedLabelText, { color: C.textTertiary, marginBottom: 12 }]}>EN VIVO AHORA</Text>
+              <Text style={[st.feedLabelText, { color: C.textTertiary, marginBottom: 12 }]}>{tr('xtENVIVOAHORA')}</Text>
               {liveStreams.map(ls => (
                 <TouchableOpacity
                   key={ls.id}
@@ -1692,7 +1693,7 @@ export default function StoriesScreen() {
                   <View style={{ width: 10, height: 10, borderRadius: 5, backgroundColor: '#ef4444' }} />
                   <View style={{ flex: 1, marginLeft: 10 }}>
                     <Text style={[{ fontSize: 15, fontWeight: '700' }, { color: C.textPrimary }]}>{ls.hostName}</Text>
-                    <Text style={[{ fontSize: 12 }, { color: C.textSecondary }]}>{ls.viewerCount} espectadores</Text>
+                    <Text style={[{ fontSize: 12 }, { color: C.textSecondary }]}>{ls.viewerCount} {tr('xtEspectadores')}</Text>
                   </View>
                   <LinearGradient colors={[BRAND, BRAND2]} style={{ borderRadius: 12, paddingHorizontal: 14, paddingVertical: 7 }}>
                     <Text style={{ color: '#fff', fontWeight: '700', fontSize: 12 }}>Unirse</Text>
@@ -1717,7 +1718,7 @@ export default function StoriesScreen() {
             >
               <LinearGradient colors={['#ef4444', '#f97316']} style={st.emptyBtnGrad}>
                 <MIcon name="fiber-manual-record" size={14} color="#fff" />
-                <Text style={st.emptyBtnText}>Iniciar directo</Text>
+                <Text style={st.emptyBtnText}>{tr('xtIniciarDirecto')}</Text>
               </LinearGradient>
             </TouchableOpacity>
           </View>
@@ -1747,12 +1748,12 @@ export default function StoriesScreen() {
             ListEmptyComponent={
               <View style={st.empty}>
                 <MIcon name="photo-camera" size={52} color={C.border} />
-                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>Sin momentos aun</Text>
-                <Text style={[st.emptySub, { color: C.textTertiary }]}>Comparte un momento con tus contactos</Text>
+                <Text style={[st.emptyTitle, { color: C.textSecondary }]}>{tr('xtSinMomentosAun')}</Text>
+                <Text style={[st.emptySub, { color: C.textTertiary }]}>{tr('xtComparteUnMomentoConTusContactos')}</Text>
                 <TouchableOpacity style={st.emptyBtn} onPress={() => { pendingMediaRef.current = null; setShowMomentCreate(true); }} activeOpacity={0.85}>
                   <LinearGradient colors={[BRAND, BRAND2]} style={st.emptyBtnGrad}>
                     <MIcon name="add" size={18} color="#fff" />
-                    <Text style={st.emptyBtnText}>Publicar momento</Text>
+                    <Text style={st.emptyBtnText}>{tr('xtPublicarMomento')}</Text>
                   </LinearGradient>
                 </TouchableOpacity>
               </View>
@@ -1767,14 +1768,14 @@ export default function StoriesScreen() {
                   </View>
                   {item.user_id === momentCurrentUid && (
                     <TouchableOpacity onPress={() => Alert.alert('Opciones', '', [
-                      { text: 'Editar', onPress: () => setEditingMoment(item) },
-                      { text: 'Eliminar', style: 'destructive', onPress: () =>
-                        Alert.alert('Eliminar momento', '¿Eliminar este momento permanentemente?', [
-                          { text: 'Cancelar', style: 'cancel' },
-                          { text: 'Eliminar', style: 'destructive', onPress: () => handleDeleteMoment(item.id) },
+                      { text: tr('edit'), onPress: () => setEditingMoment(item) },
+                      { text: tr('delete'), style: 'destructive', onPress: () =>
+                        Alert.alert(tr('xtEliminarMomento'), '¿Eliminar este momento permanentemente?', [
+                          { text: tr('cancel'), style: 'cancel' },
+                          { text: tr('delete'), style: 'destructive', onPress: () => handleDeleteMoment(item.id) },
                         ])
                       },
-                      { text: 'Cancelar', style: 'cancel' },
+                      { text: tr('cancel'), style: 'cancel' },
                     ])}>
                       <MIcon name="more-vert" size={18} color={C.textTertiary} />
                     </TouchableOpacity>
@@ -1843,7 +1844,7 @@ export default function StoriesScreen() {
                   <View style={[mps.commentInput, { backgroundColor: C.bgSecondary, borderTopColor: C.borderLight }]}>
                     <TextInput
                       style={[mps.commentInputText, { color: C.textPrimary }]}
-                      placeholder="Escribe un comentario..."
+                      placeholder={tr('xtEscribeUnComentario')}
                       placeholderTextColor={C.textTertiary}
                       value={commentText}
                       onChangeText={setCommentText}
@@ -1867,9 +1868,9 @@ export default function StoriesScreen() {
         <Pressable style={st.menuBackdrop} onPress={() => setMyStoryMenu(false)}>
           <BlurView intensity={20} tint={isDark ? 'dark' : 'light'} style={[st.menuCard, { borderColor: C.borderLight }]}>
             {([
-              { icon: 'image'      as const, color: '#a855f7', label: 'Subir foto/video', onPress: () => { setShowStoryCreator(true); setMyStoryMenu(false); } },
-              { icon: 'add-circle' as const, color: BRAND,     label: 'Anadir estado',   onPress: () => { setShowStoryCreator(true); setMyStoryMenu(false); } },
-              { icon: 'visibility' as const, color: BRAND2,    label: 'Ver mi estado',   onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
+              { icon: 'image'      as const, color: '#a855f7', label: tr('xtSubirFotoVideo'), onPress: () => { setShowStoryCreator(true); setMyStoryMenu(false); } },
+              { icon: 'add-circle' as const, color: BRAND,     label: tr('xtAnadirEstado'),   onPress: () => { setShowStoryCreator(true); setMyStoryMenu(false); } },
+              { icon: 'visibility' as const, color: BRAND2,    label: tr('xtVerMiEstado'),   onPress: () => { if (myStories.length) setViewingGroup(0); setMyStoryMenu(false); } },
             ] as const).map((item, idx, arr) => (
               <TouchableOpacity
                 key={item.label}
@@ -1892,12 +1893,12 @@ export default function StoriesScreen() {
                 onPress={() => { setMyStoryMenu(false); setShowStoriesManager(true); }}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel="Gestionar mis estados"
+                accessibilityLabel={tr('xtGestionarMisEstados')}
               >
                 <View style={[st.menuIconWrap, { backgroundColor: BRAND2 + '22' }]}>
                   <MIcon name="edit" size={18} color={BRAND2} />
                 </View>
-                <Text style={[st.menuItemText, { color: C.textPrimary }]}>Gestionar mis estados</Text>
+                <Text style={[st.menuItemText, { color: C.textPrimary }]}>{tr('xtGestionarMisEstados')}</Text>
                 <MIcon name="chevron-right" size={14} color={C.border} />
               </TouchableOpacity>
             )}
@@ -1907,12 +1908,12 @@ export default function StoriesScreen() {
                 onPress={() => { deleteStory(myGroup.storyId); setMyStoryMenu(false); }}
                 activeOpacity={0.75}
                 accessibilityRole="button"
-                accessibilityLabel="Eliminar mi estado"
+                accessibilityLabel={tr('xtEliminarMiEstado')}
               >
                 <View style={[st.menuIconWrap, { backgroundColor: '#ef444422' }]}>
                   <MIcon name="delete" size={18} color="#ef4444" />
                 </View>
-                <Text style={[st.menuItemText, { color: '#ef4444' }]}>Eliminar todo</Text>
+                <Text style={[st.menuItemText, { color: '#ef4444' }]}>{tr('xtEliminarTodo')}</Text>
                 <MIcon name="chevron-right" size={14} color={C.border} />
               </TouchableOpacity>
             )}
@@ -1947,7 +1948,7 @@ export default function StoriesScreen() {
           <StoryMusicBadge music={storyMusic} />
           <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
             <TouchableOpacity style={st.musicPublishBtn} onPress={() => addStory()}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>Publicar con musica</Text>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 13 }}>{tr('xtPublicarConMusica')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={[st.musicCancelBtn, { backgroundColor: C.bgTertiary }]} onPress={() => setStoryMusic(null)}>
               <MIcon name="close" size={16} color={C.textPrimary} />
@@ -2014,7 +2015,7 @@ export default function StoriesScreen() {
               } catch {}
             }
           } catch {
-            Alert.alert('Error', 'No se pudo publicar el estado');
+            Alert.alert(tr('error'), 'No se pudo publicar el estado');
           } finally {
             setUploading(false);
           }
@@ -2113,7 +2114,7 @@ function MomentCreateModal({
 
   const handlePickImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Sin permiso para galeria'); return; }
+    if (status !== 'granted') { Alert.alert(tr('xtSinPermisoParaGaleria')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -2131,7 +2132,7 @@ function MomentCreateModal({
 
   const handleCreate = async () => {
     if (!text.trim() && images.length === 0 && videos.length === 0) {
-      Alert.alert('Escribe algo o añade una foto/video'); return;
+      Alert.alert(tr('stoWriteOrAdd')); return;
     }
     setCreating(true);
     if (images.length > 0) setUploadingImages(true);
@@ -2154,7 +2155,7 @@ function MomentCreateModal({
           <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
             <MIcon name="close" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Nuevo momento</Text>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>{tr('xtNuevoMomento')}</Text>
           <TouchableOpacity onPress={handleCreate} disabled={creating}
             style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16 }}>
             {creating
@@ -2162,13 +2163,13 @@ function MomentCreateModal({
                   <ActivityIndicator color="#fff" size="small" />
                   <Text style={{ color: '#fff', fontSize: 12 }}>{uploadLabel}</Text>
                 </View>
-              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Publicar</Text>}
+              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{tr('xtPublicar')}</Text>}
           </TouchableOpacity>
         </LinearGradient>
         <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
           <TextInput
             style={{ fontSize: 16, minHeight: 120, textAlignVertical: 'top', borderRadius: 10, borderWidth: 1, borderColor: C.borderLight, padding: 12, lineHeight: 22, color: C.textPrimary }}
-            placeholder="Que esta pasando?"
+            placeholder={tr('xtQueEstaPasando2')}
             placeholderTextColor={C.textTertiary}
             value={text}
             onChangeText={setText}
@@ -2207,7 +2208,7 @@ function MomentCreateModal({
               onPress={handlePickImage}
             >
               <MIcon name="image" size={24} color={C.textTertiary} />
-              <Text style={{ fontSize: 15, color: C.textTertiary }}>Añadir fotos</Text>
+              <Text style={{ fontSize: 15, color: C.textTertiary }}>{tr('xtAnadirFotos')}</Text>
             </TouchableOpacity>
           )}
 
@@ -2235,7 +2236,7 @@ function MomentCreateModal({
               onPress={handlePickVideo}
             >
               <MIcon name="videocam" size={24} color={C.textTertiary} />
-              <Text style={{ fontSize: 15, color: C.textTertiary }}>Añadir video</Text>
+              <Text style={{ fontSize: 15, color: C.textTertiary }}>{tr('chtAddVideo')}</Text>
             </TouchableOpacity>
           )}
         </ScrollView>
@@ -2322,24 +2323,24 @@ function MyStoriesManagerModal({
       setEditCaption(null);
       onRefresh();
     } catch {
-      Alert.alert('Error', 'No se pudo guardar el texto');
+      Alert.alert(tr('error'), 'No se pudo guardar el texto');
     } finally {
       setSavingCaption(false);
     }
   };
 
   const handleDeleteStory = (storyId: string) => {
-    Alert.alert('Eliminar estado', '¿Eliminar este estado completo?', [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(tr('xtEliminarEstado'), '¿Eliminar este estado completo?', [
+      { text: tr('cancel'), style: 'cancel' },
       {
-        text: 'Eliminar', style: 'destructive',
+        text: tr('delete'), style: 'destructive',
         onPress: async () => {
           // Eliminar localmente de inmediato
           setLocalStories(prev => prev.filter(s => s.id !== storyId));
           try {
             await storiesAPI.delete(storyId);
           } catch {
-            Alert.alert('Error', 'No se pudo eliminar. Intenta de nuevo.');
+            Alert.alert(tr('error'), tr('xtNoSePudoEliminarIntentaDeNuevo'));
           } finally {
             onRefresh();
           }
@@ -2350,11 +2351,11 @@ function MyStoriesManagerModal({
 
   const handleDeleteMedia = (storyId: string) => {
     Alert.alert(
-      'Eliminar medio',
-      'No es posible eliminar solo este medio. ¿Deseas eliminar el estado completo?',
+      tr('xtEliminarMedio'),
+      tr('xtNoEsPosibleEliminarSoloEsteMedioDeseasEliminarElEs'),
       [
-        { text: 'Cancelar', style: 'cancel' },
-        { text: 'Eliminar estado', style: 'destructive', onPress: () => handleDeleteStory(storyId) },
+        { text: tr('cancel'), style: 'cancel' },
+        { text: tr('xtEliminarEstado'), style: 'destructive', onPress: () => handleDeleteStory(storyId) },
       ]
     );
   };
@@ -2377,7 +2378,7 @@ function MyStoriesManagerModal({
           >
             <MIcon name="close" size={20} color="#fff" />
           </TouchableOpacity>
-          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Mis estados</Text>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>{tr('xtMisEstados')}</Text>
           <Text style={{ color: 'rgba(255,255,255,0.75)', fontSize: 13, fontWeight: '600' }}>
             {localStories.length} {localStories.length === 1 ? 'estado' : 'estados'}
           </Text>
@@ -2386,7 +2387,7 @@ function MyStoriesManagerModal({
         {localStories.length === 0 ? (
           <View style={{ flex: 1, alignItems: 'center', justifyContent: 'center', gap: 12 }}>
             <MIcon name="auto-awesome" size={52} color={C.border} />
-            <Text style={{ color: C.textSecondary, fontSize: 15, fontWeight: '600' }}>Sin estados publicados</Text>
+            <Text style={{ color: C.textSecondary, fontSize: 15, fontWeight: '600' }}>{tr('xtSinEstadosPublicados')}</Text>
           </View>
         ) : (
           <ScrollView
@@ -2455,7 +2456,7 @@ function MyStoriesManagerModal({
                       activeOpacity={0.8}
                     >
                       <MIcon name="edit" size={14} color={BRAND2} />
-                      <Text style={{ color: BRAND2, fontSize: 12, fontWeight: '700' }}>Editar texto</Text>
+                      <Text style={{ color: BRAND2, fontSize: 12, fontWeight: '700' }}>{tr('xtEditarTexto')}</Text>
                     </TouchableOpacity>
                     <TouchableOpacity
                       style={[mgst.actionBtn, { backgroundColor: '#ef444418', borderColor: '#ef444444', borderWidth: 1 }]}
@@ -2463,7 +2464,7 @@ function MyStoriesManagerModal({
                       activeOpacity={0.8}
                     >
                       <MIcon name="delete" size={14} color="#ef4444" />
-                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>Eliminar</Text>
+                      <Text style={{ color: '#ef4444', fontSize: 12, fontWeight: '700' }}>{tr('delete')}</Text>
                     </TouchableOpacity>
                   </View>
                 </View>
@@ -2484,12 +2485,12 @@ function MyStoriesManagerModal({
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
           >
             <View style={[mgst.editSheet, { backgroundColor: C.bgPrimary }]}>
-              <Text style={[mgst.editTitle, { color: C.textPrimary }]}>Editar texto del estado</Text>
+              <Text style={[mgst.editTitle, { color: C.textPrimary }]}>{tr('xtEditarTextoDelEstado')}</Text>
               <TextInput
                 style={[mgst.editInput, { color: C.textPrimary, borderColor: C.borderLight, backgroundColor: C.bgSecondary }]}
                 value={editCaption?.caption ?? ''}
                 onChangeText={t => setEditCaption(prev => prev ? { ...prev, caption: t } : null)}
-                placeholder="Escribe algo..."
+                placeholder={tr('xtEscribeAlgo')}
                 placeholderTextColor={C.textTertiary}
                 multiline
                 maxLength={300}
@@ -2500,7 +2501,7 @@ function MyStoriesManagerModal({
                   style={[mgst.editBtn, { backgroundColor: C.bgTertiary, flex: 1 }]}
                   onPress={() => setEditCaption(null)}
                 >
-                  <Text style={{ color: C.textSecondary, fontWeight: '600', fontSize: 14 }}>Cancelar</Text>
+                  <Text style={{ color: C.textSecondary, fontWeight: '600', fontSize: 14 }}>{tr('cancel')}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
                   style={[mgst.editBtn, { backgroundColor: BRAND, flex: 2 }]}
@@ -2509,7 +2510,7 @@ function MyStoriesManagerModal({
                 >
                   {savingCaption
                     ? <ActivityIndicator color="#fff" size="small" />
-                    : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Guardar</Text>
+                    : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{tr('chtSaveAction')}</Text>
                   }
                 </TouchableOpacity>
               </View>
@@ -2637,7 +2638,7 @@ function StoryCreatorModal({
 
   const pickImages = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Sin permiso para galería'); return; }
+    if (status !== 'granted') { Alert.alert(tr('xtSinPermisoParaGaleria2')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -2659,7 +2660,7 @@ function StoryCreatorModal({
 
   const handlePublish = async () => {
     if (!caption.trim() && images.length === 0 && videos.length === 0) {
-      Alert.alert('Añade algo', 'Escribe un texto o añade una foto/video'); return;
+      Alert.alert(tr('stoAddSomething'), tr('stoCaptionOrMedia')); return;
     }
     setPublishing(true);
     try { await onPublish(caption.trim(), images, videos); }
@@ -2678,12 +2679,12 @@ function StoryCreatorModal({
             style={{ width: 38, height: 38, borderRadius: 19, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center' }}>
             <MIcon name="close" size={20} color="#fff" />
           </TouchableOpacity>
-          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Nuevo estado</Text>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>{tr('xtNuevoEstado')}</Text>
           <TouchableOpacity onPress={handlePublish} disabled={publishing || !hasContent}
             style={{ paddingHorizontal: 18, paddingVertical: 8, backgroundColor: hasContent ? 'rgba(255,255,255,0.25)' : 'rgba(255,255,255,0.1)', borderRadius: 18 }}>
             {publishing
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, opacity: hasContent ? 1 : 0.5 }}>Publicar</Text>}
+              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14, opacity: hasContent ? 1 : 0.5 }}>{tr('xtPublicar')}</Text>}
           </TouchableOpacity>
         </LinearGradient>
 
@@ -2692,7 +2693,7 @@ function StoryCreatorModal({
           {/* Texto / Caption */}
           <TextInput
             style={{ fontSize: 16, minHeight: 90, textAlignVertical: 'top', borderRadius: 12, borderWidth: 1, borderColor: C.borderLight, padding: 14, lineHeight: 23, color: C.textPrimary, backgroundColor: C.bgSecondary, marginBottom: 6 }}
-            placeholder="¿Qué quieres compartir?"
+            placeholder={tr('xtQueQuieresCompartir')}
             placeholderTextColor={C.textTertiary}
             value={caption}
             onChangeText={setCaption}
@@ -2711,12 +2712,12 @@ function StoryCreatorModal({
             <TouchableOpacity onPress={takePhoto}
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12, backgroundColor: '#00c8a011', borderWidth: 1.5, borderColor: '#00c8a044' }}>
               <MIcon name="photo-camera" size={20} color={BRAND} />
-              <Text style={{ color: BRAND, fontWeight: '700', fontSize: 13 }}>Cámara</Text>
+              <Text style={{ color: BRAND, fontWeight: '700', fontSize: 13 }}>{tr('chtCamera')}</Text>
             </TouchableOpacity>
             <TouchableOpacity onPress={pickVideos}
               style={{ flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, borderRadius: 12, paddingVertical: 12, backgroundColor: '#f9731611', borderWidth: 1.5, borderColor: '#f9731644' }}>
               <MIcon name="videocam" size={20} color="#f97316" />
-              <Text style={{ color: '#f97316', fontWeight: '700', fontSize: 13 }}>Video</Text>
+              <Text style={{ color: '#f97316', fontWeight: '700', fontSize: 13 }}>{tr('liaAttachVideo')}</Text>
             </TouchableOpacity>
           </View>
 
@@ -2817,9 +2818,9 @@ interface LiveStreamModalProps {
 const LIVE_EFFECTS = [
   { id: 'none',      label: 'Normal',    icon: 'normal'    },
   { id: 'beauty',    label: 'Beauty',    icon: 'beauty'    },
-  { id: 'vivid',     label: 'Vívido',    icon: 'vivid'     },
+  { id: 'vivid',     get label() { return tr('xtVivido'); },    icon: 'vivid'     },
   { id: 'dramatic',  label: 'Drama',     icon: 'dramatic'  },
-  { id: 'neon',      label: 'Neón',      icon: 'neon'      },
+  { id: 'neon',      get label() { return tr('xtNeon'); },      icon: 'neon'      },
   { id: 'retro',     label: 'Retro',     icon: 'retro'     },
   { id: 'blur',      label: 'Blur BG',   icon: 'blur'      },
   { id: 'bw',        label: 'B&W',       icon: 'bw'        },
@@ -2950,7 +2951,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       // También intentar con VisionCamera permissions
       const ok = await requestLivePerms();
       if (!ok && !hasCam && !hasMic) {
-        Alert.alert('Permisos', 'Necesitas cámara y micrófono para el live');
+        Alert.alert(tr('stoPermissions'), tr('stoLivePermBody'));
         return;
       }
     }
@@ -2960,7 +2961,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       const res   = await fetch(`${BASE}/api/live/start`, {
         method: 'POST',
         headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title: 'En vivo' }),
+        body: JSON.stringify({ title: tr('xtEnVivo') }),
       });
       let id = `live-${Date.now()}`;
       if (res.ok) { const d = await res.json(); id = d.liveId || id; }
@@ -2971,7 +2972,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
       timerRef2.current = setInterval(() => setDuration(d => d + 1), 1000);
 
       // Notificar por push a todos los contactos
-      notifyLiveStarted({ liveId: id, hostName: hostName || 'Tu contacto' }).catch(() => {});
+      notifyLiveStarted({ liveId: id, hostName: hostName || tr('xtTuContacto') }).catch(() => {});
 
       // Registrar en Supabase para que aparezca en tiempo real en la lista de lives
       void supabase.from('live_streams').upsert({
@@ -3007,7 +3008,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         })
         .subscribe();
       channelRef2.current = ch;    } catch {
-      Alert.alert('Error', 'No se pudo iniciar el live');
+      Alert.alert(tr('error'), 'No se pudo iniciar el live');
     }
   }, [camPerm, micPerm, requestCamPerm, requestMicPerm, hostName]);
 
@@ -3077,8 +3078,8 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
               </Svg>
             </View>
 
-            <Text style={lv.preLiveTitle}>En vivo</Text>
-            <Text style={lv.preLiveSub}>Tus contactos recibirán una notificación al instante</Text>
+            <Text style={lv.preLiveTitle}>{tr('xtEnVivo')}</Text>
+            <Text style={lv.preLiveSub}>{tr('stoPreLiveNotifSub')}</Text>
 
             {/* Features — sin fondo, solo línea separadora */}
             <View style={lv.preLiveFeatures}>
@@ -3086,12 +3087,12 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
                 {
                   path: 'M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z M12 9a3 3 0 1 0 0 6 3 3 0 0 0 0-6z',
                   label: 'Espectadores en tiempo real',
-                  sub: 'Mira quién está viendo',
+                  sub: tr('xtMiraQuienEstaViendo'),
                 },
                 {
                   path: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z',
-                  label: 'Comentarios en vivo',
-                  sub: 'Interactúa con tu audiencia',
+                  label: tr('xtComentariosEnVivo'),
+                  sub: tr('xtInteractuaConTuAudiencia'),
                 },
                 {
                   path: 'M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z',
@@ -3120,8 +3121,8 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         <View style={[lv.header, { paddingTop: insets.top + 10 }]}>
           <TouchableOpacity style={lv.closeBtn}
             onPress={() => isLive
-              ? Alert.alert('Terminar', '¿Terminar la transmisión?', [
-                  { text: 'Cancelar', style: 'cancel' },
+              ? Alert.alert(tr('stoEnd'), tr('stoEndLiveConfirm'), [
+                  { text: tr('cancel'), style: 'cancel' },
                   { text: 'Terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
                 ])
               : onClose()
@@ -3138,7 +3139,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
                 <Text style={lv.liveBadgeText}>EN VIVO  {fmt(duration)}</Text>
               </View>
             ) : (
-              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17, letterSpacing: 0.3 }}>Transmisión en vivo</Text>
+              <Text style={{ color: '#fff', fontWeight: '800', fontSize: 17, letterSpacing: 0.3 }}>{tr('stoLiveTitle')}</Text>
             )}
           </View>
 
@@ -3250,7 +3251,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
                 style={lv.input}
                 value={commentDraft}
                 onChangeText={setCommentDraft}
-                placeholder="Añade un comentario..."
+                placeholder={tr('stoAddComment')}
                 placeholderTextColor="rgba(255,255,255,0.35)"
                 returnKeyType="send"
                 onSubmitEditing={sendComment}
@@ -3273,7 +3274,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
                 <Path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/>
                 <Path d="M13.73 21a2 2 0 0 1-3.46 0"/>
               </Svg>
-              <Text style={lv.startHint}>Tus contactos recibirán una notificación</Text>
+              <Text style={lv.startHint}>{tr('stoContactsNotified')}</Text>
             </View>
             <Animated.View style={{ width: '100%', transform: [{ scale: startBtnAnim }] }}>
               <TouchableOpacity style={lv.startBtn} onPress={startLive} activeOpacity={0.9}>
@@ -3282,12 +3283,12 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
                     <Circle cx="12" cy="12" r="2" fill="#fff" stroke="none"/>
                     <Path d="M5.636 5.636a9 9 0 0 0 0 12.728M18.364 5.636a9 9 0 0 1 0 12.728"/>
                   </Svg>
-                  <Text style={lv.startBtnText}>Iniciar en vivo</Text>
+                  <Text style={lv.startBtnText}>{tr('xtIniciarEnVivo')}</Text>
                 </View>
               </TouchableOpacity>
             </Animated.View>
             <TouchableOpacity onPress={onClose} style={lv.cancelBtn}>
-              <Text style={lv.cancelBtnText}>Cancelar</Text>
+              <Text style={lv.cancelBtnText}>{tr('cancel')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -3296,9 +3297,9 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
         {isLive && (
           <View style={[lv.stopWrap, { paddingBottom: insets.bottom + 40 }]}>
             <TouchableOpacity style={lv.stopBtn}
-              onPress={() => Alert.alert('Terminar live', '¿Seguro que quieres terminar?', [
-                { text: 'No', style: 'cancel' },
-                { text: 'Sí, terminar', style: 'destructive', onPress: () => { stopLive(); onClose(); } },
+              onPress={() => Alert.alert(tr('stoEndLive'), tr('stoEndLiveSure'), [
+                { text: tr('no'), style: 'cancel' },
+                { text: tr('xtSiTerminar'), style: 'destructive', onPress: () => { stopLive(); onClose(); } },
               ])}>
               <LinearGradient colors={['rgba(255,59,48,0.9)', 'rgba(255,30,30,0.95)']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={lv.stopBtnGrad}>
@@ -3442,18 +3443,18 @@ function LiveViewerModal({ visible, liveId, viewerName, viewerAvatar, onClose }:
                 <Path d="M8.464 8.464a5 5 0 0 0 0 7.072M15.536 8.464a5 5 0 0 1 0 7.072"/>
               </Svg>
             </View>
-            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>Directo en curso</Text>
+            <Text style={{ color: '#fff', fontSize: 18, fontWeight: '700' }}>{tr('xtDirectoEnCurso')}</Text>
             <Text style={{ color: 'rgba(255,255,255,0.45)', fontSize: 12, marginTop: 6 }}>
-              {joined ? `${viewers.length + 1} espectadores` : 'Conectando...'}
+              {joined ? `${viewers.length + 1} ${tr('xtEspectadores')}` : tr('xtConectando')}
             </Text>
           </View>
         )}
 
         {liveEnded && (
           <View style={{ position: 'absolute', alignSelf: 'center', top: '35%', alignItems: 'center' }}>
-            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800' }}>El directo ha terminado</Text>
+            <Text style={{ color: '#fff', fontSize: 22, fontWeight: '800' }}>{tr('xtElDirectoHaTerminado')}</Text>
             <TouchableOpacity onPress={onClose} style={{ marginTop: 20, paddingHorizontal: 28, paddingVertical: 12, backgroundColor: BRAND, borderRadius: 20 }}>
-              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>Cerrar</Text>
+              <Text style={{ color: '#fff', fontWeight: '700', fontSize: 15 }}>{tr('close')}</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -3471,7 +3472,7 @@ function LiveViewerModal({ visible, liveId, viewerName, viewerAvatar, onClose }:
           <View style={{ flex: 1, alignItems: 'center' }}>
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: '#ff3b30', paddingHorizontal: 16, paddingVertical: 7, borderRadius: 20 }}>
               <View style={{ width: 8, height: 8, borderRadius: 4, backgroundColor: '#fff' }} />
-              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 1 }}>EN VIVO</Text>
+              <Text style={{ color: '#fff', fontWeight: '900', fontSize: 12, letterSpacing: 1 }}>{tr('chtLiveBadge')}</Text>
             </View>
           </View>
           <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.55)', paddingHorizontal: 12, paddingVertical: 7, borderRadius: 18, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' }}>
@@ -3535,7 +3536,7 @@ function LiveViewerModal({ visible, liveId, viewerName, viewerAvatar, onClose }:
               style={{ flex: 1, color: '#fff', fontSize: 14 }}
               value={commentDraft}
               onChangeText={setCommentDraft}
-              placeholder="Añade un comentario..."
+              placeholder={tr('stoAddComment')}
               placeholderTextColor="rgba(255,255,255,0.35)"
               returnKeyType="send"
               onSubmitEditing={sendComment}
@@ -3585,7 +3586,7 @@ function MomentEditModal({
 
   const handleAddImage = async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-    if (status !== 'granted') { Alert.alert('Sin permiso para galería'); return; }
+    if (status !== 'granted') { Alert.alert(tr('xtSinPermisoParaGaleria2')); return; }
     const result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsMultipleSelection: true,
@@ -3621,12 +3622,12 @@ function MomentEditModal({
           <TouchableOpacity onPress={onClose} style={{ width: 40, height: 40, alignItems: 'center', justifyContent: 'center' }}>
             <MIcon name="close" size={22} color="#fff" />
           </TouchableOpacity>
-          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>Editar momento</Text>
+          <Text style={{ flex: 1, fontSize: 17, fontWeight: '700', color: '#fff' }}>{tr('xtEditarMomento')}</Text>
           <TouchableOpacity onPress={handleSave} disabled={saving}
             style={{ paddingHorizontal: 14, paddingVertical: 6, backgroundColor: 'rgba(255,255,255,0.2)', borderRadius: 16 }}>
             {saving
               ? <ActivityIndicator color="#fff" size="small" />
-              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>Guardar</Text>}
+              : <Text style={{ color: '#fff', fontWeight: '700', fontSize: 14 }}>{tr('chtSaveAction')}</Text>}
           </TouchableOpacity>
         </LinearGradient>
 
@@ -3634,7 +3635,7 @@ function MomentEditModal({
           {/* Texto */}
           <TextInput
             style={{ fontSize: 16, minHeight: 100, textAlignVertical: 'top', borderRadius: 10, borderWidth: 1, borderColor: C.borderLight, padding: 12, lineHeight: 22, color: C.textPrimary }}
-            placeholder="¿Qué está pasando?"
+            placeholder={tr('xtQueEstaPasando')}
             placeholderTextColor={C.textTertiary}
             value={text}
             onChangeText={setText}

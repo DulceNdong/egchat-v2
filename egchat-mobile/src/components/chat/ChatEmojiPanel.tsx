@@ -7,6 +7,7 @@ import Svg, { Circle, Line } from 'react-native-svg';
 import {
   EMOJI_CATEGORIES, CHAT_STICKERS, CATEGORY_KEYS, EmojiCategoryKey,
 } from '../../data/emojiCategories';
+import { useTranslation } from '../../context/LanguageContext';
 
 const RECENT_KEY = 'egchat_recent_emojis';
 const CUSTOM_KEY = 'egchat_custom_emojis';
@@ -18,6 +19,7 @@ interface Props {
 }
 
 export function ChatEmojiPanel({ onPick, onSendSticker }: Props) {
+  const { t } = useTranslation();
   const [category, setCategory] = useState<EmojiCategoryKey>('recientes');
   const [search, setSearch] = useState('');
   const [recent, setRecent] = useState<string[]>([...EMOJI_CATEGORIES.recientes.emojis]);
@@ -54,12 +56,12 @@ export function ChatEmojiPanel({ onPick, onSendSticker }: Props) {
   const addCustomEmoji = useCallback(() => {
     if (Platform.OS === 'ios' && Alert.prompt) {
       Alert.prompt(
-        'Emoji personalizado',
-        'Pega o escribe un emoji',
+        t('chtCustomEmojiTitle'),
+        t('chtCustomEmojiPrompt'),
         [
-          { text: 'Cancelar', style: 'cancel' },
+          { text: t('cancel'), style: 'cancel' },
           {
-            text: 'Añadir',
+            text: t('add'),
             onPress: (value?: string) => {
               const em = value?.trim();
               if (!em) return;
@@ -72,14 +74,14 @@ export function ChatEmojiPanel({ onPick, onSendSticker }: Props) {
       return;
     }
     setShowAddCustom(true);
-  }, [custom, saveCustom]);
+  }, [custom, saveCustom, t]);
 
   const removeCustomEmoji = useCallback((emoji: string) => {
-    Alert.alert('Quitar emoji', '¿Eliminar de tus favoritos?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Quitar', style: 'destructive', onPress: () => saveCustom(custom.filter(e => e !== emoji)) },
+    Alert.alert(t('chtRemoveEmojiTitle'), t('chtRemoveEmojiBody'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('remove'), style: 'destructive', onPress: () => saveCustom(custom.filter(e => e !== emoji)) },
     ]);
-  }, [custom, saveCustom]);
+  }, [custom, saveCustom, t]);
 
   const saveRecent = useCallback(async (emoji: string) => {
     setRecent(prev => {
@@ -113,12 +115,12 @@ export function ChatEmojiPanel({ onPick, onSendSticker }: Props) {
             style={s.addCustomInput}
             value={customDraft}
             onChangeText={setCustomDraft}
-            placeholder="Emoji..."
+            placeholder={t('chtEmojiInputPlaceholder')}
             placeholderTextColor="#9ca3af"
             autoFocus
           />
           <TouchableOpacity onPress={commitCustomEmoji} style={s.addCustomSave}>
-            <Text style={s.addCustomSaveText}>OK</Text>
+            <Text style={s.addCustomSaveText}>{t('ok')}</Text>
           </TouchableOpacity>
           <TouchableOpacity onPress={() => { setShowAddCustom(false); setCustomDraft(''); }}>
             <Text style={s.clearSearch}>✕</Text>
@@ -136,7 +138,7 @@ export function ChatEmojiPanel({ onPick, onSendSticker }: Props) {
             style={s.searchInput}
             value={search}
             onChangeText={setSearch}
-            placeholder="Buscar emoji..."
+            placeholder={t('chtSearchEmojiPlaceholder')}
             placeholderTextColor="#9ca3af"
           />
           {!!search && (
@@ -168,7 +170,7 @@ export function ChatEmojiPanel({ onPick, onSendSticker }: Props) {
               <Text style={s.addCustomIcon}>+</Text>
             </TouchableOpacity>
             {custom.length === 0 ? (
-              <Text style={s.customHint}>Mantén pulsado para quitar · Toca + para añadir</Text>
+              <Text style={s.customHint}>{t('chtCustomEmojiHint')}</Text>
             ) : null}
             {custom.map((em, i) => (
               <TouchableOpacity

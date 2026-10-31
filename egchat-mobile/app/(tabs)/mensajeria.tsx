@@ -54,11 +54,12 @@ import {
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { useFont } from '../../src/context/FontContext';
-import { useLanguage } from '../../src/context/LanguageContext';
+import { useTranslation } from '../../src/context/LanguageContext';
 import { ChatListSkeleton } from '../../src/components/chat/ChatSkeleton';
 import { CreateGroupModal } from '../../src/components/chat/CreateGroupModal';
 import { syncPhoneContacts } from '../../src/services/contactSync';
 import SessionManager from '../../src/sessionManager';
+import { t as tr } from '../../src/translations';
 
 // ── Tipos ─────────────────────────────────────────────────────────
 interface Chat {
@@ -84,16 +85,20 @@ type ArchiveSubFilter = 'individual' | 'group';
 type GroupSubFilter = 'all' | 'normal' | 'djangue';
 
 // ── Helpers ───────────────────────────────────────────────────────
-const formatTime = (dateStr: string) => {
+const localeForLanguage = (language?: string) =>
+  language === 'fr' ? 'fr-FR' : language === 'en' ? 'en-US' : language === 'pt' ? 'pt-PT' : 'es-ES';
+
+const formatTime = (dateStr: string, language: string, t: (key: string) => string) => {
   if (!dateStr) return '';
+  const locale = localeForLanguage(language);
   const date = new Date(dateStr);
   const now = new Date();
   if (date.toDateString() === now.toDateString())
-    return date.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit' });
   const yesterday = new Date(now);
   yesterday.setDate(yesterday.getDate() - 1);
-  if (date.toDateString() === yesterday.toDateString()) return 'Ayer';
-  return date.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' });
+  if (date.toDateString() === yesterday.toDateString()) return t('msgYesterday');
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short' });
 };
 
 type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio' | 'file' | 'location' | 'contact' | 'call-out' | 'video-call' | null; label: string };
@@ -102,25 +107,25 @@ type LastMsgInfo = { icon: 'phone-missed' | 'money' | 'image' | 'video' | 'audio
 const stripEmojis = (s: string) =>
   s.replace(/[\u{1F000}-\u{1FFFF}\u{2600}-\u{27BF}\u{FE00}-\u{FEFF}\u{1F900}-\u{1F9FF}\u{1FA00}-\u{1FAFF}]/gu, '').trim();
 
-const getLastMessageInfo = (msg?: Chat['last_message']): LastMsgInfo => {
-  if (!msg) return { icon: null, label: 'Sin mensajes' };
+const getLastMessageInfo = (msg: Chat['last_message'] | undefined, t: (key: string) => string): LastMsgInfo => {
+  if (!msg) return { icon: null, label: t('msgNoMessages') };
   const txt = msg.text || '';
-  if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: 'Llamada perdida' };
+  if (txt.includes('Llamada perdida')) return { icon: 'phone-missed', label: t('msgMissedCall') };
   if (txt.includes('VideoLlamada') || txt.includes('Videollamada') || txt.includes('video') && txt.includes('aliente'))
-    return { icon: 'video-call', label: stripEmojis(txt).replace(/videollamada/gi, 'Videollamada') || 'Videollamada saliente' };
+    return { icon: 'video-call', label: stripEmojis(txt).replace(/videollamada/gi, 'Videollamada') || t('msgVideoCallOutgoing') };
   if (txt.includes('Llamada') || txt.toLowerCase().includes('llamada'))
-    return { icon: 'call-out', label: stripEmojis(txt) || 'Llamada' };
-  if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: 'Transferencia' };
-  if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: 'Foto' };
-  if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: 'Video' };
-  if (msg.type === 'audio' || txt.startsWith('🎵')) return { icon: 'audio', label: 'Audio' };
-  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: 'Archivo' };
-  if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: 'Ubicación' };
+    return { icon: 'call-out', label: stripEmojis(txt) || t('msgCall') };
+  if (txt.includes('Transferencia') || txt.includes('💸')) return { icon: 'money', label: t('msgTransfer') };
+  if (msg.type === 'image' || txt.startsWith('📷')) return { icon: 'image', label: t('msgPhoto') };
+  if (msg.type === 'video' || txt.startsWith('🎥')) return { icon: 'video', label: t('msgVideo') };
+  if (msg.type === 'audio' || txt.startsWith('🎵')) return { icon: 'audio', label: t('msgAudio') };
+  if (msg.type === 'file' || txt.startsWith('📄') || txt.startsWith('📁')) return { icon: 'file', label: t('msgFile') };
+  if (msg.type === 'location' || txt.startsWith('📍')) return { icon: 'location', label: t('msgLocation') };
   if (msg.type === 'contact' || txt.startsWith('👤')) {
     const name = stripEmojis(txt).split('\n')[0].trim();
-    return { icon: 'contact', label: name || 'Contacto' };
+    return { icon: 'contact', label: name || t('msgContact') };
   }
-  return { icon: null, label: stripEmojis(txt) || txt || 'Mensaje' };
+  return { icon: null, label: stripEmojis(txt) || txt || t('msgMessage') };
 };
 
 // Icono vectorial limpio para el último mensaje
@@ -238,11 +243,12 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
   chat: Chat; currentUserId: string; onPress?: () => void; onLongPress?: () => void; staticRow?: boolean;
   contentTypes?: ContentType[]; fontScale?: number;
 }) => {
+  const { language, t } = useTranslation();
   const fs = fontScale ?? 1;
   const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
   const rawChatName = chat.type === 'private'
-    ? (getParticipantName(other) || 'Usuario')
-    : (chat.name || 'Grupo');
+    ? (getParticipantName(other) || tr('setUser'))
+    : (chat.name || tr('msgGroup'));
   const isDjangue = chat.type === 'group' && chat.name?.startsWith('💰');
   const chatName = isDjangue ? rawChatName.replace(/^💰\s*/, '') : rawChatName;
   const avatarSrc = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
@@ -255,8 +261,8 @@ const ChatItem = React.memo(({ chat, currentUserId, onPress, onLongPress, static
     if (contentTypes.includes('moment')) return () => router.push(`/moments?userId=${participantId}` as any);
     return undefined;
   }, [chat.type, other, contentTypes]);
-  const msgInfo = getLastMessageInfo(chat.last_message);
-  const time = formatTime(chat.updated_at);
+  const msgInfo = getLastMessageInfo(chat.last_message, t);
+  const time = formatTime(chat.updated_at, language, t);
   const hasUnread = chat.unread_count > 0;
   const msgIconColor = hasUnread ? Colors.accent : Colors.textTertiary;
 
@@ -383,7 +389,7 @@ function MensajeriaScreenInner() {
   const navigation = useNavigation<any>();
   const { isDark } = useThemeContext();
   const { fontScale } = useFont();
-  const { language, translate: t } = useLanguage();
+  const { t } = useTranslation();
   const { saveCache, readCache } = useOffline();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
 
@@ -424,8 +430,8 @@ function MensajeriaScreenInner() {
         for (const chat of chats) {
           const other = chat.participants.find((p: any) => String(p.user_id) !== String(currentUserId));
           const chatName = chat.type === 'private'
-            ? (getParticipantName(other) || 'Usuario')
-            : (chat.name || 'Grupo');
+            ? (getParticipantName(other) || tr('setUser'))
+            : (chat.name || tr('msgGroup'));
           const lastText = chat.last_message?.text || '';
           if (chatName.toLowerCase().includes(q) || lastText.toLowerCase().includes(q)) {
             results.push({ chatId: chat.id, chatName, messageText: lastText, messageTime: '' });
@@ -441,13 +447,13 @@ function MensajeriaScreenInner() {
   useSharedContent((content) => {
     if (content.uri || content.text) {
       (global as any).__egchat_shared_content = content;
-      toast.info('📎 Contenido recibido', 'Selecciona el chat donde enviarlo');
+      toast.info(`📎 ${t('msgContentReceived')}`, t('msgContentReceivedHint'));
     }
   });
 
   const getChatMeta = useCallback((chat: Chat) => {
     const other = chat.participants.find(p => String(p.user_id) !== String(currentUserId));
-    const name = chat.type === 'private' ? (getParticipantName(other) || 'Usuario') : (chat.name || 'Grupo');
+    const name = chat.type === 'private' ? (getParticipantName(other) || tr('setUser')) : (chat.name || tr('msgGroup'));
     const avatar = chat.type === 'private' ? getParticipantAvatar(other) : chat.avatar_url;
     return { name, avatar, other };
   }, [currentUserId]);
@@ -502,8 +508,8 @@ function MensajeriaScreenInner() {
         HomeWidget.update(sortedChats.map(c => {
           const other = c.participants.find((p: any) => String(p.user_id) !== String(uid));
           const name = c.type === 'private'
-            ? (other?.full_name || other?.users?.full_name || 'Usuario')
-            : (c.name || 'Grupo');
+            ? (other?.full_name || other?.users?.full_name || tr('setUser'))
+            : (c.name || tr('msgGroup'));
           const avatar = c.type === 'private'
             ? (other?.avatar_url || other?.users?.avatar_url || '')
             : (c.avatar_url || '');
@@ -521,13 +527,13 @@ function MensajeriaScreenInner() {
         setChats(sortChatsByActivity(cachedChats));
         setLoadError('');
       } else if (msg.includes('abort') || msg.includes('timeout') || msg.includes('network')) {
-        setLoadError('No se pudo conectar con el servidor. Desliza para recargar.');
+        setLoadError(t('msgServerUnreachable'));
       } else {
-        setLoadError('No se pudieron cargar los chats. Desliza para reintentar.');
+        setLoadError(t('msgChatsLoadFailed'));
       }
     }
     finally { setLoading(false); setRefreshing(false); }
-  }, [readCache, saveCache, currentUserId]);
+  }, [readCache, saveCache, currentUserId, t]);
   // Actualizar ref para que debouncedLoadChats siempre tenga la versión más reciente
   loadChatsRef.current = loadChats;
 
@@ -665,41 +671,41 @@ function MensajeriaScreenInner() {
     await saveArchivedChats(nextArchived);
     setArchivedChats(nextArchived);
     setChats(prev => prev.filter(c => c.id !== chat.id));
-    toast.info('Chat archivado');
-  }, [archivedChats, getChatMeta]);
+    toast.info(t('msgChatArchived'));
+  }, [archivedChats, getChatMeta, t]);
 
   const unarchiveChat = useCallback(async (chat: ArchivedChat) => {
     const nextArchived = archivedChats.filter(c => c.id !== chat.id);
     await saveArchivedChats(nextArchived);
     setArchivedChats(nextArchived);
     await loadChats(currentUserId);
-    toast.info('Chat desarchivado');
-  }, [archivedChats, loadChats]);
+    toast.info(t('msgChatUnarchived'));
+  }, [archivedChats, loadChats, t]);
 
   const deleteChatLocal = useCallback((chatId: string) => {
     Alert.alert(
       t('deleteChat'),
-      'Se eliminará el chat, todos los mensajes y el contacto asociado. Esta acción no se puede deshacer.',
+      t('msgDeleteChatConfirm'),
       [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Eliminar', style: 'destructive',
+          text: t('delete'), style: 'destructive',
           onPress: async () => {
             // Quitar de la lista inmediatamente (optimista)
             setChats(prev => prev.filter(c => c.id !== chatId));
             try {
               await chatAPI.deleteChat(chatId);
-              toast.success('Chat eliminado');
+              toast.success(t('msgChatDeleted'));
             } catch {
               // Si falla el servidor, recargar la lista real
               loadChats();
-              toast.error('No se pudo eliminar el chat');
+              toast.error(t('msgDeleteChatFailed'));
             }
           },
         },
       ]
     );
-  }, [loadChats]);
+  }, [loadChats, t]);
 
   const openFavoriteContact = useCallback(async (contact: any) => {
     try {
@@ -717,12 +723,12 @@ function MensajeriaScreenInner() {
         await loadChats();
         openChat(chat);
       } else {
-        toast.error('No se pudo abrir el chat');
+        toast.error(t('msgOpenChatFailed'));
       }
     } catch {
-      toast.error('No se pudo abrir el chat');
+      toast.error(t('msgOpenChatFailed'));
     }
-  }, [chats, loadChats, openChat]);
+  }, [chats, loadChats, openChat, t]);
 
   const handleChatLongPress = useCallback(async (chat: Chat) => {
     const { name } = getChatMeta(chat);
@@ -731,7 +737,7 @@ function MensajeriaScreenInner() {
       Alert.alert(name, isFav ? t('removeFromFavoriteGroups') : t('addToFavoriteGroups'), [
         { text: t('cancel'), style: 'cancel' },
         {
-          text: isFav ? 'Quitar' : 'Favorito',
+          text: isFav ? t('remove') : t('msgFavorite'),
           onPress: async () => {
             const next = await toggleFavoriteGroup(chat.id);
             setFavoriteGroupIds(next);
@@ -744,10 +750,10 @@ function MensajeriaScreenInner() {
     const contact = favoriteContacts.find(
       (c: any) => c.contact_user_id === other?.user_id || c.user?.id === other?.user_id,
     );
-    Alert.alert(name, 'Opciones', [
+    Alert.alert(name, t('moreOptions'), [
       { text: t('cancel'), style: 'cancel' },
       {
-        text: contact ? 'Quitar favorito' : 'Marcar favorito',
+        text: contact ? t('msgRemoveFavorite') : t('msgMarkFavorite'),
         onPress: async () => {
           try {
             let list = await contactsAPI.getAll();
@@ -766,7 +772,7 @@ function MensajeriaScreenInner() {
         },
       },
     ]);
-  }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId]);
+  }, [favoriteContacts, favoriteGroupIds, getChatMeta, currentUserId, t]);
 
   const favoriteGroupChats = useMemo(
     () => chats.filter(c => c.type === 'group' && favoriteGroupIds.includes(c.id)),
@@ -789,7 +795,7 @@ function MensajeriaScreenInner() {
   const filtered = useMemo(() => chats.filter(c => {
     if (archivedIds.has(c.id)) return false;
     const other = c.participants.find(p => String(p.user_id) !== String(currentUserId));
-    const name = c.type === 'private' ? getParticipantName(other) : (c.name || 'Grupo');
+    const name = c.type === 'private' ? getParticipantName(other) : (c.name || tr('msgGroup'));
     // Ocultar chats privados cuyo contacto tiene nombre genérico (datos incompletos)
     if (c.type === 'private' && isGenericName(name)) return false;
     const last = c.last_message?.text || '';
@@ -812,7 +818,7 @@ function MensajeriaScreenInner() {
   const filteredArchived = useMemo(() => archivedChats.filter(c => {
     const isGrp = c.isGroup || c.type === 'group';
     if (archiveSubFilter === 'group' ? !isGrp : isGrp) return false;
-    const name = c.name || c.title || 'Chat';
+    const name = c.name || c.title || tr('chat');
     return matchesSearch(name, c.last_message?.text);
   }), [archivedChats, archiveSubFilter, matchesSearch]);
 
@@ -864,15 +870,15 @@ function MensajeriaScreenInner() {
             <Circle cx="11" cy="11" r="8"/>
             <Line x1="21" y1="21" x2="16.65" y2="16.65"/>
           </Svg>
-          <Text style={{ fontSize: 10, color: C.textTertiary, marginTop: 1 }}>Global</Text>
+          <Text style={{ fontSize: 10, color: C.textTertiary, marginTop: 1 }}>{t('msgGlobal')}</Text>
         </TouchableOpacity>
         {/* Botón + nuevo chat */}
         <TouchableOpacity
           style={st.newChatBtn}
           onPress={() => {
-            Alert.alert('Nueva conversación', '¿Qué quieres crear?', [
-              { text: 'Chat privado', onPress: () => router.push('/new-chat' as any) },
-              { text: 'Grupo', onPress: () => setShowCreateGroup(true) },
+            Alert.alert(t('msgNewConversation'), t('msgWhatToCreate'), [
+              { text: t('msgPrivateChat'), onPress: () => router.push('/new-chat' as any) },
+              { text: t('msgGroup'), onPress: () => setShowCreateGroup(true) },
               { text: t('cancel'), style: 'cancel' },
             ]);
           }}
@@ -898,7 +904,7 @@ function MensajeriaScreenInner() {
           ══════════════════════════════════════════════════════ */}
           <FavoriteSection title={t('favoriteContacts')} empty={t('noFavoriteContacts')} C={C}>
             {favoriteContacts.map((contact: any) => {
-              const name = contact.name || contact.user?.full_name || contact.user?.name || 'Usuario';
+              const name = contact.name || contact.user?.full_name || contact.user?.name || tr('setUser');
               const avatar = contact.avatar_url || contact.user?.avatar_url;
               return (
                 <FavoriteChip
@@ -956,7 +962,7 @@ function MensajeriaScreenInner() {
               {([
                 {
                   id: 'all' as GroupSubFilter,
-                  label: 'Todos',
+                  label: t('all'),
                   Icon: ({ active }: { active: boolean }) => (
                     <Svg width={15} height={15} viewBox="0 0 24 24" fill="none"
                       stroke={active ? '#fff' : '#64748b'} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
@@ -1013,7 +1019,7 @@ function MensajeriaScreenInner() {
         ) : filter === 'archivar' && !archiveUnlocked ? (
           <View style={[st.listScroll, st.center]}>
               <Text style={{ fontSize: 40, marginBottom: 12 }}>🔒</Text>
-              <Text style={[st.emptyTitle, { color: C.textPrimary }]}>Archivo protegido</Text>
+              <Text style={[st.emptyTitle, { color: C.textPrimary }]}>{t('msgProtectedArchive')}</Text>
               <Text style={[st.emptySub, { color: C.textSecondary, marginBottom: 20 }]}>{t('archivePasswordHint')}</Text>
               <TouchableOpacity
                 style={st.archiveUnlockBtn}
@@ -1058,7 +1064,7 @@ function MensajeriaScreenInner() {
               <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.brand} colors={[Colors.brand]} />
             }
             renderItem={({ item: chat }: { item: Chat }) => {
-              const name = (chat as any).name || (chat as any).title || 'Chat';
+              const name = (chat as any).name || (chat as any).title || tr('chat');
               return (
                 <TouchableOpacity
                   style={st.archivedRow}
@@ -1068,10 +1074,10 @@ function MensajeriaScreenInner() {
                   <EGAvatar src={(chat as any).avatar_url || (chat as any).avatarUrl} name={name} size={46} />
                   <View style={{ flex: 1 }}>
                     <Text style={st.archivedName} numberOfLines={1}>{name}</Text>
-                    <Text style={st.archivedSub}>Archivado</Text>
+                    <Text style={st.archivedSub}>{t('msgArchived')}</Text>
                   </View>
                   <TouchableOpacity style={st.restoreBtn} onPress={() => unarchiveChat(chat)}>
-                    <Text style={st.restoreBtnText}>Restaurar</Text>
+                    <Text style={st.restoreBtnText}>{t('msgRestore')}</Text>
                   </TouchableOpacity>
                 </TouchableOpacity>
               );
@@ -1108,7 +1114,7 @@ function MensajeriaScreenInner() {
                 onPress={() => { setRefreshing(true); loadChats(currentUserId); }}
                 activeOpacity={0.85}
               >
-                <Text style={st.retryBtnText}>Recargar chats</Text>
+                <Text style={st.retryBtnText}>{t('msgReloadChats')}</Text>
               </TouchableOpacity>
             )}
             {filter === 'dinero' && (
@@ -1145,7 +1151,7 @@ function MensajeriaScreenInner() {
                 onOpen={() => openChat(item)}
                 onArchive={() => archiveChat(item)}
                 onDelete={() => deleteChatLocal(item.id)}
-                onMarkUnread={() => toast.info('Marcado como no leído')}
+                onMarkUnread={() => toast.info(t('msgMarkedUnread'))}
               >
                 <ChatItem
                   chat={item}
@@ -1236,7 +1242,7 @@ function MensajeriaScreenInner() {
                 style={[st.modalBtn, { backgroundColor: '#f3f4f6' }]}
                 onPress={() => { setShowArchiveSetup(false); setShowArchiveUnlock(false); setArchivePwdInput(''); }}
               >
-                <Text style={{ fontWeight: '600', color: '#374151' }}>Cancelar</Text>
+                <Text style={{ fontWeight: '600', color: '#374151' }}>{t('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[st.modalBtn, { backgroundColor: '#6B5BD6' }]}
@@ -1610,7 +1616,7 @@ const st = StyleSheet.create({
 
 export default function MensajeriaScreen() {
   return (
-    <TabErrorBoundary tabName="Mensajería">
+    <TabErrorBoundary tabName={tr('xtMensajeria')}>
       <MensajeriaScreenInner />
     </TabErrorBoundary>
   );

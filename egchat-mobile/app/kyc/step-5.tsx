@@ -9,6 +9,7 @@ import { screenKycApplication, submitKycApplication } from '../../src/services/k
 import { clearKycDraft } from '../../src/services/kycStorage';
 import { getNetworkStatus } from '../../src/store/offlineStore';
 import { enqueueKycAction } from '../../src/hooks/useKycOfflineSync';
+import { useTranslation } from '../../src/context/LanguageContext';
 
 // ── Sección colapsable de resumen ─────────────────────────────────
 function SummarySection({ title, items }: { title: string; items: [string, string][] }) {
@@ -57,6 +58,7 @@ function ConsentCheck({ label, checked, onToggle, link, linkLabel }: {
 export default function Step5() {
   const store = useKycStore();
   const { personalData: p, documentData: doc, financialData: fin, consentData: c } = store;
+  const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [error, setError]     = useState('');
 
@@ -71,13 +73,13 @@ export default function Step5() {
 
       // Sin applicationId no hay sesión KYC en el servidor — no se puede enviar
       if (!appId) {
-        setError('No se encontró la solicitud KYC. Vuelve al paso 1 e inicia de nuevo.');
+        setError(t('kyNoKycAppFound'));
         return;
       }
 
       // applicationId local (creado offline) — no existe en el servidor todavía
       if (appId.startsWith('local_')) {
-        setError('Tu solicitud fue creada sin conexión y aún no se ha sincronizado. Conéctate a internet y vuelve al Paso 1 para sincronizarla antes de enviar.');
+        setError(t('kyOfflineNotSynced'));
         return;
       }
 
@@ -110,7 +112,7 @@ export default function Step5() {
       }
 
       if (result.decision === 'REJECTED') {
-        store.setRejectReason((result.reasons || []).join(', ') || 'Riesgo KYC elevado', true);
+        store.setRejectReason((result.reasons || []).join(', ') || t('kyHighKycRisk'), true);
         router.replace('/kyc/result?type=rejected_final');
         return;
       }
@@ -121,8 +123,8 @@ export default function Step5() {
       const isNetwork = e?.message?.includes('Network') || e?.message?.includes('fetch') || e?.message?.includes('network');
       setError(
         isNetwork
-          ? 'Sin conexión. Verifica tu internet e inténtalo de nuevo.'
-          : `Error al enviar: ${e?.message ?? 'inténtalo de nuevo.'}`,
+          ? t('kyNoConnectionRetry')
+          : `${t('kySendErrorPrefix')} ${e?.message ?? t('setTryAgain')}.`,
       );
     } finally {
       setLoading(false);
@@ -132,59 +134,59 @@ export default function Step5() {
   return (
     <KycStepLayout
       step={5} completed={store.completedSteps}
-      title="Declaración y Consentimiento"
+      title={t('kyDeclarationConsent')}
       onBack={() => router.push('/kyc/step-4')}
       onNext={handleSubmit}
-      nextLabel="🔒 Enviar para verificación"
+      nextLabel={t('kySubmitForReview')}
       nextDisabled={!allConsented || loading}
       loading={loading}
       onExit={() => router.back()}
     >
       {/* Resumen colapsable */}
-      <Text style={st.sectionTitle}>Resumen de datos</Text>
-      <SummarySection title="Datos Personales" items={[
-        ['Nombre',         p.fullName],
-        ['Fecha nac.',     p.dateOfBirth],
-        ['Lugar nac.',     p.placeOfBirth],
-        ['Nacionalidad',   p.nationality],
-        ['Sexo',           p.sex === 'M' ? 'Masculino' : p.sex === 'F' ? 'Femenino' : ''],
-        ['Estado civil',   p.maritalStatus],
-        ['Ciudad',         p.city],
-        ['Provincia',      p.province],
-        ['Teléfono',       p.phone],
-        ['Email',          p.email],
+      <Text style={st.sectionTitle}>{t('kyDataSummary')}</Text>
+      <SummarySection title={t('kyPersonalData')} items={[
+        [t('nameField'),          p.fullName],
+        [t('kySumDob'),       p.dateOfBirth],
+        [t('kySumPob'),       p.placeOfBirth],
+        [t('kyNationality'),      p.nationality],
+        [t('kySex'), p.sex === 'M' ? t('kyMale') : p.sex === 'F' ? t('kyFemale') : ''],
+        [t('kyMaritalStatus'),    p.maritalStatus],
+        [t('kyCity'),             p.city],
+        [t('kyProvince'),         p.province],
+        [t('phone'),              p.phone],
+        [t('kyEmail'),            p.email],
       ]} />
-      <SummarySection title="Documento" items={[
-        ['Tipo',           doc.documentType ?? ''],
-        ['OCR confirmado', doc.ocrConfirmed ? 'Sí' : 'No'],
+      <SummarySection title={t('liaAttachDocument')} items={[
+        [t('kyType'),             doc.documentType ?? ''],
+        [t('kyOcrConfirmed'),     doc.ocrConfirmed ? t('yes') : t('no')],
       ]} />
-      <SummarySection title="Información Financiera" items={[
-        ['Profesión',      fin.profession],
-        ['Empleador',      fin.employer],
-        ['Ingresos',       fin.monthlyIncomeRange],
-        ['Origen fondos',  fin.sourceOfFunds.join(', ')],
+      <SummarySection title={t('kyFinancialInfo')} items={[
+        [t('kyProfession'),       fin.profession],
+        [t('kyEmployer'),         fin.employer],
+        [t('kyIncome'),           fin.monthlyIncomeRange],
+        [t('kyFundsOrigin'),      fin.sourceOfFunds.join(', ')],
       ]} />
 
       <View style={st.divider} />
 
       {/* Consentimientos */}
-      <Text style={st.sectionTitle}>Consentimientos</Text>
+      <Text style={st.sectionTitle}>{t('kyConsents')}</Text>
       <ConsentCheck
-        label="Declaro que toda la información proporcionada es veraz y completa."
+        label={t('kyConsentTruth')}
         checked={c.declareTruth}
         onToggle={() => store.setConsentData({ declareTruth: !c.declareTruth })}
       />
       <ConsentCheck
-        label="Autorizo a EGCHAT y a BANGE a verificar mi información personal."
+        label={t('kyConsentBank')}
         checked={c.authorizeBank}
         onToggle={() => store.setConsentData({ authorizeBank: !c.authorizeBank })}
       />
       <ConsentCheck
-        label="Acepto los Términos de servicio y la Política de privacidad."
+        label={t('kyConsentTerms')}
         checked={c.acceptTerms}
         onToggle={() => store.setConsentData({ acceptTerms: !c.acceptTerms })}
         link="https://egchat-v2.vercel.app/terms"
-        linkLabel="Ver términos →"
+        linkLabel={t('kyViewTerms')}
       />
 
       {!!error && (

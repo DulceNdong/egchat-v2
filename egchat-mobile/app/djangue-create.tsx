@@ -11,14 +11,15 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router } from 'expo-router';
 import Svg, { Path, Line, Circle, Rect, Polyline } from 'react-native-svg';
 import { apiFetch } from '../src/api';
+import { t as tr } from '../src/translations';
 
 type Frequency = 'daily' | 'weekly' | 'monthly' | 'annual';
 
 const FREQUENCIES: { key: Frequency; label: string; desc: string; color: string }[] = [
-  { key: 'daily',   label: 'Diario',   desc: 'Cada día',    color: '#f59e0b' },
+  { key: 'daily',   label: 'Diario',   desc: tr('xtCadaDia'),    color: '#f59e0b' },
   { key: 'weekly',  label: 'Semanal',  desc: 'Cada semana', color: '#10b981' },
   { key: 'monthly', label: 'Mensual',  desc: 'Cada mes',    color: '#6366f1' },
-  { key: 'annual',  label: 'Anual',    desc: 'Cada año',    color: '#ec4899' },
+  { key: 'annual',  label: 'Anual',    desc: tr('xtCadaAno'),    color: '#ec4899' },
 ];
 
 // ── Iconos ────────────────────────────────────────────────────────
@@ -70,9 +71,9 @@ export default function DjangueCreateScreen() {
   const quota = Number(quotaRaw.replace(/\D/g, ''));
 
   const handleCreate = async () => {
-    if (!name.trim()) return Alert.alert('Falta el nombre', 'Ponle un nombre al djangue.');
-    if (!quota || quota < 100) return Alert.alert('Cuota inválida', 'La cuota mínima es 100 XAF.');
-    if (Number(maxMembers) < 2) return Alert.alert('Mínimo 2 miembros', 'Un djangue necesita al menos 2 integrantes.');
+    if (!name.trim()) return Alert.alert(tr('xtFaltaElNombre'), 'Ponle un nombre al djangue.');
+    if (!quota || quota < 100) return Alert.alert(tr('djnInvalidQuota'), tr('djnMinQuotaBody'));
+    if (Number(maxMembers) < 2) return Alert.alert(tr('xtMinimo2Miembros'), 'Un djangue necesita al menos 2 integrantes.');
     setLoading(true);
     try {
       const group = await apiFetch('/api/djangue', {
@@ -87,11 +88,11 @@ export default function DjangueCreateScreen() {
         }),
       });
       Alert.alert('✅ Djangue creado', `"${group.name}" está listo.`, [{
-        text: 'Ver Djangue',
+        text: tr('xtVerDjangue'),
         onPress: () => router.replace({ pathname: '/djangue-detail', params: { id: group.id } } as any),
       }]);
     } catch (e: any) {
-      Alert.alert('Error', e.message || 'No se pudo crear el djangue');
+      Alert.alert(tr('error'), e.message || 'No se pudo crear el djangue');
     } finally {
       setLoading(false);
     }
@@ -110,8 +111,8 @@ export default function DjangueCreateScreen() {
           </Svg>
         </TouchableOpacity>
         <View style={s.headerCenter}>
-          <Text style={s.headerTitle}>Crear Djangue</Text>
-          <Text style={s.headerSub}>Nuevo grupo de ahorro</Text>
+          <Text style={s.headerTitle}>{tr('xtCrearDjangue')}</Text>
+          <Text style={s.headerSub}>{tr('xtNuevoGrupoDeAhorro')}</Text>
         </View>
         <View style={{ width: 40 }} />
       </View>
@@ -125,12 +126,12 @@ export default function DjangueCreateScreen() {
               <I stroke="#6366f1"><Path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><Circle cx="9" cy="7" r="4"/><Path d="M23 21v-2a4 4 0 0 0-3-3.87"/><Path d="M16 3.13a4 4 0 0 1 0 7.75"/></I>
             </View>
             <View style={s.fieldBody}>
-              <Text style={s.label}>Nombre *</Text>
+              <Text style={s.label}>{tr('mznNameStar')}</Text>
               <TextInput
                 style={s.input}
                 value={name}
                 onChangeText={setName}
-                placeholder="Ej: Djangue del barrio"
+                placeholder={tr('xtEjDjangueDelBarrio')}
                 placeholderTextColor="#cbd5e1"
                 maxLength={50}
               />
@@ -148,12 +149,12 @@ export default function DjangueCreateScreen() {
               </I>
             </View>
             <View style={s.fieldBody}>
-              <Text style={s.label}>Descripción</Text>
+              <Text style={s.label}>{tr('mznDescription')}</Text>
               <TextInput
                 style={[s.input, { height: 72, textAlignVertical: 'top', paddingTop: 10 }]}
                 value={description}
                 onChangeText={setDesc}
-                placeholder="Describe el propósito del grupo..."
+                placeholder={tr('xtDescribeElPropositoDelGrupo')}
                 placeholderTextColor="#cbd5e1"
                 multiline
                 maxLength={200}
@@ -163,7 +164,7 @@ export default function DjangueCreateScreen() {
 
           {/* Frecuencia */}
           <View style={s.sectionCard}>
-            <Text style={s.sectionLabel}>Frecuencia de aportes</Text>
+            <Text style={s.sectionLabel}>{tr('xtFrecuenciaDeAportes')}</Text>
             <View style={s.freqGrid}>
               {FREQUENCIES.map(f => {
                 const active = frequency === f.key;
@@ -192,7 +193,7 @@ export default function DjangueCreateScreen() {
               </I>
             </View>
             <View style={s.fieldBody}>
-              <Text style={s.label}>Cuota por turno (XAF) *</Text>
+              <Text style={s.label}>{tr('xtCuotaPorTurnoXAF')}</Text>
               <View style={s.inputRow}>
                 <TextInput
                   style={[s.input, { flex: 1 }]}
@@ -222,7 +223,7 @@ export default function DjangueCreateScreen() {
               </I>
             </View>
             <View style={s.fieldBody}>
-              <Text style={s.label}>Máximo de integrantes</Text>
+              <Text style={s.label}>{tr('djnMaxMembers')}</Text>
               <View style={s.counter}>
                 <TouchableOpacity
                   style={s.counterBtn}
@@ -251,7 +252,7 @@ export default function DjangueCreateScreen() {
               </I>
             </View>
             <View style={s.fieldBody}>
-              <Text style={s.label}>Teléfono del Secretario <Text style={s.optional}>(opcional)</Text></Text>
+              <Text style={s.label}>{tr('xtTelefonoDelSecretario')} <Text style={s.optional}>{tr('xtOpcional')}</Text></Text>
               <TextInput
                 style={s.input}
                 value={secretaryPhone}
@@ -260,19 +261,19 @@ export default function DjangueCreateScreen() {
                 placeholderTextColor="#cbd5e1"
                 keyboardType="phone-pad"
               />
-              <Text style={s.hint}>Puede gestionar pagos y agregar integrantes.</Text>
+              <Text style={s.hint}>{tr('xtPuedeGestionarPagosYAgregarIntegrantes')}</Text>
             </View>
           </View>
 
           {/* Resumen */}
           {name.trim() && quota >= 100 && (
             <View style={s.summaryCard}>
-              <Text style={s.summaryTitle}>Resumen</Text>
+              <Text style={s.summaryTitle}>{tr('xtResumen')}</Text>
               {[
-                { l: 'Nombre', v: name },
-                { l: 'Frecuencia', v: selFreq.label },
-                { l: 'Cuota', v: `${quota.toLocaleString('fr-FR')} XAF` },
-                { l: 'Máx. integrantes', v: maxMembers },
+                { l: tr('nameField'), v: name },
+                { l: tr('setFrequency'), v: selFreq.label },
+                { l: tr('djhQuotaLabel'), v: `${quota.toLocaleString('fr-FR')} XAF` },
+                { l: tr('xtMaxIntegrantes'), v: maxMembers },
               ].map(row => (
                 <View key={row.l} style={s.summaryRow}>
                   <Text style={s.summaryLbl}>{row.l}</Text>
@@ -291,7 +292,7 @@ export default function DjangueCreateScreen() {
           >
             {loading
               ? <ActivityIndicator color="#fff" />
-              : <Text style={s.createBtnTxt}>Crear Djangue</Text>
+              : <Text style={s.createBtnTxt}>{tr('xtCrearDjangue')}</Text>
             }
           </TouchableOpacity>
 

@@ -15,6 +15,7 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import { View, Platform } from 'react-native';
 import { callManager, HAS_NATIVE_MEDIA } from '../call/CallManager';
 import type { CallCommState, IncomingCallPayload } from '../call/types';
+import { t as tr } from '../translations';
 
 // ── RTCView — mismo export que antes ─────────────────────────────
 let _NativeRTC: any = null;
@@ -59,7 +60,7 @@ export function useWebRTC() {
     await callManager.startCall(
       type,
       targetUserId,
-      targetName  ?? 'Usuario',
+      targetName  ?? tr('setUser'),
       targetAvatar ?? '',
       callId ?? `call_${Date.now()}`,
       chatId,
@@ -77,7 +78,7 @@ export function useWebRTC() {
       callManager.registerIncoming({
         callId,
         callType: type,
-        callerName: 'Usuario',
+        callerName: tr('setUser'),
         offer,
       });
     }

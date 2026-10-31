@@ -3,6 +3,7 @@
 import * as Crypto from 'expo-crypto';
 import * as FileSystem from 'expo-file-system/legacy';
 import * as ImageManipulator from 'expo-image-manipulator';
+import { t as tr } from '../translations';
 
 // Clave AES-256 derivada del token del servidor (en producción usar clave del servidor)
 // Por ahora se usa una clave fija — en producción obtener del backend vía /api/kyc/key
@@ -94,7 +95,7 @@ export async function encryptImage(uri: string): Promise<{
   }
 
   if (!base64 || base64.length === 0) {
-    throw new Error('La imagen está vacía o no se pudo leer.');
+    throw new Error(tr('xtLaImagenEstaVaciaONoSePudoLeer'));
   }
 
   // 3. Calcular checksum SHA-256 del contenido

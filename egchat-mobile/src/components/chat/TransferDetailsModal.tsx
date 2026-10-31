@@ -7,6 +7,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { MIcon } from '../ui/MIcon';
 import * as Clipboard from 'expo-clipboard';
 import { toast } from '../Toast';
+import { t as tr } from '../../translations';
 
 interface TransferData {
   amount: string;
@@ -31,16 +32,16 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
 
   const copyToClipboard = async (text: string, label: string) => {
     await Clipboard.setStringAsync(text);
-    toast.success(`${label} copiado`);
+    toast.success(`${label} ${tr('xtCopiado2')}`);
   };
 
   const shareDetails = async () => {
-    const details = `💸 ${isReceived ? 'Dinero recibido' : 'Transferencia enviada'}
-💰 Monto: ${transferData.amount}
-👤 ${isReceived ? 'De' : 'Para'}: ${transferData.recipient}
-📅 Fecha: ${transferData.date}
-🔑 Referencia: ${transferData.reference}
-✅ Estado: ${transferData.status === 'completed' ? 'Completado' : transferData.status}`;
+    const details = `💸 ${isReceived ? tr('xtDineroRecibido') : tr('transferSent')}
+💰 ${tr('xtMonto')}: ${transferData.amount}
+👤 ${isReceived ? tr('chtFromPrefix') : tr('chtToPrefix')}: ${transferData.recipient}
+📅 ${tr('mznInfDateLabel')}: ${transferData.date}
+🔑 ${tr('xtReferencia')}: ${transferData.reference}
+✅ ${tr('mznStatusField')}: ${transferData.status === 'completed' ? tr('svcCompleted') : transferData.status}`;
     try {
       await Share.share({ message: details });
     } catch (error) {
@@ -49,7 +50,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
   };
 
   const statusColor = transferData.status === 'completed' ? '#10B981' : '#F59E0B';
-  const statusText = transferData.status === 'completed' ? 'Completado' : 'Pendiente';
+  const statusText = transferData.status === 'completed' ? tr('svcCompleted') : tr('kyPending');
   const gradientColors = (isReceived ? ['#10B981', '#059669'] : ['#1a73e8', '#0d47a1']) as [string, string];
 
   return (
@@ -60,7 +61,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
             <View style={s.headerLeft}>
               <Text style={s.headerIcon}>{isReceived ? '💰' : '💸'}</Text>
               <Text style={s.headerTitle}>
-                {isReceived ? 'Dinero recibido' : 'Transferencia enviada'}
+                {isReceived ? tr('xtDineroRecibido') : tr('transferSent')}
               </Text>
             </View>
             <TouchableOpacity onPress={onClose} style={s.closeBtn}>
@@ -83,7 +84,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
 
             <View style={s.detailsCard}>
               <View style={s.detailRow}>
-                <Text style={s.detailLabel}>{isReceived ? 'DE' : 'PARA'}</Text>
+                <Text style={s.detailLabel}>{isReceived ? 'DE' : tr('xtPARA')}</Text>
                 <TouchableOpacity 
                   style={s.detailValueRow} 
                   onPress={() => copyToClipboard(transferData.recipient, 'Destinatario')}
@@ -109,7 +110,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
               <View style={s.divider} />
 
               <View style={s.detailRow}>
-                <Text style={s.detailLabel}>FECHA</Text>
+                <Text style={s.detailLabel}>{tr('xtFECHA')}</Text>
                 <Text style={s.detailValue}>{transferData.date}</Text>
               </View>
 
@@ -117,7 +118,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
                 <>
                   <View style={s.divider} />
                   <View style={s.detailRow}>
-                    <Text style={s.detailLabel}>DESCRIPCIÓN</Text>
+                    <Text style={s.detailLabel}>{tr('mznDescription')}</Text>
                     <Text style={s.detailValue}>{transferData.description}</Text>
                   </View>
                 </>
@@ -127,7 +128,7 @@ export const TransferDetailsModal: React.FC<TransferDetailsModalProps> = ({
             <View style={s.actions}>
               <TouchableOpacity style={s.actionBtn} onPress={shareDetails}>
                 <MIcon name="share" size={20} color="#6366F1" />
-                <Text style={s.actionText}>Compartir</Text>
+                <Text style={s.actionText}>{tr('share')}</Text>
               </TouchableOpacity>
               
               <TouchableOpacity 

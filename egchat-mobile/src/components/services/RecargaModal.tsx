@@ -7,6 +7,7 @@ import {
   ServiceModuleShell, ServiceHomeGrid, ServiceBanner, OperatorGrid,
   StatusBadge, SupportScreen, EmptyState, PrimaryButton, FormField, Ico,
 } from './ServiceModuleUI';
+import { t as tr } from '../../translations';
 
 type RScreen = 'home' | 'operators' | 'packages' | 'confirm' | 'success' | 'history' | 'myLines' | 'support';
 
@@ -76,7 +77,7 @@ const mobileAPI = {
     
     if (!res.ok) {
       const error = await res.json();
-      throw new Error(error.message || 'Error al procesar recarga');
+      throw new Error(error.message || tr('xtErrorAlProcesarRecarga'));
     }
     
     return res.json();
@@ -149,24 +150,24 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       } else {
         // Paquetes por defecto si el backend no los tiene
         setPackages([
-          { id: 'p1', name: '100 MB', type: 'datos',    price: 500,   validity: '1 día',   desc: 'Paquete básico de datos' },
-          { id: 'p2', name: '500 MB', type: 'datos',    price: 1000,  validity: '3 días',  desc: 'Paquete estándar de datos' },
-          { id: 'p3', name: '1 GB',   type: 'datos',    price: 2000,  validity: '7 días',  desc: 'Paquete semanal de datos' },
-          { id: 'p4', name: '3 GB',   type: 'datos',    price: 5000,  validity: '15 días', desc: 'Paquete quincenal de datos' },
-          { id: 'p5', name: '5 GB',   type: 'datos',    price: 8000,  validity: '30 días', desc: 'Paquete mensual de datos' },
-          { id: 'p6', name: '500 XAF',type: 'saldo',    price: 500,   validity: '30 días', desc: 'Recarga de saldo' },
-          { id: 'p7', name: '1000 XAF',type:'saldo',    price: 1000,  validity: '30 días', desc: 'Recarga de saldo' },
-          { id: 'p8', name: '2000 XAF',type:'saldo',    price: 2000,  validity: '30 días', desc: 'Recarga de saldo' },
-          { id: 'p9', name: '100 min',type: 'minutos',  price: 1500,  validity: '7 días',  desc: 'Paquete de minutos' },
+          { id: 'p1', name: '100 MB', type: 'datos',    price: 500,   validity: '1 día',   desc: tr('xtPaqueteBasicoDeDatos') },
+          { id: 'p2', name: '500 MB', type: 'datos',    price: 1000,  validity: '3 días',  desc: tr('xtPaqueteEstandarDeDatos') },
+          { id: 'p3', name: '1 GB',   type: 'datos',    price: 2000,  validity: '7 días',  desc: tr('xtPaqueteSemanalDeDatos') },
+          { id: 'p4', name: '3 GB',   type: 'datos',    price: 5000,  validity: '15 días', desc: tr('xtPaqueteQuincenalDeDatos') },
+          { id: 'p5', name: '5 GB',   type: 'datos',    price: 8000,  validity: '30 días', desc: tr('xtPaqueteMensualDeDatos') },
+          { id: 'p6', name: '500 XAF',type: 'saldo',    price: 500,   validity: '30 días', desc: tr('xtRecargaDeSaldo') },
+          { id: 'p7', name: '1000 XAF',type:'saldo',    price: 1000,  validity: '30 días', desc: tr('xtRecargaDeSaldo') },
+          { id: 'p8', name: '2000 XAF',type:'saldo',    price: 2000,  validity: '30 días', desc: tr('xtRecargaDeSaldo') },
+          { id: 'p9', name: '100 min',type: 'minutos',  price: 1500,  validity: '7 días',  desc: tr('xtPaqueteDeMinutos') },
         ]);
       }
     } catch (error) {
       setPackages([
-        { id: 'p1', name: '100 MB', type: 'datos',  price: 500,  validity: '1 día',   desc: 'Paquete básico de datos' },
-        { id: 'p2', name: '500 MB', type: 'datos',  price: 1000, validity: '3 días',  desc: 'Paquete estándar de datos' },
-        { id: 'p3', name: '1 GB',   type: 'datos',  price: 2000, validity: '7 días',  desc: 'Paquete semanal de datos' },
-        { id: 'p4', name: '500 XAF',type: 'saldo',  price: 500,  validity: '30 días', desc: 'Recarga de saldo' },
-        { id: 'p5', name: '1000 XAF',type:'saldo',  price: 1000, validity: '30 días', desc: 'Recarga de saldo' },
+        { id: 'p1', name: '100 MB', type: 'datos',  price: 500,  validity: '1 día',   desc: tr('xtPaqueteBasicoDeDatos') },
+        { id: 'p2', name: '500 MB', type: 'datos',  price: 1000, validity: '3 días',  desc: tr('xtPaqueteEstandarDeDatos') },
+        { id: 'p3', name: '1 GB',   type: 'datos',  price: 2000, validity: '7 días',  desc: tr('xtPaqueteSemanalDeDatos') },
+        { id: 'p4', name: '500 XAF',type: 'saldo',  price: 500,  validity: '30 días', desc: tr('xtRecargaDeSaldo') },
+        { id: 'p5', name: '1000 XAF',type:'saldo',  price: 1000, validity: '30 días', desc: tr('xtRecargaDeSaldo') },
       ]);
     } finally {
       setLoadingData(false);
@@ -179,7 +180,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       const data = await mobileAPI.getHistory();
       setHistory(data);
     } catch (error) {
-      toast.error('Error cargando historial');
+      toast.error(tr('xtErrorCargandoHistorial'));
       setHistory([]);
     } finally {
       setLoadingData(false);
@@ -200,7 +201,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
   const titles: Record<RScreen, string> = {
     home: 'Recarga Tel.', operators: 'Operadores',
     packages: `${selectedOperator?.name || ''} — Paquetes`, confirm: 'Confirmar',
-    success: 'Completado', history: 'Historial', myLines: 'Mis Líneas', support: 'Soporte',
+    get success() { return tr('svcCompleted'); }, get history() { return tr('history'); }, get myLines() { return tr('xtMisLineas'); }, get support() { return tr('svcSupport'); },
   };
 
   const goBack = () => {
@@ -211,11 +212,11 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
   };
 
   const homeItems = [
-    { id: 'operators', label: 'Recargar Saldo', desc: 'Elige operador', color: '#2E9E6B', bg: '#F0FAF5', icon: Ico.signal('#2E9E6B') },
-    { id: 'operators', label: 'Comprar Datos', desc: 'Paquetes de datos', color: '#1485EE', bg: '#EFF5FD', icon: Ico.wifi('#1485EE') },
-    { id: 'operators', label: 'Comprar Minutos', desc: 'Paquetes de llamadas', color: '#C47D2A', bg: '#FDF6EE', icon: Ico.phone('#C47D2A') },
-    { id: 'history', label: 'Historial', desc: `${history.length} recargas`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clock('#6B5BD6') },
-    { id: 'myLines', label: 'Mis Líneas', desc: `${lines.length} guardadas`, color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.mobile('#0E7FA8') },
+    { id: 'operators', label: tr('xtRecargarSaldo'), desc: 'Elige operador', color: '#2E9E6B', bg: '#F0FAF5', icon: Ico.signal('#2E9E6B') },
+    { id: 'operators', label: 'Comprar Datos', desc: tr('xtPaquetesDeDatos'), color: '#1485EE', bg: '#EFF5FD', icon: Ico.wifi('#1485EE') },
+    { id: 'operators', label: 'Comprar Minutos', desc: tr('xtPaquetesDeLlamadas'), color: '#C47D2A', bg: '#FDF6EE', icon: Ico.phone('#C47D2A') },
+    { id: 'history', label: tr('history'), desc: `${history.length} recargas`, color: '#6B5BD6', bg: '#F3F1FD', icon: Ico.clock('#6B5BD6') },
+    { id: 'myLines', label: tr('xtMisLineas'), desc: `${lines.length} guardadas`, color: '#0E7FA8', bg: '#EDF7FB', icon: Ico.mobile('#0E7FA8') },
     { id: 'support', label: 'Soporte', desc: 'Reportar fallo', color: '#C0392B', bg: '#FDF2F2', icon: Ico.headset('#C0392B') },
   ];
 
@@ -226,7 +227,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
     }
 
     if (selectedPackage.price > balance) {
-      toast.error('Saldo insuficiente');
+      toast.error(tr('svcInsufficientBalance'));
       return;
     }
 
@@ -241,12 +242,12 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       
       setBalance(result.balance || balance - selectedPackage.price);
       setScreen('success');
-      toast.success('¡Recarga completada!');
+      toast.success(tr('walRechargeDone'));
       
       // Actualizar historial
       loadHistory();
     } catch (error: any) {
-      toast.error(error.message || 'Error al procesar recarga');
+      toast.error(error.message || tr('xtErrorAlProcesarRecarga'));
     } finally {
       setLoading(false);
     }
@@ -321,7 +322,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
             <Text style={s.phoneEmoji}>📞</Text>
             <View style={{ flex: 1 }}>
               <FormField 
-                placeholder="Número de teléfono" 
+                placeholder={tr('kyPhoneNumber')} 
                 value={phone} 
                 onChangeText={setPhone} 
                 keyboardType="phone-pad" 
@@ -355,7 +356,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
             </View>
           )}
           
-          {!phone.trim() && <Text style={s.warn}>⚠️ Introduce el número para continuar</Text>}
+          {!phone.trim() && <Text style={s.warn}>{tr('svcEnterNumberWarn')}</Text>}
         </View>
       )}
 
@@ -363,13 +364,13 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
         <View>
           <View style={s.confirmCard}>
             {[
-              ['Operador', selectedOperator.name], 
-              ['Número', phone], 
-              ['Paquete', selectedPackage.name],
-              ['Descripción', selectedPackage.desc], 
-              ['Validez', selectedPackage.validity],
-              ['Precio', `${selectedPackage.price.toLocaleString()} XAF`], 
-              ['Saldo actual', `${balance.toLocaleString()} XAF`],
+              [tr('mznOperatorLabel'), selectedOperator.name], 
+              [tr('svcNumberLabel'), phone], 
+              [tr('xtPaquete'), selectedPackage.name],
+              [tr('mznDescription'), selectedPackage.desc], 
+              [tr('xtValidez'), selectedPackage.validity],
+              [tr('svcPriceWord'), `${selectedPackage.price.toLocaleString()} XAF`], 
+              [tr('xtSaldoActual'), `${balance.toLocaleString()} XAF`],
             ].map(([l, v]) => (
               <View key={l} style={s.confirmRow}>
                 <Text style={s.confirmLabel}>{l}</Text>
@@ -378,10 +379,10 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
             ))}
           </View>
           {selectedPackage.price > balance && (
-            <Text style={s.insufficient}>Saldo insuficiente</Text>
+            <Text style={s.insufficient}>{tr('svcInsufficientBalance')}</Text>
           )}
           <PrimaryButton
-            label={loading ? 'Procesando...' : 'Confirmar recarga'}
+            label={loading ? tr('processing') : tr('walConfirmRecharge')}
             onPress={confirmRecharge}
             disabled={selectedPackage.price > balance || loading}
             color={color}
@@ -392,7 +393,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       {screen === 'success' && selectedPackage && selectedOperator && (
         <View style={s.success}>
           <View style={s.successCircle}><Text style={{ fontSize: 32 }}>✅</Text></View>
-          <Text style={s.successTitle}>¡Recarga exitosa!</Text>
+          <Text style={s.successTitle}>{tr('xtRecargaExitosa')}</Text>
           <Text style={s.successSub}>{selectedPackage.name} → {phone}</Text>
           <Text style={s.successSub}>{selectedOperator.name} — {selectedPackage.price.toLocaleString()} XAF</Text>
           <TouchableOpacity 
@@ -413,10 +414,10 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       {screen === 'history' && (
         loadingData ? (
           <View style={s.loading}>
-            <Text>Cargando historial...</Text>
+            <Text>{tr('xtCargandoHistorial')}</Text>
           </View>
         ) : history.length === 0 ? (
-          <EmptyState emoji="📋" title="Sin historial" desc="Tus recargas aparecerán aquí" />
+          <EmptyState emoji="📋" title={tr('xtSinHistorial')} desc={tr('xtTusRecargasApareceranAqui')} />
         ) : (
           history.map((h, i) => (
             <View key={h.id || i} style={s.orderCard}>
@@ -439,7 +440,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
       {screen === 'myLines' && (
         <View>
           <View style={s.addLineRow}>
-            <FormField placeholder="Añadir número (+240...)" value={newLine} onChangeText={setNewLine} keyboardType="phone-pad" />
+            <FormField placeholder={tr('xtAnadirNumero240')} value={newLine} onChangeText={setNewLine} keyboardType="phone-pad" />
             <TouchableOpacity
               style={s.addBtn}
               onPress={() => { if (newLine.trim()) { setLines(p => [...p, { number: newLine.trim(), op: 'GETESA' }]); setNewLine(''); } }}
@@ -448,7 +449,7 @@ export const RecargaModal: React.FC<Props> = ({ visible, onClose, userBalance: i
             </TouchableOpacity>
           </View>
           {lines.length === 0 ? (
-            <Text style={s.noLines}>Sin líneas guardadas</Text>
+            <Text style={s.noLines}>{tr('xtSinLineasGuardadas')}</Text>
           ) : lines.map((l, i) => (
             <View key={i} style={s.lineCard}>
               <View>

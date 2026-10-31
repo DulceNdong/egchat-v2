@@ -12,6 +12,7 @@ import { Colors, FontSize, FontWeight, Spacing, BorderRadius } from '../../src/t
 import { useThemeContext } from '../../src/theme/ThemeContext';
 import { DarkColors } from '../../src/theme/darkMode';
 import { getLimitSettings, saveLimitSettings, resetAllLimits, LimitSettings } from '../../src/services/limits';
+import { t as tr } from '../../src/translations';
 
 const { width } = Dimensions.get('window');
 
@@ -50,7 +51,7 @@ export default function SecurityScreen() {
     const newLimit = parseInt(tempValue, 10);
 
     if (isNaN(newLimit) || newLimit <= 0) {
-      Alert.alert('Error', 'Ingresa un valor válido');
+      Alert.alert(tr('error'), 'Ingresa un valor válido');
       return;
     }
 
@@ -59,7 +60,7 @@ export default function SecurityScreen() {
     await saveLimitSettings(updated);
     setSettings(updated);
     setEditingType(null);
-    Alert.alert('Éxito', 'Límite actualizado');
+    Alert.alert(tr('success'), 'Límite actualizado');
   };
 
   const cancelEdit = () => {
@@ -69,17 +70,17 @@ export default function SecurityScreen() {
 
   const handleResetLimits = () => {
     Alert.alert(
-      'Confirmar',
-      '¿Resetear todos los límites? Esto restablecerá los contadores diarios.',
+      tr('confirm'),
+      tr('setResetLimitsConfirm'),
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: tr('cancel'), style: 'cancel' },
         {
           text: 'Resetear',
           style: 'destructive',
           onPress: async () => {
             await resetAllLimits();
             await loadSettings();
-            Alert.alert('Éxito', 'Límites reseteados');
+            Alert.alert(tr('success'), 'Límites reseteados');
           },
         },
       ],
@@ -127,7 +128,7 @@ export default function SecurityScreen() {
                   backgroundColor: C.bgTertiary,
                 },
               ]}
-              placeholder="Límite diario"
+              placeholder={tr('xtLimiteDiario')}
               placeholderTextColor={C.textTertiary}
               keyboardType="number-pad"
               value={tempValue}
@@ -138,27 +139,27 @@ export default function SecurityScreen() {
                 style={[styles.editorBtn, { backgroundColor: C.error }]}
                 onPress={cancelEdit}
               >
-                <Text style={{ color: 'white', fontWeight: '600' }}>Cancelar</Text>
+                <Text style={{ color: 'white', fontWeight: '600' }}>{tr('cancel')}</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={[styles.editorBtn, { backgroundColor: C.success }]}
                 onPress={saveEdit}
               >
-                <Text style={{ color: 'white', fontWeight: '600' }}>Guardar</Text>
+                <Text style={{ color: 'white', fontWeight: '600' }}>{tr('chtSaveAction')}</Text>
               </TouchableOpacity>
             </View>
           </View>
         ) : (
           <>
             <View style={styles.limitRow}>
-              <Text style={[styles.limitLabel, { color: C.textSecondary }]}>Límite diario:</Text>
+              <Text style={[styles.limitLabel, { color: C.textSecondary }]}>{tr('xtLimiteDiario2')}</Text>
               <Text style={[styles.limitValue, { color: C.textPrimary }]}>
                 {(limit.dailyLimit / 1000).toFixed(0)}K XAF
               </Text>
             </View>
 
             <View style={styles.limitRow}>
-              <Text style={[styles.limitLabel, { color: C.textSecondary }]}>Usado hoy:</Text>
+              <Text style={[styles.limitLabel, { color: C.textSecondary }]}>{tr('xtUsadoHoy')}</Text>
               <Text style={[styles.usedValue, { color: percentUsed > 80 ? C.error : C.success }]}>
                 {(limit.currentDay / 1000).toFixed(0)}K XAF
               </Text>
@@ -196,7 +197,7 @@ export default function SecurityScreen() {
               ]}
               onPress={() => startEdit(type)}
             >
-              <Text style={styles.editBtnText}>Editar Límite</Text>
+              <Text style={styles.editBtnText}>{tr('xtEditarLimite')}</Text>
             </TouchableOpacity>
           </>
         )}
@@ -210,9 +211,9 @@ export default function SecurityScreen() {
         {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity onPress={() => router.back()}>
-            <Text style={[styles.headerBack, { color: C.textLink }]}>← Atrás</Text>
+            <Text style={[styles.headerBack, { color: C.textLink }]}>{tr('walBackArrow')}</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, { color: C.textPrimary }]}>Seguridad</Text>
+          <Text style={[styles.headerTitle, { color: C.textPrimary }]}>{tr('security')}</Text>
           <View style={{ width: 40 }} />
         </View>
 
@@ -228,16 +229,16 @@ export default function SecurityScreen() {
 
         {/* Límites */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>Mis Límites</Text>
+          <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>{tr('xtMisLimites')}</Text>
 
           <LimitCard type="withdrawal" title="Retiros"         icon="account-balance-wallet" />
           <LimitCard type="transfer"  title="Transferencias"   icon="swap-horiz" />
-          <LimitCard type="payment"   title="Pagos"            icon="credit-card" />
+          <LimitCard type="payment"   title={tr('setPayments')}            icon="credit-card" />
         </View>
 
         {/* Configuración */}
         <View style={styles.section}>
-          <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>Configuración</Text>
+          <Text style={[styles.sectionTitle, { color: C.textPrimary }]}>{tr('xtConfiguracion')}</Text>
 
           <View style={[styles.settingRow, { backgroundColor: C.bgSecondary, borderColor: C.border }]}>
             <View>

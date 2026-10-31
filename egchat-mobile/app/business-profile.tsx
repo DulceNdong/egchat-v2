@@ -16,6 +16,7 @@ import { authAPI, getToken, getApiBase } from '../src/api';
 import { toast } from '../src/components/Toast';
 import { EGAvatar } from '../src/components/ui';
 import { useThemeContext } from '../src/theme/ThemeContext';
+import { useTranslation } from '../src/context/LanguageContext';
 import { Colors } from '../src/theme/colors';
 import { DarkColors } from '../src/theme/darkMode';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -46,8 +47,8 @@ export interface CatalogItem {
 }
 
 const CATEGORIES = [
-  'Restaurante', 'Tienda', 'Servicios', 'Salud', 'Educación',
-  'Tecnología', 'Moda', 'Belleza', 'Inmobiliaria', 'Otro',
+  'restaurant', 'store', 'mznSvcServices', 'health', 'education',
+  'mznCatTechnology', 'mznCatFashion', 'beauty', 'mznCatRealEstate', 'setOther',
 ];
 
 async function loadProfile(): Promise<BusinessProfile | null> {
@@ -73,8 +74,9 @@ async function saveCatalog(items: CatalogItem[]): Promise<void> {
 }
 
 export default function BusinessProfileScreen() {
+  const { t } = useTranslation();
   const [profile, setProfile] = useState<BusinessProfile>({
-    name: '', category: 'Tienda', description: '', phone: '',
+    name: '', category: 'store', description: '', phone: '',
     email: '', website: '', address: '', verified: false,
   });
   const [catalog, setCatalog] = useState<CatalogItem[]>([]);
@@ -92,7 +94,7 @@ export default function BusinessProfileScreen() {
   }, []);
 
   const handleSaveProfile = useCallback(async () => {
-    if (!profile.name.trim()) { toast.error('El nombre es obligatorio'); return; }
+    if (!profile.name.trim()) { toast.error(t('mznNameRequired')); return; }
     setSaving(true);
     try {
       await saveProfile(profile);
@@ -105,11 +107,11 @@ export default function BusinessProfileScreen() {
           body: JSON.stringify(profile),
         });
       } catch {}
-      toast.success('Perfil empresarial guardado');
+      toast.success(t('mznBusinessProfileSaved'));
     } finally {
       setSaving(false);
     }
-  }, [profile]);
+  }, [profile, t]);
 
   const handlePickAvatar = useCallback(async () => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -121,16 +123,16 @@ export default function BusinessProfileScreen() {
   }, []);
 
   const handleDeleteItem = useCallback((id: string) => {
-    Alert.alert('Eliminar producto', '¿Confirmar?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+    Alert.alert(t('mznDeleteProduct'), t('mznConfirmQuestion'), [
+      { text: t('cancel'), style: 'cancel' },
+      { text: t('delete'), style: 'destructive', onPress: async () => {
         const next = catalog.filter(i => i.id !== id);
         setCatalog(next);
         await saveCatalog(next);
-        toast.info('Producto eliminado');
+        toast.info(t('mznProductDeleted'));
       }},
     ]);
-  }, [catalog]);
+  }, [catalog, t]);
 
   const handleSaveItem = useCallback(async (item: CatalogItem) => {
     const exists = catalog.find(i => i.id === item.id);
@@ -139,8 +141,8 @@ export default function BusinessProfileScreen() {
     await saveCatalog(next);
     setShowAddItem(false);
     setEditItem(null);
-    toast.success(exists ? 'Producto actualizado' : 'Producto añadido');
-  }, [catalog]);
+    toast.success(exists ? t('mznProductUpdated') : t('mznProductAdded'));
+  }, [catalog, t]);
 
   return (
     <SafeAreaView style={[s.root, { backgroundColor: C.bgPrimary }]} edges={['left','right']}>
@@ -150,8 +152,8 @@ export default function BusinessProfileScreen() {
             <Line x1="19" y1="12" x2="5" y2="12"/><Polyline points="12 19 5 12 12 5"/>
           </Svg>
         </TouchableOpacity>
-        <Text style={s.headerTitle}>Perfil empresarial</Text>
-        {profile.verified && <Text style={s.verifiedBadge}>✓ Verificado</Text>}
+        <Text style={s.headerTitle}>{t('businessProfile')}</Text>
+        {profile.verified && <Text style={s.verifiedBadge}>{t('mznVerifiedBadge')}</Text>}
       </LinearGradient>
 
       {/* Tabs */}
@@ -163,7 +165,7 @@ export default function BusinessProfileScreen() {
               <Line x1="3" y1="9" x2="21" y2="9"/>
               <Line x1="9" y1="21" x2="9" y2="9"/>
             </Svg>
-            <Text style={[s.tabText, { color: tab === 'profile' ? '#00C8A0' : C.textTertiary }]}>Perfil</Text>
+            <Text style={[s.tabText, { color: tab === 'profile' ? '#00C8A0' : C.textTertiary }]}>{t('profile')}</Text>
           </View>
           {tab === 'profile' && <View style={s.tabIndicator} />}
         </TouchableOpacity>
@@ -174,7 +176,7 @@ export default function BusinessProfileScreen() {
               <Line x1="3" y1="6" x2="21" y2="6"/>
               <Path d="M16 10a4 4 0 01-8 0"/>
             </Svg>
-            <Text style={[s.tabText, { color: tab === 'catalog' ? '#00C8A0' : C.textTertiary }]}>Catálogo ({catalog.length})</Text>
+            <Text style={[s.tabText, { color: tab === 'catalog' ? '#00C8A0' : C.textTertiary }]}>{t('mznCatalog')} ({catalog.length})</Text>
           </View>
           {tab === 'catalog' && <View style={s.tabIndicator} />}
         </TouchableOpacity>
@@ -184,7 +186,7 @@ export default function BusinessProfileScreen() {
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: insets.bottom + 40, backgroundColor: C.bgPrimary }}>
           {/* Avatar */}
           <TouchableOpacity style={s.avatarWrap} onPress={handlePickAvatar}>
-            <EGAvatar src={profile.avatar} name={profile.name || 'Empresa'} size={80} />
+            <EGAvatar src={profile.avatar} name={profile.name || t('mznCompanyWord')} size={80} />
             <View style={s.avatarEdit}>
               <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round" strokeLinejoin="round">
                 <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
@@ -195,13 +197,13 @@ export default function BusinessProfileScreen() {
 
           {/* Campos */}
           {([
-            { key: 'name',        label: 'Nombre del negocio *', placeholder: 'Mi Empresa',                icon: 'building' },
-            { key: 'description', label: 'Descripción',          placeholder: 'Qué ofreces...',           icon: 'align-left' },
-            { key: 'phone',       label: 'Teléfono de contacto', placeholder: '+240 222 XXX XXX',         icon: 'phone' },
-            { key: 'email',       label: 'Email',                placeholder: 'empresa@email.com',        icon: 'mail' },
-            { key: 'website',     label: 'Sitio web',            placeholder: 'https://miempresa.com',    icon: 'globe' },
-            { key: 'address',     label: 'Dirección',            placeholder: 'Malabo, Guinea Ecuatorial',icon: 'map-pin' },
-          ] as { key: keyof BusinessProfile; label: string; placeholder: string; icon: string }[]).map(field => (
+            { key: 'name',        labelKey: 'mznBusinessNameRequired', placeholderKey: 'mznMyCompany',            icon: 'building' },
+            { key: 'description', labelKey: 'mznDescription',          placeholderKey: 'mznWhatYouOffer',         icon: 'align-left' },
+            { key: 'phone',       labelKey: 'mznContactPhone',         placeholder: '+240 222 XXX XXX',          icon: 'phone' },
+            { key: 'email',       labelKey: 'mznEmailLabel',           placeholder: 'empresa@email.com',         icon: 'mail' },
+            { key: 'website',     labelKey: 'mznWebsite',              placeholder: 'https://miempresa.com',     icon: 'globe' },
+            { key: 'address',     labelKey: 'setAddress',              placeholderKey: 'mznAddressExample',       icon: 'map-pin' },
+          ] as { key: keyof BusinessProfile; labelKey?: string; label?: string; placeholderKey?: string; placeholder?: string; icon: string }[]).map(field => (
             <View key={field.key} style={s.fieldGroup}>
               <View style={s.fieldLabelRow}>
                 {field.icon === 'building' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Rect x="3" y="3" width="18" height="18" rx="2"/><Path d="M3 9h18M9 21V9"/></Svg>}
@@ -210,13 +212,13 @@ export default function BusinessProfileScreen() {
                 {field.icon === 'mail' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><Polyline points="22,6 12,13 2,6"/></Svg>}
                 {field.icon === 'globe' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Circle cx="12" cy="12" r="10"/><Line x1="2" y1="12" x2="22" y2="12"/><Path d="M12 2a15.3 15.3 0 014 10 15.3 15.3 0 01-4 10 15.3 15.3 0 01-4-10 15.3 15.3 0 014-10z"/></Svg>}
                 {field.icon === 'map-pin' && <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round"><Path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><Circle cx="12" cy="10" r="3"/></Svg>}
-                <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{field.label}</Text>
+                <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{field.labelKey ? t(field.labelKey) : field.label}</Text>
               </View>
               <TextInput
                 style={[s.input, { color: C.textPrimary, backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
                 value={String(profile[field.key] || '')}
                 onChangeText={v => setProfile(p => ({ ...p, [field.key]: v }))}
-                placeholder={field.placeholder}
+                placeholder={field.placeholderKey ? t(field.placeholderKey) : field.placeholder}
                 placeholderTextColor={C.textTertiary}
               />
             </View>
@@ -227,7 +229,7 @@ export default function BusinessProfileScreen() {
             <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke={C.textTertiary} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round">
               <Path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/>
             </Svg>
-            <Text style={[s.fieldLabel, { color: C.textTertiary }]}>Categoría</Text>
+            <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{t('category')}</Text>
           </View>
           <ScrollView horizontal showsHorizontalScrollIndicator={false} style={{ marginBottom: 16 }}>
             {CATEGORIES.map(cat => (
@@ -236,14 +238,14 @@ export default function BusinessProfileScreen() {
                 style={[s.catChip, profile.category === cat && s.catChipActive]}
                 onPress={() => setProfile(p => ({ ...p, category: cat }))}
               >
-                <Text style={[s.catText, profile.category === cat && s.catTextActive]}>{cat}</Text>
+                <Text style={[s.catText, profile.category === cat && s.catTextActive]}>{t(cat)}</Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
 
           <TouchableOpacity onPress={handleSaveProfile} disabled={saving} style={s.saveBtn}>
             <LinearGradient colors={['#00C8A0', '#00B4E6']} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.saveBtnGrad}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveBtnText}>Guardar perfil</Text>}
+              {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveBtnText}>{t('mznSaveProfile')}</Text>}
             </LinearGradient>
           </TouchableOpacity>
         </ScrollView>
@@ -266,7 +268,7 @@ export default function BusinessProfileScreen() {
                   </Svg>
                 </View>
                 <Text style={[s.emptycatText, { color: C.textTertiary }]}>
-                  Añade productos o servicios a tu catálogo
+                  {t('mznEmptyCatalogHint')}
                 </Text>
               </View>
             }
@@ -285,7 +287,7 @@ export default function BusinessProfileScreen() {
                 <View style={s.catalogInfo}>
                   <Text style={[s.catalogName, { color: C.textPrimary }]} numberOfLines={2}>{item.name}</Text>
                   <Text style={s.catalogPrice}>{item.price} {item.currency}</Text>
-                  {!item.available && <Text style={s.outOfStock}>Sin stock</Text>}
+                  {!item.available && <Text style={s.outOfStock}>{t('mznOutOfStock')}</Text>}
                 </View>
                 <View style={s.catalogActions}>
                   <TouchableOpacity onPress={() => { setEditItem(item); setShowAddItem(true); }} style={s.catalogBtn}>
@@ -315,7 +317,7 @@ export default function BusinessProfileScreen() {
                 <Line x1="12" y1="5" x2="12" y2="19"/>
                 <Line x1="5" y1="12" x2="19" y2="12"/>
               </Svg>
-              <Text style={s.fabText}>Añadir producto</Text>
+              <Text style={s.fabText}>{t('mznAddProduct')}</Text>
             </LinearGradient>
           </TouchableOpacity>
         </View>
@@ -338,6 +340,7 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
   onSave: (i: CatalogItem) => void; onClose: () => void;
   C: typeof Colors;
 }) {
+  const { t } = useTranslation();
   const [name, setName] = useState('');
   const [price, setPrice] = useState('');
   const [currency, setCurrency] = useState('XAF');
@@ -365,7 +368,7 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
   };
 
   const handleSave = () => {
-    if (!name.trim()) { toast.error('El nombre es obligatorio'); return; }
+    if (!name.trim()) { toast.error(t('mznNameRequired')); return; }
     onSave({
       id: item?.id || `cat_${Date.now()}`,
       name: name.trim(), price: price.trim(), currency,
@@ -382,7 +385,7 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
               <Line x1="18" y1="6" x2="6" y2="18"/><Line x1="6" y1="6" x2="18" y2="18"/>
             </Svg>
           </TouchableOpacity>
-          <Text style={s.headerTitle}>{item ? 'Editar producto' : 'Nuevo producto'}</Text>
+          <Text style={s.headerTitle}>{item ? t('mznEditProduct') : t('mznNewProduct')}</Text>
           <TouchableOpacity onPress={handleSave} style={s.btn}>
             <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth={2.5} strokeLinecap="round">
               <Path d="M20 6L9 17l-5-5"/>
@@ -398,27 +401,27 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
                     <Path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
                     <Circle cx="12" cy="13" r="4"/>
                   </Svg>
-                  <Text style={{ color: C.textTertiary, marginTop: 8, fontSize: 14 }}>Añadir foto del producto</Text>
+                  <Text style={{ color: C.textTertiary, marginTop: 8, fontSize: 14 }}>{t('mznAddProductPhoto')}</Text>
                 </View>
             }
           </TouchableOpacity>
           {([
-            { val: name, set: setName, label: 'Nombre *', placeholder: 'Nombre del producto' },
-            { val: price, set: setPrice, label: 'Precio', placeholder: '0', keyboard: 'numeric' },
-            { val: description, set: setDescription, label: 'Descripción', placeholder: 'Describe el producto...' },
+            { val: name, set: setName, labelKey: 'mznNameStar', placeholderKey: 'mznProductNamePlaceholder' },
+            { val: price, set: setPrice, labelKey: 'mznPrice', placeholder: '0', keyboard: 'numeric' },
+            { val: description, set: setDescription, labelKey: 'mznDescription', placeholderKey: 'mznProductDescPlaceholder' },
           ] as any[]).map(f => (
-            <View key={f.label} style={s.fieldGroup}>
-              <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{f.label}</Text>
+            <View key={f.labelKey} style={s.fieldGroup}>
+              <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{t(f.labelKey)}</Text>
               <TextInput
                 style={[s.input, { color: C.textPrimary, backgroundColor: C.bgSecondary, borderColor: C.borderLight }]}
                 value={f.val} onChangeText={f.set}
-                placeholder={f.placeholder} placeholderTextColor={C.textTertiary}
+                placeholder={f.placeholderKey ? t(f.placeholderKey) : f.placeholder} placeholderTextColor={C.textTertiary}
                 keyboardType={f.keyboard || 'default'}
               />
             </View>
           ))}
           <View style={s.fieldGroup}>
-            <Text style={[s.fieldLabel, { color: C.textTertiary }]}>Moneda</Text>
+            <Text style={[s.fieldLabel, { color: C.textTertiary }]}>{t('mznCurrency')}</Text>
             <View style={{ flexDirection: 'row', gap: 8 }}>
               {['XAF', 'EUR', 'USD'].map(cur => (
                 <TouchableOpacity key={cur} style={[s.catChip, currency === cur && s.catChipActive]} onPress={() => setCurrency(cur)}>
@@ -428,10 +431,10 @@ function CatalogItemModal({ visible, item, onSave, onClose, C }: {
             </View>
           </View>
           <View style={[s.fieldGroup, { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }]}>
-            <Text style={[s.fieldLabel, { color: C.textPrimary }]}>Disponible</Text>
+            <Text style={[s.fieldLabel, { color: C.textPrimary }]}>{t('mznAvailable')}</Text>
             <TouchableOpacity onPress={() => setAvailable(!available)}
               style={[s.catChip, available && s.catChipActive]}>
-              <Text style={[s.catText, available && s.catTextActive]}>{available ? '✓ Disponible' : 'Sin stock'}</Text>
+              <Text style={[s.catText, available && s.catTextActive]}>{available ? t('mznAvailableCheck') : t('mznOutOfStock')}</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>

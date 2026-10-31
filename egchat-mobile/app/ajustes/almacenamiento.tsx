@@ -68,18 +68,18 @@ export default function AlmacenamientoScreen() {
   const breakdown = useMemo(() => {
     const base = used > 0 ? used : 10;
     return [
-      { icon: 'image' as const,       label: 'Fotos y media', size: parseFloat((base * 0.45).toFixed(1)) },
-      { icon: 'videocam' as const,    label: 'Videos',        size: parseFloat((base * 0.30).toFixed(1)) },
-      { icon: 'music-note' as const,  label: 'Audio',         size: parseFloat((base * 0.12).toFixed(1)) },
-      { icon: 'description' as const, label: 'Documentos',    size: parseFloat((base * 0.13).toFixed(1)) },
+      { icon: 'image' as const,       label: t('setPhotosMedia'), size: parseFloat((base * 0.45).toFixed(1)) },
+      { icon: 'videocam' as const,    label: t('setVideos'),      size: parseFloat((base * 0.30).toFixed(1)) },
+      { icon: 'music-note' as const,  label: t('msgAudio'),       size: parseFloat((base * 0.12).toFixed(1)) },
+      { icon: 'description' as const, label: t('setDocuments'),   size: parseFloat((base * 0.13).toFixed(1)) },
     ];
-  }, [used]);
+  }, [used, t]);
 
   const clearCache = () => {
-    Alert.alert('Liberar espacio', `¿Limpiar caché de la app (${cacheSize.toFixed(1)} MB)?`, [
-      { text: 'Cancelar', style: 'cancel' },
+    Alert.alert(t('setFreeUpSpace'), `${t('setClearAppCacheAsk')} (${cacheSize.toFixed(1)} MB)?`, [
+      { text: t('cancel'), style: 'cancel' },
       {
-        text: 'Limpiar',
+        text: t('setClean'),
         style: 'destructive',
         onPress: async () => {
           const keys = await AsyncStorage.getAllKeys();
@@ -90,26 +90,26 @@ export default function AlmacenamientoScreen() {
           );
           await AsyncStorage.multiRemove(toRemove);
           await calcStorage();
-          Alert.alert('✓', `Caché limpiada. ${toRemove.length} elementos eliminados.`);
+          Alert.alert('✓', `${t('setCacheCleared')} ${toRemove.length} ${t('setItemsRemoved')}`);
         },
       },
     ]);
   };
 
   const clearMediaCacheAction = () => {
-    const label = mediaCacheSize > 0 ? `${mediaCacheSize.toFixed(1)} MB` : 'vacío';
+    const label = mediaCacheSize > 0 ? `${mediaCacheSize.toFixed(1)} MB` : t('setEmpty');
     Alert.alert(
-      'Limpiar media descargada',
-      `Esto eliminará las fotos y audios descargados localmente (${label}). Podrán volver a descargarse cuando los necesites.`,
+      t('clearDownloadedMedia'),
+      `${t('setClearMediaBodyBefore')} (${label}). ${t('setClearMediaBodyAfter')}`,
       [
-        { text: 'Cancelar', style: 'cancel' },
+        { text: t('cancel'), style: 'cancel' },
         {
-          text: 'Limpiar',
+          text: t('setClean'),
           style: 'destructive',
           onPress: async () => {
             await clearMediaCache();
             await calcStorage();
-            Alert.alert('✓', 'Media descargada eliminada correctamente.');
+            Alert.alert('✓', t('setMediaCleared'));
           },
         },
       ],

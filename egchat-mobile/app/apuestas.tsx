@@ -13,6 +13,7 @@ import { Colors } from '../src/theme';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { DarkColors } from '../src/theme/darkMode';
 import { LinearGradient } from 'expo-linear-gradient';
+import { t as tr } from '../src/translations';
 
 const BRAND = '#00c8a0';
 const BRAND2 = '#00b4e6';
@@ -69,7 +70,7 @@ const makeStyles = (C: typeof Colors) => StyleSheet.create({
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
 });
 
-const DISCLAIMER = '⚠️ El juego puede crear adicción. Solo mayores de 18 años. Juega con responsabilidad.';
+const DISCLAIMER = () => tr('xtElJuegoPuedeCrearAdiccionSoloMayoresDe18AnosJuegaC');
 
 export default function ApuestasScreen() {
   const { isDark } = useThemeContext();
@@ -111,7 +112,7 @@ export default function ApuestasScreen() {
 
   const placeBets = () => {
     if (totalStake <= 0 || totalStake > balance) {
-      Alert.alert('Error', 'Saldo insuficiente o importe inválido');
+      Alert.alert(tr('error'), 'Saldo insuficiente o importe inválido');
       return;
     }
     const win = Math.random() > 0.45;
@@ -119,13 +120,13 @@ export default function ApuestasScreen() {
     setBalance(b => b - totalStake + (win ? totalPayout : 0));
     setBetSlip([]);
     setShowSlip(false);
-    toast[win ? 'success' : 'info'](win ? `¡Ganaste ${totalPayout.toLocaleString()} XAF!` : 'Apuesta no acertada');
+    toast[win ? 'success' : 'info'](win ? `¡Ganaste ${totalPayout.toLocaleString()} XAF!` : tr('xtApuestaNoAcertada'));
   };
 
   const playCasino = () => {
     const n = parseInt(casinoAmt, 10);
     if (!n || n < (company?.minBet || 200) || n > balance) {
-      Alert.alert('Error', 'Importe inválido o saldo insuficiente');
+      Alert.alert(tr('error'), tr('aptInvalidAmount'));
       return;
     }
     const mults = [0, 0, 0.5, 1.5, 2, 3, 5, 10];
@@ -137,11 +138,11 @@ export default function ApuestasScreen() {
   };
 
   const playLottery = (price: number) => {
-    if (price > balance) { Alert.alert('Error', 'Saldo insuficiente'); return; }
+    if (price > balance) { Alert.alert(tr('error'), 'Saldo insuficiente'); return; }
     const win = Math.random() > 0.8;
     const prize = win ? [500, 1000, 5000, 10000][Math.floor(Math.random() * 4)] : 0;
     setBalance(b => b - price + prize);
-    toast[win ? 'success' : 'info'](win ? `¡Premio ${prize.toLocaleString()} XAF!` : 'Sin premio esta vez');
+    toast[win ? 'success' : 'info'](win ? `¡Premio ${prize.toLocaleString()} XAF!` : tr('xtSinPremioEstaVez'));
   };
 
   const goBack = () => {
@@ -165,19 +166,19 @@ export default function ApuestasScreen() {
             <Text style={s.subtitle}>5 plataformas licenciadas</Text>
           </View>
           <View style={s.balancePill}>
-            <Text style={s.balanceLabel}>SALDO</Text>
+            <Text style={s.balanceLabel}>{tr('xtSALDO')}</Text>
             <Text style={s.balanceVal}>{balance.toLocaleString()} XAF</Text>
           </View>
         </View>
         <LinearGradient colors={[BRAND, BRAND2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.promoBanner}>
           <Text style={{ fontSize: 32 }}>🏆</Text>
           <View style={{ flex: 1 }}>
-            <Text style={s.promoTitle}>+120 eventos en vivo ahora</Text>
+            <Text style={s.promoTitle}>{tr('xt120EventosEnVivoAhora')}</Text>
             <Text style={s.promoSub}>Premier League · Champions · NBA · UFC</Text>
           </View>
         </LinearGradient>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: 40 }}>
-          <Text style={s.disclaimer}>{DISCLAIMER}</Text>
+          <Text style={s.disclaimer}>{DISCLAIMER()}</Text>
           {COMPANIES.map(co => (
             <View key={co.id} style={s.coCard}>
               <TouchableOpacity style={s.coTop} onPress={() => { setCompany(co); setSportId(co.sports?.[0]?.id || 'futbol'); }}>
@@ -197,7 +198,7 @@ export default function ApuestasScreen() {
                 <Text style={s.chevron}>›</Text>
               </TouchableOpacity>
               <TouchableOpacity style={[s.coLink, { borderColor: co.color + '40' }]} onPress={() => Linking.openURL(co.url)}>
-                <Text style={[s.coLinkText, { color: co.color }]}>Abrir sitio oficial</Text>
+                <Text style={[s.coLinkText, { color: co.color }]}>{tr('xtAbrirSitioOficial')}</Text>
               </TouchableOpacity>
             </View>
           ))}
@@ -285,13 +286,13 @@ export default function ApuestasScreen() {
               </View>
             </View>
           ))}
-          <TextInput style={s.input} value={casinoAmt} onChangeText={setCasinoAmt} placeholder="Importe (XAF)" keyboardType="numeric" placeholderTextColor="#666" />
+          <TextInput style={s.input} value={casinoAmt} onChangeText={setCasinoAmt} placeholder={tr('walAmountXaf')} keyboardType="numeric" placeholderTextColor="#666" />
           <TouchableOpacity style={[s.primaryBtn, { backgroundColor: company.color }]} onPress={playCasino}>
             <Text style={s.primaryBtnText}>Jugar</Text>
           </TouchableOpacity>
           {casinoRes && (
             <Text style={{ textAlign: 'center', marginTop: 16, color: casinoRes.win ? '#22c55e' : '#ef4444', fontWeight: '700' }}>
-              {casinoRes.win ? `¡Ganaste ${casinoRes.payout.toLocaleString()} XAF!` : 'Sin premio'}
+              {casinoRes.win ? `¡Ganaste ${casinoRes.payout.toLocaleString()} XAF!` : tr('xtSinPremio')}
             </Text>
           )}
         </ScrollView>
@@ -334,7 +335,7 @@ function BetSlipModal({ visible, items, totalStake, totalPayout, onClose, onStak
         <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
       <Pressable style={s.modalOverlay} onPress={onClose}>
         <Pressable style={s.modalSheet} onPress={() => {}}>
-          <Text style={s.modalTitle}>Cupón de apuestas</Text>
+          <Text style={s.modalTitle}>{tr('aptBetSlipTitle')}</Text>
           {items.map(b => (
             <View key={b.id} style={s.slipRow}>
               <View style={{ flex: 1 }}>
@@ -362,9 +363,9 @@ function ResultModal({ visible, win, payout, onClose, C }: { visible: boolean; w
         <View style={[s.modalSheet, { margin: 24 }]}>
           <Text style={{ fontSize: 48, textAlign: 'center' }}>{win ? '🎉' : '😔'}</Text>
           <Text style={[s.modalTitle, { textAlign: 'center' }]}>
-            {win ? `¡Ganaste ${payout.toLocaleString()} XAF!` : 'Apuesta no acertada'}
+            {win ? `¡Ganaste ${payout.toLocaleString()} XAF!` : tr('xtApuestaNoAcertada')}
           </Text>
-          <TouchableOpacity style={s.primaryBtn} onPress={onClose}><Text style={s.primaryBtnText}>Cerrar</Text></TouchableOpacity>
+          <TouchableOpacity style={s.primaryBtn} onPress={onClose}><Text style={s.primaryBtnText}>{tr('close')}</Text></TouchableOpacity>
         </View>
       </View>
     </Modal>

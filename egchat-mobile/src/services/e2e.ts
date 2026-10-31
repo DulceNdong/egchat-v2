@@ -15,6 +15,7 @@ import nacl from 'tweetnacl';
 import { encodeBase64, decodeBase64 } from 'tweetnacl-util';
 import * as SecureStore from 'expo-secure-store';
 import { getToken, getApiBase } from '../api';
+import { t as tr } from '../translations';
 
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -162,7 +163,7 @@ export function decryptIfNeeded(
   if (!isE2EMessage(text)) return text;
   const cipher    = text.slice(4); // quitar "e2e:"
   const decrypted = decryptMessage(cipher, theirPublicKey, myPrivateKey);
-  return decrypted ?? '🔒 Mensaje cifrado (clave no disponible)';
+  return decrypted ?? tr('xtMensajeCifradoClaveNoDisponible');
 }
 
 // ══════════════════════════════════════════════════════════════════
@@ -247,7 +248,7 @@ export interface E2EBackupResult {
  */
 export async function backupE2EKey(password: string): Promise<E2EBackupResult> {
   if (!password || password.length < 6) {
-    return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+    return { ok: false, error: tr('setPasswordMin6') };
   }
 
   try {
@@ -255,7 +256,7 @@ export async function backupE2EKey(password: string): Promise<E2EBackupResult> {
     const privateKeyB64 = await SecureStore.getItemAsync(PRIVATE_KEY_STORE);
     const publicKeyB64  = await SecureStore.getItemAsync(PUBLIC_KEY_STORE);
     if (!privateKeyB64 || !publicKeyB64) {
-      return { ok: false, error: 'No hay claves E2E generadas en este dispositivo' };
+      return { ok: false, error: tr('xtNoHayClavesE2EGeneradasEnEsteDispositivo') };
     }
 
     // 2. Salt (generar nuevo o reusar el existente del primer backup)
@@ -290,7 +291,7 @@ export async function backupE2EKey(password: string): Promise<E2EBackupResult> {
     });
 
     if (!res.ok) {
-      const err = await res.json().catch(() => ({ message: 'Error del servidor' }));
+      const err = await res.json().catch(() => ({ message: tr('xtErrorDelServidor') }));
       return { ok: false, error: err.message };
     }
 
@@ -299,7 +300,7 @@ export async function backupE2EKey(password: string): Promise<E2EBackupResult> {
 
     return { ok: true };
   } catch (e: any) {
-    return { ok: false, error: e?.message || 'Error al hacer backup' };
+    return { ok: false, error: e?.message || tr('xtErrorAlHacerBackup') };
   }
 }
 
@@ -310,7 +311,7 @@ export async function backupE2EKey(password: string): Promise<E2EBackupResult> {
  */
 export async function restoreE2EKey(password: string): Promise<E2EBackupResult> {
   if (!password || password.length < 6) {
-    return { ok: false, error: 'La contraseña debe tener al menos 6 caracteres' };
+    return { ok: false, error: tr('setPasswordMin6') };
   }
 
   try {
@@ -323,14 +324,14 @@ export async function restoreE2EKey(password: string): Promise<E2EBackupResult> 
 
     if (!res.ok) {
       if (res.status === 404) return { ok: false, error: 'No hay backup de claves en el servidor' };
-      return { ok: false, error: 'No se pudo obtener el backup' };
+      return { ok: false, error: tr('xtNoSePudoObtenerElBackup') };
     }
 
     const data = await res.json();
     const { encryptedKey, salt: saltB64, publicKey } = data;
 
     if (!encryptedKey || !saltB64 || !publicKey) {
-      return { ok: false, error: 'Backup inválido o corrupto' };
+      return { ok: false, error: tr('xtBackupInvalidoOCorrupto') };
     }
 
     // 2. Derivar clave desde contraseña + salt guardado
@@ -340,7 +341,7 @@ export async function restoreE2EKey(password: string): Promise<E2EBackupResult> 
     // 3. Descifrar
     const decrypted = decryptBlob(encryptedKey, derivedKey);
     if (!decrypted) {
-      return { ok: false, error: 'Contraseña incorrecta o backup corrupto' };
+      return { ok: false, error: tr('xtContrasenaIncorrectaOBackupCorrupto') };
     }
 
     // 4. Guardar en SecureStore del nuevo dispositivo
@@ -355,7 +356,7 @@ export async function restoreE2EKey(password: string): Promise<E2EBackupResult> 
 
     return { ok: true };
   } catch (e: any) {
-    return { ok: false, error: e?.message || 'Error al restaurar' };
+    return { ok: false, error: e?.message || tr('xtErrorAlRestaurar') };
   }
 }
 

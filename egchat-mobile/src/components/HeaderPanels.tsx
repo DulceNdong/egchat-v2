@@ -15,7 +15,7 @@ import Svg, { Path, Circle, Line, Rect, Polyline, Polygon } from 'react-native-s
 import { router } from 'expo-router';
 import { authAPI } from '../api';
 import { Colors, Spacing, BorderRadius, FontSize, FontWeight, Shadow } from '../theme';
-import { useLanguage } from '../context/LanguageContext';
+import { useTranslation } from '../context/LanguageContext';
 
 // ── Helpers ───────────────────────────────────────────────────────
 const colorForType = (type: AppNotification['type']) => {
@@ -113,6 +113,7 @@ export const NotificationsPanel = ({
   onClearAll: () => void;
   onNotifPress: (n: AppNotification) => void;
 }) => {
+  const { t } = useTranslation();
   const unread = notifications.filter(n => !n.read).length;
 
   return (
@@ -122,7 +123,7 @@ export const NotificationsPanel = ({
           {/* Header */}
           <View style={np.header}>
             <View style={np.headerLeft}>
-              <Text style={np.title}>Notificaciones</Text>
+              <Text style={np.title}>{t('notifications')}</Text>
               {unread > 0 && (
                 <View style={np.unreadBadge}>
                   <Text style={np.unreadText}>{unread > 9 ? '9+' : unread}</Text>
@@ -132,7 +133,7 @@ export const NotificationsPanel = ({
             <View style={np.headerRight}>
               {notifications.length > 0 && (
                 <TouchableOpacity onPress={onMarkAllRead} activeOpacity={0.7}>
-                  <Text style={np.markAll}>Marcar todas</Text>
+                  <Text style={np.markAll}>{t('hdrMarkAllRead')}</Text>
                 </TouchableOpacity>
               )}
               <TouchableOpacity onPress={onClose} style={np.closeBtn} activeOpacity={0.7}>
@@ -146,8 +147,8 @@ export const NotificationsPanel = ({
             {notifications.length === 0 ? (
               <View style={np.empty}>
                 <Text style={np.emptyIcon}>🔔</Text>
-                <Text style={np.emptyTitle}>Sin notificaciones</Text>
-                <Text style={np.emptySub}>Los mensajes, pagos y más aparecerán aquí</Text>
+                <Text style={np.emptyTitle}>{t('hdrNoNotifications')}</Text>
+                <Text style={np.emptySub}>{t('hdrNotifEmptySub')}</Text>
               </View>
             ) : notifications.map((n, i) => (
               <TouchableOpacity
@@ -186,7 +187,7 @@ export const NotificationsPanel = ({
           {notifications.length > 0 && (
             <View style={np.footer}>
               <TouchableOpacity onPress={onClearAll} activeOpacity={0.7}>
-                <Text style={np.clearAll}>Limpiar todo</Text>
+                <Text style={np.clearAll}>{t('hdrClearAll')}</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -356,7 +357,7 @@ export const HamburgerMenu = ({
   headerHeight?: number;
 }) => {
   const insets = useSafeAreaInsets();
-  const { language, translate: t } = useLanguage();
+  const { t } = useTranslation();
   const scaleAnim = useRef(new Animated.Value(0.92)).current;
   const opacityAnim = useRef(new Animated.Value(0)).current;
 
@@ -404,9 +405,9 @@ export const HamburgerMenu = ({
         case 'ajustes':        router.push('/(tabs)/ajustes' as any); break;
         case 'ayuda':          router.push('/ajustes/acerca' as any); break;
         case 'salir':
-          Alert.alert('Cerrar sesión', '¿Estás seguro de que quieres salir?', [
-            { text: 'Cancelar', style: 'cancel' },
-            { text: 'Cerrar sesión', style: 'destructive', onPress: async () => {
+          Alert.alert(t('logout'), t('logoutConfirmQ'), [
+            { text: t('cancel'), style: 'cancel' },
+            { text: t('logout'), style: 'destructive', onPress: async () => {
               try { await authAPI.logout(); } catch {}
               if (typeof window !== 'undefined' && window.location) {
                 window.location.href = '/';
@@ -448,8 +449,8 @@ export const HamburgerMenu = ({
               </View>
             )}
             <View style={hm.userInfo}>
-              <Text style={hm.userName} numberOfLines={1}>{user?.full_name || 'Cargando...'}</Text>
-              <Text style={hm.userStatus}>● En línea</Text>
+              <Text style={hm.userName} numberOfLines={1}>{user?.full_name || t('loading')}</Text>
+              <Text style={hm.userStatus}>{`● ${t('online')}`}</Text>
             </View>
           </View>
 
@@ -560,7 +561,8 @@ export const WeatherModal = ({
   city: string;
   condition: 'sunny' | 'cloudy' | 'rain';
 }) => {
-  const conditionLabel = condition === 'sunny' ? '☀️ Soleado' : condition === 'cloudy' ? '☁️ Nublado' : '🌧️ Lluvia';
+  const { t } = useTranslation();
+  const conditionLabel = condition === 'sunny' ? `☀️ ${t('hdrSunny')}` : condition === 'cloudy' ? `☁️ ${t('hdrCloudy')}` : `🌧️ ${t('hdrRain')}`;
   const conditionColor = condition === 'sunny' ? '#f59e0b' : condition === 'cloudy' ? '#6b7280' : '#3b82f6';
 
   return (
@@ -569,7 +571,7 @@ export const WeatherModal = ({
         <Pressable style={wm.panel} onPress={() => {}}>
           {/* Header */}
           <View style={wm.header}>
-            <Text style={wm.headerTitle}>🌍 Clima en {city}</Text>
+            <Text style={wm.headerTitle}>🌍 {t('hdrWeatherIn')} {city}</Text>
             <TouchableOpacity onPress={onClose} activeOpacity={0.7}>
               <Text style={wm.closeText}>✕</Text>
             </TouchableOpacity>
@@ -579,16 +581,16 @@ export const WeatherModal = ({
           <View style={wm.main}>
             <Text style={wm.tempBig}>{temp}</Text>
             <Text style={[wm.condition, { color: conditionColor }]}>{conditionLabel}</Text>
-            <Text style={wm.city}>{city}, Guinea Ecuatorial</Text>
+            <Text style={wm.city}>{city}, {t('hdrEquatorialGuinea')}</Text>
           </View>
 
           {/* Detalles */}
           <View style={wm.details}>
             {[
-              { label: 'Humedad',    value: '78%',    icon: '💧' },
-              { label: 'Viento',     value: '12 km/h', icon: '💨' },
-              { label: 'Sensación',  value: `${parseInt(temp) + 2}°`, icon: '🌡️' },
-              { label: 'UV',         value: 'Alto',   icon: '☀️' },
+              { label: t('hdrHumidity'),   value: '78%',    icon: '💧' },
+              { label: t('hdrWind'),       value: '12 km/h', icon: '💨' },
+              { label: t('hdrFeelsLike'),  value: `${parseInt(temp) + 2}°`, icon: '🌡️' },
+              { label: 'UV',               value: t('hdrHigh'),   icon: '☀️' },
             ].map(d => (
               <View key={d.label} style={wm.detailItem}>
                 <Text style={wm.detailIcon}>{d.icon}</Text>
@@ -599,7 +601,7 @@ export const WeatherModal = ({
           </View>
 
           <TouchableOpacity style={wm.closeBtn} onPress={onClose} activeOpacity={0.8}>
-            <Text style={wm.closeBtnText}>Cerrar</Text>
+            <Text style={wm.closeBtnText}>{t('close')}</Text>
           </TouchableOpacity>
         </Pressable>
       </Pressable>
