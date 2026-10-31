@@ -9,6 +9,7 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
   private var registry: PKPushRegistry?
   private var pendingToken: String?
   private var pendingCalls: [[String: Any]] = []
+  private(set) var currentVoIPToken: String?
 
   func start() {
     DispatchQueue.main.async {
@@ -26,6 +27,7 @@ final class EGChatPushKitCoordinator: NSObject, PKPushRegistryDelegate {
   }
 
   private func emitToken(_ token: String) {
+    currentVoIPToken = token.isEmpty ? nil : token
     if let module = EGChatPushKitModule.eventSink {
       module.sendEvent(withName: "voipTokenUpdated", body: ["token": token])
     } else { pendingToken = token }
@@ -92,5 +94,11 @@ class EGChatPushKitModule: RCTEventEmitter {
   @objc func registerVoIP() {
     EGChatPushKitCoordinator.shared.start()
     EGChatPushKitCoordinator.shared.attach(self)
+  }
+
+  /** Devuelve el token ya emitido por iOS, aunque el JS llegue tarde. */
+  @objc func getCurrentVoIPToken(_ resolve: @escaping RCTPromiseResolveBlock,
+                                 rejecter reject: @escaping RCTPromiseRejectBlock) {
+    resolve(EGChatPushKitCoordinator.shared.currentVoIPToken)
   }
 }

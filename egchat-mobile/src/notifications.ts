@@ -343,6 +343,9 @@ export async function syncTokenWithServer(expoPushToken: string) {
 // ── Registrar token VoIP iOS (PushKit) ─────────────────────────────────────
 export async function syncVoIPTokenWithServer(voipToken: string) {
   if (Platform.OS !== 'ios') return;
+  if (voipToken) {
+    try { await AsyncStorage.setItem('voipToken', voipToken); } catch {}
+  }
   const authToken = await getToken();
   if (!authToken) return;
 

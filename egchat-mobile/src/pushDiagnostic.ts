@@ -85,7 +85,10 @@ export async function runPushDiagnostic(): Promise<string> {
   if (Platform.OS === 'ios') {
     try {
       const { PushKit } = await import('./native/PushKit');
-      const voipToken = await PushKit.getCurrentVoIPToken();
+      // En builds antiguos el módulo nativo no expone la lectura directa:
+      // se usa el último token que ya sincronizó la app.
+      const voipToken = (await PushKit.getCurrentVoIPToken())
+        || (await AsyncStorage.getItem('voipToken'));
       if (!voipToken) {
         lines.push(tr('xtTokenVoIPNoGeneradoPushKitNoRegistraEnEsteIPhone'));
       } else {
