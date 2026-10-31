@@ -3028,7 +3028,88 @@ const LIA_PRIORITY_INTENTS = [
   ['transfer', ['send money', 'i want to send', 'i need to send', 'transfer money', 'withdraw money', 'enviar dinero', 'enviar plata', 'enviar dinheiro', 'hacer una transferencia', 'transferir dinero', 'retirar dinero', 'retirar dinheiro', 'levantar dinheiro', 'envoyer de l argent', 'faire un virement', 'je veux envoyer']],
 ];
 
+// Operaciones sencillas que se responden localmente, sin pasar por la IA:
+// así una pregunta matemática nunca arrastra el tema anterior.
+const LIA_MATH_NUMBERS = {
+  cero: 0, zero: 0,
+  un: 1, uno: 1, una: 1, une: 1, one: 1, um: 1, uma: 1,
+  dos: 2, deux: 2, dois: 2, duas: 2, two: 2,
+  tres: 3, trois: 3, three: 3,
+  cuatro: 4, quatre: 4, quatro: 4, four: 4,
+  cinco: 5, cinq: 5, five: 5,
+  seis: 6, six: 6,
+  siete: 7, sept: 7, seven: 7, sete: 7,
+  ocho: 8, huit: 8, eight: 8, oito: 8,
+  nueve: 9, neuf: 9, nine: 9, nove: 9,
+  diez: 10, dix: 10, ten: 10, dez: 10,
+  once: 11, onze: 11, eleven: 11,
+  doce: 12, douze: 12, twelve: 12, doze: 12,
+  trece: 13, treize: 13, thirteen: 13, treze: 13,
+  catorce: 14, quatorze: 14, fourteen: 14, catorze: 14,
+  quince: 15, quinze: 15, fifteen: 15,
+  dieciseis: 16, seize: 16, sixteen: 16, dezesseis: 16,
+  diecisiete: 17, dixsept: 17, seventeen: 17, dezessete: 17,
+  dieciocho: 18, dixhuit: 18, eighteen: 18, dezoito: 18,
+  diecinueve: 19, dixneuf: 19, nineteen: 19, dezenove: 19,
+  veinte: 20, vingt: 20, twenty: 20, vinte: 20,
+  veintiuno: 21, veintiun: 21, veintiuna: 21, veintidos: 22, veintitres: 23,
+  veinticuatro: 24, veinticinco: 25, veintiseis: 26, veintisiete: 27,
+  veintiocho: 28, veintinueve: 29,
+  treinta: 30, trente: 30, thirty: 30, trinta: 30,
+  cuarenta: 40, quarante: 40, forty: 40, quarenta: 40,
+  cincuenta: 50, cinquante: 50, fifty: 50, cinquenta: 50,
+  sesenta: 60, soixante: 60, sixty: 60, sessenta: 60,
+  setenta: 70, seventy: 70,
+  ochenta: 80, eighty: 80, oitenta: 80,
+  noventa: 90, ninety: 90,
+  cien: 100, ciento: 100, cent: 100, cem: 100, cento: 100, hundred: 100,
+  mil: 1000, mille: 1000, thousand: 1000,
+};
+
+const LIA_MATH_COPY = {
+  es: { divideByZero: 'No se puede dividir entre cero.' },
+  fr: { divideByZero: 'La division par zéro est impossible.' },
+  en: { divideByZero: 'Division by zero is not possible.' },
+  pt: { divideByZero: 'Não é possível dividir por zero.' },
+};
+
+const liaDetectMath = (message) => {
+  const raw = liaNorm(message).replace(/[^a-z0-9+\-*/()., x×]/g, ' ').replace(/\s+/g, ' ').trim();
+  if (!raw) return null;
+  let expr = ` ${raw} `;
+  Object.entries(LIA_MATH_NUMBERS)
+    .sort((a, b) => b[0].length - a[0].length)
+    .forEach(([word, value]) => {
+      expr = expr.replace(new RegExp(`\\b${word}\\b`, 'g'), ` ${value} `);
+    });
+  expr = expr
+    .replace(/\b(plus|mas|mais|sumado a|additionne|ajouter)\b/g, ' + ')
+    .replace(/\b(menos|moins|minus|sustraido|retirer)\b/g, ' - ')
+    .replace(/\b(por|fois|times|multiplie|vezes)\b/g, ' * ')
+    .replace(/\b(entre|divise|divided by|dividido por|dividir)\b/g, ' / ')
+    .replace(/(\d)\s*[x×]\s*(\d)/g, '$1 * $2')
+    .replace(/(\d),(\d)/g, '$1.$2');
+  const match = expr.match(/(\d+(?:\.\d+)?)\s*([+\-*/])\s*(\d+(?:\.\d+)?)/);
+  if (!match) return null;
+  const asksResult = /(cuanto|cuanta|combien|how much|how many|quanto|quantos|resultado|resuelve|resolve|calcula|calcule|calculate|solve|compute)/.test(raw);
+  if (!asksResult && !/^\d/.test(raw)) return null;
+  return { a: Number(match[1]), op: match[2], b: Number(match[3]) };
+};
+
+const liaMathReply = (message, lang) => {
+  const parsed = liaDetectMath(message);
+  if (!parsed) return null;
+  const { a, op, b } = parsed;
+  if (op === '/' && b === 0) return LIA_MATH_COPY[lang].divideByZero;
+  const result = op === '+' ? a + b : op === '-' ? a - b : op === '*' ? a * b : a / b;
+  const rounded = Math.round(result * 1e6) / 1e6;
+  const symbol = op === '*' ? '×' : op === '/' ? '÷' : op;
+  const fmt = (value) => (lang === 'en' ? String(value) : String(value).replace('.', ','));
+  return `${fmt(a)} ${symbol} ${fmt(b)} = ${fmt(rounded)}`;
+};
+
 const liaDetectIntent = (message) => {
+  if (liaDetectMath(message)) return 'math';
   const norm = ` ${liaNorm(message).replace(/[^a-z0-9 ]+/g, ' ').replace(/\s+/g, ' ').trim()} `;
   for (const [intent, phrases] of LIA_PRIORITY_INTENTS) {
     if (phrases.some((phrase) => norm.includes(phrase))) return intent;
@@ -3182,6 +3263,7 @@ const liaBuildSystem = (lang, profile, wallet) => [
   `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
   `Datos de referencia de la app (puedes usarlos): tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
   `Puedes explicar cómo usar Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros y CEMAC.`,
+  `Responde únicamente a la última pregunta del usuario. No continúes, repitas ni mezcles respuestas de mensajes anteriores: si el tema cambió, ignora el tema anterior por completo.`,
   `No puedes ejecutar acciones (enviar dinero, pedir taxi): explica en qué pantalla se hace y nunca digas que ya lo has hecho.`,
   `Nunca inventes direcciones web, números de teléfono, comisiones ni importes: si no están en los datos anteriores, no los des.`,
   `La app está disponible en español, francés, inglés y portugués; el idioma se cambia en Ajustes → Otras funciones → Idioma.`,
@@ -3199,7 +3281,7 @@ const liaLlmReply = async ({ lang, message, history, userId }) => {
     const system = liaBuildSystem(lang, profile, wallet);
     const safeHistory = (Array.isArray(history) ? history : [])
       .filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string')
-      .slice(-6)
+      .slice(-4)
       .map((item) => ({ role: item.role, content: item.content.slice(0, 500) }));
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 20000);
@@ -3300,6 +3382,8 @@ const liaAnswer = async (intent, message, lang, userId, history) => {
       return copy.help;
     case 'greeting':
       return copy.greeting;
+    case 'math':
+      return liaMathReply(message, lang) || copy.unknown;
     default: {
       const llmReply = await liaLlmReply({ lang, message, history, userId });
       return llmReply || copy.unknown;
