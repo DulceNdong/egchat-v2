@@ -70,7 +70,7 @@ const PREFERRED_VOICES: Record<string, string[]> = {
 };
 
 const TTS_RATE: Record<string, number> = {
-  'es-ES': 0.9, 'fr-FR': 0.92, 'en-US': 0.94, 'pt-PT': 0.9,
+  'es-ES': 0.97, 'fr-FR': 0.97, 'en-US': 0.97, 'pt-PT': 0.97,
 };
 
 const CURRENCY_WORDS: Record<string, Record<string, string>> = {
@@ -117,20 +117,23 @@ const pickVoice = async (locale: string): Promise<string | undefined> => {
   });
   if (!candidates.length) return undefined;
   const preferred = PREFERRED_VOICES[locale] || [];
+  // Algunas voces del sistema (Siri, personales, de broma) no se pueden usar
+  // desde una app: si se fuerzan, iOS no reproduce nada.
+  const risky = /(siri|personal|compact|eloquence|novelty|zarvox|bells|bubbles|jester|whisper|albert|bahh|boing|cellos|organ|superstar|trinoids|wobble|good news|bad news)/;
   const score = (v: Speech.Voice) => {
     const name = (v.name || '').toLowerCase();
     const lang = (v.language || '').replace('_', '-').toLowerCase();
+    if (risky.test(name)) return -1000;
     let n = 0;
     if (v.quality === Speech.VoiceQuality.Enhanced) n += 100;
     if (name.includes('premium')) n += 70;
-    if (name.includes('siri')) n += 55;
     if (lang === target) n += 40;
     const idx = preferred.findIndex(p => name.includes(p));
     if (idx >= 0) n += 30 - idx;
-    if (name.includes('compact') || name.includes('eloquence') || name.includes('pico')) n -= 60;
     return n;
   };
-  return candidates.sort((a, b) => score(b) - score(a))[0]?.identifier;
+  const best = candidates.sort((a, b) => score(b) - score(a))[0];
+  return best && score(best) > 0 ? best.identifier : undefined;
 };
 
 const makeWelcome = (content: string): LIAMessage => ({ id: '0', role: 'assistant', content, time: '00:00' });
@@ -497,6 +500,7 @@ export default function LiaScreen() {
 
   const listRef = useRef<FlatList>(null);
   const inputRef = useRef<TextInput>(null);
+  const speechRef = useRef<string | null>(null);
   const sendScale = useRef(new Animated.Value(1)).current;
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
@@ -537,18 +541,39 @@ export default function LiaScreen() {
     } catch {}
     try { await Speech.stop(); } catch {}
     const voice = await pickVoice(locale);
+    speechRef.current = id;
     setSpeakingId(id);
     setSpeaking(true);
-    Speech.speak(clean, {
+    let started = false;
+    let retried = false;
+    const finish = () => {
+      started = true;
+      if (speechRef.current === id) { speechRef.current = null; setSpeaking(false); setSpeakingId(null); }
+    };
+    const start = (voiceId?: string) => Speech.speak(clean, {
       language: locale,
-      voice,
-      rate: TTS_RATE[locale] || 0.92,
-      pitch: 1.03,
-      useApplicationAudioSession: true,
-      onDone: () => { setSpeaking(false); setSpeakingId(null); },
-      onStopped: () => { setSpeaking(false); setSpeakingId(null); },
-      onError: () => { setSpeaking(false); setSpeakingId(null); },
+      ...(voiceId ? { voice: voiceId } : {}),
+      rate: TTS_RATE[locale] || 0.97,
+      pitch: 1.0,
+      onStart: () => { started = true; },
+      onDone: finish,
+      onStopped: finish,
+      onError: () => {
+        if (voiceId && !started && !retried) { retried = true; start(undefined); }
+        else finish();
+      },
     });
+    start(voice);
+    // Si la voz elegida no arranca (iOS la rechaza en silencio), se repite
+    // con la voz del sistema para ese idioma.
+    if (voice) {
+      setTimeout(async () => {
+        if (started || retried || speechRef.current !== id) return;
+        let speaking = false;
+        try { speaking = await Speech.isSpeakingAsync(); } catch {}
+        if (!speaking) { retried = true; start(undefined); }
+      }, 1200);
+    }
   }, [language]);
 
   useEffect(() => { loadVoices(); }, []);
@@ -580,6 +605,7 @@ export default function LiaScreen() {
 
   // ── Grabación de voz ─────────────────────────────────────────────
   const startRecording = useCallback(async () => {
+    speechRef.current = null;
     try { await Speech.stop(); } catch {}
     setSpeaking(false);
     setSpeakingId(null);
@@ -690,9 +716,10 @@ export default function LiaScreen() {
   }, [input, loading, language, speakMessage, t]);
 
   const retry = useCallback(() => { if (lastMsg) send(lastMsg); }, [lastMsg, send]);
-  const stopSpeaking = () => { Speech.stop(); setSpeaking(false); setSpeakingId(null); };
+  const stopSpeaking = () => { speechRef.current = null; Speech.stop(); setSpeaking(false); setSpeakingId(null); };
 
   const goBack = useCallback(() => {
+    speechRef.current = null;
     Speech.stop();
     setSpeaking(false);
     setSpeakingId(null);
