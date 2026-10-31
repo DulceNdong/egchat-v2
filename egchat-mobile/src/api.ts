@@ -690,6 +690,39 @@ export const liaAPI = {
       throw e;
     }
   },
+  attach: async (
+    uri: string,
+    name: string,
+    mimeType: string | undefined,
+    prompt: string,
+    lang: string,
+  ): Promise<{ reply: string; action?: string; attachment?: { name: string; kind: string } }> => {
+    const token = await getToken();
+    const formData = new FormData();
+    formData.append('lang', lang);
+    if (prompt.trim()) formData.append('prompt', prompt.trim());
+    formData.append('file', { uri, name, type: mimeType || 'application/octet-stream' } as unknown as Blob);
+
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 90000);
+    try {
+      const res = await fetch(`${BASE}/api/lia/attach`, {
+        method: 'POST',
+        body: formData,
+        headers: token ? { Authorization: `Bearer ${token}` } : {},
+        signal: controller.signal,
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        const error = new Error((data as any)?.message || `Error ${res.status}`) as Error & { status?: number };
+        error.status = res.status;
+        throw error;
+      }
+      return data as { reply: string; action?: string; attachment?: { name: string; kind: string } };
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  },
 };
 
 // ══════════════════════════════════════════════════════════════════

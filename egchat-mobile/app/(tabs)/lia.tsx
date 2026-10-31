@@ -5,7 +5,7 @@ import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react'
 import {
   View, Text, TextInput, TouchableOpacity, FlatList,
   StyleSheet, KeyboardAvoidingView, Platform, ActivityIndicator,
-  Animated, ScrollView, Dimensions, Keyboard,
+  Animated, ScrollView, Dimensions, Keyboard, Image, Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
@@ -23,11 +23,22 @@ import { DarkColors } from '../../src/theme/darkMode';
 const SW = Dimensions.get('window').width;
 
 // ── Tipos ─────────────────────────────────────────────────────────
+type LIAAttachmentKind = 'image' | 'document' | 'video';
+
+interface LIAAttachment {
+  uri: string;
+  kind: LIAAttachmentKind;
+  name: string;
+  mime?: string;
+  size?: number;
+}
+
 interface LIAMessage {
   id: string;
   role: 'user' | 'assistant';
   content: string;
   time: string;
+  attachment?: LIAAttachment;
 }
 
 const TTS_LOCALE: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-US', pt: 'pt-PT' };
@@ -45,6 +56,14 @@ const formatStamp = (iso?: string) => {
   const d = new Date(iso);
   return Number.isNaN(d.getTime()) ? formatTime() : `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
 };
+
+const formatBytes = (bytes?: number) => {
+  if (!bytes || bytes <= 0) return '';
+  if (bytes < 1024 * 1024) return `${Math.max(1, Math.round(bytes / 1024))} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+const MSG_IMAGE = Math.min(220, SW * 0.52);
 
 // ── Sugerencias ───────────────────────────────────────────────────
 // El texto visible sale de t(key); al enviarlo el servidor reconoce la
@@ -169,6 +188,7 @@ interface AttachPanelProps {
   onClose: () => void;
   onOpenKeyboard: () => void;
   onSendText: (text: string) => void;
+  onAttach: (attachment: LIAAttachment) => void;
   isDark: boolean;
   C: typeof Colors;
 }
@@ -224,7 +244,7 @@ const ATTACH_OPTIONS = [
   { id: 'contact',  labelKey: 'liaAttachContact',  bg: '#E6F8FF', color: '#00B4E6' },
 ];
 
-const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }: AttachPanelProps) => {
+const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, onAttach, isDark, C }: AttachPanelProps) => {
   const { t } = useTranslation();
   const slideAnim = useRef(new Animated.Value(220)).current;
 
@@ -247,16 +267,43 @@ const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }
       if (key === 'photo') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') { onSendText(`⚠️ ${t('liaGalleryDenied')}`); return; }
-        const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.85 });
-        if (!res.canceled && res.assets[0]) onSendText(`${t('liaPhotoAttached')}: ${res.assets[0].fileName || 'imagen.jpg'}`);
+        const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Images, quality: 0.7 });
+        const asset = res.assets?.[0];
+        if (!res.canceled && asset) {
+          onAttach({
+            uri: asset.uri,
+            kind: 'image',
+            name: asset.fileName || `imagen-${Date.now()}.jpg`,
+            mime: asset.mimeType || 'image/jpeg',
+            size: asset.fileSize,
+          });
+        }
       } else if (key === 'video') {
         const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
         if (status !== 'granted') { onSendText(`⚠️ ${t('liaGalleryDenied')}`); return; }
         const res = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ImagePicker.MediaTypeOptions.Videos });
-        if (!res.canceled && res.assets[0]) onSendText(`${t('liaVideoAttached')}: ${res.assets[0].fileName || 'video.mp4'}`);
+        const asset = res.assets?.[0];
+        if (!res.canceled && asset) {
+          onAttach({
+            uri: asset.uri,
+            kind: 'video',
+            name: asset.fileName || `video-${Date.now()}.mp4`,
+            mime: asset.mimeType || 'video/mp4',
+            size: asset.fileSize,
+          });
+        }
       } else if (key === 'document' || key === 'file') {
         const res = await DocumentPicker.getDocumentAsync({ copyToCacheDirectory: true });
-        if (!res.canceled && res.assets[0]) onSendText(`${t('liaFileAttached')}: ${res.assets[0].name}`);
+        const asset = res.assets?.[0];
+        if (!res.canceled && asset) {
+          onAttach({
+            uri: asset.uri,
+            kind: 'document',
+            name: asset.name || `documento-${Date.now()}`,
+            mime: asset.mimeType,
+            size: asset.size,
+          });
+        }
       } else if (key === 'location') {
         onSendText(t('liaLocationShared'));
       } else if (key === 'contact') {
@@ -292,6 +339,10 @@ const AttachPanel = ({ visible, onClose, onOpenKeyboard, onSendText, isDark, C }
           </TouchableOpacity>
         ))}
       </View>
+
+      <Text style={[s.attachHint, { color: isDark ? C.textTertiary : '#6B7280' }]}>
+        {t('liaAttachHint')}
+      </Text>
 
       {/* Botón para abrir teclado */}
       <TouchableOpacity
@@ -329,6 +380,9 @@ export default function LiaScreen() {
   const [error, setError] = useState<string | null>(null);
   const [lastMsg, setLastMsg] = useState('');
   const [speaking, setSpeaking] = useState(false);
+  const [speakingId, setSpeakingId] = useState<string | null>(null);
+  const [busyKind, setBusyKind] = useState<'chat' | 'file' | null>(null);
+  const [previewUri, setPreviewUri] = useState<string | null>(null);
   const [showChips, setShowChips] = useState(sessionHistory.length > 1);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingObj, setRecordingObj] = useState<Audio.Recording | null>(null);
@@ -359,6 +413,33 @@ export default function LiaScreen() {
 
   useEffect(() => { scrollToEnd(); }, [messages.length]);
 
+  useEffect(() => () => { Speech.stop(); }, []);
+
+  // Voz de LIA: se configura el modo de audio para que suene aunque el
+  // teléfono esté en silencio y se corta cualquier lectura anterior.
+  const speakMessage = useCallback(async (text: string, id: string) => {
+    const clean = (text || '').replace(/[*_#`>]/g, '').trim();
+    if (!clean) return;
+    try {
+      await Audio.setAudioModeAsync({
+        playsInSilentModeIOS: true,
+        shouldDuckAndroid: true,
+        playThroughEarpieceAndroid: false,
+        staysActiveInBackground: false,
+      });
+    } catch {}
+    try { await Speech.stop(); } catch {}
+    setSpeakingId(id);
+    setSpeaking(true);
+    Speech.speak(clean, {
+      language: TTS_LOCALE[language] || 'es-ES',
+      rate: 1.0,
+      onDone: () => { setSpeaking(false); setSpeakingId(null); },
+      onStopped: () => { setSpeaking(false); setSpeakingId(null); },
+      onError: () => { setSpeaking(false); setSpeakingId(null); },
+    });
+  }, [language]);
+
   // Recuperar la conversación guardada en el servidor (solo la primera vez
   // de la sesión, y solo si aún no hay mensajes locales).
   useEffect(() => {
@@ -386,6 +467,9 @@ export default function LiaScreen() {
 
   // ── Grabación de voz ─────────────────────────────────────────────
   const startRecording = useCallback(async () => {
+    try { await Speech.stop(); } catch {}
+    setSpeaking(false);
+    setSpeakingId(null);
     try {
       const { granted } = await Audio.requestPermissionsAsync();
       if (!granted) { setError(t('liaMicDenied')); return; }
@@ -439,6 +523,7 @@ export default function LiaScreen() {
     const userMsg: LIAMessage = { id: Date.now().toString(), role: 'user', content: msg, time };
     setMessages(prev => { const next = [...prev, userMsg]; sessionHistory = next; return next; });
     setLoading(true);
+    setBusyKind('chat');
     Animated.sequence([
       Animated.spring(sendScale, { toValue: 0.85, useNativeDriver: true, speed: 50 }),
       Animated.spring(sendScale, { toValue: 1, useNativeDriver: true, speed: 30 }),
@@ -449,23 +534,54 @@ export default function LiaScreen() {
       const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
       setMessages(prev => { const next = [...prev, aiMsg]; sessionHistory = next; return next; });
       setShowChips(true);
-      if (res.reply.length < 250) {
-        setSpeaking(true);
-        Speech.speak(res.reply, { language: TTS_LOCALE[language] || 'es-ES', rate: 1.0, onDone: () => setSpeaking(false), onError: () => setSpeaking(false) });
-      }
+      speakMessage(res.reply, aiMsg.id);
     } catch {
       setError(t('liaErrorConnection'));
     } finally {
       setLoading(false);
+      setBusyKind(null);
     }
-  }, [input, loading, sendScale, language, t]);
+  }, [input, loading, sendScale, language, speakMessage, t]);
+
+  // ── Enviar archivo (imagen, documento o vídeo) ────────────────────
+  const sendAttachment = useCallback(async (attachment: LIAAttachment) => {
+    if (loading) return;
+    const caption = input.trim();
+    setInput('');
+    setError(null);
+    setShowAttach(false);
+    const time = formatTime();
+    const userMsg: LIAMessage = {
+      id: Date.now().toString(),
+      role: 'user',
+      content: caption,
+      time,
+      attachment,
+    };
+    setLastMsg(caption || attachment.name);
+    setMessages(prev => { const next = [...prev, userMsg]; sessionHistory = next; return next; });
+    setLoading(true);
+    setBusyKind('file');
+    try {
+      const res = await liaAPI.attach(attachment.uri, attachment.name, attachment.mime, caption, language);
+      const aiMsg: LIAMessage = { id: (Date.now() + 1).toString(), role: 'assistant', content: res.reply, time };
+      setMessages(prev => { const next = [...prev, aiMsg]; sessionHistory = next; return next; });
+      setShowChips(true);
+      speakMessage(res.reply, aiMsg.id);
+    } catch (e: any) {
+      setError(e?.message || t('liaAttachError'));
+    } finally {
+      setLoading(false);
+      setBusyKind(null);
+    }
+  }, [input, loading, language, speakMessage, t]);
 
   const retry = useCallback(() => { if (lastMsg) send(lastMsg); }, [lastMsg, send]);
-  const stopSpeaking = () => { Speech.stop(); setSpeaking(false); };
+  const stopSpeaking = () => { Speech.stop(); setSpeaking(false); setSpeakingId(null); };
 
   const isFirstVisit = messages.length <= 1 && !loading && !showChips;
   const statusLabel = loading
-    ? `● ${t('liaStatusTyping')}`
+    ? `● ${busyKind === 'file' ? t('liaReadingFile') : t('liaStatusTyping')}`
     : transcribing
       ? `● ${t('liaTranscribing')}`
       : speaking
@@ -475,28 +591,37 @@ export default function LiaScreen() {
           : `● ${t('liaStatusIdle')}`;
 
   return (
-    <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['left', 'right']}>
 
-      {/* ── Header ── */}
-      <LinearGradient
-        colors={['#00C8A0', '#00B4E6']}
-        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
-        style={s.header}
-      >
-        <View style={s.headerLeft}>
-          <LiaAvatar size={42} speaking={speaking} />
-          <View style={{ flex: 1 }}>
-            <Text style={s.headerName}>Lia-25</Text>
-            <Text style={s.headerSub}>{statusLabel}</Text>
+      {/* ── Header (el degradado cubre también la barra de estado) ── */}
+      <View style={s.headerShadow}>
+        <LinearGradient
+          colors={['#00C8A0', '#00A9D8', '#3F6BEE']}
+          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
+          style={[s.header, { paddingTop: insets.top + 10 }]}
+        >
+          <View style={s.headerGlowA} pointerEvents="none" />
+          <View style={s.headerGlowB} pointerEvents="none" />
+          <View style={s.headerLeft}>
+            <View style={s.avatarRing}>
+              <LiaAvatar size={44} speaking={speaking} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <View style={s.headerNameRow}>
+                <Text style={s.headerName}>Lia-25</Text>
+                <View style={s.aiBadge}><Text style={s.aiBadgeText}>IA</Text></View>
+              </View>
+              <Text style={s.headerSub} numberOfLines={1}>{statusLabel}</Text>
+            </View>
+            {isRecording && <LiaWave active color="rgba(255,255,255,0.9)" />}
           </View>
-          {(speaking || isRecording) && <LiaWave active={speaking || isRecording} color="rgba(255,255,255,0.85)" />}
-        </View>
-        {speaking && (
-          <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
-            <Text style={s.stopBtnText}>■ {t('liaStop')}</Text>
-          </TouchableOpacity>
-        )}
-      </LinearGradient>
+          {speaking && (
+            <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
+              <Text style={s.stopBtnText}>■ {t('liaStop')}</Text>
+            </TouchableOpacity>
+          )}
+        </LinearGradient>
+      </View>
 
       {/* ── Cuerpo: KeyboardAvoidingView cubre TODO incluida la barra ── */}
       <KeyboardAvoidingView
@@ -551,12 +676,83 @@ export default function LiaScreen() {
             renderItem={({ item }) => {
               const isUser = item.role === 'user';
               const content = item.id === '0' ? t('liaGreeting') : item.content;
+              const attachment = item.attachment;
+              const isSpeakingMsg = speakingId === item.id;
               return (
                 <View style={[s.row, isUser ? s.rowUser : s.rowAI]}>
                   {!isUser && <LiaAvatar size={30} />}
-                  <View style={[s.bubble, isUser ? s.bubbleUser : [s.bubbleAI, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.borderLight : '#E4EFF7' }]]}>
-                    <Text style={[s.bubbleText, isUser ? s.textUser : { color: C.textPrimary }]}>{content}</Text>
-                    <Text style={[s.timeText, isUser && s.timeUser]}>{item.time}</Text>
+                  <View style={[
+                    s.bubble,
+                    isUser ? s.bubbleUser : [s.bubbleAI, { backgroundColor: isDark ? C.bgSecondary : '#fff', borderColor: isDark ? C.borderLight : '#E4EFF7' }],
+                    attachment?.kind === 'image' && s.bubbleImage,
+                  ]}>
+                    {attachment?.kind === 'image' && (
+                      <TouchableOpacity activeOpacity={0.92} onPress={() => setPreviewUri(attachment.uri)}>
+                        <Image source={{ uri: attachment.uri }} style={s.msgImage} resizeMode="cover" />
+                        <View style={s.imageBadge}>
+                          <Svg width={12} height={12} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <Circle cx="11" cy="11" r="7"/>
+                            <Line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                            <Line x1="11" y1="8" x2="11" y2="14"/>
+                            <Line x1="8" y1="11" x2="14" y2="11"/>
+                          </Svg>
+                        </View>
+                      </TouchableOpacity>
+                    )}
+                    {attachment && attachment.kind !== 'image' && (
+                      <View style={s.fileCard}>
+                        <View style={[s.fileIconWrap, isUser && { backgroundColor: 'rgba(255,255,255,0.2)' }]}>
+                          {attachment.kind === 'video' ? (
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={isUser ? '#fff' : '#6B5BD6'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <Polygon points="23 7 16 12 23 17 23 7"/>
+                              <Rect x="1" y="5" width="15" height="14" rx="2"/>
+                            </Svg>
+                          ) : (
+                            <Svg width={20} height={20} viewBox="0 0 24 24" fill="none" stroke={isUser ? '#fff' : '#F59E0B'} strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                              <Path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                              <Polyline points="14 2 14 8 20 8"/>
+                              <Line x1="9" y1="15" x2="15" y2="15"/>
+                            </Svg>
+                          )}
+                        </View>
+                        <View style={{ flex: 1 }}>
+                          <Text numberOfLines={1} style={[s.fileName, isUser && s.fileNameUser]}>{attachment.name}</Text>
+                          <Text style={[s.fileMeta, isUser && s.fileMetaUser]}>
+                            {attachment.kind === 'video' ? t('liaAttachVideo') : t('liaAttachDocument')}
+                            {attachment.size ? ` · ${formatBytes(attachment.size)}` : ''}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                    {!!content && (
+                      <Text style={[s.bubbleText, attachment ? { marginTop: 8 } : null, isUser ? s.textUser : { color: C.textPrimary }]}>
+                        {content}
+                      </Text>
+                    )}
+                    <View style={[s.metaRow, isUser && s.metaRowUser]}>
+                      {!isUser && (
+                        <TouchableOpacity
+                          style={[s.speakBtn, isSpeakingMsg && s.speakBtnActive]}
+                          onPress={() => (isSpeakingMsg ? stopSpeaking() : speakMessage(content, item.id))}
+                          activeOpacity={0.7}
+                          accessibilityLabel={t('liaListen')}
+                        >
+                          {isSpeakingMsg ? (
+                            <Svg width={13} height={13} viewBox="0 0 24 24" fill="none" stroke="#00A38A" strokeWidth="2">
+                              <Rect x="6" y="6" width="12" height="12" rx="3" fill="#00A38A" stroke="none"/>
+                            </Svg>
+                          ) : (
+                            <Svg width={14} height={14} viewBox="0 0 24 24" fill="none" stroke="#00A38A" strokeWidth="1.9" strokeLinecap="round">
+                              <Path d="M11 5L6 9H2v6h4l5 4z"/>
+                              <Path d="M15.5 8.5a5 5 0 0 1 0 7"/>
+                              <Path d="M18.5 5.5a9 9 0 0 1 0 13"/>
+                            </Svg>
+                          )}
+                          <Text style={s.speakBtnText}>{isSpeakingMsg ? t('liaStop') : t('liaListen')}</Text>
+                        </TouchableOpacity>
+                      )}
+                      <Text style={[s.timeText, { marginTop: 0 }, isUser && s.timeUser]}>{item.time}</Text>
+                    </View>
                   </View>
                   {isUser && <View style={s.userAvatarDot} />}
                 </View>
@@ -599,6 +795,7 @@ export default function LiaScreen() {
           onClose={() => setShowAttach(false)}
           onOpenKeyboard={openKeyboard}
           onSendText={send}
+          onAttach={sendAttachment}
           isDark={isDark}
           C={C}
         />
@@ -695,6 +892,24 @@ export default function LiaScreen() {
         </View>
 
       </KeyboardAvoidingView>
+
+      {/* ── Vista previa de imagen a pantalla completa ── */}
+      <Modal visible={!!previewUri} transparent animationType="fade" statusBarTranslucent onRequestClose={() => setPreviewUri(null)}>
+        <View style={s.previewBackdrop}>
+          {previewUri && <Image source={{ uri: previewUri }} style={s.previewImage} resizeMode="contain" />}
+          <TouchableOpacity
+            style={[s.previewClose, { top: insets.top + 12 }]}
+            onPress={() => setPreviewUri(null)}
+            activeOpacity={0.8}
+            accessibilityLabel={t('close')}
+          >
+            <Svg width={18} height={18} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round">
+              <Line x1="18" y1="6" x2="6" y2="18"/>
+              <Line x1="6" y1="6" x2="18" y2="18"/>
+            </Svg>
+          </TouchableOpacity>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -706,10 +921,27 @@ const s = StyleSheet.create({
   container: { flex: 1 },
 
   // Header
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: 16, paddingVertical: 14 },
+  headerShadow: {
+    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
+    backgroundColor: '#00C8A0', zIndex: 2,
+    shadowColor: '#00A38A', shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.28, shadowRadius: 14, elevation: 10,
+  },
+  header: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingHorizontal: 18, paddingBottom: 16,
+    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
+    overflow: 'hidden',
+  },
+  headerGlowA: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.12)', top: -90, right: -40 },
+  headerGlowB: { position: 'absolute', width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.08)', bottom: -60, left: 24 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  headerName: { fontSize: 16, fontWeight: '700', color: '#fff', letterSpacing: 0.2 },
-  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.88)', fontWeight: '500', marginTop: 2 },
+  avatarRing: { padding: 2, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.25)' },
+  headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  headerName: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
+  aiBadge: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
+  aiBadgeText: { fontSize: 9, fontWeight: '800', color: '#fff', letterSpacing: 0.6 },
+  headerSub: { fontSize: 11, color: 'rgba(255,255,255,0.9)', fontWeight: '500', marginTop: 2 },
   stopBtn: { backgroundColor: 'rgba(255,255,255,0.22)', borderRadius: 20, paddingHorizontal: 14, paddingVertical: 6, marginLeft: 8 },
   stopBtnText: { fontSize: 12, color: '#fff', fontWeight: '700' },
 
@@ -731,11 +963,28 @@ const s = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'flex-end', gap: 8 },
   rowUser: { justifyContent: 'flex-end' },
   rowAI: { justifyContent: 'flex-start' },
-  bubble: { maxWidth: '75%', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14 },
+  bubble: { maxWidth: '78%', borderRadius: 18, paddingVertical: 10, paddingHorizontal: 14 },
+  bubbleImage: { padding: 5, overflow: 'hidden' },
   bubbleUser: { backgroundColor: '#00C8A0', borderBottomRightRadius: 4 },
   bubbleAI: { borderBottomLeftRadius: 4, borderWidth: 1, ...Shadow.sm },
   bubbleText: { fontSize: 14, lineHeight: 21 },
   textUser: { color: '#fff' },
+  msgImage: { width: MSG_IMAGE, height: MSG_IMAGE, borderRadius: 14, backgroundColor: '#E5E7EB' },
+  imageBadge: {
+    position: 'absolute', right: 8, bottom: 8, width: 24, height: 24, borderRadius: 12,
+    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+  },
+  fileCard: { flexDirection: 'row', alignItems: 'center', gap: 10, minWidth: 180, paddingVertical: 2 },
+  fileIconWrap: { width: 38, height: 38, borderRadius: 11, backgroundColor: '#FFF8E6', alignItems: 'center', justifyContent: 'center' },
+  fileName: { fontSize: 13, fontWeight: '700', color: '#111827', maxWidth: 190 },
+  fileNameUser: { color: '#fff' },
+  fileMeta: { fontSize: 10, color: '#6B7280', marginTop: 1 },
+  fileMetaUser: { color: 'rgba(255,255,255,0.82)' },
+  metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 5 },
+  metaRowUser: { justifyContent: 'flex-end' },
+  speakBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, backgroundColor: 'rgba(0,200,160,0.1)' },
+  speakBtnActive: { backgroundColor: 'rgba(0,200,160,0.2)' },
+  speakBtnText: { fontSize: 10, fontWeight: '700', color: '#00A38A' },
   timeText: { fontSize: 10, color: 'rgba(0,0,0,0.28)', marginTop: 5, textAlign: 'right' },
   timeUser: { color: 'rgba(255,255,255,0.65)' },
   userAvatarDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#00C8A0', marginBottom: 4 },
@@ -791,6 +1040,14 @@ const s = StyleSheet.create({
     fontWeight: '600',
     letterSpacing: 0.1,
   },
+  attachHint: {
+    fontSize: 11,
+    fontWeight: '500',
+    textAlign: 'center',
+    marginTop: -2,
+    marginBottom: 10,
+    lineHeight: 15,
+  },
   attachKeyboardBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -820,4 +1077,12 @@ const s = StyleSheet.create({
   input: { fontSize: 14, maxHeight: 100, padding: 0 },
   sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#00C8A0', alignItems: 'center', justifyContent: 'center', shadowColor: '#00C8A0', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.35, shadowRadius: 6, elevation: 4 },
   sendBtnOff: { backgroundColor: '#E5E7EB', shadowOpacity: 0 },
+
+  // Vista previa de imagen
+  previewBackdrop: { flex: 1, backgroundColor: 'rgba(0,0,0,0.93)', alignItems: 'center', justifyContent: 'center' },
+  previewImage: { width: '100%', height: '82%' },
+  previewClose: {
+    position: 'absolute', right: 20, width: 40, height: 40, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.18)', alignItems: 'center', justifyContent: 'center',
+  },
 });

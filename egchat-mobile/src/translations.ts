@@ -3274,6 +3274,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     xtSolucionDescargaGoogleServicesJsonDeFirebaseConsol: "👉 Solución: Descarga google-services.json de Firebase Console",
     xtTokenVoIPNoGeneradoPushKitNoRegistraEnEsteIPhone: "📞 Token VoIP: ❌ no generado (PushKit no registra en este iPhone)",
     xtModuloNoDisponible: "módulo no disponible",
+    // wave6-lia
+    liaListen: "Escuchar",
+    liaReadingFile: "Leyendo archivo...",
+    liaAttachHint: "LIA puede leer fotos, PDF, Word, Excel, TXT y CSV",
   },
   FR: {
     home: 'Accueil',
@@ -6539,6 +6543,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     xtSolucionDescargaGoogleServicesJsonDeFirebaseConsol: "👉 Solution : télécharge google-services.json depuis Firebase Console",
     xtTokenVoIPNoGeneradoPushKitNoRegistraEnEsteIPhone: "📞 Jeton VoIP : ❌ non généré (PushKit ne s'enregistre pas sur cet iPhone)",
     xtModuloNoDisponible: "module non disponible",
+    // wave6-lia
+    liaListen: "Écouter",
+    liaReadingFile: "Lecture du fichier...",
+    liaAttachHint: "LIA peut lire les photos, PDF, Word, Excel, TXT et CSV",
   },
   EN: {
     home: 'Home',
@@ -9804,6 +9812,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     xtSolucionDescargaGoogleServicesJsonDeFirebaseConsol: "👉 Solution: Download google-services.json from Firebase Console",
     xtTokenVoIPNoGeneradoPushKitNoRegistraEnEsteIPhone: "📞 VoIP token: ❌ not generated (PushKit does not register on this iPhone)",
     xtModuloNoDisponible: "module unavailable",
+    // wave6-lia
+    liaListen: "Listen",
+    liaReadingFile: "Reading file...",
+    liaAttachHint: "LIA can read photos, PDF, Word, Excel, TXT and CSV",
   },
   PT: {
     home: 'Início',
@@ -13069,6 +13081,10 @@ export const translations: Record<Lang, Record<string, string>> = {
     xtSolucionDescargaGoogleServicesJsonDeFirebaseConsol: "👉 Solução: Descarrega google-services.json da Firebase Console",
     xtTokenVoIPNoGeneradoPushKitNoRegistraEnEsteIPhone: "📞 Token VoIP: ❌ não gerado (PushKit não se registra neste iPhone)",
     xtModuloNoDisponible: "módulo não disponível",
+    // wave6-lia
+    liaListen: "Ouvir",
+    liaReadingFile: "A ler o ficheiro...",
+    liaAttachHint: "A LIA pode ler fotos, PDF, Word, Excel, TXT e CSV",
   },
 };
 
