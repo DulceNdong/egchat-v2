@@ -8,6 +8,7 @@ import {
   Animated, ScrollView, Dimensions, Keyboard, Image, Modal,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { router } from 'expo-router';
 import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Line, Polygon, Rect, Circle, Polyline, G } from 'react-native-svg';
 import * as Speech from 'expo-speech';
@@ -42,6 +43,95 @@ interface LIAMessage {
 }
 
 const TTS_LOCALE: Record<string, string> = { es: 'es-ES', fr: 'fr-FR', en: 'en-US', pt: 'pt-PT' };
+
+// Elige el idioma de lectura según el texto real de la respuesta, no solo
+// según el idioma de la interfaz: el historial puede estar en otro idioma.
+const detectTTSLocale = (text: string, fallback: string) => {
+  const s = ` ${text.toLowerCase().replace(/[.,;:!?"'(){}\[\]…—–]/g, ' ').replace(/\s+/g, ' ')} `;
+  const count = (words: string[]) => words.reduce((n, w) => (s.includes(` ${w} `) ? n + 1 : n), 0);
+  const marks = (re: RegExp) => ((s.match(re) || []).length) * 2;
+  const scores: Record<string, number> = {
+    'fr-FR': count(['le', 'les', 'votre', 'vous', 'est', 'pour', 'avec', 'bonjour', 'merci', 'des', 'une', 'du', 'nous', 'opérations', 'francs']) + marks(/[çèêàùœ]/g),
+    'pt-PT': count(['você', 'seu', 'sua', 'olá', 'obrigado', 'obrigada', 'não', 'também', 'aqui', 'com', 'para', 'saldo']) + marks(/[ãõ]/g),
+    'en-US': count(['the', 'your', 'you', 'is', 'are', 'balance', 'thanks', 'hello', 'please', 'what', 'how', 'can', 'with', 'and', 'for']),
+    'es-ES': count(['el', 'tu', 'saldo', 'hola', 'gracias', 'para', 'con', 'una', 'los', 'las', 'puedes', 'qué', 'cómo', 'francos']) + marks(/[ñ¿¡]/g),
+  };
+  const best = Object.entries(scores).sort((a, b) => b[1] - a[1])[0];
+  return best[1] > 0 ? best[0] : fallback;
+};
+
+// Voces preferidas por idioma: suenan mucho más naturales que la voz
+// "compact" que iOS trae por defecto.
+const PREFERRED_VOICES: Record<string, string[]> = {
+  'es-ES': ['mónica', 'monica', 'paulina', 'marisol', 'jorge', 'diego', 'enrique', 'lucia'],
+  'fr-FR': ['amélie', 'amelie', 'audrey', 'thomas', 'aurelie', 'aurelie', 'julie', 'paul'],
+  'en-US': ['samantha', 'ava', 'allison', 'susan', 'tom', 'alex', 'nicky', 'joelle'],
+  'pt-PT': ['joana', 'catarina', 'luciana', 'felipe', 'ines', 'ines'],
+};
+
+const TTS_RATE: Record<string, number> = {
+  'es-ES': 0.9, 'fr-FR': 0.92, 'en-US': 0.94, 'pt-PT': 0.9,
+};
+
+const CURRENCY_WORDS: Record<string, Record<string, string>> = {
+  es: { XAF: 'francos CFA', XOF: 'francos CFA', FCFA: 'francos CFA', EUR: 'euros', USD: 'dólares' },
+  fr: { XAF: 'francs CFA', XOF: 'francs CFA', FCFA: 'francs CFA', EUR: 'euros', USD: 'dollars' },
+  en: { XAF: 'CFA francs', XOF: 'CFA francs', FCFA: 'CFA francs', EUR: 'euros', USD: 'dollars' },
+  pt: { XAF: 'francos CFA', XOF: 'francos CFA', FCFA: 'francos CFA', EUR: 'euros', USD: 'dólares' },
+};
+
+// Prepara el texto para que suene como una persona: quita formato, enlaces
+// y emojis, y convierte los códigos de moneda en palabras.
+const prepareSpeech = (text: string, lang: string) => {
+  let out = (text || '')
+    .replace(/```[\s\S]*?```/g, ' ')
+    .replace(/\[(.*?)\]\((.*?)\)/g, '$1')
+    .replace(/https?:\/\/\S+/g, ' ')
+    .replace(/[*_#`>~|]/g, ' ')
+    .replace(/[\u{1F000}-\u{1FAFF}\u{2190}-\u{27BF}\u{FE0F}\u{200D}]/gu, ' ');
+  const map = CURRENCY_WORDS[lang] || CURRENCY_WORDS.es;
+  Object.entries(map).forEach(([code, words]) => {
+    out = out.replace(new RegExp(`\\b${code}\\b`, 'gi'), words);
+  });
+  return out.replace(/\s+([.,;:!?])/g, '$1').replace(/\s{2,}/g, ' ').trim();
+};
+
+let voiceCache: Speech.Voice[] | null = null;
+
+const loadVoices = async (): Promise<Speech.Voice[]> => {
+  if (voiceCache) return voiceCache;
+  try { voiceCache = await Speech.getAvailableVoicesAsync(); } catch { voiceCache = []; }
+  return voiceCache;
+};
+
+// Elige la mejor voz instalada para el idioma: primero las voces
+// mejoradas/premium, luego las de nombre conocido, luego el resto.
+const pickVoice = async (locale: string): Promise<string | undefined> => {
+  const voices = await loadVoices();
+  if (!voices.length) return undefined;
+  const target = locale.toLowerCase();
+  const base = target.split('-')[0];
+  const candidates = voices.filter(v => {
+    const lang = (v.language || '').replace('_', '-').toLowerCase();
+    return lang === target || lang.split('-')[0] === base;
+  });
+  if (!candidates.length) return undefined;
+  const preferred = PREFERRED_VOICES[locale] || [];
+  const score = (v: Speech.Voice) => {
+    const name = (v.name || '').toLowerCase();
+    const lang = (v.language || '').replace('_', '-').toLowerCase();
+    let n = 0;
+    if (v.quality === Speech.VoiceQuality.Enhanced) n += 100;
+    if (name.includes('premium')) n += 70;
+    if (name.includes('siri')) n += 55;
+    if (lang === target) n += 40;
+    const idx = preferred.findIndex(p => name.includes(p));
+    if (idx >= 0) n += 30 - idx;
+    if (name.includes('compact') || name.includes('eloquence') || name.includes('pico')) n -= 60;
+    return n;
+  };
+  return candidates.sort((a, b) => score(b) - score(a))[0]?.identifier;
+};
 
 const makeWelcome = (content: string): LIAMessage => ({ id: '0', role: 'assistant', content, time: '00:00' });
 let sessionHistory: LIAMessage[] = [];
@@ -418,7 +508,8 @@ export default function LiaScreen() {
   // Voz de LIA: se configura el modo de audio para que suene aunque el
   // teléfono esté en silencio y se corta cualquier lectura anterior.
   const speakMessage = useCallback(async (text: string, id: string) => {
-    const clean = (text || '').replace(/[*_#`>]/g, '').trim();
+    const locale = detectTTSLocale(text, TTS_LOCALE[language] || 'es-ES');
+    const clean = prepareSpeech(text, locale.slice(0, 2));
     if (!clean) return;
     try {
       await Audio.setAudioModeAsync({
@@ -429,16 +520,22 @@ export default function LiaScreen() {
       });
     } catch {}
     try { await Speech.stop(); } catch {}
+    const voice = await pickVoice(locale);
     setSpeakingId(id);
     setSpeaking(true);
     Speech.speak(clean, {
-      language: TTS_LOCALE[language] || 'es-ES',
-      rate: 1.0,
+      language: locale,
+      voice,
+      rate: TTS_RATE[locale] || 0.92,
+      pitch: 1.03,
+      useApplicationAudioSession: true,
       onDone: () => { setSpeaking(false); setSpeakingId(null); },
       onStopped: () => { setSpeaking(false); setSpeakingId(null); },
       onError: () => { setSpeaking(false); setSpeakingId(null); },
     });
   }, [language]);
+
+  useEffect(() => { loadVoices(); }, []);
 
   // Recuperar la conversación guardada en el servidor (solo la primera vez
   // de la sesión, y solo si aún no hay mensajes locales).
@@ -579,6 +676,14 @@ export default function LiaScreen() {
   const retry = useCallback(() => { if (lastMsg) send(lastMsg); }, [lastMsg, send]);
   const stopSpeaking = () => { Speech.stop(); setSpeaking(false); setSpeakingId(null); };
 
+  const goBack = useCallback(() => {
+    Speech.stop();
+    setSpeaking(false);
+    setSpeakingId(null);
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)' as any);
+  }, []);
+
   const isFirstVisit = messages.length <= 1 && !loading && !showChips;
   const statusLabel = loading
     ? `● ${busyKind === 'file' ? t('liaReadingFile') : t('liaStatusTyping')}`
@@ -593,35 +698,39 @@ export default function LiaScreen() {
   return (
     <SafeAreaView style={[s.container, { backgroundColor: isDark ? C.bgPrimary : '#F4FBFF' }]} edges={['left', 'right']}>
 
-      {/* ── Header (el degradado cubre también la barra de estado) ── */}
-      <View style={s.headerShadow}>
-        <LinearGradient
-          colors={['#00C8A0', '#00A9D8', '#3F6BEE']}
-          start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
-          style={[s.header, { paddingTop: insets.top + 10 }]}
+      {/* ── Header plano (el degradado cubre también la barra de estado) ── */}
+      <LinearGradient
+        colors={['#00B89A', '#00A9D8', '#2F6BEA']}
+        start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }}
+        style={[s.header, { paddingTop: insets.top + 10 }]}
+      >
+        <TouchableOpacity
+          onPress={goBack}
+          style={s.backBtn}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={t('back')}
+          hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
-          <View style={s.headerGlowA} pointerEvents="none" />
-          <View style={s.headerGlowB} pointerEvents="none" />
-          <View style={s.headerLeft}>
-            <View style={s.avatarRing}>
-              <LiaAvatar size={44} speaking={speaking} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <View style={s.headerNameRow}>
-                <Text style={s.headerName}>Lia-25</Text>
-                <View style={s.aiBadge}><Text style={s.aiBadgeText}>IA</Text></View>
-              </View>
-              <Text style={s.headerSub} numberOfLines={1}>{statusLabel}</Text>
-            </View>
-            {isRecording && <LiaWave active color="rgba(255,255,255,0.9)" />}
+          <Svg width={22} height={22} viewBox="0 0 24 24" fill="none" stroke="#fff" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+            <Polyline points="15 18 9 12 15 6" />
+          </Svg>
+        </TouchableOpacity>
+        <LiaAvatar size={38} speaking={speaking} />
+        <View style={s.headerText}>
+          <View style={s.headerNameRow}>
+            <Text style={s.headerName}>Lia-25</Text>
+            <View style={s.aiBadge}><Text style={s.aiBadgeText}>IA</Text></View>
           </View>
-          {speaking && (
-            <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
-              <Text style={s.stopBtnText}>■ {t('liaStop')}</Text>
-            </TouchableOpacity>
-          )}
-        </LinearGradient>
-      </View>
+          <Text style={s.headerSub} numberOfLines={1}>{statusLabel}</Text>
+        </View>
+        {isRecording && <LiaWave active color="rgba(255,255,255,0.9)" />}
+        {speaking && (
+          <TouchableOpacity onPress={stopSpeaking} style={s.stopBtn} activeOpacity={0.8}>
+            <Text style={s.stopBtnText}>■ {t('liaStop')}</Text>
+          </TouchableOpacity>
+        )}
+      </LinearGradient>
 
       {/* ── Cuerpo: KeyboardAvoidingView cubre TODO incluida la barra ── */}
       <KeyboardAvoidingView
@@ -920,23 +1029,18 @@ const CARD_W = (SW - 16 * 2 - 10) / 2;
 const s = StyleSheet.create({
   container: { flex: 1 },
 
-  // Header
-  headerShadow: {
-    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
-    backgroundColor: '#00C8A0', zIndex: 2,
-    shadowColor: '#00A38A', shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.28, shadowRadius: 14, elevation: 10,
-  },
+  // Header plano
   header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 18, paddingBottom: 16,
-    borderBottomLeftRadius: 26, borderBottomRightRadius: 26,
-    overflow: 'hidden',
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 12, paddingBottom: 12, gap: 10,
+    zIndex: 2,
   },
-  headerGlowA: { position: 'absolute', width: 180, height: 180, borderRadius: 90, backgroundColor: 'rgba(255,255,255,0.12)', top: -90, right: -40 },
-  headerGlowB: { position: 'absolute', width: 110, height: 110, borderRadius: 55, backgroundColor: 'rgba(255,255,255,0.08)', bottom: -60, left: 24 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1 },
-  avatarRing: { padding: 2, borderRadius: 26, backgroundColor: 'rgba(255,255,255,0.25)' },
+  backBtn: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.18)',
+  },
+  headerText: { flex: 1 },
   headerNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   headerName: { fontSize: 18, fontWeight: '800', color: '#fff', letterSpacing: 0.2 },
   aiBadge: { backgroundColor: 'rgba(255,255,255,0.25)', borderRadius: 8, paddingHorizontal: 6, paddingVertical: 1 },
