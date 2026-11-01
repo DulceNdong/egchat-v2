@@ -10,6 +10,7 @@ import { walletPIN } from '../../services/walletPin';
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../services/limits';
 import { EGAvatar } from '../ui';
 import { loadBankAccounts, BankAccount } from '../../utils/bankAccounts';
+import { WALLET_BANK_SOURCES_ENABLED } from '../../config/walletConfig';
 import { useTranslation } from '../../context/LanguageContext';
 import { t as tr } from '../../translations';
 
@@ -135,7 +136,9 @@ export function QuickTransferModal({
 
     Promise.all([
       walletAPI.getBalance().then(r => setBalance(Number(r.balance) || 0)).catch(() => setBalance(0)),
-      loadBankAccounts().then(setBankAccounts).catch(() => setBankAccounts([])),
+      WALLET_BANK_SOURCES_ENABLED
+        ? loadBankAccounts().then(setBankAccounts).catch(() => setBankAccounts([]))
+        : Promise.resolve(setBankAccounts([])),
     ]).finally(() => setLoadingBalance(false));
   }, [visible]);
 
@@ -233,6 +236,7 @@ export function QuickTransferModal({
               transfer.to,
               transfer.amount,
               transfer.description,
+              pin,
             );
             await updateLimitForTransaction('transfer', transfer.amount);
 

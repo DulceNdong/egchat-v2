@@ -3,7 +3,7 @@ import { TabErrorBoundary } from '../../src/components/TabErrorBoundary';
 import {
   View, Text, TouchableOpacity, StyleSheet, ScrollView,
   Alert, ActivityIndicator, Modal, Pressable, RefreshControl,
-  TextInput, Animated, KeyboardAvoidingView, Platform, Image,
+  TextInput, Animated, KeyboardAvoidingView, Platform, Image, Share,
 } from 'react-native';
 import { getKycStatus, KYC_STATUS_COLORS, invalidateKycStatusCache } from '../../src/services/kyc';
 import type { KycStatus } from '../../src/api';
@@ -25,8 +25,7 @@ import { loadBankAccounts, saveBankAccounts, DEFAULT_BANK_ACCOUNTS } from '../..
 import { checkLimitForTransaction, updateLimitForTransaction } from '../../src/services/limits';
 import { mergePersistentAvatar, onProfileUpdated } from '../../src/utils/profileEvents';
 import {
-  createDepositIntent, confirmDeposit, pollPaymentStatus,
-  createWithdrawIntent, confirmWithdraw,
+  createDepositIntent, confirmDeposit,
   GATEWAY_INFO, formatGatewayFee, getNetAmount,
   type PaymentGateway,
 } from '../../src/services/paymentGateway';
@@ -349,8 +348,11 @@ type RStep = 'menu' | 'banco' | 'transferencia' | 'codigo' | 'agente' | 'confirm
            | 'stripe' | 'orange_money' | 'mtn_mobile' | 'polling';
 
 const RecargaModal = ({
-  visible, balance, onClose, onSuccess,
-}: { visible: boolean; balance: number; onClose: () => void; onSuccess: () => void }) => {
+  visible, balance, userId, userPhone, onClose, onSuccess,
+}: {
+  visible: boolean; balance: number; userId: string; userPhone: string;
+  onClose: () => void; onSuccess: () => void;
+}) => {
   const { t } = useTranslation();
   const [step, setStep] = useState<RStep>('menu');
   const [data, setData] = useState<Record<string, string>>({});
@@ -368,9 +370,12 @@ const RecargaModal = ({
     try {
       await walletAPI.deposit(amountNum, method, reference);
       onSuccess();
-    } catch {}
-    setStep('success');
-    setLoading(false);
+      setStep('success');
+    } catch (error: any) {
+      Alert.alert(t('error'), error?.message || t('walPaymentCreateFailed'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const doCode = async () => {
@@ -381,9 +386,12 @@ const RecargaModal = ({
       const res = await walletAPI.redeemCode(data.codigo || '');
       set('amount', String(res.amount || 5000));
       onSuccess();
-    } catch { set('amount', '5000'); }
-    setStep('success');
-    setLoading(false);
+      setStep('success');
+    } catch (error: any) {
+      Alert.alert(t('error'), error?.message || t('walInvalidCode'));
+    } finally {
+      setLoading(false);
+    }
   };
 
   const METODOS = [
@@ -462,13 +470,20 @@ const RecargaModal = ({
             <SectionHead title={t('walBankTransferEgchat')} sub={t('walRequestMoneySub')}
               gradient={['#065F46', '#00c8a0']} icon={<IcoTransfer color="#fff" />} />
             <View style={[s.infoBox, { alignItems: 'center', paddingVertical: 20 }]}>
-              <View style={s.qrMiniBox}>
-                <Svg width={40} height={40} viewBox="0 0 24 24" fill="none" stroke="#00c8a0" strokeWidth={1.5} strokeLinecap="round" strokeLinejoin="round">
-                  <Rect x="5" y="2" width="14" height="20" rx="2"/>
-                  <Line x1="12" y1="18" x2="12" y2="18"/>
-                </Svg>
+              <View style={[s.qrMiniBox, { width: 160, height: 160, backgroundColor: '#fff', padding: 12 }]}>
+                {userId ? (
+                  <QRCode
+                    value={buildPayQr(userId, isValid ? String(amountNum) : undefined, t('walRequestMoneySub'))}
+                    size={136}
+                    backgroundColor="#fff"
+                    color="#0d0d0d"
+                  />
+                ) : (
+                  <ActivityIndicator color="#00c8a0" />
+                )}
               </View>
               <Text style={s.infoValue}>{t('walShareNumberToReceive')}</Text>
+              {!!userPhone && <Text style={[s.infoValue, { fontWeight: '900', fontSize: 16 }]}>{userPhone}</Text>}
               <Text style={s.infoLabel}>{t('walNoFeeBetween')}</Text>
             </View>
             <QuickAmounts amounts={[1000,5000,10000,25000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
@@ -480,13 +495,14 @@ const RecargaModal = ({
                   Alert.alert(t('walInvalidAmount'), t('walInvalidAmountMin'));
                   return;
                 }
-                doDeposit('Transferencia EGCHAT', `EGCHAT-${Date.now()}`);
+                const link = buildPayQr(userId, String(amountNum), t('walRequestMoneySub'));
+                Share.share({
+                  message: `${t('walRequestMoneySub')}: ${amountNum.toLocaleString('es-ES')} XAF${userPhone ? `\n${userPhone}` : ''}\n${link}`,
+                }).catch(() => {});
               }}
-              disabled={!isValid || loading}
+              disabled={!isValid}
               activeOpacity={0.85}>
-              {loading
-                ? <ActivityIndicator color="#fff" />
-                : <Text style={s.primaryBtnText}>{t('walGenerateRequest')}</Text>}
+              <Text style={s.primaryBtnText}>{t('walGenerateRequest')}</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
           </>
@@ -659,11 +675,16 @@ const RecargaModal = ({
                       [
                         { text: t('cancel'), style: 'cancel', onPress: () => setLoading(false) },
                         { text: t('walSimulatePayment'), onPress: async () => {
-                          const result = await confirmDeposit(intent.id, 'stripe');
-                          onSuccess();
-                          set('ref', intent.id);
-                          setStep('success');
-                          setLoading(false);
+                          try {
+                            await confirmDeposit(intent.id, 'stripe');
+                            onSuccess();
+                            set('ref', intent.id);
+                            setStep('success');
+                          } catch (err: any) {
+                            Alert.alert(t('error'), err?.message || t('walPaymentCreateFailed'));
+                          } finally {
+                            setLoading(false);
+                          }
                         }},
                       ],
                     );
@@ -731,6 +752,7 @@ const RecargaModal = ({
                 try {
                   const intent = await createDepositIntent(amountNum, step as PaymentGateway, { phone: data.phone });
                   set('intentId', intent.id);
+                  set('gateway', step);
                   set('ussdCode', (intent as any).ussdCode || '');
                   setStep('polling');
                 } catch (e: any) {
@@ -776,15 +798,18 @@ const RecargaModal = ({
             <TouchableOpacity
               style={[s.primaryBtn, { backgroundColor: '#00c8a0', marginTop: 16 }]}
               onPress={async () => {
-                if (!data.intentId) return;
+                if (!data.intentId || loading) return;
                 setLoading(true);
-                const result = await pollPaymentStatus(data.intentId, 1, 0);
-                // En demo confirmamos manualmente
-                const confirmed = await confirmDeposit(data.intentId, 'orange_money');
-                onSuccess();
-                set('ref', data.intentId);
-                setStep('success');
-                setLoading(false);
+                try {
+                  await confirmDeposit(data.intentId, (data.gateway as PaymentGateway) || 'orange_money');
+                  onSuccess();
+                  set('ref', data.intentId);
+                  setStep('success');
+                } catch (err: any) {
+                  Alert.alert(t('error'), err?.message || t('walPaymentCreateFailed'));
+                } finally {
+                  setLoading(false);
+                }
               }}
               activeOpacity={0.85}
             >
@@ -811,9 +836,17 @@ const RetiroModal = ({
   const [data, setData] = useState<Record<string, string>>({});
   const set = (k: string, v: string) => setData(p => ({ ...p, [k]: v }));
   const [loading, setLoading] = useState(false);
+  const [hasPin, setHasPin] = useState(false);
   const { t } = useTranslation();
   const amountNum = parseInt(data.amount || '0');
   const isValid = amountNum >= 1000 && amountNum <= balance;
+
+  useEffect(() => {
+    if (!visible) return;
+    authAPI.hasPinConfigured()
+      .then((r: any) => setHasPin(Boolean(r?.hasPin)))
+      .catch(() => {});
+  }, [visible]);
 
   const reset = () => { setStep('menu'); setData({}); setLoading(false); };
   const close = () => { reset(); onClose(); };
@@ -833,14 +866,15 @@ const RetiroModal = ({
         setLoading(false);
         return;
       }
-      await walletAPI.withdraw(amountNum, method, destination);
+      await walletAPI.withdraw(amountNum, method, destination, data.pin);
       await updateLimitForTransaction('withdrawal', amountNum);
       onSuccess();
-    } catch (error) {
-      console.warn('withdraw error', error);
+      setStep('success');
+    } catch (error: any) {
+      Alert.alert(t('error'), error?.message || t('walPaymentCreateFailed'));
+    } finally {
+      setLoading(false);
     }
-    setStep('success');
-    setLoading(false);
   };
 
   const METODOS = [
@@ -894,12 +928,12 @@ const RetiroModal = ({
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
             <Field label={t('walCardLast4')} value={data.card||''} onChangeText={v=>set('card',v)} placeholder="1234" keyboardType="numeric" />
-            <Field label={t('walConfirmPinLabel')} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry />
+            <Field label={`${t('walConfirmPinLabel')}${hasPin ? '' : ` (${t('optional')})`}`} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
-              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.card||!data.pin) && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid && data.card && data.pin) setStep('confirm'); }}
-              disabled={!isValid || !data.card || !data.pin} activeOpacity={0.85}>
+              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.card||(hasPin&&!data.pin)) && s.primaryBtnDisabled]}
+              onPress={() => { if (isValid && data.card && (!hasPin || data.pin)) setStep('confirm'); }}
+              disabled={!isValid || !data.card || (hasPin && !data.pin)} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>{t('continue')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
@@ -916,11 +950,12 @@ const RetiroModal = ({
             <Field label={t('walDestBank')} value={data.banco||''} onChangeText={v=>set('banco',v)} placeholder="BANGE, BGFI, CCEI..." />
             <Field label={t('accountNumber')} value={data.cuenta||''} onChangeText={v=>set('cuenta',v)} placeholder="GQ-XXXX-XXXX" />
             <Field label={t('walAccountHolder')} value={data.titular||''} onChangeText={v=>set('titular',v)} placeholder={t('name')} />
+            <Field label={`${t('walConfirmPinLabel')}${hasPin ? '' : ` (${t('optional')})`}`} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
-              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.banco||!data.cuenta||!data.titular) && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid && data.banco && data.cuenta && data.titular) setStep('confirm'); }}
-              disabled={!isValid || !data.banco || !data.cuenta || !data.titular} activeOpacity={0.85}>
+              style={[s.primaryBtn, s.withdrawBtn, (!isValid||!data.banco||!data.cuenta||!data.titular||(hasPin&&!data.pin)) && s.primaryBtnDisabled]}
+              onPress={() => { if (isValid && data.banco && data.cuenta && data.titular && (!hasPin || data.pin)) setStep('confirm'); }}
+              disabled={!isValid || !data.banco || !data.cuenta || !data.titular || (hasPin && !data.pin)} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>{t('continue')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
@@ -950,11 +985,12 @@ const RetiroModal = ({
             ))}
             <QuickAmounts amounts={[5000,10000,25000,50000]} selected={data.amount||''} onSelect={v=>set('amount',v)} />
             <Field label={t('walAmountMin1k')} value={data.amount||''} onChangeText={v=>set('amount',v)} placeholder="5000" keyboardType="numeric" />
+            <Field label={`${t('walConfirmPinLabel')} (${t('optional')})`} value={data.pin||''} onChangeText={v=>set('pin',v)} placeholder="••••" secureTextEntry keyboardType="numeric" />
             <InsufficientAlert />
             <TouchableOpacity
-              style={[s.primaryBtn, s.withdrawBtn, !isValid && s.primaryBtnDisabled]}
-              onPress={() => { if (isValid) setStep('confirm'); }}
-              disabled={!isValid} activeOpacity={0.85}>
+              style={[s.primaryBtn, s.withdrawBtn, (!isValid || (hasPin && !data.pin)) && s.primaryBtnDisabled]}
+              onPress={() => { if (isValid && (!hasPin || data.pin)) setStep('confirm'); }}
+              disabled={!isValid || (hasPin && !data.pin)} activeOpacity={0.85}>
               <Text style={s.primaryBtnText}>{t('walGenerateWithdrawCode')} — {isValid ? fmt(amountNum) : '0'} XAF</Text>
             </TouchableOpacity>
             <TouchableOpacity style={s.backBtn} onPress={goBack}><Text style={s.backBtnText}>← {t('back')}</Text></TouchableOpacity>
@@ -1942,7 +1978,8 @@ function MonederoScreenInner() {
         userAvatar={user?.avatar_url || user?.avatarUrl}
         onClose={() => setShowQR(false)}
       />
-      <RecargaModal visible={showRecarga} balance={balance} onClose={() => setShowRecarga(false)} onSuccess={loadData} />
+      <RecargaModal visible={showRecarga} balance={balance} userId={userId} userPhone={userPhone}
+        onClose={() => setShowRecarga(false)} onSuccess={loadData} />
       <RetiroModal  visible={showRetiro}  balance={balance} onClose={() => setShowRetiro(false)}  onSuccess={loadData} />
       <AddBankModal visible={showAddBank} onClose={() => setShowAddBank(false)}
         onAdd={acc => {

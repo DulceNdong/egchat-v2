@@ -428,8 +428,8 @@ export const authAPI = {
   verifyPin: (pin: string) =>
     post<{ valid: boolean; message?: string }>('/api/auth/verify-pin', { pin }),
 
-  setupPin: (pin: string) =>
-    post<{ success: boolean; message?: string }>('/api/auth/setup-pin', { pin }),
+  setupPin: (pin: string, currentPin?: string) =>
+    post<{ success: boolean; message?: string }>('/api/auth/setup-pin', { pin, currentPin }),
 
   hasPinConfigured: () =>
     get<{ hasPin: boolean }>('/api/auth/has-pin'),
@@ -526,15 +526,15 @@ export const walletAPI = {
     get<{ transactions: any[]; total: number }>(`/api/wallet/transactions?page=${page}&limit=20`),
   deposit: (amount: number, method: string, reference: string) =>
     post<any>('/api/wallet/deposit', { amount, method, reference }),
-  withdraw: (amount: number, method: string, destination: string) =>
-    post<any>('/api/wallet/withdraw', { amount, method, destination }),
+  withdraw: (amount: number, method: string, destination: string, pin?: string) =>
+    post<any>('/api/wallet/withdraw', { amount, method, destination, pin }),
   /** Transferencia directa (legacy, sin confirmación del receptor) */
   transfer: (to: string, amount: number, concept?: string, pin?: string) =>
     post<any>('/api/wallet/transfer', { to, amount, concept, pin }),
   /** Transferencia pendiente — el receptor debe aceptar antes de recibir */
-  transferPending: (to: string, amount: number, concept?: string) =>
+  transferPending: (to: string, amount: number, concept?: string, pin?: string) =>
     post<{ success: boolean; transferId: string; balance: number; recipient: string; message: string }>(
-      '/api/wallet/transfer/pending', { to, amount, concept }),
+      '/api/wallet/transfer/pending', { to, amount, concept, pin }),
   acceptTransfer: (transferId: string) =>
     post<{ success: boolean; balance: number; message: string }>(
       `/api/wallet/transfer/accept/${transferId}`, {}),

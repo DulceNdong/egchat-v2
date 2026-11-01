@@ -13,7 +13,8 @@ import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient';
 import { router } from 'expo-router';
 import Svg, { Path, Circle, Rect, Line } from 'react-native-svg';
-import { walletAPI } from '../src/api';
+import { walletAPI, authAPI } from '../src/api';
+import { PinInputModal } from '../src/components/ui/PinInputModal';
 import { toast } from '../src/components/Toast';
 import { useThemeContext } from '../src/theme/ThemeContext';
 import { Colors } from '../src/theme';
@@ -84,6 +85,9 @@ export default function BarcosScreen() {
   const [passengerDNI, setPassengerDNI] = useState('');
   const [loading, setLoading] = useState(false);
   const [bookingRef, setBookingRef] = useState('');
+  const [showPin, setShowPin] = useState(false);
+  const [pinLoading, setPinLoading] = useState(false);
+  const [pinError, setPinError] = useState('');
   const { isDark } = useThemeContext();
   const C = isDark ? DarkColors as unknown as typeof Colors : Colors;
   const insets = useSafeAreaInsets();
@@ -110,15 +114,44 @@ export default function BarcosScreen() {
         setLoading(false);
         return;
       }
-      await walletAPI.transfer('barcos', totalPrice, `Billete barco ${route?.from} → ${route?.to} · ${ship?.name}`);
-      const ref = `BRC-${Date.now().toString(36).toUpperCase()}`;
-      setBookingRef(ref);
-      setStep('success');
-      toast.success(tr('xtBilleteConfirmado'));
+      const { hasPin } = await authAPI.hasPinConfigured();
+      setLoading(false);
+      if (hasPin) {
+        setPinError('');
+        setShowPin(true);
+        return;
+      }
+      await payTicket();
     } catch (e: any) {
       Alert.alert(tr('error'), e?.message || 'No se pudo procesar el pago');
+      setLoading(false);
     }
-    setLoading(false);
+  };
+
+  const payTicket = async (pin?: string) => {
+    setLoading(true);
+    try {
+      await walletAPI.transfer('barcos', totalPrice, `Billete barco ${route?.from} → ${route?.to} · ${ship?.name}`, pin);
+      const ref = `BRC-${Date.now().toString(36).toUpperCase()}`;
+      setBookingRef(ref);
+      setShowPin(false);
+      setStep('success');
+      toast.success(tr('xtBilleteConfirmado'));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePinConfirm = async (pin: string) => {
+    setPinLoading(true);
+    setPinError('');
+    try {
+      await payTicket(pin);
+    } catch (e: any) {
+      setPinError(e?.message || tr('chtPinIncorrect'));
+    } finally {
+      setPinLoading(false);
+    }
   };
 
   // ── ÉXITO ────────────────────────────────────────────────────────
@@ -325,6 +358,15 @@ export default function BarcosScreen() {
           </>
         )}
       </ScrollView>
+      <PinInputModal
+        visible={showPin}
+        loading={pinLoading}
+        error={pinError}
+        title={tr('xtCodigoDeSeguridad')}
+        subtitle={`${tr('xtTotal')}: ${totalPrice.toLocaleString()} XAF`}
+        onClose={() => setShowPin(false)}
+        onSuccess={handlePinConfirm}
+      />
     </SafeAreaView>
   );
 }

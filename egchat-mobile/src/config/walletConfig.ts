@@ -17,3 +17,14 @@
  * Para DESACTIVAR (pruebas): cambiar a `false`.
  */
 export const WALLET_KYC_REQUIRED = false;
+
+/**
+ * WALLET_BANK_SOURCES_ENABLED
+ *
+ * false → Los pagos salen solo del saldo EGChat. Las cuentas bancarias
+ *         guardadas no se ofrecen como fuente de fondos.
+ *
+ * true  → Se ofrecen las cuentas vinculadas como fuente de fondos.
+ *         Activar solo cuando el cargo a banco sea real.
+ */
+export const WALLET_BANK_SOURCES_ENABLED = false;

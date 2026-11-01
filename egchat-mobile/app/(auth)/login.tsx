@@ -196,17 +196,16 @@ export default function LoginScreen() {
       try {
         const raw = await AsyncStorage.getItem(LOGIN_DRAFT_KEY);
         if (!raw) return;
-        const d = JSON.parse(raw) as { countryCode?: string; phone?: string; password?: string };
+        const d = JSON.parse(raw) as { countryCode?: string; phone?: string };
         if (d.countryCode) setCountryCode(d.countryCode);
         if (d.phone)       setPhone(d.phone);
-        if (d.password)    setPassword(d.password);
       } catch {}
     })();
   }, []);
 
   useEffect(() => {
-    AsyncStorage.setItem(LOGIN_DRAFT_KEY, JSON.stringify({ countryCode, phone, password })).catch(() => {});
-  }, [countryCode, phone, password]);
+    AsyncStorage.setItem(LOGIN_DRAFT_KEY, JSON.stringify({ countryCode, phone })).catch(() => {});
+  }, [countryCode, phone]);
 
   const handleSelectCountry = (c: typeof COUNTRIES[0]) => {
     setShowCountryPicker(false);
