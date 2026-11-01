@@ -1,16 +1,23 @@
 /**
- * notifications.ts — Notificaciones nativas con expo-notifications
- * Funciona con el teléfono hibernado gracias a FCM (Firebase Cloud Messaging)
+ * notifications.ts — Notificaciones nativas con expo-notifications + VoIP PushKit (iOS)
+ * - Android: FCM (Firebase Cloud Messaging)
+ * - iOS: Expo Push + VoIP PushKit para llamadas con app cerrada
  */
 import * as Notifications from 'expo-notifications';
 import * as TaskManager from 'expo-task-manager';
 import Constants from 'expo-constants';
-import { Platform } from 'react-native';
+import { Platform, NativeModules, NativeEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { getToken } from './api';
 
 const API_BASE = (process.env.EXPO_PUBLIC_API_URL || 'https://egchat-api-xlxj.onrender.com').replace(/\/+$/, '').replace(/\/api$/, '');
 const BACKGROUND_TASK = 'EGCHAT_BACKGROUND_NOTIFICATION';
+
+// ── Módulo nativo VoIP (solo iOS) ────────────────────────────────────────────
+const { EGChatPushKitModule } = NativeModules;
+const voipEmitter = Platform.OS === 'ios' && EGChatPushKitModule 
+  ? new NativeEventEmitter(EGChatPushKitModule) 
+  : null;
 
 // ── Configurar cómo se muestran las notificaciones en primer plano ──────────
 Notifications.setNotificationHandler({
@@ -63,7 +70,7 @@ async function createChannels() {
   });
 }
 
-// ── Solicitar permisos y registrar token FCM ────────────────────────────────
+// ── Solicitar permisos y registrar tokens (Expo Push + VoIP) ────────────────
 export async function registerForPushNotifications(): Promise<string | null> {
   await createChannels();
 
@@ -87,9 +94,7 @@ export async function registerForPushNotifications(): Promise<string | null> {
     return null;
   }
 
-  // Obtener token Expo Push (que internamente usa FCM en Android)
-  // projectId debe ser el EAS Project ID (UUID de expo.dev/accounts/<user>/projects/<slug>)
-  // Si no tienes EAS configurado, corre: npx eas init
+  // ── 1. Token Expo Push (banners normales) ────────────────────────────────
   let expoPushToken: string | null = null;
   try {
     const tokenData = await Notifications.getExpoPushTokenAsync({
@@ -117,14 +122,43 @@ export async function registerForPushNotifications(): Promise<string | null> {
   }
 
   await AsyncStorage.setItem('expoPushToken', expoPushToken);
-
-  // Registrar en el servidor
   await syncTokenWithServer(expoPushToken);
+
+  // ── 2. Token VoIP (solo iOS, para llamadas con app cerrada) ──────────────
+  if (Platform.OS === 'ios' && EGChatPushKitModule) {
+    try {
+      console.log('[VoIP] Registrando PushKit...');
+      EGChatPushKitModule.registerVoIP();
+      
+      // Esperar el token VoIP (puede tardar 1-2 segundos)
+      const voipToken = await new Promise<string | null>((resolve) => {
+        const timeout = setTimeout(() => resolve(null), 5000);
+        const sub = voipEmitter?.addListener('voipTokenUpdated', ({ token }) => {
+          clearTimeout(timeout);
+          sub?.remove();
+          resolve(token || null);
+        });
+        if (!sub) {
+          clearTimeout(timeout);
+          resolve(null);
+        }
+      });
+
+      if (voipToken && voipToken.length > 0) {
+        console.log('[VoIP] Token obtenido:', voipToken.substring(0, 20) + '...');
+        await registerVoIPToken(voipToken);
+      } else {
+        console.warn('[VoIP] No se obtuvo token VoIP');
+      }
+    } catch (e) {
+      console.warn('[VoIP] Error registrando PushKit:', e);
+    }
+  }
 
   return expoPushToken;
 }
 
-// ── Enviar token al servidor ────────────────────────────────────────────────
+// ── Enviar token Expo al servidor ───────────────────────────────────────────
 export async function syncTokenWithServer(expoPushToken: string) {
   const authToken = await getToken();
   if (!authToken) return;
@@ -143,12 +177,37 @@ export async function syncTokenWithServer(expoPushToken: string) {
   }
 }
 
-// ── Escuchar notificaciones recibidas (app en primer plano) ─────────────────
+// ── Enviar token VoIP al servidor (solo iOS) ─────────────────────────────────
+async function registerVoIPToken(voipToken: string) {
+  const authToken = await getToken();
+  if (!authToken) return;
+
+  try {
+    const response = await fetch(`${API_BASE}/api/push/register-voip-token`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${authToken}`,
+      },
+      body: JSON.stringify({ voipToken }),
+    });
+    
+    if (response.ok) {
+      console.log('[VoIP] Token registrado en servidor ✓');
+    } else {
+      console.warn('[VoIP] Error del servidor:', response.status);
+    }
+  } catch (e) {
+    console.warn('[VoIP] No se pudo registrar token VoIP:', e);
+  }
+}
+
+// ── Escuchar notificaciones (Expo + VoIP) ───────────────────────────────────
 export function setupNotificationListeners(
   onMessage: (chatId: string) => void,
   onCall: (callData: { callId: string; callerName: string; callerAvatar?: string; callType: string; offer?: object }) => void
 ) {
-  // Notificación recibida con app abierta
+  // Notificación Expo recibida con app abierta
   const receivedSub = Notifications.addNotificationReceivedListener((notification) => {
     const data = notification.request.content.data as any;
     if (data?.notificationType === 'incoming_call') {
@@ -162,7 +221,7 @@ export function setupNotificationListeners(
     }
   });
 
-  // Usuario tocó la notificación
+  // Usuario tocó la notificación Expo
   const responseSub = Notifications.addNotificationResponseReceivedListener((response) => {
     const data = response.notification.request.content.data as any;
     const action = response.actionIdentifier;
@@ -181,9 +240,25 @@ export function setupNotificationListeners(
     }
   });
 
+  // ── VoIP PushKit (solo iOS) ──────────────────────────────────────────────
+  let voipSub: any = null;
+  if (Platform.OS === 'ios' && voipEmitter) {
+    voipSub = voipEmitter.addListener('voipPushReceived', (payload: any) => {
+      console.log('[VoIP] Push recibido:', payload);
+      onCall({
+        callId: payload.callId,
+        callerName: payload.callerName || 'EGCHAT',
+        callerAvatar: payload.callerAvatar || '',
+        callType: payload.callType || 'audio',
+        offer: payload.offer,
+      });
+    });
+  }
+
   return () => {
     receivedSub.remove();
     responseSub.remove();
+    voipSub?.remove();
   };
 }
 
