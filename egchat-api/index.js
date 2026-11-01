@@ -7,26 +7,29 @@ const express = require('express');
 const cors = require('cors');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
+const crypto = require('crypto');
+const helmet = require('helmet');
+const rateLimit = require('express-rate-limit');
 const { createClient } = require('@supabase/supabase-js');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const JWT_SECRET = process.env.JWT_SECRET || 'egchat_super_secret_key_2026_production';
-const JWT_SECRET_FALLBACK = 'egchat_super_secret_key_2026_production';
-console.log('JWT_SECRET source:', process.env.JWT_SECRET ? 'environment' : 'fallback');
+app.set('trust proxy', 1);
 
-// Verificar token con múltiples secrets para compatibilidad
-const verifyToken = (token) => {
-  const secrets = [JWT_SECRET, JWT_SECRET_FALLBACK].filter((s, i, arr) => arr.indexOf(s) === i);
-  for (const secret of secrets) {
-    try { return jwt.verify(token, secret); } catch {}
-  }
-  throw new Error('Token inválido o expirado');
-};
+// El secreto debe venir del entorno (Render). Si falta, se deriva uno estable
+// y privado: el anterior estaba hardcodeado en el repo y permitía falsificar tokens.
+const JWT_SECRET = process.env.JWT_SECRET
+  || crypto.createHash('sha256')
+    .update(`egchat-jwt:${process.env.SUPABASE_SERVICE_KEY || process.env.SUPABASE_URL || 'local'}`)
+    .digest('hex');
+if (!process.env.JWT_SECRET) {
+  console.error('[SECURITY] JWT_SECRET no configurado en el entorno; usando secreto derivado.');
+}
+
+const verifyToken = (token) => jwt.verify(token, JWT_SECRET);
 const APP_VERSION = '2.5.0';
 const chatStreams = new Map();
 const dependencyCache = { timestamp: 0, result: null };
-const enableLocalAuthFallback = process.env.LOCAL_AUTH_FALLBACK !== 'false';
 const enableExternalNewsScraping = process.env.ENABLE_EXTERNAL_NEWS_SCRAPING === '1';
 const localAuthUsers = new Map();
 
@@ -50,12 +53,6 @@ const sendLocalAuth = (res, phone, fullName, avatarUrl, status = 200) => {
   const token = jwt.sign({ id: user.id, phone: user.phone }, JWT_SECRET, { expiresIn: '30d' });
   return res.status(status).json({ token, user });
 };
-
-const DEMO_USERS = [
-  { phone: '+240111111111', full_name: 'Raymon Prueba', avatar_url: null },
-  { phone: '+240222222222', full_name: 'Tiny Abaga', avatar_url: null },
-];
-DEMO_USERS.forEach(user => getLocalAuthUser(user.phone, user.full_name, user.avatar_url));
 
 const localChats = new Map();
 const localMessages = new Map();
@@ -151,6 +148,22 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight for all routes
+app.use(helmet({ contentSecurityPolicy: false, crossOriginResourcePolicy: false }));
+
+// Límites por IP. Se dejan holgados porque en redes móviles varios usuarios
+// pueden compartir la misma IP pública (CGNAT).
+const makeLimiter = (limit, windowMs, message) => rateLimit({
+  windowMs,
+  limit,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { message },
+});
+const authLimiter = makeLimiter(50, 15 * 60 * 1000, 'Demasiados intentos. Espera unos minutos e inténtalo de nuevo.');
+const walletLimiter = makeLimiter(60, 10 * 60 * 1000, 'Demasiadas operaciones. Espera unos minutos.');
+const kycLimiter = makeLimiter(40, 60 * 60 * 1000, 'Demasiadas solicitudes de verificación. Espera una hora.');
+const pinLimiter = makeLimiter(20, 15 * 60 * 1000, 'Demasiados intentos de PIN. Espera unos minutos.');
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ limit: '10mb', extended: true }));
 // ── Saneador de texto mojibake ────────────────────────────────────
@@ -280,6 +293,27 @@ const authFromQuery = (req, res, next) => {
   }
 };
 
+// Solo tokens emitidos por /auth/admin/login (type: 'admin').
+// Los endpoints de KYC exponen datos personales y no deben aceptar tokens de usuario.
+const requireAdmin = (req, res, next) => {
+  const authHeader = parseBearerToken(req.headers.authorization);
+  const xAuthToken = req.headers['x-auth-token'] || '';
+  const queryT = typeof req.query._t === 'string' ? req.query._t : '';
+  const token = authHeader || xAuthToken || queryT;
+  if (!token) return res.status(401).json({ error: 'NO_TOKEN', message: 'Token de administrador requerido' });
+  let payload;
+  try {
+    payload = verifyToken(token);
+  } catch {
+    return res.status(401).json({ error: 'INVALID_TOKEN', message: 'Token inválido o expirado' });
+  }
+  if (payload.type !== 'admin') {
+    return res.status(403).json({ error: 'FORBIDDEN', message: 'Se requieren permisos de administrador' });
+  }
+  req.admin = payload;
+  next();
+};
+
 const emitToUser = (userId, payload) => {
   const key = String(userId);
   const streams = chatStreams.get(key);
@@ -297,7 +331,16 @@ const emitToUsers = (userIds, payload) => {
   uniq.forEach((id) => emitToUser(id, payload));
 };
 
-const adminResetKey = process.env.ADMIN_RESET_KEY || JWT_SECRET;
+const adminResetKey = process.env.ADMIN_RESET_KEY || null;
+// Sin ADMIN_RESET_KEY las rutas administrativas quedan cerradas (antes caían
+// al secreto JWT, que estaba publicado en el repositorio).
+const isAdminKeyValid = (key) => {
+  if (!adminResetKey || typeof key !== 'string') return false;
+  const provided = Buffer.from(key);
+  const expected = Buffer.from(adminResetKey);
+  if (provided.length !== expected.length) return false;
+  return crypto.timingSafeEqual(provided, expected);
+};
 const ADMIN_RESET_MARKER = '00000000-0000-0000-0000-000000000000';
 const resetTable = async (table, column = 'id') => {
   try {
@@ -325,7 +368,7 @@ const checkTable = async (table) => {
 // --- ADMIN ROUTES (inline) -------------------------------------------
 app.post('/api/admin/reset-all', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.body?.adminKey;
-  if (!key || key !== adminResetKey) return res.status(403).json({ message: 'No autorizado' });
+  if (!isAdminKeyValid(key)) return res.status(403).json({ message: 'No autorizado' });
   const results = [];
   results.push(await resetTable('message_reads', 'read_at'));
   results.push(await resetTable('messages', 'created_at'));
@@ -346,7 +389,7 @@ app.post('/api/admin/reset-all', async (req, res) => {
 
 app.post('/api/admin/users/update-version', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.body?.adminKey;
-  if (!key || key !== adminResetKey) return res.status(403).json({ message: 'No autorizado' });
+  if (!isAdminKeyValid(key)) return res.status(403).json({ message: 'No autorizado' });
   const version = typeof req.body?.version === 'string' ? req.body.version : APP_VERSION;
   try {
     const { error } = await supabase.from('users').update({ app_version: version });
@@ -360,7 +403,7 @@ app.post('/api/admin/users/update-version', async (req, res) => {
 // Reset contraseña por admin
 app.post('/api/admin/reset-password', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.body?.adminKey;
-  if (!key || key !== adminResetKey) return res.status(403).json({ message: 'No autorizado' });
+  if (!isAdminKeyValid(key)) return res.status(403).json({ message: 'No autorizado' });
   const { phone, newPassword } = req.body;
   if (!phone || !newPassword) return res.status(400).json({ message: 'phone y newPassword requeridos' });
   const hashed = await bcrypt.hash(newPassword, 10);
@@ -370,11 +413,16 @@ app.post('/api/admin/reset-password', async (req, res) => {
 });
 
 // --- EMERGENCY PASSWORD RESET (token de un solo uso) ------------------
-app.post('/api/emergency/reset-pw', async (req, res) => {
-  const TOKEN = 'EG2026_RESET_TOKEN_X9K';
+app.post('/api/emergency/reset-pw', authLimiter, async (req, res) => {
+  const expected = process.env.EMERGENCY_RESET_TOKEN;
+  if (!expected) return res.status(404).json({ message: 'No disponible' });
   const { token, phone, newPassword } = req.body || {};
-  if (!token || token !== TOKEN) return res.status(403).json({ message: 'No autorizado' });
+  const tokenOk = typeof token === 'string'
+    && token.length === expected.length
+    && crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  if (!tokenOk) return res.status(403).json({ message: 'No autorizado' });
   if (!phone || !newPassword) return res.status(400).json({ message: 'phone y newPassword requeridos' });
+  if (String(newPassword).length < 8) return res.status(400).json({ message: 'La contraseña debe tener al menos 8 caracteres' });
   try {
     const hashed = await bcrypt.hash(newPassword, 10);
     const { data, error } = await supabase
@@ -400,21 +448,7 @@ app.get('/', (req, res) => res.json({
 
 app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
 
-app.get('/jwt-debug', (req, res) => res.json({
-  jwt_secret_source: process.env.JWT_SECRET ? 'environment' : 'fallback',
-  jwt_secret_first10: JWT_SECRET.substring(0, 10),
-  jwt_secret_length: JWT_SECRET.length,
-}));
-
-app.get('/debug', (req, res) => res.json({
-  supabase_url: process.env.SUPABASE_URL ? 'âœ… set' : 'âŒ missing',
-  supabase_key: process.env.SUPABASE_SERVICE_KEY ? 'âœ… set' : 'âŒ missing',
-  jwt_secret: process.env.JWT_SECRET ? 'âœ… set' : 'âŒ missing',
-  node_env: process.env.NODE_ENV || 'not set',
-  port: PORT
-}));
-
-app.get('/api/system/dependencies', async (_req, res) => {
+app.get('/api/system/dependencies', requireAdmin, async (_req, res) => {
   const now = Date.now();
   if (dependencyCache.result && now - dependencyCache.timestamp < 60000) {
     return res.json(dependencyCache.result);
@@ -488,7 +522,7 @@ app.get('/api/chat/stream', authFromQuery, (req, res) => {
 
 // AUTH
 // ════════════════════════════════════════════════════════════════════
-app.post('/api/auth/register', async (req, res) => {
+app.post('/api/auth/register', authLimiter, async (req, res) => {
   try {
     const { phone, password, full_name, avatar_url } = req.body;
     if (!phone || !password || !full_name)
@@ -508,33 +542,29 @@ app.post('/api/auth/register', async (req, res) => {
       .select('id, phone, full_name, avatar_url')
       .single();
 
-    if (error) {
-      if (enableLocalAuthFallback) return sendLocalAuth(res, phone, full_name, profileAvatar, 201);
-      throw error;
-    }
+    if (error) throw error;
 
-    // Crear wallet inicial
+    // Crear wallet inicial (saldo de bienvenida solo en modo pruebas)
     try {
-      await supabase.from('wallets').insert({ user_id: user.id, balance: 5000, currency: 'XAF' });
+      await supabase.from('wallets').insert({
+        user_id: user.id,
+        balance: WALLET_SANDBOX ? 5000 : 0,
+        currency: WALLET_CURRENCY,
+      });
     } catch {}
 
     const token = jwt.sign({ id: user.id, phone }, JWT_SECRET, { expiresIn: '30d' });
     res.status(201).json({ token, user: { ...user, app_version: APP_VERSION } });
   } catch (e) {
     console.error('Register error:', e);
-    if (enableLocalAuthFallback) {
-      const { phone, full_name, avatar_url } = req.body || {};
-      if (phone && full_name) return sendLocalAuth(res, phone, full_name, avatar_url || null, 201);
-    }
     res.status(500).json({ message: e.message });
   }
 });
 
-app.post('/api/auth/check-phone', async (req, res) => {
+app.post('/api/auth/check-phone', authLimiter, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.json({ exists: false });
-    if (localAuthUsers.has(String(phone).trim())) return res.json({ exists: true });
     const { data } = await supabase.from('users').select('id').eq('phone', phone).maybeSingle();
     res.json({ exists: !!data });
   } catch {
@@ -542,24 +572,16 @@ app.post('/api/auth/check-phone', async (req, res) => {
   }
 });
 
-app.post('/api/auth/login', async (req, res) => {
+app.post('/api/auth/login', authLimiter, async (req, res) => {
   try {
     const { phone, password } = req.body;
     if (!phone || !password)
       return res.status(400).json({ message: 'phone y password son requeridos' });
 
-    const localUser = localAuthUsers.get(String(phone).trim());
-    if (localUser) return sendLocalAuth(res, localUser.phone, localUser.full_name, localUser.avatar_url);
-
     const { data: user, error } = await supabase
       .from('users').select('*').eq('phone', phone).maybeSingle();
 
-    if (error) {
-      if (enableLocalAuthFallback) return sendLocalAuth(res, phone);
-      return res.status(401).json({ message: 'Credenciales incorrectas' });
-    }
-    if (!user) {
-      if (enableLocalAuthFallback) return sendLocalAuth(res, phone);
+    if (error || !user) {
       return res.status(401).json({ message: 'Credenciales incorrectas' });
     }
 
@@ -598,6 +620,54 @@ app.post('/api/auth/heartbeat', auth, async (req, res) => {
     supabase.from('users').update({ online_status: true, last_seen: new Date().toISOString() }).eq('id', req.user.id).then(() => {});
   }
   res.json({ ok: true });
+});
+
+// ── PIN de seguridad del monedero ────────────────────────────────
+// Se guarda hasheado en users.pin_hash. Sin PIN configurado las
+// operaciones funcionan igual (útil mientras el monedero es de prueba).
+app.get('/api/auth/has-pin', auth, async (req, res) => {
+  try {
+    const { data } = await supabase
+      .from('users').select('pin_hash').eq('id', req.user.id).maybeSingle();
+    res.json({ hasPin: Boolean(data?.pin_hash) });
+  } catch (e) {
+    res.status(500).json({ message: 'No se pudo consultar el PIN' });
+  }
+});
+
+app.post('/api/auth/setup-pin', auth, pinLimiter, async (req, res) => {
+  try {
+    const pin = String(req.body?.pin ?? '');
+    const currentPin = req.body?.currentPin;
+    if (!/^\d{4,6}$/.test(pin)) {
+      return res.status(400).json({ message: 'El PIN debe tener entre 4 y 6 dígitos' });
+    }
+
+    const { data: user } = await supabase
+      .from('users').select('pin_hash').eq('id', req.user.id).maybeSingle();
+    if (user?.pin_hash) {
+      const valid = currentPin && await bcrypt.compare(String(currentPin), user.pin_hash);
+      if (!valid) return res.status(403).json({ code: 'PIN_INVALID', message: 'PIN actual incorrecto' });
+    }
+
+    const pin_hash = await bcrypt.hash(pin, 10);
+    const { error } = await supabase.from('users').update({ pin_hash }).eq('id', req.user.id);
+    if (error) throw error;
+    res.json({ success: true });
+  } catch (e) {
+    res.status(500).json({ message: 'No se pudo guardar el PIN' });
+  }
+});
+
+app.post('/api/auth/verify-pin', auth, pinLimiter, async (req, res) => {
+  try {
+    const pin = String(req.body?.pin ?? '');
+    const result = await checkPinForOperation(req.user.id, pin);
+    if (result.ok) return res.json({ valid: true });
+    res.json({ valid: false, message: result.code === 'PIN_REQUIRED' ? 'Introduce tu PIN' : 'PIN incorrecto' });
+  } catch (e) {
+    res.status(500).json({ valid: false, message: 'No se pudo verificar el PIN' });
+  }
 });
 
 // Registro de actividad del usuario
@@ -801,7 +871,7 @@ app.get('/api/auth/qr-status/:sessionId', async (req, res) => {
 // Almacén temporal en memoria: { phone -> { code, expiresAt } }
 const resetCodes = new Map();
 
-app.post('/api/auth/send-verification', async (req, res) => {
+app.post('/api/auth/send-verification', authLimiter, async (req, res) => {
   try {
     const { phone } = req.body;
     if (!phone) return res.status(400).json({ message: 'Teléfono requerido' });
@@ -838,7 +908,7 @@ app.post('/api/auth/send-verification', async (req, res) => {
   }
 });
 
-app.post('/api/auth/verify-code', async (req, res) => {
+app.post('/api/auth/verify-code', authLimiter, async (req, res) => {
   try {
     const { phone, code } = req.body;
     if (!phone || !code) return res.status(400).json({ message: 'Teléfono y código requeridos' });
@@ -857,7 +927,7 @@ app.post('/api/auth/verify-code', async (req, res) => {
   }
 });
 
-app.post('/api/auth/reset-password', async (req, res) => {
+app.post('/api/auth/reset-password', authLimiter, async (req, res) => {
   try {
     const { phone, code, newPassword } = req.body;
     if (!phone || !code || !newPassword) return res.status(400).json({ message: 'Faltan datos' });
@@ -2183,7 +2253,7 @@ app.get('/api/wallet/balance', auth, async (req, res) => {
     if (!wallet) {
       const { data, error: insertError } = await supabase
         .from('wallets')
-        .insert({ user_id: req.user.id, balance: 5000, currency: 'XAF' })
+        .insert({ user_id: req.user.id, balance: 0, currency: WALLET_CURRENCY })
         .select('balance, currency')
         .maybeSingle();
 
@@ -2191,87 +2261,577 @@ app.get('/api/wallet/balance', auth, async (req, res) => {
         console.warn('Wallet create error:', insertError.message);
       }
 
-      wallet = data || { balance: 5000, currency: 'XAF' };
+      wallet = data || { balance: 0, currency: WALLET_CURRENCY };
     }
 
-    res.json({ balance: Number(wallet.balance || 0), currency: wallet.currency || 'XAF' });
+    res.json({
+      balance: Number(wallet.balance || 0),
+      currency: wallet.currency || WALLET_CURRENCY,
+      mode: WALLET_MODE,
+      sandbox: WALLET_SANDBOX,
+    });
   } catch (e) {
     console.error('Wallet balance error:', e);
-    res.json({ balance: 5000, currency: 'XAF' });
+    res.json({ balance: 0, currency: WALLET_CURRENCY, mode: WALLET_MODE, sandbox: WALLET_SANDBOX });
   }
 });
 
 app.get('/api/wallet/transactions', auth, async (req, res) => {
-  const page = parseInt(req.query.page) || 1;
-  const limit = parseInt(req.query.limit) || 20;
+  const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+  const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
   const from = (page - 1) * limit;
 
   const { data: transactions, count } = await supabase
     .from('transactions')
     .select('*', { count: 'exact' })
     .eq('user_id', req.user.id)
+    .eq('status', 'completed')
     .order('created_at', { ascending: false })
     .range(from, from + limit - 1);
 
   res.json({ transactions: transactions || [], total: count || 0 });
 });
 
-app.post('/api/wallet/deposit', auth, async (req, res) => {
-  const { amount, method, reference } = req.body;
-  if (!amount || amount <= 0) return res.status(400).json({ message: 'Importe invÁƒÂ¡lido' });
+app.post('/api/wallet/deposit', auth, walletLimiter, async (req, res) => {
+  try {
+    const { method, reference } = req.body || {};
+    const amount = roundAmount(req.body?.amount);
+    if (!isValidTransferAmount(amount)) return res.status(400).json({ message: 'Importe inválido' });
 
-  const { data: wallet } = await supabase
-    .from('wallets').select('balance').eq('user_id', req.user.id).single();
-  const newBalance = (wallet?.balance || 0) + amount;
+    if (!WALLET_SANDBOX) {
+      return res.status(501).json({
+        code: 'PAYMENTS_NOT_CONFIGURED',
+        message: 'Las recargas reales todavía no están disponibles. Usa el modo de pruebas o espera a la integración bancaria.',
+      });
+    }
 
-  await supabase.from('wallets').upsert({ user_id: req.user.id, balance: newBalance, currency: 'XAF' });
+    const quotaError = await walletQuotaError(req.user.id, 'deposit', amount);
+    if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
 
-  const { data: tx } = await supabase.from('transactions').insert({
-    user_id: req.user.id, type: 'deposit', amount, method,
-    reference, status: 'completed'
-  }).select().single();
+    const credit = await creditWallet(req.user.id, amount);
+    if (!credit.ok) return transferErrorResponse(res, credit.code);
 
-  res.json({ balance: newBalance, transaction: tx });
+    const { data: tx } = await supabase.from('transactions').insert({
+      user_id: req.user.id, type: 'deposit', amount, method,
+      reference, status: 'completed'
+    }).select().single();
+
+    res.json({ balance: credit.balance, transaction: tx, sandbox: WALLET_SANDBOX });
+  } catch (e) {
+    console.error('Deposit error:', e.message);
+    res.status(500).json({ message: 'Error al procesar la recarga' });
+  }
 });
 
-app.post('/api/wallet/withdraw', auth, async (req, res) => {
-  const { amount, method, destination } = req.body;
-  const { data: wallet } = await supabase
-    .from('wallets').select('balance').eq('user_id', req.user.id).single();
+app.post('/api/wallet/withdraw', auth, walletLimiter, async (req, res) => {
+  try {
+    const { method, destination, pin } = req.body || {};
+    const amount = roundAmount(req.body?.amount);
+    if (!isValidTransferAmount(amount)) return res.status(400).json({ message: 'Importe inválido' });
 
-  if (!amount || amount <= 0) return res.status(400).json({ message: 'Importe invÁƒÂ¡lido' });
-  if (!wallet || amount > wallet.balance) return res.status(400).json({ message: 'Saldo insuficiente' });
+    if (!WALLET_SANDBOX) {
+      return res.status(501).json({
+        code: 'PAYMENTS_NOT_CONFIGURED',
+        message: 'Las retiradas reales todavía no están disponibles. Espera a la integración bancaria.',
+      });
+    }
 
-  const newBalance = wallet.balance - amount;
-  await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', req.user.id);
+    const pinCheck = await checkPinForOperation(req.user.id, pin);
+    if (!pinCheck.ok) return pinErrorResponse(res, pinCheck.code);
 
-  const { data: tx } = await supabase.from('transactions').insert({
-    user_id: req.user.id, type: 'withdraw', amount, method,
-    reference: destination, status: 'completed'
-  }).select().single();
+    const quotaError = await walletQuotaError(req.user.id, 'withdraw', amount);
+    if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
 
-  res.json({ balance: newBalance, transaction: tx });
+    const debit = await debitWallet(req.user.id, amount);
+    if (!debit.ok) {
+      if (debit.code === 'WALLET_NOT_FOUND') return res.status(404).json({ message: 'Monedero no encontrado' });
+      return transferErrorResponse(res, debit.code);
+    }
+
+    const { data: tx } = await supabase.from('transactions').insert({
+      user_id: req.user.id, type: 'withdraw', amount, method,
+      reference: destination, status: 'completed'
+    }).select().single();
+
+    res.json({ balance: debit.balance, transaction: tx, sandbox: WALLET_SANDBOX });
+  } catch (e) {
+    console.error('Withdraw error:', e.message);
+    res.status(500).json({ message: 'Error al procesar la retirada' });
+  }
 });
 
-app.post('/api/wallet/transfer', auth, async (req, res) => {
-  const { to, amount, concept } = req.body;
-  const { data: wallet } = await supabase
-    .from('wallets').select('balance').eq('user_id', req.user.id).single();
+// ── Transferencias entre usuarios ────────────────────────────────────
+const TRANSFER_TTL_MS = 72 * 60 * 60 * 1000; // 72 h para aceptar
+const MAX_TRANSFER_AMOUNT = 5000000;
+const PENDING_TRANSFER_PREFIX = 'P2P';
+// Cobros de servicios de la propia plataforma (no existe usuario receptor).
+const PLATFORM_MERCHANTS = new Set(['barcos']);
 
-  if (amount > (wallet?.balance || 0)) return res.status(400).json({ message: 'Saldo insuficiente' });
+const roundAmount = (value) => Math.round(Number(value) * 100) / 100;
+const isValidTransferAmount = (value) => {
+  const amount = Number(value);
+  return Number.isFinite(amount) && amount > 0 && amount <= MAX_TRANSFER_AMOUNT;
+};
 
-  const newBalance = wallet.balance - amount;
-  await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', req.user.id);
+const findUserByRef = async (ref) => {
+  const raw = String(ref || '').trim();
+  if (!raw) return null;
+  const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(raw);
+  const phone = raw.replace(/[^\d+]/g, '');
+  const base = supabase.from('users').select('id, phone, full_name, avatar_url');
+  const { data } = isUuid
+    ? await base.eq('id', raw).maybeSingle()
+    : await base.eq('phone', phone).maybeSingle();
+  return data || null;
+};
 
-  const { data: tx } = await supabase.from('transactions').insert({
-    user_id: req.user.id, type: 'transfer_sent', amount, method: 'EGCHAT',
-    reference: `A: ${to} Á‚Â· ${concept || ''}`, status: 'completed'
-  }).select().single();
+const getWallet = async (userId) => {
+  const { data } = await supabase.from('wallets').select('id, balance').eq('user_id', userId).maybeSingle();
+  return data || null;
+};
 
-  res.json({ balance: newBalance, transaction: tx });
+const ensureWallet = async (userId) => {
+  const existing = await getWallet(userId);
+  if (existing) return existing;
+  const { data, error } = await supabase
+    .from('wallets')
+    .insert({ user_id: userId, balance: 0, currency: 'XAF' })
+    .select('id, balance')
+    .maybeSingle();
+  return error ? null : data;
+};
+
+// Resta con comprobación optimista: si otra operación modificó el saldo entre
+// la lectura y la escritura, la condición `balance` ya no coincide y se aborta.
+const debitWallet = async (userId, amount) => {
+  const wallet = await getWallet(userId);
+  if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
+  const current = Number(wallet.balance || 0);
+  if (amount > current) return { ok: false, code: 'INSUFFICIENT_BALANCE' };
+  const next = roundAmount(current - amount);
+  const { data, error } = await supabase
+    .from('wallets')
+    .update({ balance: next, updated_at: new Date().toISOString() })
+    .eq('user_id', userId)
+    .eq('balance', wallet.balance)
+    .select('balance')
+    .maybeSingle();
+  if (error || !data) return { ok: false, code: 'CONCURRENT_UPDATE' };
+  return { ok: true, balance: Number(data.balance) };
+};
+
+const creditWallet = async (userId, amount, attempts = 3) => {
+  for (let attempt = 0; attempt < attempts; attempt++) {
+    const wallet = await ensureWallet(userId);
+    if (!wallet) return { ok: false, code: 'WALLET_NOT_FOUND' };
+    const next = roundAmount(Number(wallet.balance || 0) + amount);
+    const { data, error } = await supabase
+      .from('wallets')
+      .update({ balance: next, updated_at: new Date().toISOString() })
+      .eq('user_id', userId)
+      .eq('balance', wallet.balance)
+      .select('balance')
+      .maybeSingle();
+    if (error) return { ok: false, code: 'CREDIT_FAILED' };
+    if (data) return { ok: true, balance: Number(data.balance) };
+  }
+  return { ok: false, code: 'CONCURRENT_UPDATE' };
+};
+
+const buildPendingReference = (recipientId, concept) =>
+  `${PENDING_TRANSFER_PREFIX}:${recipientId}:${Buffer.from(String(concept || ''), 'utf8').toString('base64')}`;
+
+const parsePendingReference = (reference) => {
+  const parts = String(reference || '').split(':');
+  if (parts.length < 3 || parts[0] !== PENDING_TRANSFER_PREFIX) return null;
+  let concept = '';
+  try { concept = Buffer.from(parts.slice(2).join(':'), 'base64').toString('utf8'); } catch {}
+  return { recipientId: parts[1], concept };
+};
+
+const transferErrorResponse = (res, code) => {
+  if (code === 'INSUFFICIENT_BALANCE') {
+    return res.status(400).json({ message: 'Saldo insuficiente', code });
+  }
+  return res.status(409).json({ message: 'No se pudo completar la operación. Inténtalo de nuevo.', code });
+};
+
+// ── Modo del monedero ────────────────────────────────────────────────
+// sandbox: saldo de prueba, pasarelas simuladas. live: solo dinero real,
+// activado cuando existan las integraciones bancarias.
+const WALLET_MODE = process.env.WALLET_MODE === 'live' ? 'live' : 'sandbox';
+const WALLET_SANDBOX = WALLET_MODE === 'sandbox';
+const WALLET_CURRENCY = 'XAF';
+
+const WALLET_LIMITS = {
+  dailyDeposit: 5000000,
+  dailyWithdraw: 3000000,
+  dailyTransfer: 3000000,
+  perTxTransfer: 1000000,
+};
+
+const startOfTodayIso = () => {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d.toISOString();
+};
+
+const sumTodayByType = async (userId) => {
+  const { data } = await supabase
+    .from('transactions')
+    .select('type, amount')
+    .eq('user_id', userId)
+    .gte('created_at', startOfTodayIso())
+    .in('type', ['deposit', 'withdraw', 'transfer_sent']);
+
+  const totals = { deposit: 0, withdraw: 0, transfer: 0 };
+  (data || []).forEach((tx) => {
+    const type = String(tx.type || '').toLowerCase();
+    if (type === 'transfer_sent') totals.transfer += Number(tx.amount || 0);
+    else if (type in totals) totals[type] += Number(tx.amount || 0);
+  });
+  return totals;
+};
+
+const walletQuotaError = async (userId, kind, amount) => {
+  if (kind === 'transfer' && amount > WALLET_LIMITS.perTxTransfer) {
+    return `El máximo por transferencia es ${WALLET_LIMITS.perTxTransfer.toLocaleString('es-ES')} XAF`;
+  }
+  const limit = {
+    deposit: WALLET_LIMITS.dailyDeposit,
+    withdraw: WALLET_LIMITS.dailyWithdraw,
+    transfer: WALLET_LIMITS.dailyTransfer,
+  }[kind];
+  if (!limit) return null;
+  const totals = await sumTodayByType(userId);
+  const used = kind === 'transfer' ? totals.transfer : totals[kind];
+  if (used + amount <= limit) return null;
+  return `Has alcanzado el límite diario de ${limit.toLocaleString('es-ES')} XAF para esta operación`;
+};
+
+const checkPinForOperation = async (userId, pin) => {
+  const { data: user } = await supabase
+    .from('users').select('pin_hash').eq('id', userId).maybeSingle();
+  if (!user || !user.pin_hash) return { ok: true, configured: false };
+  if (!pin) return { ok: false, code: 'PIN_REQUIRED' };
+  const valid = await bcrypt.compare(String(pin), user.pin_hash);
+  return valid ? { ok: true, configured: true } : { ok: false, code: 'PIN_INVALID' };
+};
+
+const pinErrorResponse = (res, code) => res.status(403).json({
+  code,
+  message: code === 'PIN_REQUIRED'
+    ? 'Introduce tu PIN de seguridad para continuar'
+    : 'PIN incorrecto',
 });
 
-app.post('/api/wallet/recharge-code', auth, async (req, res) => {
+const notifyMoney = (userId, title, body, extra = {}) => {
+  sendPushToUser(userId, {
+    title,
+    body,
+    notificationType: 'wallet',
+    ...extra,
+  }).catch((e) => console.warn('[WALLET] push error:', e.message));
+};
+
+app.post('/api/wallet/transfer', auth, walletLimiter, async (req, res) => {
+  try {
+    const { to, concept, pin } = req.body || {};
+    const amount = roundAmount(req.body?.amount);
+
+    if (!isValidTransferAmount(amount)) return res.status(400).json({ message: 'Importe inválido' });
+    if (!to) return res.status(400).json({ message: 'Destinatario requerido' });
+
+    const pinCheck = await checkPinForOperation(req.user.id, pin);
+    if (!pinCheck.ok) return pinErrorResponse(res, pinCheck.code);
+
+    const quotaError = await walletQuotaError(req.user.id, 'transfer', amount);
+    if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
+
+    const isPlatformMerchant = PLATFORM_MERCHANTS.has(String(to).trim().toLowerCase());
+    const recipient = isPlatformMerchant ? null : await findUserByRef(to);
+    if (!recipient && !isPlatformMerchant) return res.status(404).json({ message: 'Destinatario no encontrado' });
+    if (recipient && String(recipient.id) === String(req.user.id)) {
+      return res.status(400).json({ message: 'No puedes transferirte a ti mismo' });
+    }
+
+    const debit = await debitWallet(req.user.id, amount);
+    if (!debit.ok) return transferErrorResponse(res, debit.code);
+
+    if (recipient) {
+      const credit = await creditWallet(recipient.id, amount);
+      if (!credit.ok) {
+        await creditWallet(req.user.id, amount); // compensación: devolver al emisor
+        return res.status(500).json({ message: 'No se pudo abonar al destinatario. Tu saldo no ha cambiado.' });
+      }
+    }
+
+    const detail = concept ? ` · ${String(concept).slice(0, 140)}` : '';
+    const { data: sent } = await supabase.from('transactions').insert({
+      user_id: req.user.id,
+      type: 'transfer_sent',
+      amount,
+      method: 'EGCHAT',
+      reference: recipient ? `A: ${recipient.phone || recipient.id}${detail}` : `Servicio: ${to}${detail}`,
+      status: 'completed',
+    }).select().single();
+
+    if (recipient) {
+      await supabase.from('transactions').insert({
+        user_id: recipient.id,
+        type: 'transfer_received',
+        amount,
+        method: 'EGCHAT',
+        reference: `DE: ${req.user.phone || req.user.id}${detail}`,
+        status: 'completed',
+      });
+      notifyMoney(
+        recipient.id,
+        'Has recibido dinero',
+        `${req.user.phone || 'Un contacto'} te envió ${amount.toLocaleString('es-ES')} XAF`,
+        { amount, senderPhone: req.user.phone || '', transactionId: sent?.id || '' },
+      );
+    }
+
+    res.json({
+      balance: debit.balance,
+      transaction: sent,
+      recipient: recipient
+        ? { id: recipient.id, name: recipient.full_name }
+        : { id: String(to), name: String(to) },
+      sandbox: WALLET_SANDBOX,
+    });
+  } catch (e) {
+    console.error('Transfer error:', e.message);
+    res.status(500).json({ message: 'Error al procesar la transferencia' });
+  }
+});
+
+// Transferencia pendiente: el emisor aparta el saldo y el receptor acepta.
+app.post('/api/wallet/transfer/pending', auth, walletLimiter, async (req, res) => {
+  try {
+    const { to, concept, pin } = req.body || {};
+    const amount = roundAmount(req.body?.amount);
+
+    if (!isValidTransferAmount(amount)) return res.status(400).json({ message: 'Importe inválido' });
+    if (!to) return res.status(400).json({ message: 'Destinatario requerido' });
+
+    const pinCheck = await checkPinForOperation(req.user.id, pin);
+    if (!pinCheck.ok) return pinErrorResponse(res, pinCheck.code);
+
+    const quotaError = await walletQuotaError(req.user.id, 'transfer', amount);
+    if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
+
+    const recipient = await findUserByRef(to);
+    if (!recipient) return res.status(404).json({ message: 'Destinatario no encontrado' });
+    if (String(recipient.id) === String(req.user.id)) {
+      return res.status(400).json({ message: 'No puedes transferirte a ti mismo' });
+    }
+
+    const debit = await debitWallet(req.user.id, amount);
+    if (!debit.ok) return transferErrorResponse(res, debit.code);
+
+    const { data: transfer, error } = await supabase.from('transactions').insert({
+      user_id: req.user.id,
+      type: 'transfer_sent',
+      amount,
+      method: 'EGCHAT',
+      reference: buildPendingReference(recipient.id, concept),
+      status: 'pending',
+    }).select().single();
+
+    if (error || !transfer) {
+      await creditWallet(req.user.id, amount); // devolver el saldo apartado
+      return res.status(500).json({ message: 'No se pudo crear la transferencia' });
+    }
+
+    notifyMoney(
+      recipient.id,
+      'Tienes una transferencia pendiente',
+      `${req.user.phone || 'Un contacto'} quiere enviarte ${amount.toLocaleString('es-ES')} XAF`,
+      { amount, transferId: transfer.id, senderPhone: req.user.phone || '', pending: true },
+    );
+
+    res.json({
+      success: true,
+      transferId: transfer.id,
+      balance: debit.balance,
+      recipient: recipient.full_name || recipient.phone,
+      message: 'Transferencia enviada. El destinatario debe aceptarla.',
+      sandbox: WALLET_SANDBOX,
+    });
+  } catch (e) {
+    console.error('Pending transfer error:', e.message);
+    res.status(500).json({ message: 'Error al procesar la transferencia' });
+  }
+});
+
+// Devuelve al emisor las transferencias pendientes que caducaron.
+const expirePendingTransfer = async (transfer) => {
+  const { data: claimed } = await supabase.from('transactions')
+    .update({ status: 'expired' })
+    .eq('id', transfer.id)
+    .eq('status', 'pending')
+    .select('id, user_id, amount')
+    .maybeSingle();
+  if (claimed) {
+    await creditWallet(claimed.user_id, Number(claimed.amount));
+  }
+  return Boolean(claimed);
+};
+
+app.get('/api/wallet/pending-transfers', auth, async (req, res) => {
+  try {
+    const userId = String(req.user.id);
+    const [{ data: outgoing }, { data: incoming }] = await Promise.all([
+      supabase.from('transactions')
+        .select('id, user_id, amount, reference, status, created_at')
+        .eq('user_id', req.user.id).eq('status', 'pending').like('reference', `${PENDING_TRANSFER_PREFIX}:%`)
+        .order('created_at', { ascending: false }).limit(50),
+      supabase.from('transactions')
+        .select('id, user_id, amount, reference, status, created_at')
+        .eq('status', 'pending')
+        .like('reference', `${PENDING_TRANSFER_PREFIX}:${userId}:%`)
+        .order('created_at', { ascending: false }).limit(50),
+    ]);
+
+    const now = Date.now();
+    const active = [];
+    for (const tx of [...(outgoing || []), ...(incoming || [])]) {
+      const createdAt = new Date(tx.created_at).getTime();
+      const isExpired = Number.isFinite(createdAt) && now - createdAt > TRANSFER_TTL_MS;
+      if (isExpired) {
+        await expirePendingTransfer(tx);
+        continue;
+      }
+      active.push({ tx, isExpired });
+    }
+
+    const ids = new Set();
+    for (const { tx } of active) {
+      ids.add(String(tx.user_id));
+      const parsed = parsePendingReference(tx.reference);
+      if (parsed) ids.add(String(parsed.recipientId));
+    }
+    const { data: users } = ids.size
+      ? await supabase.from('users').select('id, full_name, avatar_url').in('id', Array.from(ids))
+      : { data: [] };
+    const userMap = new Map((users || []).map((u) => [String(u.id), u]));
+
+    const transfers = active
+      .filter(({ tx }) => tx.status === 'pending')
+      .map(({ tx }) => {
+        const parsed = parsePendingReference(tx.reference) || {};
+        const isIncoming = String(parsed.recipientId || '') === userId;
+        const sender = userMap.get(String(tx.user_id)) || {};
+        const recipient = userMap.get(String(parsed.recipientId)) || {};
+        const createdAt = new Date(tx.created_at);
+        return {
+          id: tx.id,
+          direction: isIncoming ? 'incoming' : 'outgoing',
+          amount: Number(tx.amount),
+          concept: parsed.concept || null,
+          status: tx.status,
+          expiresAt: new Date(createdAt.getTime() + TRANSFER_TTL_MS).toISOString(),
+          createdAt: tx.created_at,
+          isExpired: false,
+          senderName: sender.full_name || '',
+          senderAvatar: sender.avatar_url || null,
+          recipientName: recipient.full_name || '',
+          recipientAvatar: recipient.avatar_url || null,
+        };
+      });
+
+    res.json({ transfers });
+  } catch (e) {
+    console.error('Pending transfers list error:', e.message);
+    res.status(500).json({ message: 'Error al obtener las transferencias pendientes' });
+  }
+});
+
+app.post('/api/wallet/transfer/accept/:id', auth, walletLimiter, async (req, res) => {
+  try {
+    const { data: transfer } = await supabase.from('transactions')
+      .select('id, user_id, amount, reference, status, created_at')
+      .eq('id', req.params.id).eq('status', 'pending')
+      .maybeSingle();
+
+    if (!transfer) return res.status(404).json({ message: 'Transferencia no encontrada o ya procesada' });
+
+    const parsed = parsePendingReference(transfer.reference);
+    if (!parsed) return res.status(404).json({ message: 'Transferencia no encontrada o ya procesada' });
+    if (String(parsed.recipientId) !== String(req.user.id)) {
+      return res.status(403).json({ message: 'Esta transferencia no está dirigida a ti' });
+    }
+    if (Date.now() - new Date(transfer.created_at).getTime() > TRANSFER_TTL_MS) {
+      await expirePendingTransfer(transfer);
+      return res.status(410).json({ message: 'La transferencia ha caducado' });
+    }
+
+    // Reclamo atómico: solo una petición puede pasar de pending a completed.
+    const { data: claimed } = await supabase.from('transactions')
+      .update({ status: 'completed' })
+      .eq('id', transfer.id).eq('status', 'pending')
+      .select('id').maybeSingle();
+    if (!claimed) return res.status(409).json({ message: 'La transferencia ya fue procesada' });
+
+    const amount = Number(transfer.amount);
+    const credit = await creditWallet(req.user.id, amount);
+    if (!credit.ok) {
+      await supabase.from('transactions').update({ status: 'pending' }).eq('id', transfer.id);
+      return res.status(500).json({ message: 'No se pudo abonar la transferencia' });
+    }
+
+    await supabase.from('transactions').insert({
+      user_id: req.user.id,
+      type: 'transfer_received',
+      amount,
+      method: 'EGCHAT',
+      reference: `DE: ${transfer.user_id}${parsed.concept ? ` · ${parsed.concept.slice(0, 140)}` : ''}`,
+      status: 'completed',
+    });
+
+    notifyMoney(
+      transfer.user_id,
+      'Transferencia aceptada',
+      `${req.user.phone || 'El destinatario'} aceptó tu transferencia de ${amount.toLocaleString('es-ES')} XAF`,
+      { amount, transferId: transfer.id, accepted: true },
+    );
+
+    res.json({ success: true, balance: credit.balance, message: 'Transferencia aceptada', sandbox: WALLET_SANDBOX });
+  } catch (e) {
+    console.error('Accept transfer error:', e.message);
+    res.status(500).json({ message: 'Error al aceptar la transferencia' });
+  }
+});
+
+app.post('/api/wallet/transfer/cancel/:id', auth, walletLimiter, async (req, res) => {
+  try {
+    const { data: transfer } = await supabase.from('transactions')
+      .select('id, user_id, amount, reference, status')
+      .eq('id', req.params.id).eq('user_id', req.user.id)
+      .eq('status', 'pending')
+      .maybeSingle();
+
+    if (!transfer || !parsePendingReference(transfer.reference)) {
+      return res.status(404).json({ message: 'Transferencia no encontrada o ya procesada' });
+    }
+
+    const { data: claimed } = await supabase.from('transactions')
+      .update({ status: 'cancelled' })
+      .eq('id', transfer.id).eq('status', 'pending')
+      .select('id').maybeSingle();
+    if (!claimed) return res.status(409).json({ message: 'La transferencia ya fue procesada' });
+
+    await creditWallet(req.user.id, Number(transfer.amount));
+    res.json({ success: true, message: 'Transferencia cancelada y saldo devuelto' });
+  } catch (e) {
+    console.error('Cancel transfer error:', e.message);
+    res.status(500).json({ message: 'Error al cancelar la transferencia' });
+  }
+});
+
+app.post('/api/wallet/recharge-code', auth, walletLimiter, async (req, res) => {
   const { code } = req.body;
   if (!code || code.replace(/-/g, '').length !== 16)
     return res.status(400).json({ message: 'CÁƒÂ³digo invÁƒÂ¡lido' });
@@ -2287,65 +2847,313 @@ app.post('/api/wallet/recharge-code', auth, async (req, res) => {
 
   const amount = usedCode?.amount || 5000;
 
-  // Marcar como usado
-  if (usedCode) {
-    await supabase.from('recharge_codes').update({ used: true, used_by: req.user.id, used_at: new Date().toISOString() }).eq('code', code);
+  // Reclamo atómico: solo la primera petición que encuentre el código sin usar
+  // consigue la fila actualizada; las demás reciben data = null.
+  const { data: claimed } = await supabase
+    .from('recharge_codes')
+    .update({ used: true, used_by: req.user.id, used_at: new Date().toISOString() })
+    .eq('code', code)
+    .or('used.eq.false,used.is.null')
+    .select('id')
+    .maybeSingle();
+
+  if (!claimed) return res.status(400).json({ message: 'Código ya utilizado' });
+
+  const credit = await creditWallet(req.user.id, roundAmount(amount));
+  if (!credit.ok) {
+    await supabase.from('recharge_codes')
+      .update({ used: false, used_by: null, used_at: null })
+      .eq('code', code);
+    return transferErrorResponse(res, credit.code);
   }
 
-  const { data: wallet } = await supabase.from('wallets').select('balance').eq('user_id', req.user.id).single();
-  const newBalance = (wallet?.balance || 0) + amount;
-  await supabase.from('wallets').update({ balance: newBalance }).eq('user_id', req.user.id);
-
   await supabase.from('transactions').insert({
-    user_id: req.user.id, type: 'deposit', amount, method: 'CÁƒÂ³digo de recarga',
+    user_id: req.user.id, type: 'deposit', amount: roundAmount(amount), method: 'Código de recarga',
     reference: code, status: 'completed'
   });
 
-  res.json({ balance: newBalance, amount, message: `${amount.toLocaleString()} XAF aÁƒÂ±adidos` });
+  res.json({ balance: credit.balance, amount, message: `${amount.toLocaleString()} XAF añadidos`, sandbox: WALLET_SANDBOX });
 });
 
-const WALLET_LIMITS = {
-  dailyDeposit: 5000000,
-  dailyWithdraw: 3000000,
-  dailyTransfer: 3000000,
-  perTxTransfer: 1000000
+// ── Pasarela de pagos ────────────────────────────────────────────────
+// Mientras WALLET_MODE=sandbox las pasarelas se simulan sobre
+// payment_transactions. En modo live rechazan la operación hasta que
+// exista la integración real con el banco u operador.
+const PAYMENT_GATEWAYS = new Set([
+  'stripe', 'orange_money', 'mtn_mobile', 'bank_transfer',
+  'cash_agent', 'recharge_code', 'egchat_transfer',
+]);
+const MIN_DEPOSIT_AMOUNT = 500;
+const SANDBOX_USSD = { orange_money: '*144#', mtn_mobile: '*126#' };
+
+const createPaymentId = (prefix) =>
+  `${prefix}_${Date.now().toString(36)}${crypto.randomBytes(4).toString('hex')}`;
+
+const sandboxPaymentsOnly = (res) => {
+  if (WALLET_SANDBOX) return true;
+  res.status(501).json({
+    code: 'PAYMENTS_NOT_CONFIGURED',
+    message: 'Los pagos reales todavía no están disponibles. Espera a la integración bancaria.',
+  });
+  return false;
 };
 
-const startOfTodayIso = () => {
-  const d = new Date();
-  d.setHours(0, 0, 0, 0);
-  return d.toISOString();
+const getPaymentRow = async (id, userId) => {
+  const { data } = await supabase
+    .from('payment_transactions')
+    .select('*')
+    .eq('id', id)
+    .eq('user_id', userId)
+    .maybeSingle();
+  return data || null;
 };
+
+app.post('/api/payments/deposit/intent', auth, walletLimiter, async (req, res) => {
+  try {
+    if (!sandboxPaymentsOnly(res)) return;
+    const gateway = String(req.body?.gateway || '');
+    const amount = roundAmount(req.body?.amount);
+    const phone = req.body?.phone ? String(req.body.phone) : null;
+
+    if (!PAYMENT_GATEWAYS.has(gateway)) return res.status(400).json({ message: 'Pasarela no válida' });
+    if (!Number.isFinite(amount) || amount < MIN_DEPOSIT_AMOUNT || amount > MAX_TRANSFER_AMOUNT) {
+      return res.status(400).json({ message: `El importe debe estar entre ${MIN_DEPOSIT_AMOUNT} y ${MAX_TRANSFER_AMOUNT.toLocaleString('es-ES')} XAF` });
+    }
+    if ((gateway === 'orange_money' || gateway === 'mtn_mobile') && !phone) {
+      return res.status(400).json({ message: 'Número de teléfono requerido' });
+    }
+
+    const quotaError = await walletQuotaError(req.user.id, 'deposit', amount);
+    if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
+
+    const id = createPaymentId('pay');
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000).toISOString();
+    const { error } = await supabase.from('payment_transactions').insert({
+      id,
+      user_id: req.user.id,
+      type: 'deposit',
+      amount,
+      currency: WALLET_CURRENCY,
+      gateway,
+      status: 'processing',
+      metadata: {
+        sandbox: true,
+        phone,
+        description: req.body?.description || 'Recarga EGChat',
+        expires_at: expiresAt,
+      },
+    });
+    if (error) throw error;
+
+    res.json({
+      id,
+      amount,
+      currency: WALLET_CURRENCY,
+      gateway,
+      status: 'processing',
+      clientSecret: gateway === 'stripe' ? `sbx_${id}_secret` : undefined,
+      ussdCode: SANDBOX_USSD[gateway],
+      expiresAt,
+      sandbox: true,
+    });
+  } catch (e) {
+    console.error('Payment intent error:', e.message);
+    res.status(500).json({ message: 'No se pudo crear la operación de pago' });
+  }
+});
+
+app.post('/api/payments/deposit/confirm', auth, walletLimiter, async (req, res) => {
+  try {
+    if (!sandboxPaymentsOnly(res)) return;
+    const intentId = String(req.body?.intentId || '');
+    if (!intentId) return res.status(400).json({ message: 'intentId requerido' });
+
+    const intent = await getPaymentRow(intentId, req.user.id);
+    if (!intent || intent.type !== 'deposit') return res.status(404).json({ message: 'Operación no encontrada' });
+
+    const wallet = await ensureWallet(req.user.id);
+    if (intent.status === 'completed') {
+      return res.json({ ok: true, transactionId: intent.id, newBalance: Number(wallet?.balance || 0), sandbox: true });
+    }
+    if (intent.status !== 'processing') {
+      return res.status(409).json({ message: 'La operación ya no está pendiente' });
+    }
+
+    const { data: claimed } = await supabase.from('payment_transactions')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', intent.id).eq('status', 'processing')
+      .select('id').maybeSingle();
+    if (!claimed) return res.status(409).json({ message: 'La operación ya fue procesada' });
+
+    const credit = await creditWallet(req.user.id, roundAmount(intent.amount));
+    if (!credit.ok) {
+      await supabase.from('payment_transactions')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', intent.id);
+      return transferErrorResponse(res, credit.code);
+    }
+
+    const { data: tx } = await supabase.from('transactions').insert({
+      user_id: req.user.id,
+      type: 'deposit',
+      amount: roundAmount(intent.amount),
+      method: intent.gateway,
+      reference: intent.id,
+      status: 'completed',
+    }).select().single();
+
+    res.json({ ok: true, transactionId: tx?.id || intent.id, newBalance: credit.balance, sandbox: true });
+  } catch (e) {
+    console.error('Payment confirm error:', e.message);
+    res.status(500).json({ message: 'No se pudo confirmar el pago' });
+  }
+});
+
+app.get('/api/payments/status/:id', auth, async (req, res) => {
+  try {
+    const intent = await getPaymentRow(req.params.id, req.user.id);
+    if (!intent) return res.status(404).json({ message: 'Operación no encontrada' });
+    const wallet = await getWallet(req.user.id);
+    res.json({
+      status: intent.status,
+      balance: Number(wallet?.balance || 0),
+      transactionId: intent.status === 'completed' ? intent.id : undefined,
+      sandbox: WALLET_SANDBOX,
+    });
+  } catch (e) {
+    res.status(500).json({ message: 'No se pudo consultar el estado' });
+  }
+});
+
+app.post('/api/payments/withdraw/intent', auth, walletLimiter, async (req, res) => {
+  try {
+    if (!sandboxPaymentsOnly(res)) return;
+    const gateway = String(req.body?.gateway || '');
+    const amount = roundAmount(req.body?.amount);
+    const destination = req.body?.destination || {};
+
+    if (!PAYMENT_GATEWAYS.has(gateway)) return res.status(400).json({ message: 'Pasarela no válida' });
+    if (!isValidTransferAmount(amount)) return res.status(400).json({ message: 'Importe inválido' });
+
+    const quotaError = await walletQuotaError(req.user.id, 'withdraw', amount);
+    if (quotaError) return res.status(400).json({ message: quotaError, code: 'LIMIT_EXCEEDED' });
+
+    const wallet = await getWallet(req.user.id);
+    if (Number(wallet?.balance || 0) < amount) {
+      return res.status(400).json({ message: 'Saldo insuficiente', code: 'INSUFFICIENT_BALANCE' });
+    }
+
+    const id = createPaymentId('wd');
+    const { error } = await supabase.from('payment_transactions').insert({
+      id,
+      user_id: req.user.id,
+      type: 'withdrawal',
+      amount,
+      currency: WALLET_CURRENCY,
+      gateway,
+      status: 'processing',
+      metadata: { sandbox: true, destination },
+    });
+    if (error) throw error;
+
+    res.json({
+      id,
+      amount,
+      currency: WALLET_CURRENCY,
+      gateway,
+      status: 'processing',
+      estimatedTime: 'Inmediato',
+      fee: 0,
+      netAmount: amount,
+      sandbox: true,
+    });
+  } catch (e) {
+    console.error('Withdraw intent error:', e.message);
+    res.status(500).json({ message: 'No se pudo crear la retirada' });
+  }
+});
+
+app.post('/api/payments/withdraw/confirm/:id', auth, walletLimiter, async (req, res) => {
+  try {
+    if (!sandboxPaymentsOnly(res)) return;
+    const pinCheck = await checkPinForOperation(req.user.id, req.body?.pin);
+    if (!pinCheck.ok) return pinErrorResponse(res, pinCheck.code);
+
+    const intent = await getPaymentRow(req.params.id, req.user.id);
+    if (!intent || intent.type !== 'withdrawal') return res.status(404).json({ message: 'Operación no encontrada' });
+    if (intent.status !== 'processing') return res.status(409).json({ message: 'La operación ya no está pendiente' });
+
+    const { data: claimed } = await supabase.from('payment_transactions')
+      .update({ status: 'completed', updated_at: new Date().toISOString() })
+      .eq('id', intent.id).eq('status', 'processing')
+      .select('id').maybeSingle();
+    if (!claimed) return res.status(409).json({ message: 'La operación ya fue procesada' });
+
+    const debit = await debitWallet(req.user.id, roundAmount(intent.amount));
+    if (!debit.ok) {
+      await supabase.from('payment_transactions')
+        .update({ status: 'processing', updated_at: new Date().toISOString() })
+        .eq('id', intent.id);
+      return transferErrorResponse(res, debit.code);
+    }
+
+    const { data: tx } = await supabase.from('transactions').insert({
+      user_id: req.user.id,
+      type: 'withdraw',
+      amount: roundAmount(intent.amount),
+      method: intent.gateway,
+      reference: intent.id,
+      status: 'completed',
+    }).select().single();
+
+    res.json({ ok: true, transactionId: tx?.id || intent.id, newBalance: debit.balance, sandbox: true });
+  } catch (e) {
+    console.error('Withdraw confirm error:', e.message);
+    res.status(500).json({ message: 'No se pudo confirmar la retirada' });
+  }
+});
+
+app.get('/api/payments/history', auth, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const from = (page - 1) * limit;
+
+    const { data } = await supabase
+      .from('payment_transactions')
+      .select('*')
+      .eq('user_id', req.user.id)
+      .order('created_at', { ascending: false })
+      .range(from, from + limit - 1);
+
+    res.json((data || []).map((row) => ({
+      id: row.id,
+      type: row.type === 'withdrawal' ? 'withdrawal' : 'deposit',
+      amount: Number(row.amount),
+      currency: row.currency || WALLET_CURRENCY,
+      gateway: row.gateway,
+      gatewayTxnId: row.gateway_txn_id || undefined,
+      status: row.status,
+      description: row.metadata?.description || '',
+      createdAt: row.created_at,
+    })));
+  } catch (e) {
+    console.error('Payment history error:', e.message);
+    res.status(500).json({ message: 'No se pudo obtener el historial' });
+  }
+});
 
 const getWalletSafe = async (userId) => {
   let { data: wallet } = await supabase.from('wallets').select('*').eq('user_id', userId).maybeSingle();
   if (!wallet) {
     const { data } = await supabase
       .from('wallets')
-      .insert({ user_id: userId, balance: 5000, currency: 'XAF' })
+      .insert({ user_id: userId, balance: 0, currency: WALLET_CURRENCY })
       .select()
       .single();
     wallet = data;
   }
   return wallet;
-};
-
-const sumTodayByType = async (userId) => {
-  const { data } = await supabase
-    .from('transactions')
-    .select('type, amount')
-    .eq('user_id', userId)
-    .gte('created_at', startOfTodayIso())
-    .in('type', ['deposit', 'withdraw', 'transfer']);
-
-  const totals = { deposit: 0, withdraw: 0, transfer: 0 };
-  (data || []).forEach((tx) => {
-    const type = String(tx.type || '').toLowerCase();
-    if (type in totals) {
-      totals[type] += Number(tx.amount || 0);
-    }
-  });
-  return totals;
 };
 
 app.get('/api/wallet/limits', auth, async (req, res) => {
@@ -3507,7 +4315,7 @@ app.post('/api/user/change-password', auth, async (req, res) => {
 // Reset de contraseña por admin (protegido con ADMIN_RESET_KEY)
 app.post('/api/admin/reset-password', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.body?.adminKey;
-  if (!key || key !== adminResetKey) return res.status(403).json({ message: 'No autorizado' });
+  if (!isAdminKeyValid(key)) return res.status(403).json({ message: 'No autorizado' });
   const { phone, newPassword } = req.body;
   if (!phone || !newPassword) return res.status(400).json({ message: 'phone y newPassword requeridos' });
   const hashed = await bcrypt.hash(newPassword, 10);
@@ -5758,7 +6566,6 @@ app.get('/api/turn-token', auth, async (req, res) => {
 // el comportamiento anterior (banner por Expo Push).
 // ─────────────────────────────────────────────────────────────────────────────
 const http2  = require('node:http2');
-const crypto = require('node:crypto');
 
 const APNS_VOIP_HOSTS = {
   production: 'api.push.apple.com',
@@ -6281,7 +7088,7 @@ setInterval(async () => {
 // ─────────────────────────────────────────────────────────────────────────────
 app.post('/api/admin/run-migration', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.body?.adminKey;
-  if (!key || key !== adminResetKey) return res.status(403).json({ message: 'No autorizado' });
+  if (!isAdminKeyValid(key)) return res.status(403).json({ message: 'No autorizado' });
   const { migration } = req.body; // 'calls' | 'tokens'
   const results = [];
 
@@ -6886,7 +7693,7 @@ app.post('/api/push/voip-call', auth, async (req, res) => {
 // Admin: verificar suscripciones por teléfono
 app.get('/api/push/check/:phone', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.query.key;
-  if (!key || key !== (process.env.ADMIN_RESET_KEY || JWT_SECRET)) {
+  if (!isAdminKeyValid(key)) {
     return res.status(403).json({ message: 'No autorizado' });
   }
   try {
@@ -6903,7 +7710,7 @@ app.get('/api/push/check/:phone', async (req, res) => {
 // Admin: enviar push de prueba por teléfono
 app.post('/api/push/send-test/:phone', async (req, res) => {
   const key = req.headers['x-admin-key'] || req.query.key;
-  if (!key || key !== (process.env.ADMIN_RESET_KEY || JWT_SECRET)) {
+  if (!isAdminKeyValid(key)) {
     return res.status(403).json({ message: 'No autorizado' });
   }
   try {
@@ -7502,7 +8309,7 @@ if (require.main === module) {
 // Tabla: admin_users (creada por migración 008_kyc_aml_complete.sql)
 // ══════════════════════════════════════════════════════════════════
 
-app.post('/auth/admin/login', async (req, res) => {
+app.post('/auth/admin/login', authLimiter, async (req, res) => {
   try {
     const { email, password } = req.body;
     if (!email || !password)
@@ -7587,7 +8394,7 @@ app.post('/auth/admin/logout', async (req, res) => {
 });
 
 // ── Estadísticas KYC para el dashboard ───────────────────────────
-app.get('/admin/kyc/stats', async (req, res) => {
+app.get('/admin/kyc/stats', requireAdmin, async (req, res) => {
   try {
     if (!supabase) return res.json({ total_applications:0, pending_review:0, approved_today:0, rejected_today:0, avg_risk_score:0, high_risk_count:0, screening_hits_unreviewed:0, sars_overdue:0 });
 
@@ -7627,7 +8434,7 @@ app.get('/admin/kyc/stats', async (req, res) => {
 });
 
 // ── Lista KYC pendientes ──────────────────────────────────────────
-app.get('/admin/kyc/pending', async (req, res) => {
+app.get('/admin/kyc/pending', requireAdmin, async (req, res) => {
   try {
     if (!supabase) return res.json({ items:[], total:0, page:1, page_size:20, pages:0 });
 
@@ -7805,7 +8612,7 @@ app.post('/api/kyc/draft', auth, async (req, res) => {
 });
 
 // ── POST /api/kyc/submit — envío final (paso 3, con selfie lista) ─
-app.post('/api/kyc/submit', auth, async (req, res) => {
+app.post('/api/kyc/submit', auth, kycLimiter, async (req, res) => {
   try {
     const userId = req.user.id;
     const {
@@ -7877,7 +8684,7 @@ app.post('/api/kyc/submit', auth, async (req, res) => {
 
 // ── POST /api/kyc/upload — subir imagen de documento o selfie ─────
 // Recibe form-data con campo "file" y tipo "doc_front"|"doc_back"|"selfie"
-app.post('/api/kyc/upload', auth, async (req, res) => {
+app.post('/api/kyc/upload', auth, kycLimiter, async (req, res) => {
   try {
     const userId = req.user.id;
 
@@ -7945,7 +8752,7 @@ app.get('/api/kyc/draft', auth, async (req, res) => {
 });
 
 // ── POST /api/kyc/resubmit — reintentar tras rechazo ─────────────
-app.post('/api/kyc/resubmit', auth, async (req, res) => {
+app.post('/api/kyc/resubmit', auth, kycLimiter, async (req, res) => {
   try {
     const userId = req.user.id;
     if (!supabase) return res.json({ success: true });
@@ -7985,9 +8792,9 @@ app.post('/api/kyc/resubmit', auth, async (req, res) => {
 
 // ── [ADMIN/BANCO] POST /api/kyc/review — aprobar o rechazar ──────
 // Solo accesible por revisores autorizados (rol admin en JWT o tabla)
-app.post('/api/kyc/review', auth, async (req, res) => {
+app.post('/api/kyc/review', requireAdmin, async (req, res) => {
   try {
-    const reviewerId = req.user.id;
+    const reviewerId = req.admin.id;
     const { kyc_id, decision, rejection_reason, notes } = req.body;
 
     if (!kyc_id)   return res.status(400).json({ message: 'kyc_id requerido' });
@@ -8025,7 +8832,7 @@ app.post('/api/kyc/review', auth, async (req, res) => {
 });
 
 // ── [ADMIN] GET /api/kyc/pending — lista KYC pendientes ──────────
-app.get('/api/kyc/pending', auth, async (req, res) => {
+app.get('/api/kyc/pending', requireAdmin, async (req, res) => {
   try {
     if (!supabase) return res.json({ verifications: [] });
 

@@ -1,2 +1,8 @@
 *.json
 firebase-service-account.json
+
+# Variables de entorno (no versionar)
+.env
+.env.*
+!.env.example
+.secrets/

@@ -7,3 +7,15 @@ dist/
 
 # Submódulo roto - no trackear
 egchat-api-temp/
+
+# Secretos y credenciales locales
+.env
+.env.*
+!.env.example
+.secrets/
+*.p8
+*.p12
+*.pem
+*.mobileprovision
+*.jks
+*.keystore
