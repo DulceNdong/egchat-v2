@@ -29,6 +29,7 @@ import { FloatingCallBar } from '../src/components/call/FloatingCallBar';
 import { useChatStream } from '../src/hooks/useChatStream';
 import { ToastContainer } from '../src/components/Toast';
 import { OfflineBanner } from '../src/components/ui';
+import { UpdateBanner } from '../src/components/UpdateBanner';
 import { trackUserPresence } from '../src/supabase';
 import SessionManager from '../src/sessionManager';
 import { NativeCallKit } from '../src/native/CallKit';
@@ -1214,6 +1215,7 @@ export default function RootLayout() {
             )}
             <ToastContainer />
             <OfflineBanner />
+            <UpdateBanner />
             <FloatingCallBar />
             {/* ── Overlay llamada entrante (app abierta) ── */}
             {incomingCall && (
