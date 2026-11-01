@@ -80,6 +80,31 @@ interface Chat {
   updated_at: string;
 }
 
+// Los chats archivados se guardan sin todos los campos de Chat: al leerlos se
+// completan con valores por defecto para que la lista no reciba undefined.
+const toChat = (a: ArchivedChat): Chat => {
+  const last = a.last_message as
+    | { text?: string; type?: string; created_at?: string; sender_id?: string }
+    | undefined;
+  return {
+    id: a.id,
+    type: a.type === 'group' || a.isGroup ? 'group' : 'private',
+    name: a.name ?? a.title,
+    avatar_url: a.avatar_url ?? a.avatarUrl,
+    participants: (a.participants as Chat['participants'] | undefined) ?? [],
+    last_message: last
+      ? {
+        text: last.text,
+        type: last.type ?? 'text',
+        created_at: last.created_at ?? '',
+        sender_id: last.sender_id ?? '',
+      }
+      : undefined,
+    unread_count: a.unread_count ?? 0,
+    updated_at: a.updated_at ?? '',
+  };
+};
+
 type FilterType = 'individual' | 'grupos' | 'dinero' | 'archivar';
 type ArchiveSubFilter = 'individual' | 'group';
 type GroupSubFilter = 'all' | 'normal' | 'djangue';
@@ -375,7 +400,7 @@ function MensajeriaScreenInner() {
   const { indicators: newContentMap } = useNewContentIndicators(currentUserId);
   const [favoriteContacts, setFavoriteContacts] = useState<any[]>([]);
   const [favoriteGroupIds, setFavoriteGroupIds] = useState<string[]>([]);
-  const [archivedChats, setArchivedChats] = useState<ArchivedChat[]>([]);
+  const [archivedChats, setArchivedChats] = useState<Chat[]>([]);
   const [archivePassword, setArchivePasswordState] = useState('');
   const [archiveUnlocked, setArchiveUnlocked] = useState(false);
   const [archiveSubFilter, setArchiveSubFilter] = useState<ArchiveSubFilter>('individual');
@@ -566,7 +591,7 @@ function MensajeriaScreenInner() {
       fetch('https://egchat-api-xlxj.onrender.com/health', { method: 'GET' }).catch(() => {});
     }, 14 * 60 * 1000);
 
-    loadArchivedChats().then(setArchivedChats);
+    loadArchivedChats().then(list => setArchivedChats(list.map(toChat)));
     getArchivePassword().then(setArchivePasswordState);
 
     return () => {
@@ -667,14 +692,14 @@ function MensajeriaScreenInner() {
       unread_count: chat.unread_count,
       updated_at: chat.updated_at,
     };
-    const nextArchived = [entry, ...archivedChats.filter(c => c.id !== chat.id)];
+    const nextArchived: ArchivedChat[] = [entry, ...archivedChats.filter(c => c.id !== chat.id)];
     await saveArchivedChats(nextArchived);
-    setArchivedChats(nextArchived);
+    setArchivedChats(nextArchived.map(toChat));
     setChats(prev => prev.filter(c => c.id !== chat.id));
     toast.info(t('msgChatArchived'));
   }, [archivedChats, getChatMeta, t]);
 
-  const unarchiveChat = useCallback(async (chat: ArchivedChat) => {
+  const unarchiveChat = useCallback(async (chat: Chat) => {
     const nextArchived = archivedChats.filter(c => c.id !== chat.id);
     await saveArchivedChats(nextArchived);
     setArchivedChats(nextArchived);
@@ -816,9 +841,9 @@ function MensajeriaScreenInner() {
   }), [chats, archivedIds, currentUserId, filter, groupSubFilter, matchesSearch]);
 
   const filteredArchived = useMemo(() => archivedChats.filter(c => {
-    const isGrp = c.isGroup || c.type === 'group';
+    const isGrp = c.type === 'group';
     if (archiveSubFilter === 'group' ? !isGrp : isGrp) return false;
-    const name = c.name || c.title || tr('chat');
+    const name = c.name || tr('chat');
     return matchesSearch(name, c.last_message?.text);
   }), [archivedChats, archiveSubFilter, matchesSearch]);
 
@@ -1146,7 +1171,7 @@ function MensajeriaScreenInner() {
             ItemSeparatorComponent={() => (
               <View style={[st.separator, { backgroundColor: C.borderLight }]} />
             )}
-            renderItem={({ item }: { item: ArchivedChat }) => (
+            renderItem={({ item }: { item: Chat }) => (
               <SwipeChatItem
                 onOpen={() => openChat(item)}
                 onArchive={() => archiveChat(item)}

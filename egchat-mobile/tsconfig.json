@@ -13,6 +13,7 @@
     "dist",
     "build",
     "egchat-v2",
+    "supabase",
     "src/firebase.ts",
     "**/*.bak"
   ]

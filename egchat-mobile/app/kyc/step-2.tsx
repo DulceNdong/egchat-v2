@@ -175,7 +175,7 @@ export default function Step2() {
             style={st.textInput}
             value={d.documentNumber ?? ''}
             onChangeText={v => store.setDocumentData({ documentNumber: v })}
-            placeholder={`${t('kyExamplePrefix')} ${d.documentType === 'passport' ? 'AB1234567' : 'GQ-12345678'}`}
+            placeholder={`${t('kyExamplePrefix')} ${d.documentType === 'PASSPORT' ? 'AB1234567' : 'GQ-12345678'}`}
             placeholderTextColor="#9ca3af"
             autoCapitalize="characters"
             maxLength={30}

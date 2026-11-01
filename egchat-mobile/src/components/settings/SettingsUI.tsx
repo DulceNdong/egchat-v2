@@ -1,6 +1,7 @@
 import React from 'react';
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, Switch, TextInput,
+  StyleProp, ViewStyle,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router } from 'expo-router';
@@ -67,10 +68,10 @@ export function SettingsSection({ label }: { label: string }) {
   );
 }
 
-export function SettingsCard({ children }: { children: React.ReactNode }) {
+export function SettingsCard({ children, style }: { children: React.ReactNode; style?: StyleProp<ViewStyle> }) {
   const { isDark } = useThemeContext();
   return (
-    <View style={[styles.card, { backgroundColor: isDark ? '#161b22' : '#ffffff' }]}>
+    <View style={[styles.card, { backgroundColor: isDark ? '#161b22' : '#ffffff' }, style]}>
       {children}
     </View>
   );

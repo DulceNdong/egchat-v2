@@ -667,7 +667,7 @@ const s = StyleSheet.create({
   // ── Cámara
   camRoot:       { flex: 1, backgroundColor: BLACK },
   camHeader:     { flexDirection: 'row', alignItems: 'center', paddingHorizontal: 16, paddingVertical: 8 },
-  camIconBtn:    { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center', backdropFilter: 'blur(8px)' },
+  camIconBtn:    { width: 42, height: 42, borderRadius: 21, backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center' },
   recPill:       { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(0,0,0,0.5)', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 20 },
   recDot:        { width: 8, height: 8, borderRadius: 4, backgroundColor: '#ff3b30' },
   recTxt:        { color: WHITE, fontWeight: '700', fontSize: 13 },

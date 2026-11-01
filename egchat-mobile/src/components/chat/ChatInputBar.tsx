@@ -2,7 +2,7 @@
 import React, { useRef } from 'react';
 import {
   View, Text, TextInput, TouchableOpacity, StyleSheet,
-  ActivityIndicator, Animated, Platform,
+  ActivityIndicator, Animated, Platform, Keyboard,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Path, Line, Circle } from 'react-native-svg';
@@ -120,7 +120,7 @@ export function ChatInputBar({
         <TouchableOpacity
           style={s.iconInside}
           onPress={() => {
-            setNativeKeyboardVisible(false);
+            Keyboard.dismiss();
             onToggleEmojis();
           }}
           activeOpacity={0.8}

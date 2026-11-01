@@ -453,7 +453,7 @@ export function setupNotificationListeners(
       if (replyText?.trim() && chatId) {
         try {
           const { chatAPI } = await import('./api');
-          await chatAPI.sendMessage(chatId, replyText.trim());
+          await chatAPI.sendMessage(chatId, { text: replyText.trim() });
           // Limpiar badge del chat respondido
           await clearBadge();
         } catch (e) {

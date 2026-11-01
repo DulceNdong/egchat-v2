@@ -3200,7 +3200,7 @@ function LiveStreamModal({ visible, hostId, hostName, hostAvatar, onClose }: Liv
                 <TouchableOpacity
                   key={ef.id}
                   style={[lv.effectBtn, selectedEffect === ef.id && lv.effectBtnActive]}
-                  onPress={() => { setSelectedEffect(ef.id); setShowEffects(false); }}
+                  onPress={() => { setSelectedEffect(ef.id as LiveEffectId); setShowEffects(false); }}
                   activeOpacity={0.75}
                 >
                   <EffectIcon id={ef.id} active={selectedEffect === ef.id} />
