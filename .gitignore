@@ -19,3 +19,6 @@ egchat-api-temp/
 *.mobileprovision
 *.jks
 *.keystore
+
+# Índices locales de búsqueda
+.kluster/
