@@ -4497,6 +4497,8 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
     .map((item) => ({ role: item.role, content: item.content.slice(0, 600) }));
   const messages = [{ role: 'system', content: system }, ...safeHistory, { role: 'user', content: message.slice(0, 1000) }];
   const used = [];
+  let nav = null;
+  let transfer = null;
   let lastStatus = 0;
 
   const call = async (withTools) => {
@@ -4537,14 +4539,14 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
       if (toolsRejected) {
         const plain = await call(false);
         const plainText = typeof plain?.content === 'string' ? plain.content.trim() : '';
-        return plainText ? { text: plainText, used } : null;
+        return plainText ? { text: plainText, used, nav, transfer } : null;
       }
       return null;
     }
     const toolCalls = Array.isArray(reply.tool_calls) ? reply.tool_calls : [];
     if (!toolCalls.length) {
       const text = typeof reply.content === 'string' ? reply.content.trim() : '';
-      return text ? { text, used } : null;
+      return text ? { text, used, nav, transfer } : null;
     }
     messages.push({ role: 'assistant', content: reply.content || '', tool_calls: toolCalls });
     for (const toolCall of toolCalls) {
@@ -4559,6 +4561,15 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
         result = { error: 'No se pudo consultar ese dato ahora mismo' };
       }
       used.push(name);
+      if (name === 'abrir_pantalla' && result && result.pantalla) nav = result.pantalla;
+      if (name === 'preparar_transferencia' && result && !result.error && result.ejecutado === false) {
+        transfer = {
+          destinatario: result.destinatario,
+          telefono: result.telefono || null,
+          importe: result.importe,
+          concepto: result.concepto || null,
+        };
+      }
       const payload = JSON.stringify(result);
       messages.push({
         role: 'tool',
@@ -4571,7 +4582,7 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
   // Se agotaron las rondas: pedir una respuesta final sin herramientas.
   const finalReply = await call(false);
   const text = typeof finalReply?.content === 'string' ? finalReply.content.trim() : '';
-  return text ? { text, used } : null;
+  return text ? { text, used, nav, transfer } : null;
 };
 
 const liaAnswer = async (intent, message, lang, userId, history) => {
@@ -4664,6 +4675,8 @@ app.post('/api/lia/chat', auth, async (req, res) => {
   let reply = copy.serviceError;
   let action = intent;
   let tools = [];
+  let nav = null;
+  let transfer = null;
 
   try {
     if (intent === 'math') {
@@ -4681,6 +4694,8 @@ app.post('/api/lia/chat', auth, async (req, res) => {
       if (agent) {
         reply = agent.text;
         tools = agent.used;
+        nav = agent.nav || null;
+        transfer = agent.transfer || null;
         action = tools.length ? tools[tools.length - 1] : 'ai';
       } else {
         reply = await liaAnswer(intent, message, lang, req.user.id, req.body?.history);
@@ -4703,7 +4718,7 @@ app.post('/api/lia/chat', auth, async (req, res) => {
     }
   }
 
-  res.json({ reply, action, tools, lang, timestamp: new Date().toISOString() });
+  res.json({ reply, action, tools, nav, transfer, lang, timestamp: new Date().toISOString() });
 });
 
 app.get('/api/lia/history', auth, async (req, res) => {
