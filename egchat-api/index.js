@@ -7984,12 +7984,11 @@ const sendPushToUser = async (userId, payload) => {
       .in('token_type', ['expo', 'fcm', 'apns'])
       .neq('is_active', false);
 
-    // Solo tokens con forma Expo: los APNs/FCM crudos que también viven en
-    // esta tabla los rechaza exp.host, y borrarlos por DeviceNotRegistered
-    // dejaría al dispositivo sin ningún canal de entrega.
-    const expoTokens = [...new Set((expoSubs || [])
-      .map(s => s.token)
-      .filter(t => /^(ExponentPushToken|ExpoPushToken)[\/\[]/i.test(String(t))))];
+    // Se envían TODOS los tokens guardados, incluidos los APNs crudos (64 hex):
+    // exp.host los entrega con la clave APNs del proyecto, y muchos iPhone están
+    // registrados así. Filtrar solo por forma Expo dejó esos dispositivos sin
+    // ninguna notificación (2026-11-02).
+    const expoTokens = [...new Set((expoSubs || []).map(s => s.token).filter(Boolean))];
 
     if (expoTokens.length > 0) {
       const expoMessages = expoTokens.map(token => ({
