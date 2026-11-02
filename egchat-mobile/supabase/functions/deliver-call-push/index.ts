@@ -254,7 +254,7 @@ Deno.serve(async (req: Request) => {
 
       const expoData = await expoRes.json() as { data?: Array<{ status: string; details?: { error?: string } }> };
 
-      (expoData.data || []).forEach((r, idx) => {
+      for (const [idx, r] of (expoData.data || []).entries()) {
         const token = expoToSend[idx]?.token || '';
         const ok    = r.status === 'ok';
         results.push({ channel: 'expo', platform: 'unknown', success: ok });
@@ -272,9 +272,14 @@ Deno.serve(async (req: Request) => {
         });
 
         if (!ok && r.details?.error === 'DeviceNotRegistered') {
-          supabase.rpc('mark_token_failed', { p_token: token }).catch(() => {});
+          // await + p_error_code: el constructor de supabase-js no tiene .catch, y
+          // la firma del RPC exige el código para registrar el motivo del fallo.
+          await supabase.rpc('mark_token_failed', {
+            p_token: token,
+            p_error_code: r.details?.error || 'DeviceNotRegistered',
+          });
         }
-      });
+      }
     } catch (expoErr) {
       console.error('[deliver-call-push] Expo push error:', expoErr);
     }
