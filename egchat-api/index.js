@@ -4204,6 +4204,77 @@ const liaGetTransactions = async (userId, limit) => {
   }
 };
 
+const liaExpenseSummary = async (userId, days) => {
+  const windowMs = days * 86400000;
+  const now = Date.now();
+  const { data } = await supabase
+    .from('transactions')
+    .select('type, amount, description, created_at')
+    .eq('user_id', userId)
+    .gte('created_at', new Date(now - 2 * windowMs).toISOString())
+    .order('created_at', { ascending: false })
+    .limit(2000);
+  const rows = Array.isArray(data) ? data : [];
+  const inTypes = ['transfer_received', 'deposit', 'refund'];
+  const outTypes = ['transfer_sent', 'withdraw', 'payment'];
+  const inWindow = (from, to) => rows.filter((row) => {
+    const at = new Date(row.created_at).getTime();
+    return !Number.isNaN(at) && at >= from && at < to;
+  });
+  const current = inWindow(now - windowMs, now + 1);
+  const previous = inWindow(now - 2 * windowMs, now - windowMs);
+  const sum = (list, types) => list.filter((row) => types.includes(row.type)).reduce((acc, row) => acc + Number(row.amount || 0), 0);
+  const byType = {};
+  current.forEach((row) => {
+    const key = String(row.type || 'otros');
+    byType[key] = byType[key] || { total: 0, operaciones: 0 };
+    byType[key].total += Number(row.amount || 0);
+    byType[key].operaciones += 1;
+  });
+  const entradas = sum(current, inTypes);
+  const salidas = sum(current, outTypes);
+  const salidasPrevias = sum(previous, outTypes);
+  const porConcepto = {};
+  current
+    .filter((row) => outTypes.includes(row.type))
+    .forEach((row) => {
+      const key = String(row.description || 'sin descripción').slice(0, 60);
+      porConcepto[key] = (porConcepto[key] || 0) + Number(row.amount || 0);
+    });
+  return {
+    periodo_dias: days,
+    entradas,
+    salidas,
+    neto: entradas - salidas,
+    operaciones: current.length,
+    por_tipo: byType,
+    top_conceptos: Object.entries(porConcepto)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+      .map(([concepto, total]) => ({ concepto, total })),
+    variacion_salidas_pct: salidasPrevias > 0 ? Math.round(((salidas - salidasPrevias) / salidasPrevias) * 1000) / 10 : null,
+  };
+};
+
+const liaContactSearch = async (userId, term) => {
+  const clean = String(term || '').trim().replace(/[^A-Za-zÁ-ÿ0-9 ]+/g, ' ').trim();
+  if (clean.length < 2) return [];
+  const { data: links } = await supabase
+    .from('contacts')
+    .select('contact_user_id')
+    .eq('user_id', userId)
+    .limit(500);
+  const ids = (links || []).map((row) => row.contact_user_id).filter(Boolean);
+  if (!ids.length) return [];
+  const { data } = await supabase
+    .from('users')
+    .select('id, full_name, phone')
+    .in('id', ids)
+    .or(`full_name.ilike.%${clean}%,phone.ilike.%${clean}%`)
+    .limit(5);
+  return Array.isArray(data) ? data : [];
+};
+
 const liaMovementLine = (tx, lang) => {
   const types = LIA_COPY[lang].movementTypes;
   const label = types[tx?.type] || types.default;
@@ -4261,12 +4332,13 @@ const liaBuildSystem = (lang, profile, wallet) => [
   `1. Antes de dar cualquier dato de la cuenta, precios, noticias o lugares, consulta la herramienta correspondiente y responde con lo que devuelva. No inventes cifras, direcciones, teléfonos, horarios ni comisiones.`,
   `2. Si falta un dato imprescindible para resolver o ejecutar (importe, destinatario, ciudad), haz una sola pregunta corta con las opciones concretas.`,
   `3. Si piden varias cosas, resuélvelas en orden. Si la petición es ambigua, interpreta la opción más probable dentro de EGCHAT y dilo en una frase.`,
-  `4. Para enviar dinero usa preparar_transferencia: muestra el resumen y pide confirmación con el PIN en la app. Nunca afirmes que ya enviaste, pediste o compraste algo.`,
+  `4. Para enviar dinero: si el destinatario es un nombre, resuélvelo antes con buscar_destinatario y, si hay varios iguales, pregunta cuál; luego usa preparar_transferencia, muestra el resumen y pide confirmación con el PIN en la app. Nunca afirmes que ya enviaste, pediste o compraste algo.`,
   `5. Para abrir una pantalla usa abrir_pantalla y dile al usuario que la tiene lista; no digas que ya está abierta.`,
-  `6. Responde solo a la última petición del usuario; si el tema cambió, ignora el anterior por completo.`,
-  `7. Sé precisa y breve (máximo 90 palabras salvo que pidan detalle). No expliques tu proceso, no menciones herramientas, JSON, errores técnicos ni el modelo.`,
+  `6. Para «en qué he gastado», «cuánto entra/sale» o comparar periodos usa analizar_gastos. Para «cuánto puedo enviar/retirar hoy» usa consultar_limites. Para cualquier conversión usa convertir_moneda: no hagas la cuenta de memoria.`,
+  `7. Responde solo a la última petición del usuario; si el tema cambió, ignora el anterior por completo.`,
+  `8. Sé precisa y breve (máximo 90 palabras salvo que pidan detalle). No expliques tu proceso, no menciones herramientas, JSON, errores técnicos ni el modelo.`,
   `Datos reales del usuario (no los inventes ni los cambies): saldo ${liaMoney(wallet.balance)}; nombre ${profile?.full_name || 'no indicado'}; ciudad ${profile?.city || 'no indicada'}.`,
-  `Datos de referencia de la app: tipos de cambio ${Object.entries(LIA_RATES).map(([currency, rate]) => `1 ${currency} = ${Math.round(1 / rate)} XAF`).join(', ')}, 1 XAF = 1 XOF. Tarifas MiTaxi: moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF.`,
+  `Datos de referencia de la app: tarifas MiTaxi moto 800 XAF, básico 1 500 XAF, premium 3 500 XAF (tarifa plana por viaje, no por km).`,
   `Pantallas de la app: Cartera (saldo, recargar, retirar, enviar), MiTaxi, Salud, Supermercados, Noticias, Seguros, CEMAC, Bancos, Tarjetas.`,
   `Responde SIEMPRE en ${LIA_LANG_NAMES[lang] || 'español'}, de forma clara y amable, con negritas solo cuando aporten.`,
   `Si no puedes resolver algo, dilo en una frase y ofrece la pantalla exacta donde se hace.`,
@@ -4388,6 +4460,57 @@ const LIA_TOOL_DEFS = [
   {
     type: 'function',
     function: {
+      name: 'analizar_gastos',
+      description: 'Resume el dinero que entró y salió en un periodo, con desglose por tipo, los conceptos más caros y la variación frente al periodo anterior.',
+      parameters: {
+        type: 'object',
+        properties: {
+          dias: { type: 'integer', description: 'Días a analizar, entre 1 y 180. Por defecto 30.', minimum: 1, maximum: 180 },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_limites',
+      description: 'Límites de la cartera, lo usado y lo que queda disponible hoy, más el estado de verificación de la cuenta.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'buscar_destinatario',
+      description: 'Busca entre los contactos del usuario por nombre o teléfono para resolver un envío. Devuelve candidatos, nunca datos de desconocidos.',
+      parameters: {
+        type: 'object',
+        properties: {
+          consulta: { type: 'string', description: 'Nombre o parte del nombre, o teléfono del contacto.' },
+        },
+        required: ['consulta'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'convertir_moneda',
+      description: 'Convierte un importe entre XAF, XOF y las divisas soportadas con las tasas que usa la app.',
+      parameters: {
+        type: 'object',
+        properties: {
+          monto: { type: 'number', description: 'Importe a convertir.' },
+          desde: { type: 'string', description: 'Moneda de origen: XAF, XOF, EUR, USD, GBP, CHF, CNY.' },
+          a: { type: 'string', description: 'Moneda de destino: XAF, XOF, EUR, USD, GBP, CHF, CNY.' },
+        },
+        required: ['monto', 'desde', 'a'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'abrir_pantalla',
       description: 'Prepara la pantalla de la app que resuelve la petición (ej. cartera, enviar, recargar, taxi).',
       parameters: {
@@ -4403,6 +4526,37 @@ const LIA_TOOL_DEFS = [
     },
   },
 ];
+
+const LIA_TOOL_NAMES = LIA_TOOL_DEFS.map((tool) => tool.function.name);
+
+// El modelo a veces escribe un nombre de herramienta con una letra de más o de
+// menos; si la diferencia es mínima se ejecuta la correcta en lugar de fallar.
+const liaResolveToolName = (raw) => {
+  const wanted = String(raw || '').trim().toLowerCase();
+  if (!wanted) return raw;
+  if (LIA_TOOL_NAMES.includes(wanted)) return wanted;
+  const distance = (a, b) => {
+    let prev = Array.from({ length: b.length + 1 }, (_v, i) => i);
+    for (let y = 1; y <= a.length; y += 1) {
+      const row = [y];
+      for (let x = 1; x <= b.length; x += 1) {
+        row[x] = Math.min(prev[x] + 1, row[x - 1] + 1, prev[x - 1] + (a[y - 1] === b[x - 1] ? 0 : 1));
+      }
+      prev = row;
+    }
+    return prev[b.length];
+  };
+  let best = null;
+  let bestScore = 3;
+  LIA_TOOL_NAMES.forEach((candidate) => {
+    const score = distance(wanted, candidate);
+    if (score < bestScore) {
+      bestScore = score;
+      best = candidate;
+    }
+  });
+  return best || raw;
+};
 
 const liaRunTool = async (name, args, userId, lang) => {
   const a = args && typeof args === 'object' ? args : {};
@@ -4478,6 +4632,58 @@ const liaRunTool = async (name, args, userId, lang) => {
         siguiente_paso: 'El usuario confirma con el PIN en Cartera → Enviar.',
       };
     }
+    case 'analizar_gastos': {
+      const dias = Math.min(Math.max(Number(a.dias) || 30, 1), 180);
+      return await liaExpenseSummary(userId, dias);
+    }
+    case 'consultar_limites': {
+      const today = await sumTodayByType(userId);
+      const { data: perfil } = await supabase
+        .from('users')
+        .select('wallet_kyc_status')
+        .eq('id', userId)
+        .maybeSingle();
+      return {
+        limites: WALLET_LIMITS,
+        usado_hoy: today,
+        disponible_hoy: {
+          deposit: Math.max(0, WALLET_LIMITS.dailyDeposit - today.deposit),
+          withdraw: Math.max(0, WALLET_LIMITS.dailyWithdraw - today.withdraw),
+          transfer: Math.max(0, WALLET_LIMITS.dailyTransfer - today.transfer),
+        },
+        verificacion: perfil?.wallet_kyc_status || 'sin_datos',
+      };
+    }
+    case 'buscar_destinatario': {
+      const found = await liaContactSearch(userId, a.consulta);
+      if (!found.length) {
+        return { contactos: [], nota: 'Ningún contacto coincide. Pide el teléfono exacto o usa la agenda de la app.' };
+      }
+      return {
+        contactos: found.map((row) => ({ nombre: row.full_name || 'sin nombre', telefono: row.phone })),
+      };
+    }
+    case 'convertir_moneda': {
+      const amount = Number(a.monto);
+      const from = String(a.desde || 'XAF').toUpperCase();
+      const to = String(a.a || 'XAF').toUpperCase();
+      const supported = ['XAF', 'XOF', ...Object.keys(LIA_RATES)];
+      if (!Number.isFinite(amount) || amount <= 0) return { error: 'Importe inválido' };
+      if (!supported.includes(from) || !supported.includes(to)) {
+        return { error: `Divisa no soportada. Disponibles: ${supported.join(', ')}` };
+      }
+      const toXaf = (code) => (code === 'XAF' || code === 'XOF' ? 1 : 1 / LIA_RATES[code]);
+      const xafValue = amount * toXaf(from);
+      const result = xafValue * (to === 'XAF' || to === 'XOF' ? 1 : LIA_RATES[to]);
+      const decimals = to === 'XAF' || to === 'XOF' ? 0 : 2;
+      return {
+        desde: from,
+        monto_desde: amount,
+        a: to,
+        monto_a: Number(result.toFixed(decimals)),
+        tasa: `1 ${from} = ${(toXaf(from) * (to === 'XAF' || to === 'XOF' ? 1 : LIA_RATES[to])).toFixed(decimals)} ${to}`,
+      };
+    }
     case 'abrir_pantalla':
       return { pantalla: a.pantalla, abrir_en_app: true, ejecutado: false };
     default:
@@ -4500,6 +4706,7 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
   let nav = null;
   let transfer = null;
   let lastStatus = 0;
+  let toolGlitch = false;
 
   const call = async (withTools) => {
     const controller = new AbortController();
@@ -4519,7 +4726,10 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
       });
       if (!response.ok) {
         lastStatus = response.status;
-        console.warn('LIA agent error:', provider.name, response.status, (await response.text().catch(() => '')).slice(0, 200));
+        const body = (await response.text().catch(() => '')) || '';
+        // Groq anula toda la respuesta si el modelo escribe mal un nombre de herramienta.
+        toolGlitch = withTools && body.includes('tool_use_failed');
+        console.warn('LIA agent error:', provider.name, response.status, body.slice(0, 200));
         return null;
       }
       return (await response.json())?.choices?.[0]?.message || null;
@@ -4532,7 +4742,9 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
   };
 
   for (let round = 0; round < LIA_AGENT_ROUNDS; round += 1) {
-    const reply = await call(true);
+    toolGlitch = false;
+    let reply = await call(true);
+    if (!reply && toolGlitch) reply = await call(true);
     if (!reply) {
       // Solo se reintenta sin herramientas si el proveedor las rechazó de forma explícita.
       const toolsRejected = lastStatus >= 400 && lastStatus < 500 && lastStatus !== 429;
@@ -4550,7 +4762,7 @@ const liaAgent = async ({ lang, message, history, userId, profile, wallet }) => 
     }
     messages.push({ role: 'assistant', content: reply.content || '', tool_calls: toolCalls });
     for (const toolCall of toolCalls) {
-      const name = toolCall?.function?.name;
+      const name = liaResolveToolName(toolCall?.function?.name);
       let args = {};
       try { args = JSON.parse(toolCall?.function?.arguments || '{}'); } catch { args = {}; }
       let result;
@@ -4766,7 +4978,7 @@ app.get('/api/lia/status', auth, (_req, res) => {
     tools: LIA_TOOL_DEFS.map((tool) => tool.function.name),
     dictation: Boolean(provider),
     languages: LIA_LANGS,
-    features: ['balance', 'movements', 'news', 'weather', 'health', 'markets', 'atm', 'banks', 'rates', 'cards', 'taxi', 'transfers', 'help', 'attachments', 'vision', 'documents'],
+    features: ['balance', 'movements', 'spending_analysis', 'limits', 'contacts', 'conversion', 'news', 'weather', 'health', 'markets', 'atm', 'banks', 'rates', 'cards', 'taxi', 'transfers', 'help', 'attachments', 'vision', 'documents'],
   });
 });
 
