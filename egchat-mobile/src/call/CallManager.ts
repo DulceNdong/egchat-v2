@@ -33,11 +33,12 @@
 // ══════════════════════════════════════════════════════════════════
 
 import { Platform, AppState, AppStateStatus } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo';
 import type { NetInfoState } from '@react-native-community/netinfo';
 import { Audio } from 'expo-av';
 import { Camera } from 'expo-camera';
-import { callAPI } from '../api';
+import { callAPI, contactsAPI } from '../api';
 import { saveCallMessage } from './callHistory';
 import SessionManager from '../sessionManager';
 import { stopRingtone, stopDialingTone, startRingtone, startDialingTone } from '../hooks/useSounds';
@@ -127,6 +128,12 @@ const POLL_FAST_IOS             =  900;    // ms
 const POLL_FAST_ANDROID         = 1_400;
 const POLL_SLOW_IOS             = 2_000;
 const POLL_SLOW_ANDROID         = 3_000;
+
+// El answer es lo que apaga el timbre del llamante. Si el POST no llega (sin
+// red, iOS suspende la app justo al contestar), el otro teléfono sigue
+// sonando minutos aunque aquí la llamada ya esté aceptada.
+const PENDING_ANSWER_KEY        = 'egchat:pending-answer:v1';
+const PENDING_ANSWER_TTL_MS     = 5 * 60_000;
 
 // ── Estado de la PeerConnection (espejo del W3C) ───────────────────
 type PCState = 'none' | 'new' | 'connecting' | 'connected' | 'disconnected' | 'failed' | 'closed';
@@ -377,8 +384,8 @@ export class CallManager {
   // ══════════════════════════════════════════════════════════════
   // REGISTRAR LLAMADA ENTRANTE
   // ══════════════════════════════════════════════════════════════
-  registerIncoming(payload: IncomingCallPayload): void {
-    if (this.isActive) {
+  registerIncoming(payload: IncomingCallPayload, opts?: { force?: boolean }): void {
+    if (this.isActive && !opts?.force) {
       console.warn('[CallManager] Llamada entrante ignorada — ya hay una activa');
       return;
     }
@@ -407,6 +414,40 @@ export class CallManager {
     this._subscribeRealtime();
   }
 
+  /**
+   * Recuperar una llamada que el usuario ya aceptó en la pantalla de CallKit
+   * pero que la app no tenía en memoria (evento VoIP perdido o app arrancada
+   * después). Sin esto la llamada queda en el aire: iOS muestra la llamada
+   * conectada y el llamante sigue sonando hasta que caduca.
+   */
+  async adoptIncomingCall(callId: string): Promise<boolean> {
+    if (!callId) return false;
+    if (['connected', 'connecting', 'reconnecting'].includes(this._commState)) return false;
+    const s = await callAPI.get(callId).catch(() => null);
+    if (!s || s.ended || s.answer) return false;
+
+    let callerName = '';
+    let callerAvatar = '';
+    try {
+      const contacts = await contactsAPI.getAll();
+      const hit = (contacts || []).find(
+        (c: any) => String(c?.contact_user_id ?? c?.user?.id ?? '') === String(s.callerId),
+      );
+      callerName = hit?.user?.full_name ?? hit?.user?.name ?? hit?.nickname ?? '';
+      callerAvatar = hit?.user?.avatar_url ?? hit?.avatar_url ?? '';
+    } catch { /* solo afecta al nombre que se muestra */ }
+
+    this.registerIncoming({
+      callId,
+      callType: s.type === 'video' ? 'video' : 'audio',
+      callerName,
+      callerAvatar,
+      targetUserId: s.callerId,
+      offer: s.offer as object,
+    }, { force: true });
+    return true;
+  }
+
   // ══════════════════════════════════════════════════════════════
   // ACEPTAR LLAMADA (Callee)
   // ══════════════════════════════════════════════════════════════
@@ -416,11 +457,20 @@ export class CallManager {
       return;
     }
     if (this._commState !== 'ringing') {
-      console.warn('[CallManager] acceptCall: estado incorrecto', this._commState);
-      // La UI puede seguir abierta aunque la llamada ya haya terminado o
-      // se haya aceptado en otro dispositivo: el timbre debe parar igualmente.
-      this._stopRingOnce();
-      return;
+      console.warn('[CallManager] acceptCall: estado interno', this._commState);
+      // El estado interno puede llegar sucio (CallKit contesta con la app
+      // suspendida y el poll aún no había marcado 'ringing'). Si el servidor
+      // dice que la llamada sigue viva hay que aceptar igualmente: si no, el
+      // llamante se queda sonando una llamada que ya fue atendida.
+      const live = await callAPI.get(this._session.callId).catch(() => null);
+      if (live && !live.ended && !live.answer && ['new', 'calling', 'ringing'].includes(live.status)) {
+        this._setCommState('ringing');
+      } else {
+        // La UI puede seguir abierta aunque la llamada ya haya terminado o se
+        // haya aceptado en otro dispositivo: el timbre debe parar igualmente.
+        this._stopRingOnce();
+        return;
+      }
     }
     this._isAcceptingLocally = true;
 
@@ -455,7 +505,7 @@ export class CallManager {
 
       if (!HAS_NATIVE_MEDIA) {
         this._isSignalingOnly = true;
-        await callAPI.answer({ callId, answer: { type: 'answer', sdp: 'egchat-expo-go-answer' } });
+        await this._sendAnswer(callId, { type: 'answer', sdp: 'egchat-expo-go-answer' });
         this._setCommState('connected');
         this._onCallConnected();
         return;
@@ -506,7 +556,7 @@ export class CallManager {
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
       this._setPcState('connecting');
-      await callAPI.answer({ callId, answer: pc.localDescription });
+      await this._sendAnswer(callId, pc.localDescription);
 
       this._setCommState('connecting');
       // El answer ya está en el servidor: si ICE no conecta, cerrar en 30s
@@ -746,6 +796,50 @@ export class CallManager {
     if (!this._session || this._session.callId !== callId) return;
     console.log('[CallManager] SSE call_ended — terminando llamada');
     this.endCall();
+  }
+
+  /**
+   * POST /api/call/answer con reintentos. Si ninguno llega, el answer queda
+   * guardado en AsyncStorage y se reenvía con flushPendingAnswer() — así el
+   * llamante deja de sonar aunque la app se fuera a background o perdiera red
+   * justo en el momento de contestar.
+   */
+  private async _sendAnswer(callId: string, answer: any): Promise<void> {
+    for (const delay of [0, 1200, 3000, 6000]) {
+      if (delay) await new Promise(r => setTimeout(r, delay));
+      try {
+        await callAPI.answer({ callId, answer });
+        AsyncStorage.removeItem(PENDING_ANSWER_KEY).catch(() => {});
+        return;
+      } catch (e: any) {
+        console.warn('[CallManager] answer POST falló:', e?.message);
+      }
+    }
+    try {
+      await AsyncStorage.setItem(PENDING_ANSWER_KEY, JSON.stringify({ callId, answer, ts: Date.now() }));
+    } catch { /* sin almacenamiento local no se puede reintentar */ }
+  }
+
+  /** Reenvía un answer que se quedó pendiente (app cerrada o sin red al contestar). */
+  async flushPendingAnswer(): Promise<void> {
+    let raw: string | null = null;
+    try { raw = await AsyncStorage.getItem(PENDING_ANSWER_KEY); } catch { return; }
+    if (!raw) return;
+    try {
+      const { callId, answer, ts } = JSON.parse(raw);
+      if (!callId || !answer || Date.now() - (ts || 0) > PENDING_ANSWER_TTL_MS) {
+        await AsyncStorage.removeItem(PENDING_ANSWER_KEY);
+        return;
+      }
+      const s = await callAPI.get(callId).catch(() => null);
+      if (!s || s.answer || s.ended) {
+        await AsyncStorage.removeItem(PENDING_ANSWER_KEY);
+        return;
+      }
+      await callAPI.answer({ callId, answer });
+      await AsyncStorage.removeItem(PENDING_ANSWER_KEY);
+      console.log('[CallManager] answer pendiente reenviado para', callId);
+    } catch { /* se reintenta en el siguiente retorno a primer plano */ }
   }
 
   private _forcePoll(): void {

@@ -49,12 +49,25 @@ export const NativeCallKit = {
     EGChatCallModule.endCall(callId);
   },
 
-  /** [Android] Lee y borra la llamada pendiente de SharedPreferences.
+  /** [Android] Lee y borra la llamada pendiente guardada por SharedPreferences.
    *  Equivalente a consumePendingCall() para el payload nativo (no AsyncStorage).
    *  Devuelve null si no hay llamada pendiente o si caducó. */
   getAndClearPendingCall(): Promise<string | null> {
     if (!isAvailable || Platform.OS !== 'android') return Promise.resolve(null);
     return EGChatCallModule.getAndClearPendingCall();
+  },
+
+  /**
+   * [iOS] callId de una llamada que el usuario contestó en la pantalla de
+   * CallKit mientras JavaScript estaba dormido (app cerrada o suspendida).
+   * Sin esto la UI de sistema queda conectada y el llamante sigue sonando.
+   * Devuelve null en builds antiguos donde el método nativo aún no existe.
+   */
+  consumePendingAnsweredCall(): Promise<string | null> {
+    if (!isAvailable || Platform.OS !== 'ios') return Promise.resolve(null);
+    const fn = (EGChatCallModule as any)?.consumePendingAnsweredCall;
+    if (typeof fn !== 'function') return Promise.resolve(null);
+    return fn.call(EGChatCallModule);
   },
 
   /**

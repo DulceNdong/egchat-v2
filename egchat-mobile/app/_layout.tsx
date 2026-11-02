@@ -285,6 +285,32 @@ export default function RootLayout() {
     return () => sub.remove();
   }, []);
 
+  // ── Reenviar el answer que no llegó al servidor ──────────────────────
+  // iOS suspende la app justo después de contestar en CallKit; si el POST del
+  // answer se perdió, el llamante sigue sonando aunque aquí la llamada esté
+  // aceptada. Al volver a primer plano se reintenta una sola vez por ciclo.
+  useEffect(() => {
+    let mounted = true;
+    const flush = async () => {
+      if (!mounted) return;
+      await callManager.flushPendingAnswer().catch(() => {});
+      if (Platform.OS !== 'ios' || !userIdRef.current) return;
+      // El usuario contestó en la pantalla de CallKit con el JavaScript dormido.
+      try {
+        const answered = await NativeCallKit.consumePendingAnsweredCall();
+        if (!answered || !mounted) return;
+        const session = callManager.session;
+        if (session && session.callId === answered) return;
+        if (await callManager.adoptIncomingCall(answered)) await callManager.acceptCall();
+      } catch { /* la llamada ya caducó o no hay sesión que recuperar */ }
+    };
+    flush().catch(() => {});
+    const sub = AppState.addEventListener('change', state => {
+      if (state === 'active') flush().catch(() => {});
+    });
+    return () => { mounted = false; sub.remove(); };
+  }, []);
+
   // ── Llamadas pendientes cuando la app vuelve del background (Android) ──
   // Cuando el usuario acepta desde la notificación con la app en background
   // (no cerrada), consumePendingCall() ya corrió en el init inicial y no se
@@ -697,17 +723,8 @@ export default function RootLayout() {
             try {
               // Escuchar cuando el usuario acepta desde la pantalla nativa de CallKit
               // Esto ocurre cuando la app estaba cerrada y CallKit muestra la UI del sistema
-              const unsubCallKitAnswer = NativeCallKit.onAnswer((_callId) => {
-                // Reintentar hasta que la sesión esté disponible. Con la app
-                // arrancando en frío (PushKit → JS), la sesión puede tardar
-                // varios segundos: 8×300ms (2.4s) no alcanzaba y la llamada
-                // quedaba sonando sin navegar a la pantalla.
-                const tryNavigate = (retries = 16) => {
-                  const session = callManager.session;
-                  if (!session) {
-                    if (retries > 0) setTimeout(() => tryNavigate(retries - 1), 500);
-                    return;
-                  }
+              const unsubCallKitAnswer = NativeCallKit.onAnswer((answeredCallId) => {
+                const navigateAccepted = (session: NonNullable<typeof callManager.session>) => {
                   router.push({ pathname: '/call/[callId]', params: {
                     callId:       session.callId,
                     targetName:   session.targetName || '',
@@ -718,7 +735,39 @@ export default function RootLayout() {
                     autoAccept:   '1',
                   }} as any);
                 };
-                tryNavigate();
+                // Reintentar hasta que la sesión esté disponible. Con la app
+                // arrancando en frío (PushKit → JS), la sesión puede tardar
+                // varios segundos: 8×300ms (2.4s) no alcanzaba y la llamada
+                // quedaba sonando sin navegar a la pantalla.
+                const tryNavigate = async (retries = 16) => {
+                  const session = callManager.session;
+                  if (session && (!answeredCallId || session.callId === answeredCallId)) {
+                    navigateAccepted(session);
+                    return;
+                  }
+                  if (session && answeredCallId && session.callId !== answeredCallId) {
+                    // Se contestó en CallKit una llamada distinta de la que la
+                    // app tiene en memoria: usar la del usuario.
+                    if (await callManager.adoptIncomingCall(answeredCallId)) {
+                      const adopted = callManager.session;
+                      if (adopted) navigateAccepted(adopted);
+                    }
+                    return;
+                  }
+                  if (retries > 0) {
+                    setTimeout(() => { tryNavigate(retries - 1).catch(() => {}); }, 500);
+                    return;
+                  }
+                  // Sin sesión tras ~8s: recuperarla del servidor antes de rendirse.
+                  // Si esto fallara, la llamada quedaría colgada para siempre.
+                  if (answeredCallId) {
+                    if (await callManager.adoptIncomingCall(answeredCallId)) {
+                      const adopted = callManager.session;
+                      if (adopted) navigateAccepted(adopted);
+                    }
+                  }
+                };
+                tryNavigate().catch(() => {});
               });
               const unsubCallKitReject = NativeCallKit.onReject((_callId) => {
                 callManager.rejectCall().catch(() => {});
