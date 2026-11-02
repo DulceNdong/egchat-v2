@@ -43,8 +43,7 @@
       "ios": {
         "buildConfiguration": "Release",
         "autoIncrement": true,
-        "resourceClass": "m-medium",
-        "prebuildCommand": "echo 'Using existing ios/ directory'"
+        "resourceClass": "m-medium"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
