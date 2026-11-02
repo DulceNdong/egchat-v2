@@ -68,7 +68,25 @@ const makeStyles = (C: typeof Colors) => StyleSheet.create({
   input: { backgroundColor: C.bgTertiary, borderRadius: 12, padding: 14, color: C.textPrimary, marginBottom: 12, borderWidth: 1, borderColor: C.borderLight },
   primaryBtn: { backgroundColor: BRAND, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 8 },
   primaryBtnText: { color: '#fff', fontWeight: '700', fontSize: 15 },
+  demoBanner: {
+    marginHorizontal: 16, marginVertical: 10, borderRadius: 12, padding: 10, gap: 3,
+    backgroundColor: C.bgSecondary, borderWidth: 1, borderColor: Colors.warning + '66',
+  },
+  demoBadge: { fontSize: 9, fontWeight: '800', color: Colors.warning, letterSpacing: 0.6 },
+  demoNote: { fontSize: 11, color: C.textSecondary, lineHeight: 15 },
 });
+
+// Los juego aún no están conectados a un operador: se avisa para que nadie
+// lea el saldo como dinero ganado o perdido de verdad.
+function DemoNotice({ C, flat }: { C: typeof Colors; flat?: boolean }) {
+  const s = makeStyles(C);
+  return (
+    <View style={[s.demoBanner, flat && { marginHorizontal: 0 }]}>
+      <Text style={s.demoBadge}>{tr('aptDemoBadge')}</Text>
+      <Text style={s.demoNote}>{tr('aptDemoNote')}</Text>
+    </View>
+  );
+}
 
 const DISCLAIMER = () => tr('xtElJuegoPuedeCrearAdiccionSoloMayoresDe18AnosJuegaC');
 
@@ -112,15 +130,14 @@ export default function ApuestasScreen() {
 
   const placeBets = () => {
     if (totalStake <= 0 || totalStake > balance) {
-      Alert.alert(tr('error'), 'Saldo insuficiente o importe inválido');
+      Alert.alert(tr('error'), tr('aptInvalidAmount'));
       return;
     }
     const win = Math.random() > 0.45;
     setResult({ win, payout: win ? totalPayout : 0 });
-    setBalance(b => b - totalStake + (win ? totalPayout : 0));
     setBetSlip([]);
     setShowSlip(false);
-    toast[win ? 'success' : 'info'](win ? `¡Ganaste ${totalPayout.toLocaleString()} XAF!` : tr('xtApuestaNoAcertada'));
+    toast[win ? 'success' : 'info'](win ? `${tr('aptWinLabel')} ${totalPayout.toLocaleString()} XAF` : tr('xtApuestaNoAcertada'));
   };
 
   const playCasino = () => {
@@ -133,16 +150,14 @@ export default function ApuestasScreen() {
     const mult = mults[Math.floor(Math.random() * mults.length)];
     const payout = Math.floor(n * mult);
     setCasinoRes({ win: mult > 1, payout });
-    setBalance(b => b - n + payout);
     setCasinoAmt('');
   };
 
   const playLottery = (price: number) => {
-    if (price > balance) { Alert.alert(tr('error'), 'Saldo insuficiente'); return; }
+    if (price > balance) { Alert.alert(tr('error'), tr('aptInvalidAmount')); return; }
     const win = Math.random() > 0.8;
     const prize = win ? [500, 1000, 5000, 10000][Math.floor(Math.random() * 4)] : 0;
-    setBalance(b => b - price + prize);
-    toast[win ? 'success' : 'info'](win ? `¡Premio ${prize.toLocaleString()} XAF!` : tr('xtSinPremioEstaVez'));
+    toast[win ? 'success' : 'info'](win ? `${tr('aptWinLabel')} ${prize.toLocaleString()} XAF` : tr('xtSinPremioEstaVez'));
   };
 
   const goBack = () => {
@@ -162,14 +177,15 @@ export default function ApuestasScreen() {
             <Text style={s.backIcon}>‹</Text>
           </TouchableOpacity>
           <View style={{ flex: 1 }}>
-            <Text style={s.title}>Juegos & Apuestas</Text>
-            <Text style={s.subtitle}>5 plataformas licenciadas</Text>
+            <Text style={s.title}>{tr('aptHubTitle')}</Text>
+            <Text style={s.subtitle}>{COMPANIES.length} {tr('aptLicensedPlatforms')}</Text>
           </View>
           <View style={s.balancePill}>
             <Text style={s.balanceLabel}>{tr('xtSALDO')}</Text>
             <Text style={s.balanceVal}>{balance.toLocaleString()} XAF</Text>
           </View>
         </View>
+        <DemoNotice C={C} />
         <LinearGradient colors={[BRAND, BRAND2]} start={{ x: 0, y: 0 }} end={{ x: 1, y: 0 }} style={s.promoBanner}>
           <Text style={{ fontSize: 32 }}>🏆</Text>
           <View style={{ flex: 1 }}>
@@ -190,7 +206,7 @@ export default function ApuestasScreen() {
                 <View style={{ flex: 1 }}>
                   <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
                     <Text style={s.coName}>{co.name}</Text>
-                    <Text style={s.licensed}>✓ LICENCIADO</Text>
+                    <Text style={s.licensed}>✓ {tr('aptLicensed')}</Text>
                   </View>
                   <Text style={s.coTag}>{co.tagline}</Text>
                   <Text style={[s.coBonus, { color: co.color }]}>🎁 {co.bonus}</Text>
@@ -228,11 +244,12 @@ export default function ApuestasScreen() {
           ))}
         </ScrollView>
         <ScrollView contentContainerStyle={{ padding: 16, paddingBottom: betSlip.length ? 100 : 40 }}>
+          <DemoNotice C={C} flat />
           {sport.matches.map(match => (
             <View key={match.id} style={s.matchCard}>
               <View style={s.matchHead}>
                 <Text style={s.league}>{match.league}</Text>
-                {match.live && <Text style={s.liveBadge}>● EN VIVO {match.score}</Text>}
+                {match.live && <Text style={s.liveBadge}>● {tr('aptLive')} {match.score}</Text>}
                 <Text style={s.matchTime}>{match.time}</Text>
               </View>
               <Text style={s.matchTeams}>{match.home} vs {match.away}</Text>
@@ -257,7 +274,7 @@ export default function ApuestasScreen() {
         </ScrollView>
         {betSlip.length > 0 && (
           <TouchableOpacity style={[s.slipFab, { backgroundColor: company.color }]} onPress={() => setShowSlip(true)}>
-            <Text style={s.slipFabText}>🎫 Cupón ({betSlip.length}) · {totalStake.toLocaleString()} XAF</Text>
+            <Text style={s.slipFabText}>🎫 {tr('aptBetSlipTitle')} ({betSlip.length}) · {totalStake.toLocaleString()} XAF</Text>
           </TouchableOpacity>
         )}
         <BetSlipModal visible={showSlip} items={betSlip} totalStake={totalStake} totalPayout={totalPayout}
@@ -277,6 +294,7 @@ export default function ApuestasScreen() {
           <Text style={[s.title, { flex: 1 }]}>{company.name}</Text>
         </View>
         <ScrollView contentContainerStyle={{ padding: 16 }}>
+          <DemoNotice C={C} flat />
           {company.casino?.map(g => (
             <View key={g.id} style={s.matchCard}>
               <Text style={{ fontSize: 28 }}>{g.icon}</Text>
@@ -288,11 +306,11 @@ export default function ApuestasScreen() {
           ))}
           <TextInput style={s.input} value={casinoAmt} onChangeText={setCasinoAmt} placeholder={tr('walAmountXaf')} keyboardType="numeric" placeholderTextColor="#666" />
           <TouchableOpacity style={[s.primaryBtn, { backgroundColor: company.color }]} onPress={playCasino}>
-            <Text style={s.primaryBtnText}>Jugar</Text>
+            <Text style={s.primaryBtnText}>{tr('aptPlay')}</Text>
           </TouchableOpacity>
           {casinoRes && (
             <Text style={{ textAlign: 'center', marginTop: 16, color: casinoRes.win ? '#22c55e' : '#ef4444', fontWeight: '700' }}>
-              {casinoRes.win ? `¡Ganaste ${casinoRes.payout.toLocaleString()} XAF!` : tr('xtSinPremio')}
+              {casinoRes.win ? `${tr('aptWinLabel')} ${casinoRes.payout.toLocaleString()} XAF` : tr('xtSinPremio')}
             </Text>
           )}
         </ScrollView>
@@ -308,12 +326,13 @@ export default function ApuestasScreen() {
         <Text style={[s.title, { flex: 1 }]}>{company.name}</Text>
       </View>
       <ScrollView contentContainerStyle={{ padding: 16 }}>
+        <DemoNotice C={C} flat />
         {company.lottery?.map(l => (
           <TouchableOpacity key={l.id} style={s.matchCard} onPress={() => playLottery(l.price)}>
             <Text style={{ fontSize: 28 }}>{l.icon}</Text>
             <View style={{ flex: 1 }}>
               <Text style={s.coName}>{l.name}</Text>
-              <Text style={s.coTag}>Bote: {l.jackpot}</Text>
+              <Text style={s.coTag}>{tr('aptJackpot')}: {l.jackpot}</Text>
             </View>
             <Text style={[s.oddVal, { color: company.color }]}>{l.price} XAF</Text>
           </TouchableOpacity>
@@ -346,8 +365,8 @@ function BetSlipModal({ visible, items, totalStake, totalPayout, onClose, onStak
               <TouchableOpacity onPress={() => onRemove(b.id)}><Text style={{ color: C.textPrimary }}>✕</Text></TouchableOpacity>
             </View>
           ))}
-          <Text style={s.coTag}>Total: {totalStake.toLocaleString()} XAF · Ganancia pot.: {totalPayout.toLocaleString()} XAF</Text>
-          <TouchableOpacity style={s.primaryBtn} onPress={onPlace}><Text style={s.primaryBtnText}>Apostar</Text></TouchableOpacity>
+          <Text style={s.coTag}>{tr('aptTotal')}: {totalStake.toLocaleString()} XAF · {tr('aptPotentialWin')}: {totalPayout.toLocaleString()} XAF</Text>
+          <TouchableOpacity style={s.primaryBtn} onPress={onPlace}><Text style={s.primaryBtnText}>{tr('aptBet')}</Text></TouchableOpacity>
         </Pressable>
       </Pressable>
         </KeyboardAvoidingView>
@@ -363,7 +382,7 @@ function ResultModal({ visible, win, payout, onClose, C }: { visible: boolean; w
         <View style={[s.modalSheet, { margin: 24 }]}>
           <Text style={{ fontSize: 48, textAlign: 'center' }}>{win ? '🎉' : '😔'}</Text>
           <Text style={[s.modalTitle, { textAlign: 'center' }]}>
-            {win ? `¡Ganaste ${payout.toLocaleString()} XAF!` : tr('xtApuestaNoAcertada')}
+            {win ? `${tr('aptWinLabel')} ${payout.toLocaleString()} XAF` : tr('xtApuestaNoAcertada')}
           </Text>
           <TouchableOpacity style={s.primaryBtn} onPress={onClose}><Text style={s.primaryBtnText}>{tr('close')}</Text></TouchableOpacity>
         </View>
