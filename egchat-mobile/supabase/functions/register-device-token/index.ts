@@ -11,11 +11,13 @@
  *
  * Variables de entorno:
  *   SUPABASE_URL              — auto-inyectada
- *   SUPABASE_SERVICE_ROLE_KEY — auto-inyectada
+ *   SUPABASE_SECRET_KEYS      — diccionario JSON con las claves secret (auto-inyectada)
+ *   SUPABASE_SERVICE_ROLE_KEY — legacy, desaparece al desactivar las claves antiguas
  *   JWT_SECRET                — el mismo secreto usado por el backend Render
  */
 
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+import { serviceKey } from '../_shared/supabase-key.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -142,7 +144,7 @@ Deno.serve(async (req: Request) => {
   // ── Registrar via RPC ─────────────────────────────────────────────
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    serviceKey(),
     { auth: { persistSession: false } },
   );
 

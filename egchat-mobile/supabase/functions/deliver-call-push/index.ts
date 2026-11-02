@@ -21,7 +21,8 @@
  *
  * Variables de entorno (Supabase Dashboard → Project → Edge Functions → Secrets):
  *   SUPABASE_URL              — auto-inyectada por Supabase
- *   SUPABASE_SERVICE_ROLE_KEY — auto-inyectada por Supabase
+ *   SUPABASE_SECRET_KEYS      — diccionario JSON con las claves secret (auto-inyectada)
+ *   SUPABASE_SERVICE_ROLE_KEY — legacy, desaparece al desactivar las claves antiguas
  *   SERVICE_TOKEN             — secreto compartido con Render
  *   APNS_KEY_P8               — clave privada APNs .p8 (sin headers BEGIN/END)
  *   APNS_KEY_ID               — Key ID de APNs (10 chars)
@@ -36,6 +37,7 @@
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
 import { sendAPNsVoIPPush } from '../_shared/apns.ts';
 import { sendFCMCallPush   } from '../_shared/fcm.ts';
+import { serviceKey }      from '../_shared/supabase-key.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin':  '*',
@@ -101,7 +103,7 @@ Deno.serve(async (req: Request) => {
   // ── 3. Supabase con service_role ─────────────────────────────────
   const supabase = createClient(
     Deno.env.get('SUPABASE_URL')!,
-    Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    serviceKey(),
     { auth: { persistSession: false } },
   );
 
