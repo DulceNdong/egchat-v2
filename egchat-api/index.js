@@ -762,7 +762,7 @@ app.post('/api/feedback', auth, async (req, res) => {
       category: category || 'General',
       message: message.trim(),
       created_at: new Date().toISOString(),
-    }).then(() => {}).catch(() => {});
+    });
     res.json({ ok: true, message: 'Feedback recibido' });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
@@ -6694,7 +6694,7 @@ const ensureSpacesTable = async () => {
       CREATE INDEX IF NOT EXISTS idx_space_posts_space ON space_posts(space_id);
       CREATE INDEX IF NOT EXISTS idx_space_posts_created ON space_posts(created_at DESC);
       CREATE INDEX IF NOT EXISTS idx_space_comments_post ON space_post_comments(post_id);
-    `}).catch(() => {});
+    `});
   } catch {}
 };
 ensureSpacesTable();
@@ -6763,11 +6763,11 @@ app.post('/api/spaces/:id/follow', auth, async (req, res) => {
     if (existing) {
       await supabase.from('space_follows').delete().eq('space_id', id).eq('user_id', userId);
       await supabase.from('spaces').update({ followers_count: supabase.rpc ? undefined : 0 }).eq('id', id);
-      await supabase.rpc('exec_sql', { sql: `UPDATE spaces SET followers_count = GREATEST(0, followers_count - 1) WHERE id = '${id}'` }).catch(() => {});
+      await supabase.rpc('exec_sql', { sql: `UPDATE spaces SET followers_count = GREATEST(0, followers_count - 1) WHERE id = '${id}'` });
       res.json({ following: false });
     } else {
       await supabase.from('space_follows').insert({ space_id: id, user_id: userId });
-      await supabase.rpc('exec_sql', { sql: `UPDATE spaces SET followers_count = followers_count + 1 WHERE id = '${id}'` }).catch(() => {});
+      await supabase.rpc('exec_sql', { sql: `UPDATE spaces SET followers_count = followers_count + 1 WHERE id = '${id}'` });
       res.json({ following: true });
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -6847,11 +6847,11 @@ app.post('/api/spaces/posts/:postId/like', auth, async (req, res) => {
     const { data: existing } = await supabase.from('space_post_likes').select('id').eq('post_id', postId).eq('user_id', userId).single();
     if (existing) {
       await supabase.from('space_post_likes').delete().eq('post_id', postId).eq('user_id', userId);
-      await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = '${postId}'` }).catch(() => {});
+      await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET likes_count = GREATEST(0, likes_count - 1) WHERE id = '${postId}'` });
       res.json({ liked: false });
     } else {
       await supabase.from('space_post_likes').insert({ post_id: postId, user_id: userId });
-      await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET likes_count = likes_count + 1 WHERE id = '${postId}'` }).catch(() => {});
+      await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET likes_count = likes_count + 1 WHERE id = '${postId}'` });
       res.json({ liked: true });
     }
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -6892,7 +6892,7 @@ app.post('/api/spaces/posts/:postId/comments', auth, async (req, res) => {
       .insert({ post_id: postId, author_id: req.user.id, text: text.trim() })
       .select().single();
     if (error) throw error;
-    await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET comments_count = comments_count + 1 WHERE id = '${postId}'` }).catch(() => {});
+    await supabase.rpc('exec_sql', { sql: `UPDATE space_posts SET comments_count = comments_count + 1 WHERE id = '${postId}'` });
     const { data: author } = await supabase.from('users').select('full_name, avatar_url').eq('id', req.user.id).single();
     res.status(201).json({ id: data.id, author: author?.full_name || 'Usuario', avatar: (author?.full_name||'U').split(' ').map(w=>w[0]).join('').slice(0,2).toUpperCase(), avatarUrl: author?.avatar_url||'', text: data.text, time: 'ahora' });
   } catch (e) { res.status(500).json({ message: e.message }); }
@@ -6931,12 +6931,12 @@ const ensureStoriesTable = async () => {
         );
         CREATE INDEX IF NOT EXISTS idx_stories_user_id ON stories(user_id);
         CREATE INDEX IF NOT EXISTS idx_stories_expires_at ON stories(expires_at);`
-      }).catch(() => {});
+      });
     } else if (!error) {
       await supabase.rpc('exec_sql', {
         sql: `ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS reactions JSONB DEFAULT '[]';
               ALTER TABLE IF EXISTS stories ADD COLUMN IF NOT EXISTS replies JSONB DEFAULT '[]';`
-      }).catch(() => {});
+      });
     }
   } catch {}
 };
@@ -8066,14 +8066,9 @@ app.post('/api/admin/run-migration', async (req, res) => {
 
   for (const [label, sql] of stepsToRun) {
     try {
-      const { error } = await supabase.rpc('exec_sql', { sql }).catch(() => ({ error: { message: 'exec_sql not available' } }));
-      if (error && error.message !== 'exec_sql not available') {
-        // Try direct query if RPC not available
-        const { error: e2 } = await supabase.from('_sql').select('*').limit(0).catch(() => ({ error: null }));
+      const { error } = await supabase.rpc('exec_sql', { sql });
+      if (error) {
         results.push({ step: label, ok: false, error: error.message });
-      } else if (error && error.message === 'exec_sql not available') {
-        // Intentar con postgrest raw query
-        results.push({ step: label, ok: 'pending', note: 'exec_sql no disponible — ejecutar manualmente' });
       } else {
         results.push({ step: label, ok: true });
       }
@@ -8105,8 +8100,8 @@ app.post('/api/admin/run-migration', async (req, res) => {
       CREATE INDEX IF NOT EXISTS idx_expo_push_tokens_active ON expo_push_tokens(user_id, is_active, token_type) WHERE is_active = TRUE;
     `;
     try {
-      const { error } = await supabase.rpc('exec_sql', { sql: tokenMigration }).catch(() => ({ error: { message: 'exec_sql not available' } }));
-      results.push({ step: 'token_migration', ok: !error || error.message === 'exec_sql not available', note: error?.message });
+      const { error } = await supabase.rpc('exec_sql', { sql: tokenMigration });
+      results.push({ step: 'token_migration', ok: !error, note: error?.message });
     } catch(e) {
       results.push({ step: 'token_migration', ok: false, error: e.message });
     }
@@ -9082,7 +9077,7 @@ if (require.main === module) {
           created_at TIMESTAMPTZ DEFAULT NOW(),
           updated_at TIMESTAMPTZ DEFAULT NOW()
         );
-      `}).catch(() => {});
+      `});
     } catch {}
   });
   updateUserVersions();
