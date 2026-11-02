@@ -461,6 +461,9 @@ export const chatAPI = {
     post<any>('/api/chats/group', { name, participant_ids, avatar_url }),
   markAsRead: (chatId: string, message_id: string) =>
     post<any>(`/api/chats/${chatId}/read`, { message_id }),
+  /** minutes = 0 reactiva las notificaciones del chat */
+  muteChat: (chatId: string, minutes: number) =>
+    post<{ muted: boolean; muted_until?: string }>(`/api/chats/${chatId}/mute`, { minutes }),
   searchUsers: (query: string) =>
     get<any[]>(`/api/contacts/search?q=${encodeURIComponent(query)}`),
   deleteMessage: (messageId: string) => del<void>(`/api/messages/${messageId}`),

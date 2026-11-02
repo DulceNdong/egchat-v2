@@ -1100,10 +1100,16 @@ export default function ChatScreen() {
   const toggleMute = useCallback(async () => {
     if (!chatId) return;
     const next = !isMuted;
+    // La marca local manda in-app; la del servidor es la que corta el push.
     await AsyncStorage.setItem(`egchat_muted_${chatId}`, next ? '1' : '0');
     setIsMuted(next);
+    try {
+      await chatAPI.muteChat(chatId, next ? 100 * 365 * 24 * 60 : 0);
+    } catch {
+      toast.info(t('msgServerUnreachable'));
+    }
     toast.info(next ? t('chtChatMuted') : t('chtNotifsEnabled'));
-  }, [chatId, isMuted]);
+  }, [chatId, isMuted, t]);
 
   const getReplyPreview = useCallback((msg: Message) => {
     if (!msg.reply_to) return undefined;

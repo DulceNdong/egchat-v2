@@ -191,6 +191,8 @@ export async function ensureIosCategories() {
 }
 
 // ── Solicitar permisos y registrar token FCM ────────────────────────────────
+let pushTokenListenerRegistered = false;
+
 export async function registerForPushNotifications(): Promise<string | null> {
   if (Platform.OS === 'web') return null;
   if (!PUSH_ENABLED) return null;
@@ -199,6 +201,24 @@ export async function registerForPushNotifications(): Promise<string | null> {
   await ensureIosCategories();
   const { installIosPushSound } = await import('./hooks/useSounds');
   await installIosPushSound();
+
+  // Expo puede rotar el token (reinstalo, cambio de cuenta APNs, OTA). Sin
+  // este listener el servidor se queda con el token viejo y el push se
+  // descarta hasta el próximo arranque.
+  if (!pushTokenListenerRegistered) {
+    pushTokenListenerRegistered = true;
+    try {
+      Notifications.addPushTokenListener((tokenInfo) => {
+        const token = tokenInfo?.data;
+        if (!token) return;
+        void AsyncStorage.setItem('expoPushToken', token)
+          .then(() => syncTokenWithServer(token));
+      });
+    } catch (e: any) {
+      pushTokenListenerRegistered = false;
+      console.warn('[Push] No se pudo registrar el listener de token:', e?.message || e);
+    }
+  }
 
   // Registrar background task para recibir llamadas con app suspendida (Android)
   if (Platform.OS === 'android') {
@@ -302,15 +322,46 @@ export async function registerForPushNotifications(): Promise<string | null> {
     await syncTokenWithServer(nativeDeviceToken);
   }
 
+  // Tokens que quedaron en cola en sesiones anteriores sin JWT
+  await retryPendingPushTokenSync().catch(() => {});
+
   return expoPushToken || fcmToken || nativeDeviceToken;
 }
 
 // ── Enviar token al servidor ────────────────────────────────────────────────
-export async function syncTokenWithServer(expoPushToken: string) {
+// El alta viaja con el JWT del usuario: si todavía no hay sesión, o si la
+// llamada falla, el token se encola y se reintenta al iniciar sesión.
+const PENDING_PUSH_TOKENS_KEY = 'egchat_pending_push_tokens';
+
+async function queuePushToken(token: string) {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PUSH_TOKENS_KEY);
+    const list: string[] = raw ? JSON.parse(raw) : [];
+    if (!list.includes(token)) {
+      list.push(token);
+      await AsyncStorage.setItem(PENDING_PUSH_TOKENS_KEY, JSON.stringify(list.slice(-5)));
+    }
+  } catch { /* cola no crítica */ }
+}
+
+async function dequeuePushToken(token: string) {
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PUSH_TOKENS_KEY);
+    if (!raw) return;
+    const list: string[] = JSON.parse(raw);
+    const next = list.filter(t => t !== token);
+    if (next.length !== list.length) {
+      await AsyncStorage.setItem(PENDING_PUSH_TOKENS_KEY, JSON.stringify(next));
+    }
+  } catch { /* ignorar */ }
+}
+
+export async function syncTokenWithServer(expoPushToken: string): Promise<boolean> {
   const authToken = await getToken();
   if (!authToken) {
-    console.warn('[Push] syncTokenWithServer: sin authToken, abortando');
-    return;
+    await queuePushToken(expoPushToken);
+    console.warn('[Push] syncTokenWithServer: sin authToken, token en cola para reintentar');
+    return false;
   }
 
   const isExpoToken  = expoPushToken.startsWith('ExponentPushToken');
@@ -334,10 +385,27 @@ export async function syncTokenWithServer(expoPushToken: string) {
       const err = await res.json().catch(() => ({ message: res.statusText }));
       throw new Error(err.message || `HTTP ${res.status}`);
     }
+    await dequeuePushToken(expoPushToken);
     console.log(`[Push] ✅ Token registrado en servidor correctamente`);
+    return true;
   } catch (e: any) {
+    await queuePushToken(expoPushToken);
     console.warn('[Push] ❌ No se pudo registrar token push:', e?.message || e);
+    return false;
   }
+}
+
+/** Reintenta los tokens que no pudieron registrarse por falta de sesión. */
+export async function retryPendingPushTokenSync(): Promise<void> {
+  if (!(await getToken())) return;
+  let list: string[] = [];
+  try {
+    const raw = await AsyncStorage.getItem(PENDING_PUSH_TOKENS_KEY);
+    list = raw ? JSON.parse(raw) : [];
+  } catch { return; }
+  if (!Array.isArray(list) || list.length === 0) return;
+  console.log(`[Push] Reintentando ${list.length} token(s) en cola`);
+  await Promise.allSettled(list.map(token => syncTokenWithServer(token)));
 }
 
 // ── Registrar token VoIP iOS (PushKit) ─────────────────────────────────────

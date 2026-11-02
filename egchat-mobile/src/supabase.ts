@@ -256,17 +256,27 @@ export const broadcastReadReceipt = (
   readerId: string,
   messageIds: string[],
 ) => {
-  const channel = supabase.channel(`read-receipts:${chatId}:broadcast`);
-  channel.send({
-    type: 'broadcast',
-    event: 'read',
-    payload: {
-      chat_id: chatId,
-      reader_id: readerId,
-      message_ids: messageIds,
-      ts: Date.now(),
-    },
-  }).catch(() => {});
+  const channel = supabase.channel(`read-receipts:${chatId}:broadcast`, {
+    config: { broadcast: { self: false } },
+  });
+  // Sin subscribe() el canal no está unido a la sala y el send() se descarta
+  // en silencio: el emisor nunca veía los checks azules por esta vía.
+  channel.subscribe((status) => {
+    if (status !== 'SUBSCRIBED') {
+      supabase.removeChannel(channel);
+      return;
+    }
+    channel.send({
+      type: 'broadcast',
+      event: 'read',
+      payload: {
+        chat_id: chatId,
+        reader_id: readerId,
+        message_ids: messageIds,
+        ts: Date.now(),
+      },
+    }).catch(() => {}).then(() => supabase.removeChannel(channel));
+  });
 };
 
 /**
