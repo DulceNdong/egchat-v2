@@ -1056,7 +1056,7 @@ app.get('/api/chats', auth, async (req, res) => {
 
     const [{ data: rawParticipants }, { data: messages }] = await Promise.all([
       supabase.from('chat_participants')
-        .select('chat_id, user_id')
+        .select('chat_id, user_id, unread_count')
         .in('chat_id', chatIds),
       supabase.from('messages')
         .select('id, text, type, created_at, sender_id, chat_id')
@@ -1094,6 +1094,14 @@ app.get('/api/chats', auth, async (req, res) => {
       return acc;
     }, {});
 
+    // No leídos reales por chat: el servidor los acumula al entrar cada mensaje
+    const unreadByChat = {};
+    (rawParticipants || []).forEach(p => {
+      if (String(p.user_id) === String(req.user.id)) {
+        unreadByChat[p.chat_id] = Number(p.unread_count ?? 0);
+      }
+    });
+
     const result = chats.map(chat => ({
       id: chat.id,
       type: chat.type || 'private',
@@ -1104,7 +1112,7 @@ app.get('/api/chats', auth, async (req, res) => {
       participants: participantsByChat[chat.id] || [],
       last_message: lastMessageByChat[chat.id] || null,
       updated_at: chat.updated_at,
-      unread_count: 0
+      unread_count: unreadByChat[chat.id] ?? 0
     }));
 
     res.json(result);
@@ -1240,16 +1248,20 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
 
     // Emitir evento en tiempo real a todos los participantes del chat
     try {
-      const { data: parts } = await supabase
-        .from('chat_participants')
-        .select('user_id')
-        .eq('chat_id', chatId);
-      const targetUsers = (parts || []).map((p) => p.user_id);
+      const targets = await getChatPushTargets(chatId, req.user.id);
+      const targetUsers = targets.map(t => t.userId);
       emitToUsers(targetUsers, { type: 'new_message', chatId, message: messageWithSender });
       emitToUsers(targetUsers, { type: 'chat_updated', chatId, ts: Date.now() });
 
-      // Enviar Web Push a usuarios que no son el remitente
-      const otherUsers = targetUsers.filter(uid => String(uid) !== String(req.user.id));
+      // El contador de no leídos vive en el servidor: es el badge real del destinatario
+      await Promise.allSettled(
+        targets.map(t => supabase
+          .from('chat_participants')
+          .update({ unread_count: t.unread })
+          .eq('chat_id', chatId)
+          .eq('user_id', t.userId))
+      );
+
       const senderName = senderData?.full_name || 'Alguien';
       const msgType = message.type || 'text';
       const bodyText = msgType === 'text'
@@ -1266,6 +1278,7 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
         tag: `chat-${chatId}`,
         url: '/',
         chatId,
+        notificationType: 'message',
         // Datos para notificaciones ricas nativas
         senderName,
         senderAvatar: senderData?.avatar_url || '',
@@ -1273,8 +1286,16 @@ app.post('/api/chats/:chatId/messages', auth, async (req, res) => {
         imageUrl: msgType === 'image' ? (message.file_url || '') : '',
         'mutable-content': 1,
       };
-      await Promise.allSettled(otherUsers.map(uid => sendPushToUser(uid, pushPayload)));
-    } catch {}
+
+      // Los chats silenciados no notifican, pero sí acumulan no leídos
+      await Promise.allSettled(
+        targets
+          .filter(t => !t.muted)
+          .map(t => sendPushToUser(t.userId, { ...pushPayload, badge: t.unread }))
+      );
+    } catch (e) {
+      console.warn('Realtime/push al enviar mensaje:', e.message);
+    }
 
     res.status(201).json(messageWithSender);
   } catch (e) {
@@ -1637,51 +1658,187 @@ app.get('/api/chats/:chatId/participants', auth, async (req, res) => {
   }
 });
 
-// Marcar mensajes como leídos
+// ── Lecturas reales de un chat ────────────────────────────────────────────
+// Un solo camino para /read y /read-all: deja constancia en message_reads,
+// pone status='read' en los mensajes de otros y avisa a cada emisor por SSE
+// para que su doble check se vuelva azul.
+const applyChatRead = async (chatId, userId, upToMessageId) => {
+  const { data: part } = await supabase
+    .from('chat_participants')
+    .select('id')
+    .eq('chat_id', chatId)
+    .eq('user_id', userId)
+    .single();
+  if (!part) return { forbidden: true, messageIds: [] };
+
+  let boundaryId = upToMessageId || null;
+  let boundaryDate = null;
+
+  if (boundaryId) {
+    const { data: anchor } = await supabase
+      .from('messages')
+      .select('created_at')
+      .eq('id', boundaryId)
+      .eq('chat_id', chatId)
+      .maybeSingle();
+    boundaryDate = anchor?.created_at || null;
+    if (!boundaryDate) return { messageIds: [] };
+  } else {
+    const { data: newest } = await supabase
+      .from('messages')
+      .select('id, created_at')
+      .eq('chat_id', chatId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!newest) return { messageIds: [] };
+    boundaryId = newest.id;
+    boundaryDate = newest.created_at;
+  }
+
+  // status es anidable: con .neq('status','read') los NULL quedarían fuera de
+  // la comparación en SQL y nunca se marcarían como leídos.
+  const { data: unread } = await supabase
+    .from('messages')
+    .select('id, sender_id, status')
+    .eq('chat_id', chatId)
+    .neq('sender_id', userId)
+    .lte('created_at', boundaryDate);
+
+  const unreadMsgs = (unread || []).filter(m => m.status !== 'read');
+  const messageIds = unreadMsgs.map(m => m.id);
+
+  if (messageIds.length > 0) {
+    const { error: statusError } = await supabase
+      .from('messages')
+      .update({ status: 'read' })
+      .in('id', messageIds);
+    if (statusError) throw statusError;
+  }
+
+  await supabase
+    .from('message_reads')
+    .upsert(
+      {
+        chat_id: chatId,
+        user_id: userId,
+        last_read_message_id: boundaryId,
+        read_at: new Date().toISOString(),
+      },
+      { onConflict: 'chat_id,user_id' }
+    );
+
+  await supabase
+    .from('chat_participants')
+    .update({ unread_count: 0 })
+    .eq('chat_id', chatId)
+    .eq('user_id', userId);
+
+  // Cada emisor recibe solo los ids de sus propios mensajes leídos
+  const bySender = {};
+  unreadMsgs.forEach(m => {
+    const key = String(m.sender_id);
+    if (!bySender[key]) bySender[key] = [];
+    bySender[key].push(m.id);
+  });
+  Object.keys(bySender).forEach(senderId => {
+    emitToUser(senderId, {
+      type: 'read',
+      chatId,
+      readerId: String(userId),
+      messageIds: bySender[senderId],
+    });
+  });
+
+  return { messageIds };
+};
+
+// Marcar hasta un mensaje concreto: lo usa el cliente al recibir un mensaje
 app.post('/api/chats/:chatId/read', auth, async (req, res) => {
   try {
-    const { chatId } = req.params;
-    const { message_id } = req.body;
-
-    // Verificar acceso al chat
-    const { data: part } = await supabase
-      .from('chat_participants')
-      .select('id')
-      .eq('chat_id', chatId)
-      .eq('user_id', req.user.id)
-      .single();
-
-    if (!part) {
-      return res.status(403).json({ message: 'No tienes acceso a este chat' });
-    }
-
-    // Marcar mensajes como leídos hasta el mensaje especificado
-    const { error: updateError } = await supabase
-      .from('message_reads')
-      .upsert({
-        chat_id: chatId,
-        user_id: req.user.id,
-        last_read_message_id: message_id,
-        read_at: new Date().toISOString()
-      }, {
-        onConflict: 'chat_id,user_id'
-      });
-
-    if (updateError) throw updateError;
-
-    // Resetear contador de no leÁƒÂ­dos
-    await supabase
-      .from('chat_participants')
-      .update({ unread_count: 0 })
-      .eq('chat_id', chatId)
-      .eq('user_id', req.user.id);
-
-    res.json({ message: 'Mensajes marcados como leÁƒÂ­dos' });
+    const { messageIds } = await applyChatRead(req.params.chatId, req.user.id, req.body?.message_id);
+    res.json({ message: 'Mensajes marcados como leídos', read: messageIds.length });
   } catch (e) {
     console.error('Mark as read error:', e);
     res.status(500).json({ message: e.message });
   }
 });
+
+// Marcar todo el chat como leído: lo usa el cliente al abrir el chat
+app.post('/api/chats/:chatId/read-all', auth, async (req, res) => {
+  try {
+    const { messageIds } = await applyChatRead(req.params.chatId, req.user.id, null);
+    res.json({ message: 'Chat marcado como leído', read: messageIds.length });
+  } catch (e) {
+    console.error('Mark chat as read error:', e);
+    res.status(500).json({ message: e.message });
+  }
+});
+
+// Silenciar / reactivar un chat en el servidor, para que el push lo respete
+const ensureChatMuteColumn = async () => {
+  try {
+    const { error } = await supabase.rpc('exec_sql', {
+      sql: `ALTER TABLE chat_participants ADD COLUMN IF NOT EXISTS muted_until TIMESTAMPTZ;`,
+    });
+    if (error) console.warn('ensureChatMuteColumn:', error.message);
+  } catch (e) {
+    console.warn('ensureChatMuteColumn:', e.message);
+  }
+};
+ensureChatMuteColumn();
+
+app.post('/api/chats/:chatId/mute', auth, async (req, res) => {
+  try {
+    const { chatId } = req.params;
+    const minutes = Number(req.body?.minutes ?? 0);
+
+    const patch = { muted_until: minutes > 0
+      ? new Date(Date.now() + minutes * 60000).toISOString()
+      : null };
+
+    const { data, error } = await supabase
+      .from('chat_participants')
+      .update(patch)
+      .eq('chat_id', chatId)
+      .eq('user_id', req.user.id)
+      .select('chat_id, user_id, muted_until')
+      .maybeSingle();
+
+    if (error) throw error;
+    if (!data) return res.status(403).json({ message: 'No tienes acceso a este chat' });
+    res.json({ muted: minutes > 0, muted_until: data.muted_until });
+  } catch (e) {
+    console.error('Mute chat error:', e);
+    res.status(501).json({ message: `Silencio no disponible en la base: ${e.message}` });
+  }
+});
+
+// Participantes con sus banderas de push; si muted_until aún no existe,
+// se degrada a no filtrar ninguno en vez de romper el envío.
+const getChatPushTargets = async (chatId, excludeUserId) => {
+  const withMute = await supabase
+    .from('chat_participants')
+    .select('user_id, unread_count, muted_until')
+    .eq('chat_id', chatId);
+
+  let rows = withMute.data;
+  if (!rows) {
+    const plain = await supabase
+      .from('chat_participants')
+      .select('user_id, unread_count')
+      .eq('chat_id', chatId);
+    rows = plain.data || [];
+  }
+
+  return (rows || [])
+    .filter(p => String(p.user_id) !== String(excludeUserId))
+    .map(p => ({
+      userId: p.user_id,
+      unread: Number(p.unread_count ?? 0) + 1,
+      muted: !!p.muted_until && new Date(p.muted_until).getTime() > Date.now(),
+    }));
+};
 
 // Subir archivo de chat — acepta multipart/form-data (Android/iOS) y raw buffer (web)
 app.post('/api/chats/:chatId/upload', auth, async (req, res) => {
@@ -5929,17 +6086,6 @@ app.get('/api/notifications', auth, async (req, res) => {
   } catch (e) { res.json([]); }
 });
 
-// Marcar mensajes como leÁƒÂ­dos
-app.post('/api/chats/:chatId/read', auth, async (req, res) => {
-  try {
-    await supabase.from('messages')
-      .update({ status: 'read' })
-      .eq('chat_id', req.params.chatId)
-      .neq('sender_id', req.user.id);
-    res.json({ message: 'Mensajes marcados como leÁƒÂ­dos' });
-  } catch (e) { res.status(500).json({ message: e.message }); }
-});
-
 // ════════════════════════════════════════════════════════════════════
 // CONTACTOS CON FOTO Y PERFIL
 // ════════════════════════════════════════════════════════════════════
@@ -7526,15 +7672,22 @@ const sendPushToUser = async (userId, payload) => {
       .in('token_type', ['expo', 'fcm', 'apns'])
       .neq('is_active', false);
 
-    if (expoSubs && expoSubs.length > 0) {
-      const expoMessages = expoSubs.map(sub => ({
-        to: sub.token,
+    // Solo tokens con forma Expo: los APNs/FCM crudos que también viven en
+    // esta tabla los rechaza exp.host, y borrarlos por DeviceNotRegistered
+    // dejaría al dispositivo sin ningún canal de entrega.
+    const expoTokens = [...new Set((expoSubs || [])
+      .map(s => s.token)
+      .filter(t => /^(ExponentPushToken|ExpoPushToken)[\/\[]/i.test(String(t))))];
+
+    if (expoTokens.length > 0) {
+      const expoMessages = expoTokens.map(token => ({
+        to: token,
         title: payload.title || 'EGChat',
         body: payload.body || (isCall ? 'Llamada entrante' : 'Nuevo mensaje'),
         // El nombre debe coincidir con el archivo que la app instala en
         // Library/Sounds del contenedor (useSounds.installIosPushSound).
         sound: isCall ? 'default' : 'egchat-message.wav',
-        badge: isCall ? 0 : 1,
+        badge: isCall ? 0 : Number(payload.badge ?? 1),
         channelId: isCall ? 'egchat-calls-v2' : 'egchat-messages',
         // En iOS el channelId no existe: la categoría con acciones (Aceptar /
         // Rechazar) se registra desde la app con setNotificationCategoryAsync.
@@ -7576,19 +7729,38 @@ const sendPushToUser = async (userId, payload) => {
         try {
           const expoRes = await fetch('https://exp.host/--/api/v2/push/send', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+            headers: {
+              'Content-Type': 'application/json',
+              Accept: 'application/json',
+              // Con Expo Access Token el envío usa la vía autenticada de la
+              // cuenta; sin él se queda en el modo anónimo y limitado.
+              ...(process.env.EXPO_ACCESS_TOKEN
+                ? { Authorization: `Bearer ${process.env.EXPO_ACCESS_TOKEN}` }
+                : {}),
+            },
             body: JSON.stringify(batch),
           });
           const result = await expoRes.json();
+          if (result.errors?.length) {
+            console.warn(`[Push Expo] user=${userId} exp.host rechazó el lote:`, JSON.stringify(result.errors).slice(0, 400));
+          }
           if (result.data) {
-            const invalid = result.data
-              .map((r, idx) => ({ r, token: batch[idx].to }))
+            const tickets = result.data
+              .map((r, idx) => ({ r, token: batch[idx].to }));
+            const invalid = tickets
               .filter(({ r }) => r.status === 'error' && r.details?.error === 'DeviceNotRegistered');
             if (invalid.length > 0) {
               await Promise.allSettled(
                 invalid.map(({ token }) => supabase.from('expo_push_tokens').delete().eq('token', token))
               );
             }
+            // Cualquier otro fallo se registra con el usuario: antes desaparecía
+            // en silencio y no sabíamos si el mensaje llegó o no al teléfono.
+            tickets
+              .filter(({ r }) => r.status === 'error' && r.details?.error !== 'DeviceNotRegistered')
+              .forEach(({ r, token }) => {
+                console.warn(`[Push Expo] user=${userId} token=${String(token).slice(0, 22)}… error=${r.details?.error || 'desconocido'}: ${r.message || ''}`);
+              });
           }
         } catch (expoErr) {
           console.warn('Expo push error:', expoErr.message);
