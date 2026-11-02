@@ -3732,7 +3732,7 @@ app.post('/api/cemac/transfers', auth, walletLimiter, async (req, res) => {
     }
     
     if (!deb.ok) {
-      return res.status(400).json({ message: deb.message || 'Saldo insuficiente', code: 'INSUFFICIENT_BALANCE' });
+      return res.status(400).json({ message: deb.message || 'Saldo insuficiente', code: deb.code || 'INSUFFICIENT_BALANCE' });
     }
 
     const transferRef = external_id || safeRef('CEMAC');
@@ -5038,13 +5038,19 @@ const safeRef = (prefix) => `${prefix}-${Date.now()}-${Math.floor(Math.random() 
 const toNum = (v) => Number(v || 0);
 
 const logAudit = async (userId, action, module, entityId, details) => {
-  await supabase.from('audit_logs').insert({
-    user_id: userId,
-    action,
-    module,
-    entity_id: entityId || null,
-    details: details || {}
-  }).catch(() => {});
+  // try/catch y no `.catch()`: el constructor de consultas de supabase-js 2.101
+  // es thenable pero no tiene método catch, así que encadenarlo lanza TypeError.
+  try {
+    await supabase.from('audit_logs').insert({
+      user_id: userId,
+      action,
+      module,
+      entity_id: entityId || null,
+      details: details || {}
+    });
+  } catch (e) {
+    console.warn('[audit] registro no guardado:', e.message);
+  }
 };
 
 const createServiceOrder = async (userId, provider, serviceType, amount, contractRef, payload, response) => {
@@ -5100,7 +5106,7 @@ app.post('/api/servicios/segesa/pagar', auth, walletLimiter, async (req, res) =>
   const { contrato, importe, metodo } = req.body;
   if (!contrato || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
   const deb = await debitWalletWithTx(req.user.id, toNum(importe), metodo || 'EGCHAT', `SEGESA-${contrato}`, 'service_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: 'INSUFFICIENT_BALANCE' });
+  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
   const response = { success: true, balance: deb.balance, referencia: safeRef('SEG'), message: 'Pago de electricidad completado' };
   await createServiceOrder(req.user.id, 'segesa', 'pagar', importe, contrato, req.body, response);
   res.json(response);
@@ -5118,7 +5124,7 @@ app.post('/api/servicios/snge/pagar', auth, walletLimiter, async (req, res) => {
   const { contrato, importe, metodo } = req.body;
   if (!contrato || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
   const deb = await debitWalletWithTx(req.user.id, toNum(importe), metodo || 'EGCHAT', `SNGE-${contrato}`, 'service_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: 'INSUFFICIENT_BALANCE' });
+  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
   const response = { success: true, balance: deb.balance, referencia: safeRef('SNGE'), message: 'Pago de agua completado' };
   await createServiceOrder(req.user.id, 'snge', 'pagar', importe, contrato, req.body, response);
   res.json(response);
@@ -5136,7 +5142,7 @@ app.post('/api/servicios/dgi/pagar', auth, walletLimiter, async (req, res) => {
   const { nif, importe, referencia } = req.body;
   if (!nif || toNum(importe) <= 0) return res.status(400).json({ message: 'Datos invalidos', code: 'VALIDATION_ERROR' });
   const deb = await debitWalletWithTx(req.user.id, toNum(importe), 'EGCHAT', `DGI-${nif}-${referencia || 'R'}`, 'tax_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: 'INSUFFICIENT_BALANCE' });
+  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
   const response = { success: true, balance: deb.balance, referencia: safeRef('DGI'), message: 'Pago de impuesto completado' };
   await createServiceOrder(req.user.id, 'dgi', 'pagar', importe, nif, req.body, response);
   res.json(response);
@@ -5192,7 +5198,7 @@ app.post('/api/supermarkets/orders', auth, walletLimiter, async (req, res) => {
   }
   const total = items?.reduce((s, i) => s + (i.price * i.qty), 0) || 0;
   const deb = await debitWalletWithTx(req.user.id, total, 'EGCHAT', `SUPER-${supermarketId}`, 'shopping_payment');
-  if (!deb.ok) return res.status(400).json({ message: deb.message, code: 'INSUFFICIENT_BALANCE' });
+  if (!deb.ok) return res.status(400).json({ message: deb.message, code: deb.code || 'INSUFFICIENT_BALANCE' });
   const orderId = external_id || safeRef('ORD');
   await supabase.from('service_orders').upsert({
     order_ref: orderId,
@@ -6742,7 +6748,7 @@ app.post('/api/spaces', auth, async (req, res) => {
       .select().single();
     if (error) throw error;
     // Auto-seguir al creador
-    await supabase.from('space_follows').insert({ space_id: data.id, user_id: req.user.id }).catch(() => {});
+    await supabase.from('space_follows').insert({ space_id: data.id, user_id: req.user.id });
     res.status(201).json({ ...data, following: true });
   } catch (e) { res.status(500).json({ message: e.message }); }
 });
