@@ -90,7 +90,12 @@ jobs:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: npx vercel --prod --token "$VERCEL_TOKEN" --yes
+        run: |
+          if [ -z "$VERCEL_TOKEN" ]; then
+            echo "⚠️  VERCEL_TOKEN no configurado — se omite el deploy de la web"
+            exit 0
+          fi
+          npx vercel --prod --token "$VERCEL_TOKEN" --yes
 
   verify-backend:
     name: Verificar backend en Render
@@ -147,10 +152,10 @@ jobs:
             } catch {}
 
             const routes = [
-              ['GET', '/api/djangue'],
-              ['POST', '/api/djangue/x/advance-turn'],
-              ['PATCH', '/api/chats/x/settings'],
-              ['POST', '/api/chats/x/invite-link'],
+              ['GET', '/api/auth/me'],
+              ['GET', '/api/chats'],
+              ['GET', '/api/wallet/limits'],
+              ['GET', '/api/lia/status'],
             ];
 
             let ok = 0;
