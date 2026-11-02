@@ -64,10 +64,8 @@
         "buildConfiguration": "Release",
         "autoIncrement": true,
         "simulator": false,
-        "resourceClass": "m-medium"
-      },
-      "prebuild": {
-        "clean": false
+        "resourceClass": "m-medium",
+        "prebuildCommand": "echo 'Skipping prebuild - using committed ios/ directory'"
       },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
