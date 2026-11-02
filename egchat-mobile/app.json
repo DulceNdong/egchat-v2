@@ -10,7 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.jallzstores.egchat",
       "supportsTablet": false,
-      "buildNumber": "139",
+      "buildNumber": "140",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -64,7 +64,8 @@
           ]
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      "./plugins/withVoIPModules.js"
     ],
     "platforms": [
       "ios",

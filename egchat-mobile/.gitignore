@@ -49,7 +49,7 @@ dist/
 web-build/
 
 # Native
-# Keep ios/ in Git for EAS Build with custom VoIP modules
+ios/
 android/
 
 # Environment
