@@ -10,7 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.jallzstores.egchat",
       "supportsTablet": false,
-      "buildNumber": "133",
+      "buildNumber": "137",
       "config": {
         "usesNonExemptEncryption": false
       },

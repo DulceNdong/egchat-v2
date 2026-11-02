@@ -152,23 +152,7 @@ const withNotificationServiceExtension = (config) => {
       project.addToPbxGroup(extGroup.uuid, rootGroupKey);
     }
 
-    // Crear build configurations para el target extensión
-    const debugConfig = project.addBuildConfiguration('Debug', {
-      SWIFT_VERSION: '5.0',
-      PRODUCT_NAME: EXTENSION_NAME,
-      PRODUCT_BUNDLE_IDENTIFIER: extBundleId,
-      SWIFT_OPTIMIZATION_LEVEL: '-Onone',
-      DEPLOYMENT_POSTPROCESSING: 'NO',
-      COPY_PHASE_STRIP: 'NO',
-    });
-    const releaseConfig = project.addBuildConfiguration('Release', {
-      SWIFT_VERSION: '5.0',
-      PRODUCT_NAME: EXTENSION_NAME,
-      PRODUCT_BUNDLE_IDENTIFIER: extBundleId,
-      SWIFT_OPTIMIZATION_LEVEL: '-Owholemodule',
-      DEPLOYMENT_POSTPROCESSING: 'YES',
-      COPY_PHASE_STRIP: 'YES',
-    });
+    // La extensión ya existe (fue agregada manualmente), solo verificamos que esté
 
     // Crear target nativo
     const target = project.addTarget(
