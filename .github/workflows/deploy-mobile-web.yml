@@ -52,9 +52,13 @@ jobs:
 
       - name: Trigger Render deploy
         run: |
-          curl -sf -X POST "${{ secrets.RENDER_DEPLOY_HOOK }}" || \
-            curl -sf "https://api.render.com/deploy/srv-d79po8dm5p6s73a7rcu0?key=_SNH3dpUT0k" || \
-            echo "⚠️  Deploy hook no configurado — Render usará auto-deploy de egchat-api"
+          if [ -z "${RENDER_DEPLOY_HOOK:-}" ]; then
+            echo "⚠️  RENDER_DEPLOY_HOOK no configurado — Render usará auto-deploy de egchat-api"
+            exit 0
+          fi
+          curl -sf -X POST "$RENDER_DEPLOY_HOOK" || echo "⚠️  No se pudo disparar el deploy"
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
 
   deploy-mobile:
     name: Build y Deploy App Nativa
@@ -77,8 +81,6 @@ jobs:
         working-directory: egchat-mobile
         env:
           EXPO_PUBLIC_API_URL: ${{ env.RENDER_API_URL }}
-          EXPO_PUBLIC_SUPABASE_URL: ${{ secrets.EXPO_PUBLIC_SUPABASE_URL }}
-          EXPO_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.EXPO_PUBLIC_SUPABASE_ANON_KEY }}
           CI: false
         run: npx expo export --platform web --output-dir dist
 
