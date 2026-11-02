@@ -56,6 +56,19 @@
         "buildConfiguration": "Release",
         "simulator": false
       }
+    },
+    "testflight": {
+      "distribution": "internal",
+      "channel": "testflight",
+      "ios": {
+        "buildConfiguration": "Release",
+        "autoIncrement": true,
+        "simulator": false,
+        "resourceClass": "m-medium"
+      },
+      "env": {
+        "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
+      }
     }
   },
   "submit": {
