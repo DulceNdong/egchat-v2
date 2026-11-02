@@ -331,6 +331,26 @@ const emitToUsers = (userIds, payload) => {
   uniq.forEach((id) => emitToUser(id, payload));
 };
 
+// Avisar por SSE a la otra parte de una llamada. La app ya escucha
+// 'call_answered' y 'call_ended' para cortar el timbre al instante; sin este
+// aviso el llamante depende del ciclo de polling y sigue sonando varios
+// segundos (o minutos) después de que el otro contestó o colgó.
+const notifyCallPeer = async (callId, selfUserId, payload) => {
+  try {
+    const { data } = await supabase
+      .from('call_sessions')
+      .select('caller_id, target_user_id')
+      .eq('call_id', callId)
+      .maybeSingle();
+    if (!data) return;
+    const iAmCaller = String(data.caller_id) === String(selfUserId);
+    const peer = iAmCaller ? data.target_user_id : data.caller_id;
+    if (peer) emitToUser(peer, payload);
+  } catch (e) {
+    console.warn('[call/notify-peer]', e.message);
+  }
+};
+
 const adminResetKey = process.env.ADMIN_RESET_KEY || null;
 // Sin ADMIN_RESET_KEY las rutas administrativas quedan cerradas (antes caían
 // al secreto JWT, que estaba publicado en el repositorio).
@@ -6849,6 +6869,7 @@ app.post('/api/call/answer', auth, async (req, res) => {
         updated_at: new Date().toISOString(),
       }).eq('call_id', callId).eq('target_user_id', String(req.user.id));
       if (fallbackUpdate.error) throw fallbackUpdate.error;
+      await notifyCallPeer(callId, req.user.id, { type: 'call_answered', callId, ts: Date.now() });
       return res.json({ ok: true });
     }
 
@@ -6880,6 +6901,8 @@ app.post('/api/call/answer', auth, async (req, res) => {
     } catch (broadcastErr) {
       console.warn('[call/answer] Broadcast failed:', broadcastErr.message);
     }
+
+    await notifyCallPeer(callId, req.user.id, { type: 'call_answered', callId, ts: Date.now() });
 
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
@@ -6955,6 +6978,8 @@ app.delete('/api/call/:callId', auth, async (req, res) => {
       await supabase.from('call_sessions').update({ ended: true, updated_at: new Date().toISOString() }).eq('call_id', req.params.callId);
     }
 
+    await notifyCallPeer(req.params.callId, req.user.id, { type: 'call_ended', callId: req.params.callId, reason, ts: Date.now() });
+
     setTimeout(async () => {
       try { await supabase.from('call_sessions').delete().eq('call_id', req.params.callId); } catch {}
     }, 30000);
@@ -6989,8 +7014,10 @@ app.post('/api/call/reject', auth, async (req, res) => {
         status: 'rejected', ended: true, ended_at: new Date().toISOString(), updated_at: new Date().toISOString(),
       }).eq('call_id', callId).eq('target_user_id', String(req.user.id));
       if (fallbackUpdate.error) throw fallbackUpdate.error;
+      await notifyCallPeer(callId, req.user.id, { type: 'call_ended', callId, reason: 'rejected', ts: Date.now() });
       return res.json({ ok: true, idempotent: false });
     }
+    await notifyCallPeer(callId, req.user.id, { type: 'call_ended', callId, reason: 'rejected', ts: Date.now() });
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
     console.error('[call/reject]', e.message);
@@ -7021,8 +7048,10 @@ app.post('/api/call/cancel', auth, async (req, res) => {
         status: 'ended', ended: true, ended_at: new Date().toISOString(), end_reason: 'cancelled_by_caller', updated_at: new Date().toISOString(),
       }).eq('call_id', callId).eq('caller_id', String(req.user.id));
       if (fallbackUpdate.error) throw fallbackUpdate.error;
+      await notifyCallPeer(callId, req.user.id, { type: 'call_ended', callId, reason: 'cancelled', ts: Date.now() });
       return res.json({ ok: true, idempotent: false });
     }
+    await notifyCallPeer(callId, req.user.id, { type: 'call_ended', callId, reason: 'cancelled', ts: Date.now() });
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
     console.error('[call/cancel]', e.message);
@@ -7040,6 +7069,42 @@ app.post('/api/call/connected', auth, async (req, res) => {
     res.json({ ok: true, idempotent: data && data.idempotent ? true : false });
   } catch (e) {
     res.json({ ok: true, skipped: true });
+  }
+});
+
+// Reclamar llamada: el callee confirma antes de aceptar que la llamada sigue
+// siendo suya. Evita que dos dispositivos del mismo usuario, o una UI abierta
+// tarde desde CallKit, crean aceptar una llamada ya resuelta o caducada.
+app.post('/api/calls/claim', auth, async (req, res) => {
+  const { callId } = req.body;
+  if (!callId) return res.status(400).json({ error: 'callId requerido' });
+  try {
+    const { data } = await supabase
+      .from('call_sessions')
+      .select('call_id, caller_id, target_user_id, status, ended, answer, expires_at')
+      .eq('call_id', callId)
+      .maybeSingle();
+    if (!data) return res.status(404).json({ error: 'Llamada no encontrada', alreadyAccepted: true });
+    if (String(data.target_user_id) !== String(req.user.id)) {
+      return res.status(403).json({ error: 'No autorizado', alreadyAccepted: true });
+    }
+    const taken = data.ended
+      || !!data.answer
+      || ['accepted', 'connecting', 'connected', 'ended', 'rejected', 'missed', 'failed', 'expired'].includes(data.status)
+      || (data.expires_at && new Date(data.expires_at).getTime() < Date.now());
+    if (taken) return res.json({ alreadyAccepted: true, status: data.status });
+
+    await supabase.from('call_events').insert({
+      call_id: callId,
+      user_id: req.user.id,
+      event: 'accepted',
+      metadata: { claimed: true },
+    });
+    res.json({ alreadyAccepted: false, status: data.status });
+  } catch (e) {
+    console.error('[calls/claim]', e.message);
+    // Si la consulta falla no se bloquea la aceptación: el cliente ignora este error.
+    res.status(500).json({ error: 'Error reclamando llamada' });
   }
 });
 
