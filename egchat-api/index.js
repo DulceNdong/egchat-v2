@@ -8221,12 +8221,13 @@ const sendPushToUser = async (userId, payload) => {
         // Rechazar) se registra desde la app con setNotificationCategoryAsync.
         ...(isCall ? { categoryIdentifier: 'EGCHAT_CALL' } : {}),
         priority: isCall ? 'high' : 'normal',
-        // Es lo que traduce exp.host a aps["mutable-content"]=1 y hace que iOS
-        // lance la Notification Service Extension (donde se descarga y pega la
-        // foto). El "mutable-content" dentro de `data` NO sirve: cae en el
-        // diccionario data del payload, no en aps, y la extensión nunca corre.
-        // En llamadas no se activa para no interferir con CallKit.
-        ...(!isCall ? { _mutableContent: true } : {}),
+        // Campo EXACTO que acepta la API REST de Expo (no "_mutableContent"):
+        // exp.host lo traduce a aps["mutable-content"]=1 y hace que iOS lance
+        // la Notification Service Extension, donde se descarga y pega la foto.
+        // El "mutable-content" de dentro de `data` NO sirve: cae en el diccionario
+        // data, no en aps, y la extensión nunca corre. En llamadas no se activa
+        // para no interferir con CallKit.
+        ...(!isCall ? { mutableContent: true } : {}),
         data: {
           ...payload,
           'mutable-content': 1,
@@ -8249,7 +8250,7 @@ const sendPushToUser = async (userId, payload) => {
           } : {}),
         },
         // richContent es un campo de web-push (PWA), Expo lo ignora en nativo;
-        // la foto nativa la pone la extensión gracias a _mutableContent arriba.
+        // la foto nativa la pone la extensión gracias a mutableContent arriba.
         // Se mantiene solo para la PWA.
         ...(!isCall && (payload.callerAvatar || payload.senderAvatar || payload.imageUrl || (typeof payload.icon === 'string' && /^https?:\/\//.test(payload.icon)))
           ? { richContent: { image: payload.callerAvatar || payload.senderAvatar || payload.imageUrl || payload.icon } }
