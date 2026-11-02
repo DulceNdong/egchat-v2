@@ -897,6 +897,18 @@ export default function LiaScreen() {
                         style={[s.bubbleText, attachment ? { marginTop: 8 } : null, isUser ? s.textUser : { color: C.textPrimary }]}
                       />
                     )}
+                    {!isUser && item.transfer && (
+                      <View style={s.transferCard}>
+                        <Text style={s.transferTitle}>{t('liaTransferReady')}</Text>
+                        <View style={s.transferRow}>
+                          <Text style={s.transferName} numberOfLines={1}>{item.transfer.destinatario}</Text>
+                          <Text style={s.transferAmount}>{Number(item.transfer.importe).toLocaleString(language)} XAF</Text>
+                        </View>
+                        {!!item.transfer.concepto && (
+                          <Text style={s.transferConcept} numberOfLines={2}>{item.transfer.concepto}</Text>
+                        )}
+                      </View>
+                    )}
                     {!isUser && (item.nav || item.transfer) && (() => {
                       const target = item.nav && LIA_NAV[item.nav] ? LIA_NAV[item.nav] : null;
                       const label = target
@@ -1163,6 +1175,12 @@ const s = StyleSheet.create({
   fileMetaUser: { color: 'rgba(255,255,255,0.82)' },
   metaRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 5 },
   metaRowUser: { justifyContent: 'flex-end' },
+  transferCard: { marginTop: 10, padding: 10, borderRadius: 12, backgroundColor: 'rgba(0,180,230,0.08)', borderWidth: 1, borderColor: 'rgba(0,180,230,0.25)' },
+  transferTitle: { fontSize: 11, fontWeight: '700', color: '#0077A8', textTransform: 'uppercase', letterSpacing: 0.4 },
+  transferRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginTop: 4 },
+  transferName: { flex: 1, fontSize: 14, fontWeight: '700', color: '#111827' },
+  transferAmount: { fontSize: 14, fontWeight: '800', color: '#00A38A' },
+  transferConcept: { fontSize: 12, color: '#6B7280', marginTop: 2 },
   navBtn: { alignSelf: 'flex-start', marginTop: 10, paddingHorizontal: 14, paddingVertical: 8, borderRadius: 16, backgroundColor: '#00B4E6' },
   navBtnText: { color: '#fff', fontSize: 13, fontWeight: '700' },
   speakBtn: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 7, paddingVertical: 3, borderRadius: 10, backgroundColor: 'rgba(0,200,160,0.1)' },
