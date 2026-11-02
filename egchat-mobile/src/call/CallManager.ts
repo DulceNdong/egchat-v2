@@ -787,6 +787,15 @@ export class CallManager {
     // Parar el tono de llamada inmediatamente — el callee ya aceptó
     stopDialingTone();
     this._stopCallTimeout();
+    // En modo señalización (web) _forcePoll no puede aplicar el answer porque no
+    // hay PeerConnection: se da la llamada por conectada directamente para que el
+    // llamante deje de sonar al instante.
+    if (this._isSignalingOnly) {
+      this._answerApplied = true;
+      this._setCommState('connected');
+      this._onCallConnected();
+      return;
+    }
     // Disparar un poll inmediato sin esperar el timer
     this._forcePoll();
   }
@@ -1224,6 +1233,19 @@ export class CallManager {
         // ── Caller: Answer inicial + ICE del callee ──────────────
         if (role === 'caller') {
           if (!this._answerApplied && s.answer) {
+            // Modo señalización (web o builds sin WebRTC nativo): no existe
+            // this._pc ni NativeRTC, así que aplicar el answer por esa vía es
+            // imposible. El callee ya aceptó si hay answer en el servidor: hay
+            // que dar la llamada por conectada, si no el llamante se queda
+            // "llamando" hasta el timeout de 90s (2026-11-02, web seguía sonando).
+            if (this._isSignalingOnly) {
+              stopDialingTone();
+              this._stopCallTimeout();
+              this._answerApplied = true;
+              this._setCommState('connected');
+              this._onCallConnected();
+              return;
+            }
             const sigState = this._pc?.signalingState;
             console.log(`[CallManager] poll caller: sigState=${sigState}, answerApplied=${this._answerApplied}, hasAnswer=${!!s.answer}`);
             if (sigState === 'have-local-offer') {
