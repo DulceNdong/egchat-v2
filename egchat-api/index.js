@@ -466,7 +466,12 @@ app.get('/', (req, res) => res.json({
   status: 'active'
 }));
 
-app.get('/health', (req, res) => res.json({ status: 'ok', timestamp: new Date().toISOString() }));
+app.get('/health', (req, res) => res.json({
+  status: 'ok',
+  timestamp: new Date().toISOString(),
+  commit: process.env.RENDER_GIT_COMMIT ? String(process.env.RENDER_GIT_COMMIT).slice(0, 8) : null,
+  branch: process.env.RENDER_GIT_REF || null,
+}));
 
 app.get('/api/system/dependencies', requireAdmin, async (_req, res) => {
   const now = Date.now();
@@ -8216,6 +8221,12 @@ const sendPushToUser = async (userId, payload) => {
         // Rechazar) se registra desde la app con setNotificationCategoryAsync.
         ...(isCall ? { categoryIdentifier: 'EGCHAT_CALL' } : {}),
         priority: isCall ? 'high' : 'normal',
+        // Es lo que traduce exp.host a aps["mutable-content"]=1 y hace que iOS
+        // lance la Notification Service Extension (donde se descarga y pega la
+        // foto). El "mutable-content" dentro de `data` NO sirve: cae en el
+        // diccionario data del payload, no en aps, y la extensión nunca corre.
+        // En llamadas no se activa para no interferir con CallKit.
+        ...(!isCall ? { _mutableContent: true } : {}),
         data: {
           ...payload,
           'mutable-content': 1,
@@ -8237,9 +8248,9 @@ const sendPushToUser = async (userId, payload) => {
             callType: payload.callType || 'audio',
           } : {}),
         },
-        // richContent obliga a pasar por la Notification Service Extension, y
-        // la nuestra reescribe la categoría a EGCHAT_MESSAGE — con ella las
-        // llamadas perderían los botones Aceptar/Rechazar. En llamadas no se usa.
+        // richContent es un campo de web-push (PWA), Expo lo ignora en nativo;
+        // la foto nativa la pone la extensión gracias a _mutableContent arriba.
+        // Se mantiene solo para la PWA.
         ...(!isCall && (payload.callerAvatar || payload.senderAvatar || payload.imageUrl || (typeof payload.icon === 'string' && /^https?:\/\//.test(payload.icon)))
           ? { richContent: { image: payload.callerAvatar || payload.senderAvatar || payload.imageUrl || payload.icon } }
           : {}),
