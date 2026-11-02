@@ -10,7 +10,7 @@
     "ios": {
       "bundleIdentifier": "com.jallzstores.egchat",
       "supportsTablet": false,
-      "buildNumber": "131",
+      "buildNumber": "133",
       "config": {
         "usesNonExemptEncryption": false
       },
@@ -64,9 +64,7 @@
           ]
         }
       ],
-      "expo-secure-store",
-      "./plugins/withNotificationServiceExtension",
-      "./plugins/withCallKit"
+      "expo-secure-store"
     ],
     "platforms": [
       "ios",
