@@ -18,8 +18,8 @@ services:
       - key: SUPABASE_URL
         value: https://fqfxtjnfhvpggssbymdn.supabase.co
       - key: SUPABASE_SERVICE_KEY
-        value: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZxZnh0am5maHZwZ2dzc2J5bWRuIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc4NTg0MzgyMCwiZXhwIjoyMTAxNDE5ODIwfQ.ulwcC4WW-00pgjKzzs9CclyMGad1y4dqjS7P-c2O-CM
+        sync: false
       - key: JWT_SECRET
-        value: egchat_super_secret_key_2026_production
+        sync: false
       - key: LOCAL_AUTH_FALLBACK
         value: "false"
