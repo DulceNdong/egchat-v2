@@ -66,6 +66,9 @@
         "simulator": false,
         "resourceClass": "m-medium"
       },
+      "prebuild": {
+        "clean": false
+      },
       "env": {
         "EXPO_PUBLIC_API_URL": "https://egchat-api-xlxj.onrender.com"
       }
